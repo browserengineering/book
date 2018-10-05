@@ -1,7 +1,11 @@
 import subprocess
 
 def get(domain, path):
-    s = subprocess.Popen(["telnet", domain, "80"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if ":" in domain:
+        domain, port = domain.rsplit(":", 1)
+    else:
+        port = "80"
+    s = subprocess.Popen(["telnet", domain, port], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     s.stdin.write(("GET " + path + " HTTP/1.0\n\n").encode("latin1"))
     s.stdin.flush()
     out = s.stdout.read().decode("latin1")
