@@ -42,7 +42,6 @@ def lex(source):
                 text += c
             else:
                 text = c
-    tkinter.mainloop()
 
 def show(source):
     window = tkinter.Tk()
