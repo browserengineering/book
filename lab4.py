@@ -29,7 +29,7 @@ def lex(source):
         elif c == ">":
             if tag is not None:
                 parts = tag.rstrip("/").strip().split(" ")
-                attrs = { part.split("=", 1)[0]: part.split("=", 1)[1].strip('"') for part in parts[1:] }
+                attrs = { part.split("=", 1)[0]: part.split("=", 1)[1].strip('"') for part in parts[1:] if "=" in part }
                 yield Tag(parts[0], attrs)
                 if tag.endswith("/"): yield Tag("/" + parts[0], "")
             tag = None
@@ -48,21 +48,18 @@ def lex(source):
                 text += c
             else:
                 text = c
-    tkinter.mainloop()
 
-def show(source):
-    window = tkinter.Tk()
-    canvas = tkinter.Canvas(window, width=800, height=600)
-    canvas.pack()
-
+def render(canvas, tokens, yoffset=0):
+    canvas.delete("all")
     x = 8
-    y = 8
+    y = -yoffset + 8
 
     fs = 16
     bold = False
     italic = False
     inlink = False
-    for t in lex(source):
+
+    for t in tokens:
         if isinstance(t, Tag):
             if t.tag == "b":
                 bold = True
@@ -103,6 +100,7 @@ def show(source):
             elif t.tag == "/ul":
                 y += 16
             elif t.tag == "li":
+                canvas.create_oval(x + 2, y + fs / 2 - 3, x + 7, y + fs / 2 + 2, fill="black")
                 x += 16
             elif t.tag == "/li":
                 y += 28
@@ -131,7 +129,31 @@ def show(source):
                 canvas.create_text(x, y, text=word, font=font, anchor=tkinter.NW, fill=("blue" if inlink else "black"))
                 x += font.measure(word) + 6
 
-    tkinter.mainloop()
+def show(source):
+    tokens = list(lex(source))
+    scrolly = 0
+
+    def scroll(by):
+        def handler(e):
+            nonlocal scrolly
+            scrolly += by
+            if scrolly < 0: scrolly = 0
+            render(canvas, tokens, yoffset=scrolly)
+        return handler
+
+    window = tkinter.Tk()
+    frame = tkinter.Frame(window, width=800, height=1000)
+    frame.bind("<Down>", scroll(100))
+    frame.bind("<space>", scroll(400))
+    frame.bind("<Up>", scroll(-100))
+    frame.pack()
+    frame.focus_set()
+    canvas = tkinter.Canvas(frame, width=800, height=1000)
+    canvas.pack()
+
+    render(canvas, tokens, yoffset=scrolly)
+
+    window.mainloop()
 
 def run(url):
     assert url.startswith("http://")

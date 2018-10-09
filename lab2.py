@@ -20,22 +20,15 @@ Text = collections.namedtuple("Word", ["text"])
 def lex(source):
     tag = None
     text = None
-    last_space = False
     for c in source:
         if c == "<":
-            if text is not None: yield Text(text)
+            if text is not None: yield Text(" ".join(text.split()))
             text = None
             tag = ""
         elif c == ">":
             if tag is not None: yield Tag(tag)
             tag = None
         else:
-            if c.isspace():
-                if last_space:
-                    continue
-                else:
-                    last_space = True
-
             if tag is not None:
                 tag += c
             elif text is not None:
@@ -75,8 +68,8 @@ def show(source):
         elif isinstance(t, Text):
             for word in t.text.split():
                 font = fonts["roman" if not bold and not italic else "bold" if not italic else "italic" if not bold else "bolditalic"]
-                canvas.create_text(x, y, text=word, font=font)
-                x += font.measure(word) + 10
+                canvas.create_text(x, y, text=word, font=font, anchor='nw')
+                x += font.measure(word) + 6
     tkinter.mainloop()
 
 def run(url):
