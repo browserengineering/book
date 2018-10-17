@@ -319,7 +319,8 @@ class Browser:
             self.index = 0
             self.go()
         elif 115 <= e.x <= 795 and 10 <= e.y <= 50:
-            print("location")
+            new_url = input("Where to? ")
+            self.navigate(new_url)
         else:
             e = find_elt(self.tree, e.x, e.y + self.scrolly - 60)
             while e is not None and e.tag != "a":
