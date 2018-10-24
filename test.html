@@ -65,10 +65,20 @@ interpreter, for which we will be using V8.</p>
 <h2>Feedback</h2>
 
 <form method="post" action="feedback.php">
-  <p>Your Name: <input name="name" /> (optional)</p>
-  <textarea name="comment"></textarea>
-  <p> <input type="submit" /></p>
+  <p>Your Name: <input id="name" name="name" /> (optional)</p>
+  <textarea id="comment" name="comment"></textarea>
+  <p id="count">(500 characters maximum)</p>
+  <p><input type="submit" /></p>
 </form>
+
+<script>
+var comment = document.querySelector("#comment");
+var count = document.querySelector("#count");
+comment.addEventListener("change", function(e) {
+    var len = (comment.value || '').length;
+    count.innerHTML = "(" + (500 - len) + " characters remaining)";
+})
+</script>
 
 </body>
 </html>
