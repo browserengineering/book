@@ -45,16 +45,12 @@ def lex(source):
             else:
                 text = c
 
-def show(source):
-    window = tkinter.Tk()
-    canvas = tkinter.Canvas(window, width=800, height=600)
-    canvas.pack()
-
+def layout(source):
     fonts = {
-        "roman": tkFont.Font(family="Times", size=16),
-        "bold": tkFont.Font(family="Times", size=16, weight=tkFont.BOLD),
-        "italic": tkFont.Font(family="Times", size=16, slant=tkFont.ITALIC),
-        "bolditalic": tkFont.Font(family="Times", size=16, weight=tkFont.BOLD, slant=tkFont.ITALIC),
+        (False, False): tkFont.Font(family="Times", size=16),
+        (True, False): tkFont.Font(family="Times", size=16, weight="bold"),
+        (False, True): tkFont.Font(family="Times", size=16, slant="italic"),
+        (True, True): tkFont.Font(family="Times", size=16, weight="bold", slant="italic"),
     }
 
     x = 8
@@ -62,6 +58,7 @@ def show(source):
 
     bold = False
     italic = False
+    terminal_space = True
     for t in lex(source):
         if isinstance(t, Tag):
             if t.tag == "b":
@@ -72,23 +69,54 @@ def show(source):
                 bold = False
             elif t.tag == "/i":
                 italic = False
-            elif t.tag == "p":
-                y += 16
             elif t.tag == "/p":
-                y += 28
+                y += 28 + 14
                 x = 8
+                terminal_space = True
             else:
                 pass
         elif isinstance(t, Text):
-            for word in t.text.split():
-                font = fonts["roman" if not bold and not italic else "bold" if not italic else "italic" if not bold else "bolditalic"]
+            font = fonts[bold, italic]
+            spw = font.measure(" ")
+            if t.text[0].isspace() and not terminal_space: x += spw
+            words = t.text.split()
+            for i, word in enumerate(words):
                 w = font.measure(word)
-                if x + w > 800 - 2*8:
+                if x + w > 800 - 8:
                     y += 28
                     x = 8
-                canvas.create_text(x, y, text=word, font=font, anchor=tkinter.NW)
-                x += font.measure(word) + 6
+                yield x, y, word, font
+                x += font.measure(word) + (0 if i == len(words) - 1 else spw)
+            terminal_space = t.text[-1].isspace()
+            if terminal_space and len(words) > 0: x += spw
 
+def show(source):
+    window = tkinter.Tk()
+    canvas = tkinter.Canvas(window, width=800, height=600)
+    canvas.pack()
+
+    dl = list(layout(source))
+
+    def render():
+        canvas.delete('all')
+        for x, y, word, font in dl:
+            if y - scrolly + 22 > 0 and y < 600:
+                canvas.create_text(x, y - scrolly, text=word, font=font, anchor='nw')
+
+    scrolly = 0
+    def scroll(by):
+        def handler(e):
+            nonlocal scrolly
+            scrolly += by
+            if scrolly < 0: scrolly = 0
+            render()
+        return handler
+
+    window.bind("<Down>", scroll(100))
+    window.bind("<space>", scroll(400))
+    window.bind("<Up>", scroll(-100))
+
+    render()
     tkinter.mainloop()
 
 def run(url):

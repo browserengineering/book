@@ -41,11 +41,11 @@ def show(source):
     canvas = tkinter.Canvas(window, width=800, height=600)
     canvas.pack()
 
-    fonts = {
-        "roman": tkFont.Font(family="Times", size=16),
-        "bold": tkFont.Font(family="Times", size=16, weight=tkFont.BOLD),
-        "italic": tkFont.Font(family="Times", size=16, slant=tkFont.ITALIC),
-        "bolditalic": tkFont.Font(family="Times", size=16, weight=tkFont.BOLD, slant=tkFont.ITALIC),
+    fonts = { # (bold, italic) -> font
+        (False, False): tkFont.Font(family="Times", size=16),
+        (True, False): tkFont.Font(family="Times", size=16, weight="bold"),
+        (False, True): tkFont.Font(family="Times", size=16, slant="italic"),
+        (True, True): tkFont.Font(family="Times", size=16, weight="bold", slant="italic"),
     }
 
     x = 30
@@ -67,7 +67,7 @@ def show(source):
                 pass
         elif isinstance(t, Text):
             for word in t.text.split():
-                font = fonts["roman" if not bold and not italic else "bold" if not italic else "italic" if not bold else "bolditalic"]
+                font = fonts[bold, italic]
                 canvas.create_text(x, y, text=word, font=font, anchor='nw')
                 x += font.measure(word) + 6
     tkinter.mainloop()
