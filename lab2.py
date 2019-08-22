@@ -1,84 +1,84 @@
-import subprocess
+import socket
 import tkinter
-import tkinter.font as tkFont
-import collections
 
-def get(domain, path):
-    if ":" in domain:
-        domain, port = domain.rsplit(":", 1)
-    else:
-        port = "80"
-    s = subprocess.Popen(["telnet", domain, port], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    s.stdin.write(("GET " + path + " HTTP/1.0\n\n").encode("latin1"))
-    s.stdin.flush()
-    out = s.stdout.read().decode("latin1")
-    return out.split("\r\n", 3)[-1]
+def parse(url):
+    assert url.startswith("http://")
+    url = url[len("http://"):]
+    hostport, pathfragment = url.split("/", 1) if "/" in url else (url, "")
+    host, port = hostport.rsplit(":", 1) if ":" in hostport else (hostport, "80")
+    path, fragment = ("/" + pathfragment).rsplit("#", 1) if "#" in pathfragment else ("/" + pathfragment, None)
+    return host, int(port), path, fragment
 
-Tag = collections.namedtuple("Tag", ["tag"])
-Text = collections.namedtuple("Word", ["text"])
+def request(host, port, path):
+    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+    s.connect((host, port))
+    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("utf8"))
+    response = s.makefile("rb").read().decode("utf8")
+    s.close()
+
+    head, body = response.split("\r\n\r\n", 1)
+    lines = head.split("\r\n")
+    version, status, explanation = lines[0].split(" ", 2)
+    assert version in ["HTTP/1.0", "HTTP/1.1"]
+    assert status == "200", "Server error {}: {}".format(status, explanation)
+    headers = {}
+    for line in lines[1:]:
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+    return headers, body
 
 def lex(source):
-    tag = None
-    text = None
+    text = ""
+    in_angle = False
     for c in source:
         if c == "<":
-            if text is not None: yield Text(" ".join(text.split()))
-            text = None
-            tag = ""
+            in_angle = True
         elif c == ">":
-            if tag is not None: yield Tag(tag)
-            tag = None
-        else:
-            if tag is not None:
-                tag += c
-            elif text is not None:
-                text += c
-            else:
-                text = c
+            in_angle = False
+        elif not in_angle:
+            text += c
+    return text
 
-def show(source):
+def layout(text):
+    display_list = []
+    x, y = 13, 13
+    for c in text:
+        display_list.append((x, y, c))
+        x += 13
+        if x >= 787:
+            y += 18
+            x = 13
+    return display_list
+
+def show(text):
     window = tkinter.Tk()
     canvas = tkinter.Canvas(window, width=800, height=600)
     canvas.pack()
 
-    fonts = { # (bold, italic) -> font
-        (False, False): tkFont.Font(family="Times", size=16),
-        (True, False): tkFont.Font(family="Times", size=16, weight="bold"),
-        (False, True): tkFont.Font(family="Times", size=16, slant="italic"),
-        (True, True): tkFont.Font(family="Times", size=16, weight="bold", slant="italic"),
-    }
+    SCROLL_STEP = 100
+    scrolly = 0
+    display_list = layout(text)
 
-    x = 30
-    y = 16
+    def render():
+        canvas.delete("all")
+        for x, y, c in display_list:
+            canvas.create_text(x, y - scrolly, text=c)
 
-    bold = False
-    italic = False
-    for t in lex(source):
-        if isinstance(t, Tag):
-            if t.tag == "b":
-                bold = True
-            elif t.tag == "i":
-                italic = True
-            elif t.tag == "/b":
-                bold = False
-            elif t.tag == "/i":
-                italic = False
-            else:
-                pass
-        elif isinstance(t, Text):
-            for word in t.text.split():
-                font = fonts[bold, italic]
-                canvas.create_text(x, y, text=word, font=font, anchor='nw')
-                x += font.measure(word) + 6
+    def scrolldown(e):
+        nonlocal scrolly
+        scrolly += SCROLL_STEP
+        render()
+
+    window.bind("<Down>", scrolldown)
+    render()
+
     tkinter.mainloop()
 
 def run(url):
-    assert url.startswith("http://")
-    url = url[len("http://"):]
-    domain, path = url.split("/", 1)
-    response = get(domain, "/" + path)
-    headers, source = response.split("\n\n", 1)
-    show(source)
+    host, port, path, fragment = parse(url)
+    headers, body = request(host, port, path)
+    text = lex(body)
+    show(text)
 
 if __name__ == "__main__":
     import sys

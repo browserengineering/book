@@ -1,15 +1,30 @@
-import subprocess
+import socket
 
-def get(domain, path):
-    if ":" in domain:
-        domain, port = domain.rsplit(":", 1)
-    else:
-        port = "80"
-    s = subprocess.Popen(["telnet", domain, port], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    s.stdin.write(("GET " + path + " HTTP/1.0\n\n").encode("latin1"))
-    s.stdin.flush()
-    out = s.stdout.read().decode("latin1")
-    return out.split("\r\n", 3)[-1]
+def parse(url):
+    assert url.startswith("http://")
+    url = url[len("http://"):]
+    hostport, pathfragment = url.split("/", 1) if "/" in url else (url, "")
+    host, port = hostport.rsplit(":", 1) if ":" in hostport else (hostport, "80")
+    path, fragment = ("/" + pathfragment).rsplit("#", 1) if "#" in pathfragment else ("/" + pathfragment, None)
+    return host, int(port), path, fragment
+
+def request(host, port, path):
+    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+    s.connect((host, port))
+    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("ascii"))
+    response = s.makefile("rb").read().decode("ascii")
+    s.close()
+
+    head, body = response.split("\r\n\r\n", 1)
+    lines = head.split("\r\n")
+    status = lines[0]
+    assert version == "HTTP/1.0"
+    assert status == "200", "Server error {}: {}".format(status, explanation)
+    headers = {}
+    for line in lines[1:]:
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+    return headers, body
 
 def show(source):
     in_angle = False
@@ -23,12 +38,9 @@ def show(source):
             print(c, end="")
 
 def run(url):
-    assert url.startswith("http://")
-    url = url[len("http://"):]
-    domain, path = url.split("/", 1)
-    response = get(domain, "/" + path)
-    headers, source = response.split("\n\n", 1)
-    show(source)
+    host, port, path, fragment = parse(url)
+    headers, body = request(host, port, path)
+    show(body)
 
 if __name__ == "__main__":
     import sys

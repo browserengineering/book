@@ -1,131 +1,133 @@
-import subprocess
+import socket
 import tkinter
-import tkinter.font as tkFont
-import collections
+import tkinter.font
 
-def get(domain, path):
-    if ":" in domain:
-        domain, port = domain.rsplit(":", 1)
-    else:
-        port = "80"
-    s = subprocess.Popen(["telnet", domain, port], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    s.stdin.write(("GET " + path + " HTTP/1.0\n\n").encode("latin1"))
-    s.stdin.flush()
-    out = s.stdout.read().decode("latin1")
-    return out.split("\r\n", 3)[-1]
+def parse(url):
+    assert url.startswith("http://")
+    url = url[len("http://"):]
+    hostport, pathfragment = url.split("/", 1) if "/" in url else (url, "")
+    host, port = hostport.rsplit(":", 1) if ":" in hostport else (hostport, "80")
+    path, fragment = ("/" + pathfragment).rsplit("#", 1) if "#" in pathfragment else ("/" + pathfragment, None)
+    return host, int(port), path, fragment
 
-Tag = collections.namedtuple("Tag", ["tag"])
-Text = collections.namedtuple("Word", ["text"])
+def request(host, port, path):
+    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+    s.connect((host, port))
+    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("utf8"))
+    response = s.makefile("rb").read().decode("utf8")
+    s.close()
+
+    head, body = response.split("\r\n\r\n", 1)
+    lines = head.split("\r\n")
+    version, status, explanation = lines[0].split(" ", 2)
+    assert version in ["HTTP/1.0", "HTTP/1.1"]
+    assert status == "200", "Server error {}: {}".format(status, explanation)
+    headers = {}
+    for line in lines[1:]:
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+    return headers, body
+
+class Text:
+    def __init__(self, text):
+        self.text = text
+
+class Tag:
+    def __init__(self, tag):
+        self.tag = tag
 
 def lex(source):
-    tag = None
-    text = None
-    last_space = False
+    out = []
+    text = ""
+    in_angle = False
     for c in source:
         if c == "<":
-            if text is not None: yield Text(text)
-            text = None
-            tag = ""
+            in_angle = True
+            if text: out.append(Text(text))
+            text = ""
         elif c == ">":
-            if tag is not None: yield Tag(tag)
-            tag = None
+            in_angle = False
+            out.append(Tag(text))
+            text = ""
         else:
-            if c.isspace():
-                if last_space:
-                    continue
-                else:
-                    last_space = True
-            else:
-                last_space = False
+            text += c
+    return out
 
-            if tag is not None:
-                tag += c
-            elif text is not None:
-                text += c
-            else:
-                text = c
+def layout(tokens):
+    display_list = []
 
-def layout(source):
-    fonts = {
-        (False, False): tkFont.Font(family="Times", size=16),
-        (True, False): tkFont.Font(family="Times", size=16, weight="bold"),
-        (False, True): tkFont.Font(family="Times", size=16, slant="italic"),
-        (True, True): tkFont.Font(family="Times", size=16, weight="bold", slant="italic"),
+    fonts = { # (bold, italic) -> font
+        (False, False): tkinter.font.Font(family="Times", size=16),
+        (True, False): tkinter.font.Font(family="Times", size=16, weight="bold"),
+        (False, True): tkinter.font.Font(family="Times", size=16, slant="italic"),
+        (True, True): tkinter.font.Font(family="Times", size=16, weight="bold", slant="italic"),
     }
 
-    x = 8
-    y = 8
-
-    bold = False
-    italic = False
+    x, y = 13, 13
+    bold, italic = False, False
     terminal_space = True
-    for t in lex(source):
-        if isinstance(t, Tag):
-            if t.tag == "b":
-                bold = True
-            elif t.tag == "i":
-                italic = True
-            elif t.tag == "/b":
-                bold = False
-            elif t.tag == "/i":
-                italic = False
-            elif t.tag == "/p":
-                y += 28 + 14
-                x = 8
-                terminal_space = True
-            else:
-                pass
-        elif isinstance(t, Text):
-            font = fonts[bold, italic]
-            spw = font.measure(" ")
-            if t.text[0].isspace() and not terminal_space: x += spw
-            words = t.text.split()
+    for tok in tokens:
+        font = fonts[bold, italic]
+        if isinstance(tok, Text):
+            if tok.text[0].isspace() and not terminal_space:
+                x += font.measure(" ")
+            
+            words = tok.text.split()
             for i, word in enumerate(words):
                 w = font.measure(word)
-                if x + w > 800 - 8:
-                    y += 28
-                    x = 8
-                yield x, y, word, font
-                x += font.measure(word) + (0 if i == len(words) - 1 else spw)
-            terminal_space = t.text[-1].isspace()
-            if terminal_space and len(words) > 0: x += spw
+                if x + w > 787:
+                    x = 13
+                    y += font.metrics('linespace') * 1.2
+                display_list.append((x, y, word, font))
+                x += w + (0 if i == len(words) - 1 else font.measure(" "))
+            
+            terminal_space = tok.text[-1].isspace()
+            if terminal_space and words:
+                x += font.measure(" ")
+        elif isinstance(tok, Tag):
+            if tok.tag == "i":
+                italic = True
+            elif tok.tag == "/i":
+                italic = False
+            elif tok.tag == "b" or tok.tag == "h1":
+                bold = True
+            elif tok.tag == "/b" or tok.tag == "/h1":
+                bold = False
+            elif tok.tag == "/p":
+                terminal_space = True
+                x = 13
+                y += font.metrics("linespace") * 1.2 + 16
+    return display_list
 
-def show(source):
+def show(text):
     window = tkinter.Tk()
     canvas = tkinter.Canvas(window, width=800, height=600)
     canvas.pack()
 
-    dl = list(layout(source))
+    SCROLL_STEP = 100
+    scrolly = 0
+    display_list = layout(text)
 
     def render():
-        canvas.delete('all')
-        for x, y, word, font in dl:
-            if y - scrolly + 22 > 0 and y < 600:
-                canvas.create_text(x, y - scrolly, text=word, font=font, anchor='nw')
+        canvas.delete("all")
+        for x, y, c, font in display_list:
+            canvas.create_text(x, y - scrolly, text=c, font=font, anchor="nw")
 
-    scrolly = 0
-    def scroll(by):
-        def handler(e):
-            nonlocal scrolly
-            scrolly += by
-            if scrolly < 0: scrolly = 0
-            render()
-        return handler
+    def scrolldown(e):
+        nonlocal scrolly
+        scrolly += SCROLL_STEP
+        render()
 
-    window.bind("<Down>", scroll(100))
-    window.bind("<space>", scroll(400))
-    window.bind("<Up>", scroll(-100))
-
+    window.bind("<Down>", scrolldown)
     render()
+
     tkinter.mainloop()
 
 def run(url):
-    assert url.startswith("http://")
-    url = url[len("http://"):]
-    domain, path = url.split("/", 1)
-    response = get(domain, "/" + path)
-    headers, source = response.split("\n\n", 1)
-    show(source)
+    host, port, path, fragment = parse(url)
+    headers, body = request(host, port, path)
+    text = lex(body)
+    show(text)
 
 if __name__ == "__main__":
     import sys
