@@ -1,4 +1,4 @@
-import subprocess
+import socket
 import tkinter
 import tkinter.font as tkFont
 import collections
@@ -9,18 +9,18 @@ def request(domain, path, data={}, method="GET"):
         domain, port = domain.rsplit(":", 1)
     else:
         port = "80"
-    s = subprocess.Popen(["telnet", domain, port], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+    s.connect((domain, int(port)))
     if method == "GET" and data:
         path += "?" + urlencode(data)
-    s.stdin.write((method + " " + path + " HTTP/1.0\n").encode("latin1"))
+    s.send((method + " " + path + " HTTP/1.0\r\n").encode("latin1"))
     if method == "POST" and data:
         d = urlencode(data).encode("latin1")
-        s.stdin.write(("Content-Length: " + str(len(d)) + "\n\n").encode("latin1"))
-        s.stdin.write(d)
+        s.send(("Content-Length: " + str(len(d)) + "\r\n\r\n").encode("latin1"))
+        s.send(d)
     else:
-        s.stdin.write(b"\n")
-    s.stdin.flush()
-    out = s.stdout.read().decode("latin1")
+        s.send(b"\r\n")
+    out = s.makefile("rb").read().decode("ascii")
     return out.split("\r\n", 3)[-1]
 
 def urlencode(d):
@@ -372,7 +372,7 @@ class Browser:
         url = url[len("http://"):]
         domain, path = url.split("/", 1)
         response = request(domain, "/" + path)
-        headers, source = response.split("\n\n", 1)
+        headers, source = response.split("\r\n\r\n", 1)
         self.source = source
 
     def js_querySelector(self, sel):
@@ -503,7 +503,7 @@ class Browser:
         self.index += 1
         domain, path = url.split("/", 1)
         response = request(domain, "/" + path, method=method, data=attrs)
-        headers, source = response.split("\n\n", 1)
+        headers, source = response.split("\r\n\r\n", 1)
         self.source = source
 
     def navigate(self, url):
