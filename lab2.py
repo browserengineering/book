@@ -19,7 +19,6 @@ def request(host, port, path):
     head, body = response.split("\r\n\r\n", 1)
     lines = head.split("\r\n")
     version, status, explanation = lines[0].split(" ", 2)
-    assert version in ["HTTP/1.0", "HTTP/1.1"]
     assert status == "200", "Server error {}: {}".format(status, explanation)
     headers = {}
     for line in lines[1:]:

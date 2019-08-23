@@ -19,7 +19,6 @@ def request(host, port, path):
     head, body = response.split("\r\n\r\n", 1)
     lines = head.split("\r\n")
     version, status, explanation = lines[0].split(" ", 2)
-    assert version in ["HTTP/1.0", "HTTP/1.1"]
     assert status == "200", "Server error {}: {}".format(status, explanation)
     headers = {}
     for line in lines[1:]:
@@ -43,6 +42,7 @@ def layout(text, w, h):
     display_list = []
     x, y = 13, 13
     for c in text:
+        # Exercise 3
         if c == "\n":
             x = 13
             y += 24
@@ -61,6 +61,7 @@ def show(text):
 
     window = tkinter.Tk()
     canvas = tkinter.Canvas(window, width=w, height=h, background="white",
+                            # Exercise 1
                             highlightbackground="red", highlightcolor="red", highlightthickness=3)
     canvas.pack(fill="both", expand=True)
 
@@ -72,6 +73,7 @@ def show(text):
     def render():
         canvas.delete("all")
         for x, y, c in display_list:
+            # Exercise 4
             if 0 <= x <= w and 0 <= y - scrolly <= h:
                 canvas.create_text(x, y - scrolly, text=c)
 
@@ -80,12 +82,14 @@ def show(text):
         scrolly += SCROLL_STEP
         render()
 
+    # Exercise 2
     def scrollup(e):
         nonlocal scrolly
         scrolly -= SCROLL_STEP
         if scrolly < 0: scrolly = 0
         render()
 
+    # Exercise 5
     def resize(e):
         nonlocal w, h
         oldw = w

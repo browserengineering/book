@@ -41,7 +41,6 @@ def request_http(host, port, path):
     lines = head.split("\r\n")
     status = lines[0]
     version, code, explanation = status.split(" ", 2)
-    assert version == "HTTP/1.0" or version == "HTTP/1.1"
     headers = {}
     for line in lines[1:]:
         header, value = line.split(":", 1)

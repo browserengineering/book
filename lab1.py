@@ -11,14 +11,13 @@ def parse(url):
 def request(host, port, path):
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     s.connect((host, port))
-    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("ascii"))
-    response = s.makefile("rb").read().decode("ascii")
+    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("utf8"))
+    response = s.makefile("rb").read().decode("utf8")
     s.close()
 
     head, body = response.split("\r\n\r\n", 1)
     lines = head.split("\r\n")
-    status = lines[0]
-    assert version == "HTTP/1.0"
+    version, status, explanation = lines[0].split(" ", 2)
     assert status == "200", "Server error {}: {}".format(status, explanation)
     headers = {}
     for line in lines[1:]:
