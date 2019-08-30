@@ -1,167 +1,194 @@
-import subprocess
+import socket
 import tkinter
-import tkinter.font as tkFont
-import collections
+import tkinter.font
 
-def get(domain, path):
-    if ":" in domain:
-        domain, port = domain.rsplit(":", 1)
-    else:
-        port = "80"
-    s = subprocess.Popen(["telnet", domain, port], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    s.stdin.write(("GET " + path + " HTTP/1.0\n\n").encode("latin1"))
-    s.stdin.flush()
-    out = s.stdout.read().decode("latin1")
-    return out.split("\r\n", 3)[-1]
-
-Tag = collections.namedtuple("Tag", ["tag", "attrs"])
-Text = collections.namedtuple("Word", ["text"])
-
-def lex(source):
-    tag = None
-    text = None
-    last_space = False
-    for c in source:
-        if c == "<":
-            if text is not None: yield Text(text)
-            text = None
-            tag = ""
-        elif c == ">":
-            if tag is not None:
-                parts = tag.rstrip("/").strip().split(" ")
-                attrs = { part.split("=", 1)[0]: part.split("=", 1)[1].strip('"') for part in parts[1:] if "=" in part }
-                yield Tag(parts[0], attrs)
-                if tag.endswith("/"): yield Tag("/" + parts[0], "")
-            tag = None
-        else:
-            if c.isspace():
-                if last_space:
-                    continue
-                else:
-                    last_space = True
-            else:
-                last_space = False
-
-            if tag is not None:
-                tag += c
-            elif text is not None:
-                text += c
-            else:
-                text = c
-
-def render(canvas, tokens, yoffset=0):
-    canvas.delete("all")
-    x = 8
-    y = -yoffset + 8
-
-    fs = 16
-    bold = False
-    italic = False
-    inlink = False
-
-    for t in tokens:
-        if isinstance(t, Tag):
-            if t.tag == "b":
-                bold = True
-            elif t.tag == "i":
-                italic = True
-            elif t.tag == "/b":
-                bold = False
-            elif t.tag == "/i":
-                italic = False
-            elif t.tag == "a":
-                inlink = True
-            elif t.tag == "/a":
-                inlink = False
-            elif t.tag == "p":
-                y += 16
-            elif t.tag == "/p":
-                y += 28
-                x = 8
-            elif t.tag == "h1":
-                fs = 24
-                bold = True
-                y += 32
-            elif t.tag == "h2":
-                fs = 20
-                bold = True
-                y += 20
-            elif t.tag == "h3":
-                fs = 18
-                italic = True
-                y += 9
-            elif t.tag in ["/h1", "/h2", "/h3"]:
-                y += fs * 1.75
-                x = 8
-                fs = 16
-                bold = italic = False
-            elif t.tag == "ul":
-                y += 16
-            elif t.tag == "/ul":
-                y += 16
-            elif t.tag == "li":
-                canvas.create_oval(x + 2, y + fs / 2 - 3, x + 7, y + fs / 2 + 2, fill="black")
-                x += 16
-            elif t.tag == "/li":
-                y += 28
-                x = 8
-            elif t.tag in ["html", "body", "/html", "/body"]:
-                pass
-            elif t.tag == "hr":
-                y += 8
-                width = int(t.attrs.get("width", "2"))
-                canvas.create_line(x, y, 800 - x, y, width=width)
-                y += width + 8
-            elif t.tag == "/hr":
-                pass
-            else:
-                print("Unknown tag", t.tag)
-        elif isinstance(t, Text):
-            font = tkFont.Font(family="Times", size=fs, weight=(tkFont.BOLD if bold else tkFont.NORMAL),
-                               slant=(tkFont.ITALIC if italic else tkFont.ROMAN),
-                               underline=(1 if inlink else 0))
-
-            for word in t.text.split():
-                w = font.measure(word)
-                if x + w > 800 - 2*8:
-                    y += 28
-                    x = 8
-                canvas.create_text(x, y, text=word, font=font, anchor=tkinter.NW, fill=("blue" if inlink else "black"))
-                x += font.measure(word) + 6
-
-def show(source):
-    tokens = list(lex(source))
-    scrolly = 0
-
-    def scroll(by):
-        def handler(e):
-            nonlocal scrolly
-            scrolly += by
-            if scrolly < 0: scrolly = 0
-            render(canvas, tokens, yoffset=scrolly)
-        return handler
-
-    window = tkinter.Tk()
-    frame = tkinter.Frame(window, width=800, height=1000)
-    frame.bind("<Down>", scroll(100))
-    frame.bind("<space>", scroll(400))
-    frame.bind("<Up>", scroll(-100))
-    frame.pack()
-    frame.focus_set()
-    canvas = tkinter.Canvas(frame, width=800, height=1000)
-    canvas.pack()
-
-    render(canvas, tokens, yoffset=scrolly)
-
-    window.mainloop()
-
-def run(url):
+def parse_url(url):
     assert url.startswith("http://")
     url = url[len("http://"):]
-    domain, path = url.split("/", 1)
-    response = get(domain, "/" + path)
-    headers, source = response.split("\n\n", 1)
-    show(source)
+    hostport, pathfragment = url.split("/", 1) if "/" in url else (url, "")
+    host, port = hostport.rsplit(":", 1) if ":" in hostport else (hostport, "80")
+    path, fragment = ("/" + pathfragment).rsplit("#", 1) if "#" in pathfragment else ("/" + pathfragment, None)
+    return host, int(port), path, fragment
+
+def request(host, port, path):
+    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+    s.connect((host, port))
+    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("utf8"))
+    response = s.makefile("rb").read().decode("utf8")
+    s.close()
+
+    head, body = response.split("\r\n\r\n", 1)
+    lines = head.split("\r\n")
+    version, status, explanation = lines[0].split(" ", 2)
+    assert status == "200", "Server error {}: {}".format(status, explanation)
+    headers = {}
+    for line in lines[1:]:
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+    return headers, body
+
+class Text:
+    def __init__(self, text):
+        self.text = text
+
+class Tag:
+    def __init__(self, tag):
+        self.tag = tag
+
+def lex(source):
+    out = []
+    text = ""
+    in_angle = False
+    for c in source:
+        if c == "<":
+            in_angle = True
+            if text: out.append(Text(text))
+            text = ""
+        elif c == ">":
+            in_angle = False
+            out.append(Tag(text))
+            text = ""
+        else:
+            text += c
+    return out
+
+class ElementNode:
+    def __init__(self, parent, tagname):
+        self.tag, *attrs = tagname.split(" ")
+        self.children = []
+        self.attributes = {}
+        self.parent = parent
+
+        for attr in attrs:
+            out = attr.split("=", 1)
+            name = out[0]
+            val = out[1].strip("\"") if len(out) > 1 else ""
+            self.attributes[name.lower()] = val
+
+class TextNode:
+    def __init__(self, parent, text):
+        self.text = text
+        self.parent = parent
+
+def parse(tokens):
+    current = None
+    for tok in tokens:
+        if isinstance(tok, Tag):
+            if tok.tag.startswith("/"): # Close tag
+                tag = tok.tag[1:]
+                node = current
+                while node is not None and node.tag != tag:
+                    node = node.parent
+                if not node and current.parent is not None:
+                    current = current.parent
+                elif node.parent is not None:
+                    current = node.parent
+            else: # Open tag
+                new = ElementNode(current, tok.tag)
+                if current is not None: current.children.append(new)
+                if new.tag not in ["br", "link", "meta"]:
+                    current = new
+        else: # Text token
+            new = TextNode(current, tok.text)
+            current.children.append(new)
+    return current
+
+def layout(node, state):
+    if isinstance(node, ElementNode):
+        state = layout_open(node, state)
+        for child in node.children:
+            state = layout(child, state)
+        state = layout_close(node, state)
+    else:
+        state = layout_text(node, state)
+    return state
+
+def layout_open(node, state):
+    x, y, bold, italic, terminal_space, display_list = state
+    if node.tag == "b":
+        bold = True
+    elif node.tag == "i":
+        italic = True
+    else:
+        pass
+    return x, y, bold, italic, terminal_space, display_list
+
+def layout_close(node, state):
+    x, y, bold, italic, terminal_space, display_list = state
+    font = tkinter.font.Font(
+        family="Times", size=16,
+        weight="bold" if bold else "normal",
+        slant="italic" if italic else "roman"
+    )
+    if node.tag == "b":
+        bold = False
+    elif node.tag == "i":
+        italic = False
+    elif node.tag == "p" or node.tag == "br":
+        terminal_space = True
+        x = 13
+        y += font.metrics('linespace') * 1.2 + 16
+    else:
+        pass
+    return x, y, bold, italic, terminal_space, display_list
+
+def layout_text(node, state):
+    x, y, bold, italic, terminal_space, display_list = state
+
+    font = tkinter.font.Font(
+        family="Times", size=16,
+        weight="bold" if bold else "normal",
+        slant="italic" if italic else "roman"
+    )
+
+    if node.text[0].isspace() and not terminal_space:
+        x += font.measure(" ")
+    
+    words = node.text.split()
+    for i, word in enumerate(words):
+        w = font.measure(word)
+        if x + w > 787:
+            x = 13
+            y += font.metrics('linespace') * 1.2
+        display_list.append((x, y, word, font))
+        x += w + (0 if i == len(words) - 1 else font.measure(" "))
+    
+    terminal_space = node.text[-1].isspace()
+    if terminal_space and words:
+        x += font.measure(" ")
+    return x, y, bold, italic, terminal_space, display_list
+
+def show(nodes):
+    window = tkinter.Tk()
+    canvas = tkinter.Canvas(window, width=800, height=600)
+    canvas.pack()
+
+    SCROLL_STEP = 100
+    scrolly = 0
+    state = (13, 13, False, False, True, [])
+    _, _, _, _, _, display_list = layout(nodes, state)
+
+    def render():
+        canvas.delete("all")
+        for x, y, c, font in display_list:
+            canvas.create_text(x, y - scrolly, text=c, font=font, anchor="nw")
+
+    def scrolldown(e):
+        nonlocal scrolly
+        scrolly += SCROLL_STEP
+        render()
+
+    window.bind("<Down>", scrolldown)
+    render()
+
+    tkinter.mainloop()
+
+def run(url):
+    host, port, path, fragment = parse_url(url)
+    headers, body = request(host, port, path)
+    text = lex(body)
+    nodes = parse(text)
+    show(nodes)
 
 if __name__ == "__main__":
     import sys

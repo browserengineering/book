@@ -88,9 +88,9 @@ def layout(tokens):
                 italic = True
             elif tok.tag == "/i":
                 italic = False
-            elif tok.tag == "b" or tok.tag == "h1":
+            elif tok.tag == "b":
                 bold = True
-            elif tok.tag == "/b" or tok.tag == "/h1":
+            elif tok.tag == "/b":
                 bold = False
             elif tok.tag == "/p":
                 terminal_space = True
