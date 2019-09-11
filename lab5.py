@@ -112,7 +112,7 @@ def is_inline(node):
         isinstance(node, ElementNode) and node.tag in ["b", "i"]
 
 class BlockLayout:
-    def __init__(self, parent, y):
+    def __init__(self, parent, node):
         self.parent = parent
         self.children = []
         parent.children.append(self)
@@ -122,14 +122,10 @@ class BlockLayout:
         self.pt = self.pr = self.pb = self.pl = 0
 
         self.x = parent.content_left()
-        self.y = y
         self.w = parent.content_width()
         self.h = None
+        self.node = node
 
-    def layout(self, node):
-        self.x += self.ml
-        self.y += self.mt
-        self.w -= self.ml + self.mr
         if node.tag == "p":
             self.mb = 16
         elif node.tag == "ul":
@@ -142,17 +138,23 @@ class BlockLayout:
             self.bt = self.br = self.bb = self.bl = 1
             self.pt = self.pr = self.pb = self.pl = 8
 
+    def layout(self, y):
+        self.y = y
+        self.x += self.ml
+        self.w -= self.ml + self.mr
+
         y = self.y + self.bt + self.pt
-        if any(is_inline(child) for child in node.children):
+        if any(is_inline(child) for child in self.node.children):
             layout = InlineLayout(self)
-            layout.layout(node)
+            layout.layout(self.node)
             y += layout.height()
         else:
             for child in node.children:
                 if isinstance(child, TextNode) and child.text.isspace(): continue
-                layout = BlockLayout(self, y)
-                layout.layout(child)
-                y += layout.height() + layout.mt + layout.mb
+                layout = BlockLayout(self, child)
+                y += layout.mt
+                layout.layout(y)
+                y += layout.height() + layout.mb
         y += self.pb + self.bb
         self.h = y - self.y
 

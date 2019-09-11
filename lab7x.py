@@ -165,7 +165,7 @@ class IDSelector:
     def score(self):
         return 256
 
-INHERITED_PROPERTIES = [ "font-style", "font-weight" ]
+INHERITED_PROPERTIES = { "font-style": "normal", "font-weight": "normal", "color": "black", "font-size": "16px" }
 
 def style(node, rules):
     if not isinstance(node, ElementNode): return
@@ -178,7 +178,7 @@ def style(node, rules):
     for prop in INHERITED_PROPERTIES:
         if prop not in node.style:
             if node.parent is None:
-                node.style[prop] = "normal"
+                node.style[prop] = INHERITED_PROPERTIES[prop]
             else:
                 node.style[prop] = node.parent.style[prop]
     for child in node.children:
@@ -195,15 +195,13 @@ def find_links(node):
 
 def relative_url(url, current):
     if url.startswith("http://"):
-        return parse_url(url)
-    host, port, path, fragment = parse_url(current)
-    if url.startswith("/"):
-        path, fragment = url.split("#", 1) if "#" in url else (url, None)
-        return host, port, path, fragment
+        return url
+    elif url.startswith("/"):
+        return current.split("/")[0] + url
+    elif url.startswith("#"):
+        return current.split("#")[0] + url
     else:
-        path, fragment = url.split("#", 1) if "#" in url else (url, None)
-        curdir, curfile = current.rsplit("/", 1)
-        return host, port, curdir + "/" + path, fragment
+        return current.rsplit("/", 1)[0] + "/" + url
 
 class ElementNode:
     def __init__(self, parent, tagname):
@@ -315,20 +313,17 @@ class BlockLayout:
 
         y += self.bt + self.pt
         if any(is_inline(child) for child in self.node.children):
-            layout = InlineLayout(self)
-            layout.layout(self.node)
-            y += layout.height()
+            layout = InlineLayout(self, self.node)
+            layout.layout()
+            y += layout.h
         else:
             for child in self.node.children:
                 if isinstance(child, TextNode) and child.text.isspace(): continue
                 layout = BlockLayout(self, child)
                 layout.layout(y)
-                y += layout.height() + layout.mt + layout.mb
+                y += layout.h + layout.mt + layout.mb
         y += self.pb + self.bb
         self.h = y - self.y
-
-    def height(self):
-        return self.h
 
     def display_list(self):
         dl = []
@@ -347,68 +342,133 @@ class BlockLayout:
     def content_width(self):
         return self.w - self.bl - self.br - self.pl - self.pr
 
-class InlineLayout:
-    def __init__(self, block):
-        self.parent = block
-        self.parent.children.append(self)
-        self.x = block.content_left()
-        self.y = block.content_top()
-        self.bold = False
-        self.italic = False
-        self.terminal_space = True
-        self.dl = []
-
-    def font(self):
-        return tkinter.font.Font(
-            family="Times", size=16,
-            weight="bold" if self.bold else "normal",
-            slant="italic" if self.italic else "roman"
-        )
-
-    def height(self):
-        font = self.font()
-        return (self.y + font.metrics('linespace') * 1.2) - self.parent.y
+class LineLayout:
+    def __init__(self, parent):
+        self.parent = parent
+        self.children = []
+        parent.children.append(self)
+        self.w = 0
 
     def display_list(self):
-        return self.dl
+        dl = []
+        for child in self.children:
+            dl.extend(child.display_list())
+        return dl
 
-    def layout(self, node):
+    def layout(self, y):
+        self.y = y
+        self.x = self.parent.x
+        self.h = 0
+
+        if self.children:
+            self.a = max(child.a + child.h / 20 for child in self.children)
+            self.d = max(child.d + child.h / 20  for child in self.children)
+            y += self.a
+
+            x = self.x
+            for child in self.children:
+                child.layout(x, y)
+                x += child.w + child.space
+
+            y += self.d
+            self.h = y - self.y
+            self.w = x - self.x
+
+class TextLayout:
+    def __init__(self, node, text):
+        self.children = []
+        self.node = node
+        self.text = text
+        self.space = 0
+
+        bold = node.style["font-weight"] == "bold"
+        italic = node.style["font-style"] == "italic"
+        size = px(node.style["font-size"])
+        self.color = node.style["color"]
+        self.font = tkinter.font.Font(
+            family="Times", size=size,
+            weight="bold" if bold else "normal",
+            slant="italic" if italic else "roman"
+        )
+        self.w = self.font.measure(text)
+        self.a = self.font.metrics('ascent')
+        self.d = self.font.metrics('descent')
+        self.h = self.a + self.d
+
+    def attach(self, parent):
+        self.parent = parent
+        parent.children.append(self)
+        parent.w += self.w
+
+    def add_space(self):
+        if self.space == 0:
+            gap = self.font.measure(" ")
+            self.space = gap
+            self.parent.w += gap
+
+    def layout(self, x, baseline):
+        self.x = x
+        self.y = baseline - self.a
+
+    def display_list(self):
+        return [DrawText(self.x, self.y, self.text, self.font, self.color)]
+
+class InlineLayout:
+    def __init__(self, parent, node):
+        self.parent = parent
+        parent.children.append(self)
+        self.node = node
+        self.children = []
+        LineLayout(self)
+
+    def display_list(self):
+        dl = []
+        for child in self.children:
+            dl.extend(child.display_list())
+        return dl
+
+    def layout(self):
+        self.x = self.parent.content_left()
+        self.y = self.parent.content_top()
+        self.w = self.parent.content_width()
+        self.recurse(self.node)
+        y = self.y
+        for child in self.children:
+            child.layout(y)
+            y += child.h
+        self.h = y - self.y
+
+    def recurse(self, node):
         if isinstance(node, ElementNode):
             for child in node.children:
-                self.layout(child)
+                self.recurse(child)
         else:
             self.text(node)
 
     def text(self, node):
-        self.bold = node.style["font-weight"] == "bold"
-        self.italic = node.style["font-style"] == "italic"
-        font = self.font()
+        if node.text[0].isspace() and len(self.children[-1].children) > 0:
+            self.children[-1].children[-1].add_space()
 
-        if node.text[0].isspace() and not self.terminal_space:
-            self.x += font.measure(" ")
-        
         words = node.text.split()
         for i, word in enumerate(words):
-            w = font.measure(word)
-            if self.x + w > self.parent.content_left() + self.parent.content_width():
-                self.x = self.parent.content_left()
-                self.y += font.metrics('linespace') * 1.2
-            self.dl.append(DrawText(self.x, self.y, word, font))
-            self.x += w + (0 if i == len(words) - 1 else font.measure(" "))
-        
-        self.terminal_space = node.text[-1].isspace()
-        if self.terminal_space and words:
-            self.x += font.measure(" ")
+            tl = TextLayout(node, word)
+            line = self.children[-1]
+            if line.w + tl.w > self.w:
+                LineLayout(self)
+            tl.attach(line)
+            if i != len(words) - 1 or node.text[-1].isspace():
+                tl.add_space()
 
 class DrawText:
-    def __init__(self, x, y, text, font):
+    def __init__(self, x, y, text, font, color):
         self.x = x
         self.y = y
         self.text = text
         self.font = font
+        self.color = color
     
     def draw(self, scrolly, canvas):
-        canvas.create_text(self.x, self.y - scrolly, text=self.text, font=self.font, anchor='nw')
+        canvas.create_text(self.x, self.y - scrolly, text=self.text, font=self.font, anchor='nw', fill=self.color)
 
 class DrawRect:
     def __init__(self, x1, y1, x2, y2):
@@ -420,51 +480,157 @@ class DrawRect:
     def draw(self, scrolly, canvas):
         canvas.create_rectangle(self.x1, self.y1 - scrolly, self.x2, self.y2 - scrolly)
 
-def show(nodes):
-    window = tkinter.Tk()
-    canvas = tkinter.Canvas(window, width=800, height=600)
-    canvas.pack()
+def find_element(x, y, layout):
+    for child in layout.children:
+        result = find_element(x, y, child)
+        if result: return result
+    if hasattr(layout, "node") and \
+       layout.x <= x < layout.x + layout.w and \
+       layout.y <= y < layout.y + layout.h:
+        return layout.node
 
+def find_id(id, node):
+    if not isinstance(node, ElementNode): return
+    for child in node.children:
+        result = find_id(id, child)
+        if result: return result
+    if node.attributes.get("id", "") == id:
+        return node
+
+def find_node(node, layout):
+    for child in layout.children:
+        result = find_node(node, child)
+        if result: return result
+    if hasattr(layout, "node") and layout.node == node:
+        return layout
+
+class Browser:
     SCROLL_STEP = 100
-    scrolly = 0
-    page = Page()
-    mode = BlockLayout(page, nodes)
-    mode.layout(0)
-    maxh = mode.height()
-    display_list = mode.display_list()
 
-    def render():
-        canvas.delete("all")
-        for cmd in display_list:
-            cmd.draw(scrolly, canvas)
+    def __init__(self):
+        self.window = tkinter.Tk()
+        self.canvas = tkinter.Canvas(self.window, width=800, height=600)
+        self.canvas.pack()
+        
+        self.scrolly = 0
+        self.max_h = 0
+        self.window.bind("<Down>", self.scrolldown)
+        self.window.bind("<Button-1>", self.handle_click)
+        self.window.bind("<Control-b>", self.go_bookmark)
 
-    def scrolldown(e):
-        nonlocal scrolly
-        scrolly = min(scrolly + SCROLL_STEP, 13 + maxh - 600)
-        render()
+        self.history = []
+        self.visited = set()
+        self.bookmarks = set()
 
-    window.bind("<Down>", scrolldown)
-    render()
+    def mark_visited_links(self, node):
+        if isinstance(node, ElementNode):
+            if node.tag == "a":
+                host, port, path, fragment = parse_url(relative_url(node.attributes["href"], self.history[-1]))
+                if (host, port, path) in self.visited:
+                    node.attributes["class"] = \
+                        node.attributes.get("class", "") + " visited"
+            for child in node.children:
+                self.mark_visited_links(child)
 
-    tkinter.mainloop()
+    def browse(self, url):
+        self.history.append(url.split("#")[0])
+        host, port, path, fragment = parse_url(url)
+        self.visited.add((host, port, path))
+        headers, body = request(host, port, path)
+        text = lex(body)
+        self.nodes = parse(text)
+        self.mark_visited_links(self.nodes)
+        self.rules = []
+        with open("browser.css") as f:
+            r = CSSParser(f.read()).parse()
+            self.rules.extend(r)
+        for link in find_links(self.nodes):
+            lhost, lport, lpath, lfragment = parse_url(relative_url(link, url))
+            header, body = request(lhost, lport, lpath)
+            self.rules.extend(CSSParser(body)).parse()
+        self.rules.sort(key=lambda x: x[0].score())
+        style(self.nodes, self.rules)
+        
+        self.page = Page()
+        self.layout = BlockLayout(self.page, self.nodes)
+        self.layout.layout(0)
+        self.max_h = self.layout.h
+        self.display_list = self.layout.display_list()
+        if fragment: self.scrollto(fragment)
+        self.render()
 
-def run(url):
-    host, port, path, fragment = parse_url(url)
-    headers, body = request(host, port, path)
-    text = lex(body)
-    nodes = parse(text)
-    rules = []
-    with open("browser.css") as f:
-        r = CSSParser(f.read()).parse()
-        rules.extend(r)
-    for link in find_links(nodes):
-        lhost, lport, lpath, lfragment = relative_url(link, url)
-        header, body = request(lhost, lport, lpath)
-        rules.extend(CSSParser(body)).parse()
-    rules.sort(key=lambda x: x[0].score())
-    style(nodes, rules)
-    show(nodes)
+    def scrollto(self, id):
+        node = find_id(id, self.nodes)
+        lo = find_node(node, self.layout)
+        self.scrolly = lo.y
+
+    def render(self):
+        self.canvas.delete("all")
+        for cmd in self.display_list:
+            cmd.draw(self.scrolly - 60, self.canvas)
+        self.canvas.create_rectangle(0, 0, 800, 60, fill='white')
+        self.canvas.create_rectangle(10, 10, 35, 50)
+        self.canvas.create_polygon(15, 30, 30, 15, 30, 45, fill='black')
+        self.canvas.create_rectangle(40, 10, 80, 50)
+        self.canvas.create_polygon(40, 30, 45, 30, 60, 15, 75, 30, 70, 30, 70, 45, 50, 45, 50, 30, fill='black')
+        self.canvas.create_rectangle(85, 10, 745, 50)
+        self.canvas.create_text(90, 15, anchor='nw', text=self.history[-1])
+        self.canvas.create_rectangle(750, 10, 790, 50)
+        self.canvas.create_polygon(765, 15, 775, 15, 775, 45, 770, 40, 765, 45, \
+                                   fill=('orange' if self.history[-1] in self.bookmarks else 'black'))
+                
+    def scrolldown(self, e):
+        self.scrolly = min(self.scrolly + self.SCROLL_STEP, 13 + self.max_h - 600)
+        self.render()
+                    
+    def handle_click(self, e):
+        if e.y < 60:
+            if 10 <= e.x < 35 and 10 <= e.y < 50:
+                self.go_back()
+            elif 40 <= e.x < 80 and 10 <= e.y < 50:
+                self.go_home()
+            elif 90 <= e.x < 745 and 10 <= e.y < 50:
+                new_url = input("Navigate to: ")
+                self.browse(new_url)
+            elif 750 <= e.x < 790 and 10 <= e.y < 50:
+                if self.history[-1] in self.bookmarks:
+                    self.bookmarks.remove(self.history[-1])
+                else:
+                    self.bookmarks.add(self.history[-1])
+                self.render()
+        else:
+            x, y = e.x, e.y - 60 + self.scrolly
+            elt = find_element(x, y, self.layout)
+            while elt and not \
+                  (isinstance(elt, ElementNode) and elt.tag == "a" and "href" in elt.attributes):
+                elt = elt.parent
+            if elt:
+                url = elt.attributes["href"]
+                if url.startswith("#"):
+                    self.scrollto(url[1:])
+                    self.render()
+                else:
+                    self.browse(relative_url(url, self.history[-1]))
+
+    def go_bookmark(self, e):
+        bs = list(self.bookmarks)
+        for i, b in enumerate(bs):
+            print(i + 1, b)
+        print()
+        i = int(input("Navigate to? "))
+        self.browse(bs[i - 1])
+
+    def go_back(self):
+        if len(self.history) > 1:
+            self.history.pop()
+            back = self.history.pop()
+            self.browse(back)
+    
+    def go_home(self):
+        self.browse("http://pavpanchekha.com/blog/emberfox/intro.html")
 
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1])
+    browser = Browser()
+    browser.browse(sys.argv[1])
+    tkinter.mainloop()

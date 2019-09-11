@@ -168,15 +168,9 @@ def parse(tokens):
                     new = CommentNode(current, tok.tag)
                 else:
                     new = ElementNode(current, tok.tag)
-                if new.tag in NO_NEST:
-                    nest = current
-                    while nest and nest.tag != new.tag:
-                        nest = nest.parent
-                    if nest:
-                        current = nest.parent
-                        new.parent = current
-                    else:
-                        pass
+                if new.tag in NO_NEST and current.tag == new.tag:
+                    current = current.parent
+                    new.parent = current
                 if current is not None: current.children.append(new)
                 if new.tag not in ["br", "link", "meta"]:
                     current = new

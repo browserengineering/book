@@ -1,352 +1,558 @@
-import subprocess
+import socket
 import tkinter
-import tkinter.font as tkFont
-import collections
+import tkinter.font
 
-def get(domain, path):
-    if ":" in domain:
-        domain, port = domain.rsplit(":", 1)
-    else:
-        port = "80"
-    s = subprocess.Popen(["telnet", domain, port], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    s.stdin.write(("GET " + path + " HTTP/1.0\n\n").encode("latin1"))
-    s.stdin.flush()
-    out = s.stdout.read().decode("latin1")
-    return out.split("\r\n", 3)[-1]
+def parse_url(url):
+    assert url.startswith("http://")
+    url = url[len("http://"):]
+    hostport, pathfragment = url.split("/", 1) if "/" in url else (url, "")
+    host, port = hostport.rsplit(":", 1) if ":" in hostport else (hostport, "80")
+    path, fragment = ("/" + pathfragment).rsplit("#", 1) if "#" in pathfragment else ("/" + pathfragment, None)
+    return host, int(port), path, fragment
 
-class Node(list):
-    def __init__(self, tag, attrs):
+def request(host, port, path):
+    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+    s.connect((host, port))
+    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("utf8"))
+    response = s.makefile("rb").read().decode("utf8")
+    s.close()
+
+    head, body = response.split("\r\n\r\n", 1)
+    lines = head.split("\r\n")
+    version, status, explanation = lines[0].split(" ", 2)
+    assert status == "200", "Server error {}: {}".format(status, explanation)
+    headers = {}
+    for line in lines[1:]:
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+    return headers, body
+
+class Text:
+    def __init__(self, text):
+        self.text = text
+
+class Tag:
+    def __init__(self, tag):
         self.tag = tag
-        self.attrs = attrs
-        self.style = HTML.parse_style(attrs.get("style", "")) if tag else {}
-        self.parent = None
 
-        self.x = None
-        self.y = None
-        self.w = None
-        self.h = None
-        self.tstyle = None
-
-    def append(self, n):
-        super(Node, self).append(n)
-        n.parent = self
-
-class HTML:
-    Tag = collections.namedtuple("Tag", ["tag", "attrs"])
-
-    @staticmethod
-    def parse_attrs(tag):
-        ts = tag.split(" ", 1)
-        if len(ts) == 1:
-            return tag, {}
+def lex(source):
+    out = []
+    text = ""
+    in_angle = False
+    for c in source:
+        if c == "<":
+            in_angle = True
+            if text: out.append(Text(text))
+            text = ""
+        elif c == ">":
+            in_angle = False
+            out.append(Tag(text))
+            text = ""
         else:
-            parts = ts[1].split("=")
-            parts = [parts[0]] + sum([thing.rsplit(" ", 1) for thing in parts[1:-1]], []) + [parts[-1]]
-            return ts[0], { a: b.strip("'").strip('"') for a, b in zip(parts[::2], parts[1::2]) }
-    
-    @staticmethod
-    def parse_style(attr):
-        return dict([x.strip() for x in y.split(":")] for y in attr.strip(";").split(";")) if ";" in attr or ":" in attr else {}
-    
-    @staticmethod
-    def lex(source):
-        source = " ".join(source.split())
-        tag = None
-        text = None
-        for c in source:
-            if c == "<":
-                if text is not None: yield text
-                text = None
-                tag = ""
-            elif c == ">":
-                if tag is not None:
-                    head, attrs = HTML.parse_attrs(tag.rstrip("/").strip())
-                    yield HTML.Tag(head, attrs)
-                    if tag.endswith("/"): yield HTML.Tag("/" + head, None)
-                tag = None
-            else:
-                if tag is not None:
-                    tag += c
-                elif text is not None:
-                    text += c
-                else:
-                    text = c
-    
-    def parse(tokens):
-        path = [[]]
-        style = []
-        for tok in tokens:
-            if isinstance(tok, HTML.Tag):
-                if tok.tag.startswith("/"):
-                    assert not tok.attrs
-                    path.pop()
-                    assert tok.tag == "/" + path[-1][-1].tag
-                    if path[-1][-1].tag == "style":
-                        assert len(path[-1][-1]) == 1
-                        assert path[-1][-1][0].tag is None
-                        style.append(path[-1][-1][0].attrs)
-                        path[-1].pop()
-                elif tok.tag == '!DOCTYPE':
-                    pass
-                else:
-                    n = Node(tok.tag, tok.attrs)
-                    path[-1].append(n)
-                    path.append(n)
-            else:
-                path[-1].append(Node(None, tok))
-        assert len(path) == 1, [t[-1].tag or t[-1].attrs for t in path]
-        roots = [t for t in path[0] if t.tag]
-        assert len(roots) == 1, [t.tag or t.attrs for t in roots]
-        return roots[0], style
+            text += c
+    return out
 
-class CSS:
-    @staticmethod
-    def parse(source):
-        i = 0
+def px(s):
+    return int(s[:-len("px")])
+
+class CSSParser:
+    def __init__(self, s):
+        self.s = s
+
+    def value(self, i):
+        j = i
+        while self.s[j].isalnum() or self.s[j] == "-":
+            j += 1
+        return self.s[i:j], j
+
+    def whitespace(self, i):
+        j = i
+        while j < len(self.s) and self.s[j].isspace():
+            j += 1
+        return None, j
+
+    def pair(self, i):
+        prop, i = self.value(i)
+        _, i = self.whitespace(i)
+        assert self.s[i] == ":"
+        _, i = self.whitespace(i+1)
+        val, i = self.value(i)
+        return (prop, val), i
+
+    def body(self, i):
+        pairs = {}
+        assert self.s[i] == "{"
+        _, i = self.whitespace(i+1)
         while True:
+            if self.s[i] == "}": break
+
             try:
-                j = source.index("{", i)
-            except ValueError as e:
-                break
-            
-            sel = source[i:j].strip()
-            i, j = j + 1, source.index("}", j)
-            props = {}
+                (prop, val), i = self.pair(i)
+                pairs[prop] = val
+                _, i = self.whitespace(i)
+                assert self.s[i] == ";"
+                _, i = self.whitespace(i+1)
+            except AssertionError:
+                while self.s[i] not in ";}":
+                    i += 1
+                if self.s[i] == ";":
+                    _, i = self.whitespace(i+1)
+        assert self.s[i] == "}"
+        return pairs, i + 1
 
-            while i < j:
-                try:
-                    k = source.index(":", i)
-                except ValueError as e:
-                    break
-                if k > j: break
-                prop = source[i:k].strip()
-                l = min(source.index(";", k + 1), j)
-                val = source[k+1:l].strip()
-                props[prop] = val
-                if l == j: break
-                i = l + 1
-            yield sel, props
-            i = j + 1
-    
-    @staticmethod
-    def applies(sel, t):
-        if t.tag is None:
-            return False
-        elif sel.startswith("."):
-            return sel[1:] in t.attrs.get("class", "").split(" ")
-        elif sel.startswith("#"):
-            return sel[1:] == t.attrs.get("id", None)
+    def selector(self, i):
+        if self.s[i] == "#":
+            name, i = self.value(i + 1)
+            return IDSelector(name), i
+        elif self.s[i] == ".":
+            name, i = self.value(i + 1)
+            return ClassSelector(name), i
         else:
-            return sel == t.tag
+            name, i = self.value(i)
+            return TagSelector(name), i
 
-    @staticmethod
-    def px(val):
-        return int(val.rstrip("px"))
-
-def style(rules, t):
-    for sel, props in reversed(rules):
-        if CSS.applies(sel, t):
-            for prop, val in props.items():
-                t.style.setdefault(prop, val)
-    for subt in t:
-        style(rules, subt)
-
-def inherit(t, prop, default):
-    if t is None:
-        return default
-    else:
-        return t.style[prop] if prop in t.style else inherit(t.parent, prop, default)
-
-def layout(t, x, y):
-    if t.tag is None:
-        t.x, t.y, t.tstyle = x, y, t.parent.tstyle
-
-        fs, weight, slant, decoration, color = t.tstyle
-        font = tkFont.Font(family="Times", size=fs, weight=weight,
-                           slant=slant, underline=(decoration == "underline"))
-        for word in t.attrs.split():
-            w = font.measure(word)
-            if x + w > 800 - 2*8:
-                y += fs * 1.75
-                x = 8
-            x += font.measure(word) + 6
-        t.w = x - t.x
-        t.h = y - t.y + fs * 1.75
-    else:
-        if "font-size" in t.style: fs = CSS.px(t.style["font-size"])
-        if "margin-left" in t.style: x += CSS.px(t.style["margin-left"])
-        if "margin-top" in t.style: y += CSS.px(t.style["margin-top"])
-
-        if t.tag == "hr": y += int(t.attrs.get("width", "2"))
-
-        t.x = x
-        t.y = y
-        t.tstyle = (CSS.px(inherit(t, "font-size", "16px")),
-                    inherit(t, "font-weight", "normal"),
-                    inherit(t, "font-style", "roman"),
-                    inherit(t, "text-decoration", "none"),
-                    inherit(t, "color", "black"))
-            
-        x_ = x
-        for c in t:
-            x_, y = layout(c, x_, y)
-        if t.tag in "abi":
-            t.w = x_ - x
-            x = x_
-        else:
-            t.w = 800 - x
-
-        if "margin-bottom" in t.style: y += CSS.px(t.style["margin-bottom"])
-        if "margin-left" in t.style: x -= CSS.px(t.style["margin-left"])
-
-        if t.tag in ["p", "h1", "h2", "h3", "li"]:
-            y = t[-1].y + t[-1].h
-
-        if t.tag in "abi":
-            t.h = t[-1].h
-        else:
-            t.h = y - t.y
-
-    return x, y
-
-def render(canvas, t, scrolly):
-    if t.tag is None:
-        fs, weight, slant, decoration, color = t.tstyle
-        font = tkFont.Font(family="Times", size=fs, weight=weight,
-                           slant=slant, underline=(decoration == "underline"))
-
-        x, y = t.x, t.y - scrolly
-        for word in t.attrs.split():
-            w = font.measure(word)
-            if x + w > 800 - 2*8:
-                y += 28
-                x = 8
-            canvas.create_text(x, y, text=word, font=font, anchor=tkinter.NW, fill=color)
-            x += font.measure(word) + 6
-    else:
-        if t.tag == "li":
-            x, y, fs, color = t.x - 16, t.y - scrolly, t.tstyle[0], t.tstyle[4]
-            canvas.create_oval(x + 2, y + fs / 2 - 3, x + 7, y + fs / 2 + 2, fill=color, outline=color)
-        elif t.tag == 'hr':
-            x, y, color = t.x, t.y - scrolly, t.tstyle[4]
-            width = int(t.attrs.get("width", "2"))
-            canvas.create_line(x, y, 800 - x, y, width=width, fill=color)
-
-        for subt in t:
-            render(canvas, subt, scrolly=scrolly)
-            
-
-def chrome(canvas, url):
-    canvas.create_rectangle(0, 0, 800, 60, fill='white')
-    canvas.create_rectangle(10, 10, 35, 50)
-    canvas.create_polygon(15, 30, 30, 15, 30, 45, fill='black')
-    canvas.create_rectangle(40, 10, 65, 50)
-    canvas.create_polygon(60, 30, 45, 15, 45, 45, fill='black')
-    canvas.create_rectangle(70, 10, 110, 50)
-    canvas.create_polygon(80, 30, 75, 30, 90, 15, 105, 30, 100, 30, 100, 45, 80, 45, 80, 30, fill='black')
-    canvas.create_rectangle(115, 10, 795, 50)
-    font = tkFont.Font(family="Courier New", size=25)
-    canvas.create_text(120, 15, anchor=tkinter.NW, text=url, font=font)
-
-def find_elt(t, x, y):
-    for i in t:
-        e = find_elt(i, x, y)
-        if e is not None: return e
-    if t.x <= x <= t.x + t.w and t.y <= y <= t.y + t.h:
-        return t
-
-class Browser:
-    def __init__(self, url):
-        self.source = None
-        self.tree = None
-        self.scrolly = 0
-        self.home = url
-        self.history = [url]
-        self.index = 0
-        with open("default.css") as f:
-            self.default_style = list(CSS.parse(f.read()))
-        
-        window = tkinter.Tk()
-        window.bind("<Down>", self.scroll(100))
-        window.bind("<space>", self.scroll(400))
-        window.bind("<Up>", self.scroll(-100))
-        window.bind("<Button-1>", self.handle_click)
-        window.focus_set()
-        canvas = tkinter.Canvas(window, width=800, height=1000)
-        canvas.pack(side=tkinter.LEFT)
-        self.window = window
-        self.canvas = canvas
-
-    def fetch(self):
-        url = self.history[self.index]
-        assert url.startswith("http://")
-        url = url[len("http://"):]
-        domain, path = url.split("/", 1)
-        response = get(domain, "/" + path)
-        headers, source = response.split("\n\n", 1)
-        self.source = source
+    def rule(self, i):
+        try:
+            sel, i = self.selector(i)
+            _, i = self.whitespace(i)
+            body, i = self.body(i)
+            return (sel, body), i
+        except AssertionError:
+            while self.s[i] != "}":
+                i += 1
+            i += 1
+            return None, i
 
     def parse(self):
-        assert self.source
-        tree, styles = HTML.parse(HTML.lex(self.source))
-        rules = self.default_style
-        for s in styles:
-            rules.extend(list(CSS.parse(s)))
-        style(rules, tree)
-        layout(tree, x=8, y=8)
-        self.tree = tree
+        rules = []
+        i = 0
+        while i < len(self.s):
+            try:
+                rule, i = self.rule(i)
+                _, i = self.whitespace(i)
+                if rule: rules.append(rule)
+            except Exception as e:
+                break
+        return rules
 
-    def scroll(self, by):
-        def handler(e):
-            self.scrolly = max(self.scrolly + by, 0)
-            self.render()
-        return handler
+class TagSelector:
+    def __init__(self, tag):
+        self.tag = tag
 
-    def render(self):
-        assert self.tree
-        self.canvas.delete('all')
-        render(self.canvas, self.tree, scrolly=self.scrolly - 60)
-        chrome(self.canvas, self.history[self.index])
+    def matches(self, node):
+        return self.tag == node.tag
 
-    def handle_click(self, e):
-        if 10 <= e.x <= 35 and 10 <= e.y <= 50:
-            self.index -= 1
-            self.go()
-        elif 40 <= e.x <= 65 and 10 <= e.y <= 50:
-            self.index += 1
-            self.go()
-        elif 70 <= e.x <= 110 and 10 <= e.y <= 50:
-            self.index = 0
-            self.go()
-        elif 115 <= e.x <= 795 and 10 <= e.y <= 50:
-            new_url = input("Where to? ")
-            self.navigate(new_url)
-        else:
-            e = find_elt(self.tree, e.x, e.y + self.scrolly - 60)
-            while e is not None and e.tag != "a":
-                e = e.parent
-            if e is not None:
-                url = e.attrs["href"]
-                self.navigate(url)
+    def score(self):
+        return 1
+
+class ClassSelector:
+    def __init__(self, cls):
+        self.cls = cls
+
+    def matches(self, node):
+        return self.cls in node.attributes.get("class", "").split()
+
+    def score(self):
+        return 16
+
+class IDSelector:
+    def __init__(self, id):
+        self.id = i
+
+    def matches(self, node):
+        return self.id == node.attributes.get("id", "")
+
+    def score(self):
+        return 256
+
+INHERITED_PROPERTIES = { "font-style": "normal", "font-weight": "normal", "color": "black" }
+
+def style(node, rules):
+    if not isinstance(node, ElementNode): return
+    for selector, pairs in rules:
+        if selector.matches(node):
+            for prop in pairs:
+                node.style[prop] = pairs[prop]
+    for prop, value in node.compute_style().items():
+        node.style[prop] = value
+    for prop in INHERITED_PROPERTIES:
+        if prop not in node.style:
+            if node.parent is None:
+                node.style[prop] = INHERITED_PROPERTIES[prop]
             else:
-                pass
+                node.style[prop] = node.parent.style[prop]
+    for child in node.children:
+        style(child, rules)
 
-    def navigate(self, url):
-        self.history[self.index+1:] = [url]
-        self.index += 1
-        self.go()
+def find_links(node):
+    if not isinstance(node, ElementNode): return
+    if node.tag == "link" and \
+       node.attributes.get("rel", "") == "stylesheet" and \
+       "href" in node.attributes:
+        yield node.attributes["href"]
+    for child in node.children:
+        yield from find_links(child)
 
-    def go(self):
+def relative_url(url, current):
+    if url.startswith("http://"):
+        return url
+    if url.startswith("/"):
+        return current.split("/")[0] + url
+    else:
+        return current.rsplit("/", 1)[0] + "/" + url
+
+class ElementNode:
+    def __init__(self, parent, tagname):
+        self.tag, *attrs = tagname.split(" ")
+        self.children = []
+        self.attributes = {}
+        self.parent = parent
+
+        for attr in attrs:
+            out = attr.split("=", 1)
+            name = out[0]
+            val = out[1].strip("\"") if len(out) > 1 else ""
+            self.attributes[name.lower()] = val
+
+        self.style = self.compute_style()
+
+    def compute_style(self):
+        style = {}
+        style_value = self.attributes.get("style", "")
+        for line in style_value.split(";"):
+            try:
+                prop, val = line.split(":")
+            except:
+                break
+            style[prop.lower().strip()] = val.strip()
+        return style
+
+class TextNode:
+    def __init__(self, parent, text):
+        self.text = text
+        self.parent = parent
+        self.style = self.parent.style
+
+def parse(tokens):
+    current = None
+    for tok in tokens:
+        if isinstance(tok, Tag):
+            if tok.tag.startswith("/"): # Close tag
+                tag = tok.tag[1:]
+                node = current
+                while node is not None and node.tag != tag:
+                    node = node.parent
+                if not node and current.parent is not None:
+                    current = current.parent
+                elif node.parent is not None:
+                    current = node.parent
+            else: # Open tag
+                new = ElementNode(current, tok.tag)
+                if current is not None:
+                    current.children.append(new)
+                if new.tag not in ["br", "link", "meta"]:
+                    current = new
+        else: # Text token
+            new = TextNode(current, tok.text)
+            current.children.append(new)
+    while current.parent is not None: current = current.parent
+    return current
+
+class Page:
+    def __init__(self):
+        self.x = 13
+        self.y = 13
+        self.w = 774
+        self.children = []
+
+    def content_left(self):
+        return self.x
+    def content_top(self):
+        return self.y
+    def content_width(self):
+        return self.w
+
+def is_inline(node):
+    return isinstance(node, TextNode) and not node.text.isspace() or \
+        isinstance(node, ElementNode) and node.style.get("display", "block") == "inline"
+
+class BlockLayout:
+    def __init__(self, parent, node):
+        self.parent = parent
+        self.children = []
+        parent.children.append(self)
+
+        self.node = node
+
+        self.mt = px(node.style.get("margin-top", "0px"))
+        self.mr = px(node.style.get("margin-right", "0px"))
+        self.mb = px(node.style.get("margin-bottom", "0px"))
+        self.ml = px(node.style.get("margin-left", "0px"))
+
+        self.bt = px(node.style.get("border-top-width", "0px"))
+        self.br = px(node.style.get("border-right-width", "0px"))
+        self.bb = px(node.style.get("border-bottom-width", "0px"))
+        self.bl = px(node.style.get("border-left-width", "0px"))
+
+        self.pt = px(node.style.get("padding-top", "0px"))
+        self.pr = px(node.style.get("padding-right", "0px"))
+        self.pb = px(node.style.get("padding-bottom", "0px"))
+        self.pl = px(node.style.get("padding-left", "0px"))
+
+        self.x = parent.content_left()
+        self.w = parent.content_width()
+        self.h = None
+
+    def layout(self, y):
+        self.y = y
+        self.x += self.ml
+        self.y += self.mt
+        self.w -= self.ml + self.mr
+
+        y += self.bt + self.pt
+        if any(is_inline(child) for child in self.node.children):
+            layout = InlineLayout(self, self.node)
+            layout.layout()
+            y += layout.h
+        else:
+            for child in self.node.children:
+                if isinstance(child, TextNode) and child.text.isspace(): continue
+                layout = BlockLayout(self, child)
+                layout.layout(y)
+                y += layout.h + layout.mt + layout.mb
+        y += self.pb + self.bb
+        self.h = y - self.y
+
+    def display_list(self):
+        dl = []
+        for child in self.children:
+            dl.extend(child.display_list())
+        if self.bl > 0: dl.append(DrawRect(self.x, self.y, self.x + self.bl, self.y + self.h))
+        if self.br > 0: dl.append(DrawRect(self.x + self.w - self.br, self.y, self.x + self.w, self.y + self.h))
+        if self.bt > 0: dl.append(DrawRect(self.x, self.y, self.x + self.w, self.y + self.bt))
+        if self.bb > 0: dl.append(DrawRect(self.x, self.y + self.h - self.bb, self.x + self.w, self.y + self.h))
+        return dl
+
+    def content_left(self):
+        return self.x + self.bl + self.pl
+    def content_top(self):
+        return self.y + self.bt + self.pt
+    def content_width(self):
+        return self.w - self.bl - self.br - self.pl - self.pr
+
+class LineLayout:
+    def __init__(self, parent):
+        self.parent = parent
+        self.children = []
+        parent.children.append(self)
+        self.w = 0
+
+    def display_list(self):
+        dl = []
+        for child in self.children:
+            dl.extend(child.display_list())
+        return dl
+
+    def layout(self, y):
+        self.y = y
+        self.x = self.parent.x
+        self.h = 0
+
+        x = self.x
+        leading = 2
+        y += leading / 2
+        for child in self.children:
+            child.layout(x, y)
+            x += child.w + child.space
+            self.h = max(self.h, child.h + leading)
+        self.w = x - self.x
+
+class TextLayout:
+    def __init__(self, node, text):
+        self.children = []
+        self.node = node
+        self.text = text
+        self.space = 0
+
+        bold = node.style["font-weight"] == "bold"
+        italic = node.style["font-style"] == "italic"
+        self.color = node.style["color"]
+        self.font = tkinter.font.Font(
+            family="Times", size=16,
+            weight="bold" if bold else "normal",
+            slant="italic" if italic else "roman"
+        )
+        self.w = self.font.measure(text)
+        self.h = self.font.metrics('linespace')
+
+    def attach(self, parent):
+        self.parent = parent
+        parent.children.append(self)
+        parent.w += self.w
+
+    def add_space(self):
+        if self.space == 0:
+            gap = self.font.measure(" ")
+            self.space = gap
+            self.parent.w += gap
+
+    def layout(self, x, y):
+        self.x = x
+        self.y = y
+
+    def display_list(self):
+        return [DrawText(self.x, self.y, self.text, self.font, self.color)]
+
+class InlineLayout:
+    def __init__(self, parent, node):
+        self.parent = parent
+        parent.children.append(self)
+        self.node = node
+        self.children = []
+        LineLayout(self)
+
+    def display_list(self):
+        dl = []
+        for child in self.children:
+            dl.extend(child.display_list())
+        return dl
+
+    def layout(self):
+        self.x = self.parent.content_left()
+        self.y = self.parent.content_top()
+        self.w = self.parent.content_width()
+        self.recurse(self.node)
+        y = self.y
+        for child in self.children:
+            child.layout(y)
+            y += child.h
+        self.h = y - self.y
+
+    def recurse(self, node):
+        if isinstance(node, ElementNode):
+            for child in node.children:
+                self.recurse(child)
+        else:
+            self.text(node)
+
+    def text(self, node):
+        if node.text[0].isspace() and len(self.children[-1].children) > 0:
+            self.children[-1].children[-1].add_space()
+
+        words = node.text.split()
+        for i, word in enumerate(words):
+            tl = TextLayout(node, word)
+            line = self.children[-1]
+            if line.w + tl.w > self.w:
+                line = LineLayout(self)
+            tl.attach(line)
+            if i != len(words) - 1 or node.text[-1].isspace():
+                tl.add_space()
+
+class DrawText:
+    def __init__(self, x, y, text, font, color):
+        self.x = x
+        self.y = y
+        self.text = text
+        self.font = font
+        self.color = color
+    
+    def draw(self, scrolly, canvas):
+        canvas.create_text(self.x, self.y - scrolly, text=self.text, font=self.font, anchor='nw', fill=self.color)
+
+class DrawRect:
+    def __init__(self, x1, y1, x2, y2):
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+    def draw(self, scrolly, canvas):
+        canvas.create_rectangle(self.x1, self.y1 - scrolly, self.x2, self.y2 - scrolly)
+
+def find_element(x, y, layout):
+    for child in layout.children:
+        result = find_element(x, y, child)
+        if result: return result
+    if hasattr(layout, "node") and \
+       layout.x <= x < layout.x + layout.w and \
+       layout.y <= y < layout.y + layout.h:
+        return layout.node
+
+class Browser:
+    SCROLL_STEP = 100
+
+    def __init__(self):
+        self.window = tkinter.Tk()
+        self.canvas = tkinter.Canvas(self.window, width=800, height=600)
+        self.canvas.pack()
+        
+        self.history = []
         self.scrolly = 0
-        self.fetch()
-        self.parse()
-        self.render()
+        self.max_h = 0
+        self.window.bind("<Down>", self.scrolldown)
+        self.window.bind("<Button-1>", self.handle_click)
 
-    def mainloop(self):
-        self.window.mainloop()
+
+    def browse(self, url):
+        self.history.append(url)
+        host, port, path, fragment = parse_url(url)
+        headers, body = request(host, port, path)
+        text = lex(body)
+        self.nodes = parse(text)
+        self.rules = []
+        with open("browser.css") as f:
+            r = CSSParser(f.read()).parse()
+            self.rules.extend(r)
+        for link in find_links(self.nodes):
+            lhost, lport, lpath, lfragment = parse_url(relative_url(link, url))
+            header, body = request(lhost, lport, lpath)
+            self.rules.extend(CSSParser(body)).parse()
+        self.rules.sort(key=lambda x: x[0].score())
+        style(self.nodes, self.rules)
+        
+        self.page = Page()
+        self.layout = BlockLayout(self.page, self.nodes)
+        self.layout.layout(0)
+        self.max_h = self.layout.h
+        self.display_list = self.layout.display_list()
+        self.render()
+        
+    def render(self):
+        self.canvas.delete("all")
+        for cmd in self.display_list:
+            cmd.draw(self.scrolly - 60, self.canvas)
+        self.canvas.create_rectangle(0, 0, 800, 60, fill='white')
+        self.canvas.create_rectangle(40, 10, 790, 50)
+        self.canvas.create_text(45, 15, anchor='nw', text=self.history[-1])
+        self.canvas.create_rectangle(10, 10, 35, 50)
+        self.canvas.create_polygon(15, 30, 30, 15, 30, 45, fill='black')
+                
+    def scrolldown(self, e):
+        self.scrolly = min(self.scrolly + self.SCROLL_STEP, 13 + self.max_h - 600)
+        self.render()
+                    
+    def handle_click(self, e):
+        if e.y < 60:
+            if 10 <= e.x < 35 and 10 <= e.y < 50:
+                self.go_back()
+        else:
+            x, y = e.x, e.y - 60 + self.scrolly
+            elt = find_element(x, y, self.layout)
+            while elt and not \
+                  (isinstance(elt, ElementNode) and elt.tag == "a" and "href" in elt.attributes):
+                elt = elt.parent
+            if elt:
+                self.browse(relative_url(elt.attributes["href"], self.history[-1]))
+
+    def go_back(self):
+        if len(self.history) > 1:
+            self.history.pop()
+            back = self.history.pop()
+            self.browse(back)
 
 if __name__ == "__main__":
     import sys
-    b = Browser(sys.argv[1])
-    b.go()
-    b.mainloop()
+    browser = Browser()
+    browser.browse(sys.argv[1])
+    tkinter.mainloop()

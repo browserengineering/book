@@ -58,10 +58,17 @@ def px(s):
 class CSSParser:
     def __init__(self, s):
         self.s = s
+        print(repr(s))
+
+    def word(self, i):
+        j = i
+        while self.s[j].isalnum() or self.s[j] in "-":
+            j += 1
+        return self.s[i:j], j
 
     def value(self, i):
         j = i
-        while self.s[j].isalnum() or self.s[j] == "-":
+        while self.s[j].isalnum() or self.s[j] in "- ":
             j += 1
         return self.s[i:j], j
 
@@ -72,7 +79,7 @@ class CSSParser:
         return None, j
 
     def pair(self, i):
-        prop, i = self.value(i)
+        prop, i = self.word(i)
         _, i = self.whitespace(i)
         assert self.s[i] == ":"
         _, i = self.whitespace(i+1)
@@ -98,25 +105,65 @@ class CSSParser:
                 if self.s[i] == ";":
                     _, i = self.whitespace(i+1)
         assert self.s[i] == "}"
-        return pairs, i + 1
+        pairs2 = {}
+        for p, v in pairs.items():
+            for q, u in self.expand_shorthand(p, v).items():
+                pairs2[q] = u
+        return pairs2, i + 1
+
+    def single_selector(self, i):
+        sel = []
+        while not self.s[i].isspace() and self.s[i] not in ",{":
+            if self.s[i] == "#":
+                name, i = self.word(i + 1)
+                sel.append(IDSelector(name))
+            elif self.s[i] == ".":
+                name, i = self.word(i + 1)
+                sel.append(ClassSelector(name))
+            else:
+                name, i = self.word(i)
+                sel.append(TagSelector(name))
+        if len(sel) == 1:
+            return sel[0], i
+        else:
+            return AndSelector(*sel), i
 
     def selector(self, i):
-        if self.s[i] == "#":
-            name, i = self.value(i + 1)
-            return IDSelector(name), i
-        elif self.s[i] == ".":
-            name, i = self.value(i + 1)
-            return ClassSelector(name), i
+        sels = []
+        while True:
+            sel, i = self.single_selector(i)
+            _, i = self.whitespace(i)
+            sels.append(sel)
+            if self.s[i] in ",{":
+                break
+        if len(sels) == 1:
+            return sels[0], i
         else:
-            name, i = self.value(i)
-            return TagSelector(name), i
+            return DescendantSelector(*sels), i
+
+    def selectors(self, i):
+        sels = []
+
+        while True:
+            try:
+                sel, i = self.selector(i)
+                _, i = self.whitespace(i)
+                sels.append(sel)
+            except AssertionError:
+                while self.s[i] not in ",{":
+                    i += 1
+            if self.s[i] == "{":
+                break
+            assert self.s[i] == ","
+            _, i = self.whitespace(i+1)
+        return sels, i
 
     def rule(self, i):
         try:
-            sel, i = self.selector(i)
+            sels, i = self.selectors(i)
             _, i = self.whitespace(i)
             body, i = self.body(i)
-            return (sel, body), i
+            return (sels, body), i
         except AssertionError:
             while self.s[i] != "}":
                 i += 1
@@ -130,10 +177,65 @@ class CSSParser:
             try:
                 rule, i = self.rule(i)
                 _, i = self.whitespace(i)
-                if rule: rules.append(rule)
-            except Exception as e:
+                if rule:
+                    sels, body = rule
+                    for sel in sels:
+                        rules.append((sel, body))
+            except AssertionError as e:
                 break
         return rules
+
+    def expand_shorthand(self, prop, value):
+        result = {}
+        if prop in ["margin", "padding", "border-width"]:
+            vals = value.split()
+            if len(vals) == 1:
+                vals = [vals[0]] * 4
+            elif len(vals) == 2:
+                v, h = vals
+                vals = [v, h, v, h]
+            elif len(vals) == 3:
+                t, h, b = vals
+                vals = [t, h, b, h]
+            else:
+                pass
+            for dir, val in zip(["top", "right", "bottom", "left"], vals):
+                p = prop.split("-")
+                prop2 = "-".join(p[:1] + [dir] + p[1:])
+                result[prop2] = val
+        else:
+            result[prop] = value
+        return result
+
+class AndSelector:
+    def __init__(self, *sels):
+        self.sels = sels
+
+    def matches(self, node):
+        return all(sel.matches(node) for sel in self.sels)
+
+    def score(self):
+        return sum(sel.score() for sel in self.sels)
+
+class DescendantSelector:
+    def __init__(self, *sels):
+        self.sels = sels
+
+    def matches(self, node):
+        if not self.sels[-1].matches(node):
+            return False
+        node = node.parent
+
+        for sel in reversed(self.sels[:-1]):
+            while node and not sel.matches(node):
+                node = node.parent
+            if not node:
+                return False
+
+        return True
+
+    def score(self):
+        return sum(sel.score() for sel in self.sels)
 
 class TagSelector:
     def __init__(self, tag):
@@ -321,6 +423,7 @@ class BlockLayout:
         else:
             for child in self.node.children:
                 if isinstance(child, TextNode) and child.text.isspace(): continue
+                if child.style.get("display", "block") == "none": continue
                 layout = BlockLayout(self, child)
                 layout.layout(y)
                 y += layout.height() + layout.mt + layout.mb
@@ -454,7 +557,7 @@ def run(url):
     text = lex(body)
     nodes = parse(text)
     rules = []
-    with open("browser.css") as f:
+    with open("browserx.css") as f:
         r = CSSParser(f.read()).parse()
         rules.extend(r)
     for link in find_links(nodes):
