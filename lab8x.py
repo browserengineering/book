@@ -202,8 +202,8 @@ def find_links(node):
 def relative_url(url, current):
     if url.startswith("http://"):
         return url
-    if url.startswith("/"):
-        return current.split("/")[0] + url
+    elif url.startswith("/"):
+        return "/".join(current.split("/")[:3]) + url
     else:
         return current.rsplit("/", 1)[0] + "/" + url
 
@@ -409,6 +409,38 @@ class TextLayout:
     def display_list(self):
         return [DrawText(self.x, self.y, self.text, self.font, self.color)]
 
+class CheckboxLayout:
+    def __init__(self, node):
+        self.children = []
+        self.node = node
+        self.checked = "checked" in node.attributes
+        self.w = 18
+        self.h = 18
+        self.space = 0
+
+    def layout(self, x, y):
+        self.x = x
+        self.y = y
+
+    def attach(self, parent):
+        self.parent = parent
+        parent.children.append(self)
+        parent.w += self.w
+
+    def add_space(self):
+        if self.space == 0:
+            gap = 5
+            self.space = gap
+            self.parent.w += gap
+
+    def display_list(self):
+        border = DrawRect(self.x, self.y, self.x + self.w, self.y + self.h)
+        if self.checked:
+            font = tkinter.font.Font(family="Times", size=16)
+            return [border, DrawText(self.x+1, self.y+1, "X", font, "black")]
+        else:
+            return [border]
+
 class InputLayout:
     def __init__(self, node, multiline=False):
         self.children = []
@@ -507,7 +539,10 @@ class InlineLayout:
                 tl.add_space()
 
     def input(self, node):
-        tl = InputLayout(node, node.tag == "textarea")
+        if node.tag == "input" and node.attributes.get("type") == "checkbox":
+            tl = CheckboxLayout(node)
+        else:
+            tl = InputLayout(node, node.tag == "textarea")
         line = self.children[-1]
         if line.w + tl.w > self.w:
             line = LineLayout(self)
@@ -558,12 +593,6 @@ class Browser:
         self.window.bind("<Button-1>", self.handle_click)
 
 
-    def browse(self, url):
-        self.history.append(url)
-        host, port, path, fragment = parse_url(url)
-        headers, body = request('GET', host, port, path)
-        self.parse(body)
-
     def parse(self, body):
         text = lex(body)
         self.nodes = parse(text)
@@ -572,7 +601,7 @@ class Browser:
             r = CSSParser(f.read()).parse()
             self.rules.extend(r)
         for link in find_links(self.nodes):
-            lhost, lport, lpath, lfragment = parse_url(relative_url(link, self.history[-1]))
+            lhost, lport, lpath, lfragment = parse_url(relative_url(link, self.url()))
             header, body = request(lhost, lport, lpath)
             self.rules.extend(CSSParser(body)).parse()
         self.rules.sort(key=lambda x: x[0].score())
@@ -593,7 +622,7 @@ class Browser:
             cmd.draw(self.scrolly - 60, self.canvas)
         self.canvas.create_rectangle(0, 0, 800, 60, fill='white')
         self.canvas.create_rectangle(40, 10, 790, 50)
-        self.canvas.create_text(45, 15, anchor='nw', text=self.history[-1])
+        self.canvas.create_text(45, 15, anchor='nw', text=self.url())
         self.canvas.create_rectangle(10, 10, 35, 50)
         self.canvas.create_polygon(15, 30, 30, 15, 30, 45, fill='black')
                 
@@ -616,9 +645,15 @@ class Browser:
             if not elt:
                 pass
             elif elt.tag == "a":
-                self.browse(relative_url(elt.attributes["href"], self.history[-1]))
+                self.get(relative_url(elt.attributes["href"], self.url()))
             elif elt.tag == "button":
                 self.submit_form(elt)
+            elif elt.tag == "input" and elt.attributes.get("type") == "checkbox":
+                if "checked" in elt.attributes:
+                    del elt.attributes["checked"]
+                else:
+                    elt.attributes["checked"] = ""
+                self.relayout()
             else:
                 new_text = input("Enter new text: ")
                 if elt.tag == "input":
@@ -629,9 +664,15 @@ class Browser:
 
     def go_back(self):
         if len(self.history) > 1:
-            self.history.pop()
-            back = self.history.pop()
-            self.browse(back)
+            back, method, params = self.history[-2]
+            if method == "GET":
+                self.history.pop()
+                self.history.pop()
+                self.get(back, params)
+            elif input("Are you sure? "):
+                self.history.pop()
+                self.history.pop()
+                self.post(back, params)
 
     def submit_form(self, elt):
         while elt and elt.tag != 'form':
@@ -640,22 +681,41 @@ class Browser:
         inputs = find_inputs(elt, [])
         params = {}
         for input in inputs:
-            if input.tag == "input":
+            if input.tag == "input" and input.attributes.get("type", "") == "checkbox":
+                if "checked" in input.attributes:
+                    params[input.attributes['name']] = ""
+            elif input.tag == "input":
                 params[input.attributes['name']] = input.attributes.get("value", "")
             else:
                 params[input.attributes['name']] = input.children[0].text if input.children else ""
-        self.post(relative_url(elt.attributes['action'], self.history[-1]), params)
+        self.post(relative_url(elt.attributes['action'], self.url()), params)
+
+    def get(self, url, params=None):
+        self.history.append((url, "GET", params))
+        if params:
+            body = encode_params(params)
+            path += "?" + body
+        host, port, path, fragment = parse_url(url)
+        headers, body = request('GET', host, port, path)
+        self.parse(body)
 
     def post(self, url, params):
-        body = ""
-        for param, value in params.items():
-            body += "&" + param + "="
-            body += value.replace(" ", "%20")
-        body = body[1:]
+        print(url)
+        self.history.append((url, "POST", params))
+        body = encode_params(params)
         host, port, path, fragment = parse_url(url)
         headers, body = request('POST', host, port, path, body)
-        self.history.append(url)
         self.parse(body)
+
+    def url(self):
+        return self.history[-1][0]
+
+def encode_params(params):
+    body = ""
+    for param, value in params.items():
+        body += "&" + param + "="
+        body += value.replace(" ", "%20")
+    return body[1:]
 
 def find_inputs(elt, out):
     if not isinstance(elt, ElementNode): return
@@ -668,5 +728,5 @@ def find_inputs(elt, out):
 if __name__ == "__main__":
     import sys
     browser = Browser()
-    browser.browse(sys.argv[1])
+    browser.get(sys.argv[1])
     tkinter.mainloop()

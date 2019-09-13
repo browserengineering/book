@@ -9,7 +9,7 @@ pre {
 
 b, i { display: inline; }
 b { font-weight: bold; }
-i, span.margin-note { font-style: italic; }
+i { font-style: italic; }
 a { color: blue; }
 .visited { color: purple; }
 
@@ -17,3 +17,6 @@ head { display: none; }
 
 h1 { font-size: 24px; }
 h2 { font-size: 20px; }
+
+input { display: inline; }
+textarea { display: inline; }
