@@ -338,6 +338,10 @@ class BlockLayout:
             layout = InlineLayout(self, self.node)
             layout.layout()
             y += layout.h
+        elif self.node.tag == "canvas":
+            layout = CanvasLayout(self, self.node)
+            layout.layout()
+            y += layout.h
         else:
             for child in self.node.children:
                 if isinstance(child, TextNode) and child.text.isspace(): continue
@@ -476,6 +480,37 @@ class InputLayout:
             text = DrawText(self.x + 1, self.y + 1, self.node.attributes.get("value", ""), font, "black")
             return [border, text]
 
+class CanvasLayout:
+    def __init__(self, parent, node):
+        self.children = []
+        self.parent = parent
+        self.node = node
+        self.w = 600
+        self.h = 400
+        self.dl = []
+
+        self.node.layout = self
+
+    def layout(self, y):
+        self.x = self.parent.x
+        self.y = y
+
+    def display_list(self):
+        return self.dl
+
+    def fillText(self, text, x, y):
+        x = min(x, self.w)
+        y = min(y, self.h)
+        font = tkinter.font.Font(family="Times", size=6)
+        self.dl.append(DrawText(x + self.x, y + self.y, text, font, "black"))
+
+    def fillRect(self, x, y, w, h):
+        x1 = min(x, self.w)
+        y1 = min(y, self.h)
+        x2 = min(x + w, self.w)
+        y2 = min(y + h, self.h)
+        self.dl.append(DrawRect(x1 + self.x, y1 + self.y, x2 + self.x, y2 + self.y))
+
 class InlineLayout:
     def __init__(self, parent, node):
         self.parent = parent
@@ -603,6 +638,13 @@ class Browser:
         self.js.export_function("querySelectorAll", self.js_querySelectorAll)
         self.js.export_function("getAttribute", self.js_getAttribute)
         self.js.export_function("innerHTML", self.js_innerHTML)
+        self.js.export_function("children", self.js_children)
+        self.js.export_function("createElement", self.js_createElement)
+        self.js.export_function("appendChild", self.js_appendChild)
+        self.js.export_function("insertBefore", self.js_insertBefore)
+        self.js.export_function("fillText", self.js_fillText)
+        self.js.export_function("fillRect", self.js_fillRect)
+        self.js.export_function("XMLHttpRequest_send", self.js_XMLHttpRequest_send)
         with open("runtime.js") as f:
             self.js.evaljs(f.read())
         for script in find_scripts(self.nodes):
@@ -610,12 +652,32 @@ class Browser:
                 parse_url(relative_url(script, self.history[-1]))
             header, body = request('GET', lhost, lport, lpath)
             self.js.evaljs(body)
+        self.handle_XHR()
 
         self.relayout()
 
     def event(self, type, elt):
-        if isinstance(elt, ElementNode) and elt.handle:
-            return self.js.evaljs("__runHandlers({}, \"{}\")".format(elt.handle, type))
+        cancelled = False
+        propagating = True
+        while propagating and elt:
+            if isinstance(elt, ElementNode) and elt.handle:
+                c, p = self.js.evaljs("__runHandlers({}, \"{}\")".format(elt.handle, type))
+                cancelled = cancelled or c
+                propagating = False
+            elt = elt.parent
+        self.handle_XHR()
+        return cancelled
+
+    def handle_XHR(self):
+        while self.queue:
+            q = self.queue
+            self.queue = []
+            for method, url, body, handler in q:
+                host, port, path, fragment = parse_url(url)
+                headers, body = request(method, host, port, path, body)
+                self.js.evaljs("__runXHR(dukpy['id'], dukpy['headers'], dukpy['body'])",
+                               id=handler, headers=headers, body=body)
+
 
     def js_querySelectorAll(self, sel):
         p = CSSParser(sel + "{")
@@ -629,6 +691,35 @@ class Browser:
             out.append(handle)
         return out
 
+    def js_children(self, handle):
+        elt = self.js_handles[handle]
+        out = []
+        for child in elt.children:
+            if not child.handle:
+                handle = len(self.js_handles) + 1
+                child.handle = handle
+                self.js_handles[handle] = child
+            out.append(handle)
+        return out
+
+    def js_createElement(self, tagname):
+        elt = ElementNode(None, tagname)
+        elt.handle = len(self.js_handles + 1)
+        self.js_handles[elt.handle] = elt
+
+    def js_appendChild(self, phandle, chandle):
+        parent = self.js_handles[phandle]
+        child = self.js_handles[chandle]
+        parent.children.append(child)
+        child.parent = parent
+
+    def js_insertBefore(self, phandle, shandle, chandle):
+        parent = self.js_handles[phandle]
+        sibling = self.js_handles[shandle]
+        idx = parent.children.index(sibling)
+        parent.children = parent.children[:index] + [child] + parent.children[index:]
+        child.parent = parent
+
     def js_getAttribute(self, handle, attr):
         elt = self.js_handles[handle]
         return elt.attributes.get(attr, None)
@@ -640,6 +731,21 @@ class Browser:
         for child in elt.children:
             child.parent = elt
         self.relayout()
+
+    def js_fillText(self, handle, text, x, y):
+        elt = self.js_handles[handle]
+        if not hasattr(elt, "layout"): return
+        if not isinstance(elt.layout, CanvasLayout): return
+        elt.layout.fillText(text, x, y)
+
+    def js_fillRect(self, handle, x1, y1, y2, y2):
+        elt = self.js_handles[handle]
+        if not hasattr(elt, "layout"): return
+        if not isinstance(elt.layout, CanvasLayout): return
+        elt.layout.fillRect(x1, y1, x2, y2)
+
+    def js_XMLHttpRequest_send(self, method, url, body, handler):
+        self.queue.append(method, relative_url(url, this.history[-1]), body, handler)
         
     def relayout(self):
         style(self.nodes, self.rules)

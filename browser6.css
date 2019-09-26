@@ -7,18 +7,11 @@ pre {
     border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px;
 }
 
-b, i { display: inline; }
+b { display: inline; }
+i { display: inline; }
 b { font-weight: bold; }
 i { font-style: italic; }
 a { color: blue; }
-.visited { color: purple; }
-
-head { display: none; }
-
-h1 { font-size: 24px; }
-h2 { font-size: 20px; }
 
 input { display: inline; }
 textarea { display: inline; }
-
-:hover { border-left-width: 1px; border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; }

@@ -2,6 +2,7 @@ import socket
 import tkinter
 import tkinter.font
 import dukpy
+import time
 
 def parse_url(url):
     assert url.startswith("http://")
@@ -114,6 +115,9 @@ class CSSParser:
         elif self.s[i] == ".":
             name, i = self.value(i + 1)
             return ClassSelector(name), i
+        elif self.s[i] == ":":
+            name, i = self.value(i + 1)
+            return PseudoclassSelector(name), i
         else:
             name, i = self.value(i)
             return TagSelector(name), i
@@ -162,6 +166,16 @@ class ClassSelector:
     def score(self):
         return 16
 
+class PseudoclassSelector:
+    def __init__(self, cls):
+        self.cls = cls
+
+    def matches(self, node):
+        return self.cls in node.pseudoclasses
+
+    def score(self):
+        return 0
+
 class IDSelector:
     def __init__(self, id):
         self.id = id
@@ -178,6 +192,7 @@ def style(node, rules):
     if not isinstance(node, ElementNode):
         node.style = node.parent.style
         return
+    node.style = {}
     for selector, pairs in rules:
         if selector.matches(node):
             for prop in pairs:
@@ -230,6 +245,7 @@ class ElementNode:
         self.tag, *attrs = tagname.split(" ")
         self.children = []
         self.attributes = {}
+        self.pseudoclasses = set()
         self.parent = parent
         self.handle = 0
 
@@ -238,8 +254,6 @@ class ElementNode:
             name = out[0]
             val = out[1].strip("\"") if len(out) > 1 else ""
             self.attributes[name.lower()] = val
-
-        self.style = self.compute_style()
 
     def compute_style(self):
         style = {}
@@ -303,59 +317,63 @@ def is_inline(node):
 class BlockLayout:
     def __init__(self, parent, node):
         self.parent = parent
-        self.children = []
         parent.children.append(self)
 
         self.node = node
 
-        self.mt = px(node.style.get("margin-top", "0px"))
-        self.mr = px(node.style.get("margin-right", "0px"))
-        self.mb = px(node.style.get("margin-bottom", "0px"))
-        self.ml = px(node.style.get("margin-left", "0px"))
+    def layout1(self):
+        self.children = []
+        self.mt = px(self.node.style.get("margin-top", "0px"))
+        self.mr = px(self.node.style.get("margin-right", "0px"))
+        self.mb = px(self.node.style.get("margin-bottom", "0px"))
+        self.ml = px(self.node.style.get("margin-left", "0px"))
 
-        self.bt = px(node.style.get("border-top-width", "0px"))
-        self.br = px(node.style.get("border-right-width", "0px"))
-        self.bb = px(node.style.get("border-bottom-width", "0px"))
-        self.bl = px(node.style.get("border-left-width", "0px"))
+        self.bt = px(self.node.style.get("border-top-width", "0px"))
+        self.br = px(self.node.style.get("border-right-width", "0px"))
+        self.bb = px(self.node.style.get("border-bottom-width", "0px"))
+        self.bl = px(self.node.style.get("border-left-width", "0px"))
 
-        self.pt = px(node.style.get("padding-top", "0px"))
-        self.pr = px(node.style.get("padding-right", "0px"))
-        self.pb = px(node.style.get("padding-bottom", "0px"))
-        self.pl = px(node.style.get("padding-left", "0px"))
+        self.pt = px(self.node.style.get("padding-top", "0px"))
+        self.pr = px(self.node.style.get("padding-right", "0px"))
+        self.pb = px(self.node.style.get("padding-bottom", "0px"))
+        self.pl = px(self.node.style.get("padding-left", "0px"))
 
-        self.x = parent.content_left()
-        self.w = parent.content_width()
-        self.h = None
-
-    def layout(self, y):
-        self.y = y
-        self.x += self.ml
-        self.y += self.mt
+        self.w = self.parent.content_width()
         self.w -= self.ml + self.mr
 
-        y += self.bt + self.pt
+        h = self.bt + self.pt
         if any(is_inline(child) for child in self.node.children):
             layout = InlineLayout(self, self.node)
-            layout.layout()
-            y += layout.h
+            layout.layout1()
+            h += layout.h
         else:
             for child in self.node.children:
                 if isinstance(child, TextNode) and child.text.isspace(): continue
                 layout = BlockLayout(self, child)
-                layout.layout(y)
-                y += layout.h + layout.mt + layout.mb
-        y += self.pb + self.bb
-        self.h = y - self.y
+                layout.layout1()
+                h += layout.h + layout.mt + layout.mb
+        h += self.pb + self.bb
+        self.h = h
+
+    def layout2(self, y):
+        self.x = self.parent.content_left()
+        self.y = y
+        self.x += self.ml
+        self.y += self.mt
+
+        y = self.y
+        for child in self.children:
+            y += child.mt if isinstance(child, BlockLayout) else 0
+            child.layout2(y)
+            y += child.h + (child.mb if isinstance(child, BlockLayout) else 0)
 
     def display_list(self):
-        dl = []
         for child in self.children:
-            dl.extend(child.display_list())
-        if self.bl > 0: dl.append(DrawRect(self.x, self.y, self.x + self.bl, self.y + self.h))
-        if self.br > 0: dl.append(DrawRect(self.x + self.w - self.br, self.y, self.x + self.w, self.y + self.h))
-        if self.bt > 0: dl.append(DrawRect(self.x, self.y, self.x + self.w, self.y + self.bt))
-        if self.bb > 0: dl.append(DrawRect(self.x, self.y + self.h - self.bb, self.x + self.w, self.y + self.h))
-        return dl
+            yield from child.display_list()
+        if self.bl > 0: yield DrawRect(self.x, self.y, self.x + self.bl, self.y + self.h)
+        if self.br > 0: yield DrawRect(self.x + self.w - self.br, self.y, self.x + self.w, self.y + self.h)
+        if self.bt > 0: yield DrawRect(self.x, self.y, self.x + self.w, self.y + self.bt)
+        if self.bb > 0: yield DrawRect(self.x, self.y + self.h - self.bb, self.x + self.w, self.y + self.h)
 
     def content_left(self):
         return self.x + self.bl + self.pl
@@ -364,142 +382,34 @@ class BlockLayout:
     def content_width(self):
         return self.w - self.bl - self.br - self.pl - self.pr
 
-class LineLayout:
-    def __init__(self, parent):
-        self.parent = parent
-        self.children = []
-        parent.children.append(self)
-        self.w = 0
-
-    def display_list(self):
-        dl = []
-        for child in self.children:
-            dl.extend(child.display_list())
-        return dl
-
-    def layout(self, y):
-        self.y = y
-        self.x = self.parent.x
-        self.h = 0
-
-        x = self.x
-        leading = 2
-        y += leading / 2
-        for child in self.children:
-            child.layout(x, y)
-            x += child.w + child.space
-            self.h = max(self.h, child.h + leading)
-        self.w = x - self.x
-
-class TextLayout:
-    def __init__(self, node, text):
-        self.children = []
-        self.node = node
-        self.text = text
-        self.space = 0
-
-        bold = node.style["font-weight"] == "bold"
-        italic = node.style["font-style"] == "italic"
-        self.color = node.style["color"]
-        self.font = tkinter.font.Font(
-            family="Times", size=16,
-            weight="bold" if bold else "normal",
-            slant="italic" if italic else "roman"
-        )
-        self.w = self.font.measure(text)
-        self.h = self.font.metrics('linespace')
-
-    def attach(self, parent):
-        self.parent = parent
-        parent.children.append(self)
-        parent.w += self.w
-
-    def add_space(self):
-        if self.space == 0:
-            gap = self.font.measure(" ")
-            self.space = gap
-            self.parent.w += gap
-
-    def layout(self, x, y):
-        self.x = x
-        self.y = y
-
-    def display_list(self):
-        return [DrawText(self.x, self.y, self.text, self.font, self.color)]
-
-class InputLayout:
-    def __init__(self, node, multiline=False):
-        self.children = []
-        self.node = node
-        self.space = 0
-        self.multiline = multiline
-        self.w = 200
-        self.h = 60 if self.multiline else 20
-
-    def content_left(self):
-        return self.x + 1
-    
-    def content_top(self):
-        return self.y + 1
-    
-    def content_width(self):
-        return self.w - 2
-
-    def layout(self, x, y):
-        self.x = x
-        self.y = y
-        if self.node.children:
-            layout = InlineLayout(self, self.node.children[0])
-            layout.layout()
-
-    def attach(self, parent):
-        self.parent = parent
-        parent.children.append(self)
-        parent.w += self.w
-
-    def add_space(self):
-        if self.space == 0:
-            gap = 5
-            self.space = gap
-            self.parent.w += gap
-
-    def display_list(self):
-        border = DrawRect(self.x, self.y, self.x + self.w, self.y + self.h)
-        if self.children:
-            dl = []
-            for child in self.children:
-                dl.extend(child.display_list())
-            dl.append(border)
-            return dl
-        else:
-            font = tkinter.font.Font(family="Times", size=16)
-            text = DrawText(self.x + 1, self.y + 1, self.node.attributes.get("value", ""), font, "black")
-            return [border, text]
-
 class InlineLayout:
     def __init__(self, parent, node):
         self.parent = parent
         parent.children.append(self)
         self.node = node
-        self.children = []
-        LineLayout(self)
 
     def display_list(self):
-        dl = []
         for child in self.children:
-            dl.extend(child.display_list())
-        return dl
+            yield from child.display_list()
 
-    def layout(self):
-        self.x = self.parent.content_left()
-        self.y = self.parent.content_top()
+    def layout1(self):
+        self.children = []
+        LineLayout(self)
         self.w = self.parent.content_width()
         self.recurse(self.node)
+        h = 0
+        for child in self.children:
+            child.layout1()
+            h += child.h
+        self.h = h
+
+    def layout2(self, y):
+        self.x = self.parent.content_left()
+        self.y = self.parent.content_top()
         y = self.y
         for child in self.children:
-            child.layout(y)
+            child.layout2(y)
             y += child.h
-        self.h = y - self.y
 
     def recurse(self, node):
         if isinstance(node, TextNode):
@@ -517,6 +427,7 @@ class InlineLayout:
         words = node.text.split()
         for i, word in enumerate(words):
             tl = TextLayout(node, word)
+            tl.layout1()
             line = self.children[-1]
             if line.w + tl.w > self.w:
                 line = LineLayout(self)
@@ -526,21 +437,140 @@ class InlineLayout:
 
     def input(self, node):
         tl = InputLayout(node, node.tag == "textarea")
+        tl.layout1()
         line = self.children[-1]
         if line.w + tl.w > self.w:
             line = LineLayout(self)
         tl.attach(line)
 
-class DrawText:
-    def __init__(self, x, y, text, font, color):
+class LineLayout:
+    def __init__(self, parent):
+        self.parent = parent
+        parent.children.append(self)
+        self.w = 0
+        self.children = []
+
+    def display_list(self):
+        for child in self.children:
+            yield from child.display_list()
+
+    def layout1(self):
+        self.h = 0
+        leading = 2
+        w = 0
+        for child in self.children:
+            w += child.w + child.space
+            self.h = max(self.h, child.h + leading)
+        self.w = w
+
+    def layout2(self, y):
+        self.y = y
+        self.x = self.parent.x
+
+        x = self.x
+        leading = 2
+        y += leading / 2
+        for child in self.children:
+            child.layout2(x, y)
+            x += child.w + child.space
+
+class TextLayout:
+    def __init__(self, node, text):
+        self.node = node
+        self.text = text
+        self.space = 0
+
+    def layout1(self):
+        self.children = []
+        bold = self.node.style["font-weight"] == "bold"
+        italic = self.node.style["font-style"] == "italic"
+        self.color = self.node.style["color"]
+        self.font = tkinter.font.Font(
+            family="Times", size=16,
+            weight="bold" if bold else "normal",
+            slant="italic" if italic else "roman"
+        )
+        self.w = self.font.measure(self.text)
+        self.h = self.font.metrics('linespace')
+
+    def layout2(self, x, y):
         self.x = x
         self.y = y
+
+    def attach(self, parent):
+        self.parent = parent
+        parent.children.append(self)
+        parent.w += self.w
+
+    def add_space(self):
+        if self.space == 0:
+            gap = self.font.measure(" ")
+            self.space = gap
+            self.parent.w += gap
+
+    def display_list(self):
+        yield DrawText(self.x, self.y, self.text, self.font, self.color)
+
+class InputLayout:
+    def __init__(self, node, multiline=False):
+        self.node = node
+        self.space = 0
+        self.multiline = multiline
+
+    def layout1(self):
+        self.children = []
+        self.w = 200
+        self.h = 60 if self.multiline else 20
+        if self.node.children:
+            layout = InlineLayout(self, self.node.children[0])
+            layout.layout()
+
+    def layout2(self, x, y):
+        self.x = x
+        self.y = y
+        if self.children:
+            self.children[0].layout2(y)
+
+    def content_left(self):
+        return self.x + 1
+    
+    def content_top(self):
+        return self.y + 1
+    
+    def content_width(self):
+        return self.w - 2
+
+    def attach(self, parent):
+        self.parent = parent
+        parent.children.append(self)
+        parent.w += self.w
+
+    def add_space(self):
+        if self.space == 0:
+            gap = 5
+            self.space = gap
+            self.parent.w += gap
+
+    def display_list(self):
+        yield DrawRect(self.x, self.y, self.x + self.w, self.y + self.h)
+        if self.children:
+            for child in self.children:
+                yield from child.display_list()
+        else:
+            font = tkinter.font.Font(family="Times", size=16)
+            yield DrawText(self.x + 1, self.y + 1, self.node.attributes.get("value", ""), font, "black")
+
+class DrawText:
+    def __init__(self, x, y, text, font, color):
+        self.x1 = x
+        self.y1 = y
         self.text = text
         self.font = font
         self.color = color
+        self.y2 = y + 20
     
     def draw(self, scrolly, canvas):
-        canvas.create_text(self.x, self.y - scrolly, text=self.text, font=self.font, anchor='nw', fill=self.color)
+        canvas.create_text(self.x1, self.y1 - scrolly, text=self.text, font=self.font, anchor='nw', fill=self.color)
 
 class DrawRect:
     def __init__(self, x1, y1, x2, y2):
@@ -561,6 +591,20 @@ def find_element(x, y, layout):
        layout.y <= y < layout.y + layout.h:
         return layout.node
 
+class Timer:
+    def __init__(self):
+        self.phase = None
+        self.time = None
+
+    def start(self, name):
+        if self.phase: self.stop()
+        self.phase = name
+        self.time = time.time()
+
+    def stop(self):
+        print("[{:>10.6f}] {}".format(time.time() - self.time, self.phase))
+        self.phase = None
+
 class Browser:
     SCROLL_STEP = 100
 
@@ -575,17 +619,24 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
 
+        self.hovered_elt = None
+        self.window.bind("<Motion>", self.handle_hover)
+
+        self.timer = Timer()
 
     def browse(self, url):
+        self.timer.start("Download")
         self.history.append(url)
         host, port, path, fragment = parse_url(url)
         headers, body = request('GET', host, port, path)
         self.parse(body)
 
     def parse(self, body):
+        self.timer.start("Parse HTML")
         text = lex(body)
         self.nodes = parse(text)
 
+        self.timer.start("Parse CSS")
         self.rules = []
         with open("browser.css") as f:
             r = CSSParser(f.read()).parse()
@@ -597,6 +648,7 @@ class Browser:
             self.rules.extend(CSSParser(body).parse())
         self.rules.sort(key=lambda x: x[0].score())
 
+        self.timer.start("Run JS")
         self.js = dukpy.JSInterpreter()
         self.js_handles = {}
         self.js.export_function("log", print)
@@ -611,7 +663,40 @@ class Browser:
             header, body = request('GET', lhost, lport, lpath)
             self.js.evaljs(body)
 
+        self.page = Page()
+        self.layout = BlockLayout(self.page, self.nodes)
+        self.reflow(self.nodes)
         self.relayout()
+        
+    def reflow(self, elt):
+        self.timer.start("Style")
+        style(elt, self.rules)
+        self.timer.start("Layout1")
+        layout = find_layout(self.layout, elt)
+        if layout: layout.layout1()
+
+    def relayout(self):
+        self.timer.start("Layout2")
+        self.layout.layout2(0)
+        self.max_h = self.layout.h
+        self.timer.start("Display List")
+        self.display_list = list(self.layout.display_list())
+        self.render()
+        
+    def render(self):
+        self.timer.start("Rendering")
+        self.canvas.delete("all")
+        for cmd in self.display_list:
+            if cmd.y2 - self.scrolly < 0: continue
+            if cmd.y1 - self.scrolly > 600: continue
+            cmd.draw(self.scrolly - 60, self.canvas)
+        self.timer.start("Chrome")
+        self.canvas.create_rectangle(0, 0, 800, 60, fill='white')
+        self.canvas.create_rectangle(40, 10, 790, 50)
+        self.canvas.create_text(45, 15, anchor='nw', text=self.history[-1])
+        self.canvas.create_rectangle(10, 10, 35, 50)
+        self.canvas.create_polygon(15, 30, 30, 15, 30, 45, fill='black')
+        self.timer.stop()
 
     def event(self, type, elt):
         if isinstance(elt, ElementNode) and elt.handle:
@@ -639,26 +724,8 @@ class Browser:
         elt.children = new_node.children
         for child in elt.children:
             child.parent = elt
+        self.reflow(elt)
         self.relayout()
-        
-    def relayout(self):
-        style(self.nodes, self.rules)
-        self.page = Page()
-        self.layout = BlockLayout(self.page, self.nodes)
-        self.layout.layout(0)
-        self.max_h = self.layout.h
-        self.display_list = self.layout.display_list()
-        self.render()
-        
-    def render(self):
-        self.canvas.delete("all")
-        for cmd in self.display_list:
-            cmd.draw(self.scrolly - 60, self.canvas)
-        self.canvas.create_rectangle(0, 0, 800, 60, fill='white')
-        self.canvas.create_rectangle(40, 10, 790, 50)
-        self.canvas.create_text(45, 15, anchor='nw', text=self.history[-1])
-        self.canvas.create_rectangle(10, 10, 35, 50)
-        self.canvas.create_polygon(15, 30, 30, 15, 30, 45, fill='black')
                 
     def scrolldown(self, e):
         self.scrolly = min(self.scrolly + self.SCROLL_STEP, 13 + self.max_h - 600)
@@ -690,7 +757,24 @@ class Browser:
                 else:
                     elt.children = [TextNode(elt, new_text)]
                 self.event("change", elt)
+                self.reflow(elt)
                 self.relayout()
+
+    def handle_hover(self, e):
+        x, y = e.x, e.y - 60 + self.scrolly
+        elt = find_element(x, y, self.layout)
+        while elt and not isinstance(elt, ElementNode):
+            elt = elt.parent
+        if self.hovered_elt:
+            self.hovered_elt.pseudoclasses.remove("hover")
+            self.reflow(self.hovered_elt)
+        if not elt:
+            self.hovered_elt = None
+            return
+        elt.pseudoclasses.add("hover")
+        self.hovered_elt = elt
+        self.reflow(elt)
+        self.relayout()
 
     def go_back(self):
         if len(self.history) > 1:
@@ -731,6 +815,15 @@ def find_inputs(elt, out):
     for child in elt.children:
         find_inputs(child, out)
     return out
+
+def find_layout(layout, elt):
+    if not hasattr(layout, "children"):
+        return layout
+    if not isinstance(layout, LineLayout) and layout.node == elt:
+        return layout
+    for child in layout.children:
+        out = find_layout(child, elt)
+        if out: return out
 
 if __name__ == "__main__":
     import sys

@@ -24,18 +24,28 @@ def handle_connection(conx):
     conx.send(response)
     conx.close()
 
-ENTRIES = { '/': ['Pavel was here'] }
+ENTRIES = ['Pavel was here']
 def handle_request(method, url, headers, body):
+    if url == "/comment.js":
+        with open("comment.js") as f:
+            return f.read()
+    elif url == "/comment.css":
+        with open("comment.css") as f:
+            return f.read()
+
     if method == 'POST':
         params = {}
         for field in body.split("&"):
             id, value = field.split("=", 1)
             params[id] = value.replace("%20", " ")
-        if 'guest' in params and 'add' in params:
+        if 'guest' in params and len(params) <= 100:
             ENTRIES.setdefault(url, []).append(params['guest'])
 
-    out = '<!doctype html><body>'
-    out += "<form action={} method='post'><p><textarea name=guest></textarea></p><p><label>Actually add to guest book?</label><input name=add type=checkbox checked></p><p><button>Sign the book!</button></p></form>".format(url)
+    out = '<!doctype html>'
+    out += "<script src=comment.js></script>"
+    out += "<link rel=stylesheet href=comment.css />"
+    out += "<body>"
+    out += "<form action={} method=post><p><input name=guest /></p><p id=errors></p><p><button>Sign the book!</button></p></form>".format(url)
     for entry in ENTRIES.get(url, []):
         out += '<p>' + entry + '</p>'
     out += '</body>'

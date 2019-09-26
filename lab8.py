@@ -576,10 +576,10 @@ class Browser:
             header, body = request(lhost, lport, lpath)
             self.rules.extend(CSSParser(body)).parse()
         self.rules.sort(key=lambda x: x[0].score())
-        style(self.nodes, self.rules)
         self.relayout()
         
     def relayout(self):
+        style(self.nodes, self.rules)
         self.page = Page()
         self.layout = BlockLayout(self.page, self.nodes)
         self.layout.layout(0)

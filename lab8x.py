@@ -213,6 +213,7 @@ class ElementNode:
         self.children = []
         self.attributes = {}
         self.parent = parent
+        self.focused = False
 
         for attr in attrs:
             out = attr.split("=", 1)
@@ -478,17 +479,27 @@ class InputLayout:
             self.parent.w += gap
 
     def display_list(self):
+        dl = []
         border = DrawRect(self.x, self.y, self.x + self.w, self.y + self.h)
+        dl.append(border)
+
         if self.children:
-            dl = []
             for child in self.children:
                 dl.extend(child.display_list())
-            dl.append(border)
-            return dl
         else:
             font = tkinter.font.Font(family="Times", size=16)
             text = DrawText(self.x + 1, self.y + 1, self.node.attributes.get("value", ""), font, "black")
-            return [border, text]
+            dl.append(text)
+
+        if self.node.focused:
+            # Draw cursor based on last bit of text drawn
+            last_text = dl[-1]
+            x = last_text.x + last_text.font.measure(last_text.text) + 2
+            y = last_text.y
+            cursor = DrawRect(x, y + 1, x, y + 18)
+            dl.append(cursor)
+
+        return dl
 
 class InlineLayout:
     def __init__(self, parent, node):
@@ -591,7 +602,9 @@ class Browser:
         self.max_h = 0
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
+        self.window.bind("<Key>", self.handle_key)
 
+        self.focused_elt = None
 
     def parse(self, body):
         text = lex(body)
@@ -602,8 +615,8 @@ class Browser:
             self.rules.extend(r)
         for link in find_links(self.nodes):
             lhost, lport, lpath, lfragment = parse_url(relative_url(link, self.url()))
-            header, body = request(lhost, lport, lpath)
-            self.rules.extend(CSSParser(body)).parse()
+            header, body = request("GET", lhost, lport, lpath)
+            self.rules.extend(CSSParser(body).parse())
         self.rules.sort(key=lambda x: x[0].score())
         style(self.nodes, self.rules)
         self.relayout()
@@ -631,6 +644,10 @@ class Browser:
         self.render()
                     
     def handle_click(self, e):
+        if self.focused_elt:
+            self.focused_elt.focused = False
+            self.focused_elt = None
+            self.relayout()
         if e.y < 60:
             if 10 <= e.x < 35 and 10 <= e.y < 50:
                 self.go_back()
@@ -655,12 +672,22 @@ class Browser:
                     elt.attributes["checked"] = ""
                 self.relayout()
             else:
-                new_text = input("Enter new text: ")
-                if elt.tag == "input":
-                    elt.attributes["value"] = new_text
-                else:
-                    elt.children = [TextNode(elt, new_text)]
+                self.focused_elt = elt
+                elt.focused = True
                 self.relayout()
+
+    def handle_key(self, e):
+        if not e.char: return
+        if not self.focused_elt: return
+        elt = self.focused_elt
+        if elt.tag == "input":
+            elt.attributes["value"] = elt.attributes.get("value", "") + e.char
+        else:
+            if elt.children:
+                elt.children[0].text += e.char
+            else:
+                TextNode(elt, e.char)
+        self.relayout()
 
     def go_back(self):
         if len(self.history) > 1:
@@ -700,7 +727,6 @@ class Browser:
         self.parse(body)
 
     def post(self, url, params):
-        print(url)
         self.history.append((url, "POST", params))
         body = encode_params(params)
         host, port, path, fragment = parse_url(url)
