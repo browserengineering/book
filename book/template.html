@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en_US" xml:lang="en_US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+$for(author-meta)$
+  <meta name="author" content="$author-meta$" />
+$endfor$
+$if(prev)$
+  <link rel="prev" href="$prev$" />
+$endif$
+$if(next)$
+  <link rel="next" href="$next$" />
+$endif$
+  <title>$if(main)$$else$$title$ | $endif$Web Browser Engineering</title>
+$for(css)$
+  <link rel="stylesheet" href="$css$" />
+$endfor$
+$for(header-includes)$
+  $header-includes$
+$endfor$
+</head>
+<body$if(main)$ class="main"$endif$>
+
+$for(include-before)$
+$include-before$
+$endfor$
+
+$if(title)$
+<header>
+<h1 class="title">$title$</h1>
+$for(author)$
+<p class="author">$author$</p>
+$endfor$
+</header>
+$endif$
+
+$if(chapter)$
+<nav class="links">
+  Chapter $chapter$ of <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
+</nav>
+$endif$
+$if(type)$
+<nav class="links">
+  The $type$ of <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
+</nav>
+$endif$
+
+$if(toc)$
+<nav id="$idprefix$TOC">
+$table-of-contents$
+</nav>
+$endif$
+
+$body$
+
+$for(include-after)$
+$include-after$
+$endfor$
+
+$if(chapter)$
+<nav class="links">
+  Chapter $chapter$ of <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
+</nav>
+$endif$
+$if(type)$
+<nav class="links">
+  The $type$ of <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
+</nav>
+$endif$
+
+<footer>
+  &copy; 2018&ndash;2019 Pavel Panchekha
+</footer>
+
+</body>
+</html>

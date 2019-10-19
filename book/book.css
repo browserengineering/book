@@ -1,0 +1,84 @@
+html { font-size: 24px; line-height: 1.3; padding: 1ex; }
+body {
+    max-width: 65ex; margin: 0 auto; hyphens: auto; -webkit-hyphens: auto; text-align: justify;
+}
+
+pre, code { hyphens: none; -webkit-hyphens: none; }
+pre { font-size: 80%; }
+
+dt { margin-top: 1em; }
+dd { margin-bottom: 1em; }
+
+footer { text-align: center; font: italic 60% serif; margin: 5em 0; }
+
+header { text-align: center; margin-top: 3em; }
+header * { margin: 0; }
+header .author { font-style: italic; }
+header .author:before { content: "By "; }
+
+li { margin: 1em 0; }
+
+body > h1 { text-align: center; font-size: 100%; margin: 1.5em 0 0; }
+body > h1:before { content: "☙ "; }
+body > h1:after { content: " ❧"; }
+.main header { margin-bottom: 3em; }
+.main > h1 { margin: 0; font-size: 85%; }
+.main ol { list-style: lower-roman; }
+.main ol.example { list-style: decimal; }
+.main ol { margin: 0; }
+.main li { font-size: 80%; font-style: italic; }
+.main li::first-line { font-size: 125%; font-style: normal; }
+
+nav.links {
+    height: 40px; line-height: 40px; text-align: center;
+    border-radius: 10px; background: #eee;
+    padding: 0 40px; position: relative; margin-bottom: 3em;
+}
+nav.links ~ nav.links { margin-top: 3em; }
+nav.links a[rel] {
+    display: block; width: 40px; font-size: 36px;
+    text-decoration: none; color: black;
+    position: absolute; top: 0;
+}
+nav.links a[rel]:hover { background: #ddd; }
+
+nav.links a[rel=prev] {
+    left: 0; border-radius: 10px 0 0 10px; border-right: 3px solid white;
+}
+nav.links a[rel=next] {
+    right: 0; border-radius: 0 10px 10px 0; border-left: 3px solid white;
+}
+
+body { counter-reset: fn; }
+.note-container { counter-increment: fn; white-space: pre; }
+.note-container:after { content: "]"; }
+.note-container:before { content: "["; }
+.note { font-style: italic; white-space: normal; }
+@media only screen and (min-width: 1150px) {
+    body { padding: 0 20ex; }
+    .note {
+        float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
+        font-size: 120%; vertical-align: reset;
+    }
+    div .note { margin-right: calc(-28ex - 1rem - 2px); }
+    .note-container { font-size: 60%; vertical-align: super; }
+    .note-container:before { content: "[" counter(fn); }
+    .note:before { content: counter(fn) ". "; }
+}
+
+div { padding: 1em 1em 0; margin: 1em 0; }
+div:before { font-weight: bold; text-align: center; }
+div[id] { padding: 0; margin: 0 0 0 2ex; }
+
+.quirk { border: 2px solid purple; }
+.quirk:before { content: "Quirk"; color: purple; }
+.warning { border: 2px solid red; }
+.warning:before { content: "Warning"; color: red; }
+.installation { border: 2px solid blue; }
+.installation:before { content: "Installation"; color: blue; }
+.further { border: 2px solid green; padding-top: 0; }
+.further > :first-child:before { content: "Go further: "; font-weight: bold; color: green; }
+
+code .st { color: #666; }
+code .cf, code .kw, code.im { color: #606; }
+code .co { color: #a86; }
