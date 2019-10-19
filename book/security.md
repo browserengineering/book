@@ -4,25 +4,21 @@ chapter: 11
 prev: reflow
 ...
 
-What a journey the [last ten posts](index.md) have been! We\'ve built a
-minimal web browser, starting from [networking](http.md) all the way to
-[efficiently](reflow.md) [executing JavaScript](scripts.md). While the
-browser we\'ve written isn\'t exactly usable for large web applications,
-it shows the core of how browsers work. But running rich web
-applications carries its own downsides: our browser is now responsible
-for securing important user data, and now has adversaries with financial
-interests in getting at that data. In this post, we\'ll implement the
-most basic kind of user data---cookies---and the basic browser security
-policy that protects that data.
+Our browser has grown up, becoming capable of running (small) web
+applications. But these capabilities bring responsibility: our browser
+must securing important user data against adversaries interested in
+getting at that data. To see more about how this works, let's
+implement the most basic kind of user data---cookies---and the basic
+browser security policy that protects that data.
 
 ::: {.warning}
 Web browser security is a vast topic. It involves securing the web
 browser, securing the network, and securing the applications that the
 browser runs. It also involves educating the user, so that attackers
-can\'t misleading them into revealing their own secure data. This post
+can\'t misleading them into revealing their own secure data. This chapter
 can\'t cover all of that. Instead, it focuses on the mechanisms browsers
 have developed to protect the security of web applications. *So*, if
-you\'re writing security-sensitive code, this blog post is not enough.
+you\'re writing security-sensitive code, this book is not enough.
 :::
 
 Cookies
@@ -131,7 +127,10 @@ Let\'s start coding. First, we\'ll need to change the `ENTRIES` data
 structure to add a username to each:[^3]
 
 ``` {.python}
-ENTRIES = [ ("Mess with the best, die like the rest", "crashoverride"), ("HACK THE PLANET!!!", "nameless") ]
+ENTRIES = [
+    ("Mess with the best, die like the rest", "crashoverride"),
+    ("HACK THE PLANET!!!", "nameless"),
+]
 ```
 
 We\'ll also need a data structure to store usernames and passwords:
@@ -643,18 +642,18 @@ need to be logged in and submit the form on the guest book page itself.
 And that\'s a form that we, as the guest book authors, have sole control
 over (thanks to our XSS mitigations), so the form submission has now
 been secured. Or... I keep saying there\'s more to security than what\'s
-in this post. Let\'s just settle for this fact: the guest book is now
-more secure than before this post.
+in this book. Let\'s just settle for this fact: the guest book is now
+more secure than before.
 
 ::: {.warning}
-The purpose of this post is to teach the *internals of web browsers*,
-not to teach web application security. There\'s much more you\'d want to
-do to make this guest book truly secure, let alone what we\'d need to do
-to avoid denial of service attacks or to handle spam and malicious use.
-And of course we didn\'t say anything about encryption and evesdropping
-for the browser-server connection itself, which is essential for
-preserving user privacy. But that\'s a different series, and I\'ll have
-to leave security here.
+The purpose of this book is to teach the *internals of web browsers*,
+not to teach web application security. There\'s much more you\'d want
+to do to make this guest book truly secure, let alone what we\'d need
+to do to avoid denial of service attacks or to handle spam and
+malicious use. And of course we didn\'t say anything about encryption
+and evesdropping for the browser-server connection itself, which is
+essential for preserving user privacy. That all's a whole 'nother
+book.
 :::
 
 Summary
@@ -716,8 +715,7 @@ Exercises
     on-brand.
 
 [^3]: The seed comments are a reference to *Hackers*, and movie from the
-    90s. It felt thematically appropriate to this post, don\'t you
-    think?
+    90s. It felt thematically appropriate, don\'t you think?
 
 [^4]: I\'ve given the `password` input area the type `password`, which
     in a real browser will draw stars instead of showing what you\'ve
@@ -778,7 +776,7 @@ Exercises
 
 [^19]: In a real browser, that code will be displayed as a literal
     less-than sign followed by the word `script`, but in our browser,
-    this won\'t happen, unless you did the relevant exercise in [post
+    this won\'t happen, unless you did the relevant exercise in [Chapter
     4](html.md).
 
 [^20]: Why? Perhaps it has some good content too, perhaps the site has

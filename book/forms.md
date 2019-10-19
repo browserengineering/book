@@ -5,15 +5,13 @@ prev: chrome
 next: scripts
 ...
 
-[Up until now](chrome.md), our web browser has merely allowed its user
-to read HTML content on the internet. However, modern browsers not only
-allow reading content but also writing it, including making social media
-posts, filling out online forms, searching for content, and so on. The
-next few labs implement these features. To start, this lab implements
-*web forms*, which allow the user to fill out form information and then
-send that form to the server. Web forms are used almost everywhere: you
-fill one out to post on Facebook, to register to vote, or to search
-Google.
+Modern browsers not only allow reading but also writing content:
+making social media posts, filling out online forms, searching for
+content, and so on. The next few labs implement these features. To
+start, this lab implements *web forms*, which allow the user to fill
+out form information and then send that form to the server. Web forms
+are used almost everywhere: you fill one out to post on Facebook, to
+register to vote, or to search Google.
 
 Rendering widgets
 =================
@@ -499,8 +497,7 @@ a new file. The server will need to:
 -   Respond to those requests with an HTML web page
 
 I should note that the server I am building will be exceedingly simple,
-because this is, after all, a web browser, not web server, blog post
-series.
+because this is, after all, a web browser, not web server, book.
 
 Let\'s start by opening a socket. Like for the browser, we need to
 create an internet streaming socket using TCP:

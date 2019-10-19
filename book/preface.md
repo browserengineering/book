@@ -67,14 +67,13 @@ JavaScript (the text uses DukPy).
 Acknowledgements
 ================
 
-[James R. Wilcox](https://homes.cs.washington.edu/~jrw12/) and I dreamed
-up this course during a late-night chat at ICFP 2018. [Max
-Willsey](https://mwillsey.com/) proof-read the early posts and helped
-sequence the chapters. [Zach
-Tatlock](https://homes.cs.washington.edu/~ztatlock/) encouraged me to
-develop this into a course. I am thankful to all of them. I also thank
-the students of CS 6968, who found many errors and suggested important
-simplifications.
+[James R. Wilcox](https://homes.cs.washington.edu/~jrw12/) and I
+dreamed up this course during a late-night chat at ICFP 2018. [Max
+Willsey](https://mwillsey.com/) proof-read and helped sequence the
+chapters. [Zach Tatlock](https://homes.cs.washington.edu/~ztatlock/)
+encouraged me to develop this into a course. I am thankful to all of
+them. I also thank the students of CS 6968, who found many errors and
+suggested important simplifications.
 
 This book is a work in progress, and I would love to [hear your
 suggestions](mailto:me@pavpanchekha.com) on how to make it clearer,

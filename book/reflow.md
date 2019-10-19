@@ -5,12 +5,12 @@ prev: scripts
 next: security
 ...
 
-Thanks to our changes in [post 9](forms.md), our little web browser now
-renders web pages that *change*. That means our browser is now doing
-styling and layout multiple times per page. Most of that styling and
-layout, however, is a waste: even when the page changes, it usually
-doesn\'t change *much*, and layout is expensive. In this post we\'ll put
-the breaks on new features and implement some speed-ups instead.
+Our little web browser now renders web pages that *change*. That means
+our browser is now doing styling and layout multiple times per page.
+Most of that styling and layout, however, is a waste: even when the
+page changes, it usually doesn\'t change *much*, and layout is
+expensive. In this chapter we\'ll put the breaks on new features and
+implement some speed-ups instead.
 
 Profiling our browser
 =====================
@@ -101,21 +101,22 @@ console on a full page load for this web page.
 The overall process takes about one second (60 frames), with layout
 consuming half and then rendering and network consuming the rest.
 Moreover, the downloading only takes place on initial load, so it\'s
-really layout and rendering that we\'re going to optimize in this post.
-By the way, keep in mind that while networking in a real web browser is
-similar enough to our toy version,[^2] rendering is *more* complex in
-real web browsers (since real browsers can apply many more stylistic
-effects) and layout is *much more* complex in real browsers![^3][^4]
+really layout and rendering that we\'re going to optimize. By the way,
+keep in mind that while networking in a real web browser is similar
+enough to our toy version,[^2] rendering is *more* complex in real web
+browsers (since real browsers can apply many more stylistic effects)
+and layout is *much more* complex in real browsers![^3][^4]
 
-By the way, this might be a point in these posts where you realize you
-accidentally implemented one of the previous posts in a way that is
-super inefficient. If you find that something other than the network,
-layout, or rendering is taking a long time, maybe you want to look into
-that. On the other hand, the exact speeds of each of these phases can
-vary quite a bit between implementations, and might depend (for example)
-on the exercises you ended up implementing, so don\'t sweat the details
-too much. Whatever help it is your browser needs, this post will only
-address layout and rendering.
+By the way, this might be the point in the book where you realize you
+accidentally implemented something super-inefficiently. If you
+something other than the network, layout, or rendering is taking a
+long time, look into that.[^inexact] Whatever help it is your browser
+needs, this chapter will only address layout and rendering.
+
+[^inexact]: The exact speeds of each of these phases can vary quite a
+    bit between implementations, and might depend (for example) on the
+    exercises you ended up implementing, so don\'t sweat the details
+    too much.
 
 Adding `:hover` styles
 ======================
@@ -227,24 +228,24 @@ hover over an element you probably also hover over its parent, and both
 get the `:hover` style. Because of how limited our selector language is,
 there\'s no style change that incrementalizes well that I can apply on
 hover. So I\'m instead bowdlerizing how `:hover` works. In other words,
-this post is a good guide to incremental reflow but a bad guide to hover
-selectors. My deepest apologies. Please learn how to *use* CSS from some
-other source.
+this chapter is a good guide to incremental reflow but a bad guide to
+hover selectors. My deepest apologies. Please learn how to *use* CSS
+from some other source.
 :::
 
 Relative positions
 ==================
 
-How can we make layout faster? In the intro to this post, I mentioned
-that the layout doesn\'t change *much*, and that\'s going to be the key
-here. But what exactly do I mean? When the page is *reflowed*[^5] due to
-some change in JavaScript or CSS (like with hovering), the sizes and
-positions of *most* elements on the page change. For example, changing
-what element you\'re hovering over will change the height of that
-element (due to the added border), and that will move every later
-element further down the page. However, intuitively, even if some part
-of the page moves down, the relative positions of its innards won\'t
-change much.
+How can we make layout faster? In the intro to this chapter, I
+mentioned that the layout doesn\'t change *much*, and that\'s going to
+be the key here. But what exactly do I mean? When the page is
+*reflowed*[^5] due to some change in JavaScript or CSS (like with
+hovering), the sizes and positions of *most* elements on the page
+change. For example, changing what element you\'re hovering over will
+change the height of that element (due to the added border), and that
+will move every later element further down the page. However,
+intuitively, even if some part of the page moves down, the relative
+positions of its innards won\'t change much.
 
 My goal will be to leverage this intuition to skip as much work as
 possible on reflow. The idea is going to be to split layout into two
@@ -538,7 +539,7 @@ class Browser:
 Note that while `reflow` takes an element as an argument, it ignores it,
 and restyles and re-lays-out the whole page. That\'s clearly silly, so
 let\'s fix that. First, the `style` call only needs to be passed
-`elt`:[^9]
+`elt`:
 
 ``` {.python}
 style(elt, self.rules)
@@ -647,10 +648,10 @@ process made the `:hover` selector perfectly usable.
 Summary
 =======
 
-With the changes in this post, my toy browser became roughly 30× faster,
-to the point that it is now reacts to changes fast enough to make simple
-animations. The cost of that is a more complex, two-pass layout
-algorithm.
+With the changes in this chapter, my toy browser became roughly 30×
+faster, to the point that it is now reacts to changes fast enough to
+make simple animations. The cost of that is a more complex, two-pass
+layout algorithm.
 
 Exercises
 =========
@@ -716,12 +717,6 @@ Exercises
     high-performance application would like you to know that 6.418
     milliseconds is almost 40% of your one-frame time budget! But, this
     is a toy web browser written in Python. Cut me some slack.
-
-[^9]: By the way, there\'s a fix you may need to make to `style`: make
-    sure to reset `node.style` to `{}` at the top of the method. I\'ve
-    updated [post 6](styles.md) to do this from the get-go, but you may
-    have read an earlier version of the page and aI don\'t want you to
-    be confused.
 
 [^10]: There is a subtlety in the code below. It\'s important to check
     the current node before recursing, because some nodes have two

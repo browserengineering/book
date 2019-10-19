@@ -1,9 +1,17 @@
 ---
 title: Downloading Web Pages
 chapter: 1
-prev: preface
+prev: preliminaries
 next: graphics
 ...
+
+::: {.todo}
+- Add encrypted connections at the end
+- Remove ports until we get to encrypted connections
+- Parsing responses should be simpler
+- No subsections
+:::
+
 
 The primary goal of a web browser is to show the user some information
 identified by a URL. So, how does a browser get information out of a URL

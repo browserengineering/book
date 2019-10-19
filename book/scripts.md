@@ -5,24 +5,22 @@ prev: forms
 next: reflow
 ...
 
-With the [last post](forms.md), our web browser has become an
-application platform, able to send information back to web servers and
-to run dynamic web applications like the little guest book that we coded
+Forms make our web browser has become an application platform, able to
+run dynamic web applications like the little guest book that we coded
 up. However, form-based web applications require page loads between
 every change, and rightly fell out of favor in the early 2000s. What
-took their place are JavaScript-based applications, which run user code
-on web pages that can modify the pages dynamically, without reloads. In
-this post, we\'ll implement the rudiments of script execution in our toy
-web browser.
+took their place are JavaScript-based applications, which run user
+code on web pages that can modify the pages dynamically, without
+reloads. Let's add support for that to our toy web browser.
 
 Installing DukPy
 ================
 
 Actually writing a JavaScript interpreter is beyond the scope of a
 browser course (because it is pretty darn similar to implementing any
-other interpreted language), so this post, unlike the previous ones, has
-dependencies outside the Python standard library, namely the `dukpy`
-library for executing JavaScript.
+other interpreted language), so this chapter, unlike the previous
+ones, has dependencies outside the Python standard library, namely the
+`dukpy` library for executing JavaScript.
 
 ::: {.quirk}
 If you\'re using C or C++, you may want to try binding to the `duktape`
@@ -72,10 +70,10 @@ dukpy.evaljs("2 + 2")
 ```
 
 If you get an error on the first line, you probably failed to install
-DukPy.[^2] If you get an error, or a segfault on the second line,
+DukPy.[^2] If you get an error, or a segfault, on the second line,
 there\'s a chance that Duktape failed to compile for some reason or
 other, and maybe doesn\'t support your system. In that case you might
-need to skip this post.[^3]
+need to skip this chapter.[^3]
 
 Running JavaScript code
 =======================
@@ -809,8 +807,8 @@ Now it should be impossible to submit the form if the comment is too
 long.
 
 Well... Impossible in this browser. But there are browsers that don\'t
-run JavaScript, including my own browser before this post. So let\'s add
-a check on the server side as well:
+run JavaScript (like ours, one chapter back). So let\'s add a check on
+the server side as well:
 
 ``` {.python}
 def handle_request(method, url, headers, body):

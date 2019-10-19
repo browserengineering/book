@@ -12,7 +12,7 @@ dd { margin-bottom: 1em; }
 footer { text-align: center; font: italic 60% serif; margin: 5em 0; }
 
 header { text-align: center; margin-top: 3em; }
-header * { margin: 0; }
+.main header * { margin: 0; }
 header .author { font-style: italic; }
 header .author:before { content: "By "; }
 
@@ -82,3 +82,6 @@ div[id] { padding: 0; margin: 0 0 0 2ex; }
 code .st { color: #666; }
 code .cf, code .kw, code.im { color: #606; }
 code .co { color: #a86; }
+
+.todo { background: darkred; color: white; padding-bottom: 1em; }
+.todo:before { content: "This book is a work in progress:"; }

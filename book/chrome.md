@@ -5,13 +5,12 @@ prev: styles
 next: forms
 ...
 
-With the [previous post](styles.md) we have largely completed our toy
-browser\'s support for reading a single web page. However, our toy
-browser is still missing the key insight of *hypertext*: that web pages
-are linked together into a dense web of information by hyperlinks. In
-other words, we can watch the waves, but we cannot yet surf the web. In
-this post we will implement support for hyperlinks, and while we are at
-it will fill in the missing features of our web browser, like an address
+Our toy browser can read a single web page. However, our toy browser
+is still missing the key insight of *hypertext*: that web pages are
+linked together into a dense web of information by hyperlinks. In
+other words, we can watch the waves, but we cannot yet surf the web.
+We need to implement support for hyperlinks, and while we are at it
+will fill in the missing features of our web browser, like an address
 bar, a back button, and visited links.
 
 Click handling
@@ -163,7 +162,7 @@ self.h = self.font.metrics('linespace')
 
 We can compute all this immediately in the constructor; that\'s one of
 the benefits of implementing styles and inheritance in the previous
-post.
+chapter.
 
 Now that we can start with our changes to inline layout. First, let\'s
 create that list of lines, and initialize it with a blank line:
@@ -451,10 +450,10 @@ def handle_click(self, e):
         self.browse(relative_url(elt.attributes["href"], self.url))
 ```
 
-Try this code out on this page---you could use the links in the sidebar,
-or the link at the very beginnging pointing to prior posts. You should
-now be able to use our toy browser to read not just this web page, but
-all of the pages in this book.
+Try the code out on this page---you could use the links at the top of
+the page, or the links in the table of contents. You should now be
+able to use our toy browser to read not just this web page, but all of
+the pages in this book.
 
 Browser chrome
 ==============
@@ -578,7 +577,7 @@ Exercises
 
 -   Make it possible for the user to click on the address bar to enter a
     new URL. Implementing text entry is way too much work, of course.
-    Taking a hint from the next post, I recommend requesting input on
+    Taking a hint from the next chapter, I recommend requesting input on
     the command line when the user clicks on the address bar, and using
     the entered text as the new URL.
 -   URLs can contain a *fragment*, which comes at the end of a URL and

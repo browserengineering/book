@@ -5,25 +5,21 @@ prev: layout
 next: chrome
 ...
 
-In the [previous post](layout.md) we added block layout to our web
-browser and implemented the CSS box model. However, the block layout
-implementation required a lengthy list of tag-specific styles to specify
-margins, borders, and padding (as well as colors and sizes, if you did
-that exercise). Plus, the appearance of the various page elements was
-fixed: there was no way for the web page itself to change its appearance
-or override the browser styles. Let\'s fix that in this post by
-implementing CSS.
+Our implementation of block layout required a lengthy list of
+tag-specific styles to specify margins, borders, and padding (as well
+as colors and sizes, if you did that exercise). This way, the
+appearance of the various page elements is fixed: the web page cannot
+override our style decisions. Let\'s fix that by implementing CSS.
 
 The `style` attribute
 =====================
 
-In the previous post, we added different styles for different elements:
-margins for paragraphs and list items, padding for the body and for
-lists, and borders for code blocks. Right now, there\'s no way for a web
-page to override those choices, so web pages are kind of stuck with
-whatever styles our browser chooses to assign them. That seems a little
-unfair though, not least because I have no artistic sense and so my
-styles look ugly. Let\'s allow webpages to override our choices.
+Different elements have different styles: margins for paragraphs and
+list items, padding for the body and for lists, and borders for code
+blocks. But web pages are stuck with whatever styles our browser
+chooses to assign them. That seems a little unfair though, not least
+because I have no artistic sense and so my styles look ugly. Webpages
+should be able to override my choices.
 
 So let\'s start with the easiest way web pages can override browser
 styles, which is the `style` attribute on elements. The style attribute
@@ -433,9 +429,9 @@ Put that block *after* you read the browser style, because later styles
 override earlier ones and we want user styles to take priority.[^10]
 
 Now our CSS engine should handle some real-world web pages, like this
-one, properly, including changing some margins and paddings. If you\'ve
-implemented background and border colors in prior posts, you should also
-see a light-gray background for the page.
+one, properly, including changing some margins and paddings. If
+you\'ve implemented the exercises on background and border colors, you
+should also see a light-gray background for the page.
 
 Styles for inline layout
 ========================
@@ -527,7 +523,7 @@ b { display: inline; font-weight: bold; }
 Summary
 =======
 
-This post was quite a lot of work! We implemented a rudimentary but
+This chapter was quite a lot of work! We implemented a rudimentary but
 complete layout engine, including a parser, selector matching,
 cascading, and even downloading and applying CSS files. Not only that,
 but the CSS engine should be relatively easy to extend, with new
@@ -583,9 +579,9 @@ Exercises
     `section .warning` selects warnings inside sections, while
     `section.warning` selects warnings that *are* sections.
 
-[^1]: In CSS you can put spaces around the semicolons or the colons, but
-    you might not have implemented that aspect of attribute parsing in
-    the prior post. Also maybe you don\'t have border colors
+[^1]: In CSS you can put spaces around the semicolons or the colons,
+    but you might not have implemented the exercise to support spaces
+    in attribute. Also maybe you don\'t have border colors
     implemented.
 
 [^2]: The `get` method for dictionaries gets a value out of a

@@ -5,9 +5,9 @@ prev: http
 next: text
 ...
 
-Once a web browser has [downloaded a web page](http.md), it has to show
-that web page to the user. Since we\'re not savages,[^1] we browse the
-web through a graphical user interface. How? In this chapter I\'ll equip
+Once a web browser has downloaded a web page, it has to show that web
+page to the user. Since we\'re not savages,[^1] we browse the web
+through a graphical user interface. How? In this chapter I\'ll equip
 my toy browser with a graphical user interface.
 
 Creating windows

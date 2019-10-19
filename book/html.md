@@ -5,8 +5,13 @@ prev: text
 next: layout
 ...
 
-So far, our web browser [understands web pages](text.md) as a stream of
-HTML tokens: open tags, close tags, and text. It\'s worked for now, but
+::: {.todo}
+- HTML attributes are unmotivated
+- I've dropped <meta> and <link> self-closing tags, probably should put them back somehow
+:::
+
+So far, our web browser understands web pages as a stream of HTML
+tokens: open tags, close tags, and text. It\'s worked for now, but
 that superficial view of HTML will hold us back when we try to draw
 backgrounds and borders, let alone implement CSS. HTML has a tree
 structure essential to those elements of style. So let\'s change our
@@ -311,8 +316,8 @@ structured tree, not just a flat list of tokens, and we\'ve updated
 layout to be a recursive tree traversal instead of a linear pass through
 the document. We\'ve also made the browser much more robust to malformed
 HTML. While these changes don\'t have much impact yet, this new,
-structured understanding of HTML sets us up to make layout much more
-structured in the next post.
+structured understanding of HTML sets us up to implement a layout
+engine in the next chapter.
 
 Exercises
 =========
@@ -339,10 +344,10 @@ Exercises
     web page is that someone forgot a close tag. Change the parser so
     that a document like `<p>hello<p>world</p>` results in two sibling
     nodes instead of one paragraph inside another.
--   The attribute parser in this post doesn\'t correctly handle
-    attribute values that contain spaces, which is valid when the
-    attribute is quoted. Fix this case in the attribute parser. You will
-    likely need to loop over the attribute character-by-character.
+-   The attribute parser doesn\'t correctly handle attribute values
+    that contain spaces, which is valid when the attribute is quoted.
+    Fix this case in the attribute parser. You will likely need to
+    loop over the attribute character-by-character.
 
 [^1]: To be clear: there is additional structure, we\'re just ignoring
     it for now.

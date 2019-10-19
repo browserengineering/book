@@ -5,12 +5,12 @@ prev: graphics
 next: html
 ...
 
-In the [last chapter](graphics.md), our web browser gained a graphical
-window and began to display web pages with a grid of characters. That\'s
-OK for Chinese text (and some other East Asian languages), but in this
-chapter we\'ll better support English text, which features characters of
-different widths and words that you can\'t break across lines.[^1] A
-great English-language web page to try out is this page!
+In the last chapter, our web browser gained a graphical window and
+began to display web pages with a grid of characters. That\'s OK for
+Chinese text (and some other East Asian languages), but in this
+chapter we\'ll better support English text, which features characters
+of different widths and words that you can\'t break across lines.[^1]
+A great English-language web page to try out is this page!
 
 What is a font?
 ===============

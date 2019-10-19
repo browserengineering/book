@@ -5,14 +5,11 @@ prev: html
 next: styles
 ...
 
-In the [last post](html.md), we modified out web browser to parse HTML
-into a tree, and to do layout directly on that tree. However, until now,
+Our browser now does layout from the element tree. However, until now,
 layout has been a pretty unstructured process, with each tag just
 directly modifying state like the current *x* and *y* position or
 whether text is bold and italic. That\'s an appropriate way to lay out
-text, but real web browsers also lay out other kinds of content. In this
-post, we\'ll extend our browser to lay out paragraphs and headings
-correctly.
+text, but isn't enough to handle borders.
 
 Inline layout
 =============
@@ -42,9 +39,9 @@ class Block:
         self.w = w
 ```
 
-Now I\'m going to rearrange the `layout` function from last post into a
-class called `InlineLayout`, which will sort of combine the three
-`layout` functions and the `State` class together:
+Now I\'m going to rearrange the `layout` function into a class called
+`InlineLayout`, which will sort of combine the three `layout`
+functions and the `State` class together:
 
 ``` {.python}
 class InlineLayout:
@@ -489,7 +486,7 @@ elif node.tag == "pre":
 Summary
 =======
 
-In this post, we did a pretty dramatic rewrite of the layout portion of
+In this chapter, we did a pretty dramatic rewrite of the layout portion of
 our browser. We\'ve now split layout into two different *layout modes*,
 which handle laying out different types of content. Furthermore, we\'ve
 extended the styling capabilities of our browser, adding the CSS box
