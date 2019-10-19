@@ -4,10 +4,12 @@ author: Pavel Panchekha
 main: true
 ...
 
-Web browsers are ubiquitous, but how do they work? This book builds a
-basic but complete web browser, including all of the major browser
-components from networking to JavaScript, in a thousand lines of
-Python.
+Web browsers are ubiquitous, but how do they work? This book explains,
+building a basic but complete web browser, from networking to
+JavaScript, in a thousand lines of Python.
+
+Introduction
+============
 
 1. [Preface](preface.md)
 
@@ -46,3 +48,10 @@ Part 3: Running Applications
     Hover styles, two-phase layout, and faster rendering
 (@) [Keeping Data Private](security.md)\
     Cookies, logins, and XSS and CSRF
+
+Conclusion
+==========
+
+1. What Wasn't Covered
+
+2. A Changing Landscape
