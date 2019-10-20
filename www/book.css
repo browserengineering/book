@@ -61,7 +61,7 @@ body { counter-reset: fn; }
     body { padding: 0 20ex; }
     .note {
         float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
-        font-size: 120%; vertical-align: reset;
+        font-size: 120%; vertical-align: reset; text-align: left;
     }
     div .note { margin-right: calc(-28ex - 1rem - 2px); }
     .note-container { font-size: 60%; vertical-align: super; }

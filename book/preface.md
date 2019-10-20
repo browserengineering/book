@@ -5,16 +5,16 @@ next: preliminaries
 ...
 
 A Computer Science degree traditionally includes courses like OS,
-Databases, and Compilers. Among the reasons for these courses,[^1] one
-stands out: the mystery students attach to these systems, leaving them
+Databases, and Compilers. One reason for these courses stands out to
+me:[^1] the mystery students attach to these systems, leaving them
 powerless over part of their computing environment. These classes
-replace magic with code. They are successful when Linux, Postgres, or
-LLVM look like improvements, additions, and optimizations atop a
-conceptually simple core.
+replace magic with code: Linux, Postgres, or LLVM look like
+improvements, additions, and optimizations atop an understandable
+core.
 
-[^1]: A focus on speed; learning low-level APIs; practice writing C;
-    knowing your stack; using systems better; and of course the
-    simple importance of these systems.
+[^1]: Others are: a focus on speed; learning low-level APIs; practice
+    with C; knowing the stack; using systems better; and the
+    importance of the system covered.
 
 But web browsers internals are still opaque to students, faculty, and
 industry programmers. This book dissipates this mystery by
@@ -32,35 +32,32 @@ experience. However, [chapter 5 (Structuring Web Pages)](layout.md) and
 [chapter 6 (Applying User Styles)](styles.md) are more difficult and
 may take twice as long.
 
-The browser this book builds does not attempt to conform to standards,
-and it handles only a sliver of the full HTML, CSS, and JavaScript
-languages. It also handles errors poorly, isn\'t resilient against
-malicious inputs, and is quite slow---fatal flaws for a real browser,
-but survivable in a teaching one. What makes the browser good is that
-its architecture matches that of real browsers, giving you a real
-understanding of those 10 million line of code behemoths. As you go
-through the book, you focus more and more directly on what separates a
-web browser from the other programs on your computer.
-
-At every step, your web browser will "work" and be useful for some
-task. Every chapter will tackle one of the browser\'s glaring
-problems.[^2] In that way, you will also practice growing and
-improving complex software. The text tries to avoid unnecessary
-changes and refactorings. If you feel particularly interested in a
-particular component, you can stop for a while to flesh it out and add
-missing features. Continue with the rest of the book when you have
-sated your curiosity.
-
-[^2]: This idea is from J. Wilcox, who was inspired by [S.
-    Zdancewic](http://www.cis.upenn.edu/~stevez/)\'s compilers
-    course.
-
 The code in this book uses Python 3, and I recommend you follow along in
 the same. That said, the text avoids dependencies where possible. If you
 choose to follow along in another language, you\'ll need to ensure that
 your language has libraries for making encrypted connections (Python has
 one built in), drawing simple graphics (the text uses Tk), and executing
 JavaScript (the text uses DukPy).
+
+Your web browser will "work" and be useful at every step of the way,
+and every chapter will tackle a glaring problem.[^2] In that way, you
+will also practice growing and improving complex software. The text
+tries to avoid unnecessary changes and refactorings. That way, if you
+feel particularly interested in a particular component, you can flesh
+it out and add missing features, without making later chapters more
+difficult.
+
+[^2]: This idea is from J. Wilcox, inspired in turn by
+    [S. Zdancewic](http://www.cis.upenn.edu/~stevez/)\'s course on
+    compilers.
+
+This book's browser does not attempt to conform to standards, and it
+handles only a sliver of the full HTML, CSS, and JavaScript languages.
+It also handles errors poorly, isn\'t resilient against malicious
+inputs, and is quite slow---fatal flaws in a real browser, but
+survivable in a teaching one. What makes the browser good is that its
+architecture matches that of real browsers, giving you a real
+understanding of those 10 million line of code behemoths.
 
 Acknowledgements
 ================
