@@ -6,66 +6,75 @@ next: graphics
 ...
 
 ::: {.todo}
-- Add encrypted connections at the end
-- Remove ports until we get to encrypted connections
-- Parsing responses should be simpler
-- No subsections
+I plan to simplify response parsing, and possibly either merge
+`split_url` and `request`, or have one call the other, instead of
+making both available at the top level.
 :::
 
 
-The primary goal of a web browser is to show the user some information
-identified by a URL. So, how does a browser get information out of a URL
-like `http://example.org/index.html`? Well, in short (and a network
-class will cover this in more detail), the browser parses the URL,
-connects to a server over the Internet, sends that server a request,
-receives a reply, and finally shows that to the user.
+The primary goal of a web browser is to display the information
+identified by a URL. To do so, a browser splits the URL into parts,
+uses those parts to connects to a server somewhere on the Internet,
+and requests information from that server. It then displays the data
+contained in the server's reply.
 
-Parsing the URL
-===============
+The parts of a URL
+==================
 
-The first thing a browser does with a URL like
-`http://example.org/index.html` is to *parse* it, which means that the
-URL is split into parts. Here those parts are:
+A URL like `http://example.org/index.html` has several parts:
 
--   The *scheme*, here `http`
--   The *host*, here `example.org`
--   The *path*, here `/index.html`
+-   The *scheme*, here `http`, explains *how* to get the information
+-   The *host*, here `example.org`, explains *where* to get it
+-   The *path*, here `/index.html`, explains *what* information to get
 
-These parts play different roles: the host tells the browser who to get
-the information from, the scheme tells it how, and the path is something
-the browser tells the host to explain what information it wants. There
-are also optional parts to the URL. Sometimes, like in
-`http://localhost:8080/`, there is a *port*, which you can think of as
-telling you which door to the host\'s house to use; the default is
-`80`.[^1][^2] Sometimes there is also something tacked onto the end, a
-*fragment* like `#section` or a *query string* like `?s=term`, plus
-there are more obscure parts of the URL, all of which I\'ll ignore here.
+There are also optional parts to the URL. Sometimes, like in
+`http://localhost:8080/`, there is a *port* that comes after the host,
+and there can be something tacked onto the end, a *fragment* like
+`#section` or a *query* like `?s=term`. We'll come back to ports later
+in this chapter, and some other URL components appear in exercises.
 
-In Python, there\'s a library called `urllib.parse` that can do this URL
-parsing for you. However, I\'m trying to avoid using libraries here,[^3]
-so let\'s write a bad version ourselves. We\'ll start with the
-scheme---our browser only supports `http`, so we just need to check that
-the URL starts with `http://` and then strip that off:
+In Python, there\'s a library called `urllib.parse` that splits a URL
+into these pieces, but let's write our own.[^3] We\'ll start with the
+scheme---our browser only supports `http`, so we just need to check
+that the URL starts with `http://` and then strip that off:
+
+[^3]: There's nothing wrong with using libraries, but implementing our
+    own is good for learning. Plus, it makes this book easier to
+    follow in a language besides Python.
+
 
 ``` {.python}
 assert url.startswith("http://")
 url = url[len("http://"):]
 ```
 
-Next, the host and port come before the first `/`, while the path is
-that slash and everything after it:
+Now we must separate the host from the path. The host comes before the
+first `/`, while the path is that slash and everything after it:
 
 ``` {.python}
-hostport, path = url.split("/", 1) if "/" in url else (url, "/")
-if ":" in hostport:
-    host, port = hostport.rsplit(":", 1)
+if "/" in url:
+    host, path = url.split("/", 1)
+    path = "/" + path
 else:
-    host, port = hostport, "80"
+    host, path = url, "/"
 ```
 
-Here I\'m using the `rsplit(s, n)` function, which splits a string by
-`s`, starting from the end, at most `n` times. The port is optional and
-defaults to 80, and the path defaults to just \"`/`\" if it\'s left off.
+Here I\'m using the `split(s, n)` function, which splits a string by
+`s`, starting from the beginning, at most `n` times. The path always
+includes the separating slash, so I make sure to add it back after
+splitting on it.
+
+Let's combine these code snippets into a function, `split_url`, which
+takes in a URL and returns the host and the path:
+
+``` {.python}
+def split_url(url):
+    # ...
+    return host, path
+```
+
+With the host and path identified, the next step is to connect to the
+host and request the information at that path.
 
 ::: {.further}
 The syntax of URLs is defined in [RFC
@@ -81,14 +90,8 @@ the URL. Try to implement them; most languages have libraries that
 handle the `base64` encoding used in Data URLs.[^4]
 :::
 
-Communicating with the host
-===========================
-
-With the URL parsed, a browser must connect to the host, explain what
-information it wants, and receive the host\'s reply.
-
 Connecting to the host
-----------------------
+======================
 
 First, a browser needs to find the host on the Internet and make a
 connection.
@@ -99,17 +102,20 @@ name like `example.org` into a *IP address* like `93.184.216.34`.[^6]
 Then the OS decides which hardware is best for communicating with that
 IP address (say, wireless or wired) using what is called a *routing
 table*, and uses that hardware to send a sort of greeting to that IP
-address, to the specific port at that IP address that the browser
-indicated. Then there\'s a driver inside the OS that communicates with
-that hardware and send signals on a wire or whatever.[^7] On the other
-side of that wire (or those airwaves) is a series of *routers*[^8] which
-each send your message in the direction they think will take it toward
-that IP address.[^9] Anyway, the point of this is that the browser tells
-the OS, hey, put me in touch with `example.org` on port `80`, and it
-does.
+address. That greeting names a *port*, which for web pages is usually
+80 (or 443 for encrypted connections).^[A might run multiple services,
+like a website and also email, and the port identifies which one the
+browser is interested in.] The OS communicates with the selected
+hardware via a driver, and so sends signals on a wire or over the
+air.[^7] On the other side of that wire (or those airwaves) is a
+series of *routers*[^8] which each send your message in the direction
+they think will take it toward that IP address.[^9] Anyway, the point
+of this is that the browser tells the OS, “Hey, put me in touch with
+`example.org` on port `80`”, and it does.
 
 On many systems, you can set up this kind of connection manually using
-the `telnet` program, like this:
+the `telnet` program, like this:^[Port 80 is the standard port for
+unencrypted HTTP connections, and the default if you don't specify one.]
 
 ``` {.example}
 telnet example.org 80
@@ -139,13 +145,11 @@ from `telnet` but it does basically the same thing. You can also install
 :::
 
 This means that the OS converted `example.org` to the IP address of
-`93.184.216.34` and was able to connect to it.[^10]
+`93.184.216.34` and was able to connect to it.[^10] You can now type
+in text and press enter to talk to `example.org`.
 
-You can type text into the console and press enter to talk to
-`example.org`.
-
-Requesting information from the host
-------------------------------------
+Requesting information
+======================
 
 Once it\'s been connected, the browser explains to the host what
 information it is looking for. In our case, the browser must do that
@@ -189,8 +193,8 @@ The HTTP/1.0 standard is also known as [RFC
 interested in `Connection` and keep-alive, look there.
 :::
 
-Our own Telnet
---------------
+Telnet in Python
+================
 
 So far we\'ve communicated with another computer using `telnet`. But it
 turns out that `telnet` is quite a simple program, and we can do the
@@ -228,10 +232,11 @@ s = socket.socket(
 ```
 
 Once you have a socket, you need to tell it to connect to the other
-computer. For that, you need the host and the port. Note that there are
-two parentheses in the `connect` call: `connect` takes a single
+computer. For that, you need the host and the port. Note that there
+are two parentheses in the `connect` call: `connect` takes a single
 argument, and that argument is a pair of a host and a port. This is
-because different address families have different numbers of arguments.
+because different address families have different numbers of
+arguments.
 
 ``` {.python}
 s.connect(("example.org", 80))
@@ -243,6 +248,12 @@ using the `send` method.
 ``` {.python}
 s.send(b"GET /index.html HTTP/1.0\r\nHost: example.org\r\n\r\n")
 ```
+
+Be careful with what you type here. It\'s very important to put *two*
+newlines `\r\n` at the end, so that you send that blank line at the
+end of the request. If you forget that, the other computer will keep
+waiting on you to send that newline, and you\'ll keep waiting on its
+reply. Computers are dumb.
 
 ::: {.quirk}
 Time for some Python-specific quirks. When you send data, it\'s
@@ -265,12 +276,6 @@ versus `bytes`. You can turn a `str` into `bytes` by calling its
 `encode("utf8")` method.[^18]
 :::
 
-Also be careful with the text you type in here. It\'s very important to
-put *two* newlines `\r\n` at the end, so that you send that blank line.
-If you forget that, the other computer will keep waiting on you to send
-that newline, and you\'ll keep waiting on it to answer you. Computers
-are dumb.
-
 You\'ll notice that the `send` call returns a number, in this case `44`.
 That tells you how many bytes of data you sent to the other computer;
 if, say, your network connection failed midway through sending the data,
@@ -289,8 +294,8 @@ complicated](https://tools.ietf.org/html/rfc8446), but your language
 might have a simple library for using it. In Python, it\'s called `ssl`.
 :::
 
-The host\'s reply
-=================
+Understanding the reply
+=======================
 
 If you look at your `telnet` session, you should see that the other
 computer\'s response starts with this line:
@@ -308,18 +313,18 @@ and they have a pretty neat organization scheme:
 
 -   The 100s are informational messages
 -   The 200s mean you were successful
--   The 300s mean you need to do a follow-up action (usually to follow a
-    redirect)
+-   The 300s request follow-up action (usually to follow a redirect)
 -   The 400s mean you sent a bad request
 -   The 500s mean the server handled the request badly
 
-Note the genius of having two sets of error codes (400s and 500s): which
-one you get tells you who the server thinks is at fault (the server or
-the browser). You can find a full list of the different codes [on
+Note the genius of having two sets of error codes (400s and 500s),
+which tells you who is at fault, the server or the browser.^[More
+precisely, who the server thinks is at faul.t] You can find a full
+list of the different codes [on
 Wikipedia](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes).
 
 After the `200 OK` line, the server sends its own headers. When I did
-this, I got these headers (but yours may differ):
+this, I got these headers (but yours will differ):
 
 ``` {.example}
 Cache-Control: max-age=604800
@@ -453,6 +458,18 @@ between a pair of angle brackets, and `not in_angle`. When the current
 character is an angle bracket, changes between those states; when it is
 not, and it is not inside a tag, it prints the current character.[^24]
 
+It's now possible to string together `split_url`, `request`, and `show`:
+
+``` {.python}
+import sys
+host, path = split_url(sys.argv[1])
+headers, body = request(host, path)
+show(body)
+```
+
+This code uses the `sys` library to read the first argument
+(`sys.argv[1]`) from the command line to use as the URL.
+
 ::: {.further}
 The `Accept-Encoding` header allows a web browser to
 advertise that it supports [receiving compressed
@@ -460,6 +477,64 @@ documents](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Enco
 Try implementing support for one of the common compression formats (like
 `deflate` or `gzip`)!
 :::
+
+
+Encrypted connections
+=====================
+
+So far, our browser supports the `http` scheme. That's pretty good:
+it's the most common scheme used for web browsing today. But more and
+more, websites are migrating to the `https` scheme. I'd like this toy
+browser to support `https` because many websites today require it.
+
+The difference between `http` and `https` is that `https` is more
+secure---but let's be a little more specific. The `https` scheme, or
+more formally HTTP over TLS, is identical to the normal `http` scheme,
+except that all communication between the browser and the host is
+encrypted. There are quite a few details to how this works: which
+encryption algorithms are used, how a common encryption key is agreed
+to, and of course how to make sure that the browser is connecting to
+the correct host.
+
+Luckily, the Python `ssl` library implements all of these details for
+us, so making an encrypted connection is almost as easy as making a
+regular connection. That ease of use comes with accepting some default
+settings which could be inappropriate for some situations, but for
+teaching purposes they are fine.
+
+Making an encrypted connection with `ssl` is pretty easy. Suppose
+you've already created a socket, `s`, and connected it to
+`example.org`. To encrypt the connection, you use
+`ssl.create_default_context` to create a *context* `ctx` and use that
+context to *wrap* the socket `s`. That produces a new socket, `ss`:
+
+``` {.python}
+import ssl
+ctx = ssl.create_default_context()
+ss = ctx.wrap_socket(s, server_hostname="example.org")
+```
+
+It's important to always use the new socket, `ss`, instead of the old
+one, `s`. Everything you send over `s` is unencrypted; everything you
+send over `ss` is encrypted, and then sent over `s`. When you wrap
+`s`, you pass a `server_hostname` argument, and it should match the
+argument you passed to `s.connect`.
+
+Let's try to take this code and add it to `split_url` and `request`.
+
+::: {.todo}
+I plan to extend `split_url` to return the scheme and the port here.
+The scheme is then used to choose whether to use encrypted sockets,
+while the port is also useful for debugging.
+:::
+
+[^1]: To be clear, the server decides which port you have to use. If you
+    connect over any old port, like 22, the server will be expecting an
+    SSH connection (or whatever), not an HTTP connection.
+
+[^2]: Numbers below 1024 are front doors and those above 1024 are back
+    doors.
+
 
 Summary
 =======
@@ -479,7 +554,7 @@ what we have already has some of the core capabilities of a browser.
 Collect the code samples given in this chapter into a file. You should
 have three functions:
 
-`parse(url)`
+`split_url(url)`
 :   Takes in a string URL and returns a host string, a numeric port, and
     a path string. The path should include the initial slash.
 
@@ -494,28 +569,16 @@ have three functions:
 `show(body)`
 :   Prints the text, but not the tags, in an HTML document
 
-It should be possible to string these functions together like so:
-
-``` {.python}
-import sys
-host, port, path = parse(sys.argv[1])
-headers, body = request(host, port, path)
-show(body)
-```
-
-This code uses the `sys` library to read the first argument
-(`sys.argv[1]`) from the command line to use as a URL.
-
 Exercises
 =========
 
 -   Along with `Host`, send the `User-Agent` header in the `request`
     function. Its value can be whatever you want---it identifies your
     browser to the host.
--   Add support for the `file://` scheme to `parse`. Unlike `http://`,
+-   Add support for the `file://` scheme to `split_url`. Unlike `http://`,
     the file protocol has an empty host and port, because it always
     refers to a path on your local computer. You will need to modify
-    `parse` to return the scheme as an extra output, which will be
+    `split_url` to return the scheme as an extra output, which will be
     either `http` or `file`. Then, you\'ll need to modify `request` to
     take in the scheme and to \"request\" `file` URLs by calling `open`
     on the path and reading it. Naturally, in that case, there will be
@@ -536,16 +599,6 @@ Exercises
     header to determine the content type, and if it isn\'t `text/html`,
     just show the whole document instead of stripping out tags and only
     showing text in the `<body>`.
-
-[^1]: To be clear, the server decides which port you have to use. If you
-    connect over any old port, like 22, the server will be expecting an
-    SSH connection (or whatever), not an HTTP connection.
-
-[^2]: Numbers below 1024 are front doors and those above 1024 are back
-    doors.
-
-[^3]: There\'s nothing wrong with libraries; I\'m avoiding them so this
-    material is easy to follow in languages other than Python.
 
 [^4]: In Python, the library is called `base64`.
 

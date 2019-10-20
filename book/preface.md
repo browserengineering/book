@@ -12,15 +12,13 @@ replace magic with code. They are successful when Linux, Postgres, or
 LLVM look like improvements, additions, and optimizations atop a
 conceptually simple core.
 
-[^1]: A focus on performance, learning the low-level APIs, practice writing C,
-    knowing your stack, writing better C/SQL/network code, and of course
-    the importance of these systems in your ordinary computing
-    experience...
+[^1]: A focus on speed; learning low-level APIs; practice writing C;
+    knowing your stack; using systems better; and of course the
+    simple importance of these systems.
 
-But web browsers maintain their air of mystery---I know this from
-speaking to industry programmers, students, and faculty. This book
-corrects this flaw and dissipates the mystery by systematically
-developing all of the major components of a web browser.
+But web browsers internals are still opaque to students, faculty, and
+industry programmers. This book dissipates this mystery by
+systematically explaining all major components of a web browser.
 
 Reading this book
 =================
