@@ -22,15 +22,13 @@ header .author:before { content: "By "; }
 li { margin: 1em 0; }
 
 body > h1 { text-align: center; font-size: 100%; margin: 1.5em 0 0; }
-body > h1:before { content: "☙ "; }
-body > h1:after { content: " ❧"; }
 .main header { margin-bottom: 3em; }
 .main > h1 { margin: 0; font-size: 85%; }
 .main ol { list-style: lower-roman; }
 .main ol.example { list-style: decimal; }
 .main ol { margin: 0; }
 .main li { font-size: 80%; font-style: italic; }
-.main li::first-line { font-size: 125%; font-style: normal; }
+.main li a { font-size: 125%; font-style: normal; }
 
 nav.links {
     height: 40px; line-height: 40px; text-align: center;

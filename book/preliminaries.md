@@ -5,13 +5,17 @@ prev: preface
 next: http
 ...
 
-Tips on Python
+Using Python
+============
+
+Installing Python
+
+Python 2 vs. 3
+
+Debugging Tips
 ==============
 
-Starting the web server
-
-Testing Your Browser
-====================
+Starting a local web server
 
 Compare to real browsers
 
