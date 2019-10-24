@@ -3,7 +3,8 @@ import ssl
 
 def request(url):
     scheme, url = url.split("://", 1)
-    assert scheme in ["http", "https"], "Unknown scheme {}".format(scheme)
+    assert scheme in ["http", "https"], \
+        "Unknown scheme {}".format(scheme)
 
     host, path = url.split("/", 1)
     path = "/" + path
@@ -20,7 +21,8 @@ def request(url):
         ctx = ssl.create_default_context()
         s = ctx.wrap_socket(s, server_hostname=host)
 
-    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("utf8"))
+    s.send(("GET {} HTTP/1.0\r\n" +
+            "Host: {}\r\n\r\n".format(path, host)).encode("utf8"))
     response = s.makefile("r", encoding="utf8", newline="\r\n")
 
     statusline = response.readline()

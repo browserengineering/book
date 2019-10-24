@@ -304,7 +304,8 @@ Now that we have a connection, we make a request to the other server.
 To do so, we send it some data using the `send` method:
 
 ``` {.python}
-s.send(b"GET /index.html HTTP/1.0\r\nHost: example.org\r\n\r\n")
+s.send(b"GET /index.html HTTP/1.0\r\n" + 
+       "Host: example.org\r\n\r\n")
 ```
 
 There are a few things to be careful of here. First, it's important to
@@ -546,7 +547,8 @@ detect which scheme is being used:
 
 ``` {.python}
 scheme, url = url.split("://", 1)
-assert scheme in ["http", "https"], "Unknown scheme {}".format(scheme)
+assert scheme in ["http", "https"], \
+    "Unknown scheme {}".format(scheme)
 ```
 
 Encrypted HTTP connections usually use port 443 instead of port 80:
