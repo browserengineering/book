@@ -232,20 +232,6 @@ The `split(s, n)` function splits a string at the first `n` copies of
 `s`. The path is supposed to include the separating slash, so I make
 sure to add it back after splitting on it.
 
-::: {.further}
-The syntax of URLs is defined in [RFC
-3987](https://tools.ietf.org/html/rfc3986), which is pretty readable.
-Try to implement the full URL standard, including encodings for reserved
-characters.
-:::
-
-::: {.further}
-[Data URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs)
-are a pretty interesting type of URL that embed the whole reasource into
-the URL. Try to implement them; most languages have libraries that
-handle the `base64` encoding used in Data URLs.[^4]
-:::
-
 With the host and path identified, the next step is to connect to the
 host. The operating system provides a feature called "sockets" for
 this. When you want to talk to other computers (either to tell them
@@ -290,6 +276,13 @@ Note that there are two parentheses in the `connect` call: `connect`
 takes a single argument, and that argument is a pair of a host and a
 port. This is because different address families have different
 numbers of arguments.
+
+::: {.further}
+The syntax of URLs is defined in [RFC
+3987](https://tools.ietf.org/html/rfc3986), which is pretty readable.
+Try to implement the full URL standard, including encodings for reserved
+characters.
+:::
 
 ::: {.further}
 You can find out more about the \"sockets\" API on
@@ -609,15 +602,6 @@ Exercises
     function. Its value can be whatever you want---it identifies your
     browser to the host.
 
--   Add support for the `file://` scheme to `split_url`. Unlike `http://`,
-    the file protocol has an empty host and port, because it always
-    refers to a path on your local computer. You will need to modify
-    `split_url` to return the scheme as an extra output, which will be
-    either `http` or `file`. Then, you\'ll need to modify `request` to
-    take in the scheme and to \"request\" `file` URLs by calling `open`
-    on the path and reading it. Naturally, in that case, there will be
-    no headers.
-
 -   Error codes in the 300 range refer to redirects. Change the browser
     so that, for 300-range statuses, the browser repeats the request
     with the URL in the `Location` header. Note that the `Location`
@@ -625,6 +609,12 @@ Exercises
     prepend the scheme and host. You can test this with with the URL
     <http://tinyurl.com/yyutdgeu>, which should redirect back to this
     page.
+
+-   Add support for [Data
+    URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs),
+    which embed the whole reasource into the URL. You'll need to undo
+    the `base64` encoding; use the Python `base64` library's
+    `b64decode` function for this.
 
 -   Only show the text of an HTML document between `<body>` and
     `</body>`. This will avoid printing the title and various style
@@ -636,8 +626,6 @@ Exercises
     header to determine the content type, and if it isn\'t `text/html`,
     just show the whole document instead of stripping out tags and only
     showing text in the `<body>`.
-
-[^4]: In Python, the library is called `base64`.
 
 [^5]: On some systems, you can run `dig +short example.org` to do this
     conversion yourself.
