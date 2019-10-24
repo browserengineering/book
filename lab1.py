@@ -1,28 +1,42 @@
 import socket
+import ssl
 
-def parse(url):
-    assert url.startswith("http://")
-    url = url[len("http://"):]
-    hostport, pathfragment = url.split("/", 1) if "/" in url else (url, "")
-    host, port = hostport.rsplit(":", 1) if ":" in hostport else (hostport, "80")
-    path, fragment = ("/" + pathfragment).rsplit("#", 1) if "#" in pathfragment else ("/" + pathfragment, None)
-    return host, int(port), path, fragment
+def request(url):
+    scheme, url = url.split("://", 1)
+    assert scheme in ["http", "https"], "Unknown scheme {}".format(scheme)
 
-def request(host, port, path):
+    host, path = url.split("/", 1)
+    path = "/" + path
+    port = 80 if scheme == "http" else 443
+
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     s.connect((host, port))
-    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("utf8"))
-    response = s.makefile("rb").read().decode("utf8")
-    s.close()
 
-    head, body = response.split("\r\n\r\n", 1)
-    lines = head.split("\r\n")
-    version, status, explanation = lines[0].split(" ", 2)
-    assert status == "200", "Server error {}: {}".format(status, explanation)
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
+
+    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("utf8"))
+    response = s.makefile("r", encoding="utf8", newline="\r\n")
+
+    statusline = response.readline()
+    version, status, explanation = statusline.split(" ", 2)
+    assert status == "200", "{}: {}".format(status, explanation)
+
     headers = {}
-    for line in lines[1:]:
+    while True:
+        line = response.readline()
+        if line == "\r\n": break
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
+
+    body = response.read()
+    s.close()
+
     return headers, body
 
 def show(source):
@@ -36,11 +50,7 @@ def show(source):
             if in_angle: continue
             print(c, end="")
 
-def run(url):
-    host, port, path, fragment = parse(url)
-    headers, body = request(host, port, path)
-    show(body)
-
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1])
+    headers, body = request(sys.argv[1])
+    show(body)

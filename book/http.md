@@ -393,6 +393,7 @@ Finally, the body is everything else the server sent us:
 
 ``` {.python}
 body = response.read()
+s.close()
 ```
 
 It's that body that we're going to display. Before we do that, let's
@@ -544,12 +545,8 @@ Let's try to take this code and add it to `request`. First, we need to
 detect which scheme is being used:
 
 ``` {.python}
-if url.startswith("http://"):
-    scheme = "http"
-elif url.startswith("https://"):
-    scheme = "https"
-else:
-    raise Exception("Unknown scheme {}".format(url))
+scheme, url = url.split("://", 1)
+assert scheme in ["http", "https"], "Unknown scheme {}".format(scheme)
 ```
 
 Encrypted HTTP connections usually use port 443 instead of port 80:
@@ -578,8 +575,7 @@ if scheme == "https":
     s = ctx.wrap_socket(s, server_hostname=host)
 ```
 
-These two steps should be all you need to connect to HTTPS sites; try,
-for example, `https://google.com/` and see if you get an HTML response.
+These two steps should be all you need to connect to HTTPS sites.
 
 ::: {.further}
 TLS is pretty complicated; you can read the details in [RFC
