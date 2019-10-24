@@ -67,9 +67,10 @@ body { counter-reset: fn; }
     .note:before { content: counter(fn) ". "; }
 }
 
-div { padding: 1em 1em 0; margin: 1em 0; }
-div:before { font-weight: bold; text-align: center; }
-div[id] { padding: 0; margin: 0 0 0 2ex; }
+div[class] { padding: 1em 1em 0; margin: 1em 0; }
+div[class]:before { font-weight: bold; text-align: center; }
+
+pre { margin-left: 2ex; }
 
 .quirk { border: 2px solid purple; }
 .quirk:before { content: "Quirk"; color: purple; }
