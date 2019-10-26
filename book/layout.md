@@ -5,13 +5,6 @@ prev: html
 next: styles
 ...
 
-::: {.todo}
-There are two main changes I am making to the code: I'm dropping the
-`self.parent.append` line from inside layout blocks (which I think was
-really screwing up students' code) and I'm eliminating the `height()`
-method.
-:::
-
 So far, layout has been an unstructured process, with each tag just
 directly modifying state like the current *x* and *y* position.
 That\'s an appropriate way to lay out text, but gets cumbersome as
