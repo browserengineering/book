@@ -67,8 +67,9 @@ body { counter-reset: fn; }
     .note:before { content: counter(fn) ". "; }
 }
 
-div[class] { padding: 1em 1em 0; margin: 1em 0; }
-div[class]:before { font-weight: bold; text-align: center; }
+div { padding: 1em 1em 0; margin: 1em 0; }
+div:before { font-weight: bold; text-align: center; }
+div.sourceCode { padding: 0; }
 
 pre { margin-left: 2ex; }
 

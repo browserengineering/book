@@ -121,7 +121,8 @@ let's set the `h` field on the `InlineLayout` to define its height:
 
 ``` {.python}
 font = self.font()
-self.h = (self.y + font.metrics('linespace') * 1.2) - self.parent.y
+last_line = font.metrics('linespace') * 1.2
+self.h = (self.y + last_line) - self.parent.y
 ```
 
 Here the height is computed by taking the bottom of the laid out text
@@ -185,7 +186,6 @@ vertically one after another. You might write it like this:
 
 ``` {.python}
 class BlockLayout
-    # ...
     def layout(self):
         y = self.y
         for child in node.children:
@@ -211,10 +211,9 @@ every child node\'s layout, so we just use that to change the value of
 `self.h`:
 
 ``` {.python}
-class BlockLayout
-    def layout(self, y):
-        # ...
-        self.h = y - self.y
+def layout(self, y):
+    # ...
+    self.h = y - self.y
 ```
 
 Second, the `y` argument. Let\'s add a `y` parameter to `layout`
@@ -263,17 +262,15 @@ def is_inline(node):
     else:
         return node.tag in ["b", "i"]
 
-class BlockLayout:
-    # ...
-    def layout(self, y):
-        self.y = y
-        if any(is_inline(child) for child in node.children):
-            layout = InlineLayout(self)
-            self.children.append(layout)
-            layout.layout(node)
-            y += layout.height()
-        else:
-            # ...
+def layout(self, y):
+    self.y = y
+    if any(is_inline(child) for child in node.children):
+        layout = InlineLayout(self)
+        self.children.append(layout)
+        layout.layout(node)
+        y += layout.height()
+    else:
+        # ...
 ```
 
 Let\'s try it out. We\'ll need to tweak `show`:
@@ -321,7 +318,7 @@ layouts for each child of a block:
 
 ``` {.python}
 for child in node.children:
-    if isinstance(child, TextNode) and child.text.isspace(): continue
+    if isinstance(child, TextNode): continue
     # ...
 ```
 
@@ -462,18 +459,28 @@ Here I\'ve passed `width=0` to `create_rectangle`, because otherwise
 `create_rectangle` would draw a one-pixel black border.
 
 Now `InlineLayout.layout` will create `DrawText` objects, while
-`BlockLayout.display_list` will create `DrawRect` objects:
+`BlockLayout.display_list` will create `DrawRect` objects for the
+borders.
 
 ``` {.python}
 def display_list(self):
     dl = []
     # ...
-    if self.bl > 0: dl.append(DrawRect(self.x, self.y, self.x + self.bl, self.y + self.h))
-    if self.br > 0: dl.append(DrawRect(self.x + self.w - self.br, self.y, self.x + self.w, self.y + self.h))
-    if self.bt > 0: dl.append(DrawRect(self.x, self.y, self.x + self.w, self.y + self.bt))
-    if self.bb > 0: dl.append(DrawRect(self.x, self.y + self.h - self.bb, self.x + self.w, self.y + self.h))
+    _ol, _ot = self.x, self.y
+    _or, _ob = ol + self.w, ot + self.h
+    _il, _it = _ol + self.bl, _ot + self.bt
+    _ir, _ib = _or - self.br, _ob - self.bb
+    if self.bl > 0: dl.append(DrawRect(_ol, _ot, _il, _ob))
+    if self.br > 0: dl.append(DrawRect(_ir, _ot, _or, _ob))
+    if self.bt > 0: dl.append(DrawRect(_ol, _ot, _or, _it))
+    if self.bb > 0: dl.append(DrawRect(_ol, _ib, _or, _ob))
     return dl
 ```
+
+Here I define the variables `_ol`, `_il`, `_ot`, `_it`, `_or`, `_ir`,
+`_ob`, and `_ib` for the outer and inner left, top, right, and bottom
+coordinates. The underscore is because otherwise `or` would conflict
+with a keyword.
 
 Finally, when we use the display list, we\'ll now just call `draw` on
 each command in the display list:
