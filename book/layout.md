@@ -470,10 +470,10 @@ def display_list(self):
     _or, _ob = ol + self.w, ot + self.h
     _il, _it = _ol + self.bl, _ot + self.bt
     _ir, _ib = _or - self.br, _ob - self.bb
-    if self.bl > 0: dl.append(DrawRect(_ol, _ot, _il, _ob))
-    if self.br > 0: dl.append(DrawRect(_ir, _ot, _or, _ob))
-    if self.bt > 0: dl.append(DrawRect(_ol, _ot, _or, _it))
-    if self.bb > 0: dl.append(DrawRect(_ol, _ib, _or, _ob))
+    if self.bl: dl.append(DrawRect(_ol, _ot, _il, _ob))
+    if self.br: dl.append(DrawRect(_ir, _ot, _or, _ob))
+    if self.bt: dl.append(DrawRect(_ol, _ot, _or, _it))
+    if self.bb: dl.append(DrawRect(_ol, _ib, _or, _ob))
     return dl
 ```
 
