@@ -8,6 +8,13 @@ next: http
 Using Python
 ============
 
+This book uses Python as its implementation language. Python supports
+functional, imperative, and object-oriented programming. Plus, it is
+cross-platform, beginner-friendly, and has many libraries you could
+use in projects that build on this book. One downside is that Python
+is quite slow, and for this reason every real web browser is written
+in C++. For teaching, that isn't a problem.
+
 ::: {.todo}
 This section will feature a quick discussion of installing Python and
 point to some Python resources for students who aren't familiar with
