@@ -2,6 +2,7 @@
 title: What Wasn't Covered
 type: Conclusion
 prev: security
+next: change 
 ...
 
 The last eleven chapters have, I hope, given you a solid understanding
