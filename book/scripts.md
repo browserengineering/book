@@ -301,7 +301,9 @@ can catch it or do something else. However, if you run this code, you
 will likely see an error like this:[^7]
 
 ``` {.example}
-_dukpy.JSRuntimeError: EvalError: Error while calling Python Function: TypeError('Object of type ElementNode is not JSON serializable')
+_dukpy.JSRuntimeError: EvalError:
+Error while calling Python Function:
+TypeError('Object of type ElementNode is not JSON serializable')
 ```
 
 But what it\'s trying to tell you is that DukPy has no idea what to do
