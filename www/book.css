@@ -23,8 +23,8 @@ li { margin: 1em 0; }
 
 body > h1 { font-size: 100%; margin: 1.5em 0 0; }
 .main header { margin-bottom: 3em; }
-.main > h1 { padding-left: 1em; margin: 0; }
-.main ol { margin: 0; padding-left: 1em }
+.main > h1 { margin: 0; }
+.main ol { margin: 0; padding-left: 0; }
 .main li { font-size: 80%; font-style: italic; }
 .main li a { font-size: 125%; font-style: normal; }
 

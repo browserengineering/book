@@ -21,35 +21,35 @@ Part 1: Drawing Graphics
 ========================
 
 (@) [Downloading Web Pages](http.md)\
-    URLs, HTTP, and some basic lexing for HTML
+    URLs and HTTP requests
 (@) [Drawing to the Screen](graphics.md)\
-    Creating windows, drawing to a canvas, and laying out text
+    Creating windows and drawing to a canvas
 (@) [Formatting Text](text.md)\
-    Fonts, line wrapping, and word spacing
+    Line wrapping and word spacing
 
 Part 2: Viewing Documents
 =========================
 
 (@) [Constructing a Document Tree](html.md)\
-    Creating a tree of nodes and doing layout from it
+    Parsing and fixing HTML
 (@) [Laying Out Pages](layout.md)\
-    Splitting inline from block layout and adding the box model
+    Inline and block layout, plus the box model
 (@) [Applying User Styles](styles.md)\
-    Downloading, parsing and applying CSS
+    Parsing and applying CSS
 (@) [Handling Buttons and Links](chrome.md)\
-    Hyperlinks, browser chrome, and history
+    Hyperlinks and browser chrome
 
 Part 3: Running Applications
 ============================
 
 (@) [Sending Information to Servers](forms.md)\
-    Input areas, form submission, and web servers
+    Form submission and web servers
 (@) [Running Interactive Scripts](scripts.md)\
-    Responding to events and reading and writing the DOM
+    Changing the DOM and reacting to events
 (@) [Saving Partial Layouts](reflow.md)\
-    Hover styles, two-phase layout, and faster rendering
+    Two-phase layout and fast rendering
 (@) [Keeping Data Private](security.md)\
-    Cookies, logins, and XSS and CSRF
+    Cookies and logins, XSS and CSRF
 
 Conclusion
 ==========
