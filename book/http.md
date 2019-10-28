@@ -489,7 +489,7 @@ This code uses the `sys` library to read the first argument
 (`sys.argv[1]`) from the command line to use as the URL. Try running
 the code you've written, passing the URL `http://example.org/`:
 
-    python browser.py http://example.org/
+    python3 browser.py http://example.org/
 
 You should see some short text welcoming you to the official example
 web page. You can also try using it on this chapter!

@@ -4,23 +4,14 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-$for(author-meta)$
-  <meta name="author" content="$author-meta$" />
-$endfor$
-$if(prev)$
-  <link rel="prev" href="$prev$" />
-$endif$
-$if(next)$
-  <link rel="next" href="$next$" />
-$endif$
+$for(author-meta)$  <meta name="author" content="$author-meta$" />$endfor$
+$if(prev)$  <link rel="prev" href="$prev$" />$endif$
+$if(next)$  <link rel="next" href="$next$" />$endif$
+$for(css)$  <link rel="stylesheet" href="$css$" />$endfor$
   <title>$if(main)$$else$$title$ | $endif$Web Browser Engineering</title>
-$for(css)$
-  <link rel="stylesheet" href="$css$" />
-$endfor$
-$for(header-includes)$
-  $header-includes$
-$endfor$
+$for(header-includes)$  $header-includes$$endfor$
 </head>
+
 <body$if(main)$ class="main"$endif$>
 
 $for(include-before)$
@@ -52,7 +43,7 @@ $if(type)$
 $endif$
 
 $if(toc)$
-<nav id="$idprefix$TOC">
+<nav id="toc">
 $table-of-contents$
 </nav>
 $endif$

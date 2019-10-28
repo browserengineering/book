@@ -450,11 +450,11 @@ Exercises
     text should not overlap with the previous line, even if half of the
     line is normal sized and half is `<big>`.
 
-[^1]: There are lots of languages in the world, and lots of typographic
-    conventions. Our browser will focus on English, but a real web
-    browser needs full support for all sorts of languages, from Arabic
-    to Mongolian. Text is near-infinitely complex, and in this chapter I
-    can only cover some of it.
+[^1]: There are lots of languages in the world, and lots of
+    typographic conventions. A real web browser supports every
+    language from Arabic to Zulu, but this book focuses on English.
+    Text is near-infinitely complex, but this book cannot be
+    infinitely long!
 
 [^2]: The word is related to *foundry*, which would create the little
     metal shapes.
