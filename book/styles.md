@@ -5,58 +5,55 @@ prev: layout
 next: chrome
 ...
 
-Our implementation of block layout required a lengthy list of
-tag-specific styles to specify margins, borders, and padding (as well
-as colors and sizes, if you did that exercise). This way, the
-appearance of the various page elements is fixed: the web page cannot
-override our style decisions. Let\'s fix that by implementing CSS.
+So far, the appearance of the various elements has been fixed. But web
+pages should be able to override our style decisions and take on a
+unique character. This is done via CSS.
 
 The `style` attribute
 =====================
 
-Different elements have different styles: margins for paragraphs and
-list items, padding for the body and for lists, and borders for code
-blocks. But web pages are stuck with whatever styles our browser
-chooses to assign them. That seems a little unfair though, not least
-because I have no artistic sense and so my styles look ugly. Webpages
-should be able to override my choices.
+Different elements have different styles, like margins for paragraphs
+and borders for code blocks. Those styles are assigned by our browser,
+and it *is* good to have some defaults. But webpages should be able to
+override those choices.
 
-So let\'s start with the easiest way web pages can override browser
-styles, which is the `style` attribute on elements. The style attribute
-looks like this:
+The simplest mechanism for that is the `style` attribute on elements.
+It looks like this:
 
 ``` {.example}
-<div style="border-left-width:1px;border-left-color:red;"></div>
+<div style="margin-left:10px;margin-right;10px;"></div>
 ```
 
-Here the `<div>` element has the `style` attribute set, and that
-attribute contains two key-value pairs: a `border-left-width` of 1 pixel
-and a `border-left-color` of `red`.[^1] We want to gather these
-key-value pairs from the `style` attribute, store them in a `style`
-field on each `ElementNode`, and use them in our layout decisions.
+It's a `<div>` element with its `style` attribute set. That attribute
+contains two key-value pairs, which set `margin-left` and
+`margin-right` to 10 pixels each.^[CSS allows spaces around the
+punctuation, but your attribtue parser may support it.] We want store
+these pairs in a `style` field on the `ElementNode` so we could
+consult them during layout.
 
 You should already have some attribute parsing code in your
-`ElementNode` class, which puts all the attributes into a dictionary. We
-just need to take out the `style` attribute,[^2] split it on semicolon
-and then colon, and stuff the results back into a dictionary:
+`ElementNode` class to create the `attributes` field. We just need to
+take out the `style` attribute, split it on semicolons and then on the
+colon, and save the results:^[The `get` method for dictionaries gets a
+value out of a dictionary, or uses a default value if it's not
+present.]
 
 ``` {.python}
-def __init__(self, parent, tagname):
-    # ...
-    self.style = self.compute_style()
-
-def compute_style(self):
-    style = {}
-    style_value = self.attributes.get("style", "")
-    for line in style_value.split(";"):
-        prop, val = line.split(":")
-        style[prop.lower().strip()] = val.strip()
-    return style
+class ElementNode:
+    def __init__(self, parent, tagname):
+        # ...
+        self.style = self.compute_style()
+    
+    def compute_style(self):
+        style = {}
+        style_value = self.attributes.get("style", "")
+        for line in style_value.split(";"):
+            prop, val = line.split(":")
+            style[prop.lower().strip()] = val.strip()
+        return style
 ```
 
-That puts the style information into a handy place, but we also need to
-pull it out and use it. To do that, we\'ll modify `BlockLayout` to pull
-the style values out and use them for the margins, border, and padding:
+To use this information, we'll need to modify `BlockLayout`:
 
 ``` {.python}
 def __init__(self, parent, node):
@@ -66,16 +63,21 @@ def __init__(self, parent, node):
     # ... and for padding and border as well
 ```
 
-I\'m not writing out all 12 lines but they\'re basically the same (but
-the border one is called `border-top-width`, not `border-top`!). Here
-I\'m calling the `px` function. This is a very simple helper function
-that strips off the `px` at the end of a pixel amount, and turns it into
-a number.
+where the `px` function is this little helper:
 
-Now border, padding, and margin sizes come from element `style`
-attributes instead of just from hard-coded values. But we do want to put
-the defaults back in, for pages that don\'t use `style`, so let\'s move
-those defaults into `compute_style`:
+``` {.python}
+def px(str):
+    assert str.endswith("px")
+    return int(str[:-2])
+```
+
+Remember the write out the code to access the other 11 properties; the
+border one is called `border-top-width`, not `border-top`, but other
+than that, they're very repetitive.
+
+You'll notice that I set the default for each of the property values
+to `0px`. For now, let's stick the per-element defaults at the top of
+`compute_style`:
 
 ``` {.python}
 def compute_style(self):
@@ -86,36 +88,33 @@ def compute_style(self):
     # ...
 ```
 
-We need to put these assignments in at the top of `compute_style`,
-because we need them to be overridden, later, by the values from the
-`style` attribute.
+Make sure the defaults come first in `compute_style` so they can be
+overridden by values from the `style` attribute.
 
 Parsing CSS
 ===========
 
-We\'ve now got user-set styles, but those styles have to be specified on
-an element-by-element basis. This makes it pretty tedious to change the
-style of, say, every paragraph on the page, let alone to make multiple
-web pages that share the same style---what if you forget the correct
-`style` attribute? In the early days of the web,[^3] this
-element-by-element approach was all there was.[^4] But then CSS was
-invented, and it had a few goals:
+The `style` attribtue is set element by element. It's good for one-off
+changes, but is a tedious way to change the style of, say, every
+paragraph on the page. Plus, if multiple web pages are supposed to
+share the same style, you're liable to forget the `style` attribute.
+In the early days of the web,^[I\'m talking Netscape 3. The late 90s.]
+this element-by-element approach was all there was.^[Though back then
+it wasn't the `style` attribute, it was a custom elements like `font`
+and `center`.] CSS was invented to improve on this state of affairs:
 
--   CSS files must be reusable across multiple web pages, so that those
-    pages can look similar
--   CSS files must be able to adjust styling of many elements at once
--   The design must be future-proof and handle browsers with different
-    features
+-   CSS files can to adjust styling of many elements at once
+-   CSS files can style multiple pages from a single file
+-   CSS is future-proof and supports browsers with different features
 
-To achieve that, CSS took the simple key-value idea that we\'ve already
-implemented and extended it with two interlinked ideas of *selectors*
-and *cascading*. In CSS, you have blocks of key-value pairs, and those
-blocks apply to *multiple elements*, specified using a selector. That
-means multiple key-values pairs might apply to one element, so there may
-be conflict, and *cascading* is the rule by which these conflicts are
-resolved.
+To achieve that, extended the key-value `style` attribute with two
+connected ideas: *selectors* and *cascading*. In CSS, you have blocks
+of key-value pairs, and those blocks apply to *multiple elements*,
+specified using a selector. Since that allows multiple key-values
+pairs to apply to one element, *cascading* resolves conflicts by using
+the most specific rule.
 
-So overall, CSS is a sequence of rules that look like this:
+Those blocks look like this:
 
 ``` {.css}
 selector {
@@ -125,76 +124,96 @@ selector {
 }
 ```
 
-Let\'s start by parsing this syntax. I\'ll use a traditional
-recursive-descent parser. A recursive-descent parser works like this: it
-is a bunch of *parsing functions*, each of which takes two inputs (the
-overall text and an index into it) and produces two outputs (some
-element of the text it has parsed and a new index location). So here,
-for example, is a parsing function for values:
+To support CSS in our browser, we'll need to parse this kind of code.
+I\'ll use a traditional recursive-descent parser, which is is a bunch
+of *parsing functions*, each of which advances along the input and
+returns the parsed data as output.
+
+Specifically, I'll implement a `CSSParser` class, which will store the
+input string. Each parsing function will take an index into the input
+and return a new index, plus it will return the parsed data.
+
+Here's the class:
 
 ``` {.python}
-def css_value(s, i):
+class CSSParser:
+    def __init__(self, s):
+        self.s = s
+```
+
+So here, for example, is a parsing function for values:
+
+``` {.python}
+def value(self, i):
     j = i
-    while s[j].isalnum() or s[j] == "-":
+    while self[j].isalnum() or self.s[j] in "#-":
         j += 1
     return s[i:j], j
 ```
 
-Then, here\'s how we parse property-value pairs:
+Let's pick this apart. First of all, it takes index `i` pointing to
+the start of the value and returns index `j` pointing to its end. It
+also returns the string between them, which in this case is the parsed
+data that we're interested in.
+
+The point of recursive-descent parsing is that it's easy to build one
+parsing function by calling others. So here's how to parse
+property-value pairs:
 
 ``` {.python}
-def css_pair(s, i):
-    prop, i = css_value(s, i)
-    _, i = css_whitespace(s, i)
-    assert s[i] == ":"
-    val, i = css_value(s, i + 1)
+def pair(self, i):
+    prop, i = self.value(i)
+    _, i = self.whitespace(i)
+    assert self.s[i] == ":"
+    val, i = self.value(i + 1)
     return (prop, val), i
 ```
 
-This calls `css_whitespace`, which increases `i` as long as `s[i]` is
-whitespace, and also stops at the end of the document. I think you can
-write that yourself. Now we can parse rule bodies:
+The `whitespace` function increases `i` until it sees a non-whitespace
+character (or the end of the document); you can write it yourself.
+
+
+Note the `assert`: that raises an error if you are trying to parse a
+pair but there isn't one there. When we parse rule bodies, we can
+catch this error to skip property-value pairs that don't parse:
 
 ``` {.python}
-def css_body(s, i):
+def body(self, i):
     pairs = {}
-    assert s[i] == "{"
-    _, i = css_whitespace(s, i+1)
+    assert self.s[i] == "{"
+    _, i = self.whitespace(i+1)
     while True:
-        if s[i] == "}": break
+        if self.s[i] == "}": break
 
         try:
-            (prop, val), i = css_pair(s, i)
+            (prop, val), i = self.pair(i)
             pairs[prop] = val
-            _, i = css_whitespace(s, i)
-            assert s[i] == ";"
-            _, i = css_whitespace(s, i+1)
+            _, i = self.whitespace(i)
+            assert self.s[i] == ";"
+            _, i = self.whitespace(i+1)
         except AssertionError:
-            while s[i] not in [";", "}"]:
+            while self.s[i] not in [";", "}"]:
                 i += 1
             if self.s[i] == ";":
                 _, i = self.whitespace(i + 1)
-    assert s[i] == "}"
+    assert self.s[i] == "}"
     return pairs, i+1
 ```
 
-Note that our `css_value` used an `assert` to handle error cases, like
-values of `4` (no unit), `px` (no value), or `foobar` (neither). This
-will trigger a lot in real web pages, since our browser won\'t support
-all the different CSS features, so `css_body` catches those errors and
-ignores those property-value pairs.
-
 Finally, to parse a full CSS rule, we need to parse selectors. Selectors
-come in multiple types. For example, there are tag selectors: `p`
-selects all `<p>` elements, `ul` selects all `<ul>` elements, and so on.
-Then, there are class selectors: HTML elements have a `class` attribute,
-which is a space-separated list of arbitrary names, so the `.foo`
-selector selects the elements that have `foo` in that list. And finally,
-there are ID selectors: `#main` selects the element with an `id` value
-of `main`. For now, let\'s handle just these three selector types in our
-browser.
+come in multiple types; for now, our browser will support three:
 
-We\'ll start by defining some data structures for selectors:[^5]
+- Tag selectors: `p` selects all `<p>` elements, `ul` selects all
+  `<ul>` elements, and so on.
+- Class selectors: HTML elements have a `class` attribute, which is a
+  space-separated list of arbitrary names, so the `.foo` selector
+  selects the elements that have `foo` in that list.
+- ID selectors: `#main` selects the element with an `id` value of
+  `main`.
+
+We\'ll start by defining some data structures for selectors:^[I\'m
+calling the `ClassSelector` field `cls` instead of `class` because
+`class` is a reserved word in Python.]
 
 ``` {.python}
 class TagSelector:
@@ -211,39 +230,41 @@ class IdSelector:
 ```
 
 We now want parsing functions for each of these data structures.
-That\'ll look like this:
+That'll look like:
 
 ``` {.python}
-def css_selector(s, i):
-    if s[i] == "#":
-        name, i = css_value(s, i+1)
+def selector(self, i):
+    if self.s[i] == "#":
+        name, i = self.value(i+1)
         return IdSelector(name), i
-    elif s[i] == ".":
-        name, i = css_value(s, i+1)
+    elif self.s[i] == ".":
+        name, i = self.value(i+1)
         return ClassSelector(name), i
     else:
-        name, i = css_value(s, i)
+        name, i = self.value(i)
         return TagSelector(name), i
 ```
 
-Here I\'m calling `css_property` for tag, class, and identifier names.
-This is a hack, since in fact tag names, classes, and identifiers have
-different allowed characters. Also tags are case-insensitive, as are
-property values, while classes and identifiers are case-sensitive. I\'m
-ignoring that but a real browser could not. Note the arithmetic with
-`i`: we pass `i+1` to `css_name` in the class and ID cases (to skip the
-hash or dot) but not in the tag case (since that first character is part
-of the tag).
+Here I'm using `property` for tag, class, and identifier names. This
+is a hack, since in fact tag names, classes, and identifiers have
+different allowed characters. Also tags are case-insensitive (as by
+the way are property names), while classes and identifiers are
+case-sensitive. I'm ignoring that but a real browser would not. Note
+the arithmetic with `i`: we pass `i+1` to `value` in the class and ID
+cases (to skip the hash or dot) but not in the tag case (since that
+first character is part of the tag).
 
-I\'ll leave it to you to stitch the selector and body parsing functions
-together to parse a full CSS rule, and then run that function in a loop
-to run multiple rules. Make sure to use a similar `try`-`except` pair to
-handle the case of selectors that our engine cannot parse, since in fact
-there are far more than these three selector types. The end result
-should be a list of rule pairs, where the first element of the pair is a
-selector object and the second element is the property/value dictionary.
+I'll leave it to you to finish up the parser, including writing the
+`whitespace` helper and also stitching the selector and body parsing
+functions together to parse a full CSS rule, and then run that
+function in a loop to run multiple rules. Make sure to handle
+selectors that our engine cannot parse (by skipping thos rules), since
+in fact there are far more than these three selector types. The output
+result should be a list of rule pairs, where the first element of the
+pair is a selector object and the second element is the property/value
+dictionary.
 
-Now that we\'ve parsed a CSS file, we need to apply it to the elements
+Now that we've parsed a CSS file, we need to apply it to the elements
 on the page.
 
 Selecting styled elements
@@ -579,21 +600,7 @@ Exercises
     `section .warning` selects warnings inside sections, while
     `section.warning` selects warnings that *are* sections.
 
-[^1]: In CSS you can put spaces around the semicolons or the colons,
-    but you might not have implemented the exercise to support spaces
-    in attribute. Also maybe you don\'t have border colors
-    implemented.
-
-[^2]: The `get` method for dictionaries gets a value out of a
-    dictionary, or uses a default value if it's not present.
-
-[^3]: I\'m talking Netscape 3. The late 90s.
-
-[^4]: Though it wasn\'t the `style` attribute at the time, it was a mix
-    of all these elements like `font` and `center` and so on.
-
-[^5]: I\'m calling it `ClassSelector.cls` instead of
-    `ClassSelector.class` because `class` is a reserved word in Python.
+[^5]: 
 
 [^6]: Well, there are pseudo-elements, but we\'re not going to implement
     them...
