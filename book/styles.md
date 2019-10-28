@@ -600,8 +600,6 @@ Exercises
     `section .warning` selects warnings inside sections, while
     `section.warning` selects warnings that *are* sections.
 
-[^5]: 
-
 [^6]: Well, there are pseudo-elements, but we\'re not going to implement
     them...
 

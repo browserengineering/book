@@ -298,7 +298,7 @@ To do so, we send it some data using the `send` method:
 
 ``` {.python}
 s.send(b"GET /index.html HTTP/1.0\r\n" + 
-       "Host: example.org\r\n\r\n")
+       b"Host: example.org\r\n\r\n")
 ```
 
 There are a few things to be careful of here. First, it's important to

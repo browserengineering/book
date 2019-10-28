@@ -2,29 +2,44 @@ import socket
 import tkinter
 import tkinter.font
 
-def parse(url):
-    assert url.startswith("http://")
-    url = url[len("http://"):]
-    hostport, pathfragment = url.split("/", 1) if "/" in url else (url, "")
-    host, port = hostport.rsplit(":", 1) if ":" in hostport else (hostport, "80")
-    path, fragment = ("/" + pathfragment).rsplit("#", 1) if "#" in pathfragment else ("/" + pathfragment, None)
-    return host, int(port), path, fragment
+def request(url):
+    scheme, url = url.split("://", 1)
+    assert scheme in ["http", "https"], \
+        "Unknown scheme {}".format(scheme)
 
-def request(host, port, path):
+    host, path = url.split("/", 1)
+    path = "/" + path
+    port = 80 if scheme == "http" else 443
+
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     s.connect((host, port))
-    s.send("GET {} HTTP/1.0\r\nHost: {}\r\n\r\n".format(path, host).encode("utf8"))
-    response = s.makefile("rb").read().decode("utf8")
-    s.close()
 
-    head, body = response.split("\r\n\r\n", 1)
-    lines = head.split("\r\n")
-    version, status, explanation = lines[0].split(" ", 2)
-    assert status == "200", "Server error {}: {}".format(status, explanation)
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
+
+    s.send(("GET {} HTTP/1.0\r\n".format(path) +
+            "Host: {}\r\n\r\n".format(host)).encode("utf8"))
+    response = s.makefile("r", encoding="utf8", newline="\r\n")
+
+    statusline = response.readline()
+    version, status, explanation = statusline.split(" ", 2)
+    assert status == "200", "{}: {}".format(status, explanation)
+
     headers = {}
-    for line in lines[1:]:
+    while True:
+        line = response.readline()
+        if line == "\r\n": break
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
+
+    body = response.read()
+    s.close()
+
     return headers, body
 
 class Text:
@@ -55,34 +70,32 @@ def lex(source):
 def layout(tokens):
     display_list = []
 
-    fonts = { # (bold, italic) -> font
-        (False, False): tkinter.font.Font(family="Times", size=16),
-        (True, False): tkinter.font.Font(family="Times", size=16, weight="bold"),
-        (False, True): tkinter.font.Font(family="Times", size=16, slant="italic"),
-        (True, True): tkinter.font.Font(family="Times", size=16, weight="bold", slant="italic"),
-    }
-
     x, y = 13, 13
     bold, italic = False, False
     terminal_space = True
     for tok in tokens:
-        font = fonts[bold, italic]
         if isinstance(tok, Text):
+            font = tkinter.font.Font(
+                family="Times",
+                size=16,
+                weight=("bold" if bold else "normal"),
+                slant=("italic" if italic else "roman"),
+            )
+
             if tok.text[0].isspace() and not terminal_space:
                 x += font.measure(" ")
             
-            words = tok.text.split()
-            for i, word in enumerate(words):
+            for word in tok.text.split():
                 w = font.measure(word)
                 if x + w > 787:
                     x = 13
                     y += font.metrics('linespace') * 1.2
                 display_list.append((x, y, word, font))
-                x += w + (0 if i == len(words) - 1 else font.measure(" "))
+                x += w + font.measure(" ")
             
             terminal_space = tok.text[-1].isspace()
-            if terminal_space and words:
-                x += font.measure(" ")
+            if not terminal_space:
+                x -= font.measure(" ")
         elif isinstance(tok, Tag):
             if tok.tag == "i":
                 italic = True
@@ -122,12 +135,7 @@ def show(text):
 
     tkinter.mainloop()
 
-def run(url):
-    host, port, path, fragment = parse(url)
-    headers, body = request(host, port, path)
-    text = lex(body)
-    show(text)
-
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1])
+    headers, body = request(sys.argv[1])
+    show(lex(body))

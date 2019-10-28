@@ -7,7 +7,7 @@ next: layout
 
 ::: {.todo}
 - HTML attributes are unmotivated
-- I've dropped <meta> and <link> self-closing tags, probably should put them back somehow
+- I've dropped `<meta>` and `<link>` self-closing tags, probably should put them back somehow
 :::
 
 So far, our web browser understands web pages as a stream of HTML

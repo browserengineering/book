@@ -21,8 +21,8 @@ def request(url):
         ctx = ssl.create_default_context()
         s = ctx.wrap_socket(s, server_hostname=host)
 
-    s.send(("GET {} HTTP/1.0\r\n" +
-            "Host: {}\r\n\r\n".format(path, host)).encode("utf8"))
+    s.send(("GET {} HTTP/1.0\r\n".format(path) +
+            "Host: {}\r\n\r\n".format(host)).encode("utf8"))
     response = s.makefile("r", encoding="utf8", newline="\r\n")
 
     statusline = response.readline()

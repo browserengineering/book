@@ -111,7 +111,7 @@ rendering, since different letters have different width:[^9]
 
 You can use this information to lay text out on the page. For example,
 suppose you want to draw the text "Hello, world!" in two pieces, so that
-"world!" is italic. Let\'s use two fonts::
+"world!" is italic. Let\'s use two fonts:
 
 ``` {.python}
 font1 = tkinter.font.Font(family="Times", size=16)
@@ -365,7 +365,7 @@ of the previous token, and only insert an initial space if we didn\'t:
 if tok.text[0].isspace() and not terminal_space:
     x += font.measure(" ")
 
-for word in words:
+for word in tok.text.split():
     # ...
 
 terminal_space = tok.text[-1].isspace()
@@ -420,31 +420,6 @@ does English, too:
 -   Paragraphs are separated from one another
 
 The browser is now good enough to read an essay or a blog!
-
-At this point, your browser implementation should contain the following
-functions:
-
-`parse(url)`
-:   Takes in a string and returns the string host, the numeric port, and
-    the string path.
-
-`request(host, port, path)`
-:   Takes in a string host, a numeric port, and a string path, and
-    returns the headers (as a dictionary) and the page contents (as a
-    string).
-
-`lex(source)`
-:   Takes in a string and returns a list of tokens, which are either
-    `Text` or `Tag` (both of which are wrappers around a string).
-
-`layout(tokens)`
-:   Takes in a list of tokens, and produces a list of rendering
-    commands, which are an *x* position, a *y* position, a string of
-    text, and a font to draw it in.
-
-`show(tokens)`
-:   Creates a GUI and draws the page to it, using `layout(tokens)` and
-    helper functions `render()` and `scrolldown()`
 
 Exercises
 =========

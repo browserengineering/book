@@ -69,7 +69,7 @@ body { counter-reset: fn; }
     .note:before { content: counter(fn) ". "; }
 }
 
-.quirk, .warning, .installation, .further { padding: 1em 1em 0; margin: 1em 0; }
+.todo, .quirk, .warning, .installation, .further { padding: 1em 1em 0; margin: 1em 0; }
 .quirk:before, .warning:before, .installation:before { font-weight: bold; text-align: center; }
 
 pre { margin-left: 2ex; }
