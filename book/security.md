@@ -2,6 +2,7 @@
 title: Keeping Data Private
 chapter: 11
 prev: reflow
+next: skipped
 ...
 
 Our browser has grown up, becoming capable of running (small) web

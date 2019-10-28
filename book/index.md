@@ -11,9 +11,11 @@ JavaScript, in a thousand lines of Python.
 Introduction
 ============
 
+::: {.intro}
 1. [Preface](preface.md)
 
 2. [Preliminaries](preliminaries.md)
+:::
 
 Part 1: Drawing Graphics
 ========================
@@ -52,6 +54,8 @@ Part 3: Running Applications
 Conclusion
 ==========
 
-1. What Wasn't Covered
+::: {.outro}
+1. [What Wasn't Covered](skipped.md)
 
 2. A Changing Landscape
+:::

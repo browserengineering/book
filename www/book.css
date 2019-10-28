@@ -21,14 +21,16 @@ header .author:before { content: "By "; }
 
 li { margin: 1em 0; }
 
-body > h1 { text-align: center; font-size: 100%; margin: 1.5em 0 0; }
+body > h1 { font-size: 100%; margin: 1.5em 0 0; }
 .main header { margin-bottom: 3em; }
-.main > h1 { margin: 0; font-size: 85%; }
-.main ol { list-style: lower-roman; }
-.main ol.example { list-style: decimal; }
-.main ol { margin: 0; }
+.main > h1 { padding-left: 1em; margin: 0; }
+.main ol { margin: 0; padding-left: 1em }
 .main li { font-size: 80%; font-style: italic; }
 .main li a { font-size: 125%; font-style: normal; }
+
+.intro, .outro { }
+.intro ol { list-style: lower-roman; }
+.outro ol { list-style: upper-alpha; }
 
 nav.links {
     height: 40px; line-height: 40px; text-align: center;
@@ -67,9 +69,8 @@ body { counter-reset: fn; }
     .note:before { content: counter(fn) ". "; }
 }
 
-div { padding: 1em 1em 0; margin: 1em 0; }
-div:before { font-weight: bold; text-align: center; }
-div.sourceCode { padding: 0; }
+.quirk, .warning, .installation, .further { padding: 1em 1em 0; margin: 1em 0; }
+.quirk:before, .warning:before, .installation:before { font-weight: bold; text-align: center; }
 
 pre { margin-left: 2ex; }
 
