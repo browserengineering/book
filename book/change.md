@@ -21,9 +21,8 @@ day either could be central to what a browser does. In a few years
 this book could be obsolete, or at least out-dated.
 
 That said, many dedicated, brilliant, and talented engineers have
-dedicated themselves to the web over its first three decades. The
-structure of the web is not an accident, and the architecture of web
-browsers embeds lessons useful in any application. The value of this
-book, then, goes beyond a point-in-time description of how things
-work. I hope readers find that web browsers illustrate patterns of
-structure that stick with them.
+devoted themselves to the web over its first three decades. The
+structure of the web is their creation, not an accident, and embeds
+lessons useful in any program. The value of this book, then, goes
+beyond a point-in-time description of how things work. I hope readers
+find taht these lessons, these patterns of structure, stick with them.
