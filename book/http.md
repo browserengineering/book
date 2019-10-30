@@ -29,10 +29,10 @@ of this is that the browser tells the OS, “Hey, put me in touch with
 `example.org`”, and it does.
 
 On many systems, you can set up this kind of connection manually using
-the `telnet` program, like this:
+the `telnet` program, like this:^[The "80" is the port, discussed below.]
 
 ``` {.example}
-telnet example.org
+telnet example.org 80
 ```
 
 ::: {.installation}
@@ -67,10 +67,9 @@ in text and press enter to talk to `example.org`.
 Requesting information
 ======================
 
-Once it\'s been connected, the browser requests information from the
-server by name, where the name is called a *path*, and is the part of
-a URL that comes after the host name; something like `/index.html`.
-This request looks like this:
+Once it's connected, the browser requests information from the server
+by name. The name is the part of a URL that comes after the host name,
+like `/index.html`, called the *path*. The request looks like this:
 
 ``` {.example}
 GET /index.html HTTP/1.0
@@ -84,9 +83,9 @@ HTTP.[^12] There are several versions of HTTP ([0.9, 1.0, 1.1, and
 2.0](https://medium.com/platform-engineer/evolution-of-http-69cfe6531ba0)).
 The HTTP 1.1 standard adds a variety of useful features, like
 keep-alive, but in the interest of simplicity our browser won\'t use
-them yet. We\'re also not implementing HTTP 2.0; HTTP 2.0 is much more
+them. We\'re also not implementing HTTP 2.0; HTTP 2.0 is much more
 complex than the 1.X series, and is intended for large and complex web
-applications, which our browser won\'t much support, anyway.
+applications, which our browser can't run anyway.
 
 After the first line, each line contains a *header*, which has a name
 (like `Host`) and a value (like `example.org`). Different headers mean
