@@ -1,9 +1,7 @@
-@import url('https://fonts.googleapis.com/css?family=Vollkorn:400|Lora:400,400i');
-
-html { font-size: 24px; line-height: 1.3; padding: 1ex; font-family: 'Lora', 'Times', sans-serif; }
+html { font-size: 24px; line-height: 1.3; padding: 1ex; }
 body {
-    max-width: 65ex; margin: 0 auto; hyphens: auto; -webkit-hyphens: auto; text-align: justify;
-    color: #333;
+    max-width: 65ex; margin: 0 auto; font-family: 'Lora', 'Times', sans-serif;
+    color: #333; text-align: justify; hyphens: auto; -webkit-hyphens: auto;
 }
 @media (max-width: 800px) {
     html { font-size: 18px; }
@@ -28,9 +26,11 @@ li { margin: 1em 0; }
 body > h1 {
     font-size: 105%; margin: 1.5em 0 0;
 }
+
+.main p ~ * { font-size: 120%; }
 .main header { margin-bottom: 3em; }
 .main > h1 { margin: 0; }
-.main ol { margin: 0; padding-left: 0; }
+.main ol { margin: 0; padding-left: 0; color: black; }
 .main li { font-size: 80%; font-style: italic; }
 .main li a { font-size: 125%; font-style: normal; }
 
