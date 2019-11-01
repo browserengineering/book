@@ -168,12 +168,11 @@ Content-Length: 1270
 Connection: close
 ```
 
-There is **a lot** here, including information about the information you
-are requesting (`Content-Type`, `Content-Length`, and `Last-Modified`),
-information about the server (`Server`, `X-Cache`), information about
-how long the browser should cache this information (`Cache-Control`,
-`Expires`, `Etag`), and a bunch of random other information. Let\'s move
-on for now.
+There is *a lot* here, about the information you are requesting
+(`Content-Type`, `Content-Length`, and `Last-Modified`), about the
+server (`Server`, `X-Cache`), about how long the browser should cache
+this information (`Cache-Control`, `Expires`, `Etag`), about all sorts
+of other stuff. Let\'s move on for now.
 
 After the headers there is a blank line followed by a bunch of HTML
 code. This is called the *body* of the server's response, and your

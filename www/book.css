@@ -1,6 +1,9 @@
-html { font-size: 24px; line-height: 1.3; padding: 1ex; }
+@import url('https://fonts.googleapis.com/css?family=Vollkorn:400|Lora:400,400i');
+
+html { font-size: 24px; line-height: 1.3; padding: 1ex; font-family: 'Lora', 'Times', sans-serif; }
 body {
     max-width: 65ex; margin: 0 auto; hyphens: auto; -webkit-hyphens: auto; text-align: justify;
+    color: #444;
 }
 @media (max-width: 800px) {
     html { font-size: 18px; }
@@ -14,6 +17,7 @@ dd { margin-bottom: 1em; }
 
 footer { text-align: center; font: italic 60% serif; margin: 5em 0; }
 
+header, h1, strong { font-family: 'Vollkorn', 'Garamond', serif; color: black; }
 header { text-align: center; margin-top: 3em; }
 .main header * { margin: 0; }
 header .author { font-style: italic; }
@@ -21,7 +25,9 @@ header .author:before { content: "By "; }
 
 li { margin: 1em 0; }
 
-body > h1 { font-size: 100%; margin: 1.5em 0 0; }
+body > h1 {
+    font-size: 105%; margin: 1.5em 0 0;
+}
 .main header { margin-bottom: 3em; }
 .main > h1 { margin: 0; }
 .main ol { margin: 0; padding-left: 0; }
@@ -34,14 +40,14 @@ body > h1 { font-size: 100%; margin: 1.5em 0 0; }
 
 nav.links {
     height: 40px; line-height: 40px; text-align: center;
-    border-radius: 10px; background: #eee;
+    border-radius: 10px; background: #eee; color: black;
     padding: 0 40px; position: relative; margin-bottom: 3em;
 }
 nav.links ~ nav.links { margin-top: 3em; }
 nav.links a[rel] {
     display: block; width: 40px; font-size: 36px;
-    text-decoration: none; color: black;
-    position: absolute; top: 0;
+    text-decoration: none; color: currentColor;
+    position: absolute; top: 0; cursor: pointer;
 }
 nav.links a[rel]:hover { background: #ddd; }
 

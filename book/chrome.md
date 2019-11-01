@@ -333,7 +333,7 @@ def display_list(self):
     return [DrawText(self.x, self.y, self.text, self.font, self.color)]
 ```
 
-**Phew**. That was a lot of surgery to `InlineLayout`. But as a result,
+*Phew*. That was a lot of surgery to `InlineLayout`. But as a result,
 we now have individual layout object corresponding to each word in the
 document. With all of these changes, the `handle_click` function above
 should start working correctly, and when you click on a link
