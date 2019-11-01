@@ -27,7 +27,7 @@ body > h1 {
     font-size: 105%; margin: 1.5em 0 0;
 }
 
-.main p ~ * { font-size: 120%; }
+.main ol, .main > h1 { font-size: 120%; }
 .main header { margin-bottom: 3em; }
 .main > h1 { margin: 0; }
 .main ol { margin: 0; padding-left: 0; color: black; }
