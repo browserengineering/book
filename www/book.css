@@ -21,6 +21,12 @@ header { text-align: center; margin-top: 3em; }
 header .author { font-style: italic; }
 header .author:before { content: "By "; }
 
+a:link { color: #04a; }
+a:hover { color: #08f; }
+a:visited { color: #84a; }
+a:visited:hover { color: #c4f; }
+a:active { color: #f64; }
+
 li { margin: 1em 0; }
 
 body > h1 {
@@ -39,15 +45,15 @@ body > h1 {
 .outro ol { list-style: upper-alpha; }
 
 nav.links {
-    height: 40px; line-height: 40px; text-align: center;
+    line-height: 40px; text-align: center;
     border-radius: 10px; background: #eee; color: black;
     padding: 0 40px; position: relative; margin-bottom: 3em;
 }
 nav.links ~ nav.links { margin-top: 3em; }
+nav.links a { color: currentColor; }
 nav.links a[rel] {
-    display: block; width: 40px; font-size: 36px;
-    text-decoration: none; color: currentColor;
-    position: absolute; top: 0; cursor: pointer;
+    display: block; width: 40px; height: 100%; position: absolute; top: 0;
+    font-size: 36px; text-decoration: none; cursor: pointer;
 }
 nav.links a[rel]:hover { background: #ddd; }
 
@@ -60,14 +66,14 @@ nav.links a[rel=next] {
 
 body { counter-reset: fn; }
 .note-container { counter-increment: fn; white-space: pre; }
-.note-container:after { content: "]"; }
-.note-container:before { content: "["; }
-.note { font-style: italic; white-space: normal; }
+.note-container:after { content: "]"; color: #a86; }
+.note-container:before { content: " ["; color: #a86; }
+.note { font-style: italic; white-space: normal; color: #a86; }
 @media only screen and (min-width: 1150px) {
-    body { padding: 0 20ex; }
+    body { padding: 0 28ex; }
     .note {
         float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
-        font-size: 120%; vertical-align: reset; text-align: left;
+        font-size: 120%; vertical-align: reset; text-align: left; color: currentColor;
     }
     div .note { margin-right: calc(-28ex - 1rem - 2px); }
     .note-container { font-size: 60%; vertical-align: super; }
@@ -76,7 +82,10 @@ body { counter-reset: fn; }
 }
 
 .todo, .quirk, .warning, .installation, .further { padding: 1em 1em 0; margin: 1em 0; }
-.quirk:before, .warning:before, .installation:before { font-weight: bold; text-align: center; }
+.quirk:before, .warning:before, .installation:before {
+    font-weight: bold; font-family: 'Vollkorn', 'Garamond', serif;
+    text-align: center;
+}
 
 pre { margin-left: 2ex; }
 
