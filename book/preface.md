@@ -5,16 +5,15 @@ next: preliminaries
 ...
 
 A Computer Science degree traditionally includes courses like OS,
-Databases, and Compilers. One reason for these courses stands out to
-me:[^1] the mystery students attach to these systems, leaving them
-powerless over part of their computing environment. These classes
-replace magic with code: Linux, Postgres, or LLVM look like
+Databases, and Compilers. Students attach to these systems, leaving
+them powerless over part of their computing environment. These classes
+replace magic with code:[^1] Linux, Postgres, or LLVM look like
 improvements, additions, and optimizations atop an understandable
 core.
 
-[^1]: Others are: a focus on speed; learning low-level APIs; practice
-    with C; knowing the stack; using systems better; and the
-    importance of the system covered.
+[^1]: Others reasons for these classes: a focus on speed; learning
+    low-level APIs; practice with C; knowing the stack; using systems
+    better; and the importance of the system covered.
 
 But web browsers internals are still opaque to students, faculty, and
 industry programmers. This book dissipates this mystery by
