@@ -600,30 +600,30 @@ Exercises
     function. Its value can be whatever you want---it identifies your
     browser to the host.
 
--   Error codes in the 300 range refer to redirects. Change the browser
-    so that, for 300-range statuses, the browser repeats the request
-    with the URL in the `Location` header. Note that the `Location`
-    header might not include the host and scheme. If it starts with `/`,
-    prepend the scheme and host. You can test this with with the URL
-    <http://tinyurl.com/yyutdgeu>, which should redirect back to this
-    page.
+-   Error codes in the 300 range refer to redirects. Change the
+    browser so that, for 300-range statuses, the browser repeats the
+    request with the URL in the `Location` header. Note that the
+    `Location` header might not include the host and scheme. If it
+    starts with `/`, prepend the scheme and host. You can test this
+    with with the URL <http://browser.engineering/redirect>, which
+    should redirect back to this page.
 
 -   Add support for [Data
     URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs),
-    which embed the whole reasource into the URL. You'll need to undo
+    which embed the whole resource into the URL. You'll need to undo
     the `base64` encoding; use the Python `base64` library's
     `b64decode` function for this.
 
 -   Only show the text of an HTML document between `<body>` and
-    `</body>`. This will avoid printing the title and various style
-    information. You will need to add additional variables `in_body` and
-    `tag` to that loop, to track whether or not you are between `body`
-    tags and to keep around the tag name when inside a tag.
+    `</body>`. This will avoid printing the title and style
+    information. You will need to add additional variables `in_body`
+    and `tag` to that loop, to track whether or not you are between
+    `body` tags and to keep around the tag name when inside a tag.
 
 -   Support multiple file formats in `show`: use the `Content-Type`
-    header to determine the content type, and if it isn\'t `text/html`,
-    just show the whole document instead of stripping out tags and only
-    showing text in the `<body>`.
+    header to determine the content type, and if it isn\'t
+    `text/html`, just show the whole document instead of stripping out
+    tags and only showing text in the `<body>`.
 
 [^5]: On some systems, you can run `dig +short example.org` to do this
     conversion yourself.
