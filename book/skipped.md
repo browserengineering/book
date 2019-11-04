@@ -57,6 +57,24 @@ TLS is a broken and insecure version of it: contrary to the intended
 goal and pedagogically counterproductive. The best way to learn about
 modern cryptography and network security is a book on that topic.
 
+Accessibility
+=============
+
+People differ! Yet web pages should be available to all, including
+users with disabilities, whether physical (blind, difficulty seeing,
+Parkinson's), mental (learning disabilities, dyslexia), or situational
+(car console, gloves, eye dilation). The web has grown a rich but
+sadly seldom-used garden of accessibility technologies. Not only is
+this a topic of technical interest and moral imperative, the
+developing legal landscape in the US means it will only grow in
+importance over time.
+
+I chose to skip web accessibility due to a lack of expertise, but to
+be honest I also worried that web accessibility was a difficult topic
+to engage students in. Adding it as a twelfth chapter would also make
+the last part of the book even longer, while adding it earlier would
+add a significant maintenance burden.
+
 Caching
 =======
 
