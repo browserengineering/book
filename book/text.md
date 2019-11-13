@@ -15,11 +15,11 @@ A great English-language web page to try out is this page!
 What is a font?
 ===============
 
-So far, we\'ve written text to the canvas by calling the `create_text`
-function with a character and two coordinates. That works if you don\'t
-care much about the font, or the size, or the color, or the exact
-position of the text. When you do care about those things, you need to
-create and use font objects.
+So far, we\'ve called `create_text` with a character and two
+coordinates to write text to the scren. That works if you don\'t care
+much about the font, or the size, or the color, or the exact position
+of the text. When you do care about those things, you need to create
+and use font objects.
 
 What is a *font*, exactly? Well, in the olden days, printers arranged
 little metal shapes on rails, covered them with ink, and pressed them to
