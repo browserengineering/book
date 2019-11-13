@@ -104,3 +104,5 @@ code .co { color: #a86; }
 
 .todo { background: darkred; color: white; padding-bottom: 1em; }
 .todo:before { content: "This book is a work in progress:"; }
+
+input[type=checkbox][disabled] { display: none; }
