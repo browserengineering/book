@@ -417,14 +417,15 @@ def relative_url(url, current):
     if url.startswith("http://"):
         return url
     elif url.startswith("/"):
-        return current.split("/")[0] + url
+        return "/".join(current.split("/")[:3]) + url
     else:
         return current.rsplit("/", 1)[0] + "/" + url
 ```
 
-In that last case, the logic ensures that a link to `foo.html` on
-`http://a.com/bar.html` goes to `http://a.com/foo.html`, not
-`http://a.com/bar.html/foo.html`.
+In the first case, the `[:3]` and the `"/".join` handle the two
+slashes that come after `http:` in the URL, while in the last case,
+the logic ensures that a link to `foo.html` on `http://a.com/bar.html`
+goes to `http://a.com/foo.html`, not `http://a.com/bar.html/foo.html`.
 
 We want to collect CSS rules from each of the linked files, and the
 browser style sheet, into one big list so we can apply each of them.
