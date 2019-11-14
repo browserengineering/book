@@ -104,3 +104,7 @@ code .co { color: #a86; }
 .todo:before { content: "This book is a work in progress:"; }
 
 input[type=checkbox][disabled] { display: none; }
+
+.tools a { display: block; line-height: 1.5; }
+.tools { float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0; padding-left: 3ex; }
+blockquote { border-left: 1ex solid #eee; padding-left: 1ex; margin-left: 0; }

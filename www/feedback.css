@@ -1,0 +1,6 @@
+section div { border: 1px solid #888; margin: 1em 0; padding: 1em; }
+section div :first-child { margin-top: 0; }
+section div :last-child  { margin-bottom: 0; }
+
+section div .del { color: darkred; }
+section div .add { color: darkgreen; }
