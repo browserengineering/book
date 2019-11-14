@@ -16,7 +16,9 @@ dd { margin-bottom: 1em; }
 footer { text-align: center; font: italic 60% serif; margin: 5em 0; }
 
 header, h1, strong { font-family: 'Vollkorn', 'Garamond', serif; color: black; }
-header { text-align: center; margin-top: 3em; }
+h1 { font-size: 105%; margin: 1.5em 0 0; }
+header { text-align: center; margin: 3em 0 1em; }
+header h1 { font-size: 200%; font-weight: bold; }
 .main header * { margin: 0; }
 header .author { font-style: italic; }
 header .author:before { content: "By "; }
@@ -28,10 +30,6 @@ a:visited:hover { color: #c4f; }
 a:active { color: #f64; }
 
 li { margin: 1em 0; }
-
-body > h1 {
-    font-size: 105%; margin: 1.5em 0 0;
-}
 
 .main ol, .main > h1 { font-size: 120%; }
 .main header { margin-bottom: 3em; }

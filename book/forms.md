@@ -179,9 +179,8 @@ going to ignore that in my toy browser.
 The point is that editing the input has to change either the `value`
 attribute or the text area content. So let\'s change our browser to do
 that, soliciting input on the command line and then updating the
-elements to reflect the new <content:%5Bfn>::Why solicit text input on
-the command line? Because GUI text input is hard; see the last exercise,
-marked \"hard\", which adds just a simple version GUI text input.\]
+elements to reflect the new content:^[GUI text input is hard, which is
+why I'm soliciting input on the command line. See the last exercise.]
 
 ``` {.python}
 new_text = input("Enter new text: ")

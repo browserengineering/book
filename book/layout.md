@@ -467,7 +467,7 @@ def display_list(self):
     dl = []
     # ...
     _ol, _ot = self.x, self.y
-    _or, _ob = ol + self.w, ot + self.h
+    _or, _ob = _ol + self.w, _ot + self.h
     _il, _it = _ol + self.bl, _ot + self.bt
     _ir, _ib = _or - self.br, _ob - self.bb
     if self.bl: dl.append(DrawRect(_ol, _ot, _il, _ob))
