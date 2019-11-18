@@ -1,2 +1,6 @@
 www/*.html
 .DS_Store
+class
+posts
+slides
+www/db.pickle
