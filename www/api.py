@@ -24,6 +24,11 @@ class Data:
             pickle.dump(self.data, f)
 
     def typo(self, url, old, new):
+        if any(obj['type'] == 'typo' and
+               obj['url'] == url and
+               obj['old'] == old and
+               obj['new'] == new for obj in self.data):
+            return
         self.data.append({
             'id': len(self.data),
             'time': time.time(),
@@ -36,6 +41,11 @@ class Data:
         self.save()
 
     def comment(self, url, text, comment):
+        if any(obj['type'] == 'comment' and
+               obj['url'] == url and
+               obj['text'] == text and
+               obj['comment'] == comment for obj in self.data):
+            return
         self.data.append({
             'id': len(self.data),
             'time': time.time(),
