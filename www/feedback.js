@@ -124,6 +124,7 @@ function submit_status(id, status) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
+    if (document.cookie.indexOf('tools=') == -1) return;
     if (document.body.id == "feedback") feedback_mode();
     else typo_mode();
 })

@@ -126,6 +126,11 @@ def static(file):
 def index():
     return bottle.static_file("index.html", root=".")
 
+@bottle.route("/auth/tools")
+def tools():
+    bottle.response.set_cookie("tools", "")
+    return "Editing tools enabled"
+
 # For debugging
 
 class EnableCors(object):
