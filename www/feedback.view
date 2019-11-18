@@ -3,6 +3,7 @@
 <link rel="stylesheet" href="/book.css" />
 <link rel="stylesheet" href="/feedback.css" />
 <script src="/feedback.js"></script>
+<title>Feedback | Web Browser Engineering</title>
 <body id="feedback">
 
 %if new:
