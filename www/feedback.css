@@ -2,5 +2,7 @@ section div { border: 1px solid #888; margin: 1em 0; padding: 1em; }
 section div :first-child { margin-top: 0; }
 section div :last-child  { margin-bottom: 0; }
 
-section div .del { color: darkred; }
-section div .add { color: darkgreen; }
+section div .del { background: #fcc; }
+section div .add { background: #cfc; }
+
+button { min-width: 2em; min-height: 1em; }

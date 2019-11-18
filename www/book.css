@@ -13,6 +13,8 @@ pre { font-size: 80%; }
 dt { margin-top: 1em; }
 dd { margin-bottom: 1em; }
 
+blockquote { border-left: 1ex solid #eee; padding-left: 1ex; margin-left: 0; }
+
 footer { text-align: center; font: italic 60% serif; margin: 5em 0; }
 
 header, h1, strong { font-family: 'Vollkorn', 'Garamond', serif; color: black; }
@@ -105,6 +107,13 @@ code .co { color: #a86; }
 
 input[type=checkbox][disabled] { display: none; }
 
-.tools a { display: block; line-height: 1.5; }
-.tools { float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0; padding-left: 3ex; }
-blockquote { border-left: 1ex solid #eee; padding-left: 1ex; margin-left: 0; }
+p, li, pre, .note { position: relative; }
+.tools {
+    position: absolute; right: 0; top: -1.5em; background: #eee;
+    padding: .125em .75em; border-radius: .75em;
+}
+.tools a { margin: 0 1ex; }
+.tools textarea {
+    border: none; background: transparent; width: 100%; font-size: 100%;
+    margin: 1ex 0; 
+}
