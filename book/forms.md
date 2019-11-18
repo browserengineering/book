@@ -16,30 +16,28 @@ register to vote, or to search Google.
 Rendering widgets
 =================
 
-Usually, when your browser sends information to a web server, that is
+When your browser sends information to a web server, that is usually
 information that you\'ve typed into some kind of input area, or a
 check-box of some sort that you\'ve checked. So the first step in
 communicating with other servers is going to be to draw input areas on
 the screen and then allow the user to fill them out.
 
 On the web, there are two kinds of input areas: `<input>` elements,
-which are for short, one-line text inputs, and `<textarea>` elements,
-which are for long, multi-line text inputs. I\'d like to implement both,
-because I\'d like to support both search boxes (where queries are short,
+which are for short, one-line inputs, and `<textarea>` elements, which
+are for long, multi-line text. I\'d like to implement both, because
+I\'d like to support both search boxes (where queries are short,
 single-line things) and comment forms (where text inputs are a lot
-longer). Usually, web browsers communicate with the operating system and
-ask the OS to draw the input areas themselves, because that way the
-input areas will match the behavior and appearance of OS input areas.
-That\'s *possible* in Tk,[^1] but in the interests of simplicity we\'ll
-be drawing the input areas ourselves.
+longer). Usually, web browsers communicate with the operating system
+and ask the OS to draw the input areas themselves, because that way
+the input areas will match the behavior and appearance of OS input
+areas. That\'s *possible* in Tk,[^1] but in the interests of
+simplicity we\'ll be drawing the input areas ourselves.
 
-Both input areas are inline content, much like text, and they\'re laid
-out next to text in lines. So to support inputs we\'ll need to add a new
-kind of layout object, which I\'m going to call `InputLayout`. Since
-it\'ll be laid out in a line, we\'re going to need to support the same
-kind of API as `TextLayout`. Looking over how methods on `TextLayout`
-are called, we\'re going to need to support `attach` and `add_space`,
-and `layout` will need to take both an *x* and a *y* argument:
+Both `<input>` and `<textarea>` elements are inline content, like
+text, laid out in lines. So to support inputs we\'ll need a new kind
+of layout object, which I\'ll call `InputLayout`. It\'ll need to
+support the same kind of API as `TextLayout`, namely `attach` and
+`add_space`, so that it won't confuse `InlineLayout`:
 
     class InputLayout:
         def __init__(self, node, multiline=False):
@@ -68,11 +66,14 @@ You\'ll note the `add_space` function hardcodes a 5-pixel space, unlike
 font used by surrounding text, so I might as well hard-code in the size
 of spaces.
 
-Next, we need to fill in `layout`, which is going to hard-code a
-specific size for input elements.[^2] One quirk is that
-`InlineLayout.text` requires `w` to be set on text layout objects even
-before we call `layout`, so we\'ll set the size in the constructor and
-the position in `layout`:
+For simplicity, the `layout` method hard-codes a specific size for
+input elements.[^2] One quirk is that `InlineLayout.text` requires `w`
+to be set on text layout objects even before we call `layout`, so
+we\'ll set the size in the constructor and the position in `layout`:
+
+[^2]: In real browsers, the `width` and `height` CSS properties can
+    change the size of input elements.
+
 
 ``` {.python}
 class InputLayout:
@@ -91,8 +92,9 @@ be a large rectangle:
 
 ``` {.python}
 def display_list(self):
-    border = DrawRect(self.x, self.y, self.x + self.w, self.y + self.h)
-    return [border]
+    _ol, _or = self.x, self.x + self.w
+    _ot, _ob = self.y, self.y + self.h
+    return [DrawRect(_ol, _ot, _or, _ob)]
 ```
 
 Finally, we need to create these `InputLayout` objects; we can do that
@@ -100,17 +102,18 @@ in `InlineLayout.recurse`:
 
 ``` {.python}
 def recurse(self, node):
-    if isinstance(node, ElementNode) and node.tag in ["input", "textarea"]:
-        self.input(node)
-    elif isinstance(node, ElementNode):
-        for child in node.children:
-            self.recurse(child)
+    if isinstance(node, ElementNode):
+        if node.tag in ["input", "textarea"]:
+            self.input(node)
+        else:
+            for child in node.children:
+                self.recurse(child)
     else:
         self.text(node)
 ```
 
 The new `input` function is similar to `text`, except that input areas
-are like a single word and don\'t have to worry about spaces:
+don't need to be split into multiple words:
 
 ``` {.python}
 def input(self, node):
@@ -123,23 +126,22 @@ def input(self, node):
 
 Finally, to make sure these elements are parsed and styled right, we
 need to inform our HTML parser that `<input>` is self-closing (but not
-`<textarea>`, see below) and, since both `<input>` and `<textarea>` are
-supposed to be drawn inline, we need to set `display: inline` in the
-browser stylesheet as well.
+`<textarea>`, see below) and, since both `<input>` and `<textarea>`
+are supposed to be drawn inline, we need to set `display: inline` for
+them in the browser stylesheet as well.
 
 Interacting with widgets
 ========================
 
 We\'ve now got input elements rendering, but only as empty rectangles.
-There\'s more to input elements, most importantly the *input* part! We
-have to change our browser so that it can: 1) draw the contents of input
-elements, when they have contents; and 2) allow the user to change that
-content. Let\'s start with the second, since until we do that there\'s
-no content to draw.
+We need the *input* part! Let's 1) draw the content of input elements;
+and 2) allow the user to change that content. I'll start with the
+second, since until we do that there\'s no content to draw.
 
-First, we have to detect when the user has clicked on an input element
-to change its value. That means a change to `Browser.handle_click`, so
-that it searches for an ancestor link *or* input element to click on:
+In this toy browser, I'm going to require the user to click on an
+input element to change its content. We detect the click in
+`Browser.handle_click`, which must now search for an ancestor link
+*or* input element:
 
 ``` {.python}
 # ...
@@ -156,31 +158,28 @@ else:
     self.edit_input(elt)
 ```
 
-Clicking on a link calls `self.edit_input`, so we need to implement
-that. So, how does editing an input element work? Well, the two input
-elements work differently. For `<input>`, the text in the input area is
-the element\'s `value` attribute, like this:
+So, how does editing an input element work? Well, `<input>` and
+`<textarea>` work differently. For `<input>`, the text in the input
+area is the element\'s `value` attribute, like this:
 
 ``` {.example}
 Name: <input value="Pavel Panchekha">
 ```
 
-Meanwhile, `<textarea>` tags enclose text that is their content:
+Meanwhile, `<textarea>` tags enclose text that is their
+content:^[The text area can also contain manual line
+breaks, unlike normal text (but it does wrap lines, unlike `<pre>`),
+which I'm ignoring here.]
 
 ``` {.example}
 <textarea>Hello! This is the content.</textarea>
 ```
 
-In real browsers, the text inside the text area can also have manual
-line breaks, so it works a little differently from normal text (and it
-can wrap, so it also works differently from `<pre>` elements) but I\'m
-going to ignore that in my toy browser.
-
 The point is that editing the input has to change either the `value`
-attribute or the text area content. So let\'s change our browser to do
-that, soliciting input on the command line and then updating the
-elements to reflect the new content:^[GUI text input is hard, which is
-why I'm soliciting input on the command line. See the last exercise.]
+attribute or the text area content. So let\'s add that to our browser,
+soliciting input on the command line and then updating the element
+with it:^[GUI text input is hard, which is why I'm soliciting input on
+the command line. See the last exercise.]
 
 ``` {.python}
 new_text = input("Enter new text: ")
@@ -198,7 +197,9 @@ just need to update `display_list` to add a single `DrawText` command:
 def display_list(self):
     border = # ...
     font = tkinter.font.Font(family="Times", size=16)
-    text = DrawText(self.x + 1, self.y + 1, self.node.attributes.get("value", ""), font, 'black')
+    value = self.node.attributes.get("value", "")
+    x, y = self.x + 1, self.y + 1
+    text = DrawText(x, y, value, font, 'black')
     return [border, text]
 ```
 
@@ -731,9 +732,6 @@ Exercises
     carried away...[^4]
 
 [^1]: In Python, you use the `ttk` library.
-
-[^2]: In real browsers, the web page can use the `width` and `height`
-    CSS properties to change the size of input elements.
 
 [^3]: Fun fact: HTML standardizes the `form` attribute for input
     elements, which in principle allows an input element to be outside
