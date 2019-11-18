@@ -43,6 +43,7 @@ function make_tools(node) {
                 console.log("Submitting typo correction");
                 submit_typo(old_text, new_text);
             }
+            node.contentEditable = false;
             editing = false;
             LOCK = false;
         });
@@ -57,13 +58,13 @@ function make_tools(node) {
         form.addEventListener("blur", function() {
             var comment = form.value;
             var text = markdown(node, tools);
-            if (editing && text) {
+            if (editing && comment) {
                 console.log("Submitting comment");
                 submit_comment(text, comment);
             }
             editing = false;
             form.style.display = "none";
-            form.textContent = "";
+            form.value = "";
             LOCK = false;
         });
         e.preventDefault();
@@ -76,11 +77,13 @@ function typo_mode() {
     var elts = document.querySelectorAll("p, li, pre, .note");
     for (var i = 0; i < elts.length; i++) {
         (function(form) {
-            elts[i].addEventListener("mouseenter", function() {
+            elts[i].addEventListener("mouseenter", function(e) {
                 if (!LOCK) this.insertBefore(form, this.childNodes[0]);
+                e.stopPropagation();
             });
-            elts[i].addEventListener("mouseleave", function() {
+            elts[i].addEventListener("mouseleave", function(e) {
                 if (!LOCK) form.remove();
+                e.stopPropagation();
             });
         })(make_tools(elts[i]));
     }
