@@ -175,23 +175,23 @@ which I'm ignoring here.]
 <textarea>Hello! This is the content.</textarea>
 ```
 
-The point is that editing the input has to change either the `value`
-attribute or the text area content. So let\'s add that to our browser,
-soliciting input on the command line and then updating the element
-with it:^[GUI text input is hard, which is why I'm soliciting input on
-the command line. See the last exercise.]
+Whereever the content is, editing the input has to change it. Let\'s
+add that to our browser, soliciting input on the command line and then
+updating the element with it:^[GUI text input is hard, which is why
+I'm soliciting input on the command line. See the last exercise.]
 
 ``` {.python}
-new_text = input("Enter new text: ")
-if elt.tag == "input":
-    elt.attributes["value"] = new_text
-else:
-    elt.children = [TextNode(elt, new_text)]
+def edit_input(self, elt):
+    new_text = input("Enter new text: ")
+    if elt.tag == "input":
+        elt.attributes["value"] = new_text
+    else:
+        elt.children = [TextNode(elt, new_text)]
 ```
 
-Now that we have input areas with text in them, we need some way to draw
-that to the screen. For single-line input elements, that is easy: we
-just need to update `display_list` to add a single `DrawText` command:
+Now that input areas have text content, we need to draw that text. For
+single-line input elements, we just add a `DrawText` command to the
+display list:
 
 ``` {.python}
 def display_list(self):
@@ -203,16 +203,17 @@ def display_list(self):
     return [border, text]
 ```
 
-However, for multi-line input this won\'t work as cleanly, because we
-need to do line breaking on the text. Instead of implementing line
-breaking *again*, let\'s reuse `InlineLayout` by constructing one as a
-child of our `InputLayout`:
+This won\'t work for multi-line inputs, though, because we need to do
+line breaking on that text. Instead of implementing line breaking
+*again*, let\'s reuse `InlineLayout` by constructing one as a child of
+our `InputLayout`:
 
 ``` {.python}
 def layout(self, x, y):
     # ...
     for child in self.node.children:
         layout = InlineLayout(self, child)
+        self.children.append(layout)
         layout.layout(y)
 ```
 
@@ -230,7 +231,7 @@ def content_width(self):
     return self.w - 2
 ```
 
-We also need to propagate this child\'s display list to its parent:
+We also need to propagate this child's display list to its parent:
 
 ``` {.python}
 def display_list(self):
@@ -247,14 +248,14 @@ def display_list(self):
         return [border, text]
 ```
 
-We can now display the contents of text areas!
+The browser now displays text area contents!
 
 One final thing: when we enter new text in a text area, we change the
 node tree, and that means that the layout that we derived from that tree
 is now invalid and needs to be recomputed, and we can\'t just call
 `browse`, since that will reload the web page and wipe out our changes.
 Instead, let\'s split the second half of `browse` into its own function,
-which `browse` just calls:
+which `browse` will now call:
 
 ``` {.python}
 def relayout(self):
@@ -267,37 +268,36 @@ def relayout(self):
     self.render()
 ```
 
-Now `edit_input` can call `self.relayout()` at the end of the function.
+Now `edit_input` can call `self.relayout()` at to update the layout
+and redraw the page.
 
 You should now be able to run the browser on the following example web
-page:
+page:^[Don\'t worry---the mangled HTML should be just fine for our [HTML parser](html.md).]
 
 ``` {.example}
 <body>
 <p>Name: <input value=1></p>
 <p>Comment: <textarea>2</textarea></p>
+</body>
 ```
 
-Don\'t worry---the mangled HTML should be just fine for our [HTML
-parser](html.md).
-
-One quirk---if you change the `<body>` tag to `<b>`, so that the labels
-are bold, you\'ll find that the contents of the input area aren\'t
-bolded (because we override the font) but the contents of the text area
-are. We can fix that by adding to the browser stylesheet:
+One quirk---if you add `style=font-weight:bold` to the `<body>`, so
+that the labels are bold, you\'ll find that the input area content
+isn\'t bolded (because we override the font) but the text area content
+is. We can fix that by adding to the browser stylesheet:
 
 ``` {.css}
 textarea { font-style: normal; font-weight: normal; }
 ```
 
-That\'ll prevent the text area from inheriting its font styles from its
+That'll prevent the text area from inheriting its font styles from its
 parent.
 
 How forms work
 ==============
 
-Now the forms are full of data, and our browser needs to submit them to
-the server. The way this works in HTML is pretty tricky.
+Next our browser needs to submit filled-out forms to the server. The
+way this works in HTML is pretty tricky.
 
 First, in HTML, there is a `<form>` element. All the input areas inside
 that element are intended to be used together as part of the same form.
