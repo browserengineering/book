@@ -126,8 +126,27 @@ function submit_status(id, status) {
     xhr.send(JSON.stringify({'id': id, 'status': status}));
 }
 
+// Congrats for reading the code! Any changes you make with the
+// feedback tools is non-permanent; it needs to be approved by me, and
+// then manually applied.
+
+STATE = "";
+
 document.addEventListener("DOMContentLoaded", function() {
-    if (document.cookie.indexOf('tools=') == -1) return;
-    if (document.body.id == "feedback") feedback_mode();
-    else typo_mode();
-})
+    if (!window.localStorage["edit"]) {
+        window.addEventListener("keydown", function(e) {
+            STATE += String.fromCharCode(e.keyCode);
+            console.log("STATE = ", STATE)
+            if (!"edit".startsWith(STATE.toLowerCase())) STATE = "";
+            if ("edit" == STATE.toLowerCase() && document.body.id != "feedback") {
+                window.localStorage["edit"] = "true";
+                typo_mode();
+            }
+            e.preventDefault();
+        });
+    } else {
+        if (document.body.id == "feedback") feedback_mode();
+        else typo_mode();
+    }
+});
+
