@@ -86,32 +86,35 @@ text in.[^6] Tk also has widgets like buttons and dialog boxes, but for
 writing a browser we will need the more fine-grained control over
 appearance that a canvas provides.[^7]
 
-To create a canvas in Tk, we insert the following code between
-`tkinter.Tk()` and `tkinter.mainloop()`:
+`tkinter.Canvas` creates a canvas in Tk; we can package that up with
+`tkinter.Window` in the following function:
 
 ``` {.python}
-canvas = tkinter.Canvas(window, width=800, height=600)
-canvas.pack()
+def start():
+    window = tkinter.Window()
+    c = tkinter.Canvas(window, width=800, height=600)
+    c.pack()
+    return c
 ```
 
-The first line creates a `Canvas` object inside the `window` we already
-created. We pass it some arguments that define its size; I chose 800×600
-because that was a common old-timey monitor size.[^8] The second line is
-a Tk peculiarity, and positions the canvas inside the window.
+The first line creates the window, as above; the second creates the
+`Canvas` inside that window. We pass `Canvas` some arguments that
+define its size; I chose 800×600 because that was a common old-timey
+monitor size.[^8] The third line is a Tk peculiarity, which positions
+the canvas inside the window.
 
-Adding these two lines won\'t yet change how the window appears, since
-we haven\'t drawn anything to the canvas. To change that, let\'s call
-some drawing methods on the canvas (after the `pack` call but before
-`mainloop`):
+Once you've made a canvas, you can call methods that draw shapes on
+the canvas:
 
 ``` {.python}
+canvas = start()
 canvas.create_rectangle(10, 20, 400, 300)
 canvas.create_oval(100, 100, 150, 150)
 canvas.create_text(200, 150, text="Hi!")
 ```
 
 You ought to see a rectangle, starting near the top-left corner of the
-canvas and ending at its cente;, then a circle inside that rectangle;
+canvas and ending at its center; then a circle inside that rectangle;
 and then the text "Hi!" next to the circle.
 
 Play with the arguments to those methods to figure out which coordinate
