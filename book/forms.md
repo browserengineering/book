@@ -39,26 +39,28 @@ of layout object, which I\'ll call `InputLayout`. It\'ll need to
 support the same kind of API as `TextLayout`, namely `attach` and
 `add_space`, so that it won't confuse `InlineLayout`:
 
-    class InputLayout:
-        def __init__(self, node, multiline=False):
-            self.children = []
-            self.node = node
-            self.space = 0
-            self.multiline = multiline
+``` {.python}
+class InputLayout:
+    def __init__(self, node, multiline=False):
+        self.children = []
+        self.node = node
+        self.space = 0
+        self.multiline = multiline
 
-        def layout(self, x, y):
-            pass
+    def layout(self, x, y):
+        pass
 
-        def attach(self, parent):
-            self.parent = parent
-            parent.children.append(self)
-            parent.w += self.w
+    def attach(self, parent):
+        self.parent = parent
+        parent.children.append(self)
+        parent.w += self.w
 
-        def add_space(self):
-            if self.space == 0:
-                gap = 5
-                self.space = gap
-                self.parent.w += gap
+    def add_space(self):
+        if self.space == 0:
+            gap = 5
+            self.space = gap
+            self.parent.w += gap
+```
 
 You\'ll note the `add_space` function hardcodes a 5-pixel space, unlike
 `TextLayout`, which uses the current font. That\'s because the
@@ -172,7 +174,7 @@ breaks, unlike normal text (but it does wrap lines, unlike `<pre>`),
 which I'm ignoring here.]
 
 ``` {.example}
-<textarea>Hello! This is the content.</textarea>
+<textarea>This is the content.</textarea>
 ```
 
 Whereever the content is, editing the input has to change it. Let\'s
@@ -196,16 +198,16 @@ display list:
 ``` {.python}
 def display_list(self):
     border = # ...
-    font = tkinter.font.Font(family="Times", size=16)
+    font = self.node.font()
     value = self.node.attributes.get("value", "")
     x, y = self.x + 1, self.y + 1
     text = DrawText(x, y, value, font, 'black')
     return [border, text]
 ```
 
-This won\'t work for multi-line inputs, though, because we need to do
+This won't work for multi-line inputs, though, because we need to do
 line breaking on that text. Instead of implementing line breaking
-*again*, let\'s reuse `InlineLayout` by constructing one as a child of
+*again*, let's reuse `InlineLayout` by constructing one as a child of
 our `InputLayout`:
 
 ``` {.python}
@@ -220,6 +222,10 @@ def layout(self, x, y):
 Since `InlineLayout` requires them, let\'s add some of these helper
 functions:
 
+::: {.todo}
+It's ugly that I have these
+:::
+
 ``` {.python}
 def content_left(self):
     return self.x + 1
@@ -230,6 +236,10 @@ def content_top(self):
 def content_width(self):
     return self.w - 2
 ```
+
+::: {.todo}
+I'd rather the recursion be external.
+:::
 
 We also need to propagate this child's display list to its parent:
 
@@ -243,7 +253,6 @@ def display_list(self):
         dl.append(border)
         return dl
     else:
-        font = # ...
         text = # ...
         return [border, text]
 ```
@@ -283,11 +292,14 @@ page:^[Don\'t worry---the mangled HTML should be just fine for our [HTML parser]
 
 One quirk---if you add `style=font-weight:bold` to the `<body>`, so
 that the labels are bold, you\'ll find that the input area content
-isn\'t bolded (because we override the font) but the text area content
+isn't bolded (because we override the font) but the text area content
 is. We can fix that by adding to the browser stylesheet:
 
 ``` {.css}
-textarea { font-style: normal; font-weight: normal; }
+textarea {
+    font-style: normal;
+    font-weight: normal;
+}
 ```
 
 That'll prevent the text area from inheriting its font styles from its

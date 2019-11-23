@@ -594,6 +594,11 @@ code. That's true in general, but here in particular, we need a CSS
 parser and applier anyway, so the downsides do not apply, and the
 refactoring is very much worth it.
 
+::: {.todo}
+I think I'd like nodes to have a `font()` method that returns the font
+to use.
+:::
+
 Summary
 =======
 
