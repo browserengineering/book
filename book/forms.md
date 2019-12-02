@@ -33,6 +33,8 @@ the input areas will match the behavior and appearance of OS input
 areas. That\'s *possible* in Tk,[^1] but in the interests of
 simplicity we\'ll be drawing the input areas ourselves.
 
+[^1]: In Python, you use the `ttk` library.
+
 Both `<input>` and `<textarea>` elements are inline content, like
 text, laid out in lines. So to support inputs we\'ll need a new kind
 of layout object, which I\'ll call `InputLayout`. It\'ll need to
@@ -308,20 +310,17 @@ parent.
 How forms work
 ==============
 
-Next our browser needs to submit filled-out forms to the server. The
-way this works in HTML is pretty tricky.
+Filled-out forms go to the server. The way this works in HTML is
+pretty tricky.
 
-First, in HTML, there is a `<form>` element. All the input areas inside
-that element are intended to be used together as part of the same form.
-Furthermore, the `<form>` element has `action` and `method` attributes.
-These tell the browser how to submit the form. The `method` attribute is
-either `get` or `post`, and refers to an HTTP method, while `action` is
-a relative URL. Combining the two allows the browser to generate an HTTP
-request.
+First, in HTML, there is a `<form>` element, which describes how to
+submit all the input elements it contains through its `action` and
+`method` attributes. The `method` attribute is either `get` or `post`,
+and refers to an HTTP method; the `action` attribute is a relative
+URL. The browser generates an HTTP request by combining the two.
 
-How data is included in that request depends on the method, but let\'s
-focus on POST here. Suppose you have the following form, on the web page
-`http://my-domain.com/form`:
+Let\'s focus on POST submissions (the default). Suppose you have the
+following form, on the web page `http://my-domain.com/form`:
 
 ``` {.html}
 <form action=submit method=post>
@@ -354,17 +353,22 @@ look like this:
 name=1&comment=2
 ```
 
-Finally, this form-encoded string will be the *body* of the HTTP POST
-request the browser is going to send. Bodies are allowed on HTTP
-requests just like they are in responses, even though up until now
-we\'ve been sending HTTP GET requests without bodies. The only caveat is
-that if you send a body, you must send the `Content-Length` header, so
-that the server knows how much of the request to wait for.
+This form-encoded string will be the *body* of the HTTP POST request
+the browser is going to send. Bodies are allowed on HTTP requests just
+like they are in responses, even though up until now we\'ve been
+sending requests without bodies. The only caveat is that if you send a
+body, you must send the `Content-Length` header, so that the server
+knows how much of the request to wait for. So the overall request is:
+
+``` {.example}
+POST /submit HTTP/1.0
+Content-Length: 16
+
+name=1&comment=2
+```
 
 The server will then respond to the POST request with a normal web page,
 which the browser will render.
-
-Let\'s implement these steps in our toy browser.
 
 Implementing forms
 ==================
@@ -400,6 +404,11 @@ elif elt.tag == "button":
 Third, we need to find the form containing our button. That can happen
 inside `submit_form`:[^3]
 
+[^3]: Fun fact: HTML standardizes the `form` attribute for input
+    elements, which in principle allows an input element to be outside
+    the form it is supposed to be submitted with. But no browser
+    implements that.
+
 ``` {.python}
 def submit_form(self, elt):
     while elt and elt.tag != 'form':
@@ -412,7 +421,7 @@ Fourth, we need to find all of the input elements inside this form:
 ``` {.python}
 def find_inputs(elt, out):
     if not isinstance(elt, ElementNode): return
-    if (elt.tag == 'input' or elt.tag == 'textarea') and 'name' in elt.attributes:
+    if elt.tag in ['input', 'textarea'] and 'name' in elt.attributes:
         out.append(elt)
     for child in elt.children:
         find_inputs(child, out)
@@ -429,9 +438,13 @@ def submit_form(self, elt):
     params = {}
     for input in inputs:
         if input.tag == 'input':
-            params[input.attributes['id']] = input.attributes.get('value', '')
+            value = input.attributes.get('value', '')
         else:
-            params[input.attributes['id']] = input.children[0].text if input.children else ""
+            if input.children:
+                value = input.children[0].text
+            else:
+                value = ""
+        params[input.attributes['id']] = value
     self.post(relative_url(elt.attributes['action'], self.history[-1]), params)
 ```
 
@@ -448,11 +461,15 @@ def post(self, url, params):
     headers, body = request('POST', host, port, path, body)
 ```
 
-Here the form-encoding is pretty minimal, with us just replacing spaces
-by `"%20"`. In reality there are more things you\'ve got to do, but
-given that our browser is a toy anyway, let\'s just try to avoid typing
-equal signs, ampersands, and a few other punctuation characters into our
-forms.
+::: {.todo}
+Having `post` and `browse` methods is crazy.
+:::
+
+This isn't real form-encoding---I'm just replacing spaces by `"%20"`.
+Real form-encoding escapes characters like the equal sign, the
+ampersand, and so on; but given that our browser is a toy anyway,
+let\'s just try to avoid typing equal signs, ampersands, and so on
+into forms.
 
 Sixth and finally, to actually send a POST request, we need to modify
 the `request` function to allow multiple methods:
@@ -472,6 +489,10 @@ def request(method, host, port, path, body=None):
     # ...
 ```
 
+::: {.todo}
+This needs to match the actual `request` code (and fit on screen).
+:::
+
 Remember to modify all other calls to `request` (there are several calls
 in `Browser.browse`) to pass in the method.
 
@@ -488,18 +509,21 @@ def post(self, url, params):
     self.parse(body)
 ```
 
+::: {.todo}
+I don't like `parse` for this.
+:::
+
 With these changes we should now have a browser capable of submitting
 simple forms!
 
 Receiving POST requests
 =======================
 
-With all these changes, we need to test our browser to make sure it does
-the right thing. But in lieu of using a real web page with forms, let\'s
-make our own simple web server! This server will show a simple form with
-a single text entry and remember anything submitted through that form.
+We need to test our browser's forms functionality. Let\'s test with
+our own simple web server. This server will show a simple form with a
+single text entry and remember anything submitted through that form.
 Then, it\'ll show you all of the things that it remembers. Call it a
-guest book. Online guest books... so 90s...
+guest book.^[Online guest books... so 90s...]
 
 A web server is a different program from a web browser, so let\'s start
 a new file. The server will need to:
@@ -509,14 +533,18 @@ a new file. The server will need to:
 -   Respond to those requests with an HTML web page
 
 I should note that the server I am building will be exceedingly simple,
-because this is, after all, a web browser, not web server, book.
+because this is, after all, a book on web *browser* engineering.
 
-Let\'s start by opening a socket. Like for the browser, we need to
+Let's start by opening a socket. Like for the browser, we need to
 create an internet streaming socket using TCP:
 
 ``` {.python}
 import socket
-s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+s = socket.socket(
+    family=socket.AF_INET,
+    type=socket.SOCK_STREAM,
+    proto=socket.IPPROTO_TCP,
+)
 ```
 
 Now, instead of calling `connect` on this socket (which causes it to
@@ -537,14 +565,16 @@ whatever reason, port 8000 is taken on your machine.
 
 ::: {.quirk}
 A note about debugging servers. If a server crashes with a connection
-open on some port, the computer at the other end won\'t be informed.
-Your OS therefore prevents the port from being reused for a few seconds,
-because the other computer might send more data, and that data would go
-to the wrong process if the port were reused. So if you crash your
-server after binding to a port, you might need to wait a little bit to
-restart it---about a minute, though it depends on your OS---or you\'ll
+open on some port, your OS prevents the port from being
+reused[^why-wait] for a few seconds. So if your server crashes, you
+might need to wait about a minute before you restart it, or you\'ll
 get errors about addresses being in use.
 :::
+
+[^why-wait]: When your process crashes, the computer on the end of the
+    connection won't be informed immediately; if some other process
+    opens the same port, it could receive data means for the old,
+    now-dead process.
 
 Now, we tell the socket we\'re ready to accept connections:
 
@@ -552,9 +582,9 @@ Now, we tell the socket we\'re ready to accept connections:
 s.listen()
 ```
 
-To actually accept those connections, we enter a loop which will iterate
-once per connection. At the top of the loop we call `s.accept` to wait
-for a new connection:
+To actually accept those connections, we enter a loop that runs once
+per connection. At the top of the loop we call `s.accept` to wait for
+a new connection:
 
 ``` {.python}
 while True:
@@ -562,18 +592,21 @@ while True:
     handle_connection(conx)
 ```
 
-That connection object is, confusingly, its own socket, but it is the
-socket corresponding to the single connection. We know what to do with
-those: we read the contents and parse the HTTP message. But it\'s a
-little trickier to do this in the server than in the browser, because
-the server acts first, and that means it can\'t just read from the
-socket until the browser closes its connection. Instead, we\'ll read
-from the socket line-by-line. First, we read the request line:
+That connection object is, confusingly, also socket: it is the socket
+corresponding to that one connection. We know what to do with those:
+we read the contents and parse the HTTP message. But it\'s a little
+trickier to do this in the server than in the browser, because the
+browser waits for the server, and that means the server can\'t just
+read from the socket until the connection closes.
+
+Instead, we\'ll read from the socket line-by-line. First, we read the
+request line:
 
 ``` {.python}
 def handle_connection(conx):
     req = conx.makefile("rb")
-    method, url, version = req.readline().decode('utf8').split(" ", 2)
+    reqline = req.readline().decode('utf8')
+    method, url, version = reqline.split(" ", 2)
     assert method in ["GET", "POST"]
 ```
 
@@ -604,12 +637,11 @@ def handle_connection(conx):
     else:
         body = None
 
-    response = handle_request(method, url, headers, body).encode('utf8')
+    response = handle_request(method, url, headers, body)
 ```
 
-Let\'s skip `handle_request` for now to focus on responding to the
-browser that has connected to our server. We need to send it back some
-data:
+Let's fill in `handle_request` later; it returns a string containing
+the resulting HTML web page. We need to send it back to the browser:
 
 ``` {.python}
 response = response.encode("utf8")
@@ -619,11 +651,14 @@ conx.send(response)
 conx.close()
 ```
 
-This is a pretty bare-bones server, with a lot of corners cut: it
-doesn\'t check that the browser is using HTTP 1.0 to talk to it, it
-doesn\'t send back any headers at all except `Content-Length`, and so
-on. But look: it\'s a toy web server to talk to a toy web browser. Cut
-it some slack.
+::: {.todo}
+I need to do something about the Content-Length line being so long.
+:::
+
+This is a bare-bones server: it doesn\'t check that the browser is
+using HTTP 1.0 to talk to it, it doesn\'t send back any headers at all
+except `Content-Length`, and so on. But look: it\'s a toy web server
+that talks to a toy web browser. Cut it some slack.
 
 All that\'s left is implementing `handle_request`. We want some kind of
 guest book, so let\'s create a list to store guest book entries:
@@ -632,7 +667,7 @@ guest book, so let\'s create a list to store guest book entries:
 ENTRIES = [ 'Pavel was here' ]
 ```
 
-Now `handle_request` can output a little HTML page with those entries:
+The `handle_request` function outputs a little HTML page with those entries:
 
 ``` {.python}
 def handle_request(method, url, headers, body):
@@ -643,59 +678,84 @@ def handle_request(method, url, headers, body):
     return out
 ```
 
-Note that I\'m ignoring the method, the URL, the headers, and the body
-entirely. Toy web server, folks.
+For now, I\'m ignoring the method, the URL, the headers, and the body
+entirely.
 
-With this minimal core complete, you should be able to run this toy web
-server on the command line and then direct your browser to
-`http://localhost:8000/`, `localhost` being what your computer calls
-itself and `8000` being the port we chose earlier. You should see a list
-of (one) guest book entry.
+You should be able to run this minimal core of a web server and then
+direct your browser to `http://localhost:8000/`, `localhost` being
+what your computer calls itself and `8000` being the port we chose
+earlier. You should see a list of (one) guest book entry.
 
-Finally, let\'s make it possible to add to the guest book. First, let\'s
+Let\'s now make it possible to add to the guest book. First, let\'s
 add a form to the top of the page:
 
 ``` {.python}
-out = # ...
-out += "<form action=add method=post><p><input name=guest></p><p><button>Sign the book!</button></p></form>"
-# ...
+out += "<form action=add method=post>"
+out +=   "<p><input name=guest></p>"
+out +=   "<p><button>Sign the book!</button></p>"
+out += "</form>"
 ```
 
-Note that this form tells your browser to submit the form to
-`http://localhost:8000/add`. This is performative but meaningless, since
-the server doesn\'t care about the URL anyway.
+This form tells the browser to submit data to
+`http://localhost:8000/add`; the server needs to react to such
+submissions. First, we will need to undo the form-encoding:
 
-With browsers now able to submit forms, we need to handle those
-submissions:
+``` {.python}
+def form_decode(body):
+    params = {}
+    for field in body.split("&"):
+        name, value = field.split("=", 1)
+        params[name] = value.replace("%20", " ")
+    return params
+```
+
+To handle submissions, we'll want to get the guest book comment, add
+it to `ENTRIES`, and then draw the page with the new comment shown.
+Furthermore, `handle_request` will first need to figure out what kind
+of request this is (browsing or form submission) and then executed the
+relevant code. To keep this organized, let's rename `handle_request`
+to `show_comments`:
+
+``` {.python}
+def show_comments():
+    # ...
+    return out
+```
+
+We can have a `add_entry` function to handle form submissions:
+
+``` {.python}
+def add_entry(params):
+    if 'guest' in params:
+        ENTRIES.append(params['guest'])
+    return show_comments()
+```
+
+This frees up the `handle_request` function to just figure out which
+of these two functions to call:
 
 ``` {.python}
 def handle_request(method, url, headers, body):
     if method == 'POST':
-        params = {}
-        for field in body.split("&"):
-            name, value = field.split("=", 1)
-            params[name] = value.replace("%20", " ")
-        if 'guest' in params:
-            ENTRIES.append(params['guest'])
-    # ...
+        params = form_decode(body)
+        if url == '/add':
+            return add_entry(params)
+        else:
+            return show_comments()
+    else:
+        return show_comments()
 ```
 
-All we\'re doing here is undoing the form-encoding and then using the
-`guest` parameter to add to the guest list. We need to process the POST
-request at the top of `handle_request`, so that `ENTRIES` is updated
-with the new entry when we go to print it.
-
-Try it! You should be able to restart the server, point your browser to
-it, and update the guest book a few times. You should also be able to go
-visit the server from a real web browser and submit guest book entries
-that way as well.
+Try it! You should be able to restart the server, open it in your
+browser, and update the guest book a few times. You should also be
+able to use the guest book from a real web browser.
 
 Summary
 =======
 
-We\'ve added an important new capability, form submission, to our web
-browser. Though this is a humble beginning, we are turning our toy web
-browser from a tool for consumption into a broad application platform.
+We've added an important new capability, form submission, to our web
+browser. It is a humble beginning, but our toy web browser is no
+longer just for reading pages: it is becoming an application platform.
 Plus, we now have a little web server for our browser to talk to. Life
 is better with friends!
 
@@ -709,11 +769,13 @@ Exercises
     Submitting check boxes in a form is a little tricky, though. A check
     box named `foo` only appears in the form encoding if it is checked.
     Its key is its identifier and its value is the empty string.
+
 -   Forms can be submitted via GET requests as well as POST requests. In
     the GET case, the form-encoded data is pasted onto the end of the
     URL, separated from the path by a question mark, like
     `/search?q=hi`. GET form submissions have no body. Implement GET
     form submissions.
+
 -   One reason to separate GET and POST requests is that GET requests
     are supposed to be *idempotent*, or read-only in simpler terms,
     while POST requests are assumed to change the web server state. That
@@ -723,6 +785,7 @@ Exercises
     access each URL, and the POST body if one was used. When you go back
     to a POST-ed URL, ask the user if they are sure on the command line,
     and if they are sure submit a new POST request with the same body.
+
 -   Right now our web server is a simple guest book. Extend it into a
     simple message board by adding support for topics. Each URL should
     correspond to a topic, and each topic should have its own list of
@@ -730,6 +793,7 @@ Exercises
     a page of posts (about cooking) and comments submitted through the
     form on that page should only show up when you go to `/cooking`, not
     when you go to `/cars`.
+
 -   **Hard**: Inputting text on the command line is supremely ugly.
     Replace it with proper GUI text entry. To do so, you\'ll need to
     bind the `<Key>` event in Tkinter to an event handler which uses the
@@ -743,12 +807,5 @@ Exercises
     focused, or adding support for `<Backspace>`). Just don\'t get
     carried away...[^4]
 
-[^1]: In Python, you use the `ttk` library.
+[^4]: Backspace: doable; arrow keys: hard; selection: crazy!
 
-[^3]: Fun fact: HTML standardizes the `form` attribute for input
-    elements, which in principle allows an input element to be outside
-    the form it is supposed to be submitted with. But no browser
-    implements that feature.
-
-[^4]: Backspace is not crazy, but adding support for the arrow keys is
-    going to be hard. Adding support for selection is just crazy!

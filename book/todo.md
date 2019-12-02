@@ -12,8 +12,8 @@ Text
 I am editing the chapters following the first iteration of the course.
 
 - [x] Chapters i, 1, 2, 3, 5, 6 edited
-- [ ] Chapters ii, 4, 7 edited but with more to do
-- [ ] Chapters 8, 9, 10, 11, A, B drafted but not yet edited
+- [ ] Chapters ii, 4, 7, 8 edited but with more to do
+- [ ] Chapters 9, 10, 11, A, B drafted but not yet edited
 
 Website
 =======
