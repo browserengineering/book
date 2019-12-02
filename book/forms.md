@@ -762,50 +762,48 @@ is better with friends!
 Exercises
 =========
 
--   Add support for check boxes. Check boxes are also represented by
-    `<input>` elements, but specifically those `<input>` elements with
-    the `type` attribute set to `checkbox`. The check box is checked if
-    it has the `checked` attribute set, and unchecked otherwise.
-    Submitting check boxes in a form is a little tricky, though. A check
-    box named `foo` only appears in the form encoding if it is checked.
-    Its key is its identifier and its value is the empty string.
+-   Add check boxes. In HTML, check boxes `<input>` elements with the
+    `type` attribute set to `checkbox`. The check box is checked if it
+    has the `checked` attribute set, and unchecked otherwise.
+    Submitting check boxes in a form is a little tricky, though. A
+    check box named `foo` only appears in the form encoding if it is
+    checked. Its key is its identifier and its value is the empty
+    string.
 
--   Forms can be submitted via GET requests as well as POST requests. In
-    the GET case, the form-encoded data is pasted onto the end of the
-    URL, separated from the path by a question mark, like
-    `/search?q=hi`. GET form submissions have no body. Implement GET
+-   Forms can be submitted via GET requests as well as POST requests.
+    In GET requests, the form-encoded data is pasted onto the end of
+    the URL, separated from the path by a question mark, like
+    `/search?q=hi`; GET form submissions have no body. Implement GET
     form submissions.
 
 -   One reason to separate GET and POST requests is that GET requests
-    are supposed to be *idempotent*, or read-only in simpler terms,
-    while POST requests are assumed to change the web server state. That
-    means that going \"back\" to a GET request (making the request
-    again) is safe, while going \"back\" to a POST request is a bad
-    idea. Change the browser history to record what method was used to
-    access each URL, and the POST body if one was used. When you go back
-    to a POST-ed URL, ask the user if they are sure on the command line,
-    and if they are sure submit a new POST request with the same body.
+    are supposed to be *idempotent* (read-only, basically) while POST
+    requests are assumed to change the web server state. That means
+    that going "back" to a GET request (making the request again) is
+    safe, while going "back" to a POST request is a bad idea. Change
+    the browser history to record what method was used to access each
+    URL, and the POST body if one was used. When you go back to a
+    POST-ed URL, ask the user if they want to resubmit the form. Don't
+    go back if they say no; if they say yes, submit a POST request
+    with the same body as before.
 
 -   Right now our web server is a simple guest book. Extend it into a
     simple message board by adding support for topics. Each URL should
     correspond to a topic, and each topic should have its own list of
-    messages. So, for example, `http://localhost:8000/cooking` should be
-    a page of posts (about cooking) and comments submitted through the
-    form on that page should only show up when you go to `/cooking`, not
-    when you go to `/cars`.
+    messages. So, for example, `/cooking` should be a page of posts
+    (about cooking) and comments submitted through the form on that
+    page should only show up when you go to `/cooking`, not when you
+    go to `/cars`.
 
--   **Hard**: Inputting text on the command line is supremely ugly.
-    Replace it with proper GUI text entry. To do so, you\'ll need to
-    bind the `<Key>` event in Tkinter to an event handler which uses the
-    event\'s `char` field to extract the character you just typed.
-    Usually those characters shouldn\'t do anything, but when you click
-    in an input area you should update a new `Browser.focus` field to
-    point to that element. When that field is set, typing a character
-    should append it to that input area\'s text. Clicking outside an
-    input area should unset `focus`. Feel free to implement more
-    features (like changing the input area\'s border color when it is
-    focused, or adding support for `<Backspace>`). Just don\'t get
-    carried away...[^4]
+-   Implement proper GUI text entry. When the user clicks on an input
+    area, store the input element to a new `Browser.focus` field.
+    Clicks elsewhere should clear that field. Next, bind the `<Key>`
+    event in Tkinter and use the event's `char` field in the event
+    handler to determine the character the user typed. Add that
+    character the value of the element in `Browser.focus`. If there's
+    no focused element, don't do anything.[^4]
 
-[^4]: Backspace: doable; arrow keys: hard; selection: crazy!
+[^4]: You can implement more features if you'd like, but it quickly
+    gets difficult. Backspace: doable; arrow keys: hard; selection:
+    crazy!
 
