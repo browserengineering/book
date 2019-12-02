@@ -15,15 +15,21 @@ I am editing the chapters following the first iteration of the course.
 - [ ] Chapters ii, 4, 7, 8 edited but with more to do
 - [ ] Chapters 9, 10, 11, A, B drafted but not yet edited
 
+That after editing the text, I will edit the code:
+
+- [x] Code for chapters 1 and 2 edited
+- [ ] Code for chapters 3, 4, 5, 6, 7, 8, 9, 10, 11 not yet edited
+
 Website
 =======
 
 The website is up, but in a minimal form.
 
-- [x] Domain name purchased and set up, and TLS enabled.
-- [x] The site scores well on page speed tests.
+- [x] Domain name purchased and set up, and TLS enabled
+- [x] The site scores well on page speed tests
+- [x] Feedback system for typos and comments drafted
+- [ ] Set up server logs
 - [ ] No work on accessibility
-- [ ] No feedback system for typos and comments.
 
 I have barely begun branding and styling the website.
 
@@ -35,9 +41,10 @@ I have barely begun branding and styling the website.
 Content
 =======
 
-I plan code listings, tests, screenshots, and "Go further" links.
+I plan tests, screenshots, and "Go further" links. I'd also like to
+have a cleaned-up "final" browser to read.
 
-- [ ] Chapter 1 and 2 code is edited, while the rest are drafted
-- [ ] Chapter 1 has "Go further" links, the others don't
 - [ ] There are currently no tests
 - [ ] Screenshots not begun
+- [ ] Chapter 1 has "Go further" links, the others don't
+- [ ] Final browser not edited
