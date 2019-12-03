@@ -137,12 +137,15 @@ document.addEventListener("DOMContentLoaded", function() {
         window.addEventListener("keydown", function(e) {
             STATE += String.fromCharCode(e.keyCode);
             console.log("STATE = ", STATE)
-            if (!"edit".startsWith(STATE.toLowerCase())) STATE = "";
-            if ("edit" == STATE.toLowerCase() && document.body.id != "feedback") {
-                window.localStorage["edit"] = "true";
-                typo_mode();
+            if (!"edit".startsWith(STATE.toLowerCase())) {
+                STATE = "";
+            } else {
+                e.preventDefault();
+                if ("edit" == STATE.toLowerCase() && document.body.id != "feedback") {
+                    window.localStorage["edit"] = "true";
+                    typo_mode();
+                }
             }
-            e.preventDefault();
         });
     } else {
         if (document.body.id == "feedback") feedback_mode();
