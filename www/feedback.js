@@ -136,7 +136,6 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!window.localStorage["edit"]) {
         window.addEventListener("keydown", function(e) {
             STATE += String.fromCharCode(e.keyCode);
-            console.log("STATE = ", STATE)
             if (!"edit".startsWith(STATE.toLowerCase())) {
                 STATE = "";
             } else {
