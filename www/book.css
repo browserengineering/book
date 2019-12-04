@@ -70,15 +70,18 @@ body { counter-reset: fn; }
 .note-container:before { content: " ["; color: #a86; }
 .note { font-style: italic; white-space: normal; color: #a86; }
 @media only screen and (min-width: 1150px) {
-    body { padding: 0 28ex; }
+    body { width: 65ex; padding: 0 17ex 0 0; }
     .note {
         float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
-        font-size: 120%; vertical-align: reset; text-align: left; color: currentColor;
+        font-size: 110%; vertical-align: reset; text-align: left; color: currentColor;
     }
     div .note { margin-right: calc(-28ex - 1rem - 2px); }
     .note-container { font-size: 60%; vertical-align: super; }
     .note-container:before { content: "[" counter(fn); }
     .note:before { content: counter(fn) ". "; }
+}
+@media only screen and (min-width: 1350px) {
+    body { padding: 0 17ex; }
 }
 
 .todo, .quirk, .warning, .installation, .further { padding: 1em 1em 0; margin: 1em 0; }
