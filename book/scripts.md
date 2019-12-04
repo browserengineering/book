@@ -5,10 +5,9 @@ prev: forms
 next: reflow
 ...
 
-Forms make our web browser has become an application platform, able to
-run dynamic web applications like the little guest book that we coded
-up. However, form-based web applications require page loads between
-every change, and rightly fell out of favor in the early 2000s. What
+Forms allow our web browser to run dynamic web applications like that
+guest book. But form-based web applications require page loads every
+time you do anything, and fell out of favor in the early 2000s. What
 took their place are JavaScript-based applications, which run user
 code on web pages that can modify the pages dynamically, without
 reloads. Let's add support for that to our toy web browser.
@@ -16,19 +15,10 @@ reloads. Let's add support for that to our toy web browser.
 Installing DukPy
 ================
 
-Actually writing a JavaScript interpreter is beyond the scope of a
-browser course (because it is pretty darn similar to implementing any
-other interpreted language), so this chapter, unlike the previous
-ones, has dependencies outside the Python standard library, namely the
-`dukpy` library for executing JavaScript.
-
-::: {.quirk}
-If you\'re using C or C++, you may want to try binding to the `duktape`
-C library, which `dukpy` uses internally. If you\'re using some other
-language, you may need to switch to Python for this lab. The next lab,
-on reflows, can be done without having done this one, though it won\'t
-be particularly well motivated.
-:::
+Actually writing a JavaScript interpreter is beyond the scope of this
+book,^[fn::But check out a book on programming language implementation
+if it sounds interesting!] so this chapter uses the `dukpy` library
+for executing JavaScript.
 
 [DukPy](https://github.com/amol-/dukpy) is a Python library that wraps a
 JavaScript interpreter called [Duktape](https://duktape.org). There are,
@@ -39,12 +29,22 @@ because they aim for maximal speed, Duktape aims at simplicity and
 extensibility, especially for people who need a simple scripting
 language as part of a larger C or C++ project.[^1]
 
-Like any JavaScript engine, DukPy makes it possible to execute
-JavaScript code. However, it also allows you to *register functions*:
-that is, to create JavaScript functions whose implementation is in
-Python, not in JavaScript. We\'ll be heavily using this feature in our
-toy browser to implement all those functions that you can call in
-JavaScript to modify the web page itself.
+[^1]: For examples, games are usually written in C or C++ to take
+    advantage of high-speed graphics, but use a simpler language to
+    implement the actual plot of the game.
+
+::: {.quirk}
+If you\'re using C or C++, you may want to try binding to the `duktape`
+C library, which `dukpy` uses internally. If you\'re using some other
+language, you may need to switch to Python for this lab. The next lab,
+on reflows, can be done without having done this one, though it won\'t
+be particularly well motivated.
+:::
+
+Like any JavaScript engine, DukPy not only executes JavaScript code,
+but also allows JavaScript code to call Python functions that you've
+*registered*. We\'ll be heavily using this feature to allow JavaScript
+code to modify the web page it's running on.
 
 The first step to using DukPy is installing it. On most machines,
 including on Windows, macOS, and Linux systems, you should be able to do
@@ -54,12 +54,12 @@ this with the command:
 pip install dukpy
 ```
 
-There may be quirks depending on your implementation, however. Instead
-of `pip`, you might have to use `pip3`. Or, perhaps, you may not have
-`pip` and will instead use `easy_install`. Some Linux distributions may
-package `dukpy` directly. If you do your Python programming through an
-IDE, you may need to use your IDE\'s package installer. In the worst
-case, you might have to build [from
+There may be quirks depending on your computer, however. You might
+need to install `pip`. Instead of `pip`, you might have to use `pip3`.
+Or, perhaps, you may have `easy_install` instead of `pip`. Some Linux
+distributions may package `dukpy` directly. If you do your Python
+programming through an IDE, you may need to use your IDE\'s package
+installer. In the worst case, you might have to build [from
 source](https://github.com/amol-/dukpy).
 
 To test whether you installed DukPy correctly, execute:
@@ -71,25 +71,28 @@ dukpy.evaljs("2 + 2")
 
 If you get an error on the first line, you probably failed to install
 DukPy.[^2] If you get an error, or a segfault, on the second line,
-there\'s a chance that Duktape failed to compile for some reason or
-other, and maybe doesn\'t support your system. In that case you might
-need to skip this chapter.[^3]
+there's a chance that Duktape failed to compile, and maybe doesn\'t
+support your system. In that case you might need to skip this
+chapter.
+
+[^2]: Or, on my Linux machine, I sometimes get errors due to file
+    ownership.
+
 
 Running JavaScript code
 =======================
 
-The test code above should give you some sense of how to use DukPy to
-run JavaScript code: you merely call `evaljs`! With this newfound
-knowledge, let\'s modify our web browser to run JavaScript code in the
-pages that it downloads.
+The test code above shows you how to run JavaScript code with DukPy:
+you just call `evaljs`! With this newfound knowledge, let\'s modify
+our web browser to run JavaScript code.
 
 On the web, JavaScript is found in `<script>` tags, in two different
-ways. First, a `<script>` tag may have a `src` attribute, which gives a
-relative URL that points to a JavaScript file, much like with CSS files.
-Second, a `<script>` tag may also have ordinary text contents, which are
-run directly. In the toy browser, I want to implement the first; the
-second sets up some parsing challenges unless you promise to avoid less
-than and greater than comparisons in your code.
+ways. First, a `<script>` tag may have a `src` attribute with a
+relative URL that points to a JavaScript file, much like with CSS
+files. Second, a `<script>` tag may also have ordinary text contents,
+which are run directly. In my toy browser, I'll only implement the
+first; the second makes parsing a challenge.^[Unless you promise to
+avoid less than and greater than comparisons in your code.]
 
 The implementation here will look much like for CSS. First, let\'s
 implement a `find_scripts` function:
@@ -109,15 +112,12 @@ Then, when we load a web page, we will find all of the scripts and run
 them:
 
 ``` {.python}
-class Browser:
-    def parse(self, body):
-        # ...
-        for script in find_scripts(self.nodes, []):
-            lhost, lport, lpath = \
-                parse_url(relative_url(script, self.history[-1]))
-            header, body = request('GET', lhost, lport, lpath)
-            print("Script returned: ", dukpy.evaljs(body))
-        self.relayout()
+def parse(self, body):
+    # ...
+    for script in find_scripts(self.nodes, []):
+        header, body = request('GET', relative_url(script, self.history[-1]))
+        print("Script returned: ", dukpy.evaljs(body))
+    self.relayout()
 ```
 
 Try this out on a simple web page, like this one:
@@ -136,87 +136,81 @@ x + x
 Registering functions
 =====================
 
-It\'s cool that we can run JavaScript, but a little silly that we have
-to manually print the outcome. Some JavaScript code doesn\'t return
-anything; other code would like to print more than once. Ideally, the
-JavaScript code would instead call a standard function like
-`console.log` whenever it wanted to print, which would also let it do
-things like print in a loop.
+It\'s cool to run JavaScript, but it's silly for the browser to print
+the result. What if you don't want to print? Or want to print more
+than once? The script should call the standard `console.log` function
+when it wants to print instead of having the problem print at the end.
 
-To do so, we will need to *register a function* with DukPy, asking it to
-turn all calls of some JavaScript function into calls of a corresponding
-Python function instead. To do that in DukPy, we first need to create a
-`JSInterpreter` object, which will be a kind of session into which we
-can register functions and which will store state between JavaScript
-executions.
+To allow that, we will need to *register a function* with DukPy, which
+would allow Javascript code to run Python functions. Those functions
+are registered on a `JSInterpreter` object, which we'll need to create:
 
 ``` {.python}
-class Browser:
-    def parse(self, body):
-        # ...
-        self.js = dukpy.JSInterpreter()
-        for script in find_scripts(self.nodes, []):
-            # ...
-            self.js.evaljs(body)
+self.js = dukpy.JSInterpreter()
 ```
 
-As a side benefit, it should now be possible to run two scripts and have
-one of them define a variable that the other uses, say on a page like:
+For `console.log`, we'll first need a Python function that print its
+argument---`print`.^[5] We can register it using `export_function`:
+
+[^5]: If you\'re using Python 2, for some reason, you\'ll need to write
+    a little wrapper function around `print` instead.
 
 ``` {.python}
-<!doctype html>
-<script src=a.js></script>
-<script src=b.js></script>
-```
-
-where `a.js` is \"`var x = 2;`\" and `b.js` is \"`x + x`\".[^4]
-
-Anyway, now that we\'re running the JS in a persistent interpreter, we
-can register functions in it. Let\'s start with a simple output
-function. Unfortunately, we can\'t just create a function called
-`console.log`: we need to create a `console` object and then define a
-`log` function on it. To do that, I\'m going to first register a
-function called `log`, and then write some JavaScript code to actually
-define the `console` object.
-
-First, registering the `log` function. We want this function to print
-its argument, so the Python function we want `__log` to call is
-`print`.[^5] To register `log`, we call `export_function`:
-
-``` {.python}
-self.js = # ...
 self.js.export_function("log", print)
 ```
 
-When you register a function like this, it becomes available for calling
-in JavaScript through the special `call_python` function. For example,
-it should now be possible to run the script
-`call_python("log", "Hi from JS!")` in your browser and see stuff
-printed to your console. But, since we want to have a `console.log`
-function, we need to go a step further and define a `console` object.
-The easiest way to do that is in JavaScript itself, by executing code
-like this:
+You can now run the Javascript code:
+
+``` {.javascript}
+call_python("log", "Hi from JS")
+```
+
+That will take `x`, convert it from a Javascript to a Python
+object,^[This conversion will do the expected things to numbers,
+string, and booleans, but I wouldn't try it with more general
+objects.] and run the `print` function with that argument.
+
+That's pretty good, but what we actually want is a `console.log`
+function, not a `call_python` function. So we need define a `console`
+object and then give it a `log` field. We do that *in JavaScript*, by
+executing code like this:
 
 ``` {.javascript}
 console = { log: function(x) { call_python("log", x); } }
 ```
 
-In case you\'re not too familiar with JavaScript, this defines a
+In case you're not too familiar with JavaScript,^[Now's a good time to
+brush up on it! This chapter has a lot of JavaScript in it.] this defines a
 variable called `console`, whose value is an object literal with the
-field `log`, whose value is the function you see defined there. We can
-call this code our \"JavaScript runtime\"; we need it to run before any
-user code. So let\'s stick it in a file (I\'m calling mine `runtime.js`)
-and run it, after all of our functions are registered but before any
-user code is run:
+field `log`, whose value is the function you see defined there.
+
+Taking a step back, when we run JavaScript in our browser, we're
+mixing: C code, which implements the JavaScript interpreter; Python
+code, which handles certain JavaScript functions; and JavaScript code,
+which wraps the Python API to look more like the JavaScript one. We
+can call that JavaScript code our \"JavaScript runtime\"; we run it
+before we run any user code. So let\'s stick it in a `runtime.js`
+file, and run it after all of our functions are registered but before
+any user code is run:
 
 ``` {.python}
-# self.js.export_function
 with open("runtime.js") as f:
     self.js.evaljs(f.read())
 ```
 
 Now you should be able to run the script `console.log("Hi from JS!")`
 and see output in your terminal.
+
+As a side benefit of using one `JSInterpreter` for all scripts, it is
+now possible to run two scripts and have one of them define a variable
+that the other uses, say on a page like:
+
+``` {.python}
+<script src=a.js></script>
+<script src=b.js></script>
+```
+
+where `a.js` is \"`var x = 2;`\" and `b.js` is \"`console.log(x + x)`\".
 
 Querying the DOM
 ================
@@ -879,23 +873,6 @@ Exercises
     That means you will need some kind of queue to remember the requests
     you need to make (once the current script is done running) and the
     handlers to call afterwards.
-
-[^1]: For examples, games are usually written in C or C++ to take
-    advantage of high-speed graphics, but include a scripting language
-    to make it easier to implement the actual plot of the game.
-
-[^2]: Or, I sometimes get errors due to file ownership problems on
-    Linux.
-
-[^3]: You could also attempt to follow along using another JS
-    interpreter. But fair warning: the browser implementations are all
-    incredibly difficult to install and use.
-
-[^4]: The code should run without crashing, but you won\'t see any
-    results because of course we just got rid of the `print` statement.
-
-[^5]: If you\'re using Python 2, for some reason, you\'ll need to write
-    a little wrapper function around `print` instead.
 
 [^6]: Have you noticed that we now have a half-dozen of these functions?
     If our selector language was richer, like if it supported attribute
