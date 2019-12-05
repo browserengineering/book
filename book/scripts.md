@@ -150,7 +150,7 @@ self.js = dukpy.JSInterpreter()
 ```
 
 For `console.log`, we'll first need a Python function that print its
-argument---`print`.^[5] We can register it using `export_function`:
+argument---`print`.[^5] We can register it using `export_function`:
 
 [^5]: If you\'re using Python 2, for some reason, you\'ll need to write
     a little wrapper function around `print` instead.
@@ -201,6 +201,18 @@ with open("runtime.js") as f:
 Now you should be able to run the script `console.log("Hi from JS!")`
 and see output in your terminal.
 
+::: {.quirk}
+Our browser is making one major departure here from how real web
+browsers work, a departure important enough to call out. In a real web
+browser, JavaScript code is run as soon as the browser *parses* the
+`<script>` tag, and at that point most of the page is not parsed and may
+not even have been received over the network. But the way I\'ve written
+the code, my toy browser only runs scripts after the page is fully
+loaded. Given how we\'ve structured our browser, it would,
+unfortunately, be pretty hard to do this right, and I don't think it's
+essential to understanding how browsers run interactive scripts.
+:::
+
 As a side benefit of using one `JSInterpreter` for all scripts, it is
 now possible to run two scripts and have one of them define a variable
 that the other uses, say on a page like:
@@ -216,35 +228,26 @@ Querying the DOM
 ================
 
 So far, JavaScript evaluation is fun but useless, because JavaScript
-can\'t make any kinds of modifications to the page itself. Why even run
-JavaScript with a limitation like that? So let\'s work on making it
-possible to modify the page from JavaScript.
+can\'t make any kinds of modifications to the page itself. Why even
+run JavaScript if it can't do anything besides print? So let\'s work
+on modifying the page from JavaScript.
 
-Generally, the set of APIs that allow JavaScript to manipulate the web
-page it is running on is called the DOM API, where DOM stands for
-\"Document Object Model\". The DOM API is big, and it keeps getting
-bigger, so I\'m definitely not planning on implementing all, or even
-most, of it. But there are a few core APIs that give you a lot of the
-power of the full API, granted in a kind of ugly way:
+The JavaScript functions that manipulate a web page are collectively
+called the DOM API, for \"Document Object Model\". The DOM API is big,
+and it keeps getting bigger, so I\'m not implementing all, or even
+most, of it. But a few core functions have much of the power of the
+full API:
 
--   `querySelectorAll`, which returns a list of all elements matching a
-    selectors;
--   `getAttribute`, which gets the value of an HTML attribute for some
-    element; and
--   `innerHTML`, which allows you to replace the contents of any element
-    by a new block of HTML.
+-   `querySelectorAll` returns all the elements matching a selector;
+-   `getAttribute` returns an element's value for some attribute; and
+-   `innerHTML` replaces the contents of an element with new HTML.
 
-Now, I should note that both of these are a little more complex than
-I\'m making them out to be. `querySelectorAll` actually returns not a
-list but a thing called a `NodeList`, and also `innerHTML` can be used
-to both read and write the HTML contents of an element. I\'m going to
-ignore those and just implement the very limited versions of these
-functions described above.
+I'm implemented a simplified version of these methods.
+`querySelectorAll` will return an array, not this thing called a
+`NodeList`; `innerHTML` will only write the HTML contents of an
+element, and won't allow reading those contents.
 
-Let\'s implement `querySelectorAll` and `getAttribute`, which are
-read-only methods, first. Normally, `querySelectorAll` is a method on an
-object called `document`, so we\'ll need to pull the same trick as
-above. First, let\'s write a function to register:
+Let\'s start with `querySelectorAll`. First, register a function:
 
 ``` {.python}
 class Browser:
@@ -257,25 +260,31 @@ class Browser:
         # ...
 ```
 
-We\'ll then define a `document` object in our JavaScript runtime with a
-`querySelectorAll` function:
+Normally, `querySelectorAll` is a method on the `document` object, so
+define one in the JavaScript runtime:
 
 ``` {.python}
-document = { querySelectorAll: function(s) { return call_python("querySelectorAll", s); } }
+document = { querySelectorAll: function(s) {
+    return call_python("querySelectorAll", s);
+}}
 ```
 
-`js_querySelectorAll` will first parse the selector, then find and
-return the matching elements:
+The `js_querySelectorAll` handler will first parse the selector, then
+find and return the matching elements:
 
 ``` {.python}
-selector, _ = css_selector(sel + "{", 0)
+selector, _ = CSSParser(sel + "{").selector(0)
 return find_selected(self.nodes, selector, [])
 ```
 
-Here I\'m asking my parser to parse, for example, `#id{` instead of
-`#id`, because that way the selector parser won\'t go off the end of the
-string and throw an error. I\'ve moved the actual selector matching to a
-recursive helper function:[^6]
+I\'m parsing, say, `#id{` instead of `#id`, because that way the
+selector parser won\'t go off the end of the string and throw an
+error. I\'ve moved the actual selector matching to a recursive helper
+function:[^6]
+
+[^6]: Have you noticed that we now have a half-dozen of these functions?
+    If our selector language was richer, like if it supported attribute
+    selectors, we could replace most of them with `find_selected`.
 
 ``` {.python}
 def find_selected(node, sel, out):
@@ -287,12 +296,10 @@ def find_selected(node, sel, out):
     return out
 ```
 
-We\'re helped out here by some of the nice features of DukPy. For
-example, `css_selector` can throw errors, so the function we register
-can crash. But in that case DukPy will turn our Python-side exception
-into a JavaScript-side exception in the web script we are running, which
-can catch it or do something else. However, if you run this code, you
-will likely see an error like this:[^7]
+With these minimal changes, `querySelectorAll` finds the matching
+elements. However, if you actually try calling the function from
+JavaScript, you'll see an error like this:[^7]
+
 
 ``` {.example}
 _dukpy.JSRuntimeError: EvalError:
@@ -300,16 +307,24 @@ Error while calling Python Function:
 TypeError('Object of type ElementNode is not JSON serializable')
 ```
 
-But what it\'s trying to tell you is that DukPy has no idea what to do
-with the `ElementNode` objects you\'re returning from
-`querySelectorAll`, since there is no corresponding class in JavaScript.
+[^7]: Yes, that\'s a confusing error message. Is it a `JSRuntimeError`,
+    an `EvalError`, or a `TypeError`?
 
-Instead of returning browser objects directly to JavaScript, we need to
-keep browser objects firmly on the Python side of the browser, and toss
-references to those browser objects over the fence to JavaScript. Let\'s
-pass the JavaScript code a simple numeric identifier, and keep track of
-which identifer maps to which element inside the browser. I\'ll call
-these identifiers *handles*.[^8]
+But what DukPy is trying to tell you is that it has no idea what to do
+with the `ElementNode` objects you\'re returning from
+`querySelectorAll`, since there is no corresponding class in
+JavaScript.
+
+Instead of returning browser objects directly to JavaScript, we need
+to keep browser objects firmly on the Python side of the browser, and
+toss references to those browser objects over the fence to JavaScript.
+Those references can be simple numeric identifier; the browser will
+keep track of which identifer maps to which element. I\'ll call these
+identifiers *handles*.[^8]
+
+[^8]: Handles are the browser analogs of file descriptors, which give
+    user-level applications a handle to kernel data structures which
+    they can\'t interpret without the kernel\'s help anyway.
 
 To implement handles, I\'ll first create a `js_handles` browser field,
 which will map handles to nodes:
@@ -323,8 +338,8 @@ class Browser:
         # ...
 ```
 
-I\'ll also add a `handle` field to each `ElementNode`, where 0 means no
-handles have been assigned yet:
+I\'ll also add a `handle` field to each `ElementNode` to store its
+handle. If no handle has been assigned yet, I'll set the field to 0:
 
 ``` {.python}
 class ElementNode:
@@ -333,6 +348,10 @@ class ElementNode:
         self.handle = 0
 ```
 
+::: {.todo}
+I think I'd rather put two makes inside the JSEnvironment class.
+:::
+
 Then, in `js_querySelectorAll`, I\'ll allocate new handles for each of
 the matched nodes:
 
@@ -340,46 +359,48 @@ the matched nodes:
 elts = find_selected(self.nodes, selector, [])
 out = []
 for elt in elts:
+    out.append(self.make_handle(elt))
+return out
+```
+
+The `make_handle` method merely creates a new handle if none exist yet:
+
+``` {.python}
+def make_handle(self, elt):
     if not elt.handle:
         handle = len(self.js_handles) + 1
         elt.handle = handle
         self.js_handles[handle] = elt
-    out.append(handle)
-return out
+    return elt.handle
 ```
 
-The curious expression `len(self.js_handles) + 1` happens to compute the
-smallest handle not in the handles list. So now calling
-`document.querySelectorAll` will return an output like `[1, 2, 3, 4]`.
-Great! We can now execute a simple script to count, say, the number of
-paragraphs on the page.
+The curious `len(self.js_handles) + 1` expression computes the
+smallest handle not in the handles list.
+
+Calling `document.querySelectorAll` will now return something like
+`[1, 3, 4, 7]`, with each number being a handle for an element. Great!
+So now this script, say, will count the number of paragraphs on the
+page:
 
 ``` {.javascript}
 console.log(document.querySelectorAll("p").length)
 ```
 
-::: {.quirk}
-Our browser is making one major departure here from how real web
-browsers work, a departure important enough to call out. In a real web
-browser, JavaScript code is run as soon as the browser *parses* the
-`<script>` tag, and at that point most of the page is not parsed and may
-not even have been received over the network. But the way I\'ve written
-the code, my toy browser only runs scripts after the page is fully
-loaded. This is so that I can test the JavaScript support before
-implementing events (like the `load` event) that real web pages have to
-listen for before making queries to the page. Given how we\'ve
-structured our browser, it would, unfortunately, be pretty hard to do
-this right.
-:::
+By the way, now is a good time to wonder what would happen if you
+passed `querySelectorAll` an invalid selector. We\'re helped out here
+by some of the nice features of DukPy. For example, with an invalid
+selector, `CSSParser.selector` would throw an error, and the
+registered function would crash. But in that case DukPy will turn our
+Python-side exception into a JavaScript-side exception in the web
+script we are running, which can catch it or do something else.
 
-But returning handles to our JavaScript code isn\'t enough if we want
-scripts to get any additional information about the elements that
-`querySelectorAll` returns. For example: how could we call
-`getAttribute` on them?
+# Wrapping handles
 
-Well, the idea is that we need to register another function to implement
-`getAttribute`, which will take in handles as input and internally
-conver them into elements. It would look a bit like this:
+Our JavaScript code can now get references to elements, but those
+references are opaque numbers. How do you call `getAttribute` on them?
+
+Well, the idea is that `getAttribute` should take in handles and
+convert those handles back into elements. It would look like this:
 
 ``` {.python}
 class Browser:
@@ -388,9 +409,7 @@ class Browser:
         return elt.attributes.get(attr, None)
 ```
 
-Note that `None` is translated by DukPy to the `null` object in
-JavaScript. We can register this function as `getAttribute`, and now we
-can run a script like this:[^9]
+We can register this function as `getAttribute`, and now run:[^9]
 
 ``` {.python}
 scripts = document.querySelectorAll("script")
@@ -399,12 +418,17 @@ for (var i = 0; i < scripts.length; i++) {
 }
 ```
 
-That should print out the URLs of all of the scripts on the page.
+[^9]: Note to JS experts: Dukpy does not implement newer JS syntax
+    like `let` and `const` or arrow functions.
 
-Finally, this still isn\'t \"normal\" JavaScript code, because normally
+That should print out the URLs of all of the scripts on the page. Note
+that the attribute is not assigned, the `None` value returned from
+Python will be translated by DukPy to `null` in JavaScript.
+
+Finally, we'd like to wrap this ugly `call_python` method. Normally
 `querySelectorAll` returns `Node` obejcts and you call `getAttribute`
-directly on those `Node` objects, with no `call_python` things involved.
-Let\'s define this wrapper `Node` class in our runtime.[^10]
+directly on those `Node` objects. Let\'s define that `Node` class in
+our runtime.[^10]
 
 ``` {.javascript}
 function Node(handle) { this.handle = handle; }
@@ -413,66 +437,61 @@ Node.prototype.getAttribute = function(attr) {
 }
 ```
 
+[^10]: If your JavaScript is rusty, you might want to read up on the
+    crazy way you define classes in JavaScript. Modern JavaScript also
+    provides the `class` syntax, which is more sensible, but it\'s not
+    supported in DukPy.
+
 Then, in our `querySelectorAll` wrapper, we\'ll create these `Node`
-objects:
+objects:[^11]
 
 ``` {.python}
-document = {
-    querySelectorAll: function(s) {
-        return call_python("querySelectorAll", s).map(function(h) {
-            return new Node(h)
-        });
-    }
-}
+document = { querySelectorAll: function(s) {
+    var handles = call_python("querySelectorAll", s)
+    return handles.map(function(h) { return new Node(h) });
+}}
 ```
 
-Note that we\'re creating new `Node` objects every time we call
-`querySelectorAll`, even if we already have a `Node` for that handle.
-That\'s actually a bad thing, since it means you can\'t use equality to
-compare `Node` objects. I\'ll ignore that problem.
+[^11]: This code creates new `Node` objects every time you call
+    `querySelectorAll`, even if there's already a `Node` for that
+    handle. That means you can\'t use equality to compare `Node`
+    objects. I\'ll ignore that but a real browser wouldn't.
 
-With this new code, we can actually write some useful functions. For
-example, we might write a little character counter for input boxes:
+We can now implement a little character count function:
 
 ``` {.python}
 inputs = document.querySelectorAll('input')
 for (var i = 0; i < inputs.length; i++) {
-    if (input.getAttribute("value").length > 100) {
-        console.log("Input with name " + input.getAttribute("name") + " has too much text.")
+    var name = inputs[i].getAttribute("name");
+    var value = inputs[i].getAttribute("value");
+    if (value.length > 100) {
+        console.log("Input " + name + " has too much text.")
     }
 }
 ```
 
-Alas, we can\'t quite yet run this whenever the input value changes.
-Let\'s fix that.
+Now, ideally, we'd run the character count every time the user typed
+something in an input box.
 
 Event handling
 ==============
 
-JavaScript code executes as soon as the browser loads the web page, but
-most of that code doesn\'t actually make any changes to the page.
-Instead, it installs various code to run when *page events* occur, like
-clicks on links and buttons or changes to input areas. Here\'s how that
-works. First, any time the user interacts with the page, the browser
-generates *events*. Each event has a type, like `change`, `click`, or
-`submit`, and an element (an input area, a link, or a form). JavaScript
-code can call `addEventListener` to react to those events:
-`elt.addEventListener('click', handler)` will run the JavaScript
-function `handler` every time the element `elt` generates a `click`
+The browser executes JavaScript code as soon as it loads the web page,
+but most changes to the page should be made *in response* to user
+actions. Bridging the gap, most scripts set code to run when *page
+events*, like clicks on buttons or changes to input areas, occur.
+
+Here\'s how that works. First, any time the user interacts with the
+page, the browser generates *events*. Each event has a type, like
+`change`, `click`, or `submit`, and a target element (an input area, a
+link, or a form). JavaScript code can call `addEventListener` to react
+to those events: `elt.addEventListener('click', handler)` sets
+`handler` to run every time the element `elt` generates a `click`
 event.
 
-Let\'s implement that. We\'ll start on the browser side, where we have
-to generate events. Let\'s add a `Browser.event` function which we\'ll
-call every time an event has to be generated:
-
-``` {.python}
-class Browser:
-    def event(self, type, elt):
-        pass
-```
-
-Let\'s add calls to `self.event` in three places. First, any time we
-click in the page:
+Let's start our implementation with generating events. First, I'll
+create an `event` method and call it in three places. First, any time
+we click in the page:
 
 ``` {.python}
 def handle_click(self, e):
@@ -485,7 +504,7 @@ def handle_click(self, e):
         # ...
 ```
 
-Second, after updating input area values:[^11]
+Second, after updating input area values:[^edit-then-event]
 
 ``` {.python}
 def edit_input(self, elt):
@@ -494,7 +513,10 @@ def edit_input(self, elt):
     self.relayout()
 ```
 
-Finally, when submitting forms:
+[^edit-then-event]: After, not before, so that any event handlers see
+    the new value.
+
+And finally, when submitting forms:
 
 ``` {.python}
 def submit_form(self, elt):
@@ -504,12 +526,13 @@ def submit_form(self, elt):
     # ...
 ```
 
-So far so good---but what should `event` actually do? Well, it needs to
-run the handlers that JavaScript has defined with `addEventListener`, so
-those need to be stored somewhere. But where? I propose we keep that
-data on the JavaScript side, in an variable called `LISTENERS`.
-`LISTENERS` will map handles to a dictionary that maps event types to a
-list of handlers:
+So far so good---but what should the `event` method do? Well, it needs
+to run the handlers set up by `addEventListener`, so those need to be
+stored somewhere—where? I propose we keep that data on the JavaScript
+side, in an variable in the runtime. I'll call that variable
+`LISTENERS`; we'll use it to look up handles and event types, so let's
+make it a dictionary from handles to a dictionary from event types to
+a list of handlers:
 
 ``` {.javascript}
 LISTENERS = {}
@@ -523,66 +546,73 @@ Node.prototype.addEventListener = function(type, handler) {
 }
 ```
 
-Now we can use the `LISTENERS` array to actually run the handlers. Still
-in JavaScript:
+We use the `LISTENERS` array to run the handlers. Still in JavaScript:
 
 ``` {.javascript}
 function __runHandlers(handle, type) {
     var list = (LISTENERS[handle] && LISTENERS[handle][type]) || [];
     for (var i = 0; i < list.length; i++) {
-        list[i]();
+        list[i].call(new Node(handle));
     }
 }
 ```
 
-Now all we need to do when an event is generated is to call
-`__runHandlers` from Python:
+When I call the handler I use JavaScript's `call` method on functions,
+which allows me to set the value of `this` inside that function. Here
+I set it to the element we're calling the handler on, as is standard
+in JavaScript.
+
+So `event` now just calls `__runHandlers` from Python:
 
 ``` {.python}
 def event(self, type, elt):
-    if elt.handle:
-        self.js.evaljs("__runHandlers({}, \"{}\")".format(elt.handle, type))
+    if not elt.handle: return
+    self.js.evaljs("__runHandlers({}, \"{}\")".format(elt.handle, type))
 ```
 
-There are two quirks with this code. First, I\'m not running handlers if
-the element with the event doesn\'t have a handle. That\'s because if it
-doesn\'t have a handle, it couldn\'t have been made into a `Node`, and
-then `addEventListener` couldn\'t have been called on it. Second, when I
-call `__runHandlers` I need to pass it arguments, which I do by
-generating JavaScript code that embeds those arguments directly. This
-would be a bad idea if, say, `type` could contain a quote or a newline.
-Luckily I control that value and can make sure it is always valid. DukPy
-actually provides a better way to do this, using the `dukpy` object, but
-in the interest of simplicity I\'m skipping that.
+There are two quirks with this code. First, I\'m not running handlers
+if the element with the event doesn\'t have a handle. That\'s because
+if it doesn\'t have a handle, it couldn\'t have been made into a
+`Node`, and then `addEventListener` couldn\'t have been called on it.
+Second, when I call `__runHandlers` I need to pass it arguments, which
+I do by generating JavaScript code that embeds those arguments
+directly. This would be a bad idea if, say, `type` contained a quote
+or a newline. But the browser supplies that value, and it'll never be
+weird.^[DukPy provides the `dukpy` object to do this better, but in
+the interest of simplicity I\'m not using it]
 
-With all of this done, you should be able to take the input area
-character counter above and run it every time an input area changes:
+With all of this done, we can now run the character count above on
+every input area change:
 
 ``` {.python}
 function lengthCheck() {
-    if (input.getAttribute("value").length > 100) {
-        console.log("Input with name " + input.getAttribute("name") + " has too much text.")
+    var name = this.getAttribute("name");
+    var value = this.getAttribute("value");
+    if (value.length > 100) {
+        console.log("Input " + name + " has too much text.")
     }
 }
 
-inputs = document.querySelectorAll("input")
+var inputs = document.querySelectorAll("input");
 for (var i = 0; i < inputs.length; i++) {
     inputs[i].addEventListener("change", lengthCheck);
 }
 ```
 
-This is great, but ideally the output of this length check would go on
-the web page itself, not to the console, where the user probably won\'t
-bother looking. To do that, we\'ll need to not only read from but also
-write to the DOM.
+Note how `lengthCheck` uses `this` to reference the input element that
+actually changed.
+
+So far so good—but ideally the length check wouldn't print to the
+console; it would add a warning to the web page itself. To do that,
+we'll need to not only read from but also write to the DOM.
 
 Modifying the DOM
 =================
 
-So far, we\'ve only implemented DOM methods that read the DOM. Now we
-need to write to it. The full DOM API provides a lot of different
-methods for modifying the page, but I\'m going to focus on implementing
-just one: `innerHTML`. That method works like this:
+So far, we've only implemented read-only DOM methods. Now we need to
+write to the DOM. The full DOM API provides a lot of such methods, but
+for simplicity I'm going implementing only `innerHTML`. That method
+works like this:
 
 ``` {.javascript}
 node.innerHTML = "This is my <b>new</b> bit of content!";
@@ -590,8 +620,8 @@ node.innerHTML = "This is my <b>new</b> bit of content!";
 
 In other words, `innerHTML` is a *field* on node objects, with a
 *setter* that is run when the field is modified. That setter takes the
-new value, which must be a string, parses it as HTML, and makes the new,
-parsed HTML nodes children of the original node.
+new value, which must be a string, parses it as HTML, and makes the
+new, parsed HTML nodes children of the original node.
 
 Let\'s implement this, starting on the JavaScript side. JavaScript has
 the obscure `Object.defineProperty` function to define setters:
@@ -599,12 +629,13 @@ the obscure `Object.defineProperty` function to define setters:
 ``` {.javascript}
 Object.defineProperty(Node.prototype, 'innerHTML' {
     set: function(s) {
-        call_python("innerHTML", this.handle, s);
+        call_python("innerHTML", this.handle, "" + s);
     }
 });
 ```
 
-Now we need to register the `innerHTML` function:
+I'm using `"" + s` to convert the new value of `innerHTML` to a
+string. Next, we need to register the `innerHTML` function:
 
 ``` {.python}
 class Browser:
@@ -617,7 +648,7 @@ class Browser:
         # ?
 ```
 
-Now, in `innerHTML`, we\'ll need to parse the new HTML string:
+In `innerHTML`, we\'ll need to parse the HTML string:
 
 ``` {.python}
 new_node = parse(lex("<__newnodes>" + s + "</__newnodes>"))
@@ -628,70 +659,63 @@ because our HTML parser doesn\'t work right when you don\'t have a
 single root node.[^12] Of course we don\'t want that new node, just its
 children:
 
+[^12]: Unless you did that exercise, in which case you\'ll have to
+    adjust.
+
 ``` {.python}
 elt.children = new_node.children
 for child in elt.children:
     child.parent = elt
 ```
 
-Note that we not only need to copy the children into the old node but
-also update their parent pointers to point to it. This is almost
-right---but if you look carefully at `TextNode` you\'ll notice that it
-assigns its `style` field in its constructor, by using its parent\'s
-style. That means if the new HTML content is a single `TextNode`, it\'ll
-point at the wrong parent\'s style. So let\'s move that code to the
-`style` function:
-
-``` {.python}
-def style(node, rules):
-    if not isinstance(node, ElementNode):
-        node.style = node.parent.style
-        return
-```
-
-Finally, since the page changed, we need to lay it out again:
+We need to update the parent pointers of those parsed child nodes
+because until we do that, they point to the old `<__newnodes>`
+element. Finally, since the page changed, we need to lay it out again:
 
 ``` {.python}
 self.relayout()
 ```
 
-With that, it\'s now possible to update a web page from JavaScript
-itself. Let\'s go ahead and use this in our guest book server. Do you
-want people writing long political rants in *your* guest book? I don\'t,
-so I\'m going to put a 200-character limit on guest book entries.
+JavaScript can now modify the web page!
 
-First, let\'s modify the guest book form so that after the
-`<input name=guest>` we have a new paragraph `<p id=errors></p>`.
-Initially this paragraph will be empty, but we\'ll update it with text
-if the comment gets too long.
+Let\'s go ahead and use this in our guest book server. Do you want
+people writing long rants in *your* guest book? I don\'t, so I\'m
+going to put a 200-character limit on guest book entries.
 
-Next, let\'s add a script to the page. First of all that means a new
-line of HTML output:
+First, let's add a new paragraph `<p id=errors></p>` after the guest
+book form. Initially this paragraph will be empty, but we\'ll write an
+error message into it if the paragraph gets too long.
+
+Next, let\'s add a script to the page. That means a new line of HTML:
 
 ``` {.python}
 out += "<script src=/comment.js></script>"
 ```
 
-However, we also need to *serve* that new JavaScript file, and that
-means our little web server will now need a special case for the
-`/comment.js` URL:
+We also need to *serve* that new JavaScript file, so our little web
+server will now need to respond to the `/comment.js` URL:
 
 ``` {.python}
 def handle_request(method, url, headers, body):
-    if url == "/comment.js":
-        with open("comment.js") as f:
-            return f.read()
-    # ...
+    if method == 'POST':
+        # ..
+    else:
+        if url == '/comment.js':
+            with open("comment.js") as f:
+                return f.read()
+        # ...
 ```
 
-Here the server is going to read from the file `common.js`, into which
-we can put our little input length checker above, with the `lengthCheck`
-function modified like so to use `innerHTML`:
+We can then put our little input length checker into `comment.js`,
+with the `lengthCheck` function modified like so to use `innerHTML`:
 
 ``` {.javascript}
+p_error = document.querySelectorAll("#errors")[0];
+
 function lengthCheck() {
-    if (input.getAttribute("value").length > 100) {
-        document.querySelectorAll("#errors")[0].innerHTML = "Comment too long!"
+    var value = this.getAttribute("value");
+    if (value.length > 200) {
+        p_error.innerHTML = "Comment too long!"
     }
 }
 
@@ -699,32 +723,30 @@ input = document.querySelectorAll("input")[0];
 input.addEventListener("change", lengthCheck);
 ```
 
-Try it out. Write a really long comment and you should see the page
-warning you that the comment is too long. By the way, we might want to
-make it stand out more, so let\'s go ahead and add another URL to our
-web server, `/common.css`, with the contents:
+Try it out: write a long comment and you should see the page warning
+you that the comment is too long. By the way, we might want to make it
+stand out more, so let\'s go ahead and add another URL to our web
+server, `/comment.css`, with the contents:
 
 ``` {.css}
 #errors { font-weight: bold; color: red; }
 ```
 
-This is a good step toward limiting the length of guest book entries,
-but there\'s still nothing stopping the user from writing a long
-comment, ignoring the error message, and submitting the guest book entry
-anway. So far...
+Now we tell the user that their comment is too long, but—oops!— the
+user can still ignore the error message, and submitting the guest book
+entry anyway.
 
 Event defaults
 ==============
 
-So far when an event is generated, my browser will run all of the
-associated handlers, and then do whatever default action was associated
-with that event. However, in real browsers, JavaScript code can also
-*cancel* the default action.
+So far, when an event is generated, the browser will run the handlers,
+and then *also* do whatever it normally does for that event. I'd now
+like JavaScript code to be able to *cancel* that default action.
 
-There are a few moving pieces involved with that. First of all, event
-handlers in JavaScript receive an *event object* as an argument. That
-object has a `preventDefault` method, and if JavaScript calls it, the
-default action won\'t occur. Let\'s implement that.
+There are a few steps involved. First of all, event handlers should
+receive an *event object* as an argument. That object should have a
+`preventDefault` method. When that method is called, the default
+action shouldn\'t occur.
 
 First of all, we\'ll need event objects. Back to our JS runtime:
 
@@ -735,32 +757,39 @@ Event.prototype.preventDefault = function() {
 }
 ```
 
-Next, we need to pass the event object to handlers, and then return to
-Python a boolean telling it whether the event was cancelled:
+Next, we need to pass the event object to handlers.
 
 ``` {.javascript}
 function __runHandlers(handle, type) {
-    // ..
+    // ...
     var evt = new Event();
     for (var i = 0; i < list.length; i++) {
         list[i](evt);
     }
+    // ...
+}
+```
+
+After calling the handlers, `evt.cancelled` tells us whether
+`preventDefault` was called; let's return return that to Python:
+
+``` {.javascript}
+function __runHandlers(handle, type) {
+    // ...
     return evt.cancelled;
 }
 ```
 
-That boolean will go to `event`, which will return that to its caller:
+On the Python side, `event` can return that boolean to its handler
 
 ``` {.python}
 def event(self, type, elt):
-    cancelled = False
-    if elt.handle:
-        cancelled = self.js.evaljs(# ...)
-    return cancelled
+    if not elt.handle: return False
+    return self.js.evaljs(...)
 ```
 
-Finally, where we called `event` we need to check that return value to
-determine whether or not to proceed. So in `handle_click`:
+Finally, `event`'s called should check that return value and stop if
+it is `True`. So in `handle_click`:
 
 ``` {.python}
 def handle_click(self, e):
@@ -769,7 +798,7 @@ def handle_click(self, e):
     # ...
 ```
 
-and in `submit_form`:
+A similar change happens in `submit_form`:
 
 ``` {.python}
 def submit_form(self, form):
@@ -777,10 +806,11 @@ def submit_form(self, form):
     if self.event("submit", elt): return
 ```
 
-There isn\'t any action associated with the `change` event on input
-areas, so we don\'t need to modify that.
+There's no action associated with the `change` event on input areas,
+so we don\'t need to modify that.^[You can't stop the browser from
+changing the value: it's already changed when the event handler is run.]
 
-Now we can go back to `comment.js` and add a global variable tracking
+With this change, `comment.js` can use a global variable to track
 whether or not submission is allowed:
 
 ``` {.javascript}
@@ -799,106 +829,88 @@ form.addEventListener("submit", function(e) {
 });
 ```
 
-Now it should be impossible to submit the form if the comment is too
-long.
+Now it's impossible to submit the form when the comment is too long.
 
 Well... Impossible in this browser. But there are browsers that don\'t
-run JavaScript (like ours, one chapter back). So let\'s add a check on
-the server side as well:
+run JavaScript (like ours, one chapter back). So we should do the
+check on the server side also:
 
 ``` {.python}
-def handle_request(method, url, headers, body):
-    # if /comment.js or /comment.css
-    else:
-        if method == "POST":
-            # ...
-            if 'guest' in params and len(params['guest']) <= 100:
-                ENTRIES.append(params["guest"])
-        # ...
+def add_entry(params):
+    if 'guest' in params and len(params['guest']) <= 100:
+        ENTRIES.append(params["guest"])
+    return show_comments()
 ```
 
 Summary
 =======
 
-Our browser has again grown by leaps and bounds, and now can run
-JavaScript applications on behalf of websites. Sure, right now it
-supports a pretty small portion of the DOM API, but with persistence
-that could be slowly grown to provide everything real browsers provide.
-More importantly, the functionality of web pages can now be extended not
-just with new browser features but with new, clever scripts written by
-the untold millions of web developers out there in the world.
+Our browser has again grown by leaps and bounds: it now runs
+JavaScript applications on behalf of websites. Granted, it supports
+just four methods from the vast DOM API, but with enough time you
+could add all the methods real browsers provide. More importantly, a
+web page can now add functionality via clever script, instead of
+waiting for a browser developer to add it into the browser itself.
 
 Exercises
 =========
 
--   Add support for the `children` DOM property, so that `node.children`
-    returns an array of all children of a node. This array should only
-    contain `ElementNode` children; `TextNode` children should be
-    skipped.[^13]
--   The method `document.createElement` allows a script to create a new
-    element, which it can then attach to the document with the
-    `appendChild` and `insertBefore` methods on nodes. A big advantage
-    over `innerHTML` is that these three methods bypass parsing.
-    Implement these three methods.
--   If you try the above code, you\'ll find that it\'s actually
-    impossible to bind an event handler to clicks on links. That\'s
-    because when you click a link, the `elt` returned by `find_element`
-    is the text inside the link, not the link element itself. On the
-    web, this sort of quirk is handled by *event bubbling*: when an
-    event is generated on an element, handlers are run on that element
-    as well as all of its ancestors. Handlers can call `stopPropagation`
-    on the event object to, well, stop bubbling the event up the tree.
-    Implement event bubbling. Make sure `preventDefault` successfully
-    prevents clicks on a link from actually following the link.
--   The `<canvas>` element is a new addition in HTML 5 that makes it
-    possible from scripts to draw pictures using a simple Canvas API,
-    much like the Tk canvas we\'ve been using to implement our browser.
-    Using `<canvas>` takes [a few
-    steps](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial).
-    First, you select the element in JavaScript. Then, you call
-    `canvas.getContext("2d")` on it, which returns a thing called a
-    Context. Finally, the context provides methods like `fillRect` and
-    `fillText` to actually draw on the canvas. Implement the basics of
-    `<canvas>`, such as the two methods just mentioned. You\'ll want a
-    custom layout type for canvases, which store a list of drawing
-    commands and append to it when canvas methods are called.
--   The `XMLHttpRequest` object allows scripts to make HTTP requests and
-    read the resulting contents. We want to implement this API, by
-    creating the `XMLHttpRequest` class and implementing the
-    `addEventListener`, `open`, and `send` methods. One quirk is that
-    generally, `XMLHttpRequest` calls are asynchronous, which means we
-    can\'t call the event listener until the currently-executing script
-    is done running. For simplicity, you need not actually implement
-    asynchronous requests, but you do need to respect the semantics.
-    That means you will need some kind of queue to remember the requests
-    you need to make (once the current script is done running) and the
-    handlers to call afterwards.
-
-[^6]: Have you noticed that we now have a half-dozen of these functions?
-    If our selector language was richer, like if it supported attribute
-    selectors, we could replace most of them with `find_selected`.
-
-[^7]: Yes, that\'s a confusing error message. Is it a `JSRuntimeError`,
-    an `EvalError`, or a `TypeError`?
-
-[^8]: If you think about it, they are basically the same thing as file
-    descriptors, which give user-level applications a handle to kernel
-    data structures which they can\'t interpret without the kernel\'s
-    help anyway.
-
-[^9]: Note to JS experts: Dukpy does not implement a lot of the newer JS
-    syntax, like `let` and `const` or arrow functions. You\'ll need to
-    avoid them.
-
-[^10]: If you\'re not familiar with JavaScript, you might want to read
-    up on the crazy way you define classes in JavaScript. Modern
-    JavaScript also provides the `class` syntax, which makes more sense,
-    but it\'s not supported in DukPy.
-
-[^11]: After, not before, so that any event handlers see the new value.
-
-[^12]: Unless you did that exercise, in which case you\'ll have to
-    adjust.
+-   Add support for the [`children` DOM property][children].
+    `Node.children` returns the immediate `ElementNode`[^13] children
+    of a node, as an array.
+    
+[children]: https://developer.mozilla.org/en-US/docs/Web/API/ParentNode/children
 
 [^13]: The DOM method `childNodes` gives access to both elements and
     text. Feel free to implement it if you\'d like...
+
+-   The [method `document.createElement`][createElement] creates a new
+    element, which can be attached to the document with the
+    [`appendChild`][appendChild] and [`insertBefore`][insertBefore]
+    methods on nodes; unlike `innerHTML`, there's no parsing involved.
+    Implement all three methods.
+
+[createElement]: https://developer.mozilla.org/en-US/docs/Web/API/Document/createElement
+
+[appendChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
+
+[insertBefore]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
+
+-   Try to run an event handler when the user clicks on a link:
+    you\'ll find that it\'s actually impossible. That\'s because when
+    you click a link, the `elt` returned by `find_element` is the text
+    inside the link, not the link element itself. On the web, this
+    sort of quirk is handled by *event bubbling*: when an event is
+    generated on an element, handlers are run not just on that element
+    but also on its ancestors. Handlers can call `stopPropagation` on
+    the event object to, well, stop bubbling the event up the tree.
+    Implement event bubbling. Make sure `preventDefault` successfully
+    prevents clicks on a link from actually following the link.
+
+-   The [`<canvas>` element][canvas-tutorial] is a new addition in
+    HTML 5; scripts can draw pictures on the `<canvas>`, much like the
+    Tk canvas we\'ve been using to implement our browser. To use the
+    `<canvas>`, you first select the element in JavaScript; then call
+    `canvas.getContext("2d")` on it, which returns a thing called a
+    "context"; and finally call methods like `fillRect` and `fillText`
+    on that context to draw on the canvas. Implement the basics of
+    `<canvas>`, including `fillRect` and `fillText`. Canvases will
+    need a custom layout object that store a list of drawing commands.
+    
+[canvas-tutorial]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial
+
+-   The [`XMLHttpRequest` object][xhr-tutorial] allows scripts to make
+    HTTP requests and read the responses. Implement this API,
+    including the `addEventListener`, `open`, and `send` methods.
+    Beware that `XMLHttpRequest` calls are asynchronous: you need to
+    finish executing the script before calling any event listeners on
+    an `XMLHttpRequest`.[^sync-xhr-ok] That will require some kind of
+    queue of requests you need to make and the handlers to call
+    afterwards. Make sure `XMLHttpRequest`s work even if you create
+    them inside event handlers.
+    
+[^sync-xhr-ok]: It is OK for the browser make the request
+    synchronously, using our `request` function.
+
+[xhr-tutorial]: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
+

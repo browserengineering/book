@@ -543,10 +543,11 @@ On `TextNode` objects we can do an even simpler trick, since it always
 inherits its styles from its parent:
 
 ``` {.python}
-class TextNode:
-    def __init__(self, parent, text):
+def style(node, rules):
+    if isinstance(node, TextNode):
+        node.style = node.parent.style
+    else:
         # ...
-        self.style = self.parent.text
 ```
 
 Now that we have `font-weight` and `font-style` set on every node, we
