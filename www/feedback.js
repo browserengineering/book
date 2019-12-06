@@ -1,3 +1,17 @@
+
+// Congrats for reading the code! You can hit Ctrl+E to access the feedback tools.
+
+document.addEventListener("DOMContentLoaded", function() {
+    if (window.localStorage["edit"] == "true") return typo_mode();
+
+    window.addEventListener("keydown", function(e) {
+        if (String.fromCharCode(e.keyCode) != "E") return;
+        if (!(e.metaKey || e.ctrlKey)) return;
+        e.preventDefault();
+        setup_feedback();
+    });
+});
+
 function markdown(elt, tools) {
     if (tools) tools.remove();
     var text = elt.textContent;
@@ -90,9 +104,8 @@ function typo_mode() {
 }
 
 function bad_request() {
-    if (this.status !== 200) {
-        console.error("Something went wrong with the XHR!");
-    }
+    if (this.status === 200) return;
+    console.error("Something went wrong with the XHR!");
 }
 
 function submit_typo(oldt, newt) {
@@ -109,46 +122,51 @@ function submit_comment(text, comment) {
     xhr.send(JSON.stringify({'text': text, 'comment': comment, 'url': location.pathname}));
 }
 
-function feedback_mode() {
-    var elts = document.querySelectorAll("button");
-    for (var i = 0; i < elts.length; i++) {
-        elts[i].addEventListener('click', function() {
-            submit_status(parseInt(this.parentNode.dataset.id), this.className);
-            this.parentNode.remove();
-        });
+function setup_feedback() {
+    var submit = Element("button", { type: "submit" }, "Turn on feedback tools");
+    var cancel = Element("a", { href: "#" }, "Keep feedback tools off");
+    var form = Element("div", { className: "popup" }, [
+        Element("form", { method: "get", action: "/" }, [
+            Element("h1", "Feedback Tools"),
+            Element("p", [
+                "You've pressed ", Element("kbd", "Ctrl+E"), ",",
+                "which enables ", Element("i", "feedback tools"), ". ",
+                "You can use them to ",
+                Element("em", "fix typos"), " and ",
+                Element("em", "leave comments"), " on the text. ",
+                "I review the feedback to improve the book.",
+            ]),
+            Element("div", { className: "inputs" }, [
+                Element("label", { "for": "name" }, "Your name: "),
+                Element("input", { name: "name" }, []),
+            ]),
+            Element("p", { className: "legalese" }, [
+                "By making edits, you agree to assign all rights ",
+                "to your comments or typo fixes to me (Pavel Panchekha)",
+                "and allow me to attribute edits to you in acknowledgements, ",
+                "blog posts, or other media.",
+            ]),
+            Element("div", { className: "buttons" }, [submit, cancel]),
+        ]),
+    ]);
+    var overlay = Element("div", { id: "overlay" }, [form]);
+
+    function do_submit(e) {
+        window.localStorage["edit"] = "true";
+        window.localStorage["name"] = this.querySelector("input").getAttribute("value");
+        e.preventDefault();
+        typo_mode();
+        overlay.remove();
     }
-}
-
-function submit_status(id, status) {
-    var xhr = new XMLHttpRequest();
-    xhr.addEventListener("load", bad_request);
-    xhr.open("POST", "http://127.0.0.1:8000/api/status");
-    xhr.send(JSON.stringify({'id': id, 'status': status}));
-}
-
-// Congrats for reading the code! Any changes you make with the
-// feedback tools is non-permanent; it needs to be approved by me, and
-// then manually applied.
-
-STATE = "";
-
-document.addEventListener("DOMContentLoaded", function() {
-    if (!window.localStorage["edit"]) {
-        window.addEventListener("keydown", function(e) {
-            STATE += String.fromCharCode(e.keyCode);
-            if (!"edit".startsWith(STATE.toLowerCase())) {
-                STATE = "";
-            } else {
-                e.preventDefault();
-                if ("edit" == STATE.toLowerCase() && document.body.id != "feedback") {
-                    window.localStorage["edit"] = "true";
-                    typo_mode();
-                }
-            }
-        });
-    } else {
-        if (document.body.id == "feedback") feedback_mode();
-        else typo_mode();
+    
+    function do_cancel(e) {
+        overlay.remove();
     }
-});
 
+    form.addEventListener("submit", do_submit);
+    overlay.addEventListener("click", do_cancel);
+    cancel.addEventListener("click", do_cancel);
+    form.addEventListener("click", function(e) { e.stopPropagation(); });
+
+    document.documentElement.appendChild(overlay);
+}

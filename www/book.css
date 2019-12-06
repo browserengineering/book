@@ -110,6 +110,22 @@ code .co { color: #a86; }
 
 input[type=checkbox][disabled] { display: none; }
 
+#overlay {
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+    background-color: rgba(256, 256, 256, .9);
+}
+.popup {
+    padding: 1em; border: 1px solid gray; box-shadow: 0 0 20px 10px gray;
+    width: 50ex; margin: 3em auto; background: white;
+}
+.popup h1 { text-align: center; }
+.popup .inputs { font-size: 30px; }
+.popup input { font-size: 30px; }
+.popup .legalese { font-size: 60%; }
+.popup .buttons { display: flex; justify-content: space-around; }
+.popup button { font-size: 24px; }
+.popup .buttons a { font-size: 24px; }
+
 p, li, pre, .note { position: relative; }
 .tools {
     position: absolute; right: 0; top: -1.5em; background: #eee;
