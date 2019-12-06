@@ -111,7 +111,7 @@ function bad_request() {
 function submit_typo(oldt, newt) {
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", bad_request);
-    xhr.open("POST", "http://127.0.0.1:8000/api/typo");
+    xhr.open("POST", "/api/typo");
     xhr.send(JSON.stringify({
         'old': oldt,
         'new': newt,
@@ -123,7 +123,7 @@ function submit_typo(oldt, newt) {
 function submit_comment(text, comment) {
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", bad_request);
-    xhr.send(JSON.stringify({'text': text, 'comment': comment, 'url': location.pathname}));
+    xhr.open("POST", "/comment");
     xhr.send(JSON.stringify({
         'text': text,
         'comment': comment,

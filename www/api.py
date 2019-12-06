@@ -2,7 +2,7 @@
 
 import bottle
 import json
-import os
+import os, sys
 import pickle
 import time
 import difflib
@@ -71,15 +71,15 @@ class Data:
 
 DATA = Data("db.pickle")
 
-@bottle.route("/api/typo", method=["POST", "OPTIONS"])
+@bottle.post("/api/typo")
 def typo():
     data = json.load(bottle.request.body)
-    DATA.typo(data["url"], data["old"], data["new"])
+    DATA.typo(**data)
 
-@bottle.route("/api/comment", method=["POST", "OPTIONS"])
+@bottle.post("/api/comment")
 def comment():
     data = json.load(bottle.request.body)
-    DATA.comment(data["url"], data["text"], data["comment"])
+    DATA.comment(**data)
 
 def prettify(obj):
     if obj['type'] != 'typo': return obj
@@ -133,27 +133,6 @@ def tools():
     bottle.response.set_cookie("tools", "")
     return "Editing tools enabled"
 
-# For debugging
-
-class EnableCors(object):
-    name = 'enable_cors'
-    api = 2
-
-    def apply(self, fn, context):
-        def _enable_cors(*args, **kwargs):
-            # set CORS headers
-            bottle.response.headers['Access-Control-Allow-Origin'] = '*'
-            bottle.response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, OPTIONS'
-            bottle.response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
-
-            if bottle.request.method != 'OPTIONS':
-                # actual request; reply with the actual response
-                return fn(*args, **kwargs)
-
-        return _enable_cors
-
-app = bottle.app()
-app.install(EnableCors())
-
 if __name__ == "__main__":
-    bottle.run(port=8000, debug=True, reloader=True)
+    debug = "--debug" in sys.argv
+    bottle.run(port=4000, debug=debug, reloader=True)

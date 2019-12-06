@@ -17,7 +17,7 @@ function feedback_mode() {
 function submit_status(id, status) {
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", bad_request);
-    xhr.open("POST", "http://127.0.0.1:8000/api/status");
+    xhr.open("POST", "/api/status");
     xhr.send(JSON.stringify({'id': id, 'status': status}));
 }
 
