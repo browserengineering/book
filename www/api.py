@@ -23,7 +23,7 @@ class Data:
         with open(self.filename, "wb") as f:
             pickle.dump(self.data, f)
 
-    def typo(self, url, old, new):
+    def typo(self, url, old, new, name):
         if any(obj['type'] == 'typo' and
                obj['url'] == url and
                obj['old'] == old and
@@ -36,11 +36,12 @@ class Data:
             'url': url,
             'old': old,
             'new': new,
-            'status': 'new'
+            'name': name,
+            'status': 'new',
         })
         self.save()
 
-    def comment(self, url, text, comment):
+    def comment(self, url, text, comment, name):
         if any(obj['type'] == 'comment' and
                obj['url'] == url and
                obj['text'] == text and
@@ -53,7 +54,8 @@ class Data:
             'url': url,
             'text': text,
             'comment': comment,
-            'status': 'new'
+            'name': name,
+            'status': 'new',
         })
         self.save()
 

@@ -112,14 +112,24 @@ function submit_typo(oldt, newt) {
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", bad_request);
     xhr.open("POST", "http://127.0.0.1:8000/api/typo");
-    xhr.send(JSON.stringify({'old': oldt, 'new': newt, 'url': location.pathname}));
+    xhr.send(JSON.stringify({
+        'old': oldt,
+        'new': newt,
+        'url': location.pathname,
+        'name': window.localStorage["name"],
+    }));
 }
 
 function submit_comment(text, comment) {
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", bad_request);
-    xhr.open("POST", "http://127.0.0.1:8000/api/comment");
     xhr.send(JSON.stringify({'text': text, 'comment': comment, 'url': location.pathname}));
+    xhr.send(JSON.stringify({
+        'text': text,
+        'comment': comment,
+        'url': location.pathname,
+        'name': window.localStorage["name"],
+    }));
 }
 
 function setup_feedback() {
@@ -153,7 +163,7 @@ function setup_feedback() {
 
     function do_submit(e) {
         window.localStorage["edit"] = "true";
-        window.localStorage["name"] = this.querySelector("input").getAttribute("value");
+        window.localStorage["name"] = this.querySelector("input").value;
         e.preventDefault();
         typo_mode();
         overlay.remove();

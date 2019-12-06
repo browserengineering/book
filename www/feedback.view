@@ -14,7 +14,7 @@
   %for obj in new:
   %if obj['status'] == 'new':
     <div class="{{obj['type']}}" data-id="{{obj['id']}}">
-    <h1>In <code>{{obj['url']}}</code>:</h1>
+    <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
     %if obj['type'] == 'typo':
       <blockquote>{{!" ".join(obj['diff'])}}</blockquote>
     %else:
@@ -37,7 +37,7 @@
   %for obj in saved:
   %if obj['status'] == 'saved':
     <div class="{{obj['type']}}" data-id="{{obj['id']}}">
-    <h1>In <code>{{obj['url']}}</code>:</h1>
+    <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
     %if obj['type'] == 'typo':
       <blockquote>{{!" ".join(obj['diff'])}}</blockquote>
     %else:
