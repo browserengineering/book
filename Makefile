@@ -7,8 +7,8 @@ www/%.html: book/%.md book/template.html book/filter.lua
 	    $< -o $@
 
 publish:
-	rsync -r www/ server:/home/www/browseng/
-	ssh server chmod a+r -R /home/www/browseng/
+	rsync -r --exclude=*.pickle --exclude=*.hash www/ server:/home/www/browseng/
+	ssh server chmod -Rf a+r /home/www/browseng/ || true
 
 clean:
 	rm $(html)

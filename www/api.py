@@ -7,6 +7,7 @@ import pickle
 import time
 import difflib
 import html
+import hashlib
 
 bottle.TEMPLATE_PATH.append(".")
 
@@ -118,7 +119,16 @@ def feedback():
 @bottle.route("/api/status", method=["POST", "OPTIONS"])
 def status():
     data = json.load(bottle.request.body)
-    DATA.set_status(data['id'], data['status'])
+    pw = data.get('pw', "")
+    heng = hashlib.sha3_256()
+    heng.update(pw.encode("utf8"))
+    with open("pw.hash", "rb") as f:
+        good = f.read(256)
+    # Equivalent to `good == heng.digest()` but constant-time-ish
+    if sum([0 if a == b else 1 for a, b in zip(good, heng.digest())]) == 0:
+        DATA.set_status(data['id'], data['status'])
+    else:
+        raise ValueError("Invalid password")
 
 @bottle.route('/<file>')
 def static(file):
@@ -134,5 +144,13 @@ def tools():
     return "Editing tools enabled"
 
 if __name__ == "__main__":
-    debug = "--debug" in sys.argv
-    bottle.run(port=4000, debug=debug, reloader=True)
+    if len(sys.argv) > 1 and sys.argv[1] == "pw":
+        import getpass
+        pw = getpass.getpass("Password: ")
+        heng = hashlib.sha3_256()
+        heng.update(pw.encode("utf8"))
+        with open("pw.hash", "wb") as f:
+            f.write(heng.digest())
+    else:
+        debug = "--debug" in sys.argv
+        bottle.run(port=4000, debug=debug, reloader=True)

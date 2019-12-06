@@ -2,7 +2,7 @@
 Description=Runs the Web Browser Engineering backend server
 
 [Service]
-ExecStart=/usr/bin/python3 api.py
+ExecStart=/usr/bin/python3 api.py --debug
 WorkingDirectory=/home/www/browseng/
 User=www
 Group=www
