@@ -123,7 +123,7 @@ function submit_typo(oldt, newt) {
 function submit_comment(text, comment) {
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", bad_request);
-    xhr.open("POST", "/comment");
+    xhr.open("POST", "/api/comment");
     xhr.send(JSON.stringify({
         'text': text,
         'comment': comment,
