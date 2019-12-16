@@ -205,7 +205,7 @@ This isn\'t too far off conceptually, but there are a bunch of flaws:
 -   `TextNode` has no `children` field, but this `layout` method will
     eventually reach a `TextNode` and crash.
 
-Let\'s fix these one by one. First, the height height. At the end of
+Let\'s fix these one by one. First, the height. At the end of
 `BlockLayout.layout` we know the current `y` position, and it is after
 every child node\'s layout, so we just use that to change the value of
 `self.h`:
