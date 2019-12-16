@@ -72,3 +72,4 @@ suggested important simplifications.
 This book is a work in progress, and I would love to [hear your
 suggestions](mailto:me@pavpanchekha.com) on how to make it clearer,
 shorter, and more complete.
+You can find the source code in [my GitHub repo](https://github.com/pavpanchekha/emberfox). Feel free to send a PR ;)
