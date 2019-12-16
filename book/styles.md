@@ -310,7 +310,7 @@ That moves code from `compute_style` to a data file, let\'s call it
 `browser.css`. Then we can run our CSS parser on it to extract the rules:
 
 ``` {.python}
-with open("default.css") as f:
+with open("browser.css") as f:
     browser_style = f.read()
     rules = CSSParser(browser_style).parse()
 ```
