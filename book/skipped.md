@@ -29,7 +29,7 @@ usage and garbage collection pressure. On top of all of that, modern
 browsers also execute WebAssembly, an alternative programming language
 that may one day be co-equal to JavaScript on the web.
 
-This book skips build the JavaScript engine, instead using Dukpy. I
+This book skips building the JavaScript engine, instead using Dukpy. I
 made this choice because while JavaScript execution is central to a
 modern browser, it uses techniques fairly similar to the execution of
 other languages (like Python, Lua, or Java). The best way to learn

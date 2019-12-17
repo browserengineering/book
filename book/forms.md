@@ -13,6 +13,10 @@ out form information and then send that form to the server. Web forms
 are used almost everywhere: you fill one out to post on Facebook, to
 register to vote, or to search Google.
 
+::: {.todo}
+I may decide to implement focus tracking and GUI text entry.
+:::
+
 Rendering widgets
 =================
 
@@ -69,6 +73,12 @@ You\'ll note the `add_space` function hardcodes a 5-pixel space, unlike
 *contents* of a text input generally use a custom font, not the same
 font used by surrounding text, so I might as well hard-code in the size
 of spaces.
+
+::: {.todo}
+This explanation is very odd: the size of the space should be the size
+of the surrounding text. Perhaps `add_space` should execute a `max`
+operation?
+:::
 
 For simplicity, the `layout` method hard-codes a specific size for
 input elements.[^2] One quirk is that `InlineLayout.text` requires `w`
