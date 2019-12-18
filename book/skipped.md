@@ -6,11 +6,11 @@ next: change
 ...
 
 The last eleven chapters have, I hope, given you a solid understanding
-of how web browsers work, from the network requests they make to way
-they store your data and keep it safe. I've endeavored to cover all of
-the major components of a web browser, but with such a vast topic I
-had to leave a few things out. Here's my list of the most important
-things not covered by this book.
+of all of the major components of a web browser, from the network
+requests it makes to way it stores your data and keeps it safe. With
+such a vast topic I had to leave a few things out. Here's my list of
+the most important things not covered by this book, listed in order of
+importance.
 
 When I teach from this book, I often cover these topics in lecture.
 That not only saves me from ignoring important topics but also gives
@@ -32,23 +32,38 @@ that may one day be co-equal to JavaScript on the web.
 This book skips building the JavaScript engine, instead using Dukpy. I
 made this choice because while JavaScript execution is central to a
 modern browser, it uses techniques fairly similar to the execution of
-other languages (like Python, Lua, or Java). The best way to learn
-about the insides of a modern JavaScript engine is a book on
-programming language implementation.
+other languages like Python, Lua, or Java. The best way to learn about
+the insides of a modern JavaScript engine is a book on programming
+language implementation.
+
+Accessibility
+=============
+
+Web pages should be usable despite physical (blind, difficulty seeing,
+Parkinson's), mental (learning disabilities, dyslexia), or situational
+(car console, gloves, eye dilation) disabilities. The web has grown a
+rich but sadly seldom-used garden of accessibility technologies. Not
+only is this a topic of technical interest and moral imperative, the
+developing legal landscape in the US means it will only grow in
+importance over time.
+
+To be honest I skipped this topic because I worried that web
+accessibility was a difficult topic to engage students in. I also
+could not figure out where in the book it would go. Adding it as a
+twelfth chapter would also make the last part of the book even longer,
+while adding it earlier would add a significant maintenance burden.
 
 Connection Security
 ===================
 
 Web browsers now ship with a sophisticated suite of cryptographic
-protocols, with bewildering names like AES-GCM, ChaCha20, and
-HMAC-SHA512. These cryptographic protocols are used to ensure
-*connection security*, that is, to protect against a malicious actor
-with the ability to read or write network packets, like national
-security agencies, evil corporations, and ex-boyfriends on the same
-unsecured wireless connection. At the broadest level, connection
-security is established via the TLS protocol (which cameos in the
-first chapter) and maintained using an ecosystem of cryptographers,
-certificate authorities, and server maintainers.
+protocols with bewildering names like AES-GCM, ChaCha20, and
+HMAC-SHA512. These protocols protect against malicious actors with the
+ability to read or write network packets, like national security
+agencies and ex-boyfriends in the same coffee shop. At the broadest
+level, connection security is established via the TLS protocol (which
+cameos in [Chapter 1](http.md)) and maintained by an ecosystem of
+cryptographers, certificate authorities, and open-source projects.
 
 I chose to skip an in-depth discussion of TLS because this book's
 irreverant attitude toward completeness and validation is incompatible
@@ -57,30 +72,12 @@ TLS is a broken and insecure version of it: contrary to the intended
 goal and pedagogically counterproductive. The best way to learn about
 modern cryptography and network security is a book on that topic.
 
-Accessibility
-=============
-
-People differ! Yet web pages should be available to all, including
-users with disabilities, whether physical (blind, difficulty seeing,
-Parkinson's), mental (learning disabilities, dyslexia), or situational
-(car console, gloves, eye dilation). The web has grown a rich but
-sadly seldom-used garden of accessibility technologies. Not only is
-this a topic of technical interest and moral imperative, the
-developing legal landscape in the US means it will only grow in
-importance over time.
-
-I chose to skip web accessibility due to a lack of expertise, but to
-be honest I also worried that web accessibility was a difficult topic
-to engage students in. Adding it as a twelfth chapter would also make
-the last part of the book even longer, while adding it earlier would
-add a significant maintenance burden.
-
 Caching
 =======
 
 Caching makes network requests faster by skipping most of them. What
 makes it more than a mere optimization, however, is the extent to
-which HTTP was designed to enable it. Implementing a network cache
+which HTTP is designed to enable caching. Implementing a network cache
 deepens one's understanding of HTTP significantly.
 
 That said, the networking portion of this book is long enough, and at
@@ -99,16 +96,15 @@ since I started web development with IE 5.5. The truly new stuff is
 even wilder.] High-speed graphics may mean retaining display lists
 (instead of recomputing them after every reflow), compositing portions
 of the display list (to avoid rerendering expensive shapes like text),
-and even moving rendering to the graphics card. The major browsers
-have recently (as of late 2019) been pushing especially vigorously on
-this front.
+and rendering on the graphics card. The major browsers have recently
+(as of late 2019) been pushing vigorously on this front.
 
 [Chapter 10](reflow.md) does talk a bit about fast graphics, since
 rendering eventually takes more time than reflow, but to be honest
 graphics speed is hurt more by the choice of Tk and Python than any
 algorithm or implementation decision in the browser itself. More
 broadly, I didn't want to focus too much on the low-level details of
-performance. Those change frequently and usually don't teach broader
+performance. Those change frequently and often don't teach broader
 lessons for students to apply elsewhere.
 
 Text Rendering
@@ -141,12 +137,11 @@ Restyling
 Browsers must not only *reflow* layouts every time the page changes,
 but also *restyle* them, recomputing the CSS properties and values
 that apply to each element. For many modern browsers, restyling is
-slower than reflow, and browsers use various tricky data structure to
-speed it up.
+slower than (highly optimized) reflow, and browsers use various tricky
+data structures to speed it up.
 
 The browser in this book, however, only implemented cheap selectors,
-so restyling was never slow to begin with. Restyling was thus
-unnecessary. Personally, I don't find restyling algorithms
-particularly compelling, and don't think teaching them would be that
-enlightening.
+so restyling was never slow to begin with. And personally, I don't
+find restyling algorithms particularly compelling, and don't think
+teaching them would be that enlightening.
 

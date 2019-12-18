@@ -11,14 +11,16 @@ Text
 
 I am editing the chapters following the first iteration of the course.
 
-- [x] Chapters i, 1, 2, 3, 5, 6 edited
-- [ ] Chapters ii, 4, 7, 8 edited but with more to do
-- [ ] Chapters 9, 10, 11, A, B drafted but not yet edited
+- [x] Chapters i, 1, 2, 3, 5, 6, A, B edited
+- [ ] Chapter 11 needs a read-through
+- [ ] Chapters 4, 9 10 need major edits
+- [ ] Chapters ii, 4, 7, 8, 9, 10 need editing
 
 That after editing the text, I will edit the code:
 
 - [x] Code for chapters 1 and 2 edited
 - [ ] Code for chapters 3, 4, 5, 6, 7, 8, 9, 10, 11 not yet edited
+- [ ] Code for chapters 9 and 10 needs major edits
 
 Website
 =======
@@ -27,7 +29,7 @@ The website is up, but in a minimal form.
 
 - [x] Domain name purchased and set up, and TLS enabled
 - [x] The site scores well on page speed tests
-- [x] Feedback system for typos and comments drafted
+- [x] Feedback system for typos and comments deployed
 - [ ] Set up server logs
 - [ ] No work on accessibility
 

@@ -5,6 +5,10 @@ prev: preface
 next: http
 ...
 
+::: {.todo}
+The debugging tips should move to their respective sections.
+:::
+
 Using Python
 ============
 
@@ -46,7 +50,7 @@ thing is the best way to find out.
 **Simple HTTP Server**: You'll frequently want to test your web
 browser by running it on custom web pages. To do so, you'll need to
 start a web server that your browser could connect to. Luckily, Python
-ships with one. Go to a directory an run:
+ships with one. Go to a directory and run:
 
     python3 -m http.server
     
@@ -70,14 +74,13 @@ The book doesn't show code for these methods, but for your own sanity
 you should probably implement them for each custom object you define.
 
 **Handling Crashes**: Crashes in the HTML and CSS parser can be
-frustrating to debug. Luckily, we don't end up making many
-modifications to either component once it's written. Still, if you
-find an error in either component, the best way to proceed is to print
-the state of the parser (the current element and current token for the
-HTML parser, and the current parsing function and current input
-position for the CSS parser) at every parsing step, and then walking
-through the output by hand until you see the mistake. This is a slow
-but a sure process.
+frustrating to debug. Luckily, I don't make many modifications to
+either component once it's written. Still, if you find an error in
+either component, the best way to proceed is to print the state of the
+parser (the current element and current token for the HTML parser, and
+the current parsing function and current input position for the CSS
+parser) at every parsing step, and then walking through the output by
+hand until you see the mistake. This is a slow but a sure process.
 
 Crashes in the JavaScript component, on the other hand, are fairly
 frustrating because backtraces that involve both JavaScript and Python
@@ -104,5 +107,4 @@ try {
 }
 ```
 
-Most other crashes or errors are best fixed starting from the
-backtrace.
+Naturally you'll need to implement `console.log` first.
