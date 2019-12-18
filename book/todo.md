@@ -13,10 +13,10 @@ I am editing the chapters following the first iteration of the course.
 
 - [x] Chapters i, 1, 2, 3, 5, 6, A, B edited
 - [ ] Chapter 11 needs a read-through
-- [ ] Chapters 4, 9 10 need major edits
-- [ ] Chapters ii, 4, 7, 8, 9, 10 need editing
+- [ ] Chapters ii, 4, 9, and 10 need major edits
+- [ ] Chapters 7, 8 need minor edits
 
-That after editing the text, I will edit the code:
+After editing the text, I will edit the code:
 
 - [x] Code for chapters 1 and 2 edited
 - [ ] Code for chapters 3, 4, 5, 6, 7, 8, 9, 10, 11 not yet edited
@@ -47,6 +47,7 @@ I plan tests, screenshots, and "Go further" links. I'd also like to
 have a cleaned-up "final" browser to read.
 
 - [ ] There are currently no tests
+- [ ] Exercises should be distributed among sections
 - [ ] Screenshots not begun
 - [ ] Chapter 1 has "Go further" links, the others don't
 - [ ] Final browser not edited
