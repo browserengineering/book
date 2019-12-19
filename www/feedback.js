@@ -1,5 +1,5 @@
 
-// Congrats for reading the code! You can hit Ctrl+E to access the feedback tools.
+// Thanks for reading the code! You can hit Ctrl+E to access the feedback tools.
 
 document.addEventListener("DOMContentLoaded", function() {
     if (window.localStorage["edit"] == "true") return typo_mode();
