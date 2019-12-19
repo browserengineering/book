@@ -27,8 +27,8 @@ It looks like this:
 It's a `<div>` element with its `style` attribute set. That attribute
 contains two key-value pairs, which set `margin-left` and
 `margin-right` to 10 pixels each.^[CSS allows spaces around the
-punctuation, but your attribute parser may not support it.] We want
-store these pairs in a `style` field on the `ElementNode` so we could
+punctuation, but your attribute parser may not support it.] We want store
+these pairs in a `style` field on the `ElementNode` so we could
 consult them during layout.
 
 You should already have some attribute parsing code in your
