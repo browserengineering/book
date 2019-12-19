@@ -148,7 +148,7 @@ function setup_feedback() {
             ]),
             Element("div", { className: "inputs" }, [
                 Element("label", { "for": "name" }, "Your name: "),
-                Element("input", { name: "name" }, []),
+                Element("input", { name: "name", autofocus: "", required: "" }, []),
             ]),
             Element("p", { className: "legalese" }, [
                 "By making edits, you agree to assign all rights ",
