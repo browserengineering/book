@@ -6,6 +6,10 @@ type: Status Report
 This book is a work in progress. I track my progress on the text, the
 website, and the additional content.
 
+If you find a typo in the text, or would like to leave a comment on
+it, use this book's feedback tools, which you can enable with
+`Ctrl+E`.
+
 Text
 ====
 
