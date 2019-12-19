@@ -13,9 +13,9 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 function markdown(elt, tools) {
-    if (tools) tools.remove();
+    if (document.contains(tools)) tools.remove();
     var text = elt.textContent;
-    if (tools) elt.insertBefore(tools, elt.childNodes[0]);
+    if (document.contains(tools)) elt.insertBefore(tools, elt.childNodes[0]);
     return text;
 }
 
