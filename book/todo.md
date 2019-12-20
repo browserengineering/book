@@ -3,28 +3,40 @@ title: Book Status
 type: Status Report
 ...
 
-This book is a work in progress. I track my progress on the text, the
-website, and the additional content.
-
-If you find a typo in the text, or would like to leave a comment on
-it, use this book's feedback tools, which you can enable with
-`Ctrl+E`.
+This page tracks my progress on the text, the website, and the
+additional content. If you find a typo in the text, or would like to
+leave a comment on it, *use this book's feedback tools*, which you can
+enable with `Ctrl+E`.
 
 Text
 ====
 
 I am editing the chapters following the first iteration of the course.
 
-- [x] Chapters i, 1, 2, 3, 5, 6, A, B edited
-- [ ] Chapter 11 needs a read-through
-- [ ] Chapters ii, 4, 9, and 10 need major edits
-- [ ] Chapters 7, 8 need minor edits
+- [x] All chapters have received an initial read-through
+- [ ] Debugging tips should move from the
+  [Preliminaries](preliminaries.md) to other places
+- [ ] The [Preliminaries](preliminaries.md) need to discuss installing
+  Python
+- [ ] [Chapter 2](graphics.md) feels too short; maybe clipping should
+  move here
+- [ ] [Chapter 4](html.md) need to motivate attributes
+- [ ] [Chapter 7](chrome.md) should add forward buttons
+- [ ] [Chapter 7](chrome.md) should implement multiple text sizes
+- [ ] [Chapter 10](reflow.md) needs a rewrite to handle major bugs,
+  increase uniformity, and improve the exercises
+- [ ] [Chapter 11](security.md) needs a rewrite to remove straw-man
+  insecure implementations
+- [ ] [Chapters 8](forms.md) needs minor edits
 
 After editing the text, I will edit the code:
 
 - [x] Code for chapters 1 and 2 edited
 - [ ] Code for chapters 3, 4, 5, 6, 7, 8, 9, 10, 11 not yet edited
-- [ ] Code for chapters 9 and 10 needs major edits
+- [ ] [Chapter 8](forms.md) needs to abstract over finding elements
+- [ ] [Chapter 9](scripts.md) needs to split the JS environment from
+  the browser
+- [ ] Code for chapters 8, 9, and 10 needs major edits
 
 Website
 =======
@@ -34,7 +46,7 @@ The website is up, but in a minimal form.
 - [x] Domain name purchased and set up, and TLS enabled
 - [x] The site scores well on page speed tests
 - [x] Feedback system for typos and comments deployed
-- [ ] Set up server logs
+- [x] Set up server logs
 - [ ] No work on accessibility
 
 I have barely begun branding and styling the website.
