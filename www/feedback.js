@@ -13,9 +13,10 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 function markdown(elt, tools) {
-    if (document.contains(tools)) tools.remove();
+    var enabled = document.contains(tools);
+    if (enabled) tools.remove();
     var text = elt.textContent;
-    if (document.contains(tools)) elt.insertBefore(tools, elt.childNodes[0]);
+    if (endabled) elt.insertBefore(tools, elt.childNodes[0]);
     return text;
 }
 
