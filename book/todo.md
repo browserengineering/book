@@ -14,7 +14,7 @@ Text
 I am editing the chapters following the first iteration of the course.
 
 - [x] All chapters have received an initial read-through
-- [ ] Debugging tips should move from the
+- [x] Debugging tips should move from the
   [Preliminaries](preliminaries.md) to other places
 - [ ] The [Preliminaries](preliminaries.md) need to discuss installing
   Python

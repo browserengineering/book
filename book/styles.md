@@ -280,6 +280,12 @@ function, which unlike the others should not take an index input (it
 should start at 0) or produce an index output and should return a list
 of parsed selector/body pairs.
 
+Make sure to test your parser, like you did the [HTML parser](html.md)
+two chapters back. If you find an error, the best way to proceed is to
+print the index at the beginning of every parsing function, and print
+both the index and parsed value at the end. You'll get a lot of
+output, but if you step through it by hand, you will find your mistake.
+
 Now that we've parsed a CSS file, we need to apply it to the elements
 on the page.
 

@@ -16,7 +16,7 @@ Installing DukPy
 ================
 
 Actually writing a JavaScript interpreter is beyond the scope of this
-book,^[fn::But check out a book on programming language implementation
+book,^[But check out a book on programming language implementation
 if it sounds interesting!] so this chapter uses the `dukpy` library
 for executing JavaScript.
 
@@ -224,11 +224,53 @@ that the other uses, say on a page like:
 
 where `a.js` is \"`var x = 2;`\" and `b.js` is \"`console.log(x + x)`\".
 
+
+Handling Crashes
+================
+
+Crashes in JavaScript code are frustrating to debug. Try, for example:
+
+``` {.javascript}
+function bad() { throw "bad"; }
+bad();
+```
+
+You won't see a backtrace to help you debug this crash. The issue is
+that DukPy backtraces can go between JavaScript and Python several
+times, so the feature isn't supported. I recommend wrapping Python
+registered functions like so to print any backtraces they produce:
+
+``` {.python}
+try:
+    # ...
+except:
+    import traceback
+    traceback.print_exc()
+    raise
+```
+
+Note that I re-raise the exception, so that I still get the crash.
+
+When Python in calls JavaScript, you can wrap that JavaScript like
+this:
+
+``` {.javascript}
+try {
+    # ...
+} catch(e) {
+    console.log(e.stack);
+    throw e;
+}
+```
+
+That'll again ensure that some useful information will be printed that
+can help you debug.
+
 Querying the DOM
 ================
 
 So far, JavaScript evaluation is fun but useless, because JavaScript
-can\'t make any kinds of modifications to the page itself. Why even
+can't make any kinds of modifications to the page itself. Why even
 run JavaScript if it can't do anything besides print? So let\'s work
 on modifying the page from JavaScript.
 

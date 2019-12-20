@@ -17,6 +17,7 @@ backgrounds and borders, let alone implement CSS. HTML has a tree
 structure essential to those elements of style. So let\'s change our
 browser to parse HTML, and lay out the page, as a tree.
 
+
 A tree of nodes
 ===============
 
@@ -94,6 +95,43 @@ which would cause `current` to take on that dummy `None` value again: if
 that happened, we wouldn\'t be able to get back to the nodes we just
 created! So instead I do nothing, so that moments later we exit the
 `for` loop and return the nodes we\'ve created.
+
+
+Debugging your parser
+=====================
+
+Parsers are frequently buggy, and annoying to debug. So before we go
+further, let's make sure the parser works correctly. Let's start by
+making it easy to print the parsed HTML tree:
+
+``` {.python}
+def print_tree(node, indent="-"):
+    if isinstance(node, ElementNode):
+        print(indent, "<{}>".format(node.tag))
+        for child in node.children:
+            print_tree(child, "  " + indent)
+    elif isinstance(node, TextNode):
+        print(indent, "\"{}\"".format(node.text))
+    else:
+        raise ValueError("Unknown node type", node)
+```
+
+Now it's easy to see the result of parsing an HTML document:
+
+``` {.python}
+print_tree(parse(lex(" ... ")))
+```
+
+Make sure to try this for several documents. Try documents without
+text, or without tags; documents without close tags; documents with
+extra whitespace before or after the root element; and so on. Most
+likely, you'll find incorrect results or crashes.
+
+When you do, the best way to get more insight is to print the state of
+the parse---the current element and current token---at every parsing
+step. Walking through the output by hand will reveal a mistake. It is
+a slow but a sure process.
+
 
 Handling author errors
 ======================
@@ -181,6 +219,7 @@ which spells out in detail how to handle user errors. The tweaks above
 are much more limited, but give you some sense of what the full
 algorithm is like.
 
+
 HTML attributes
 ===============
 
@@ -234,6 +273,7 @@ Here the attribute name is split from the attribute value by looking for
 the first equal sign, and then if the value has quotes on either side,
 those are stripped off. The name is made lowercase before adding it to
 `self.attributes` because attribute names are case-insensitive.
+
 
 Layout from a tree
 ==================
@@ -308,6 +348,7 @@ layout(nodes)
 display_list = state.display_list
 ```
 
+
 Summary
 =======
 
@@ -318,6 +359,7 @@ the document. We\'ve also made the browser much more robust to malformed
 HTML. While these changes don\'t have much impact yet, this new,
 structured understanding of HTML sets us up to implement a layout
 engine in the next chapter.
+
 
 Exercises
 =========
