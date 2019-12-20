@@ -68,4 +68,5 @@ suggested important simplifications.
 
 This book is, and will remain, a work in progress. Please leave
 comments and mark typos; the book has built-in feedback tools, which
-you can enable with `Ctrl+E`.
+you can enable with `Ctrl+E`. Full source code is available [on
+GitHub](https://github.com/pavpanchekha/emberfox).
