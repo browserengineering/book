@@ -364,7 +364,7 @@ engine in the next chapter.
 Exercises
 =========
 
--   HTML documents sometimes start with \"doctype declarations\". These
+-   HTML documents almost always start with \"doctype declarations\". These
     look like tags that begin with `!doctype` and don\'t have close
     tags. Doctype declarations, when they are present, are always the
     first token in a document. Skip doctype declarations in the parser.
