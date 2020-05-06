@@ -4,3 +4,4 @@ class
 posts
 slides
 www/db.pickle
+www/pw.hash
