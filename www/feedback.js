@@ -76,7 +76,7 @@ Tools.prototype.typo = function(e) {
     that.node.addEventListener("blur", function() {
         var new_text = markdown(that.node, []).join("");
         if (editing && new_text !== old_text) {
-            submit_typo(old_text, new_text);
+            submit_typo(that.node, old_text, new_text);
         }
         that.node.contentEditable = false;
         editing = false;
@@ -96,7 +96,7 @@ Tools.prototype.comment = function(e) {
         var text = markdown(that.node, []).join("");
         if (editing && comment) {
             console.log("Submitting comment");
-            submit_comment(text, comment);
+            submit_comment(that.node, text, comment);
         }
         editing = false;
         that.form.style.display = "none";
@@ -132,11 +132,12 @@ function bad_request() {
     console.error("Something went wrong with the XHR!");
 }
 
-function submit_typo(oldt, newt) {
+function submit_typo(elt, oldt, newt) {
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", bad_request);
     xhr.open("POST", "/api/typo");
     xhr.send(JSON.stringify({
+        'tag': elt.tagName,
         'old': oldt,
         'new': newt,
         'url': location.pathname,
@@ -144,11 +145,12 @@ function submit_typo(oldt, newt) {
     }));
 }
 
-function submit_comment(text, comment) {
+function submit_comment(elt, text, comment) {
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", bad_request);
     xhr.open("POST", "/api/comment");
     xhr.send(JSON.stringify({
+        'tag': elt.tagName,
         'text': text,
         'comment': comment,
         'url': location.pathname,

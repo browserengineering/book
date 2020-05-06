@@ -24,7 +24,13 @@ class Data:
         with open(self.filename, "wb") as f:
             pickle.dump(self.data, f)
 
-    def typo(self, url, old, new, name):
+    def safe_tag(self, tag):
+        if tag.lower() in [ "p", "li", "pre", "span" ]:
+            return tag
+        else:
+            return "p"
+
+    def typo(self, url, old, new, name, tag="p"):
         if any(obj['type'] == 'typo' and
                obj['url'] == url and
                obj['old'] == old and
@@ -34,6 +40,7 @@ class Data:
             'id': len(self.data),
             'time': time.time(),
             'type': 'typo',
+            'tag': self.safe_tag(tag),
             'url': url,
             'old': old,
             'new': new,
@@ -42,7 +49,7 @@ class Data:
         })
         self.save()
 
-    def comment(self, url, text, comment, name):
+    def comment(self, url, text, comment, name, tag="p"):
         if any(obj['type'] == 'comment' and
                obj['url'] == url and
                obj['text'] == text and
@@ -52,6 +59,7 @@ class Data:
             'id': len(self.data),
             'time': time.time(),
             'type': 'comment',
+            'tag': self.safe_tag(tag),
             'url': url,
             'text': text,
             'comment': comment,
@@ -82,13 +90,25 @@ def comment():
     data = json.load(bottle.request.body)
     DATA.comment(**data)
 
+def splitword(text):
+    out = [[]]
+    ws = text[0].isspace()
+    for c in text:
+        if c.isspace() == ws:
+            out[-1].append(c)
+        else:
+            out.append([c])
+        ws = c.isspace()
+    return ["".join(s) for s in out]
+
 def prettify(obj):
     if obj['type'] != 'typo': return obj
     old, new = obj['old'], obj['new']
-    old_words = [w + "\n" for w in old.split()]
-    new_words = [w + "\n" for w in new.split()]
+    old_words = [w + "\n" for w in splitword(old)]
+    new_words = [w + "\n" for w in splitword(new)]
 
     d = difflib.Differ()
+    tag = obj.get("tag", "p")
     results = []
     state = " "
     for out in d.compare(old_words, new_words):
@@ -106,7 +126,9 @@ def prettify(obj):
     if state != " ":
         results.append("</span>")
     obj = obj.copy()
-    obj['diff'] = results
+    otag = "<ul><li>" if tag == 'li' else ("<" + tag + ">")
+    ctag = "</li></ul>" if tag == 'li' else ("</" + tag + ">")
+    obj['diff'] = otag + "".join(results) + ctag
     return obj
 
 @bottle.route("/feedback")

@@ -16,7 +16,7 @@
     <div class="{{obj['type']}}" data-id="{{obj['id']}}">
     <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
     %if obj['type'] == 'typo':
-      <blockquote>{{!" ".join(obj['diff'])}}</blockquote>
+      <blockquote>{{!obj['diff']}}</blockquote>
     %else:
       <blockquote>{{obj['text']}}</blockquote>
       <p>{{obj['comment']}}</p>
@@ -39,7 +39,7 @@
     <div class="{{obj['type']}}" data-id="{{obj['id']}}">
     <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
     %if obj['type'] == 'typo':
-      <blockquote>{{!" ".join(obj['diff'])}}</blockquote>
+      <blockquote>{{!obj['diff']}}</blockquote>
     %else:
       <blockquote>{{obj['text']}}</blockquote>
       <p>{{obj['comment']}}</p>
