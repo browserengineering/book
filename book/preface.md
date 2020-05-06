@@ -4,18 +4,16 @@ type: Preface
 next: preliminaries
 ...
 
-Computer science students find operating systems, compilers, and
-databases mysterious, leaving them powerless over part of their
-computing environment. So,[^1] a computer science degree traditionally
-includes courses that replace mystery with code, so that Linux,
-Postgres, and LLVM look like improvements, additions, and
-optimizations atop an understandable core.
+A computer science degree traditionally includes courses in operating
+systems, compilers, and databases in order to replace mystery with
+code, so that Linux, Postgres, and LLVM look like improvements,
+additions, and optimizations atop an understandable core.[^1]
 
 [^1]: Others reasons for these classes: a focus on speed; learning
     low-level APIs; practice with C; knowing the stack; using systems
     better; and the importance of the system covered.
 
-But web browsers are still opaque, not just to students but to faculty
+But web browsers remain opaque, not just to students but to faculty
 and industry programmers. This book dissipates this mystery by
 systematically explaining all major components of a web browser.
 

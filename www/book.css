@@ -102,7 +102,7 @@ pre { margin-left: 2ex; }
 .further > :first-child:before { content: "Go further: "; font-weight: bold; color: green; }
 
 code .st { color: #666; }
-code .cf, code .kw, code.im { color: #606; }
+code .cf, code .kw, code .im { color: #606; }
 code .co { color: #a86; }
 
 .todo { background: darkred; color: white; padding-bottom: 1em; }

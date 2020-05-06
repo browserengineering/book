@@ -5,31 +5,30 @@ prev: preliminaries
 next: graphics
 ...
 
-The primary goal of a web browser is to display the information
-identified by a URL. To do so, a browser first uses the URL to connect
-to a server somewhere on the Internet, and then requests information
-from that server. The web page is the data in the server's response.
+A web browser displays information identified by a URL. And the first
+step is to use that URL to connect to download that information from a
+server somewhere on the Internet.
 
 Connecting to a server
 ======================
 
-To display a web page, the browser first needs to get a copy of it. To
-do so, it asks the OS to put it in touch with a *server* somewhere on
-the internet; the URL for the web page tells it the server's *host
-name*. The OS then talks to a *DNS server* which converts[^5] the host
-name like `example.org` into an *IP address* like `93.184.216.34`.[^6]
-Then the OS decides which hardware is best for communicating with that
-IP address (say, wireless or wired) using what is called a *routing
+To display a web page, the browser first needs to get a copy of it.
+So, it asks the OS to put it in touch with a *server* somewhere on the
+internet; the URL for the web page tells it the server's *host name*.
+The OS then talks to a *DNS server* which converts[^5] a host name
+like `example.org` into an *IP address* like `93.184.216.34`.[^6] Then
+the OS decides which hardware is best for communicating with that IP
+address (say, wireless or wired) using what is called a *routing
 table*, and then uses device drivers to sends signals over a wire or
 over the air.[^7] Those signals are picked up and transmitted by a
-series of *routers*[^8] which each send your message in the direction
-they think will take it toward that IP address.[^9] Eventually this
-reaches the server, and the connection is created. Anyway, the point
-of this is that the browser tells the OS, “Hey, put me in touch with
-`example.org`”, and it does.
+series of *routers*[^8] which each choose the best direction to send
+your message so that it eventuall gets to that IP address.[^9]
+Eventually the message reaches the server, and a connection is
+created. Anyway, the point of this is that the browser tells the OS,
+“Hey, put me in touch with `example.org`”, and it does.
 
-On many systems, you can set up this kind of connection manually using
-the `telnet` program, like this:^[The "80" is the port, discussed below.]
+On many systems, you can set up this kind of connection using the
+`telnet` program, like this:^[The "80" is the port, discussed below.]
 
 ``` {.example}
 telnet example.org 80
@@ -57,9 +56,9 @@ You\'ll get output that looks like this:
     Connected to example.org.
     Escape character is '^]'.
 
-This means that the OS converted `example.org` to the IP address of
-`93.184.216.34` and was able to connect to it.[^10] You can now type
-in text and press enter to talk to `example.org`.
+This means that the OS converted the host name `example.org` into the
+IP address `93.184.216.34` and was able to connect to it.[^10] You can
+now talk to `example.org`.
 
 [^10]: The line about escape characters is just instructions on using
     obscure `telnet` features.
@@ -131,16 +130,16 @@ HTTP/1.0 200 OK
 ```
 
 That tells you that the host confirms that it, too, speaks `HTTP/1.0`,
-and that it found your request to be \"OK\" (which has a numeric code
+and that it found your request to be "OK" (which has a numeric code
 of 200). You may be familiar with `404 Not Found`; that's another
 numeric code and response, as are `403 Forbidden` or `500 Server
-Error`. There are lots of these codes, and they have a pretty neat
+Error`. There are lots of these codes,^[As any look at a [flow chart](https://github.com/for-GET/http-decision-diagram) will show] and they have a pretty neat
 organization scheme:^[The status text like `OK` can actually be
 anything and is just there for humans, not for machines.]
 
 -   The 100s are informational messages
 -   The 200s mean you were successful
--   The 300s request follow-up action (usually to follow a redirect)
+-   The 300s request follow-up action (usually a redirect)
 -   The 400s mean you sent a bad request
 -   The 500s mean the server handled the request badly
 
@@ -226,7 +225,7 @@ host, path = url.split("/", 1)
 path = "/" + path
 ```
 
-The `split(s, n)` function splits a string at the first `n` copies of
+The `split(s, n)` method splits a string at the first `n` copies of
 `s`. The path is supposed to include the separating slash, so I make
 sure to add it back after splitting on it.
 
@@ -263,8 +262,7 @@ s = socket.socket(
 
 Once you have a socket, you need to tell it to connect to the other
 computer. For that, you need the host and a *port*. The port depends
-on the type of server you're connecting to, and for now should always
-be 80.
+on the type of server you're connecting to; for now it should be 80.
 
 ``` {.python}
 s.connect(("example.org", 80))
@@ -328,7 +326,7 @@ versus `bytes`. You can turn a `str` into `bytes` by calling its
 `decode("utf8")`.[^18]
 :::
 
-You\'ll notice that the `send` call returns a number, in this case `44`.
+You\'ll notice that the `send` call returns a number, in this case `47`.
 That tells you how many bytes of data you sent to the other computer;
 if, say, your network connection failed midway through sending the data,
 you might want to know how much you sent before the connection failed.
@@ -359,10 +357,10 @@ assert status == "200", "{}: {}".format(status, explanation)
 ```
 
 Note that I do *not* check that the server\'s version of HTTP is the
-same as mine; this might sound like a good idea, but there are a lot of
-misconfigured servers out there that respond in HTTP 1.1 even when you
-talk to them in HTTP 1.0. (Luckily the protocols are similar enough as
-to not cause confusion.)
+same as mine; this might sound like a good idea, but there are a lot
+of misconfigured servers out there that respond in HTTP 1.1 even when
+you talk to them in HTTP 1.0.^[Luckily the protocols are similar
+enough to not cause confusion.]
 
 After the status line come the headers:
 
@@ -485,7 +483,7 @@ show(body)
 
 This code uses the `sys` library to read the first argument
 (`sys.argv[1]`) from the command line to use as the URL. Try running
-the code you've written, passing the URL `http://example.org/`:
+this code on the URL `http://example.org/`:
 
     python3 browser.py http://example.org/
 
@@ -568,7 +566,7 @@ if scheme == "https":
     s = ctx.wrap_socket(s, server_hostname=host)
 ```
 
-These two steps should be all you need to connect to HTTPS sites.
+Your browser should now be able to connect to HTTPS sites.
 
 ::: {.further}
 TLS is pretty complicated; you can read the details in [RFC
@@ -584,8 +582,8 @@ Summary
 This chapter went from an empty file to a rudimentary web browser that
 can:
 
--   Parse a URL into a host, a port, and a path.
--   Connect to that host at that port using `sockets`
+-   Parse a URL into a scheme, host, and path.
+-   Connect to that host using the `sockets` and `ssl` libraries
 -   Send an HTTP request to that host, including a `Host` header
 -   Split the HTTP response into a status line, headers, and a body
 -   Print the text (and not the tags) in the body
@@ -596,34 +594,47 @@ it already has some of the core capabilities of a browser.
 Exercises
 =========
 
--   Along with `Host`, send the `User-Agent` header in the `request`
-    function. Its value can be whatever you want---it identifies your
-    browser to the host.
+*HTTP/1.1:* Along with `Host`, send the `Connection` header in the
+`request` function with the value `close`. Your browser show now
+declare that it is using `HTTP/1.1`. Also add a `User-Agent` header.
+Its value can be whatever you want---it identifies your browser to the
+host. Make it easy to add further headers in the future.
 
--   Error codes in the 300 range refer to redirects. Change the
-    browser so that, for 300-range statuses, the browser repeats the
-    request with the URL in the `Location` header. Note that the
-    `Location` header might not include the host and scheme. If it
-    starts with `/`, prepend the scheme and host. You can test this
-    with with the URL <http://browser.engineering/redirect>, which
-    should redirect back to this page.
+*Redirects:* Error codes in the 300 range refer to redirects. Change
+the browser so that, for 300-range statuses, the browser repeats the
+request with the URL in the `Location` header. Note that the
+`Location` header might not include the host and scheme. If it starts
+with `/`, prepend the scheme and host. You can test this with with the
+URL <http://browser.engineering/redirect>, which should redirect back
+to this page.
 
--   Add support for [Data
-    URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs),
-    which embed the whole resource into the URL. You'll need to undo
-    the `base64` encoding; use the Python `base64` library's
-    `b64decode` function for this.
+*<body>:* Only show text in an HTML document if it is between `<body>`
+and `</body>`. This avoids printing the title and style information.
+The loop in `show` will need more variables to tag names and whether
+it is currently between `<body>` and `</body>`.
 
--   Only show the text of an HTML document between `<body>` and
-    `</body>`. This will avoid printing the title and style
-    information. You will need to add additional variables `in_body`
-    and `tag` to that loop, to track whether or not you are between
-    `body` tags and to keep around the tag name when inside a tag.
+*Encodings:* Add support for HTTP compression, in which the browser
+[informs the
+server](https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation)
+that it can compress data before sending it. Your browser must send
+the `Accept-Encoding` header with the value `gzip`. If the server
+supports compression, its response will have a `Content-Encoding`
+header with value `gzip`. The body is then compressed. To decompress
+it, you can use the `decompress` method in the `gzip` module. Calling
+`makefile("r", encoding="utf8", newline="\r\n")` will no longer work,
+because compressed data is not `utf8`-encoded. You can change the
+first argument `"rb"` to work with raw bytes instead of encoded text.
 
--   Support multiple file formats in `show`: use the `Content-Type`
-    header to determine the content type, and if it isn\'t
-    `text/html`, just show the whole document instead of stripping out
-    tags and only showing text in the `<body>`.
+*Caching:* Typically the same images, styles, and scripts are used on
+multiple pages; downloading them over and over again would be a waste.
+It's generally valid to cache any HTTP response, as long as it was
+requested with `GET` and received a `200` response.^[Some other status
+codes like `301` and `404` can also be cached.] Implement a cache in
+your browser and test it by requesting the same file multiple times.
+Servers control caches using the `Cache-Control` header. Add support
+for this header, specifically for `no-store` and `max-age` values. If
+the header contains some other value, it's best not to cache the
+response.
 
 [^5]: On some systems, you can run `dig +short example.org` to do this
     conversion yourself.
