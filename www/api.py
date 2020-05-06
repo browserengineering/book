@@ -109,7 +109,7 @@ def prettify(obj):
     obj['diff'] = results
     return obj
 
-@bottle.route("/api/feedback")
+@bottle.route("/feedback")
 @bottle.view("feedback.view")
 def feedback():
     new = [prettify(o) for o in DATA if o['status'] == "new"]
