@@ -151,6 +151,7 @@ if __name__ == "__main__":
         heng.update(pw.encode("utf8"))
         with open("pw.hash", "wb") as f:
             f.write(heng.digest())
+        print("Please run: window.localStorage['pw'] = '" + pw + "'");
     else:
         debug = "--debug" in sys.argv
         bottle.run(port=4000, debug=debug, reloader=True)
