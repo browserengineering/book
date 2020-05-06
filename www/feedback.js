@@ -112,7 +112,8 @@ Tools.prototype.attach = function(node, e) {
     this.node.insertBefore(this.toolbar, this.node.childNodes[0]);
 }
 
-Tools.prototype.remove = function(e) {
+Tools.prototype.remove = function(node, e) {
+    if (this.node !== node) return;
     if (this.lock) return;
     this.node = false;
     this.toolbar.remove();
@@ -123,7 +124,9 @@ function typo_mode() {
     var tools = new Tools(elts[i]);
     for (var i = 0; i < elts.length; i++) {
         elts[i].addEventListener("mouseenter", tools.attach.bind(tools, elts[i]));
-        elts[i].addEventListener("mouseleave", tools.remove.bind(tools));
+        elts[i].addEventListener("focus", tools.attach.bind(tools, elts[i]));
+        elts[i].addEventListener("mouseleave", tools.remove.bind(tools, elts[i]));
+        elts[i].addEventListener("blur", tools.remove.bind(tools, elts[i]));
     }
 }
 
