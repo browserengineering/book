@@ -12,12 +12,23 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-function markdown(elt, tools) {
-    var enabled = document.contains(tools);
-    if (enabled) tools.remove();
-    var text = elt.textContent;
-    if (endabled) elt.insertBefore(tools, elt.childNodes[0]);
-    return text;
+var EDITABLE_ELEMENTS = "p, li, pre, .note";
+
+function markdown(elt, arr, recursive) {
+    if (elt.nodeType == Node.TEXT_NODE) {
+        arr.push(elt.textContent);
+    } else if (elt.nodeType == Node.ELEMENT_NODE) {
+        if (recursive && elt.matches(EDITABLE_ELEMENTS)) {
+            arr.push("[*]");
+        } else {
+            for (var i = 0; i < elt.childNodes.length; i++) {
+                markdown(elt.childNodes[i], arr, true);
+            }
+        }
+    } else {
+        // Skip weird nodes
+    }
+    return arr;
 }
 
 function Element(name, properties, children) {
@@ -36,71 +47,83 @@ function Element(name, properties, children) {
     return elt
 }
 
-var LOCK = false;
-
-function make_tools(node) {
+function Tools() {
     var a_typo = Element("a", { href: "#" }, "Typo" );
     var a_comment = Element("a", { href: "#" }, "Comment" );
-    var form = Element("textarea", { placeholder: "Comment here" }, []);
-    form.style.display = "none";
-    var tools = Element("div", { className: "tools" }, [a_typo, a_comment, form]);
 
-    a_typo.addEventListener("click", function(e) {
-        LOCK = true;
-        tools.remove()
-        node.contentEditable = true;
-        node.focus()
-        var old_text = markdown(node);
-        var editing = true;
-        node.addEventListener("blur", function() {
-            var new_text = markdown(node, tools);
-            if (editing && new_text !== old_text) {
-                console.log("Submitting typo correction");
-                submit_typo(old_text, new_text);
-            }
-            node.contentEditable = false;
-            editing = false;
-            LOCK = false;
-        });
-        e.preventDefault();
+    this.form = Element("textarea", {
+        style: "display: none",
+        placeholder: "Comment here",
+    }, []);
+
+    this.toolbar = Element("div", { className: "tools" }, [a_typo, a_comment, this.form]);
+
+    this.lock = false;
+    this.node = null;
+
+    a_typo.addEventListener("click", this.typo.bind(this));
+    a_comment.addEventListener("click", this.comment.bind(this));
+}
+
+Tools.prototype.typo = function(e) {
+    var that = this;
+    that.lock = true;
+    that.toolbar.remove()
+    that.node.contentEditable = true;
+    that.node.focus()
+    var old_text = markdown(that.node, []).join("");
+    var editing = true;
+    that.node.addEventListener("blur", function() {
+        var new_text = markdown(that.node, []).join("");
+        if (editing && new_text !== old_text) {
+            submit_typo(old_text, new_text);
+        }
+        that.node.contentEditable = false;
+        editing = false;
+        that.lock = false;
     });
+    e.preventDefault();
+}
 
-    a_comment.addEventListener("click", function(e) {
-        form.style.display = "block";
-        form.focus()
-        LOCK = true;
-        var editing = true;
-        form.addEventListener("blur", function() {
-            var comment = form.value;
-            var text = markdown(node, tools);
-            if (editing && comment) {
-                console.log("Submitting comment");
-                submit_comment(text, comment);
-            }
-            editing = false;
-            form.style.display = "none";
-            form.value = "";
-            LOCK = false;
-        });
-        e.preventDefault();
+Tools.prototype.comment = function(e) {
+    var that = this;
+    that.form.style.display = "block";
+    that.form.focus()
+    that.lock = true;
+    var editing = true;
+    that.form.addEventListener("blur", function() {
+        var comment = that.form.value;
+        var text = markdown(that.node, []).join("");
+        if (editing && comment) {
+            console.log("Submitting comment");
+            submit_comment(text, comment);
+        }
+        editing = false;
+        that.form.style.display = "none";
+        that.form.value = "";
+        that.lock = false;
     });
+    e.preventDefault();
+}
 
-    return tools;
+Tools.prototype.attach = function(node, e) {
+    if (this.lock) return;
+    this.node = node;
+    this.node.insertBefore(this.toolbar, this.node.childNodes[0]);
+}
+
+Tools.prototype.remove = function(e) {
+    if (this.lock) return;
+    this.node = false;
+    this.toolbar.remove();
 }
 
 function typo_mode() {
-    var elts = document.querySelectorAll("p, li, pre, .note");
+    var elts = document.querySelectorAll(EDITABLE_ELEMENTS);
+    var tools = new Tools(elts[i]);
     for (var i = 0; i < elts.length; i++) {
-        (function(form) {
-            elts[i].addEventListener("mouseenter", function(e) {
-                if (!LOCK) this.insertBefore(form, this.childNodes[0]);
-                e.stopPropagation();
-            });
-            elts[i].addEventListener("mouseleave", function(e) {
-                if (!LOCK) form.remove();
-                e.stopPropagation();
-            });
-        })(make_tools(elts[i]));
+        elts[i].addEventListener("mouseenter", tools.attach.bind(tools, elts[i]));
+        elts[i].addEventListener("mouseleave", tools.remove.bind(tools));
     }
 }
 
