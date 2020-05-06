@@ -14,6 +14,8 @@
   %for obj in new:
   %if obj['status'] == 'new':
     <div class="{{obj['type']}}" data-id="{{obj['id']}}">
+    <button type='button' class='saved'>Save</button>
+    <button type='button' class='denied'>Deny</button>
     <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
     %if obj['type'] == 'typo':
       <blockquote>{{!obj['diff']}}</blockquote>
@@ -21,8 +23,6 @@
       <blockquote>{{obj['text']}}</blockquote>
       <p>{{obj['comment']}}</p>
     %end
-    <button type='button' class='saved'>✔</button>
-    <button type='button' class='denied'>✘</button>
     </div>
   %end
   %end
@@ -37,6 +37,7 @@
   %for obj in saved:
   %if obj['status'] == 'saved':
     <div class="{{obj['type']}}" data-id="{{obj['id']}}">
+    <button type='button' class='archived'>Archive</button>
     <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
     %if obj['type'] == 'typo':
       <blockquote>{{!obj['diff']}}</blockquote>
@@ -44,7 +45,6 @@
       <blockquote>{{obj['text']}}</blockquote>
       <p>{{obj['comment']}}</p>
     %end
-    <button type='button' class='archived'>✔</button>
     </div>
   %end
   %end
