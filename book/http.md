@@ -212,7 +212,7 @@ that the URL starts with `http://` and then strip that off:
     follow in a language besides Python.
 
 
-``` {.python}
+``` {.python expected=False}
 assert url.startswith("http://")
 url = url[len("http://"):]
 ```
@@ -264,7 +264,7 @@ Once you have a socket, you need to tell it to connect to the other
 computer. For that, you need the host and a *port*. The port depends
 on the type of server you're connecting to; for now it should be 80.
 
-``` {.python}
+``` {.python expected=False}
 s.connect(("example.org", 80))
 ```
 
@@ -292,7 +292,7 @@ Request and Response
 Now that we have a connection, we make a request to the other server.
 To do so, we send it some data using the `send` method:
 
-``` {.python}
+``` {.python expected=False}
 s.send(b"GET /index.html HTTP/1.0\r\n" + 
        b"Host: example.org\r\n\r\n")
 ```
@@ -313,7 +313,7 @@ the string of data: that tells Python that I mean the bits and bytes
 that represent the text I typed in, not the text itself, which you can
 tell because it has type `bytes` not `str`:
 
-``` {.python}
+``` {.python .example}
 >>> type("asdf")
 <class 'str'>
 >>> type(b"asdf")
@@ -469,20 +469,22 @@ not, and it is not inside a tag, it prints the current character.[^24]
 Put this code into a new function, `show`:
 
 ``` {.python}
-def show(body)
+def show(body):
     # ...
 ```
 
 We can now string together `request` and `show`:
 
 ``` {.python}
-import sys
-headers, body = request(sys.argv[1])
-show(body)
+if __name__ == "__main__":
+    import sys
+    headers, body = request(sys.argv[1])
+    show(body)
 ```
 
-This code uses the `sys` library to read the first argument
-(`sys.argv[1]`) from the command line to use as the URL. Try running
+The first line here is Python's version of a `main` function. The code
+reads the first argument (`sys.argv[1]`) from the command line using
+the `sys` module. That first argument is used as the URL. Try running
 this code on the URL `http://example.org/`:
 
     python3 browser.py http://example.org/
@@ -522,7 +524,7 @@ context to *wrap* the socket `s`. That produces a new socket, `s`:
 ``` {.python}
 import ssl
 ctx = ssl.create_default_context()
-s = ctx.wrap_socket(s, server_hostname="example.org")
+s = ctx.wrap_socket(s, server_hostname=host)
 ```
 
 When you wrap `s`, you pass a `server_hostname` argument, and it

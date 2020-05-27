@@ -14,7 +14,11 @@ def request(url):
         host, port = host.split(":", 1)
         port = int(port)
 
-    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
     s.connect((host, port))
 
     if scheme == "https":
@@ -41,15 +45,14 @@ def request(url):
 
     return headers, body
 
-def show(source):
+def show(body):
     in_angle = False
-    for c in source:
+    for c in body:
         if c == "<":
             in_angle = True
         elif c == ">":
             in_angle = False
-        else:
-            if in_angle: continue
+        elif not in_angle:
             print(c, end="")
 
 if __name__ == "__main__":
