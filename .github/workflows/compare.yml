@@ -8,4 +8,4 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - uses: r-lib/actions/setup-pandoc@v1
-      - run: python compare.py book/http.md src/lab1.py
+      - run: python3 compare.py book/http.md src/lab1.py
