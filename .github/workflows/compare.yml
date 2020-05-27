@@ -1,0 +1,11 @@
+name: Compare tangled and saved source
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: r-lib/actions/setup-pandoc@v1
+      - run: python compare.py book/http.md src/lab1.py
