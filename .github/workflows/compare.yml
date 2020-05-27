@@ -8,6 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-python@v2
-        python-version: 3.8
+        with:
+          python-version: 3.8
       - uses: r-lib/actions/setup-pandoc@v1
       - run: python3 compare.py book/http.md src/lab1.py
