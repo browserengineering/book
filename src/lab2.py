@@ -1,4 +1,5 @@
 import socket
+import ssl
 import tkinter
 
 def request(url):
@@ -53,42 +54,53 @@ def lex(source):
             text += c
     return text
 
+WIDTH = 800
+HEIGHT = 600
+
+HSTEP = 13
+VSTEP = 18
+
+SCROLL_STEP = 100
+
 def layout(text):
     display_list = []
-    x, y = 13, 13
+    x, y = HSTEP, VSTEP
     for c in text:
         display_list.append((x, y, c))
-        x += 13
-        if x >= 787:
-            y += 18
-            x = 13
+        x += GRID
+        if x >= WIDTH - HSTEP:
+            y += VSTEP
+            x = HSTEP
     return display_list
 
-def show(text):
-    window = tkinter.Tk()
-    canvas = tkinter.Canvas(window, width=800, height=600)
-    canvas.pack()
+class Browser:
+    def __init__(self, text):
+        self.window = tkinter.Tk()
+        self.canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
+        self.canvas.pack()
 
-    SCROLL_STEP = 100
-    scrolly = 0
-    display_list = layout(text)
+        self.text = text
+        self.layout()
 
-    def render():
-        canvas.delete("all")
-        for x, y, c in display_list:
-            canvas.create_text(x, y - scrolly, text=c)
+        self.scrolly = 0
+        window.bind("<Down>", self.scrolldown)
 
-    def scrolldown(e):
-        nonlocal scrolly
-        scrolly += SCROLL_STEP
-        render()
+    def layout(self):
+        self.display_list = layout(self.text)
+        self.render()
 
-    window.bind("<Down>", scrolldown)
-    render()
+    def render(self):
+        self.canvas.delete("all")
+        for x, y, c in self.display_list:
+            self.canvas.create_text(x, y - self.scrolly, text=c)
 
-    tkinter.mainloop()
+    def scrolldown(self, e):
+        self.scrolly += SCROLL_STEP
+        self.render()
 
 if __name__ == "__main__":
     import sys
     headers, body = request(sys.argv[1])
-    show(lex(body))
+    text = lex(body)
+    browser = Browser(text)
+    tkinter.mainloop()

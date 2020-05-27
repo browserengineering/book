@@ -67,17 +67,27 @@ def lex(source):
             text += c
     return out
 
+WIDTH = 800
+HEIGHT = 600
+
+HSTEP = 13
+VSTEP = 18
+
+TSIZE = 16
+
+SCROLL_STEP = 100
+
 def layout(tokens):
     display_list = []
 
-    x, y = 13, 13
+    x, y = HSTEP, VSTEP
     bold, italic = False, False
     terminal_space = True
     for tok in tokens:
         if isinstance(tok, Text):
             font = tkinter.font.Font(
                 family="Times",
-                size=16,
+                size=TSIZE,
                 weight=("bold" if bold else "normal"),
                 slant=("italic" if italic else "roman"),
             )
@@ -87,8 +97,8 @@ def layout(tokens):
             
             for word in tok.text.split():
                 w = font.measure(word)
-                if x + w > 787:
-                    x = 13
+                if x + w > WIDTH - HSTEP:
+                    x = HSTEP
                     y += font.metrics('linespace') * 1.2
                 display_list.append((x, y, word, font))
                 x += w + font.measure(" ")
@@ -107,33 +117,35 @@ def layout(tokens):
                 bold = False
             elif tok.tag == "/p":
                 terminal_space = True
-                x = 13
-                y += font.metrics("linespace") * 1.2 + 16
+                x = HSTEP
+                y += font.metrics("linespace") * 1.2 + VSTEP
     return display_list
 
-def show(text):
-    window = tkinter.Tk()
-    canvas = tkinter.Canvas(window, width=800, height=600)
-    canvas.pack()
+class Browser:
+    def __init__(self, text):
+        self.window = tkinter.Tk()
+        self.canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
+        self.canvas.pack()
 
-    SCROLL_STEP = 100
-    scrolly = 0
-    display_list = layout(text)
+        self.text = text
+        self.layout()
 
-    def render():
-        canvas.delete("all")
-        for x, y, c, font in display_list:
-            canvas.create_text(x, y - scrolly, text=c, font=font, anchor="nw")
+        self.scrolly = 0
+        window.bind("<Down>", self.scrolldown)
 
-    def scrolldown(e):
-        nonlocal scrolly
-        scrolly += SCROLL_STEP
-        render()
+    def layout(self):
+        self.display_list = layout(self.text)
+        self.render()
 
-    window.bind("<Down>", scrolldown)
-    render()
+    def render(self):
+        self.canvas.delete("all")
+        for x, y, c in self.display_list:
+            self.canvas.create_text(x, y - self.scrolly, text=c)
 
-    tkinter.mainloop()
+    def scrolldown(self, e):
+        self.scrolly += SCROLL_STEP
+        self.render()
+
 
 if __name__ == "__main__":
     import sys
