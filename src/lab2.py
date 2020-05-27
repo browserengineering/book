@@ -42,10 +42,10 @@ def request(url):
 
     return headers, body
 
-def lex(source):
+def lex(body):
     text = ""
     in_angle = False
-    for c in source:
+    for c in body:
         if c == "<":
             in_angle = True
         elif c == ">":
@@ -67,7 +67,7 @@ def layout(text):
     x, y = HSTEP, VSTEP
     for c in text:
         display_list.append((x, y, c))
-        x += GRID
+        x += HSTEP
         if x >= WIDTH - HSTEP:
             y += VSTEP
             x = HSTEP
@@ -76,18 +76,14 @@ def layout(text):
 class Browser:
     def __init__(self, text):
         self.window = tkinter.Tk()
-        self.canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
+        self.canvas = tkinter.Canvas(self.window, width=WIDTH, height=HEIGHT)
         self.canvas.pack()
 
-        self.text = text
-        self.layout()
-
         self.scrolly = 0
-        window.bind("<Down>", self.scrolldown)
-
-    def layout(self):
-        self.display_list = layout(self.text)
+        self.display_list = layout(text)
         self.render()
+
+        self.window.bind("<Down>", self.scrolldown)
 
     def render(self):
         self.canvas.delete("all")
