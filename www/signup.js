@@ -80,9 +80,4 @@ SignupForm.prototype.handle_response = function(arg) {
 window.addEventListener("load", function() {
     var form = document.getElementById("signup");
     new SignupForm(form);
-
-    var exercises = document.querySelector("#exercises");
-    if (exercises) {
-        exercises.parentNode.insertBefore(form, exercises);
-    }
 })

@@ -593,6 +593,9 @@ can:
 Yes, this is still more of a command-line tool than a web browser, but
 it already has some of the core capabilities of a browser.
 
+::: {.signup}
+:::
+
 Exercises
 =========
 

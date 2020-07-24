@@ -12,6 +12,9 @@ JavaScript, in a thousand lines of Python.
 This book is a [work in progress](todo.md). Use at your own risk.
 :::
 
+Follow this book's [blog](blog/) or
+[Twitter](https://twitter.com/browserengineer) for updates.
+
 Introduction
 ============
 

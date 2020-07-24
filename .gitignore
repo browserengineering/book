@@ -1,4 +1,5 @@
 www/*.html
+www/blog/*.html
 .DS_Store
 class
 posts

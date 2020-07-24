@@ -38,7 +38,7 @@ li { margin: 1em 0; }
 .main > h1 { margin: 0; }
 .main ol { margin: 0; padding-left: 0; color: black; }
 .main li { font-size: 80%; font-style: italic; }
-.main li a { font-size: 125%; font-style: normal; }
+.main li a, .main li .link { font-size: 125%; font-style: normal; }
 
 .intro, .outro { }
 .intro ol { list-style: lower-roman; }
