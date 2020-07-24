@@ -2,8 +2,8 @@ html := $(patsubst book/%.md,www/%.html,$(wildcard book/*.md))
 
 all: $(html)
 
-www/%.html: book/%.md book/template.html book/filter.lua
-	pandoc --template book/template.html -c book.css --from markdown --to html --lua-filter=book/filter.lua \
+www/%.html: book/%.md book/template.html book/signup.html book/filter.lua
+	pandoc --template book/template.html --include-after-body book/signup.html -c book.css --from markdown --to html --lua-filter=book/filter.lua \
 	    $< -o $@
 
 publish:

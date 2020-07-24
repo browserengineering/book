@@ -136,3 +136,30 @@ p, li, pre, .note { position: relative; }
     border: none; background: transparent; width: 100%; font-size: 100%;
     margin: 1ex 0; 
 }
+
+input, button { font-size: inherit; font-family: inherit; }
+form h1 { margin-bottom: 1em; margin-top: 0; }
+.field { display: flex; }
+.field label { min-width: 20ex; }
+.field input { flex-grow: 1; }
+.checkoff { float: right; }
+.checkoff input { vertical-align: middle; }
+form .checkoff, form button[type=submit] { margin-top: 1em; }
+
+#signup { border: 2px solid gold; padding: 1em; margin: 1em 0; background: #fffbe5; }
+#signup input { border: 2px none gold; border-bottom-style: solid; background: transparent; }
+#signup button { border: 2px solid gold; background: #fff7cc; }
+#signup button:hover { background: #fff099; cursor: pointer; }
+#signup button:active { background: gold; color: black; cursor: pointer; }
+#signup button[type=reset] { display: block; }
+
+form.states > div { display: none; }
+form.states > div.s-initial { display: block; }
+form.states.s-progress > div { display: none}
+form.states.s-progress > div.s-progress { display: block}
+form.states.s-success > div { display: none}
+form.states.s-success > div.s-success { display: block}
+form.states.s-error > div { display: none}
+form.states.s-error > div.s-error { display: block}
+form > div.status { text-align: center; font-size: 120%; }
+form > div.s-error { color: red; }
