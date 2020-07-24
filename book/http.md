@@ -610,10 +610,10 @@ with `/`, prepend the scheme and host. You can test this with with the
 URL <http://browser.engineering/redirect>, which should redirect back
 to this page.
 
-*<body>:* Only show text in an HTML document if it is between `<body>`
-and `</body>`. This avoids printing the title and style information.
-The loop in `show` will need more variables to tag names and whether
-it is currently between `<body>` and `</body>`.
+*Body tag:* Only show text in an HTML document if it is between
+`<body>` and `</body>`. This avoids printing the title and style
+information. The loop in `show` will need more variables to tag names
+and whether it is currently between `<body>` and `</body>`.
 
 *Encodings:* Add support for HTTP compression, in which the browser
 [informs the
