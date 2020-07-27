@@ -71,6 +71,7 @@ body { counter-reset: fn; }
 .note { font-style: italic; white-space: normal; color: #a86; }
 @media only screen and (min-width: 1150px) {
     body { width: 65ex; padding: 0 17ex 0 0; }
+    body.main { padding: 0; } /* Assume no footnotes on main page */
     .note {
         float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
         font-size: 110%; vertical-align: reset; text-align: left; color: currentColor;
@@ -140,8 +141,8 @@ p, li, pre, .note { position: relative; }
 input, button { font-size: inherit; font-family: inherit; }
 form h1 { margin-bottom: 1em; margin-top: 0; }
 .field { display: flex; }
-.field label { min-width: 20ex; }
-.field input { flex-grow: 1; }
+.field label { min-width: 15ex; vertical-align: bottom; }
+.field input { flex-grow: 1; min-width: 0; }
 .checkoff { float: right; }
 .checkoff input { vertical-align: middle; }
 form .checkoff, form button[type=submit] { margin-top: 1em; }
