@@ -138,6 +138,7 @@ p, li, pre, .note { position: relative; }
     margin: 1ex 0; 
 }
 
+form { overflow: auto; }
 input, button { font-size: inherit; font-family: inherit; }
 form h1 { margin-bottom: 1em; margin-top: 0; }
 .field { display: flex; }
