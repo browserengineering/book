@@ -310,8 +310,8 @@ Time for a Python quirk. When you send data, it\'s important to
 remember that you are sending raw bits and bytes; they could form text
 or an image or video. That\'s why here I have a letter `b` in front of
 the string of data: that tells Python that I mean the bits and bytes
-that represent the text I typed in, not the text itself, which you can
-tell because it has type `bytes` not `str`:
+that represent the text I typed in, not the text itself. You can
+also see this in the type changing from `str` to  `bytes`:
 
 ``` {.python .example}
 >>> type("asdf")
