@@ -626,9 +626,9 @@ the `Accept-Encoding` header with the value `gzip`. If the server
 supports compression, its response will have a `Content-Encoding`
 header with value `gzip`. The body is then compressed. To decompress
 it, you can use the `decompress` method in the `gzip` module. Calling
-`makefile("r", encoding="utf8", newline="\r\n")` will no longer work,
-because compressed data is not `utf8`-encoded. You can change the
-first argument `"rb"` to work with raw bytes instead of encoded text.
+`makefile` with the `encoding` argument will no longer work, because
+compressed data is not `utf8`-encoded. You can change the first
+argument `"rb"` to work with raw bytes instead of encoded text.
 
 *Caching:* Typically the same images, styles, and scripts are used on
 multiple pages; downloading them over and over again would be a waste.
