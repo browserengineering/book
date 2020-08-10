@@ -350,20 +350,12 @@ next chapter.
 Exercises
 =========
 
-::: {.todo}
-I don't like this exercise.
-:::
-
-Look through [the
-options](http://effbot.org/tkinterbook/canvas.htm#Tkinter.Canvas.config-method)
-you can pass to the `Canvas` constructor. Change the canvas to have a
-white background and give it a red border (which Tk calls a
-highlight). This will help you see where the edge of the canvas is. if
-you resize the window.
-
-*Scroll up*: Add support for scrolling up as well as down (when you
-hit the up arrow). You shouldn\'t be able to scroll past the top of
-the page, though.
+*Mouse wheel*: Add support for scrolling up as well as down (when you
+hit the up arrow). You shouldn't be able to scroll past the top of
+the page, though. Then, bind the `<MouseWheel>` event, which triggers
+when you scroll with the mouse wheel. The associated event object has
+an `event.delta` value which tells you how far and in what direction
+to scroll.
 
 *Line breaks*: Change `layout` to handle newline characters by ending
 the line and starting a new one. Increment *y* by more than 18 to give
@@ -377,6 +369,16 @@ This should make scrolling noticable faster for "Journey to the
 West".[^16]
 
 [^16]: We\'ll return to this optimization in [chapter 10](reflow.md).
+
+*Emoji*: Add support for emoji to our browser. Emoji are
+characters, and you can call `create_text` to draw them, but the
+results aren't very good. Instead, head to [the OpenMoji
+project](https://openmoji.org), download the emoji for ["grinning
+face"](https://openmoji.org/library/#search=smiley%20face&emoji=1F600)
+as a PNG file, resize it to 16×16 pixels, and save it to the same
+folder as the browser. Use the `tkinter.PhotoImage` class to load the
+image and then the `canvas.create_image` method to draw it to the
+screen. You can add other emojis if you'd like 😀!
 
 *Resizing*: Make browser resizable. To do so, pass the `fill` and
 `expand` arguments to `canvas.pack` call and bind to the `<Configure>`
