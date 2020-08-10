@@ -156,10 +156,11 @@ After the `200 OK` line, the server sends its own headers. When I did
 this, I got these headers (but yours will differ):
 
 ``` {.example}
+Age: 545933
 Cache-Control: max-age=604800
 Content-Type: text/html; charset=UTF-8
 Date: Mon, 25 Feb 2019 16:49:28 GMT
-Etag: "1541025663+ident"
+Etag: "1541025663+gzip+ident"
 Expires: Mon, 04 Mar 2019 16:49:28 GMT
 Last-Modified: Fri, 09 Aug 2013 23:54:35 GMT
 Server: ECS (sec/96EC)
