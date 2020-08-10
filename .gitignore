@@ -1,8 +1,8 @@
 www/*.html
 www/blog/*.html
 .DS_Store
-class
-posts
 slides
+class/
+lectures/
 www/db.pickle
 www/pw.hash
