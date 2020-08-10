@@ -9,11 +9,11 @@ web is a dynamic, ever-changing place. The first web browser came into
 being in 1989 and it did not support colors, images, styling, or
 scripting. Three decades of evolution driven by market forces,
 implementation quirks, and the ever-expanding reach of the web made
-what browsers what they are today; those forces still matter. I both
-hope that this book will remain valuable for years to come, and also
-hope for dramatic change that makes it obsolete.
+browsers what they are today; those forces still matter. Let this book
+remain valuable for years to come, let dramatic change makes it
+obsolete.
 
-This book ignores modern developments like HTTP 2+ and Web Assembly;
+This book skips modern developments like HTTP 2+ and Web Assembly;
 perhaps a later edition of this book will have to cover them. Nor does
 this book talk much about hardware virtualization like Web Bluetooth
 or format centralization like web video. Maybe in the future those
