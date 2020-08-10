@@ -15,7 +15,11 @@ def request(url):
         host, port = host.split(":", 1)
         port = int(port)
 
-    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
     s.connect((host, port))
 
     if scheme == "https":
