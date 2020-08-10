@@ -6,9 +6,12 @@ next: text
 ...
 
 Once a web browser has downloaded a web page, it has to show that web
-page to the user. Since we\'re not savages,[^1] we browse the web
-through a graphical user interface. How? In this chapter I\'ll equip
-my toy browser with a graphical user interface.
+page to the user. Since we're not savages,[^1] we browse the web
+through a graphical user interface. How? In this chapter I'll equip my
+toy browser with a graphical user interface.
+
+[^1]: For most of 2011, I mostly used the command-line `w3m` browser. It
+    built character.
 
 Creating windows
 ================
@@ -18,19 +21,22 @@ environments*, with windows, icons, menus, and a pointer.[^2] So in
 order to draw to the screen, a program communicates with the desktop
 environment:
 
--   The program asks to allocate space for a new window and show it on
-    the screen
+[^2]: Terminal diehards call it a "WIMP environment" as a snide
+    insult.
+
+-   The program asks for a new window and the deskopt environment shows
+    it somewhere on the screen
 -   The desktop environment tells the program about clicks and key
     presses
--   The program may draw things in its window
+-   The program draws things in its window
 -   The desktop environment will periodically ask the program to redraw
     its window
 
 Though the desktop environment is responsible for displaying the window,
-the program is responsible for darwing its contents. Applications have
+the program is responsible for drawing its contents. Applications have
 to redraw these contents sixty times per second or so for interactions
 feel fluid,[^3] and must respond quickly to clicks and key presses so
-the user doesn\'t get frustrated.
+the user doesn't get frustrated.
 
 Doing all of this by hand is a bit of a drag, so programs usually use a
 *graphical toolkit* to simplify these steps. These toolkits allow you to
@@ -86,15 +92,13 @@ text in.[^6] Tk also has widgets like buttons and dialog boxes, but for
 writing a browser we will need the more fine-grained control over
 appearance that a canvas provides.[^7]
 
-`tkinter.Canvas` creates a canvas in Tk; we can package that up with
-`tkinter.Window` in the following function:
+`tkinter.Canvas` creates a canvas in Tk; we pass the window as an
+argument so Tkinter knows where to display the canvas:
 
 ``` {.python}
-def start():
-    window = tkinter.Window()
-    c = tkinter.Canvas(window, width=800, height=600)
-    c.pack()
-    return c
+window = tkinter.Window()
+canvas = tkinter.Canvas(window, width=800, height=600)
+canvas.pack()
 ```
 
 The first line creates the window, as above; the second creates the
@@ -107,7 +111,6 @@ Once you've made a canvas, you can call methods that draw shapes on
 the canvas:
 
 ``` {.python}
-canvas = start()
 canvas.create_rectangle(10, 20, 400, 300)
 canvas.create_oval(100, 100, 150, 150)
 canvas.create_text(200, 150, text="Hi!")
@@ -117,13 +120,14 @@ You ought to see a rectangle, starting near the top-left corner of the
 canvas and ending at its center; then a circle inside that rectangle;
 and then the text "Hi!" next to the circle.
 
-Play with the arguments to those methods to figure out which coordinate
-each argument refers; the right answers are in the [online
+Play with the arguments to figure out which coordinate each one refers
+to; the right answers are in the [online
 documentation](http://infohost.nmt.edu/tcc/help/pubs/tkinter/web/canvas.html).
-It is important to remember that coordinates in Tk, like (10, 20), refer
-first to X position from left to right and then to Y position from top
-to bottom. This means that the bottom of the screen has *larger* Y
-values, the opposite of what you might be used to from math.
+It is important to remember that coordinates in Tk, like (10, 20),
+refer first to X position from left to right and then to Y position
+from top to bottom. This means that the bottom of the screen has
+*larger* Y values, the opposite of what you might be used to from
+math.
 
 Laying out text
 ===============
@@ -151,40 +155,38 @@ def lex(body):
     return text
 ```
 
-Now we can write a new `show` function that takes the text (with tags
-removed) as an input, and draws it to the screen, first setting up the
-window as above and then executing this loop:
-
-Now, let\'s refactor `show` to output to our window instead. `show` will
-have to start by creating the window and canvas, like above, and then
-drawing the text on the screen, character by character:
+Now `show` can focus on drawing text to the canvas instead. The new
+`show` will create the window and canvas, like above, and then draw
+the text character by character:
 
 ``` {.python}
 def show(text):
+    WIDTH, HEIGHT = 800, 600
     window = tkinter.Tk()
-    canvas = tkinter.Canvas(window, width=800, height=600)
+    canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
     canvas.pack()
     for c in text:
         canvas.create_text(100, 100, text=c)
     tkinter.mainloop()
 ```
 
-Let\'s test this code to a real webpage, and for reasons that might seem
-inscrutible[^10], let\'s test it on [this first chapter of 西游记 or
-\"Journey to the West\"](http://www.zggdwx.com/xiyou/1.html), a classic
-Chinese novel about a monkey. Run this URL[^11] through `parse`,
-`request`,[^12] `lex`, and `show`, you should see a window with a big
-blob of black pixels roughly 100 pixels from the top left corner of the
-window.
+Let\'s test this code to a real webpage, and for reasons that might
+seem inscrutible[^10], let\'s test it on [this first chapter of <span
+lang="zh">西游记</span> or \"Journey to the
+West\"](http://www.zggdwx.com/xiyou/1.html), a classic Chinese novel
+about a monkey. Run this URL[^11] through `request`,[^12] `lex`, and
+`show`. You should see a window with a big blob of black pixels
+roughly 100 pixels from the top left corner of the window.
 
 Why a blob instead of letters? Well, of course, because we are drawing
 every letter in the same place, so they all overlap! Let\'s fix that:
 
 ``` {.python}
-x, y = 13, 13
+HSTEP, VSTEP = 13, 18
+x, y = HSTEP, VSTEP
 for c in text:
     canvas.create_text(x, y, text=c)
-    x += 13
+    x += HSTEP
 ```
 
 Now the characters form a line from left to right, and individual
@@ -194,13 +196,14 @@ that to read a novel, so we now need to *wrap* the text once we reach
 the edge of the screen:[^13]
 
 ``` {.python}
-x, y = 13, 13
+HSTEP, VSTEP = 13, 18
+x, y = HSTEP, VSTEP
 for c in text:
     canvas.create_text(x, y, text=c)
-    x += 13
-    if x >= 787:
-        y += 18
-        x = 13
+    x += HSTEP
+    if x >= WIDTH - HSTEP:
+        y += VSTEP
+        x = HSTEP
 ```
 
 Here, when we get past pixel 787 to the right[^14] we increase *y* and
@@ -219,10 +222,11 @@ users *scroll* the page to look at different parts of it.
 
 Scrolling introduces a layer of indirection between page coordinates
 (this text is 132 pixels from the top of the *page*) and screen
-coordinates (this text is 72 pixels from the top of the *screen*).
-Generally speaking, a browser *lays out* the page---determines where
-everything on the page goes---in terms of page coordinates and then
-*renders* the page---draws everything---in terms of screen coordinates.
+coordinates (since you've scrolled 60 pixels down, this text is 72
+pixels from the top of the *screen*). Generally speaking, a browser
+*lays out* the page---determines where everything on the page
+goes---in terms of page coordinates and then *renders* the
+page---draws everything---in terms of screen coordinates.
 
 Our browser will have the same split. Right now `show` both computes the
 position of each character and draws it: layout and rendering. Let\'s
@@ -234,7 +238,7 @@ coordinates and only `render` needs to think about screen coordinates.
 Let\'s start with `render`. `render` needs to know which character to
 place where, which is what `layout` computes, so let\'s have `layout`
 return a list of tuples: the character to draw and its `x` and `y`
-coordinates. `render` then loops through that list and draw each tuple:
+coordinates. `render` then loops through that list and draws each tuple:
 
 ``` {.python}
 def render(text):
@@ -250,7 +254,7 @@ of things to display; the term is standard. There\'s no scrolling yet,
 but before we add it, let\'s write `layout`.
 
 `layout` is much like the character-by-character loop in the existing
-`show` function, but when instead of `canvas.create_text` on each
+`show` function, but instead of calling `canvas.create_text` on each
 character it adds it to a list:
 
 ``` {.python}
@@ -261,7 +265,7 @@ for c in text:
 return display_list
 ```
 
-With `show` split, we can implement scorlling. To scroll the page by,
+With `show` split, we can implement scrolling. To scroll the page by,
 say, 100 pixels, we use `y - 100` in place of `y` when we call
 `create_text`. If the `scroll` variable stores how much to scroll the
 page, this is:
@@ -325,48 +329,57 @@ canvas.delete('all')
 Summary
 =======
 
-The last chapter build a simple command-line browser. We\'ve now
-upgraded it to a rudimentary graphical user interface that can be
-scrolled.
+This chapter went from a rudimentary command-line browser to a
+graphical user interface with text that can be scrolled. The browser
+now:
 
-This graphical browser works well on a Chinese web pages, but it looks
-weird on English ones. All of the characters are spaced far apart, lines
-break in the middle of words, and there\'s no support for paragraphs,
-links, or formatting. We\'ll fix these problems in the next chapter.
+- Creates a window by talking to your operating system
+- Lays out the text and draws it to that window
+- Listens for keyboard commands
+- Scrolls the window in response
+
+Right now our browser works well on Chinese web pages. But if you try
+it on an English page, all of the characters are spaced far apart,
+lines break in the middle of words, and there\'s no support for
+paragraphs, links, or formatting. We\'ll fix these problems in the
+next chapter.
+
+::: {.signup}
+:::
 
 Exercises
 =========
 
--   Look through [the
-    options](http://effbot.org/tkinterbook/canvas.htm#Tkinter.Canvas.config-method)
-    you can pass to the `Canvas` constructor. Change the canvas to have
-    a white background and give it a red border (which Tk calls a
-    highlight). This will help you see where the edge of the canvas is.
-    if you resize the window.
--   Add support for scrolling up as well as down (when you hit the up
-    arrow). You shouldn\'t be able to scroll past the top of the page,
-    though.
--   Change `layout` to handle newlines by ending the line and starting a
-    new one. Increment *y* by more than 18 to give the illusion of
-    paragraph breaks. You should be able to see some poems embedded in
-    \"Journey to the West\".
--   Change the `draw` to skip characters outside the 800×600 window.
-    Users can\'t see those characters anyway. Make sure you use screen,
-    not page, coordinates to determine which caracters to draw! This
-    should make scrolling noticable faster for \"Journey to the
-    West\".[^16]
--   Make browser resizable. To do so, pass the `fill` and `expand`
-    arguments to `canvas.pack` call and bind to the `<Configure>` event
-    to run code when the window is resized. You can get the new window
-    width and height with the `width` and `height` fields on the event
-    object. Remember that when the window is resized, the line breaks
-    will change, so you will need to call `layout` again.
+Look through [the
+options](http://effbot.org/tkinterbook/canvas.htm#Tkinter.Canvas.config-method)
+you can pass to the `Canvas` constructor. Change the canvas to have a
+white background and give it a red border (which Tk calls a
+highlight). This will help you see where the edge of the canvas is. if
+you resize the window.
 
-[^1]: For most of 2011, I mostly used the command-line `w3m` browser. It
-    built character.
+*Scroll up*: Add support for scrolling up as well as down (when you
+hit the up arrow). You shouldn\'t be able to scroll past the top of
+the page, though.
 
-[^2]: Sometimes terminal diehards acronym this to "WIMP environment" as
-    a snide insult.
+*Line breaks*: Change `layout` to handle newline characters by ending
+the line and starting a new one. Increment *y* by more than 18 to give
+the illusion of paragraph breaks. There are poems embedded in
+"Journey to the West"; you'll now be able to make them out.
+
+*Clipping*: Change the `draw` to skip characters outside the 800×600
+window. Users can't see those characters anyway. Make sure you use
+screen, not page, coordinates to determine which caracters to draw!
+This should make scrolling noticable faster for "Journey to the
+West".[^16]
+
+[^16]: We\'ll return to this optimization in [chapter 10](reflow.md).
+
+*Resizing*: Make browser resizable. To do so, pass the `fill` and
+`expand` arguments to `canvas.pack` call and bind to the `<Configure>`
+event to run code when the window is resized. You can get the new
+window width and height with the `width` and `height` fields on the
+event object. Remember that when the window is resized, the line
+breaks will change, so you will need to call `layout` again.
 
 [^3]: On older systems, applications drew directly to the screen, and if
     they didn\'t update, whatever was there last would stay in place,
@@ -386,7 +399,7 @@ Exercises
     is more complex to handle interrupts and errors.
 
 [^6]: You may be familiar with the HTML `<canvas>` element, which is a
-    similar idea: a 2D rectangle on which you can draw shapes.
+    similar idea: a 2D rectangle in which you can draw shapes.
 
 [^7]: This is why desktop applications are more uniform than web pages:
     desktop applications generally use the widgets provided by a common
@@ -420,5 +433,3 @@ Exercises
 [^15]: The `nonlocal scroll` line is a Python quirk. It tells Python to
     look for an existing `scroll` variable instead of defining a new
     one.
-
-[^16]: We\'ll return to this optimization in [chapter 10](reflow.md).
