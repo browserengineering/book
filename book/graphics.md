@@ -350,6 +350,10 @@ next chapter.
 Exercises
 =========
 
+::: {.todo}
+I don't like this exercise.
+:::
+
 Look through [the
 options](http://effbot.org/tkinterbook/canvas.htm#Tkinter.Canvas.config-method)
 you can pass to the `Canvas` constructor. Change the canvas to have a
