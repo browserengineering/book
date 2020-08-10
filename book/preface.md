@@ -13,7 +13,7 @@ additions, and optimizations atop an understandable core.[^1]
     low-level APIs; practice with C; knowing the stack; using systems
     better; and the importance of the system covered.
 
-But web browsers remain opaque, not just to students but to faculty
+But web browsers are still opaque, not just to students but to faculty
 and industry programmers. This book dissipates this mystery by
 systematically explaining all major components of a web browser.
 

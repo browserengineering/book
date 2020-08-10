@@ -22,5 +22,5 @@ will be more central to what browsers do.
 Many dedicated, brilliant, and talented engineers have devoted
 themselves to the web over its first three decades. The structure of
 the web embeds their ideas, inventions, and taste. Even if, in a few
-years, this book is obsolete or out-dated, I hope it still passes
-along those lessons.
+years, this book is out-dated, I hope it still passes those lessons
+along.

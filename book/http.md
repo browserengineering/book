@@ -130,12 +130,14 @@ HTTP/1.0 200 OK
 ```
 
 That tells you that the host confirms that it, too, speaks `HTTP/1.0`,
-and that it found your request to be "OK" (which has a numeric code
-of 200). You may be familiar with `404 Not Found`; that's another
-numeric code and response, as are `403 Forbidden` or `500 Server
-Error`. There are lots of these codes,^[As any look at a [flow chart](https://github.com/for-GET/http-decision-diagram) will show] and they have a pretty neat
-organization scheme:^[The status text like `OK` can actually be
-anything and is just there for humans, not for machines.]
+and that it found your request to be "OK" (which has a numeric code of
+200). You may be familiar with `404 Not Found`; that's another numeric
+code and response, as are `403 Forbidden` or `500 Server Error`. There
+are lots of these codes,^[As any look at a [flow
+chart](https://github.com/for-GET/http-decision-diagram) will show]
+and they have a pretty neat organization scheme:^[The status text like
+`OK` can actually be anything and is just there for humans, not for
+machines.]
 
 -   The 100s are informational messages
 -   The 200s mean you were successful
