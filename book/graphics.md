@@ -47,7 +47,7 @@ contents to match that description.
 Python comes with a graphical toolkit called Tk using the Python package
 `tkinter`.[^4] Using it is quite simple:
 
-``` {.python}
+``` {.python expected=False}
 import tkinter
 window = tkinter.Tk()
 tkinter.mainloop()
@@ -58,9 +58,9 @@ to start the process of redrawing the screen. Internally, when we call
 `tkiner.Tk()`, Tk is communicating with the desktop environment to
 create the window, and returns an identifier for that window, which we
 store in the `window` variable. When we call `tkinter.mainloop()`, Tk is
-entering a loop that internally looks like this:[^5]
+entering a loop that internally looks like this:
 
-``` {.python}
+``` {.python expected=False}
 while True:
     for evt in pendingEvents():
         handleEvent(evt)
@@ -83,6 +83,15 @@ loop pattern makes sure that all events are eventually handled and the
 screen is eventually updated, both of which are essential to a good user
 experience.
 
+::: {.further}
+Tk implements its event look in the `Tk_UpdateObjCmd` function,
+found in [`tkCmds.c`][tkcmds], which calls `XSync` to redraw the
+screen and `Tcl_DoOneEvent` to handle an event. There's also a lot of
+code to handle errors.
+:::
+
+[tkcmds]: https://core.tcl.tk/tk/artifact/51492a6da90068a5
+
 Drawing to the window
 =====================
 
@@ -95,7 +104,7 @@ appearance that a canvas provides.[^7]
 `tkinter.Canvas` creates a canvas in Tk; we pass the window as an
 argument so Tkinter knows where to display the canvas:
 
-``` {.python}
+``` {.python expected=False}
 window = tkinter.Window()
 canvas = tkinter.Canvas(window, width=800, height=600)
 canvas.pack()
@@ -110,7 +119,7 @@ the canvas inside the window.
 Once you've made a canvas, you can call methods that draw shapes on
 the canvas:
 
-``` {.python}
+``` {.python expected=False}
 canvas.create_rectangle(10, 20, 400, 300)
 canvas.create_oval(100, 100, 150, 150)
 canvas.create_text(200, 150, text="Hi!")
@@ -128,6 +137,15 @@ refer first to X position from left to right and then to Y position
 from top to bottom. This means that the bottom of the screen has
 *larger* Y values, the opposite of what you might be used to from
 math.
+
+::: {.further}
+The Tk canvas widget is quite a bit more powerful than what we're
+using it for here. As you can see from [the
+tutorial](https://tkdocs.com/tutorial/canvas.html), you can move
+the individual things you've drawn to the canvas, listen to click
+events on each one, and so on. In this book, I'm not using those
+features, because I want to teach you how to implement them.
+:::
 
 Laying out text
 ===============
@@ -212,6 +230,25 @@ makes it possible to see all of the text. Also, note that I\'ve got some
 magic numbers here: 13 and 18. I got these from *font metrics*, which
 are introduced in the next chapter.
 
+::: {.further}
+In this code each character is handled individually, but some Chinese
+phrases shouldn't break across lines: "美国" literally means
+"beautiful country" but taken together refers to the United
+States of America.[^meiguo] The [ICU library][icu], used by both
+Firefox and Chrome, [uses dynamic programming][icu-wb] to guess phrase
+boundaries based on a [word frequency table][cjdict].
+:::
+
+[^meiguo]: It sounds sort-of like the word "America", especially if
+    you drop the "A" (Chinese syllables start with a consonant),
+    don't pronounce the "r" (a sound that doesn't exist in Chinese),
+    and would like it to end with "国" meaning country. I'm sure
+    Americans don't mind the compliment, though!
+
+[icu]: http://site.icu-project.org
+[icu-wb]: http://userguide.icu-project.org/boundaryanalysis/break-rules
+[cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
+
 Scrolling text
 ==============
 
@@ -279,6 +316,16 @@ for x, y, c in display_list:
 If you change the value of `scroll` the page will now scroll up and
 down. But how does the *user* change `scroll`?
 
+::: {.further}
+Storing the display list makes scrolling faster because you don't need
+to redo `layout` every time you scroll. Modern browsers [take this
+further][webrender], retaining much of the display list even when the
+web page changes due to JavaScript or user interaction.
+:::
+
+[webrender]: 
+https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-gets-rid-of-jank/
+
 Reacting to keyboard input
 ==========================
 
@@ -319,8 +366,8 @@ draws all the text into a function, `draw`. That function is called by
 
 If you try this out, you\'ll find that scrolling draws all the text a
 second time. That\'s because we didn\'t erase the old text when we
-started drawing the new text. We call `canvas.delete` at the top of
-`draw`:
+started drawing the new text. We need call `canvas.delete` at the top
+of `draw` to clear the old text first:
 
 ``` {.python}
 canvas.delete('all')
@@ -398,11 +445,6 @@ breaks will change, so you will need to call `layout` again.
 [^4]: The library is called Tk, and it was originally written for a
     different language called Tcl. Python contains an interface to it,
     hence the name.
-
-[^5]: This happens in the function `Tk_UpdateObjCmd` in `tkCmds.c` in
-    the [Tcl/Tk source
-    code](https://core.tcl.tk/tk/artifact/51492a6da90068a5). That code
-    is more complex to handle interrupts and errors.
 
 [^6]: You may be familiar with the HTML `<canvas>` element, which is a
     similar idea: a 2D rectangle in which you can draw shapes.

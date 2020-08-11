@@ -184,6 +184,12 @@ the content of the web page itself.
 
 Let's now switch gears from manual connections to Python.
 
+::: {.further}
+Many common (and uncommon) HTTP headers are described
+[on
+Wikipedia](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
+:::
+
 Telnet in Python
 ================
 
@@ -402,17 +408,11 @@ def request(url):
 Now let's display the text in the body.
 
 ::: {.further}
-Many common (and uncommon) HTTP headers are described
-[on
-Wikipedia](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
-:::
-
-::: {.further}
-The `Accept-Encoding` header allows a web browser to
-advertise that it supports [receiving compressed
-documents](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding).
-Try implementing support for one of the common compression formats (like
-`deflate` or `gzip`)!
+With the `Accept-Encoding` request header, a browser can
+request a [compressed
+response](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding).
+Large, text-heavy web pages compress well, and as a result the page
+loads faster.
 :::
 
 Displaying the HTML
@@ -574,11 +574,10 @@ if scheme == "https":
 Your browser should now be able to connect to HTTPS sites.
 
 ::: {.further}
-TLS is pretty complicated; you can read the details in [RFC
-8446](https://tools.ietf.org/html/rfc8446). Implementing your own is
-not recommended: writing security-sensitive code is a pretty different
-and more difficult skill than just writing code, and without a lot of
-very careful work a custom TLS implementation will be very insecure.
+TLS is pretty complicated. You can read the details in [RFC
+8446](https://tools.ietf.org/html/rfc8446), but implementing your own is
+not recommended. It's very difficult to write a custom TLS
+implementation that is not only correct but secure.
 :::
 
 Summary

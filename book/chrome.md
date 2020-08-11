@@ -593,6 +593,10 @@ current page and allows the user to go back.
 Exercises
 =========
 
+::: {.todo}
+Adding favicons is a nice exercise
+:::
+
 -   Clicking the address bar should allow the user to enter a new URL.
     Text entry is actually very complex, so I recommend taking input
     on the command line.

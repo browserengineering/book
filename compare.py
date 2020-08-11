@@ -25,7 +25,7 @@ def get_blocks(file):
                 accumulator += line + "\n"
                 
 # Lua code to extract all code blocks from a Markdown file via Pandoc
-FILTER = """
+FILTER = r'''
 function CodeBlock(el)
   if el.classes:find("python") and not el.classes:find("example") then
      io.write("##<{")
@@ -42,14 +42,16 @@ function CodeBlock(el)
   end
   return el
 end
-"""
+'''
 
 def tangle(file):
     with tempfile.NamedTemporaryFile() as f:
         f.write(FILTER.encode("utf8"))
         f.close()
         cmd = ["pandoc", "--from", "markdown", "--to", "html", "--lua-filter", f.name, file]
-    return list(get_blocks(subprocess.run(cmd, capture_output=True).stdout.decode("utf8").split("\n")))
+        out = subprocess.run(cmd, capture_output=True)
+    out.check_returncode()
+    return list(get_blocks(out.stdout.decode("utf8").split("\n")))
 
 def find_block(block, text):
     differ = difflib.Differ(charjunk=lambda c: c == " ", linejunk=lambda s: s.strip().startswith("#"))
@@ -102,5 +104,5 @@ if __name__ == "__main__":
                 else:
                     print(" ", l, end="")
             print()
-    print("Found differences in {} blocks".format(count))
+    print("Found differences in {} / {} blocks".format(count, len(blocks)))
     sys.exit(count)

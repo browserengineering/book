@@ -197,6 +197,10 @@ lines are too close together.[^11] Instead, it is common to add "line
 spacing" or "leading"[^12] between lines. Here, It\'s 20% line spacing,
 which is a normal amount.
 
+::: {.further}
+Line breaking algorithm: http://www.tug.org/docs/liang/liang-thesis.pdf
+:::
+
 Separate lexing
 ===============
 
