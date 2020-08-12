@@ -66,41 +66,45 @@ VSTEP = 18
 
 SCROLL_STEP = 100
 
-def layout(text):
-    display_list = []
-    x, y = HSTEP, VSTEP
-    for c in text:
-        display_list.append((x, y, c))
-        x += HSTEP
-        if x >= WIDTH - HSTEP:
-            y += VSTEP
-            x = HSTEP
-    return display_list
-
 class Browser:
-    def __init__(self, text):
+    def __init__(self):
         self.window = tkinter.Tk()
-        self.canvas = tkinter.Canvas(self.window, width=WIDTH, height=HEIGHT)
+        self.canvas = tkinter.Canvas(
+            self.window,
+            width=WIDTH,
+            height=HEIGHT
+        )
         self.canvas.pack()
 
-        self.scrolly = 0
-        self.display_list = layout(text)
-        self.render()
-
+        self.scroll = 0
         self.window.bind("<Down>", self.scrolldown)
+
+    def layout(self, text):
+        self.display_list = []
+        x, y = HSTEP, VSTEP
+        for c in text:
+            self.display_list.append((x, y, c))
+            x += HSTEP
+            if x >= WIDTH - HSTEP:
+                y += VSTEP
+                x = HSTEP
+        self.render()
 
     def render(self):
         self.canvas.delete("all")
         for x, y, c in self.display_list:
-            self.canvas.create_text(x, y - self.scrolly, text=c)
+            if y > HEIGHT + self.scroll: continue
+            if y + VSTEP < self.scroll: continue
+            self.canvas.create_text(x, y - self.scroll, text=c)
 
     def scrolldown(self, e):
-        self.scrolly += SCROLL_STEP
+        self.scroll += SCROLL_STEP
         self.render()
 
 if __name__ == "__main__":
     import sys
     headers, body = request(sys.argv[1])
     text = lex(body)
-    browser = Browser(text)
+    browser = Browser()
+    browser.layout(text)
     tkinter.mainloop()
