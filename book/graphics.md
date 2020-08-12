@@ -5,9 +5,9 @@ prev: http
 next: text
 ...
 
-Once a web browser has downloaded a web page, it has to show that web
+A web browser doesn't just download web page; it also has to show that
 page to the user. Since we're not savages,[^1] we browse the web
-through a graphical user interface. How? In this chapter I'll equip my
+through a graphical user interface. How? In this chapter we'll equip the
 toy browser with a graphical user interface.
 
 [^1]: For most of 2011, I mostly used the command-line `w3m` browser. It
@@ -24,13 +24,13 @@ environment:
 [^2]: Terminal diehards call it a "WIMP environment" as a snide
     insult.
 
--   The program asks for a new window and the deskopt environment shows
-    it somewhere on the screen
+-   The program asks for a new window and the desktop environment shows
+    it somewhere on the screen.
+-   The program draws things in its window.
 -   The desktop environment tells the program about clicks and key
-    presses
--   The program draws things in its window
+    presses.
 -   The desktop environment will periodically ask the program to redraw
-    its window
+    its window.
 
 Though the desktop environment is responsible for displaying the window,
 the program is responsible for drawing its contents. Applications have
@@ -53,41 +53,35 @@ window = tkinter.Tk()
 tkinter.mainloop()
 ```
 
-Here we call `tkinter.Tk()` to create a window, and `tkinter.mainloop()`
-to start the process of redrawing the screen. Internally, when we call
-`tkiner.Tk()`, Tk is communicating with the desktop environment to
-create the window, and returns an identifier for that window, which we
-store in the `window` variable. When we call `tkinter.mainloop()`, Tk is
-entering a loop that internally looks like this:
+Here `tkinter.Tk()` creates a window and `tkinter.mainloop()` starts
+the process of redrawing the screen. Inside Tk, `tkinter.Tk()` asks
+the desktop environment to create the window and returns its
+identifier, while `tkinter.mainloop()` enters a loop that looks
+similar to this:
 
 ``` {.python expected=False}
 while True:
+    drawScreen()
     for evt in pendingEvents():
         handleEvent(evt)
-    drawScreen()
 ```
 
-Here, `pendingEvent` asks the desktop environment for any recent
-*events*, like mouse clicks or key presses, `handleEvent` determines
-what functions in our code to call in response to that event, and
-`drawScreen` draws the various widgets. Applications that use the
-graphical toolkit extend `drawScreen` and `handleEvent` to draw
-interesting stuff on the screen and to react when the user clicks on
-that stuff.
-
+Here, `drawScreen` draws the various widgets, `pendingEvent` asks the
+desktop environment for recent mouse clicks or key presses, and
+`handleEvent` calls into library user code in response to that event.
 This *event loop* pattern is common in many applications, from web
-browsers to video games. Our simple window above does not need much
-event handling (it ignores all events) or much drawing (it is a uniform
+browsers to video games. A simple window does not need much event
+handling (it ignores all events) or much drawing (it is a uniform
 white or gray). But in more complex graphical applications the event
 loop pattern makes sure that all events are eventually handled and the
-screen is eventually updated, both of which are essential to a good user
+screen is eventually updated, both essential to a good user
 experience.
 
 ::: {.further}
-Tk implements its event look in the `Tk_UpdateObjCmd` function,
-found in [`tkCmds.c`][tkcmds], which calls `XSync` to redraw the
-screen and `Tcl_DoOneEvent` to handle an event. There's also a lot of
-code to handle errors.
+Tk's event loop is the `Tk_UpdateObjCmd` function, found in
+[`tkCmds.c`][tkcmds], which calls `XSync` to redraw the screen and
+`Tcl_DoOneEvent` to handle an event. There's also a lot of code to
+handle errors.
 :::
 
 [tkcmds]: https://core.tcl.tk/tk/artifact/51492a6da90068a5
@@ -95,33 +89,30 @@ code to handle errors.
 Drawing to the window
 =====================
 
-Our graphical browser will begin by writing the web page text to a
-*canvas*, a rectangular widgets that we can draw circles, lines, and
-text in.[^6] Tk also has widgets like buttons and dialog boxes, but for
-writing a browser we will need the more fine-grained control over
-appearance that a canvas provides.[^7]
-
-`tkinter.Canvas` creates a canvas in Tk; we pass the window as an
-argument so Tkinter knows where to display the canvas:
+Our toy browser will draw the web page text to a *canvas*, a
+rectangular Tk widget that you can draw circles, lines, and text
+in.[^6] Tk also has widgets like buttons and dialog boxes, but our
+browser won't use them: we will need finer-grained control over
+appearance, which a canvas provides:[^7]
 
 ``` {.python expected=False}
+WIDTH, HEIGHT = 800, 600
 window = tkinter.Tk()
-canvas = tkinter.Canvas(window, width=800, height=600)
+canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
 canvas.pack()
 ```
 
 The first line creates the window, as above; the second creates the
-`Canvas` inside that window. We pass `Canvas` some arguments that
-define its size; I chose 800×600 because that was a common old-timey
-monitor size.[^8] The third line is a Tk peculiarity, which positions
-the canvas inside the window.
+`Canvas` inside that window. We pass the window as an argument, so
+that Tk knows where to display the canvas, and some arguments that
+define the canvas's size; I chose 800×600 because that was a common
+old-timey monitor size.[^8] The third line is a Tk peculiarity, which
+positions the canvas inside the window.
 
 There's going to be a window, a canvas, and later some other things,
-so let's organize these things into an object:
+so to keep it all organized let's make an object:
 
 ``` {.python}
-WIDTH, HEIGHT = 800, 600
-
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -143,7 +134,8 @@ def layout(self):
     self.canvas.create_text(200, 150, text="Hi!")
 ```
 
-We can run this code from the `if __name__` block:
+To run this code, create a `Browser`, call `layout`, and then start
+the Tk `mainloop`:
 
 ``` {.python expected=False}
 if __name__ == "__main__":
@@ -153,18 +145,19 @@ if __name__ == "__main__":
     tkinter.mainloop()
 ```
 
-You ought to see a rectangle, starting near the top-left corner of the
-canvas and ending at its center; then a circle inside that rectangle;
-and then the text "Hi!" next to the circle.
+You ought to see: a rectangle, starting near the top-left corner of
+the canvas and ending at its center; then a circle inside that
+rectangle; and then the text "Hi!" next to the circle.
 
 Coordinates in Tk refer to X positions from left to right and to Y
 positions from top to bottom. In other words, the bottom of the screen
 has *larger* Y values, the opposite of what you might be used to from
-math. Play with the coordinates above to figure out what each argumetn
+math. Play with the coordinates above to figure out what each argument
 refers to.[^tkdocs]
 
-[^tkdocs]: The right answers are in the [online
-    documentation](http://infohost.nmt.edu/tcc/help/pubs/tkinter/web/canvas.html).
+[^tkdocs]: The answers are in the [online documentation][tkdocs].
+
+[tkdocs]: http://infohost.nmt.edu/tcc/help/pubs/tkinter/web/canvas.html
 
 ::: {.further}
 The Tk canvas widget is quite a bit more powerful than what we're
@@ -178,15 +171,12 @@ features, because I want to teach you how to implement them.
 Laying out text
 ===============
 
-Now that we\'ve got a GUI window with a canvas, let\'s draw a simple web
-page on it.
+Let's draw a simple web page on this canvas. So far, the toy browser
+steps through the web page source code character by character and
+prints the text (but not the tags) to the console window. Now we want
+to draw the characters on the canvas instead.
 
-Remember that in the last chapter, we implemented a simple function that
-stepped through the web page source code character by character and
-printed the text (but not the tags) to the console window. Now we want
-to print the characters to our GUI instead.
-
-To start, let\'s change the `show` function from the previous chapter
+To start, let's change the `show` function from the previous chapter
 into a function that I\'ll call `lex`[^9] which just *returns* the
 text-not-tags content of an HTML document, without printing it:
 
@@ -201,8 +191,7 @@ def lex(body):
     return text
 ```
 
-`Browser.layout` can take this text content and draw it to the canvas,
-character by character:
+Then, `layout` will draw that text, character by character:
 
 ``` {.python expected=False}
 def layout(self, text):
@@ -211,11 +200,11 @@ def layout(self, text):
 ```
 
 Let's test this code on a real webpage. For reasons that might seem
-inscrutible[^10], let\'s test it on [this first chapter of <span
+inscrutible[^10], let\'s test it on the [first chapter of <span
 lang="zh">西游记</span> or "Journey to the
 West"](http://www.zggdwx.com/xiyou/1.html), a classic Chinese novel
-about a monkey. Run this URL[^11] through `request`,[^12] `lex`, and
-`layout`. You should see a window with a big blob of black pixels
+about a monkey. Run this URL[^11] through `request`, `lex`, and
+`layout`.[^12] You should see a window with a big blob of black pixels
 inset a bit from the top left corner of the window.
 
 Why a blob instead of letters? Well, of course, because we are drawing
@@ -229,11 +218,14 @@ for c in text:
     x += HSTEP
 ```
 
-Now the characters form a line from left to right, and individual
-characters are readable. But with an 800 pixel wide canvas and 13 pixels
-per character, you can only fit about 60 characters. You need more than
-that to read a novel, so we now need to *wrap* the text once we reach
-the edge of the screen:[^13]
+I picked the magic numbers—13 and 18—by trying a few different values
+and picking one that looked most readable. In the [next
+chapter](text.md), we'll replace magic numbers with font metrics.
+
+The text now forms a line from left to right. But with an 800 pixel
+wide canvas and 13 pixels per character, one line only fits about 60
+characters. You need more than that to read a novel, so we also need
+to *wrap* the text once we reach the edge of the screen:
 
 ``` {.python indent=8}
 for c in text:
@@ -243,11 +235,9 @@ for c in text:
         x = HSTEP
 ```
 
-Here, when we get past pixel 787 to the right[^14] we increase *y* and
-reset *x* to the left hand side again. This moves us down a line and
-makes it possible to see all of the text. Also, note that I\'ve got some
-magic numbers here: 13 and 18. I got these from *font metrics*, which
-are introduced in the next chapter.
+The code wraps text by increasing *y* and reseting *x*[^13] once *x*
+goes past 787 pixels.[^14] Wrapping makes it possible to see a lot
+more text.
 
 ::: {.further}
 Chinese characters are usually, but not always, independent: <span
@@ -266,10 +256,9 @@ based on a [word frequency table][cjdict].
 Scrolling text
 ==============
 
-Now we can read several paragraphs of text, but there\'s still a
-problem. But if there\'s enough text, all of the lines of text don\'t
-fit on the screen, and there\'s still content you can\'t read. Usually
-users *scroll* the page to look at different parts of it.
+Now we can read a lot of text, still not all of it: if there's enough
+text, all of the lines of text don't fit on the screen. We want users
+to *scroll* the page to look at different parts of it.
 
 Scrolling introduces a layer of indirection between page coordinates
 (this text is 132 pixels from the top of the *page*) and screen
@@ -281,13 +270,13 @@ page---draws everything---in terms of screen coordinates.
 
 Our browser will have the same split. Right now `layout` both computes
 the position of each character and draws it: layout and rendering.
-Let's have `layout` just compute the position of each character, and
-saves it. A separate `render` function will draw each character to the
-canvas. This way, `layout` can operate with page coordinates and only
-`render` needs to think about screen coordinates.
+Let's have `layout` just compute and store the position of each
+character. A separate `render` function will then draw each character
+based on the stored position. This way, `layout` can operate with page
+coordinates and only `render` needs to think about screen coordinates.
 
 Let's start with `layout`. Instead of calling `canvas.create_text` on
-each character it adds it to a list:
+each character let's add it to a list, together with its position:
 
 ``` {.python}
 self.display_list = []
@@ -297,13 +286,13 @@ for c in text:
 self.render()
 ```
 
-I've made `layout` store each character, and its location, to a
-*display list*. It's named that because it is a list of things to
-display; the term is standard. Since `layout` is all about page
-coordinates, we don't need to change anything else about it.
+The resulting list is called a *display list*: it is a list of things
+to display.[^The term is standard.] Since `layout` is all about page
+coordinates, we don't need to change anything else about it to support
+scrolling.
 
-Once the display list is computed, `render` needs to loops through
-the display list and draws each tuple:
+Once the display list is computed, `render` needs to loop through
+the display list and draw each character:
 
 ``` {.python expected=False}
 def render(self):
@@ -311,8 +300,8 @@ def render(self):
       self.canvas.create_text(x, y, text=c)
 ```
 
-There's no scrolling yet, but let's add it. Let's use the `scroll`
-field to store how far you've scrolled:
+Now we can add scrolling. Let's have a variable for how far you've
+scrolled:
 
 ``` {.python}
 def __init__(self):
@@ -320,8 +309,7 @@ def __init__(self):
     self.scroll = 0
 ```
 
-To scroll the page we use `y - self.scroll` in place of
-`y` when we call `create_text`:
+The page coordinate `y` then has screen coordinate `y - self.scroll`:
 
 ```
 def render(self):
@@ -333,8 +321,8 @@ If you change the value of `scroll` the page will now scroll up and
 down. But how does the *user* change `scroll`?
 
 ::: {.further}
-Storing the display list makes scrolling faster because you don't need
-to redo `layout` every time you scroll. Modern browsers [take this
+Storing the display list makes scrolling faster: the browser isn't 
+doing `layout` every time you scroll. Modern browsers [take this
 further][webrender], retaining much of the display list even when the
 web page changes due to JavaScript or user interaction.
 :::
@@ -347,7 +335,7 @@ Reacting to keyboard input
 
 Most browsers scroll the page when you press the up and down keys,
 rotate the scroll wheel, or drag the scroll bar. To keep things simple,
-let\'s stick to one: the down key.
+let\'s just implement the down key.
 
 Tk allows you to *bind* a function to a key, which instructs Tk to
 call that function when the key is pressed. For example, to bind to
@@ -360,10 +348,13 @@ def __init__(self):
 ```
 
 Here, `self.scrolldown` is an *event handler*, a function that Tk will
-call whenever the down arrow key is pressed. That function is passed a
-*event object* as an argument, though scrolling down doesn't require
-doing anything with that event object. It just needs to increment `y`
-and re-draw the canvas:
+call whenever the down arrow key is pressed.[^event-arg] All it needs
+to do is increment `y` and re-draw the canvas:
+
+[^event-arg]: `scrolldown` is passed a *event object* as an argument
+    by Tk, but sine scrolling down doesn't require any additional
+    information about the key press, besides the fact that it
+    happened, `scrolldown` ignore that event object.
 
 ``` {.python}
 SCROLL_STEP = 100
@@ -374,9 +365,8 @@ def scrolldown(self, e):
 ```
 
 If you try this out, you'll find that scrolling draws all the text a
-second time. That's because we didn't erase the old text when we
-started drawing the new text. We need to call `canvas.delete` to clear
-the old text:
+second time. That's because we didn't erase the old text before
+drawing the new text. Call `canvas.delete` to clear the old text:
 
 ``` {.python}
 def render(self):
@@ -389,19 +379,18 @@ Scrolling should now work!
 Faster Rendering
 ================
 
-Scrolling works, but it's probably not as fast as you'd
-like.[^slow-scroll] Why? It turns out drawing text on the screen takes
-a while, so we need to make sure to do it only when necessary.
+But this scrolling is pretty slow.[^slow-scroll] Why? It turns out
+that loading information about the shape of a character, inside
+`create_text`, takes a while. To speed up scrolling we need to make
+sure to do it only when necessary.
 
 [^slow-scroll]: How fast exactly seems to depend a lot on your
     operating system and default font.
 
-In reality, browsers incorporate a lot of quite tricky optimizations
-to this process, but for this toy browser let's limit ourselves to a
-single simple improvement: don't waste time drawing off-screen
-characters. On a long page—the kind you might be scrolling—most
-characters are outside the viewing window, and we can skip drawing
-them in `render`:
+Real browsers incorporate a lot of quite tricky optimizations to this
+process, but for this toy browser let's limit ourselves to a simple
+improvement: on a long page most characters are outside the viewing
+window, and we can skip drawing them in `render`:
 
 ``` {.python}
 for x, y, c in self.display_list:
@@ -411,11 +400,13 @@ for x, y, c in self.display_list:
 ```
 
 The first `if` statement skips characters below the viewing window;
-the second skips characters above it. Because we split `layout` and
-`render`, we don't need to change `layout` at all to implement this
-optimization.
+the second skips characters above it. In that second `if` statement,
+`y + VSTEP` computes the bottom edge of the character, so that
+character that are halfway inside the viewing window are still drawn.
 
-Scrolling should now be pleasantly fast.
+Scrolling should now be pleasantly fast. And because we split `layout`
+and `render`, we don't need to change `layout` at all to implement
+this optimization.
 
 Summary
 =======
@@ -424,16 +415,14 @@ This chapter went from a rudimentary command-line browser to a
 graphical user interface with text that can be scrolled. The browser
 now:
 
-- Creates a window by talking to your operating system
+- Talks to your operating system to create a window
 - Lays out the text and draws it to that window
 - Listens for keyboard commands
 - Scrolls the window in response
 
-Right now our browser works well on Chinese web pages. But if you try
-it on an English page, all of the characters are spaced far apart,
-lines break in the middle of words, and there\'s no support for
-paragraphs, links, or formatting. We\'ll fix these problems in the
-next chapter.
+Next, we'll make this browser work on English text, with all its
+complexities of variable width characters, line layout, and
+formatting.
 
 ::: {.signup}
 :::
@@ -441,10 +430,11 @@ next chapter.
 Exercises
 =========
 
-*Line breaks*: Change `layout` to handle newline characters by ending
-the line and starting a new one. Increment *y* by more than 18 to give
-the illusion of paragraph breaks. There are poems embedded in "Journey
-to the West"; you'll now be able to make them out.
+*Line breaks*: Change `layout` to end the current line and start a new
+one when it sees a newline character. Increment *y* by more than
+`VSTEP` to give the illusion of paragraph breaks. There are poems
+embedded in "Journey to the West"; you'll now be able to make them
+out.
 
 *Mouse wheel*: Add support for scrolling up when you hit the up arrow.
 Make sure you can't scroll past the top of the page. Then bind the
@@ -466,12 +456,12 @@ folder as the browser. Use `tkinter.PhotoImage` to load the image and
 then `canvas.create_image` to draw it to the screen. You can add other
 emojis if you'd like 😀!
 
-*Resizing*: Make browser resizable. To do so, pass the `fill` and
+*Resizing*: Make the browser resizable. To do so, pass the `fill` and
 `expand` arguments to `canvas.pack` call and bind to the `<Configure>`
-event to run code when the window is resized. You can get the new
-window width and height with the `width` and `height` fields on the
-event object. Remember that when the window is resized, the line
-breaks will change, so you will need to call `layout` again.
+event, which happens when the window is resized. The window's new
+width and height can be found in the `width` and `height` fields on
+the event object. Remember that when the window is resized, the line
+breaks must change, so you will need to call `layout` again.
 
 *Zoom*: Make the `+` and `-` keys change the text size. You will need
 to use the `font` argument in `create_text` to change the size of
@@ -502,22 +492,22 @@ text. Be careful in how you split the task between `layout` and
 
 [^9]: Foreshadowing future developments...
 
-[^10]: It\'s to delay a discussion of basic typography to next class...
+[^10]: It\'s to delay a discussion of basic typography to next chapter...
 
 [^11]: Right click on the link and \"Copy URL\".
 
 [^12]: If you\'re in the US, you\'ll probably see this phase take a
     while: China is far away!
 
-[^13]: In the olden days of type writers, going to a new line would be
-    two operations: to move down the page you would *feed* in a new
-    *line*, and then you\'d *return* the *carriage* that printed letters
-    to the left margin. You can see the same two operations below. When
-    ASCII was standardized, they added separate characters for these
-    operations: CR and LF. That\'s why headers in HTTP are separated by
-    `\r\n`, or CR followed by LF, even though computers have nothing
-    mechanical inside that necessitates separate operations. In most
-    contexts, however, you generally just use `\n` create a new line.
+[^13]: In the olden days of type writers, a new line was two
+    operations: you would *feed* in a new *line* to move down the
+    page, and then *return* the *carriage* that printed letters to its
+    left edge. You can see these same operations in the code. When
+    ASCII was standardized, they added two separate
+    characters—"carriage return" and "line feed"—for these operations,
+    so that ASCII characters could be directly executed by
+    teletypewriters. That's why headers in HTTP are separated by
+    `\r\n`, even though modern computers have no mechanical carriage.
 
 [^14]: Not 800, because we started at pixel 13 and I want to leave an
     even gap on both sides.
