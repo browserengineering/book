@@ -231,19 +231,14 @@ magic numbers here: 13 and 18. I got these from *font metrics*, which
 are introduced in the next chapter.
 
 ::: {.further}
-In this code each character is handled individually, but some Chinese
-phrases shouldn't break across lines: "美国" literally means
-"beautiful country" but taken together refers to the United
-States of America.[^meiguo] The [ICU library][icu], used by both
-Firefox and Chrome, [uses dynamic programming][icu-wb] to guess phrase
-boundaries based on a [word frequency table][cjdict].
+Chinese characters are usually, but not always, independent: <span
+lang="zh">开关</span> means "button" but is composed of <span
+lang="zh">开</span> "on" and <span lang="zh">关</span> "off". A line
+break between them would be confusing, because you'd read "on off"
+instead of "button". The [ICU library][icu], used by both Firefox and
+Chrome, [uses dynamic programming][icu-wb] to guess phrase boundaries
+based on a [word frequency table][cjdict].
 :::
-
-[^meiguo]: It sounds sort-of like the word "America", especially if
-    you drop the "A" (Chinese syllables start with a consonant),
-    don't pronounce the "r" (a sound that doesn't exist in Chinese),
-    and would like it to end with "国" meaning country. I'm sure
-    Americans don't mind the compliment, though!
 
 [icu]: http://site.icu-project.org
 [icu-wb]: http://userguide.icu-project.org/boundaryanalysis/break-rules
