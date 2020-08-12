@@ -12,3 +12,4 @@ jobs:
           python-version: 3.8
       - uses: r-lib/actions/setup-pandoc@v1
       - run: python3 compare.py book/http.md src/lab1.py
+      - run: python3 compare.py book/graphics.md src/lab2.py

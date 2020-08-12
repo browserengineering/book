@@ -235,12 +235,9 @@ per character, you can only fit about 60 characters. You need more than
 that to read a novel, so we now need to *wrap* the text once we reach
 the edge of the screen:[^13]
 
-``` {.python}
-HSTEP, VSTEP = 13, 18
-x, y = HSTEP, VSTEP
+``` {.python indent=8}
 for c in text:
-    canvas.create_text(x, y, text=c)
-    x += HSTEP
+    # ...
     if x >= WIDTH - HSTEP:
         y += VSTEP
         x = HSTEP

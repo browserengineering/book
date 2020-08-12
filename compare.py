@@ -44,6 +44,13 @@ function CodeBlock(el)
 end
 '''
 
+def indent(block, n=0):
+    n = int(n)
+    if n == 0: return block
+    indentation = " " * n
+    block = indentation + block.replace("\n", "\n" + indentation)
+    return block[:-n]
+
 def tangle(file):
     with open("/tmp/test", "wb") as f:
         f.write(FILTER.encode("utf8"))
@@ -91,6 +98,7 @@ if __name__ == "__main__":
     blocks = tangle(sys.argv[1])
     count = 0
     for name, block in blocks:
+        block = indent(block, name.get("indent", "0"))
         cng = find_block(block, src)
         expected = name.get("expected", "True") == "True"
         if any(l2 for l2, l in cng) == expected:
