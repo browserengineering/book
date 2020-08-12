@@ -105,7 +105,7 @@ appearance that a canvas provides.[^7]
 argument so Tkinter knows where to display the canvas:
 
 ``` {.python expected=False}
-window = tkinter.Window()
+window = tkinter.Tk()
 canvas = tkinter.Canvas(window, width=800, height=600)
 canvas.pack()
 ```
@@ -124,7 +124,7 @@ WIDTH, HEIGHT = 800, 600
 
 class Browser:
     def __init__(self):
-        self.window = tkinter.Window()
+        self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
             self.window, 
             width=WIDTH,
@@ -308,22 +308,25 @@ coordinates, we don't need to change anything else about it.
 Once the display list is computed, `render` needs to loops through
 the display list and draws each tuple:
 
-``` {.python}
+``` {.python expected=False}
 def render(self):
     for x, y, c in self.display_list:
       self.canvas.create_text(x, y, text=c)
 ```
 
-There's no scrolling yet, but let's add it. To scroll the page by,
-say, 100 pixels, we use `y - 100` in place of `y` when we call
-`create_text`. Let's use the `scroll` field to store how far you've
-scrolled:
+There's no scrolling yet, but let's add it. Let's use the `scroll`
+field to store how far you've scrolled:
 
 ``` {.python}
 def __init__(self):
     # ...
     self.scroll = 0
+```
 
+To scroll the page we use `y - self.scroll` in place of
+`y` when we call `create_text`:
+
+```
 def render(self):
     for x, y, c in display_list:
         self.canvas.create_text(x, y - self.scroll, text=c)
@@ -380,7 +383,7 @@ the old text:
 
 ``` {.python}
 def render(self):
-    canvas.delete('all')
+    self.canvas.delete("all")
     # ...
 ```
 

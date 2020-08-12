@@ -58,11 +58,8 @@ def lex(body):
             text += c
     return text
 
-WIDTH = 800
-HEIGHT = 600
-
-HSTEP = 13
-VSTEP = 18
+WIDTH, HEIGHT = 800, 600
+HSTEP, VSTEP = 13, 18
 
 SCROLL_STEP = 100
 
@@ -93,7 +90,7 @@ class Browser:
     def render(self):
         self.canvas.delete("all")
         for x, y, c in self.display_list:
-            if y > HEIGHT + self.scroll: continue
+            if y > self.scroll + HEIGHT: continue
             if y + VSTEP < self.scroll: continue
             self.canvas.create_text(x, y - self.scroll, text=c)
 
