@@ -45,7 +45,7 @@ end
 '''
 
 def tangle(file):
-    with tempfile.NamedTemporaryFile() as f:
+    with open("/tmp/test", "wb") as f:
         f.write(FILTER.encode("utf8"))
         f.close()
         cmd = ["pandoc", "--from", "markdown", "--to", "html", "--lua-filter", f.name, file]
