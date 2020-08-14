@@ -15,13 +15,11 @@ I am editing the chapters following the first iteration of the course.
 
 - [x] All chapters have received an initial read-through
 - [x] Debugging tips have moved out of the [Preliminaries](preliminaries.md)
-- [ ] The [Preliminaries](preliminaries.md) need to discuss installing
-  Python
-- [ ] [Chapter 2](graphics.md) feels too short; maybe clipping should
-  move here
+- [x] Clipping moved from [Chapter 10](reflow.md) to [Chapter 2](graphics.md) 
+- [ ] The [Preliminaries](preliminaries.md) should install Python
+- [ ] [Chapter 3](text.md) should implement multiple text sizes
 - [ ] [Chapter 4](html.md) needs to motivate attributes
 - [ ] [Chapter 7](chrome.md) should add forward buttons
-- [ ] [Chapter 7](chrome.md) should implement multiple text sizes
 - [ ] [Chapter 10](reflow.md) needs a rewrite to handle a major bug
 - [ ] [Chapter 11](security.md) must remove the straw-man insecure
   implementations
@@ -32,8 +30,8 @@ Code
 
 I plan to have "gold-standard" code for each chapter.
 
-- [x] Code for chapters 1 and 2 edited
-- [ ] Code for chapters 3, 4, 5, 6, 7, 8, 9, 10, 11 not yet edited
+- [x] Code for chapters 1, 2, and 3 edited
+- [ ] Code for chapters 4, 5, 6, 7, 8, 9, 10, 11 not yet edited
 - [ ] [Chapter 8](forms.md) needs to abstract over finding elements
 - [ ] [Chapter 9](scripts.md) needs to split the JS environment from
   the browser
@@ -58,13 +56,21 @@ I have barely begun branding and styling the website.
 - [ ] Web page does not have a coherent visual identity
 - [ ] Mobile experience rudimentary
 
+Marketing
+=========
+
+- [x] There is now a signup form run by Mailchimp
+- [x] There is now a [book Twitter](https://twitter.com/BrowserBook)
+- [x] I posted about the book on my personal account
+- [ ] The book has not yet done well on HN
+- [ ] The book has not been posted to proggit
+
 Content
 =======
 
 I plan tests, exercises, screenshots, and "Go further" links.
 
 - [x] Each chapter has five exercises
+- [ ] Chapter 1 & 2 have "Go further" links, the others don't
 - [ ] There are currently no tests
-- [ ] Exercises should be distributed among sections
 - [ ] Screenshots not begun
-- [ ] Chapter 1 has "Go further" links, the others don't
