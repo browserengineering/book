@@ -32,7 +32,7 @@ Part 1: Drawing Graphics
 (@) [Drawing to the Screen](graphics.md)\
     Creating windows and drawing to a canvas
 (@) [Formatting Text](text.md)\
-    Line wrapping and word spacing
+    Word wrapping and line spacing
 
 Part 2: Viewing Documents
 =========================
