@@ -6,26 +6,26 @@ next: graphics
 ...
 
 A web browser displays information identified by a URL. And the first
-step is to use that URL to connect to download that information from a
-server somewhere on the Internet.
+step is to use that URL to connect to and download that information
+from a server somewhere on the Internet.
 
 Connecting to a server
 ======================
 
 To display a web page, the browser first needs to get a copy of it.
 So, it asks the OS to put it in touch with a *server* somewhere on the
-internet; the URL for the web page tells it the server's *host name*.
-The OS then talks to a *DNS server* which converts[^5] a host name
-like `example.org` into an *IP address* like `93.184.216.34`.[^6] Then
-the OS decides which hardware is best for communicating with that IP
-address (say, wireless or wired) using what is called a *routing
-table*, and then uses device drivers to sends signals over a wire or
-over the air.[^7] Those signals are picked up and transmitted by a
-series of *routers*[^8] which each choose the best direction to send
-your message so that it eventuall gets to that IP address.[^9]
-Eventually the message reaches the server, and a connection is
-created. Anyway, the point of this is that the browser tells the OS,
-“Hey, put me in touch with `example.org`”, and it does.
+internet; the first part of the web page's URL (before the first `/`)
+tells it the server's *host name*. The OS then talks to a *DNS server*
+which converts[^5] a host name like `example.org` into an *IP address*
+like `93.184.216.34`.[^6] Then the OS decides which hardware is best
+for communicating with that IP address (say, wireless or wired) using
+what is called a *routing table*, and then uses device drivers to
+sends signals over a wire or over the air.[^7] Those signals are
+picked up and transmitted by a series of *routers*[^8] which each
+choose the best direction to send your message so that it eventually
+gets to that IP address.[^9] When the message reaches the server, a
+connection is created. Anyway, the point of this is that the browser
+tells the OS, “Hey, put me in touch with `example.org`”, and it does.
 
 On many systems, you can set up this kind of connection using the
 `telnet` program, like this:^[The "80" is the port, discussed below.]
@@ -68,7 +68,8 @@ Requesting information
 
 Once it's connected, the browser requests information from the server
 by name. The name is the part of a URL that comes after the host name,
-like `/index.html`, called the *path*. The request looks like this:
+like `/index.html`, called the *path*. The request looks like this;
+you should type it into `telnet`:
 
 ``` {.example}
 GET /index.html HTTP/1.0
@@ -93,13 +94,12 @@ think it is.[^13] There are lots of other headers one could send, but
 let\'s stick to just `Host` for now.[^14]
 
 Finally, after the headers comes a single blank line; that tells the
-host that you are done with headers.
-
-Enter all this into `telnet`, remembering to leave add a blank line
-after the line that begins with `Host`. You should get a response.
+host that you are done with headers. So type a blank line into
+`telnet` (hit Enter twice after typing the two lines of request above)
+and you should get a response from `example.org`.
 
 [^11]: It could say `POST` if it intended to send information, plus
-    there are some other obscure options.
+    there are some other, more obscure options.
 
 [^12]: Why not 1.1? You can use 1.1, but then you need another header
     (`Connection`) to handle a feature called \"keep-alive\". Using 1.0
@@ -469,7 +469,7 @@ between a pair of angle brackets, and `not in_angle`. When the current
 character is an angle bracket, changes between those states; when it is
 not, and it is not inside a tag, it prints the current character.[^24]
 
-Put this code into a new function, `show`:
+Let's put this code into a new function, `show`:
 
 ``` {.python}
 def show(body):

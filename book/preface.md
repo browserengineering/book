@@ -46,7 +46,7 @@ making later chapters more difficult.
     [S. Zdancewic](http://www.cis.upenn.edu/~stevez/)\'s course on
     compilers.
 
-This book's browser is irreverant toward standards: it handles only a
+This book's browser is irreverent toward standards: it handles only a
 sliver of the full HTML, CSS, and JavaScript languages, mishandles
 errors, and isn't resilient to malicious inputs. It is also quite
 slow. Despite that, its architecture matches that of real browsers,

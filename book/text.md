@@ -16,7 +16,7 @@ What is a font?
 ===============
 
 So far, we\'ve called `create_text` with a character and two
-coordinates to write text to the scren. That works if you don\'t care
+coordinates to write text to the screen. That works if you don\'t care
 much about the font, or the size, or the color, or the exact position
 of the text. When you do care about those things, you need to create
 and use font objects.
