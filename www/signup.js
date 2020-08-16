@@ -59,7 +59,8 @@ SignupForm.prototype.reset = function(evt) {
 }
 
 SignupForm.prototype.handle_response = function(arg) {
-    if (!arg.result) arg = { result: "error", msg: "Error: " + JSON.stringify(arg) };
+    if (!arg.result) arg.result = "error";
+    if (!arg.msg) arg.msg = "Error: " + JSON.stringify(arg);
 
     if (arg.result === "error") {
         this.change_state("s-error");
