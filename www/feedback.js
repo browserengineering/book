@@ -181,7 +181,7 @@ function setup_feedback() {
             ]),
             Element("p", { className: "legalese" }, [
                 "By making edits, you agree to assign all rights ",
-                "to your comments or typo fixes to me (Pavel Panchekha)",
+                "to your comments or typo fixes to me (Pavel Panchekha) ",
                 "and allow me to attribute edits to you in acknowledgements, ",
                 "blog posts, or other media.",
             ]),
