@@ -163,7 +163,7 @@ function submit_comment(elt, text, comment) {
 
 function setup_feedback() {
     var submit = Element("button", { type: "submit" }, "Turn on feedback tools");
-    var cancel = Element("a", { href: "#" }, "Keep feedback tools off");
+    var cancel = Element("a", { href: "#", className: "checkoff" }, "Keep them off");
     var form = Element("div", { className: "popup" }, [
         Element("form", { method: "get", action: "/" }, [
             Element("h1", "Feedback Tools"),
@@ -185,7 +185,7 @@ function setup_feedback() {
                 "and allow me to attribute edits to you in acknowledgements, ",
                 "blog posts, or other media.",
             ]),
-            Element("div", { className: "buttons" }, [submit, cancel]),
+            Element("div", [submit, cancel]),
         ]),
     ]);
     var overlay = Element("div", { id: "overlay" }, [form]);

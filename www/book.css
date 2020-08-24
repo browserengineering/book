@@ -123,9 +123,7 @@ input[type=checkbox][disabled] { display: none; }
 .popup .inputs { font-size: 30px; }
 .popup input { font-size: 30px; }
 .popup .legalese { font-size: 60%; }
-.popup .buttons { display: flex; justify-content: space-around; }
 .popup button { font-size: 24px; }
-.popup .buttons a { font-size: 24px; }
 
 p, li, pre, .note { position: relative; }
 .tools {
@@ -146,6 +144,7 @@ form h1 { margin-bottom: 1em; margin-top: 0; }
 .field input { flex-grow: 1; min-width: 0; }
 .checkoff { float: right; }
 .checkoff input { vertical-align: middle; }
+a.checkoff { font-size: 24px; }
 form .checkoff, form button[type=submit] { margin-top: 1em; }
 
 #signup { border: 2px solid gold; padding: 1em; margin: 1em 0; background: #fffbe5; }
