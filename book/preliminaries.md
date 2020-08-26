@@ -45,7 +45,7 @@ at the real thing is the best way to find out.
 
 **Serving Web Pages**: You'll want to write test pages for your web
 browser, and you'll need a web server to serve those pages. Luckily,
-Python ships with a simle web server. Go to a directory and run:
+Python ships with a simple web server. Go to a directory and run:
 
     python3 -m http.server
     
