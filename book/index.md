@@ -1,6 +1,6 @@
 ---
 title: Web Browser Engineering
-author: Pavel Panchekha
+author: Pavel Panchekha & Chris Harrelson
 main: true
 ...
 
