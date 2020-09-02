@@ -1,3 +1,5 @@
+body { margin-top: 3em; }
+
 section div { border: 1px solid #888; margin: 1em 0; padding: 1em; }
 section div h1 { margin-top: 0; }
 section div :last-child  { margin-bottom: 0; }
@@ -6,3 +8,13 @@ section div .del { background: #fcc; }
 section div .add { background: #cfc; }
 
 button { min-width: 2em; min-height: 1em; float: right; }
+
+#toc {
+    border-bottom: 1px solid #888;
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 5; background-color: rgba(255,255,255, 0.8);
+}
+#toc ul { max-width: 65ex; margin: 1em auto; padding: 0; }
+header h1 { padding-top: 3em; }
+#toc li { display: inline-block; margin: 0 1ex; }
+#toc li:first-child { margin-left: 0; }

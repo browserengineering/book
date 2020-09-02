@@ -5,6 +5,17 @@
 <script src="/entries.js"></script>
 <title>Feedback | Web Browser Engineering</title>
 <body id="feedback">
+  
+<nav id='toc'>
+  <ul>
+    %if new:
+    <li><a href="#new">New</a></li>
+    %end
+    %for url in saved:
+    <li><a href="#{{url}}">{{url}}</a></li>
+    %end
+  </ul>
+</nav>
 
 %if new:
 <section id='new'>
@@ -30,12 +41,14 @@
 %end
 
 %if saved:
-<section>
+%for url, objs in saved.items():
+<section id='{{url}}'>
   <header>
-    <h1>Saved Feedback</h1>
+    <h1>Feedback for {{url}}</h1>
   </header>
-  %for obj in saved:
+  %for obj in objs:
   %if obj['status'] == 'saved':
+    %
     <div class="{{obj['type']}}" data-id="{{obj['id']}}">
     <button type='button' class='archived'>Archive</button>
     <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
@@ -49,6 +62,7 @@
   %end
   %end
 </section>
+%end
 %end
 
 %if not new and not saved:
