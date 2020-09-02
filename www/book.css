@@ -64,6 +64,29 @@ nav.links a[rel=next] {
     right: 0; border-radius: 0 10px 10px 0; border-left: 3px solid white;
 }
 
+#toc:before {
+    content: "Table of Contents"; display: block; text-align: center;
+    font-size: 105%; font-weight: bold; background-color: #eee;
+    font-family: 'Vollkorn', 'Garamond', serif; color: black; 
+}
+
+div#toc { border: 2px solid #eee; border-radius: 10px; }
+div#toc:before { padding: .5em 0; border-radius: 10px 10px 0 0; }
+
+nav#toc {
+    float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
+    font-size: 60%; border-bottom: 2px solid #eee;
+}
+nav#toc:before { padding: 1ex; }
+nav#toc ul { list-style: none; padding: 0; }
+
+nav#toc { display: none; }
+@media only screen and (min-width: 1150px) {
+    div#toc { display: none; }
+    nav#toc { display: block; }
+}
+.main nav#toc { display: none; }
+
 body { counter-reset: fn; }
 .note-container { counter-increment: fn; white-space: pre; }
 .note-container:after { content: "]"; color: #a86; }

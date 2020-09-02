@@ -2,6 +2,7 @@
 local disabled = {}
 local draft = nil
 local main = nil
+local toc = true
 
 function Meta (meta)
   if meta.mode == "draft" then
@@ -15,6 +16,9 @@ function Meta (meta)
   end
   if meta.main then
     main = true
+  end
+  if meta.toc == "none" then
+     toc = nil
   end
   -- and  
   if meta.prev then
@@ -59,7 +63,8 @@ function Div(el)
   if not draft and el.classes[1] == "todo" then
     -- io.write("Disabling todo block\n")
     return pandoc.Div
-  elseif el.classes[1] == "signup" or (main and not draft and el.classes[1] == "warning") then
+  elseif (not draft and el.classes[1] == "signup")
+  or (main and not draft and el.classes[1] == "warning") then
     local signup = assert(io.open("book/signup.html")):read("*all")
     return pandoc.RawBlock("html", signup)
   else
@@ -67,7 +72,38 @@ function Div(el)
   end
 end
 
+local headers = pandoc.List()
+
+function Header(el)
+   headers:insert(el)
+end
+
+function Doc(el)
+   if main or not toc then
+      return el
+   end
+   -- Find where to put the in-line TOC
+   local idx = 1
+   for i, v in ipairs(el.blocks) do
+      if v.tag == "Header" then
+         idx = i
+         break
+      end
+   end
+   -- Insert it
+   local items = pandoc.List()
+   for i, v in ipairs(headers) do
+      local content = pandoc.Para({ pandoc.Link(v.content, "#" .. v.identifier) })
+      table.insert(items, content)
+   end
+   local toc = pandoc.Div({ pandoc.BulletList(items) })
+   toc.identifier = "toc"
+   table.insert(el.blocks, idx, toc)
+   return el
+end
+
 return { 
   { Meta = Meta },
   { Link = Link, Note = Note, Div = Div },
+  { Header = Header, Doc = Doc },
 }
