@@ -330,8 +330,8 @@ web page changes due to JavaScript or user interaction.
 [webrender]: 
 https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-gets-rid-of-jank/
 
-Reacting to keyboard input
-==========================
+Reacting to the user
+====================
 
 Most browsers scroll the page when you press the up and down keys,
 rotate the scroll wheel, or drag the scroll bar. To keep things simple,

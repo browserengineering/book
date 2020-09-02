@@ -120,8 +120,8 @@ The HTTP/1.0 standard is also known as [RFC
 interested in `Connection` and keep-alive, look there.
 :::
 
-Understanding the Response
-==========================
+The server's response
+=====================
 
 The server's response starts with this line:
 
@@ -295,7 +295,7 @@ You can find out more about the \"sockets\" API on
 more or less implements that API directly.
 :::
 
-Request and Response
+Request and response
 ====================
 
 Now that we have a connection, we make a request to the other server.
