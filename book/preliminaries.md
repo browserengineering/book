@@ -39,9 +39,10 @@ few tips on doing that.
 **Test against browsers**: Except where explicitly noted, the web
 browser developed in this book should match the behavior of real web
 browsers. If you're unsure what the correct behavior in some situation
-is, fire up your favorite web browser on an example page. Often
-there's no rhyme or reason to what browsers do on edge cases. Looking
-at the real thing is the best way to find out.
+is, fire up your favorite web browser on an example page. On edge
+cases, browser behavior is defined as much by logic as by historical
+accident and ad-hoc decisions. Looking at the real thing is the best
+way to figure out what to do.
 
 **Serving Web Pages**: You'll want to write test pages for your web
 browser, and you'll need a web server to serve those pages. Luckily,
@@ -51,7 +52,10 @@ Python ships with a simple web server. Go to a directory and run:
     
 This will start a web server at the address http://localhost:8000/
 serving the contents of `index.html` in the current directory. You can
-view other files in the directory by adding them to the URL.
+view other files in the directory by adding them to the URL, like
+this:
+
+    http://localhost:8000/my-test.html
 
 **Printable Forms**: To use Python's `print` function for debugging,
 you'll need to define printable forms for the classes you define.
@@ -64,5 +68,6 @@ class Tag:
 ```
 
 This book won't define these methods explicitly, but for your own
-sanity implement them whenever you define a class.
+sanity and ease of debugging, implement them whenever you define a
+class.
 
