@@ -12,7 +12,7 @@
     <li><a href="#new">New</a></li>
     %end
     %for url in saved:
-    <li><a href="#{{url}}">{{url}}</a></li>
+    <li><a href="#{{url}}">{{url.title()}}</a></li>
     %end
   </ul>
 </nav>
