@@ -74,11 +74,8 @@ def lex(body):
         out.append(Text(text))
     return out
 
-WIDTH = 800
-HEIGHT = 600
-
-HSTEP = 13
-VSTEP = 18
+WIDTH, HEIGHT = 800, 600
+HSTEP, VSTEP = 13, 18
 LINEHEIGHT = 1.2
 
 SCROLL_STEP = 100
@@ -152,30 +149,38 @@ class Layout:
                 y += font.metrics("linespace") * LINEHEIGHT + VSTEP
 
 class Browser:
-    def __init__(self, tokens):
+    def __init__(self):
         self.window = tkinter.Tk()
-        self.canvas = tkinter.Canvas(self.window, width=WIDTH, height=HEIGHT)
+        self.canvas = tkinter.Canvas(
+            self.window,
+            width=WIDTH,
+            height=HEIGHT
+        )
         self.canvas.pack()
 
-        self.scrolly = 0
+        self.scroll = 0
+        self.window.bind("<Down>", self.scrolldown)
+
+    def layout(self, tokens):
         self.layout = Layout(tokens)
         self.layout.layout()
         self.render()
 
-        self.window.bind("<Down>", self.scrolldown)
-
     def render(self):
         self.canvas.delete("all")
         for x, y, word, font in self.layout.display_list:
-            self.canvas.create_text(x, y - self.scrolly, text=word, font=font, anchor="nw")
+            if y > self.scroll + HEIGHT: continue
+            if y + font.metrics("linespace") < self.scroll: continue
+            self.canvas.create_text(x, y - self.scroll, text=word, font=font, anchor="nw")
 
     def scrolldown(self, e):
-        self.scrolly += SCROLL_STEP
+        self.scroll += SCROLL_STEP
         self.render()
 
 if __name__ == "__main__":
     import sys
     headers, body = request(sys.argv[1])
     text = lex(body)
-    browser = Browser(text)
+    browser = Browser()
+    browser.layout(text)
     tkinter.mainloop()
