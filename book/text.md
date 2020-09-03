@@ -85,16 +85,30 @@ the line".[^8] You end up caring about the `ascent` and `descent` if you
 have text of different sizes on the same line: you want them to line up
 "on the line", not along their tops or bottoms.
 
-Let\'s dig deeper. Remember that in this code, `font_bi` is a 16-pixel
-Times. But `font.metrics` tells us that this "16 pixel" font is
-actually 22 pixels tall. That's because the advertised pixel size
-describes the font\'s ascent, not its full size... which for this font
-is 15 pixels. 16 pixels is how big the font "feels"; this kind of
-misdirection is pretty common. It\'s like dress sizes.
+Let's dig deeper. Remember that in this code, `font_bi` is size-16
+Times; yet `font.metrics` reports that it is actually 22 pixels tall.
+Font metrics, it turns out, are confusing! First of all, size-16 meant
+sixteen *points*, which are defined as 72nds of an inch, not sixteen
+pixels, of which you probably have around 100 per inch. But then,
+those sixteen points referred not to the height of individual letters
+but to the height of the metal shapes, which extended beyond the
+letters. As a result, a size-16 font may have letters of varying
+heights; you can tell by varying the font family:
 
-On the other hand, the `measure()` call tells you about the horizontal
-space the text takes up. This obviously depends on *what* text you\'re
-rendering, since different letters have different width:[^9]
+``` {.python}
+>>> tkinter.font.Font(family="Courier", size=16).metrics()
+{'fixed': 1, 'ascent': 13, 'descent': 4, 'linespace': 17}
+>>> tkinter.font.Font(family="Times", size=16).metrics()
+{'fixed': 0, 'ascent': 14, 'descent': 4, 'linespace': 18}
+>>> tkinter.font.Font(family="Helvetica", size=16).metrics()
+{'fixed': 0, 'ascent': 15, 'descent': 4, 'linespace': 19}
+```
+
+Treat the font size not as the size of the actual letters but as a
+measure of how big the font "feels". On the other hand, the
+`measure()` method is more concrete: it tells you how much
+*horizontal* space text takes up. This depends on the text, of course,
+since different letters have different width:[^9]
 
 ``` {.python}
 >>> font_bi.measure("Hi!")
