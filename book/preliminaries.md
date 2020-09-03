@@ -40,9 +40,9 @@ few tips on doing that.
 browser developed in this book should match the behavior of real web
 browsers. If you're unsure what the correct behavior in some situation
 is, fire up your favorite web browser on an example page. On edge
-cases, browser behavior is defined as much by logic as by historical
-accident and ad-hoc decisions. Looking at the real thing is the best
-way to figure out what to do.
+cases, browser behavior is defined more by historical accident and
+backwards compatibility than by logic. Looking at the real thing is
+the best way to figure out what to do.
 
 **Serving Web Pages**: You'll want to write test pages for your web
 browser, and you'll need a web server to serve those pages. Luckily,
