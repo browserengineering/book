@@ -71,7 +71,7 @@ def px(str):
     return int(str[:-2])
 ```
 
-Remember the write out the code to access the other 11 properties; the
+Remember to write out the code to access the other 11 properties; the
 border one is called `border-top-width`, not `border-top`, but other
 than that, they're very repetitive.
 
@@ -103,16 +103,16 @@ this element-by-element approach was all there was.^[Though back then
 it wasn't the `style` attribute, it was a custom elements like `font`
 and `center`.] CSS was invented to improve on this state of affairs:
 
--   CSS files can to adjust styling of many elements at once
+-   CSS files can adjust styling of many elements at once
 -   CSS files can style multiple pages from a single file
 -   CSS is future-proof and supports browsers with different features
 
-To achieve that, extended the key-value `style` attribute with two
-connected ideas: *selectors* and *cascading*. In CSS, you have blocks
-of key-value pairs, and those blocks apply to *multiple elements*,
-specified using a selector. Since that allows multiple key-values
-pairs to apply to one element, *cascading* resolves conflicts by using
-the most specific rule.
+To achieve these goals, CSS extends the key-value `style` attribute
+with two connected ideas: *selectors* and *cascading*. In CSS, you
+have blocks of key-value pairs, and those blocks apply to *multiple
+elements*, specified using a selector. Since that allows multiple
+key-values pairs to apply to one element, *cascading* resolves
+conflicts by using the most specific rule.
 
 Those blocks look like this:
 
@@ -208,7 +208,7 @@ makes "catch-all" error handling like this a code smell in most cases.
 
 However, on the web there is an unusual benefit: it supports an
 ecosystem of multiple implementations. For example, different browsers
-may support different syntax for property values.^[Our browser does
+may support different syntaxes for property values.^[Our browser does
 not support parentheses in property values, which are valid in real
 browsers, for example.] Crashing on a parse error would mean web pages
 can't use a feature until all browsers support it, while skipping
@@ -524,7 +524,7 @@ parent\'s value instead. Some properties are inherited and some
 aren\'t; it depends on the property. Let\'s implement two inherited
 properties: `font-weight` (which can be `normal` or `bold`) and
 `font-style` (which can be `normal` or `italic`^[Actually, it can also
-be `oblique`. No one knows that that is, though some browsers will use
+be `oblique`. No one knows what that is, though some browsers will use
 that value to display pseudo-italics, that is, roman text that\'s been
 algorithmically slanted.]). To inherit a property, we simple need to
 check, after all the rules and inline styles have been applied,
@@ -638,7 +638,7 @@ Exercises
     left values, in that unusual order; and finally if there are three
     values the middle one is both left and right. Implement shortcut
     properties. The best place to do this is in the parsing function
-    `css_body`, since that way it\'ll automatically happen whereever the
+    `css_body`, since that way it\'ll automatically happen wherever the
     rule is applied.
 -   CSS allows a rule to have multiple selectors, which is basically the
     same as separate rules sharing a body. To do that, you list multiple
@@ -647,12 +647,13 @@ Exercises
     both `<b>` and `<i>` have `display: inline`.)
 -   Sometimes it is helpful to select an element that matches *both* a
     tag and a class. In CSS, you do this by just concatenating the
-    selectors together; for example `span.announce` selects elements
-    that match both `span` and `.announce`. Implement those, both in the
-    parser and with a new `AndSelector` class that combines multiple
-    selectors into one. You\'re supposed to use lexicographic scoring
-    for these `AndSelector` things, but the easy thing to do is to sum
-    the scores of the selectors being combined in `AndSelector.score`.
+    selectors together without anything in between; for example
+    `span.announce` selects elements that match both `span` and
+    `.announce`. Implement those, both in the parser and with a new
+    `AndSelector` class that combines multiple selectors into one.
+    You\'re supposed to use lexicographic scoring for these
+    `AndSelector` things, but the easy thing to do is to sum the
+    scores of the selectors being combined in `AndSelector.score`.
     This will work fine as long as no strings more than 16 selectors
     together, if you used the scores suggested above.
 -   Tags, class, and identifiers are not the only selectors! Another

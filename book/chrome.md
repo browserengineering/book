@@ -14,7 +14,7 @@ and a back button while we're at it.
 Click handling
 ==============
 
-To implement links, the browser chrome, and so on, we need to start
+To implement links, the browser UI, and so on, we need to start
 with clicks. We already handle key presses; clicks work similarly in
 Tk: an event handler bound to a certain event. For scrolling, we
 defined `scroll_down` and bound it to `<Down>`; for click handling we

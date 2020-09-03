@@ -20,7 +20,7 @@ which converts[^5] a host name like `example.org` into an *IP address*
 like `93.184.216.34`.[^6] Then the OS decides which hardware is best
 for communicating with that IP address (say, wireless or wired) using
 what is called a *routing table*, and then uses device drivers to
-sends signals over a wire or over the air.[^7] Those signals are
+send signals over a wire or over the air.[^7] Those signals are
 picked up and transmitted by a series of *routers*[^8] which each
 choose the best direction to send your message so that it eventually
 gets to that IP address.[^9] When the message reaches the server, a
@@ -602,46 +602,51 @@ Exercises
 =========
 
 *HTTP/1.1:* Along with `Host`, send the `Connection` header in the
-`request` function with the value `close`. Your browser show now
+`request` function with the value `close`. Your browser can now
 declare that it is using `HTTP/1.1`. Also add a `User-Agent` header.
 Its value can be whatever you want---it identifies your browser to the
 host. Make it easy to add further headers in the future.
 
-*Redirects:* Error codes in the 300 range refer to redirects. Change
-the browser so that, for 300-range statuses, the browser repeats the
-request with the URL in the `Location` header. Note that the
-`Location` header might not include the host and scheme. If it starts
-with `/`, prepend the scheme and host. You can test this with with the
-URL <http://browser.engineering/redirect>, which should redirect back
-to this page.
-
 *Body tag:* Only show text in an HTML document if it is between
 `<body>` and `</body>`. This avoids printing the title and style
-information. The loop in `show` will need more variables to tag names
-and whether it is currently between `<body>` and `</body>`.
+information. The loop in `show` will need more variables to track tag
+names.
+
+*Redirects:* Error codes in the 300 range refer to redirects. Change
+the browser so that, for 300-range statuses, the browser makes a new
+request to the URL sent in the `Location` header. The new URL might
+itself be a redirect, so make sure to handle that case. You don't,
+however, want to get stuck in a redirect loop, so make sure limit how
+many redirects your browser can follow in a row. By the way, the
+`Location` header might start with a `/`, skipping the host and
+scheme. In that case, your browser needs to copy them from the
+original request. You can test this with with the URL
+<http://browser.engineering/redirect>, which should redirect back to
+this page.
 
 *Encodings:* Add support for HTTP compression, in which the browser
 [informs the
 server](https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation)
-that it can compress data before sending it. Your browser must send
-the `Accept-Encoding` header with the value `gzip`. If the server
-supports compression, its response will have a `Content-Encoding`
-header with value `gzip`. The body is then compressed. To decompress
-it, you can use the `decompress` method in the `gzip` module. Calling
-`makefile` with the `encoding` argument will no longer work, because
-compressed data is not `utf8`-encoded. You can change the first
-argument `"rb"` to work with raw bytes instead of encoded text.
+that compressed data is acceptable. Your browser must send the
+`Accept-Encoding` header with the value `gzip`. If the server supports
+compression, its response will have a `Content-Encoding` header with
+value `gzip`. The body is then compressed. To decompress it, you can
+use the `decompress` method in the `gzip` module. Calling `makefile`
+with the `encoding` argument will no longer work, because compressed
+data is not `utf8`-encoded. You can change the first argument `"rb"`
+to work with raw bytes instead of encoded text. By the way, many web
+servers send compressed data using a `Transfer-Encoding` called
+`chunked`. You'll want to add support for it as well.
 
 *Caching:* Typically the same images, styles, and scripts are used on
-multiple pages; downloading them over and over again would be a waste.
-It's generally valid to cache any HTTP response, as long as it was
-requested with `GET` and received a `200` response.^[Some other status
-codes like `301` and `404` can also be cached.] Implement a cache in
-your browser and test it by requesting the same file multiple times.
-Servers control caches using the `Cache-Control` header. Add support
-for this header, specifically for `no-store` and `max-age` values. If
-the header contains some other value, it's best not to cache the
-response.
+multiple pages; downloading them repeatedly is a waste. It's generally
+valid to cache any HTTP response, as long as it was requested with
+`GET` and received a `200` response.^[Some other status codes like
+`301` and `404` can also be cached.] Implement a cache in your browser
+and test it by requesting the same file multiple times. Servers
+control caches using the `Cache-Control` header. Add support for this
+header, specifically for `no-store` and `max-age` values. If the
+header contains some other value, it's best not to cache the response.
 
 [^5]: On some systems, you can run `dig +short example.org` to do this
     conversion yourself.
@@ -684,13 +689,13 @@ response.
     available. You\'ll need to write the loop, checking the socket
     status, yourself.
 
-[^21]: It would be more correct to use `utf8` to decode just the headers
-    and then use the `charset` declaration in the `Content-Type` header
-    to determine what encoding to use for the body. That\'s what real
-    browsers do; browsers even guess the encoding if there isn\'t a
-    `charset` declaration, and when they guess wrong you see those ugly
-    � or some strange áççêñ£ß. I am skipping all that complexity and by
-    again hardcoding `utf8`.
+[^21]: Hard-coding `utf8` is not correct, but it's a shortcut that
+    will work alright on most English-language websites. In fact, the
+    `Content-Type` header usually contains a `charset` declaration
+    that specifies encoding of the body. If it's absent, browsers
+    still won't default to `utf8`; they'll guess, based on letter
+    frequencies, and you see ugly � strange áççêñ£ß when they guess
+    wrong. Incorrect-but-common `utf8` skips all that complexity.
 
 [^22]: That said, some tags, like `img`, are content, not information
     about it.

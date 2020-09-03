@@ -33,7 +33,7 @@ Generally, fonts with different sizes but the same general shape were
 collectively called a *typeface*: one of the possible "faces" of the
 "type".
 
-This nomenclature reflects the what working with little pieces of metal
+This nomenclature reflects what working with little pieces of metal
 was like: there were lots of boxes, the boxes were in cases (hence
 lower- and uppercase letter), the cases were on shelves, they came in
 different types, and so on. In the shiny modern world, none of these
@@ -86,11 +86,11 @@ have text of different sizes on the same line: you want them to line up
 "on the line", not along their tops or bottoms.
 
 Let\'s dig deeper. Remember that in this code, `font_bi` is a 16-pixel
-Times. But `font.metrics` tells us that this "16 pixel" font is actually
-22 pixels tall. This kind of misdirection is pretty common. The
-advertised pixel size describes the font\'s ascent, not its full size.
-Which for this font is 15 pixels; 16 pixels is how big the font "feels".
-It\'s like dress sizes.
+Times. But `font.metrics` tells us that this "16 pixel" font is
+actually 22 pixels tall. That's because the advertised pixel size
+describes the font\'s ascent, not its full size... which for this font
+is 15 pixels. 16 pixels is how big the font "feels"; this kind of
+misdirection is pretty common. It\'s like dress sizes.
 
 On the other hand, the `measure()` call tells you about the horizontal
 space the text takes up. This obviously depends on *what* text you\'re
@@ -131,15 +131,13 @@ canvas.create_text(x, y, text="world!", font=font2)
 This should work, giving you nicely aligned "Hello," and "world!", with
 the second italicized.
 
-This actually only works by chance: there is a hidden bug in this code
-that happens not to occur for "Hello, world!". For example, replace
-"world!" with "overlapping!": that the two words will overlap. That\'s
-because the coordinates `x` and `y` that you pass to `create_text` tell
-Tk where to put the *center* of the text. So, instead of incrementing
-`x` by the length of "Hello,", you need to increment it by half the
-length of "Hello," and half the length of "overlapping!". It only worked
-for "Hello, world!" because \"Hello,\" and \"world!\" are the same
-length!
+This actually only works by chance: there is a bug in this code that
+happens to be masked for "Hello, world!". For example, replace
+"world!" with "overlapping!": the two words will overlap. That\'s
+because the coordinates `x` and `y` that you pass to `create_text`
+tell Tk where to put the *center* of the text. 
+It only worked for "Hello, world!" because "Hello," and "world!"
+are the same length!
 
 Luckily, the meaning of the coordinate you pass in is configurable. We
 can instruct Tk to treat the coordinate we gave as the top-left corner
@@ -171,7 +169,7 @@ word, where words are whitespace-separated:[^10]
 for word in text.split():
     w = font.measure(word)
     if x + w >= 787:
-        y += font.metrics("linespace") *1.2
+        y += font.metrics("linespace") * 1.2
         x = 13
     display_list.append((x, y, word))
     x += w + font.measure(" ")
@@ -194,8 +192,8 @@ don\'t need a space after the last word on a line. Finally, note that I
 multiply the linespace by 1.2 when incrementing `y`. Try removing the
 multiplier: you\'ll see that the text is harder to read because the
 lines are too close together.[^11] Instead, it is common to add "line
-spacing" or "leading"[^12] between lines. Here, It\'s 20% line spacing,
-which is a normal amount.
+spacing" or "leading"[^12] between lines. The 20% line spacing is a
+normal amount.
 
 ::: {.further}
 Line breaking algorithm: http://www.tug.org/docs/liang/liang-thesis.pdf
@@ -207,7 +205,7 @@ Separate lexing
 Right now, all of the text on the page is drawn with one font. But web
 pages sometimes **bold** or *italicise* text using the `<b>` and `<i>`
 tags. It\'d be nice to implement that, but right now, the code resists
-the change: the `lex` function only receives the text of the page as
+the change: the `layout` function only receives the text of the page as
 input, and so has no idea where the bold and italics tags are.
 
 Let\'s change `lex` to return a list of *tokens*, where a token is
@@ -524,6 +522,6 @@ Exercises
 
 [^17]: We could never have broken a line *after* the final word, so
     subtracting off of `x` is correct. And because `font.measure` always
-    returns an integer, so there\'s no possibility of rounding error.
+    returns an integer, there\'s no possibility of rounding error.
 
 [^18]: Try it in a web browser!

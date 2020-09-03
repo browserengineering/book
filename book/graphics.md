@@ -287,7 +287,7 @@ self.render()
 ```
 
 The resulting list is called a *display list*: it is a list of things
-to display.[^The term is standard.] Since `layout` is all about page
+to display.^[The term is standard.] Since `layout` is all about page
 coordinates, we don't need to change anything else about it to support
 scrolling.
 

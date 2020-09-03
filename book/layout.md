@@ -512,8 +512,8 @@ portion of our browser. We\'ve split layout into two different *layout
 modes* for block and inline content, and we\'ve extended the styling
 capabilities of our browser by adding margins, border, and padding.
 
-Assignments
-===========
+Exercises
+=========
 
 -   Remove the magic numbers from the `Page` object by instead assigning
     padding to the `<body>` element
