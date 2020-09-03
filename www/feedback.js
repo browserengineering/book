@@ -51,10 +51,6 @@ function Tools() {
     var a_typo = Element("a", { href: "#" }, "Typo" );
     var a_comment = Element("a", { href: "#" }, "Comment" );
 
-    this.form = Element("textarea", {
-        style: "display: none",
-        placeholder: "Comment here",
-    }, []);
 
     this.toolbar = Element("div", { className: "tools" }, [a_typo, a_comment, this.form]);
 
@@ -87,21 +83,47 @@ Tools.prototype.typo = function(e) {
 
 Tools.prototype.comment = function(e) {
     var that = this;
-    that.form.style.display = "block";
-    that.form.focus()
-    that.lock = true;
+    var p = Element("span", { contentEditable: "true" }, ["Comment here!"]);
+    var submit = Element("button", "Submit");
+    var cancel = Element("a", { href: "#" }, "Cancel");
+    var elt = Element("div", { className: "note feedback" }, [
+        p,
+        Element("form", [submit, " ", cancel])
+    ]);
+    that.node.insertBefore(elt, that.node.childNodes[0]);
+    p.focus();
+
+    // Scroll into view
+    var bounding = p.getBoundingClientRect();
+    var viewport = (window.innerHeight || document.documentElement.clientHeight);
+    var viewable = (bounding.bottom <= viewport + window.scrollY);
+    if (!viewable) p.scrollIntoView(false);
+
+    // Select the contents
+    var range = document.createRange();
+    range.selectNodeContents(p);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    // Handle clicks
     var editing = true;
-    that.form.addEventListener("blur", function() {
-        var comment = that.form.value;
+    submit.addEventListener("click", function(e) {
+        var comment = p.textContent;
         var text = markdown(that.node, []).join("");
         if (editing && comment) {
             console.log("Submitting comment");
             submit_comment(that.node, text, comment);
         }
         editing = false;
-        that.form.style.display = "none";
-        that.form.value = "";
-        that.lock = false;
+        submit.remove()
+        cancel.remove()
+        p.removeAttribute("contentEditable");
+        e.preventDefault();
+    });
+    cancel.addEventListener("click", function(e) {
+        elt.remove();
+        e.preventDefault();
     });
     e.preventDefault();
 }

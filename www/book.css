@@ -154,10 +154,9 @@ p, li, pre, .note { position: relative; }
     padding: .125em .75em; border-radius: .75em;
 }
 .tools a { margin: 0 1ex; }
-.tools textarea {
-    border: none; background: transparent; width: 100%; font-size: 100%;
-    margin: 1ex 0; 
-}
+.feedback.note { font-size: 66%; color: purple; }
+.feedback.note span { outline: none; }
+.feedback.note form { margin-top: .5ex; }
 
 form { overflow: auto; }
 input, button { font-size: inherit; font-family: inherit; }
