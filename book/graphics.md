@@ -35,7 +35,7 @@ environment:
 Though the desktop environment is responsible for displaying the window,
 the program is responsible for drawing its contents. Applications have
 to redraw these contents sixty times per second or so for interactions
-feel fluid,[^3] and must respond quickly to clicks and key presses so
+to feel fluid,[^3] and must respond quickly to clicks and key presses so
 the user doesn't get frustrated.
 
 Doing all of this by hand is a bit of a drag, so programs usually use a
@@ -351,10 +351,10 @@ Here, `self.scrolldown` is an *event handler*, a function that Tk will
 call whenever the down arrow key is pressed.[^event-arg] All it needs
 to do is increment `y` and re-draw the canvas:
 
-[^event-arg]: `scrolldown` is passed a *event object* as an argument
-    by Tk, but sine scrolling down doesn't require any additional
-    information about the key press, besides the fact that it
-    happened, `scrolldown` ignore that event object.
+[^event-arg]: `scrolldown` is passed an *event object* as an argument
+    by Tk, but since scrolling down doesn't require any information
+    about the key press, besides the fact that it happened,
+    `scrolldown` ignores that event object.
 
 ``` {.python}
 SCROLL_STEP = 100

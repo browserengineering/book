@@ -338,10 +338,9 @@ Note that this code correctly handles not only `<b>bold</b>` and
 `<i>italic</i>` text, but also `<b><i>bold italic</i></b>`
 text.[^even-misnested]
 
-[^even-misnested]: It even handles what you might call mis-nested tags
-like `<b>bold<i>both</b>italic</i>`, though not
-`<b><b>double</b>bolded</b>` text. We'll return to both in the [next
-chapter](html.md).
+[^even-misnested]: It even handles mis-nested tags
+like `<b>b<i>bi</b>i</i>`, but it does not handle `<b><b>twice</b>bolded</b>` text.
+We'll return to both in the [next chapter](html.md).
 
 Finally, use `bold` and `italic` to choose the font for rendering text.
 Since `bold` and `italic` are computed in `layout` but the canvas
