@@ -97,12 +97,12 @@ have text of different sizes on the same line: you want them to line up
 Let's dig deeper. Remember that in this code, `font_bi` is size-16
 Times; yet `font.metrics` reports that it is actually 22 pixels tall.
 Font metrics, it turns out, are confusing! First of all, size-16 meant
-sixteen *points*, which are defined as 72nds of an inch, not sixteen
-pixels, of which you probably have around 100 per inch. But then,
-those sixteen points referred not to the height of individual letters
-but to the height of the metal shapes, which extended beyond the
-letters. As a result, a size-16 font may have letters of varying
-heights; you can tell by varying the font family:
+sixteen *points*, which are defined as 72^nd^s of an inch, not sixteen
+*pixels*, which your monitor probably has around 100 of per inch.
+Those sixteen points measure not the individual letters but the metal
+blocks the letters were once carved from, which by necessity were
+larger than the letters themselves. Different size-16 fonts may thus
+have letters of varying heights; try varying the font family:
 
 ``` {.python}
 >>> tkinter.font.Font(family="Courier", size=16).metrics()
@@ -113,9 +113,7 @@ heights; you can tell by varying the font family:
 {'fixed': 0, 'ascent': 15, 'descent': 4, 'linespace': 19}
 ```
 
-Treat the font size not as the size of the actual letters but as a
-measure of how big the font "feels". On the other hand, the
-`measure()` method is more concrete: it tells you how much
+The `measure()` method is more concrete: it tells you how much
 *horizontal* space text takes up. This depends on the text, of course,
 since different letters have different width:[^9]
 
@@ -144,8 +142,7 @@ font2 = tkinter.font.Font(family="Times", size=16, slant='italic')
 We can now lay out the text, starting at `(200, 200)`:
 
 ``` {.python}
-x = 200
-y = 200
+x, y = 200, 200
 canvas.create_text(x, y, text="Hello, ", font=font1)
 x += font1.measure("Hello, ")
 canvas.create_text(x, y, text="world!", font=font2)
@@ -165,18 +162,19 @@ are the same length!
 Luckily, the meaning of the coordinate you pass in is configurable. We
 can instruct Tk to treat the coordinate we gave as the top-left corner
 of the text by setting the `anchor` argument to `nw`, meaning the
-\"northwest\" corner of the text:
+"northwest" corner of the text:
 
 ``` {.python}
-x = 200
-y = 225
+x, y = 200, 225
 canvas.create_text(x, y, text="Hello, ", font=font1, anchor='nw')
 x += font1.measure("Hello, ")
 canvas.create_text(x, y, text="overlapping!", font=font2, anchor='nw')
 ```
 
-Make this change in your `render` function; we didn\'t need it in the
-previous chapter because all Chinese characters are the same width.
+Modify the `render` function to set `anchor` to `"nw"`; we didn't do
+that in the previous chapter because all Chinese characters are the
+same width.
+
 ::: {.further}
 If you find font metrics confusing, you're not the only one! In 2012,
 the Michigan Supreme Court heard [*Stand Up for Democracy v. Secretary
@@ -297,7 +295,9 @@ Otherwise, if you never saw an angle bracket, you\'d return an empty
 list of tokens. If you end with an unfinished tag, like if you\'re
 lexing `"Hi!<hr"`, that unfinished tag is thrown out.[^15]
 
-Our `layout` function must now loop over tokens, not text:
+Finally, `layout` has access not just to the text contents of the
+page, but to all tokens on it. Now `layout` must loop over tokens, not
+text:
 
 ``` {.python}
 def layout(tokens):
@@ -307,19 +307,16 @@ def layout(tokens):
                 # ...
 ```
 
-Styling text
-============
-
-Now that we have access to the tags in the `layout` function, we can use
-them to change fonts when directed by the user. Let\'s have four
-different styles, corresponding to bold/normal and italic/roman choices,
-and add two variables to track which style to use:
+Furthermore, `layout` can examine tag tokens to change font when
+directed by the page. Let\'s have four different styles, corresponding
+to bold/normal and italic/roman choices, and add two variables to
+track which style to use:
 
 ``` {.python}
 bold, italic = False, False
 ```
 
-We\'ll need to change those variables as we go through the tokens,
+We'll need to change those variables as we go through the tokens,
 responding to bold and italics open and close tags:
 
 ``` {.python}
@@ -338,11 +335,13 @@ for tok in tokens:
 ```
 
 Note that this code correctly handles not only `<b>bold</b>` and
-`<i>italic</i>` text, but also `<b><i>bold italic</i></b>` text. It even
-handles what you might call mis-nested tags like
-`<b>bold <i>both</b> italic</i>`. It doesn\'t handle
-`<b>accidentally <b>double</b> bolded</b>` text, which we\'ll leave for
-[later](html.md).
+`<i>italic</i>` text, but also `<b><i>bold italic</i></b>`
+text.[^even-misnested]
+
+[^even-misnested]: It even handles what you might call mis-nested tags
+like `<b>bold<i>both</b>italic</i>`, though not
+`<b><b>double</b>bolded</b>` text. We'll return to both in the [next
+chapter](html.md).
 
 Finally, use `bold` and `italic` to choose the font for rendering text.
 Since `bold` and `italic` are computed in `layout` but the canvas
@@ -566,9 +565,9 @@ Exercises
     `dataclass` library, which makes it easier to define these sorts of
     utility classes.
 
-[^14]: If you\'ve done exercises in prior chapters, your code will look
-    different. The code in these chapters always assumes you haven\'t
-    done the exercises, so you\'re on your own to port any
+[^14]: If you\'ve done exercises in prior chapters, your code will
+    look different. Code snippets in the book always assume you
+    haven't done the exercises, so you're on your own to port any
     modifications.
 
 [^15]: This may strike you as an odd decision: perhaps you should raise

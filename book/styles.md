@@ -523,10 +523,7 @@ node doesn\'t have a value for a certain property, it uses its
 parent\'s value instead. Some properties are inherited and some
 aren\'t; it depends on the property. Let\'s implement two inherited
 properties: `font-weight` (which can be `normal` or `bold`) and
-`font-style` (which can be `normal` or `italic`^[Actually, it can also
-be `oblique`. No one knows what that is, though some browsers will use
-that value to display pseudo-italics, that is, roman text that\'s been
-algorithmically slanted.]). To inherit a property, we simple need to
+`font-style` (which can be `normal` or `italic`). To inherit a property, we simple need to
 check, after all the rules and inline styles have been applied,
 whether the property is set and, if it isn\'t, to use the parent
 node\'s style:
