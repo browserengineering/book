@@ -38,19 +38,21 @@ telnet example.org 80
 You might need to install `telnet`; it is often disabled by default.
 On Windows, [go to Programs and Features / Turn Windows features on or
 off](https://www.lifewire.com/what-is-telnet-2626026) in the Control
-panel. On macOS, you can use the `nc -v` command as a replacement:
+panel. When you run it, it'll clear the screen instead of printing
+something, but other than that works normally. On macOS, you can use
+the `nc -v` command as a replacement for `telnet`:
 
 ``` {.example}
 nc -v example.org 80
 ```
 
-The output from `nc` is a little different from `telnet` but it does
-basically the same thing. You can install `telnet` on most Linux
-systems; plus, the `nc` command is usually available from a package
+The output is a little different but it works in the same way.
+On most Linux systems, you can install `telnet` from the package
+manager; plus, the `nc` command is usually available from a package
 called `netcat`.
 :::
 
-You\'ll get output that looks like this:
+You'll get output that looks like this:
 
     Trying 93.184.216.34...
     Connected to example.org.
