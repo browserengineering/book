@@ -65,6 +65,15 @@ keyword argument:
 canvas.create_text(200, 100, text="Hi!", font=font_bi)
 ```
 
+::: {.further}
+If, in the old days, a font was a collection of boxes of metal shapes
+contained in a case, how were the boxes arranged? American type
+setters usually used the [California job case][california], which
+combined lower- and upper-case letters side by side in one case.
+:::
+
+[california]: http://www.alembicpress.co.uk/Typecases/CJCCASE.HTM 
+
 Measuring text
 ==============
 
@@ -168,6 +177,16 @@ canvas.create_text(x, y, text="overlapping!", font=font2, anchor='nw')
 
 Make this change in your `render` function; we didn\'t need it in the
 previous chapter because all Chinese characters are the same width.
+::: {.further}
+If you find font metrics confusing, you're not the only one! In 2012,
+the Michigan Supreme Court heard [*Stand Up for Democracy v. Secretary
+of State*][case], a case that centered on the definition of font size.
+The court decided (correctly) that font size is the size of the metal
+blocks that letters were carved from and not the size of the letters
+themselves.
+:::
+
+[case]: http://publicdocs.courts.mi.gov/opinions/final/sct/20120803_s145387_157_standup-op.pdf 
 
 Word by word
 ============
@@ -210,11 +229,16 @@ spacing" or "leading"[^12] between lines. The 20% line spacing is a
 normal amount.
 
 ::: {.further}
-Line breaking algorithm: http://www.tug.org/docs/liang/liang-thesis.pdf
+Hyphenation allows breaking lines in the middle of a word, giving 
+lines a more even length. Browsers therefore implement the
+[Knuth-Liang hyphenation algorithm][liang], which uses a dictionary of
+word fragments to prioritize possible hyphenation points.
 :::
 
-Separate lexing
-===============
+[liang]: http://www.tug.org/docs/liang/liang-thesis.pdf
+
+Styling text
+============
 
 Right now, all of the text on the page is drawn with one font. But web
 pages sometimes **bold** or *italicise* text using the `<b>` and `<i>`
@@ -340,6 +364,17 @@ if instance(tok, Text):
 
 Make sure to update `render` to expect and use that font entry.
 
+::: {.further}
+*Italic* fonts were developed in Italy (hence the name) to mimic a
+cursive handwriting style called "[chancery hand][chancery]".
+Non-italic fonts are called *roman* because they mimic text on Roman
+monuments. There is an obscure third option: [*oblique*
+fonts][oblique], which look like roman fonts but are slanted.
+:::
+
+[chancery]: https://en.wikipedia.org/wiki/Chancery_hand
+[oblique]: https://en.wikipedia.org/wiki/Oblique_type
+
 Word boundaries
 ===============
 
@@ -422,6 +457,15 @@ little gap between paragraphs. I also reset `terminal_space`; remember
 that spaces at the start of a line aren\'t printed.
 
 Compared to how complicated text is, paragraphs are easy!
+
+::: {.further}
+The CSS 3 [`text-indent` property][text-indent] allows indenting the
+first line or everything but the first line (a "hanging indent").
+There is even an option for indenting after manual line breaks, which
+is sometimes useful for typesetting poetry.
+:::
+
+[text-indent]: https://www.w3.org/TR/css-text-3/#edge-effects
 
 Summary
 =======
