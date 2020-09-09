@@ -51,6 +51,11 @@ def indent(block, n=0):
     block = indentation + block.replace("\n", "\n" + indentation)
     return block[:-n]
 
+def replace(block, *cmds):
+    for find, replace in cmds:
+        block = block.replace(find, replace)
+    return block
+
 def tangle(file):
     with open("/tmp/test", "wb") as f:
         f.write(FILTER.encode("utf8"))
@@ -99,11 +104,13 @@ if __name__ == "__main__":
     count = 0
     for name, block in blocks:
         block = indent(block, name.get("indent", "0"))
+        block = replace(block, *[item.split("/", 1) for item in name.get("replace", "/").split(",")])
         cng = find_block(block, src)
         expected = name.get("expected", "True") == "True"
         if any(l2 for l2, l in cng) == expected:
             count += 1
             print("Block <{}> ({} lines)".format(name, block.count("\n")))
+            if "hide" in name: continue
             for l2, l in cng:
                 if l2:
                     print(">", l, end="")
