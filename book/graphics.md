@@ -451,7 +451,7 @@ and you can call `create_text` to draw them, but the results aren't
 very good. Instead, head to [the OpenMoji
 project](https://openmoji.org), download the emoji for ["grinning
 face"](https://openmoji.org/library/#search=smiley%20face&emoji=1F600)
-as a PNG file, resize it to 16×16 pixels, and save it to the same
+as a PNG file, convert to GIF, resize it to 16×16 pixels, and save it to the same
 folder as the browser. Use `tkinter.PhotoImage` to load the image and
 then `canvas.create_image` to draw it to the screen. You can add other
 emojis if you'd like 😀!
