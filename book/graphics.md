@@ -451,17 +451,17 @@ and you can call `create_text` to draw them, but the results aren't
 very good. Instead, head to [the OpenMoji
 project](https://openmoji.org), download the emoji for ["grinning
 face"](https://openmoji.org/library/#search=smiley%20face&emoji=1F600)
-as a PNG file, convert to GIF, resize it to 16×16 pixels, and save it to the same
-folder as the browser. Use `tkinter.PhotoImage` to load the image and
-then `canvas.create_image` to draw it to the screen. You can add other
-emojis if you'd like 😀!
+as a PNG file, convert to GIF, resize it to 16×16 pixels, and save it
+to the same folder as the browser. Use `tkinter.PhotoImage` to load
+the image and then `canvas.create_image` to draw it to the screen. You
+can add other emojis if you'd like 😀!
 
 *Resizing*: Make the browser resizable. To do so, pass the `fill` and
-`expand` arguments to `canvas.pack` call and bind to the `<Configure>`
-event, which happens when the window is resized. The window's new
-width and height can be found in the `width` and `height` fields on
-the event object. Remember that when the window is resized, the line
-breaks must change, so you will need to call `layout` again.
+`expand` arguments to `canvas.pack`, call and bind to the
+`<Configure>` event, which happens when the window is resized. The
+window's new width and height can be found in the `width` and `height`
+fields on the event object. Remember that when the window is resized,
+the line breaks must change, so you will need to call `layout` again.
 
 *Zoom*: Make the `+` and `-` keys change the text size. You will need
 to use the `font` argument in `create_text` to change the size of
