@@ -196,7 +196,7 @@ Then, `layout` will draw that text, character by character:
 ``` {.python expected=False}
 def layout(self, text):
     for c in text:
-        canvas.create_text(100, 100, text=c)
+        self.canvas.create_text(100, 100, text=c)
 ```
 
 Let's test this code on a real webpage. For reasons that might seem
@@ -214,7 +214,7 @@ every letter in the same place, so they all overlap! Let\'s fix that:
 HSTEP, VSTEP = 13, 18
 x, y = HSTEP, VSTEP
 for c in text:
-    canvas.create_text(x, y, text=c)
+    self.canvas.create_text(x, y, text=c)
     x += HSTEP
 ```
 
