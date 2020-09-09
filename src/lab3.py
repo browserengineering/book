@@ -80,73 +80,70 @@ LINEHEIGHT = 1.2
 
 SCROLL_STEP = 100
 
-class Line:
-    def __init__(self, word, font):
-       self.words = [(0, word, font)]
-       self.width = font.measure(word + " ")
-
-    def append(self, word, font):
-        self.words.append((self.width, word, font))
-        self.width += font.measure(word + " ")
-
 class Layout:
     def __init__(self, tokens):
         self.tokens = tokens
         self.display_list = []
 
-    def flush_line(self, y, line):
-        if not line: return
-        max_ascent = max([font.metrics("ascent") for x, word, font in line.words])
-        baseline = y + max_ascent
-        for x, word, font in line.words:
-            self.display_list.append((x + HSTEP, baseline - font.metrics("ascent"), word, font))
+        self.x = HSTEP
+        self.y = VSTEP
+        self.weight = "normal"
+        self.style = "roman"
+        self.size = 16
 
-    def layout(self):
-        line = None
-        y = VSTEP
-        size, bold, italic = 16, False, False
-        for tok in self.tokens:
-            if isinstance(tok, Text):
-                font = tkinter.font.Font(
-                    family="Times",
-                    size=size,
-                    weight=("bold" if bold else "normal"),
-                    slant=("italic" if italic else "roman"),
-                )
-                for word in tok.text.split():
-                    w = font.measure(word)
-                    if not line:
-                        line = Line(word, font)
-                    elif line.width + w >= WIDTH - HSTEP:
-                        self.flush_line(y, line)
-                        line = Line(word, font)
-                        y += font.metrics("linespace") * LINEHEIGHT
-                    else:
-                        line.append(word, font)
-            elif tok.tag == "i":
-                italic = True
-            elif tok.tag == "/i":
-                italic = False
-            elif tok.tag == "b":
-                italic = True
-            elif tok.tag == "/b":
-                italic = False
-            elif tok.tag == "small":
-                size -= 2
-            elif tok.tag == "/small":
-                size += 2
-            elif tok.tag == "big":
-                size += 4
-            elif tok.tag == "/big":
-                size -= 4
-            elif tok.tag == "br" or tok.tag == "br/":
-                self.flush_line(y, line)
-                line = None
-                y += font.metrics("linespace") * LINEHEIGHT
-            elif tok.tag == "/p":
-                self.flush_line(y, line)
-                line = None
-                y += font.metrics("linespace") * LINEHEIGHT + VSTEP
+        self.line = []
+        for tok in tokens:
+            self.token(tok)
+
+    def token(self, tok):
+        if isinstance(tok, Text):
+            self.text(tok.text)
+        elif tok.tag == "i":
+            self.style = "italic"
+        elif tok.tag == "/i":
+            self.style = "roman"
+        elif tok.tag == "b":
+            self.weight = "bold"
+        elif tok.tag == "/b":
+            self.weight = "normal"
+        elif tok.tag == "small":
+            self.size -= 2
+        elif tok.tag == "/small":
+            self.size += 2
+        elif tok.tag == "big":
+            self.size += 4
+        elif tok.tag == "/big":
+            self.size -= 4
+        elif tok.tag == "br":
+            self.flush()
+        elif tok.tag == "/p":
+            self.flush()
+            self.y += VSTEP
+        
+    def text(self, text):
+        font = tkinter.font.Font(
+            size=self.size,
+            weight=self.weight,
+            slant=self.style,
+        )
+        for word in text.split():
+            w = font.measure(word)
+            if self.x + w >= WIDTH - HSTEP:
+                self.flush()
+            self.line.append((self.x, word, font))
+            self.x += w + font.measure(" ")
+
+    def flush(self):
+        if not self.line: return
+        max_ascent = max([1.2 * font.metrics("ascent") for x, word, font in self.line])
+        baseline = self.y + max_ascent
+        for x, word, font in self.line:
+            y = baseline - font.metrics("ascent")
+            self.display_list.append((x, y, word, font))
+        max_descent = max([1.2 * font.metrics("descent") for x, word, font in self.line])
+        self.y = baseline + max_descent
+        self.x = HSTEP
+        self.line = []
 
 class Browser:
     def __init__(self):
@@ -160,15 +157,15 @@ class Browser:
 
         self.scroll = 0
         self.window.bind("<Down>", self.scrolldown)
+        self.display_list = []
 
     def layout(self, tokens):
-        self.layout = Layout(tokens)
-        self.layout.layout()
+        self.display_list = Layout(tokens).display_list
         self.render()
 
     def render(self):
         self.canvas.delete("all")
-        for x, y, word, font in self.layout.display_list:
+        for x, y, word, font in self.display_list:
             if y > self.scroll + HEIGHT: continue
             if y + font.metrics("linespace") < self.scroll: continue
             self.canvas.create_text(x, y - self.scroll, text=word, font=font, anchor="nw")
