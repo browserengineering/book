@@ -58,19 +58,19 @@ class Tag:
 def lex(body):
     out = []
     text = ""
-    in_angle = False
+    in_tag = False
     for c in body:
         if c == "<":
-            in_angle = True
+            in_tag = True
             if text: out.append(Text(text))
             text = ""
         elif c == ">":
-            in_angle = False
+            in_tag = False
             out.append(Tag(text))
             text = ""
         else:
             text += c
-    if not in_angle and text:
+    if not in_tag and text:
         out.append(Text(text))
     return out
 
@@ -128,22 +128,23 @@ class Layout:
         )
         for word in text.split():
             w = font.measure(word)
-            if self.x + w >= WIDTH - HSTEP:
+            if self.x + w > WIDTH - HSTEP:
                 self.flush()
             self.line.append((self.x, word, font))
             self.x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
-        max_ascent = max([1.2 * font.metrics("ascent") for x, word, font in self.line])
-        baseline = self.y + max_ascent
+        metrics = [font.metrics() for x, word, font in self.line]
+        max_ascent = max([metric["ascent"] for metric in metrics])
+        baseline = self.y + 1.2 * max_ascent
         for x, word, font in self.line:
             y = baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font))
-        max_descent = max([1.2 * font.metrics("descent") for x, word, font in self.line])
-        self.y = baseline + max_descent
         self.x = HSTEP
         self.line = []
+        max_descent = max([metric["descent"] for metric in metrics])
+        self.y = baseline + 1.2 * max_descent
 
 class Browser:
     def __init__(self):

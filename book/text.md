@@ -6,11 +6,10 @@ next: html
 ...
 
 In the last chapter, your web browser created a graphical window and
-drew a grid of characters to it. That's OK for Chinese text, but
-English text features characters of different widths and words that
-you can't break across lines.[^1] In this chapter, we'll add those
-capabilities to your browser. You'll be able to read this page page in
-your browser!
+drew a grid of characters to it. That's OK for Chinese, but English
+text features characters of different widths and words that you can't
+break across lines.[^1] In this chapter, we'll add those capabilities.
+You'll be able to read this page in your browser!
 
 [^1]: There are lots of languages in the world, and lots of
     typographic conventions. A real web browser supports every
@@ -84,9 +83,10 @@ canvas.create_text(200, 100, text="Hi!", font=bi_times)
 
 ::: {.further}
 Old-timey fonts were boxes of metal slugs contained in a case. How were
-those boxes arranged within a case? American type setters usually used
-the [California job case][california], which combined lower- and
-upper-case letters side by side in one case.
+those boxes arranged within that case? American type setters usually
+used the [California job case][california], which combined lower- and
+upper-case letters side by side in one case, making type setting
+easier.
 :::
 
 [california]: http://www.alembicpress.co.uk/Typecases/CJCCASE.HTM 
@@ -108,8 +108,8 @@ Text takes up space vertically and horizontally, and the font object's
     right---text rendering is OS-dependent, because it is complex
     enough that everyone uses one of a few libraries to do it, usually
     libraries that ship with the OS. That's why macOS fonts tend to be
-    "blurrier" than the same font on Windows; different libraries that
-    make different choices.
+    "blurrier" than the same font on Windows: different libraries make
+    different trade-offs.
 
 The `metrics` call yields information about the vertical dimensions of
 the text: the `linespace` is how tall the text is, which includes an
@@ -191,12 +191,12 @@ canvas.create_text(x, y, text="world!", font=font2)
 You should see "Hello," and "world!", correctly aligned and with the
 second word italicized.
 
-Unfortunately, there is a bug in this code that happens to be masked
-by the choice of "Hello, world!". Replace "world!" with "overlapping!"
-and the two words will overlap. That's because the coordinates `x` and
-`y` that you pass to `create_text` tell Tk where to put the *center*
-of the text. It only worked for "Hello, world!" because "Hello," and
-"world!" are the same length!
+Unfortunately, this code has a bug, though one masked by the choice of
+example text: replace "world!" with "overlapping!" and the two words
+will overlap. That's because the coordinates `x` and `y` that you pass
+to `create_text` tell Tk where to put the *center* of the text. It
+only worked for "Hello, world!" because "Hello," and "world!" are the
+same length!
 
 Luckily, the meaning of the coordinate you pass in is configurable. We
 can instruct Tk to treat the coordinate we gave as the top-left corner
@@ -258,12 +258,12 @@ so we add to the display list; and finally we update `x` to point to the
 end of the word.
 
 There are a few surprises in this code. One is that I call `metrics`
-with an argument; that just returns the named metric directly. Also,
-instead of incrementing `x` by `w`, we increment it by `w +
-font.measure(" ")`. That's because we want to have spaces between our
-words. When we called `split()` we removed all of the whitespace, and
-this adds it back. We don't add the space to `w` on the second line,
-though, because we don't need a space after the last word on a line.
+with an argument; that just returns the named metric directly. Also, I
+increment `x` by `w + font.measure(" ")` instead of `w`. That's
+because I want to have spaces between the words: the call to `split()`
+removed all of the whitespace, and this adds it back. I don't add the
+space to `w` on the second line, though, because you don't need a
+space after the last word on a line.
 
 Finally, note that I multiply the linespace by 1.2 when incrementing
 `y`. Try removing the multiplier: you'll see that the text is harder
@@ -280,13 +280,15 @@ line spacing is a normal amount.
     it "led-ing" not "leed-ing".
 
 ::: {.further}
-Hyphenation allows breaking lines in the middle of a word, giving 
-lines a more even length. Browsers therefore implement the
-[Knuth-Liang hyphenation algorithm][liang], which uses a dictionary of
-word fragments to prioritize possible hyphenation points.
+Breaking lines in the middle of a word is called hyphenation, and can
+be turned on via the [`hyphens` CSS propert][hyphens]. Browsers
+use the [Knuth-Liang hyphenation algorithm][liang], which uses a
+dictionary of word fragments to prioritize possible hyphenation
+points, to implement this.
 :::
 
 [liang]: http://www.tug.org/docs/liang/liang-thesis.pdf
+[hyphens]: https://drafts.csswg.org/css-text-3/#hyphens-property
 
 Styling text
 ============
@@ -316,8 +318,7 @@ class Tag:
         self.tag = tag
 ```
 
-`lex` will now accumlate text into `Text` objects and tag contents
-into `Tag`s:[^14]
+`lex` must now gather text into `Text` and `Tag` objects:[^14]
 
 [^14]: If you've done exercises in prior chapters, your code will look
     different. Code snippets in the book always assume you haven't
@@ -328,36 +329,36 @@ into `Tag`s:[^14]
 def lex(body):
     out = []
     text = ""
-    in_angle = False
+    in_tag = False
     for c in body:
         if c == "<":
-            in_angle = True
+            in_tag = True
             if text: out.append(Text(text))
             text = ""
         elif c == ">":
-            in_angle = False
+            in_tag = False
             out.append(Tag(text))
             text = ""
         else:
             text += c
-    if not in_angle and text:
+    if not in_tag and text:
         out.append(Text(text))
     return out
 ```
 
-In this code, `Text` and `Tag` are asymmetric: the code avoids empty
-`Text` objects, but not empty `Tag` objects. That's because an empty
-`Tag` object represents the HTML code `<>`, while an empty `Text`
-object with empty text represents no content at all. Finally, note
-that at the end of the loop, the code dumps any accumulated text into
-a `Text` object. Otherwise, if you never saw an angle bracket, you'd
-return an empty list of tokens. If you end with an unfinished tag,
-like if you're lexing `"Hi!<hr"`, that unfinished tag is thrown
-out.[^15]
+At the end of the loop, `lex` dumps any accumulated text as a `Text`
+object. Otherwise, if you never saw an angle bracket, you'd return an
+empty list of tokens. But unfinished tags, like in `Hi!<hr`, are
+thrown out.[^15]
 
 [^15]: This may strike you as an odd decision: why not raise an error,
     or finish up the tag for the author? Good questions, but dropping
     the tag is what browsers do.
+
+Note that `Text` and `Tag` are asymmetric: `lex` avoids empty
+`Text` objects, but not empty `Tag` objects. That's because an empty
+`Tag` object represents the HTML code `<>`, while an empty `Text`
+object with empty text represents no content at all.
 
 Now `layout` has access not just to the text of the page, but also the
 tags in it. So `layout` must loop over tokens, not text:
@@ -371,9 +372,8 @@ def layout(tokens):
 ```
 
 `layout` can also examine tag tokens to change font when directed by
-the page. Let's start with support for four different styles,
-corresponding to bold/normal and italic/roman choices. Two variables
-will track which style to use:
+the page. Let's start with support for weights and styles, with two
+corresponding variables:
 
 ``` {.python replace=weight/self.weight,style/self.style}
 weight = "normal"
@@ -396,7 +396,6 @@ elif tok.tag == "/b":
     weight = "normal"
 ```
 
-
 Note that this code correctly handles not only `<b>bold</b>` and
 `<i>italic</i>` text, but also `<b><i>bold italic</i></b>`
 text.[^even-misnested]
@@ -406,21 +405,24 @@ text.[^even-misnested]
     `<b><b>twice</b>bolded</b>` text. We'll return to both in the
     [next chapter](html.md).
 
-Finally, `layout` must use `bold` and `italic` to rendering text.
-Since `bold` and `italic` are computed in `layout` but the canvas
-methods themselves are called `render`, we'll need to add the font
-used to each entry in the display list.
+The `bold` and `italic` variables are used to select the font. Since
+the font is computed in `layout` but used in `render`, we'll need to
+add the font used to each entry in the display list.
 
 ``` {.python expected=False}
 if instance(tok, Text):
-    font = tkinter.font.Font(size=16, weight=weight, slant=style)
+    font = tkinter.font.Font(
+        size=16,
+        weight=weight,
+        slant=style,
+    )
     for word in tok.text.split():
         # ...
         display_list.append((x, y, word, font))
 ```
 
-Make sure to update `render` to expect and use the extra font field in
-display list items.
+Make sure to update `render` to expect and use this extra font field
+in display list entries.
 
 ::: {.further}
 *Italic* fonts were developed in Italy (hence the name) to mimic a
@@ -456,8 +458,8 @@ self.style = "roman"
 self.size = 16
 ```
 
-Since the core of `layout` is iterating over each token, we can move
-the body of the loop to a method:
+The core of the old `layout` is a loop over tokens, and we can move
+the body of that loop to a method on `Layout`:
 
 ``` {.python}
 def __init__(self, tokens):
@@ -476,9 +478,13 @@ def token(self, tok):
 In fact, the body of the `isinstance(tok, Text)` branch can be moved
 to its own method:
 
-``` {.pythonn}
+``` {.python replace=16/self.size indent=4}
 def text(self, text):
-    font = tkinter.font.Font(size=16, weight=self.weight, slant=self.style)
+    font = tkinter.font.Font(
+        size=16,
+        weight=self.weight,
+        slant=self.style,
+    )
     for word in text.split():
         # ...
 ```
@@ -500,11 +506,10 @@ so much that you get confused and have to abandon the whole refactor.
 Anyway, this refactor isolated all of the text-handling code into its
 own method, with the main `token` function just branching on the tag
 name. Let's take advantage of the new, cleaner organization to add
-more, and more complicated, tags.
-
-With font styles and weights working, size is the next frontier in
-typographic sophistication. One simple way to change font size is the
-`<small>` tag and its obsolete sister the `<big>` tag.[^why-obsolete]
+more tags. With font weights and styles working, size is the next
+frontier in typographic sophistication. One simple way to change font
+size is the `<small>` tag and its deprecated sister tag
+`<big>`.[^why-obsolete]
 
 [^why-obsolete]: In your web design projects, use the CSS `font-size`
     property to change text size instead of `<big>` and `<small>`. But
@@ -543,8 +548,8 @@ def token(self, tok):
         self.size -= 4
 ```
 
-Try wrapping a whole paragraph text in `<small>`, like you would a bit
-of fine print, and enjoy your newfound typographical freedom.
+Try wrapping a whole paragraph in `<small>`, like you would a bit of
+fine print, and enjoy your newfound typographical freedom.
 
 ::: {.further}
 All of `<b>`, `<i>`, `<big>`, and `<small>` date from an earlier,
@@ -559,78 +564,87 @@ Text of different sizes
 =======================
 
 Start mixing font sizes, like `<small>a</small><big>A</big>`, and
-you'll quickly notice a problem with our browser's font size support:
-the text is aligned along its top, not "along the line".
+you'll quickly notice a problem with the font size code: the text is
+aligned along its top, not "along the line", as if it's hanging from a
+clothes line.
 
 Let's think through how to fix this. If the big text is moved up, it
 would overlap with the previous line, so the smaller text has to be
-moved down. Since the small text comes *before* the big text, that
-means its vertical position has to be computed later, *after* the big
-text passes through `token`.
+moved down. That means its vertical position has to be computed later,
+*after* the big text passes through `token`. But since the small text
+comes through the loop first, we need a *two-pass* algorithm for lines
+of text: the first pass identifies what words go in the line and
+computes their `x` positions, while the second pass vertically aligns
+the words and computes their `y` positions.
 
-This suggests a *two-pass* algorithm for lines of text. The browser
-takes a first pass through all of the words, computing their style and
-`x` position, until it reaches the end of the line. Now it's clear
-what words will fit in that line, so the words can be vertically
-aligned and their `y` positions determined in a second pass.
+Let's start with phase one. Since one line contains text from many
+tags, we need a a field on `Layout` to store the line-to-be. That
+field, `line`, will be a list, and `text` will add words to it instead
+of the display list. Entries in `line` will have `x` but not `y`
+positions, since `y` positions aren't computed in the first phase:
 
-To start implementing this, we'll need a place to store the contents
-of the line. Since that persists across tokens—one line contains text
-from many tags—it has to be a field on `Layout`:
 
 ``` {.python}
 def __init__(self, tokens):
     # ...
     self.line = []
     # ...
-```
 
-Instead of adding words to the display list, `text` now needs to add
-them to `self.line`; and when it does that it shouldn't include a `y`
-position, since that's not part of the first phase:
-
-```
-self.line.append((self.x, word, font))
+def text(self, text):
+    # ...
+    for word in text.split():
+        # ...
+        self.line.append((self.x, word, font))
 ```
 
 The second phase, meanwhile, needs to happen when we're finished with
 a line; I'm calling that second phase `flush()`:
 
-```
+``` {.python}
 if self.x + w > WIDTH - HSTEP:
     self.flush()
 ```
 
 This new `flush` function has three main responsibilities:
 
-1. It must align the words on the line;
+1. It must align the words along the line;
 2. It must add all those words to the display list; and
 3. It must update the `x` and `y` fields
 
-Let's start by ignoring empty lines:
+Since we want words to line up "on the line", let's start by computing
+where that line should be. That depends on the metrics for all the
+fonts involved:
 
 ``` {.python}
 def flush(self):
     if not self.line: return
+    metrics = [font.metrics() for x, word, font in self.line]
 ```
 
-Now, what about those `y` positions? Well, since we want words to line
-up "on the line", let's start by computing where that line should be.
-To do that, we need to locate the tallest word:
+To line up the words up "along the line", let's start by computing
+where that line should be. We need to locate the tallest word:
 
 ``` {.python}
-max_ascent = max([1.2 * font.metrics("ascent") for x, word, font in self.line])
+max_ascent = max([metric["ascent"] for metric in metrics])
 ```
 
-Here the factor of `1.2` accounts for the leading. The line is then
-`max_ascent` below `self.y`:
+The line is then `max_ascent` below `self.y`—or actually a little more
+to account for the leading:[^leading-half]
+
+[leading-half]: Actually actually, 20% leading doesn't add 20% of the
+    ascender above the ascender and 20% of the descender below the
+    descender. Instead, it adds 10% of the line height in both places.
+    
+::: {.todo}
+The leading footnote should be a "Go Further" block.
+:::
 
 ``` {.python}
-baseline = self.y + max_ascent
+baseline = self.y + 1.2 * max_ascent
 ```
 
 Now that we know where the line is, we can place each word relative to
-that line, and then add the word to the display list:
+that line and add it to the display list:
 
 ``` {.python}
 for x, word, font in self.line:
@@ -641,27 +655,31 @@ for x, word, font in self.line:
 Note how `y` starts at the baseline, and moves *up* by just enough to
 accomodate that word's ascender.
 
-Finally, `flush` must update the `x` and `y` fields. And `y` has to
-move further below `baseline` to account for the tallest descender as
-well:
+Finally, `flush` must update the `Layout`'s `x`, `y`, and `line`
+fields. `x` and `line` are easy:
 
 ``` {.python}
-max_descent = max([1.2 * font.metrics("descent") for x, word, font in self.line])
-self.y = baseline + max_descent
 self.x = HSTEP
+self.line = []
 ```
 
-The browser now lays out mixed-size text properly: all the text is
-aligned along the line, and larger text doesn't overlap previous lines
-of text. Plus, this new `flush` function is convenient for other line
+Meanwhile, `y` must be far enough below `baseline` to account for the
+deepest descender:
+
+``` {.python}
+max_descent = max([metric["descent"] for metric in metrics])
+self.y = baseline + 1.2 * max_descent
+```
+
+Now all the text is aligned along the line, even when text sizes are
+mixed. Plus, this new `flush` function is convenient for other line
 breaking jobs. For example, in HTML the `<br>` tag[^self-closing] ends
 the current line and starts a new one:
 
-[^self-closing]: Which is a self-closing tag, so there's no `</br>` tag.
-    Many tags that represent content, instead of properties of the
-    text they surround, are self-closing like this. Some people like
-    adding a final slash to self-closing tags, like `<br/>`, but this
-    is not required in HTML.
+[^self-closing]: Which is a self-closing tag, so there's no `</br>`.
+    Many tags that *are* content, instead of annotating it, are like
+    this. Some people like adding a final slash to self-closing tags,
+    like `<br/>`, but this is not required in HTML.
 
 ``` {.python}
 def token(self, tok):
@@ -670,8 +688,8 @@ def token(self, tok):
         self.flush()
 ```
 
-Paragraphs are defined by the `<p>` and `</p>` tags. The end of a
-paragraph also ends the current line:
+Likewise, paragraphs are defined by the `<p>` and `</p>` tags, so
+`</p>` also ends the current line:
 
 ``` {.python indent=4}
 def token(self, tok):
@@ -681,7 +699,8 @@ def token(self, tok):
         self.y += VSTEP
 ```
 
-I add a bit extra to `y` here to add a little gap between paragraphs.
+I add a bit extra to `y` here to create a little gap between
+paragraphs.
 
 ::: {.further}
 The CSS 3 [`text-indent` property][text-indent] allows indenting the
@@ -703,25 +722,24 @@ does English, too:
 - Text can be bold or italic
 - Text of different sizes can be mixed
 
-The browser is now good enough to read an essay, a blog, or a book!
+You can now use your browser to read an essay, a blog post, or a book!
 
 Exercises
 =========
 
-*Links:* The `<a>` tag[^a-for-anchor] identifies links, and normally
-it has attributes (like `<a href="...">`). Identify links and color
-them in blue with an underline. You can use the `underline` argument
-to the `Font` constructor to underline things.
+*Links:* The `<a>` tag[^a-for-anchor] defines links. Color them in
+blue with an underline; there's an `underline` argument to the `Font`
+constructor. Note that links normally have attributes, as in `<a
+href="...">`.
 
 [^a-for-anchor]: The `<a>` tag is short for "anchor". I don't think it
     makes sense, but (despite an attempt to get rid of the tag in
     XHTML 2) we're stuck with it.
 
-*Centered Text:* This book's page titles are centered. You can find
-them enclosed in `<h1 class="title">` and `</h1>` tags. Implement
-centered text for these tags. When you center text, each line has to
-be centered individually, because different lines will have different
-lengths.
+*Centered Text:* This book's page titles are centered: find them
+between `<h1 class="title">` and `</h1>`. Make your browser center the
+text in these titles. Each line has to be centered individually,
+because different lines will have different lengths.
 
 *Superscripts:* Add support for the `<sup>` tag: text in this tag
 should be smaller (perhaps half the normal text size) and be placed so
@@ -731,15 +749,15 @@ letter.
 *Soft hyphens:* The soft hyphen character, written `\N{soft hyphen}`
 in Python, represents a place where the text renderer can, but doesn't
 have to, insert a hyphen and break the word across lines. Add support
-for it. If a word cannot be placed at the end of a line, check if it
-has soft hyphens, and if so break the word across lines. Remember that
-a word can have multiple soft hyphens in it. Make sure to draw a
-hyphen when you break a word at a soft hyphen. The word
-"super­cala­fraga­listic­expi­ala­doshus" is a good test case.
+for it. If a word doesn't fit at the end of a line, check if it has
+soft hyphens, and if so break the word across lines. Remember that a
+word can have multiple soft hyphens in it, and make sure to draw a
+hyphen when you break a word. The word
+"super­cala­fraga­listic­expi­ala­do­shus" is a good test case.
 
-*Preformatting:* Add support for the `<pre>` tag. Unlike normal
+*Preformatted text:* Add support for the `<pre>` tag. Unlike normal
 paragraphs, text inside `<pre>` tags doesn't automatically break
 lines, and whitespace like spaces and newlines are preserved. Use a
 fixed-width font like `Courier New` or `SFMono` as well. Make sure
 tags work normally inside `<pre>` tags: it should be possible to bold
-part `<pre>` text. You shouldn't need to modify `lex`.
+some text inside a `<pre>`.
