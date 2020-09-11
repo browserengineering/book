@@ -75,6 +75,12 @@ bi_times = tkinter.font.Font(
 )
 ```
 
+::: {.quirk}
+Your computer might not have "Times" installed. The
+`tkinter.font.families()` command lists the fonts available on your
+machine; and pick something other than `Times` if you need to.
+:::
+
 Font objects can be passed to `create_text`'s `font` argument:
 
 ``` {.python expected=False}
