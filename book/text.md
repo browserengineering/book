@@ -82,11 +82,11 @@ canvas.create_text(200, 100, text="Hi!", font=bi_times)
 ```
 
 ::: {.further}
-Old-timey fonts were boxes of metal slugs contained in a case. How were
-those boxes arranged within that case? American type setters usually
-used the [California job case][california], which combined lower- and
-upper-case letters side by side in one case, making type setting
-easier.
+In the olden times, American type setters kept their boxes of metal
+shapes arranged in a [California job case][california], which combined
+lower- and upper-case letters side by side in one case, making type
+setting easier. The upper-/lower-case nomenclature dates from
+centuries earlier.
 :::
 
 [california]: http://www.alembicpress.co.uk/Typecases/CJCCASE.HTM 
