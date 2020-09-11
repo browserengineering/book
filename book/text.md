@@ -703,13 +703,13 @@ I add a bit extra to `y` here to create a little gap between
 paragraphs.
 
 ::: {.further}
-The CSS 3 [`text-indent` property][text-indent] allows indenting the
-first line or everything but the first line (a "hanging indent").
-There is even an option for indenting after manual line breaks, which
-is sometimes useful for typesetting poetry.
+Actually, browsers support not only *horizontal* but also [*vertical*
+writing systems][vertical], like some traditional East Asian writing
+styles. A particular challenge is [Mongolian script][mongolian].
 :::
 
-[text-indent]: https://www.w3.org/TR/css-text-3/#edge-effects
+[vertical]: https://www.smashingmagazine.com/2019/08/writing-modes-layout/
+[mongolian]: https://www.w3.org/TR/mlreq/
 
 Summary
 =======
