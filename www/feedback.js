@@ -1,3 +1,4 @@
+'use strict';
 
 // Thanks for reading the code! You can hit Ctrl+E to access the feedback tools.
 
