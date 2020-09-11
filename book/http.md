@@ -84,8 +84,8 @@ information,[^11] then comes the path, and finally there is the word
 HTTP.[^12] There are several versions of HTTP ([0.9, 1.0, 1.1, and
 2.0](https://medium.com/platform-engineer/evolution-of-http-69cfe6531ba0)).
 The HTTP 1.1 standard adds a variety of useful features, like
-keep-alive, but in the interest of simplicity our browser won\'t use
-them. We\'re also not implementing HTTP 2.0; HTTP 2.0 is much more
+keep-alive, but in the interest of simplicity our browser won't use
+them. We're also not implementing HTTP 2.0; HTTP 2.0 is much more
 complex than the 1.X series, and is intended for large and complex web
 applications, which our browser can't run anyway.
 
@@ -93,7 +93,7 @@ After the first line, each line contains a *header*, which has a name
 (like `Host`) and a value (like `example.org`). Different headers mean
 different things; the `Host` header, for example, tells the host who you
 think it is.[^13] There are lots of other headers one could send, but
-let\'s stick to just `Host` for now.[^14]
+let's stick to just `Host` for now.[^14]
 
 Finally, after the headers comes a single blank line; that tells the
 host that you are done with headers. So type a blank line into
@@ -104,7 +104,7 @@ and you should get a response from `example.org`.
     there are some other, more obscure options.
 
 [^12]: Why not 1.1? You can use 1.1, but then you need another header
-    (`Connection`) to handle a feature called \"keep-alive\". Using 1.0
+    (`Connection`) to handle a feature called "keep-alive". Using 1.0
     avoids this complexity.
 
 [^13]: This is useful when the same IP address corresponds to multiple
@@ -118,7 +118,7 @@ and you should get a response from `example.org`.
 ::: {.further}
 The HTTP/1.0 standard is also known as [RFC
 1945](https://tools.ietf.org/html/rfc1945). The HTTP/1.1 standard is
-[RFC 2616](https://tools.ietf.org/html/rfc2616), so if you\'re
+[RFC 2616](https://tools.ietf.org/html/rfc2616), so if you're
 interested in `Connection` and keep-alive, look there.
 :::
 
@@ -176,7 +176,7 @@ There is *a lot* here, about the information you are requesting
 (`Content-Type`, `Content-Length`, and `Last-Modified`), about the
 server (`Server`, `X-Cache`), about how long the browser should cache
 this information (`Cache-Control`, `Expires`, `Etag`), about all sorts
-of other stuff. Let\'s move on for now.
+of other stuff. Let's move on for now.
 
 After the headers there is a blank line followed by a bunch of HTML
 code. This is called the *body* of the server's response, and your
@@ -195,7 +195,7 @@ Wikipedia](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
 Telnet in Python
 ================
 
-So far we\'ve communicated with another computer using `telnet`. But it
+So far we've communicated with another computer using `telnet`. But it
 turns out that `telnet` is quite a simple program, and we can do the
 same programmatically. It'll require extracting host name and path
 from the URL, creating a *socket*, sending a request, and receiving a
@@ -213,8 +213,8 @@ and there can be something tacked onto the end, a *fragment* like
 `#section` or a *query* like `?s=term`. We'll come back to ports later
 in this chapter, and some other URL components appear in exercises.
 
-In Python, there\'s a library called `urllib.parse` that splits a URL
-into these pieces, but let's write our own.[^3] We\'ll start with the
+In Python, there's a library called `urllib.parse` that splits a URL
+into these pieces, but let's write our own.[^3] We'll start with the
 scheme---our browser only supports `http`, so we just need to check
 that the URL starts with `http://` and then strip that off:
 
@@ -252,9 +252,9 @@ multiple ways to talk to other computers:
     other computer. Address families have names that begin with `AF`. We
     want `AF_INET`, but for example `AF_BLUETOOTH` is another.
 -   A socket has a *type*, which describes the sort of conversation
-    that\'s going to happen. Types have names that begin with `SOCK`. We
+    that's going to happen. Types have names that begin with `SOCK`. We
     want `SOCK_STREAM`, which means each computer can send arbitrary
-    amounts of data over, but there\'s also `SOCK_DGRAM`, in which case
+    amounts of data over, but there's also `SOCK_DGRAM`, in which case
     they send each other packets of some fixed size.[^15]
 -   A socket has a *protocol*, which describes the steps by which the
     two computers will establish a connection. Protocols have names that
@@ -292,7 +292,7 @@ characters.
 :::
 
 ::: {.further}
-You can find out more about the \"sockets\" API on
+You can find out more about the "sockets" API on
 [Wikipedia](https://en.wikipedia.org/wiki/Berkeley_sockets). Python
 more or less implements that API directly.
 :::
@@ -309,17 +309,17 @@ s.send(b"GET /index.html HTTP/1.0\r\n" +
 ```
 
 There are a few things to be careful of here. First, it's important to
-have the letter "b" before the string. Next, it\'s very important to
+have the letter "b" before the string. Next, it's very important to
 use `\r\n` instead of `\n` for newlines. And finally, it's essential
 that you put *two* newlines `\r\n` at the end, so that you send that
 blank line at the end of the request. If you forget that, the other
-computer will keep waiting on you to send that newline, and you\'ll
+computer will keep waiting on you to send that newline, and you'll
 keep waiting on its response. Computers are dumb.
 
 ::: {.quirk}
-Time for a Python quirk. When you send data, it\'s important to
+Time for a Python quirk. When you send data, it's important to
 remember that you are sending raw bits and bytes; they could form text
-or an image or video. That\'s why here I have a letter `b` in front of
+or an image or video. That's why here I have a letter `b` in front of
 the string of data: that tells Python that I mean the bits and bytes
 that represent the text I typed in, not the text itself. You can
 also see this in the type changing from `str` to  `bytes`:
@@ -337,12 +337,12 @@ versus `bytes`. You can turn a `str` into `bytes` by calling its
 `decode("utf8")`.[^18]
 :::
 
-You\'ll notice that the `send` call returns a number, in this case `47`.
+You'll notice that the `send` call returns a number, in this case `47`.
 That tells you how many bytes of data you sent to the other computer;
 if, say, your network connection failed midway through sending the data,
 you might want to know how much you sent before the connection failed.
 
-To read the response, you\'d generally use the `read` function on
+To read the response, you'd generally use the `read` function on
 sockets, which gives whatever bits of the response have already
 arrived. Then you write a loop that collects bits of the response as
 they arrive. However, in Python you can use the `makefile` helper
@@ -358,7 +358,7 @@ into a string using the `utf8` *encoding*, or method of associating
 bytes to letters.[^21] I'm also informing Python of HTTP's weird line
 endings.
 
-Let\'s now split the response into pieces. The first line is the
+Let's now split the response into pieces. The first line is the
 status line:
 
 ``` {.python}
@@ -367,7 +367,7 @@ version, status, explanation = statusline.split(" ", 2)
 assert status == "200", "{}: {}".format(status, explanation)
 ```
 
-Note that I do *not* check that the server\'s version of HTTP is the
+Note that I do *not* check that the server's version of HTTP is the
 same as mine; this might sound like a good idea, but there are a lot
 of misconfigured servers out there that respond in HTTP 1.1 even when
 you talk to them in HTTP 1.0.^[Luckily the protocols are similar
@@ -421,7 +421,7 @@ Displaying the HTML
 ===================
 
 The HTML code in the body defines the content you see in your browser
-window when you go to <http://example.org/index.html>. I\'ll be
+window when you go to <http://example.org/index.html>. I'll be
 talking much, much more about HTML in future chapters, but for now let
 me keep it very simple.
 
@@ -433,7 +433,7 @@ is enclosed a pair of tags: `<title>` and `</title>`. Each tag, inside
 the angle brackets, has a tag name (like `title` here), and then
 optionally a space followed by *attributes*, and its pair has a `/`
 followed by the tag name (and no attributes). Some tags do not have
-pairs, because they don\'t surround text, they just carry information.
+pairs, because they don't surround text, they just carry information.
 For example, on <http://example.org/index.html>, there is the tag:
 
 ``` {.example}
@@ -441,7 +441,7 @@ For example, on <http://example.org/index.html>, there is the tag:
 ```
 
 This tag explains that the character set with which to interpret the
-page body is `utf-8`. Sometimes, tags that don\'t contain information
+page body is `utf-8`. Sometimes, tags that don't contain information
 end in a slash, but not always; it's a matter of preference.
 
 The most important HTML tag is called `<body>` (with its pair,
@@ -451,7 +451,7 @@ aforementioned title, information about how the page should look
 (`<style>` and `</style>`), and metadata (the aforementioned `<meta>`
 tag).
 
-So, to create our very very simple web browser, let\'s take the page
+So, to create our very very simple web browser, let's take the page
 HTML and print all the text, but not the tags, in it:[^23]
 
 ``` {.python}
@@ -655,11 +655,11 @@ header contains some other value, it's best not to cache the response.
 
 [^6]: Today there are two versions of IP: IPv4 and IPv6. IPv6 addresses
     are a lot longer and are usually in hex, but otherwise the
-    differences don\'t matter here.
+    differences don't matter here.
 
-[^7]: I\'m skipping steps here. On wires you first have to wrap
+[^7]: I'm skipping steps here. On wires you first have to wrap
     communications in ethernet frames, on wireless you have to do even
-    more. I\'m trying to be brief.
+    more. I'm trying to be brief.
 
 [^8]: Or a switch, or an access point, there are a lot of possibilities,
     but eventually there is a router.
@@ -668,27 +668,27 @@ header contains some other value, it's best not to cache the response.
     forward the reply back, especially in the case of NATs.
 
 
-[^15]: The `DGRAM` stands for \"datagram\" and think of it like a
+[^15]: The `DGRAM` stands for "datagram" and think of it like a
     postcard.
 
-[^16]: Nowadays some browsers support protocols that don\'t use TCP,
-    like Google Chrome\'s [QUIC
+[^16]: Nowadays some browsers support protocols that don't use TCP,
+    like Google Chrome's [QUIC
     protocol](https://en.wikipedia.org/wiki/QUIC).
 
 [^17]: While this code uses the Python `socket` library, your favorite
     language likely contains a very similar library. This API is
     basically standardized. In Python, the flags we pass are defaults,
-    so you can actually call `socket.socket()`; I\'m keeping the flags
-    here in case you\'re following along in another language.
+    so you can actually call `socket.socket()`; I'm keeping the flags
+    here in case you're following along in another language.
 
 [^18]: Well, to be more precise, you need to call `encode` and then tell
     it the *character encoding* that your string should use. This is a
-    complicated topic. I\'m using `utf8` here, which is a common
+    complicated topic. I'm using `utf8` here, which is a common
     character encoding and will work on many pages, but in the real
     world you would need to be more careful.
 
-[^19]: If you\'re in another language, you might only have `socket.read`
-    available. You\'ll need to write the loop, checking the socket
+[^19]: If you're in another language, you might only have `socket.read`
+    available. You'll need to write the loop, checking the socket
     status, yourself.
 
 [^21]: Hard-coding `utf8` is not correct, but it's a shortcut that

@@ -40,7 +40,7 @@ the user doesn't get frustrated.
 
 Doing all of this by hand is a bit of a drag, so programs usually use a
 *graphical toolkit* to simplify these steps. These toolkits allow you to
-describe your program\'s window in terms of *widgets* like buttons,
+describe your program's window in terms of *widgets* like buttons,
 tabs, or text boxes, and take care of drawing and redrawing the window
 contents to match that description.
 
@@ -177,7 +177,7 @@ prints the text (but not the tags) to the console window. Now we want
 to draw the characters on the canvas instead.
 
 To start, let's change the `show` function from the previous chapter
-into a function that I\'ll call `lex`[^9] which just *returns* the
+into a function that I'll call `lex`[^9] which just *returns* the
 text-not-tags content of an HTML document, without printing it:
 
 ``` {.python}
@@ -200,7 +200,7 @@ def layout(self, text):
 ```
 
 Let's test this code on a real webpage. For reasons that might seem
-inscrutible[^10], let\'s test it on the [first chapter of <span
+inscrutible[^10], let's test it on the [first chapter of <span
 lang="zh">西游记</span> or "Journey to the
 West"](http://www.zggdwx.com/xiyou/1.html), a classic Chinese novel
 about a monkey. Run this URL[^11] through `request`, `lex`, and
@@ -208,7 +208,7 @@ about a monkey. Run this URL[^11] through `request`, `lex`, and
 inset a bit from the top left corner of the window.
 
 Why a blob instead of letters? Well, of course, because we are drawing
-every letter in the same place, so they all overlap! Let\'s fix that:
+every letter in the same place, so they all overlap! Let's fix that:
 
 ``` {.python expected=False}
 HSTEP, VSTEP = 13, 18
@@ -335,7 +335,7 @@ Reacting to the user
 
 Most browsers scroll the page when you press the up and down keys,
 rotate the scroll wheel, or drag the scroll bar. To keep things simple,
-let\'s just implement the down key.
+let's just implement the down key.
 
 Tk allows you to *bind* a function to a key, which instructs Tk to
 call that function when the key is pressed. For example, to bind to
@@ -469,8 +469,8 @@ text. Be careful in how you split the task between `layout` and
 `render`. Make sure that scrolling also works when zoomed in.
 
 [^3]: On older systems, applications drew directly to the screen, and if
-    they didn\'t update, whatever was there last would stay in place,
-    which is why in error conditions you\'d often have one window leave
+    they didn't update, whatever was there last would stay in place,
+    which is why in error conditions you'd often have one window leave
     "trails" on another. Modern systems use a technique called
     [compositing](https://en.wikipedia.org/wiki/Compositing_window_manager)
     to avoid trails (at the cost of using more memory), but applications
@@ -492,11 +492,11 @@ text. Be careful in how you split the task between `layout` and
 
 [^9]: Foreshadowing future developments...
 
-[^10]: It\'s to delay a discussion of basic typography to the next chapter...
+[^10]: It's to delay a discussion of basic typography to the next chapter...
 
-[^11]: Right click on the link and \"Copy URL\".
+[^11]: Right click on the link and "Copy URL".
 
-[^12]: If you\'re in the US, you\'ll probably see this phase take a
+[^12]: If you're in the US, you'll probably see this phase take a
     while: China is far away!
 
 [^13]: In the olden days of type writers, a new line was two
