@@ -631,14 +631,12 @@ max_ascent = max([metric["ascent"] for metric in metrics])
 The line is then `max_ascent` below `self.y`—or actually a little more
 to account for the leading:[^leading-half]
 
-[leading-half]: Actually actually, 20% leading doesn't add 20% of the
+[^leading-half]: Actually actually, 20% leading doesn't add 20% of the
     ascender above the ascender and 20% of the descender below the
-    descender. Instead, it adds 10% of the line height in both places.
+    descender. Instead, it adds [10% of the line height in both
+    places][line-height-def].
+[line-height-def]: https://www.w3.org/TR/CSS2/visudet.html#leading
     
-::: {.todo}
-The leading footnote should be a "Go Further" block.
-:::
-
 ``` {.python}
 baseline = self.y + 1.2 * max_ascent
 ```
