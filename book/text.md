@@ -252,7 +252,7 @@ for word in text.split():
     if x + w >= WIDTH - HSTEP:
         y += font.metrics("linespace") * 1.2
         x = HSTEP
-    display_list.append((x, y, word))
+    self.display_list.append((x, y, word))
     x += w + font.measure(" ")
 ```
 
@@ -287,7 +287,7 @@ line spacing is a normal amount.
 
 ::: {.further}
 Breaking lines in the middle of a word is called hyphenation, and can
-be turned on via the [`hyphens` CSS propert][hyphens]. Browsers
+be turned on via the [`hyphens` CSS property][hyphens]. Browsers
 use the [Knuth-Liang hyphenation algorithm][liang], which uses a
 dictionary of word fragments to prioritize possible hyphenation
 points, to implement this.
