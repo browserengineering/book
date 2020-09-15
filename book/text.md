@@ -728,6 +728,9 @@ does English, too:
 
 You can now use your browser to read an essay, a blog post, or a book!
 
+::: {.signup}
+:::
+
 Exercises
 =========
 
