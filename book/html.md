@@ -5,11 +5,6 @@ prev: text
 next: layout
 ...
 
-::: {.todo}
-- HTML attributes are unmotivated
-- I've dropped `<meta>` and `<link>` self-closing tags, probably should put them back somehow
-:::
-
 So far, your web browser sees web pages as a stream of open tags,
 close tags, and text. But HTML is actually a tree, and though the tree
 structure hasn't been important yet, you'll need it to draw
@@ -448,6 +443,10 @@ a slow but a sure process.
 
 HTML attributes
 ===============
+
+::: {.todo}
+- HTML attributes are unmotivated
+:::
 
 HTML tags have tag names but also *attributes*, which are added to an
 open tag to give additional information about that element. For example,
