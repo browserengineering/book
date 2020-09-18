@@ -446,15 +446,15 @@ scroll.
 [^laptop-mousewheel]: It also seems to trigger with touchpad gestures,
     if you don't have a mouse.
 
-*Emoji*: Add support for emoji to our browser. Emoji are characters,
-and you can call `create_text` to draw them, but the results aren't
-very good. Instead, head to [the OpenMoji
+*Emoji*: Add support for emoji 😀 to our browser. Emoji are
+characters, and you can call `create_text` to draw them, but the
+results aren't very good. Instead, head to [the OpenMoji
 project](https://openmoji.org), download the emoji for ["grinning
 face"](https://openmoji.org/library/#search=smiley%20face&emoji=1F600)
 as a PNG file, convert to GIF, resize it to 16×16 pixels, and save it
-to the same folder as the browser. Use `tkinter.PhotoImage` to load
+to the same folder as the browser. Use Tk's `PhotoImage` class to load
 the image and then `canvas.create_image` to draw it to the screen. You
-can add other emojis if you'd like 😀!
+can add other emojis if you'd like!
 
 *Resizing*: Make the browser resizable. To do so, pass the `fill` and
 `expand` arguments to `canvas.pack`, call and bind to the
