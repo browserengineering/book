@@ -101,14 +101,15 @@ if __name__ == "__main__":
         src = f.read()
     
     blocks = tangle(sys.argv[1])
-    count = 0
+    failure, count = 0, 0
     for name, block in blocks:
         block = indent(block, name.get("indent", "0"))
         block = replace(block, *[item.split("/", 1) for item in name.get("replace", "/").split(",")])
         cng = find_block(block, src)
         expected = name.get("expected", "True") == "True"
+        count += 1
         if any(l2 for l2, l in cng) == expected:
-            count += 1
+            failure += 1
             print("Block <{}> ({} lines)".format(name, block.count("\n")))
             if "hide" in name: continue
             for l2, l in cng:
@@ -119,5 +120,6 @@ if __name__ == "__main__":
                 else:
                     print(" ", l, end="")
             print()
-    print("Found differences in {} / {} blocks".format(count, len(blocks)))
-    sys.exit(count)
+        if name.get("last"): break
+    print("Found differences in {} / {} blocks".format(failure, count))
+    sys.exit(failure)
