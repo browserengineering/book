@@ -6,7 +6,7 @@ next: skipped
 ...
 
 Our browser has grown up and now runs (small) web applications. Now
-let's take the final stop and add user identity to our browser via
+let's take the final step and add user identity to our browser via
 cookies. Capability demands responsibility: our browser must then
 secure cookies against adversaries interested in getting at them.
 
