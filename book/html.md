@@ -485,8 +485,20 @@ no longer has to construct `Tag` objects or add slashes to things to
 indicate a close tag!
 
 ::: {.further}
-
+Document type declarations are a holdover from [SGML][sgml], the
+80s-era precursor to XML, and originally included a URL pointing to a
+full definition of the SGML variant you were using, which is no
+longer necessary. Browsers use the absense of a document type
+declaration to identify [older HTML versions][quirks-mode].[^almost-standards-mode]
 :::
+
+[sgml]: https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language
+[quirks-mode]: https://developer.mozilla.org/en-US/docs/Web/HTML/Quirks_Mode_and_Standards_Mode
+[^almost-standards-mode]: There's also a crazy thing called "[almost
+    standards][limited-quirks]" or "limited quirks" mode, due to a
+    backwards-incompatible change in table cell vertical layout. Yes.
+    I don't need to make these up!
+[limited-quirks]: https://hsivonen.fi/doctype/
 
 ``` {.python last=True}
 ```
