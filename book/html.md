@@ -157,10 +157,14 @@ This produces a more reasonable result:
  <link rel="stylesheet" href="../book.css" />]
 ```
 
-Why aren't these open elements closed? Well, most of them (like
+Why aren't these open elements closed?[^4] Well, most of them (like
 `<meta>` and `<link>`) are what are called self-closing: they don't
 need a close tag because they never surround content. Let's add a case
 for that to our parser:
+
+[^4]: Some people put a slash at the end of a self-closing tag (like
+    `<br/>`) but they don't have to: `<br>` is self-closing both with
+    and without that slash.
 
 ``` {.python indent=8}
 # ...
@@ -671,11 +675,3 @@ Exercises
 [^3]: Yes, it's a crazy system, and for a few years in the early '00s
     the W3C tried to [do away with it](https://www.w3.org/TR/xhtml1/).
     They failed.
-
-[^4]: Some people put a slash at the end of a self-closing tag (like
-    `<br/>`) but they don't have to: `<br>` is self-closing with and
-    without that slash.
-
-[^6]: If you implemented earlier exercises like support for `<a>`,
-    `<small>`, and `<big>`, you will likely have more parts to the
-    state.
