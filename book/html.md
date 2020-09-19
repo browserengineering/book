@@ -510,49 +510,23 @@ declaration to identify [older HTML versions][quirks-mode].[^almost-standards-mo
 Handling author errors
 ======================
 
-So far, the HTML parser does confusing, sort-of arbitrary things when
+The HTML parser does confusing, sort-of arbitrary things when
 tags are left unclosed, or when the wrong tag is closed in the wrong
 order. Real HTML documents usually have all sorts of mistakes like that,
 so real HTML parsers try to guess what the author meant and somehow
 return a tree anyway.[^3]
 
-For example, some HTML tags serve as both an open and a close tag (they
-are called self-closing tags). The `<br>` tag, which inserts a line
-break, is one such tag. However, right now, our parser doesn't know
-that, and will just keep looking for a `</br>` tag that never
-arrives.[^4]
+[^3]: Yes, it's a crazy system, and for a few years in the early '00s
+    the W3C tried to [do away with it](https://www.w3.org/TR/xhtml1/).
+    They failed.
 
-To support self-closing tags, we just need to modify the part of the
-parser that creates a new node, which reads:
-
-``` {.python}
-new = ElementNode(current, tok.tag)
-if current is not None: current.children.append(new)
-current = new
-```
-
-Here, the first line creates the element and the second makes it a child
-of its parent. Then, the third one "enters" the new node, in effect
-opening it. For a self-closing tag, we just need to avoid doing that:
-
-``` {.python}
-if new.tag != "br":
-    current = new
-```
-
-Now is a good time, by the way, to implement `<br>` in `layout`; it
-works pretty much the same way that `<p>` does, ending the current line
-by resetting `x` and incrementing `y`.
-
-Self-closing tags aren't supposed to have close tags; but sometimes
-people forget close tags for elements that really should have them. For
-example, you might have a `<p>` inside a `<section>` and then close the
-`</section>` without closing the `</p>`. Because these errors are so
-common, browsers try to automatically fix them so they do the "right
-thing". The full algorithm is pretty complicated (there are multiple
-types of tags and so on) but let's implement a simple version of it:
-when a close tag is encountered, we will walk up the tree until we find
-a tag that it closes.
+For example, you might have a `<p>` inside a `<section>` and then
+close the `</section>` without closing the `</p>`. Because these
+errors are so common, browsers try to automatically fix them so they
+do the "right thing". The full algorithm is pretty complicated (there
+are multiple types of tags and so on) but let's implement a simple
+version of it: when a close tag is encountered, we will walk up the
+tree until we find a tag that it closes.
 
 ``` {.python}
 tagname = tok.tag[1:]
@@ -671,7 +645,3 @@ Exercises
     that contain spaces, which is valid when the attribute is quoted.
     Fix this case in the attribute parser. You will likely need to
     loop over the attribute character-by-character.
-
-[^3]: Yes, it's a crazy system, and for a few years in the early '00s
-    the W3C tried to [do away with it](https://www.w3.org/TR/xhtml1/).
-    They failed.
