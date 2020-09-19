@@ -59,26 +59,70 @@ SELF_CLOSING_ELTS = [
 class Tag:
     def __init__(self, tag):
         self.tag = tag
+        self.attributes = {}
 
     def is_self_closing(self):
-        return self.tag.split()[0].lower() in SELF_CLOSING_ELTS
+        return self.tag.lower() in SELF_CLOSING_ELTS
 
 def lex(body):
     out = []
     text = ""
-    in_tag = False
+    state = "text"
+    current_tag = None
+    current_attribute = ""
     for c in body:
-        if c == "<":
-            in_tag = True
-            if text: out.append(Text(text))
-            text = ""
-        elif c == ">":
-            in_tag = False
-            out.append(Tag(text))
-            text = ""
+        if state == "text":
+            if c == "<":
+                if text: out.append(Text(text))
+                text = ""
+                state = "tagname"
+            else:
+                text += c
+        elif state == "tagname":
+            if c == ">":
+                out.append(Tag(text))
+                text = ""
+                state = "text"
+            elif c.isspace():
+                current_tag = Tag(text)
+                text = ""
+                state = "attribute"
+            else:
+                text += c
+        elif state == "attribute":
+            if c == "=":
+                current_attribute = text.lower()
+                text = ""
+                state = "value"
+            elif c.isspace():
+                if text: current_tag.attributes[text.lower()] = ""
+                text = ""
+            elif c == ">":
+                if text: current_tag.attributes[text.lower()] = ""
+                text = ""
+                out.append(current_tag)
+                current_tag = None
+                state = "text"
+            else:
+                text += c
+        elif state == "value":
+            if c == "\"":
+                state = "quoted"
+            elif c.isspace():
+                current_tag.attributes[current_attribute] = text
+                text = ""
+                current_attribute = ""
+                state = "attribute"
+            else:
+                text += c
+        elif state == "quoted":
+            if c == "\"":
+                state = "value"
+            else:
+                text += c
         else:
-            text += c
-    if not in_tag and text:
+            raise Exception("Unknown state " + state)
+    if state == "text" and text:
         out.append(Text(text))
     return out
 
@@ -142,28 +186,28 @@ class Layout:
                 self.layout(child)
             self.token(Tag("/" + tree.tag))
 
-    def token(self, tok):
-        if isinstance(tok, Text):
-            self.text(tok.text)
-        elif tok.tag == "i":
+    def open(self, tag):
+        if tag == "i":
             self.style = "italic"
-        elif tok.tag == "/i":
-            self.style = "roman"
-        elif tok.tag == "b":
+        elif tag == "b":
             self.weight = "bold"
-        elif tok.tag == "/b":
-            self.weight = "normal"
-        elif tok.tag == "small":
+        elif tag == "small":
             self.size -= 2
-        elif tok.tag == "/small":
-            self.size += 2
-        elif tok.tag == "big":
+        elif tag == "big":
             self.size += 4
-        elif tok.tag == "/big":
-            self.size -= 4
-        elif tok.tag == "br":
+        elif tag == "br":
             self.flush()
-        elif tok.tag == "/p":
+
+    def close(self, tag):
+        if tag == "i":
+            self.style = "roman"
+        elif tag == "b":
+            self.weight = "normal"
+        elif tag == "small":
+            self.size += 2
+        elif tag == "big":
+            self.size -= 4
+        elif tag == "p":
             self.flush()
             self.y += VSTEP
         

@@ -111,8 +111,8 @@ tag to begin with.
 
 [html5-after-body]: https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
 
-Parsing subtleties
-==================
+Self-closing tags
+=================
 
 Try running this parser on this page, and you'll find that `parse`
 doesn't return anything; let's find out why:
@@ -186,25 +186,222 @@ SELF_CLOSING_ELTS = [
 class Tag:
     # ...
     def is_self_closing(self):
-        return self.tag.split()[0].lower() in SELF_CLOSING_ELTS
+        return self.tag.lower() in SELF_CLOSING_ELTS
 ```
 
 Note that I'm doing a case-insensitive comparison[^case-insensitive]
 of the tag name, and furthermore that I'm ignoring an attributes like
-in the `meta` and `link` tags above. Now the list of open elements is
-shorter:
+in the `meta` and `link` tags above.
 
-[^case-insensitive]: This is [not the right way][case-hard] to do case
-    insensitive comparisons; the Unicode case folding algorithm should
-    be used if you want to handle languages other than English. But in
-    HTML specifically, tag names only use the ASCII characters where
-    this test is sufficient.
+::: {.further}
+This is [not the right way][case-hard] to do case
+insensitive comparisons; the Unicode case folding algorithm should be
+used if you want to handle languages other than English. But in HTML
+specifically, tag names only use the ASCII characters where this test
+is sufficient.
+:::
     
 [case-hard]: https://www.b-list.org/weblog/2018/nov/26/case/
 
+Attributes
+==========
+
+Try the code with self-closing elements again. It didn't help. Why?
+Well, because the self closing tags in question look like this:
+
+``` {.html}
+<meta charset="utf-8" />
+```
+
+But we're comparing them to just `meta`. What gives? Well, HTML tags
+have not only names but also *attributes*, which give additional
+information about that element. For example, in `meta` the `charset`
+attribute tells you what character encoding to use on this web page.
+
+An open tag any number of attributes, and a close tag cannot have any.
+The attribute names are case-insensitive, while the attribute values
+are an arbitrary string of characters terminated by a space, or an
+arbitrary string of characters including spaces if they are surrounded
+in quotes. Also, the values are optional; they default to an empty
+string.
+
+We need to handle attributes to get this page parsing. Since they
+appear in tags, we'll add them to the lexer. First, let's extend `Tag`
+to store attributes:
+
+``` {.python}
+class Tag:
+    def __init__(self, tag):
+        # ...
+        self.attributes = {}
+```
+
+Filling those attributes in, however, will be a challenge. Right now,
+`lex` contains two pieces of state: `text`, which is whatever will go
+inside the next token it outputs, and `in_tag`, which indicates
+whether that token will be a tag or a text token. Now, with
+attributes, there are more options: the lexer can be reading some
+text, reading a tag name, reading an attribute name, reading an
+unquoted attribute value, or reading a quoted attribute value. Plus,
+it might have a `Tag` in progress. Let's add new variables to `lex` to
+reflect this:
+
+``` {.python}
+def lex(body):
+    out = []
+    text = ""
+    state = "text"
+    current_tag = None
+    current_attribute = ""
+    for c in body:
+        # ...
+```
+
+The new `current_tag` variable stores any in-progress `Tag` element,
+and likewise `current_attribute` will be useful when we're handling
+attributes. Meanwhile, the new `state` variable tracks what the lexer
+is currently doing, replacing the old `in_tag` variable. The behavior
+of the lexer will be different in different states. In the `text`
+state, it just collects characters until it reaches an open angle
+bracket:
+
+``` {.python indent=8}
+if state == "text":
+    if c == "<":
+        if text: out.append(Text(text))
+        text = ""
+        state = "tagname"
+    else:
+        text += c
+```
+
+Note that the open angle bracket changes the `state` variable to
+indicate that it is now planning to read a tag name.[^state-machine]
+So how does the lexer handle tag names?
+
+
+[^state-machine]: This is called a "state machine".
+
+``` {.python indent=8}
+elif state == "tagname":
+    if c == ">":
+        out.append(Tag(text))
+        text = ""
+        state = "text"
+    elif c.isspace():
+        current_tag = Tag(text)
+        text = ""
+        state = "attribute"
+    else:
+        text += c
+```
+
+With a tag name, both right angle brackets (ends the tag) and white
+space (ends the tag name but not yet the tag) are special. Ending the
+tag puts us back in the `text` state, but if the tag name ends without
+ending the tag, the lexer waits for attributes. Attributes have lots
+of special characters; while reading an attribute, you might see:
+
+1. An equal sign, in which case the attribute is done and you should
+   now read a value;
+2. Whitespace, which ends means the attribute you're reading needs to
+   be added to the tag with the default value;
+3. A right angle bracket, which also means the attribute is done and
+   has its default value but also ends the tag;
+4. Some other text, which I guess is part of the attribute.
+
+Four cases! This one is a doozy:
+
+``` {.python indent=8}
+elif state == "attribute":
+    if c == "=":
+        current_attribute = text.lower()
+        text = ""
+        state = "value"
+    elif c.isspace():
+        if text: current_tag.attributes[text.lower()] = ""
+        text = ""
+    elif c == ">":
+        if text: current_tag.attributes[text.lower()] = ""
+        text = ""
+        out.append(current_tag)
+        current_tag = None
+        state = "text"
+    else:
+        text += c
+```
+
+Note that attributes are also case-insensitive, so we always
+lower-case them before adding them to the tag. Now there's a `value`
+state to handle. Values come in two types: quoted and unquoted. So the
+quote character is special in values:
+
+``` {.python indent=8}
+elif state == "value":
+    if c == "\"":
+        state = "quoted"
+    elif c.isspace():
+        current_tag.attributes[current_attribute] = text
+        text = ""
+        current_attribute = ""
+        state = "attribute"
+    else:
+        text += c
+```
+
+Now there's a quoted value case! These new states are getting tedious,
+but luckily this is the very last one:
+
+``` {.python indent=8}
+elif state == "quoted":
+    if c == "\"":
+        state = "value"
+    else:
+        text += c
+```
+
+It's worth thinking about how quotes work. Quotes don't appear in
+attribute values (because the lexer doesn't add them to `text`);
+instead, they only move the lexer between the `value` and `quoted`
+states. And those states are basically the same, except for how they
+handle whitespace!
+
+At the end of the big `for` loop in `lex`, we still need to handle
+unclosed tags:
+
+``` {.python indent=4}
+if state == "text" and text:
+    out.append(Text(text))
+```
+
+When you're writing this sort of code, it's very easy to misspell a
+state name at some point, so it's also helpful to add some error
+checking code at the end:
+
+``` {.python indent=8}
+else:
+    raise Exception("Unknown state " + state)
+```
+
+If you've done things correctly, this should never be triggered. If
+you have a typo… well, then I recommend printing all of the local
+variables and the current character at the top of the `for` loop, and
+stepping through the printed output very carefully.
+
+::: {.further}
+Something about state machines with auxiliary state?
+:::
+
+Doctype declarations
+====================
+
+Now that our lexer handles attributes correctly, the tag names of
+elements are correctly determined, so self-closing elements are
+handled correctly and the list of open elements when parsing this page
+is now shorter:
 
 ```
-[<!DOCTYPE html>]
+[<!DOCTYPE>]
 ```
 
 [html5-doctype]: https://html.spec.whatwg.org/multipage/syntax.html#the-doctype
@@ -242,22 +439,12 @@ if isinstance(tok, Text):
     currently_open[-1].children.append(node)
 ```
 
-Now a tree is successfully generated and returned from our parser for
-this (and many other) web pages!
+This works! Our parser converts this web page to a tree!
 
-::: {.further}
-
-:::
-
-
-Layout from a tree
-==================
-
-Now that we can turn a token list into an element tree, `Layout` ought
-to operate on element trees too. Let's add a `layout` method to
-replace the current `for` loop inside the constructor. To start, we
-can just call `token` twice per element node, emulating the old
-token-based layout:
+Now our browser should *use* this element tree. Let's add a `layout`
+method to replace the current `for` loop inside the constructor. To
+start, we can just call `token` twice per element node, emulating the
+old token-based layout:
 
 ``` {.python indent=4}
 def layout(self, tree):
@@ -270,54 +457,39 @@ def layout(self, tree):
         self.token(Tag("/" + tree.tag))
 ```
 
-This works
+This works but it's a little ridiculous. We've gone through all this
+effort to construct a tree, and now we're just emulating tokens? It's
+now a little clearer that the old `token` function had three different
+parts to it:
 
-One complication is `layout`'s local variables: the current `x` and `y`
-position, the current `bold` and `italic` state, and even that tricky
-`terminal_space` variable that took up so much time in the last chapter.
-Plus, there's the `display_list` variable for render commands. To turn
-`layout` into a recursive function, we'll need those local variables to
-become global state that multiple invocations of `layout` can share:[^6]
+- The part that handled `Text` tokens, which now isn't being used;
+- The part that handled start tags; and
+- The part that handled end tags.
 
-``` {.python}
-class State:
-    def __init__(self):
-        self.x = 13
-        self.y = 13
-        self.bold = False
-        self.italic = False
-        self.terminal_space = True
-        self.dl = []
+Let's split `token` into two functions, then, `open` and `close`:
 
-state = State()
+``` {.python indent=4}
+def open(self, tag):
+    if tag == "i":
+        self.style = "italic"
+    # ...
+
+def close(self, tag):
+    if tag == "i":
+        self.style = "roman"
+    # ...
 ```
 
-The local variable `x` is now replaced by the field `state.x`.
+Make sure to update `layout` to call these two new functions; now it
+no longer has to construct `Tag` objects or add slashes to things to
+indicate a close tag!
 
-The the pieces of the old `layout` function must now migrate to
-`layout_open`, `layout_close`, and `layout_text`. For example,
-`layout_open` needs to set the bold and italics flags.
+::: {.further}
 
-``` {.python}
-def layout_open(node):
-    if node.tag == "b":
-        state.bold = True
-    elif node.tag == "i":
-        state.italic = True
+:::
+
+``` {.python last=True}
 ```
-
-The new `layout_close` will be pretty similar (unsetting the flags),
-while `layout_text` will do the line wrapping and terminal space
-computations from the last chapter.
-
-Finally, don't forget to update `show` to get its display list from
-inside `state`.
-
-``` {.python}
-layout(nodes)
-display_list = state.display_list
-```
-
 
 Handling author errors
 ======================
@@ -441,64 +613,6 @@ step. Walking through the output by hand will reveal a mistake. It is
 a slow but a sure process.
 
 
-HTML attributes
-===============
-
-::: {.todo}
-- HTML attributes are unmotivated
-:::
-
-HTML tags have tag names but also *attributes*, which are added to an
-open tag to give additional information about that element. For example,
-the `lang` attribute tells you what language the text in that element is
-in, while the `href` attribute on `a` tags gives the URL that the link
-points to.[^5] Attributes look like this:
-
-``` {.example}
-<tagname attrname=attrvalue attrname=attrvalue>
-```
-
-You can have any number of attributes in an open tag; the names are
-case-insensitive, while the values are an arbitrary string of character
-that can even include spaces if you surround them with quotes. Also, the
-values are optional; "`<tagname attrname>`" is perfectly valid and
-sets that attribute to an empty string.
-
-Let's extend `ElementNode` to store attributes:
-
-``` {.python}
-class ElementNode:
-    def __init__(self, parent, tagname):
-        # ...
-        self.attributes = {}
-```
-
-The `tagname` passed into the `ElementNode` constructor contains both
-the tag name and all the attributes. A quick and dirty way to separate
-them is to split on whitespace:
-
-``` {.python}
-self.tag, *attrs = tagname.split(" ")
-```
-
-This syntax tells Python to split `tagname` on whitespace and to store
-the first bit into `self.tag` while the rest are collected into the list
-`attrs`. Now, we can go through `attrs` extracting each attribute-value
-pair:
-
-``` {.python}
-for attr in attrs:
-    out = attr.split("=", 1)
-    name = out[0]
-    val = out[1].strip("\"") if len(out) > 1 else ""
-    self.attributes[name.lower()] = val
-```
-
-Here the attribute name is split from the attribute value by looking for
-the first equal sign, and then if the value has quotes on either side,
-those are stripped off. The name is made lowercase before adding it to
-`self.attributes` because attribute names are case-insensitive.
-
 
 Summary
 =======
@@ -549,8 +663,6 @@ Exercises
 [^4]: Some people put a slash at the end of a self-closing tag (like
     `<br/>`) but they don't have to: `<br>` is self-closing with and
     without that slash.
-
-[^5]: Where `href` stands for "hypertext reference".
 
 [^6]: If you implemented earlier exercises like support for `<a>`,
     `<small>`, and `<big>`, you will likely have more parts to the
