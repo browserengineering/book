@@ -56,7 +56,7 @@ tag, or a close tag, and do the appropriate thing. `Text` tokens are
 the easiest: create a new `TextNode` and add it to the bottom-most
 open element.
 
-``` {.python indent=8}
+``` {.python indent=8 expected=True}
 if isinstance(tok, Text):
     node = TextNode(tok.text)
     currently_open[-1].children.append(node)
@@ -102,11 +102,10 @@ elif tok.tag.startswith("/"):
 Time to test this parser out!
 
 ::: {.further}
-The real [HTML parsing algorithm][html5-parsing] doesn't stop when
-it sees the `</html>` tag; it just moves to a state called [`after
-after body`][html5-after-body], and any additional nodes are added to
-the end of the `<body>` element. It also doesn't require you to write
-the `<html>` tag to begin with.
+HTML parsers don't actually stop at the `</html>` tag; they
+move to a state called [`after after body`][html5-after-body],
+where any additional nodes are added to the end of the `<body>`
+element.
 :::
 
 [html5-parsing]: https://html.spec.whatwg.org/multipage/parsing.html
@@ -156,14 +155,11 @@ This produces a more reasonable result:
  <link rel="stylesheet" href="../book.css" />]
 ```
 
-Why aren't these open elements closed?[^4] Well, most of them (like
+Why aren't these open elements closed? Well, most of them (like
 `<meta>` and `<link>`) are what are called self-closing: you don't
 ever write `</meta>` or `</link>`. These tags don't need a close tag
 because they never surround content. Let's add that to our parser:
 
-[^4]: Some people put a slash at the end of a self-closing tag (like
-    `<br/>`) but they don't have to: `<br>` is self-closing both with
-    and without that slash.
 
 ``` {.python indent=8}
 # ...
@@ -187,181 +183,79 @@ SELF_CLOSING_TAGS = [
 ]
 ```
 
+Test your parser on this page to see if that helped.
+
+::: {.further}
+Some people put a slash at the end of a self-closing tag (like
+`<br/>`) but unlike [XML][xml-self-closing] that final slash is
+totally ignored.
+:::
+
+[xml-self-closing]: https://www.w3.org/TR/xml/#sec-starttags
+
 Attributes
 ==========
 
-Unfortunately, this self-closing tag case doesn't help: try it! That's
-because the self closing tags aren't just `<meta>`; they have
-attributes, like in `<meta charset="utf-8" />`, which give additional
-information about that element. Here, the `charset` attribute on a
-`<meta>` element names the character encoding for this web page. An
-open tag can have any number of attributes, but close tags don't have
-any. Attribute names are case-insensitive, but attribute values are
-case-sensitive, and can be either quoted or unquoted, or omitted
-entirely.
+It doesn't help; why? Because the problem tags aren't just `<meta>`:
+they have attributes, like in `<meta charset="utf-8" />`. HTML
+attributes give additional information about an element; open tags can
+have any number of attributes (though close tags can't have any).
+Attribute values can be either quoted, unquoted, or omitted entirely.
 
-Since attributes appear inside tags, let's add them to the lexer.
-First, extend `Tag` to store attributes. Let's make the input to `Tag`
-a list of "tag parts", so that the meta tag looks like `["meta",
-"charset", "utf-8"]`:[^range-by-2]
+For simplicity, let's stick to unquoted attribute values. Since
+neither tag names nor attribute-value pairs can contain
+whitespace,[^because-unquoted] we can split the tag contents on
+whitespace:
 
 ``` {.python}
 class Tag:
-    def __init__(self, parts):
-        self.tag = parts[0]
-        self.attributes = {}
-        for i in range(1, len(parts), 2):
-            self.attributes[parts[i]] = parts[i+1]
+    def __init__(self, text):
+        parts = text.split()
+        self.tag = parts[0].lower()
 ```
 
-[^range-by-2]: This three-argument `range` means that `i` steps
-    by `2` through the values from `1` to `len(parts)`.
+[^because-unquoted]: Because only unquoted attribute values are supported!
 
-To fill attributes in, the lexer will get more complex. Currently
-`lex` is either parsing a tag name or text. With attributes, the lexer
-might also be parsing attribute names or attribute values. That
-requires more variables:
+Note that the tag name is converted to lower case, because HTML tag
+names are case-insensitive.
 
-``` {.python}
-def lex(body):
-    out = []
-    text = ""
-    state = "text"
-    tag_parts = []
-    for c in body:
-        # ...
-```
-
-The new `state` variable extends `in_tag` with more than two states,
-and `tag_parts` stores attributes as well as tag names.
-
-`lex` needs to do different things in different states. In the `text`
-state it reads until the start of a tag:
-
-``` {.python indent=8}
-if state == "text":
-    if c == "<":
-        if text: out.append(Text(text))
-        text = ""
-        tag_parts = []
-        state = "tagname"
-    else:
-        text += c
-```
-
-When it sees an open angle bracket, it changes `state` to indicate
-that it is now planning to read a tag name, which it keeps doing until
-it reaches the end of the tag or some whitespace:
-
-``` {.python indent=8}
-elif state == "tagname":
-    if c == ">":
-        tag_parts.append(text.lower())
-        out.append(Tag(tag_parts))
-        text = ""
-        state = "text"
-    elif c.isspace():
-        tag_parts.append(text.lower())
-        text = ""
-        state = "attribute"
-    else:
-        text += c
-```
-
-Both right angle brackets and white space end the tag name, so the tag
-name is added to the `tag_parts`. But a right angle bracket moves the
-lexer to the the `text` state, white whitespace moves it to the new
-`attribute` state where the lexer reads attributes. Attributes have
-lots of special characters; while reading an attribute, you might see:
-
-1. An equal sign, in which case the attribute is done and you should
-   now read a value;
-2. Whitespace, which ends means the attribute you're reading needs to
-   be added to the tag with the default value;
-3. A right angle bracket, which also means the attribute is done and
-   has its default value but also ends the tag;
-4. Some other text, which I guess is part of the attribute.
-
-Four cases! This one is a doozy:
-
-``` {.python indent=8}
-elif state == "attribute":
-    if c == "=":
-        tag_parts.append(text.lower())
-        text = ""
-        state = "value"
-    elif c.isspace():
-        if text:
-            tag_parts.append(text.lower())
-            tag_parts.append("")
-        text = ""
-    elif c == ">":
-        if text:
-            tag_parts.append(text.lower())
-            tag_parts.append("")
-        out.append(Tag(tag_parts))
-        text = ""
-        state = "text"
-    else:
-        text += c
-```
-
-The whitespace and right angle bracket cases are cases where no value
-was given for an attribute, so we not only need to add the attribute
-name to `tag_parts`, but also the default empty string value.
-
-Finally, the `value` state. Values come in two types, quoted and
-unquoted, and since the space character behaves differently for quoted
-and unquoted attributes we'll need different state for them. Here's
-the unquoted case:
-
-``` {.python indent=8}
-elif state == "value":
-    if c == "\"":
-        state = "quoted"
-    elif c == ">":
-        tag_parts.append(text)
-        out.append(Tag(tag_parts))
-        text = ""
-        state = "text"
-    elif c.isspace():
-        tag_parts.append(text)
-        text = ""
-        state = "attribute"
-    else:
-        text += c
-```
-
-Here's the quoted case, the very last one:
-
-``` {.python indent=8}
-elif state == "quoted":
-    if c == "\"":
-        state = "value"
-    else:
-        text += c
-```
-
-Note that quotes aren't added to `text`, so they don't appear in
-attribute values; all they do is move the lexer between the `value`
-and `quoted` states, which handle whitespace and other characters
-differently.
-
-That's all the states, so all that's left is to finish up `lex` by
-handling any unfinished text tokens, just like before:
+This fixes the problem of identifying self-closing tags, but since
+we're already here, let's also turn the attribute-value pairs into a
+dictionary:
 
 ``` {.python indent=4}
-if state == "text" and text:
-    out.append(Text(text))
+def __init__(self, text):
+    # ...
+    self.attributes = {}
+    for attrpair in parts[1:]:
+        key, value = attrpair.split("=", 1)
+        self.attributes[key.lower()] = value
 ```
 
-If you've done things correctly, you should now be able to lex
-attributes. That said, bugs in this sort of parsing code are pretty
-common. Make sure you don't mistype a state name, forget a special
-character, or forget to append to `tag_parts` at some point. And if
-you do have a bug, examine the incorrect output of the lexer,
-including all the attributes and their values. You'll discover
-something out of place that acts as a hint.
+This code assumes all attributes have a value, but in fact the value
+can be omitted! If no value is given, it defaults to the empty string:
+
+``` {.python indent=8}
+for attrpair in parts[1:]:
+    if "=" in attrpair:
+        # ...
+    else:
+        self.attributes[attrpair.lower()] = ""
+```
+
+Finally, this code misbehaves on quoted values, since it includes the
+quotes as part of the value. We can fix that:
+
+``` {.python indent=12}
+if "=" in attrpair:
+    if len(value) > 2 and value[0] in ["'", "\""]:
+        value = value[1:-1]
+    # ...
+```
+
+This conditional checks the first character of the value to determine
+if it's quoted, and if so strips off the first and last character,
+leaving the contents of the quotes.
 
 ::: {.further}
 This is [not the right way][case-hard] to do case
@@ -393,7 +287,7 @@ the document, so there wouldn't be an open element to append it to.
 It's best to throw it away:
 
 ``` {.python indent=8}
-elif tok.tag.split()[0].lower() == "!doctype":
+elif tok.tag.startswith("!"):
     continue
 ```
 
@@ -460,9 +354,9 @@ indicate a close tag!
 ::: {.further}
 Document type declarations are a holdover from [SGML][sgml], the
 80s-era precursor to XML, and originally included a URL pointing to a
-full definition of the SGML variant you were using, which is no
-longer necessary. Browsers use the absense of a document type
-declaration to identify [older HTML versions][quirks-mode].[^almost-standards-mode]
+full definition of the SGML variant you were using. Browsers use the
+absense of a document type declaration to identify [older HTML
+versions][quirks-mode].[^almost-standards-mode]
 :::
 
 [sgml]: https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language
@@ -476,147 +370,182 @@ declaration to identify [older HTML versions][quirks-mode].[^almost-standards-mo
 
 [limited-quirks]: https://hsivonen.fi/doctype/
 
-``` {.python last=True}
-```
-
 Handling author errors
 ======================
 
-The parser can now handle most valid HTML pages correctly—but most
-pages out there are invalid, with
+The parser now handles HTML pages correctly—at least, pages written by
+the sorts of goody-two-shoes programmers who remember the HTML
+boilerplate, close their open tags, and make their bed in the morning.
+We, or at least I, am not such a person, so browsers have had to adapt
+to handle poorly-written, confusing, boilerplate-less HTML.
 
-The HTML parser does confusing, sort-of arbitrary things when
-tags are left unclosed, or when the wrong tag is closed in the wrong
-order. Real HTML documents usually have all sorts of mistakes like that,
-so real HTML parsers try to guess what the author meant and somehow
-return a tree anyway.[^3]
+In fact, modern HTML parsers are capable of transforming *any* string
+of characters into an HTML tree, no matter how confusing the markup.[^3]
+The full algorithm is, as you might expect, complicated beyond belief,
+with dozens of ever-more-special cases forming a taxonomy of human
+error, but one of the nicer time-saving innovations is *implicit* tags.
 
-[^3]: Yes, it's a crazy system, and for a few years in the early '00s
-    the W3C tried to [do away with it](https://www.w3.org/TR/xhtml1/).
-    They failed.
+[^3]: Yes, it's crazy, and for a few years in the early '00s the W3C
+    tried to [do away with it](https://www.w3.org/TR/xhtml1/). They
+    failed.
 
-For example, you might have a `<p>` inside a `<section>` and then
-close the `</section>` without closing the `</p>`. Because these
-errors are so common, browsers try to automatically fix them so they
-do the "right thing". The full algorithm is pretty complicated (there
-are multiple types of tags and so on) but let's implement a simple
-version of it: when a close tag is encountered, we will walk up the
-tree until we find a tag that it closes.
+Normally, an HTML document starts with a familiar boilerplate:
 
-``` {.python}
-tagname = tok.tag[1:]
-node = current
-while node is not None and node.tag != tagname:
-    node = node.parent
+``` {.html}
+<!doctype html>
+<html>
+  <head>
+  </head>
+  <body>
+  </body>
+</html>
 ```
 
-Here, we start by taking `tok.tag` and stripping off the initial slash.
-Then, we walk up the tree of nodes until we find a node with a matching
-tag. Once we're done with the loop, there are two cases: either we
-found a matching node (in which case we set `current` to its parent) or
-we didn't (in which case we assume it's a typo and you meant to close
-the current tag).
+In reality, *all six* of these tags, except the doctype, are optional:
+browsers insert them automatically. To do so, they compare the current
+token's tag to the list of currently open elements; that reveals
+whether any additional elements need to be created:
 
-``` {.python}
-if node:
-    current = node
-
-if current.parent is not None:
-    current = current.parent
+``` {.python indent=4}
+for tok in tokens:
+    implicit_tags(tok, currently_open)
+    # ...
 ```
 
-There's also a chance that the page author forgot to close the tags
-they opened. In that case we want to implicitly close the remaining open
-tags. That takes a loop just before the return statement.
+The `implicit_tags` function examines the incoming token and
+determines whether any implicit tags need to be added. Importantly,
+more than one implicit tag may need to be added, so the function uses
+a loop:
 
 ``` {.python}
-while current.parent:
-    current = current.parent
+def implicit_tags(tok, currently_open):
+    tag = tok.tag if isinstance(tok, Tag) else None
+    while True:
+        open_tags = [node.tag for node in currently_open]
+        # ...
 ```
 
-These rules for malformed HTML may seem arbitrary, and they are. But
-they evolved over years of trying to guess what people "meant" when
-they wrote that HTML, and are now codified in the [HTML 5 parsing
-algorithm](https://www.w3.org/TR/2011/WD-html5-20110113/parsing.html),
-which spells out in detail how to handle user errors. The tweaks above
-are much more limited, but give you some sense of what the full
-algorithm is like.
+That loop needs to handle each possible implicit tag. The implicit
+`<html>` tag is easiest, since it must be the root element:
 
-Debugging your parser
-=====================
+``` {.python indent=8}
+if open_tags == [] and tag != "html":
+    currently_open.append(ElementNode("html"))
+```
 
-Parsers are frequently buggy, and annoying to debug. So before we go
-further, let's make sure the parser works correctly. Let's start by
-making it easy to print the parsed HTML tree:
+With the `<head>` and `<body>` elements, you need to look at the tag
+being handled. Some tags go in the `<head>` element:
 
 ``` {.python}
-def print_tree(node, indent="-"):
-    if isinstance(node, ElementNode):
-        print(indent, "<{}>".format(node.tag))
-        for child in node.children:
-            print_tree(child, "  " + indent)
-    elif isinstance(node, TextNode):
-        print(indent, "\"{}\"".format(node.text))
+HEAD_TAGS = [
+    "base", "basefont", "bgsound", "noscript",
+    "link", "meta", "title", "style", "script",
+]
+```
+
+That tells you whether to insert `<head>` or `<body>`:
+
+``` {.python indent=8}
+elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
+    if tag in HEAD_TAGS:
+        implicit = "head"
     else:
-        raise ValueError("Unknown node type", node)
+        implicit = "body"
+    currently_open.append(ElementNode(implicit))
 ```
 
-Now it's easy to see the result of parsing an HTML document:
+If you see an element that's not supposed to go in the `<head>`, you
+need to implicitly close the `<head>` section:
+
+``` {.python indent=8}
+elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
+    node = currently_open.pop()
+    currently_open[-1].children.append(node)
+    currently_open.append(ElementNode("body"))
+```
+
+In all other cases, implicit tags aren't needed, and we can exit the
+loop:
+
+``` {.python indent=8}
+else:
+    break
+```
+
+We haven't yet handled the implicit close tags `</body>` and
+`</html>`. Usually, leaving them out will mean the `parse` function
+reaches the end of its loop without closing all open tags, and would
+thus return nothing. Let's make it return *something* instead:
 
 ``` {.python}
-print_tree(parse(lex(" ... ")))
+def parse(tokens):
+    # ...
+    while currently_open:
+        node = currently_open.pop()
+        if not currently_open: return node
+        currently_open[-1].children.append(node)
 ```
 
-Make sure to try this for several documents. Try documents without
-text, or without tags; documents without close tags; documents with
-extra whitespace before or after the root element; and so on. Most
-likely, you'll find incorrect results or crashes.
+These rules for malformed HTML may seem arbitrary, and they are: they
+evolved over years of trying to guess what people "meant" when they
+wrote that HTML, and are now codified in the [HTML parsing
+standard](html5-parsing).
 
-When you do, the best way to get more insight is to print the state of
-the parse---the current element and current token---at every parsing
-step. Walking through the output by hand will reveal a mistake. It is
-a slow but a sure process.
+::: {.further}
+HTML parsers also have an [algorithm][adoption] to handle misnested
+elements, plus a [list of active formatting
+elements][html5-formatting-list] to handle formatting like
+`<b>b<i>bi</b>i</i>`.
+:::
 
-
+[html5-formatting-list]: https://html.spec.whatwg.org/multipage/parsing.html#the-list-of-active-formatting-elements
+[adoption]: https://html.spec.whatwg.org/multipage/parsing.html#adoption-agency-algorithm
 
 Summary
 =======
 
-In this chapter, we taught our browser to understand HTML as a
-structured tree, not just a flat list of tokens, and we've updated
-layout to be a recursive tree traversal instead of a linear pass through
-the document. We've also made the browser much more robust to malformed
-HTML. While these changes don't have much impact yet, this new,
-structured understanding of HTML sets us up to implement a layout
-engine in the next chapter.
+This chapter taught our browser that HTML is a tree, not just a flat
+list of tokens:
+
+- A parser now transforms HTML tokens to a tree
+- Layout operates recursively on the tree
+- The lexer recognizes and handles attributes on elements
+- Some malformed HTML documents are automatically fixed
+
+The tree structure of HTML is essential to lay out visually complex
+web pages, as we will see in the [next chapter](layout.md).
+
+::: {.signup}
+:::
 
 
 Exercises
 =========
 
--   HTML documents almost always start with "doctype declarations". These
-    look like tags that begin with `!doctype` and don't have close
-    tags. Doctype declarations, when they are present, are always the
-    first token in a document. Skip doctype declarations in the parser.
--   Update the HTML lexer and parser to support comments. Comments in
-    HTML begin with `<!--` and end with `-->`. However, comments aren't
-    the same as tags: they can contain any text, including open or close
-    tags. Comments should be a new token type, which `parse` should
-    ignore.
--   Update the HTML lexer or parser to support *entities*. Entities in
-    HTML begin an ampersand `&`, then contain letters and numbers, and
-    end with a semicolon "`;`"; they resolve to particular characters.
-    Implement support for `&amp;`, `&lt;`, `&gt;`, and `&quot;`, which
-    expand to ampersand, less than, greater than, and the quotation
-    mark. Should you handle entities in the lexer, the parser, or in an
-    earlier pass? Consider that attribute values can contain entities.
--   For some tags, it doesn't make sense to have one inside the other.
-    For example, it's not clear what it would mean for one paragraph to
-    contain another, so the most common reason for this to happen in a
-    web page is that someone forgot a close tag. Change the parser so
-    that a document like `<p>hello<p>world</p>` results in two sibling
-    nodes instead of one paragraph inside another.
--   The attribute parser doesn't correctly handle attribute values
-    that contain spaces, which is valid when the attribute is quoted.
-    Fix this case in the attribute parser. You will likely need to
-    loop over the attribute character-by-character.
+*Entities:* Implement support for `&amp;`, `&lt;`, `&gt;`, and
+`&quot;`, which expand to ampersand, less than, greater than, and the
+quotation mark in HTML. These "entities" can go either in ordinary
+text or inside tags. Should you handle entities in the lexer or the
+parser?
+
+*Comments:* Update the HTML lexer to support comments. Comments in
+HTML begin with `<!--` and end with `-->`. However, comments aren't
+the same as tags: they can contain any text, including left and right
+angle brackets. The lexer should skip comments, not generating any
+token at all. Test: is `<!-->` a comment, or does it just start one?
+
+*Paragraphs:* Since it's not clear what it would mean for one
+paragraph to contain another, the most common reason for this to
+happen in a web page is that someone forgot a close tag. Change the
+parser so that a document like `<p>hello<p>world</p>` results in two
+sibling paragraphs instead of one paragraph inside another.
+
+*Scripts:* JavaScript code embedded in a `<script>` tag uses the left
+angle bracket to mean less-than. Modify your lexer so that the
+contents of `<script>` tags are treated specially: no tags are allowed
+inside `<script>`, except the `</script>` close tag.
+
+*Quoted attributes:* Quoted attributes can contain spaces and right
+angle brackets. Fix the lexer so that this is supported properly.
+Hint: the current lexer is a finite state machine, with two states
+(determined by `in_tag`). You'll need more states.

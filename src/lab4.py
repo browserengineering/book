@@ -60,11 +60,18 @@ SELF_CLOSING_TAGS = [
 ]
 
 class Tag:
-    def __init__(self, parts):
-        self.tag = parts[0]
+    def __init__(self, text):
+        parts = text.split()
+        self.tag = parts[0].lower()
         self.attributes = {}
-        for i in range(1, len(parts), 2):
-            self.attributes[parts[i]] = parts[i+1]
+        for attrpair in parts[1:]:
+            if "=" in attrpair:
+                key, value = attrpair.split("=", 1)
+                if len(value) > 2 and value[0] in ["'", "\""]:
+                    value = value[1:-1]
+                self.attributes[key.lower()] = value
+            else:
+                self.attributes[attrpair.lower()] = ""
 
     def __repr__(self):
         return "<" + self.tag + ">"
@@ -72,74 +79,19 @@ class Tag:
 def lex(body):
     out = []
     text = ""
-    state = "text"
-    tag_parts = []
+    in_tag = False
     for c in body:
-        if state == "text":
-            if c == "<":
-                if text: out.append(Text(text))
-                text = ""
-                tag_parts = []
-                state = "tagname"
-            else:
-                text += c
-        elif state == "tagname":
-            if c == ">":
-                tag_parts.append(text.lower())
-                out.append(Tag(tag_parts))
-                text = ""
-                state = "text"
-            elif c.isspace():
-                if text:
-                    tag_parts.append(text.lower())
-                    text = ""
-                    state = "attribute"
-                else:
-                    text = "<"
-                    state = "text"
-            else:
-                text += c
-        elif state == "attribute":
-            if c == "=":
-                tag_parts.append(text.lower())
-                text = ""
-                state = "value"
-            elif c.isspace():
-                if text:
-                    tag_parts.append(text.lower())
-                    tag_parts.append("")
-                text = ""
-            elif c == ">":
-                if text:
-                    tag_parts.append(text.lower())
-                    tag_parts.append("")
-                out.append(Tag(tag_parts))
-                text = ""
-                state = "text"
-            else:
-                text += c
-        elif state == "value":
-            if c == "\"":
-                state = "quoted"
-            elif c == ">":
-                tag_parts.append(text)
-                out.append(Tag(tag_parts))
-                text = ""
-                state = "text"
-            elif c.isspace():
-                tag_parts.append(text)
-                text = ""
-                state = "attribute"
-            else:
-                text += c
-        elif state == "quoted":
-            if c == "\"":
-                state = "value"
-            else:
-                text += c
+        if c == "<":
+            in_tag = True
+            if text: out.append(Text(text))
+            text = ""
+        elif c == ">":
+            in_tag = False
+            out.append(Tag(text))
+            text = ""
         else:
-            raise Exception("Unknown state " + state)
-    if state == "text" and text:
+            text += c
+    if not in_tag and text:
         out.append(Text(text))
     return out
 
@@ -161,6 +113,7 @@ class TextNode:
 def parse(tokens):
     currently_open = []
     for tok in tokens:
+        implicit_tags(tok, currently_open)
         if isinstance(tok, Text):
             node = TextNode(tok.text)
             if not currently_open: continue
@@ -172,11 +125,39 @@ def parse(tokens):
         elif tok.tag in SELF_CLOSING_TAGS:
             node = ElementNode(tok.tag)
             currently_open[-1].children.append(node)
-        elif tok.tag == "!doctype":
+        elif tok.tag.startswith("!"):
             continue
         else:
             node = ElementNode(tok.tag)
             currently_open.append(node)
+    while currently_open:
+        node = currently_open.pop()
+        if not currently_open: return node
+        currently_open[-1].children.append(node)
+
+HEAD_TAGS = [
+    "base", "basefont", "bgsound", "noscript",
+    "link", "meta", "title", "style", "script",
+]
+            
+def implicit_tags(tok, currently_open):
+    tag = tok.tag if isinstance(tok, Tag) else None
+    while True:
+        open_tags = [node.tag for node in currently_open]
+        if open_tags == [] and tag != "html":
+            currently_open.append(ElementNode("html"))
+        elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
+            if tag in HEAD_TAGS:
+                implicit = "head"
+            else:
+                implicit = "body"
+            currently_open.append(ElementNode(implicit))
+        elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
+            node = currently_open.pop()
+            currently_open[-1].children.append(node)
+            currently_open.append(ElementNode("body"))
+        else:
+            break
 
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
