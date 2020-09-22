@@ -51,67 +51,84 @@ class Text:
     def __init__(self, text):
         self.text = text
 
-SELF_CLOSING_ELTS = [
+    def __repr__(self):
+        return "\"" + self.text.replace("\n", "\\n") + "\""
+
+SELF_CLOSING_TAGS = [
     "area", "base", "br", "col", "embed", "hr", "img", "input",
     "link", "meta", "param", "source", "track", "wbr",
 ]
 
 class Tag:
-    def __init__(self, tag):
-        self.tag = tag
+    def __init__(self, parts):
+        self.tag = parts[0]
         self.attributes = {}
+        for i in range(1, len(parts), 2):
+            self.attributes[parts[i]] = parts[i+1]
 
-    def is_self_closing(self):
-        return self.tag.lower() in SELF_CLOSING_ELTS
+    def __repr__(self):
+        return "<" + self.tag + ">"
 
 def lex(body):
     out = []
     text = ""
     state = "text"
-    current_tag = None
-    current_attribute = ""
+    tag_parts = []
     for c in body:
         if state == "text":
             if c == "<":
                 if text: out.append(Text(text))
                 text = ""
+                tag_parts = []
                 state = "tagname"
             else:
                 text += c
         elif state == "tagname":
             if c == ">":
-                out.append(Tag(text))
+                tag_parts.append(text.lower())
+                out.append(Tag(tag_parts))
                 text = ""
                 state = "text"
             elif c.isspace():
-                current_tag = Tag(text)
-                text = ""
-                state = "attribute"
+                if text:
+                    tag_parts.append(text.lower())
+                    text = ""
+                    state = "attribute"
+                else:
+                    text = "<"
+                    state = "text"
             else:
                 text += c
         elif state == "attribute":
             if c == "=":
-                current_attribute = text.lower()
+                tag_parts.append(text.lower())
                 text = ""
                 state = "value"
             elif c.isspace():
-                if text: current_tag.attributes[text.lower()] = ""
+                if text:
+                    tag_parts.append(text.lower())
+                    tag_parts.append("")
                 text = ""
             elif c == ">":
-                if text: current_tag.attributes[text.lower()] = ""
+                if text:
+                    tag_parts.append(text.lower())
+                    tag_parts.append("")
+                out.append(Tag(tag_parts))
                 text = ""
-                out.append(current_tag)
-                current_tag = None
                 state = "text"
             else:
                 text += c
         elif state == "value":
             if c == "\"":
                 state = "quoted"
-            elif c.isspace():
-                current_tag.attributes[current_attribute] = text
+            elif c == ">":
+                tag_parts.append(text)
+                out.append(Tag(tag_parts))
                 text = ""
-                current_attribute = ""
+                state = "text"
+            elif c.isspace():
+                tag_parts.append(text)
+                text = ""
                 state = "attribute"
             else:
                 text += c
@@ -137,6 +154,9 @@ class ElementNode:
 class TextNode:
     def __init__(self, text):
         self.text = text
+
+    def __repr__(self):
+        return self.text.replace("\n", "\\n")
         
 def parse(tokens):
     currently_open = []
@@ -149,10 +169,10 @@ def parse(tokens):
             node = currently_open.pop()
             if not currently_open: return node
             currently_open[-1].children.append(node)
-        elif tok.is_self_closing():
+        elif tok.tag in SELF_CLOSING_TAGS:
             node = ElementNode(tok.tag)
             currently_open[-1].children.append(node)
-        elif tok.tag.split()[0].lower() == "!doctype":
+        elif tok.tag == "!doctype":
             continue
         else:
             node = ElementNode(tok.tag)
@@ -181,10 +201,10 @@ class Layout:
         if isinstance(tree, TextNode):
             self.text(tree.text)
         else:
-            self.token(Tag(tree.tag))
+            self.open(tree.tag)
             for child in tree.children:
                 self.layout(child)
-            self.token(Tag("/" + tree.tag))
+            self.close(tree.tag)
 
     def open(self, tag):
         if tag == "i":
