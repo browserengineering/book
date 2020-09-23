@@ -17,21 +17,22 @@ I am editing the chapters following the first iteration of the course.
 - [x] Debugging tips have moved out of the [Preliminaries](preliminaries.md)
 - [x] Clipping moved from [Chapter 10](reflow.md) to [Chapter 2](graphics.md) 
 - [ ] The [Preliminaries](preliminaries.md) should install Python
-- [ ] [Chapter 3](text.md) should implement multiple text sizes
-- [ ] [Chapter 4](html.md) needs to motivate attributes
+- [x] [Chapter 3](text.md) should implement multiple text sizes
+- [x] [Chapter 4](html.md) needs to motivate attributes
+- [ ] [Chapter 5](layout.md)
 - [ ] [Chapter 7](chrome.md) should add forward buttons
-- [ ] [Chapter 10](reflow.md) needs a rewrite to handle a major bug
+- [ ] [Chapter 8](forms.md) needs minor edits
+- [ ] [Chapter 10](reflow.md) needs to fix a major bug
 - [ ] [Chapter 11](security.md) must remove the straw-man insecure
   implementations
-- [ ] [Chapters 8](forms.md) needs minor edits
 
 Code
 ====
 
 I plan to have "gold-standard" code for each chapter.
 
-- [x] Code for chapters 1, 2, and 3 edited
-- [ ] Code for chapters 4, 5, 6, 7, 8, 9, 10, 11 not yet edited
+- [x] Code for chapters 1, 2, 3, and 4 edited
+- [ ] Code for chapters 5, 6, 7, 8, 9, 10, 11 not yet edited
 - [ ] [Chapter 8](forms.md) needs to abstract over finding elements
 - [ ] [Chapter 9](scripts.md) needs to split the JS environment from
   the browser
@@ -71,6 +72,5 @@ Content
 I plan tests, exercises, screenshots, and "Go further" links.
 
 - [x] Each chapter has five exercises
-- [ ] Chapter 1 & 2 have "Go further" links, the others don't
 - [ ] There are currently no tests
 - [ ] Screenshots not begun
