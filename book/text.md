@@ -641,6 +641,7 @@ to account for the leading:[^leading-half]
     ascender above the ascender and 20% of the descender below the
     descender. Instead, it adds [10% of the line height in both
     places][line-height-def].
+
 [line-height-def]: https://www.w3.org/TR/CSS2/visudet.html#leading
     
 ``` {.python}
