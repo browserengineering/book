@@ -121,7 +121,7 @@ doesn't return anything; let's find out why:
 def parse(tokens):
     # ...
     print(currently_open)
-    raise Exception("Reached end of token before end of document"))
+    raise Exception("Reached last token before end of document"))
 ```
 
 Python prints a list of `ElementNode` objects, meaning that there were
@@ -308,19 +308,19 @@ if isinstance(tok, Text):
 With this change, the parser can now parse this page, and most other
 valid HTML pages!
 
-Now our browser should *use* this element tree. Let's add a `layout`
-method to replace the current `for` loop inside the constructor. To
-start, we can just call `token` twice per element node, emulating the
-old token-based layout:
+Now our browser should *use* this element tree. Let's add a `recurse`
+method to replace the current `for` loop inside the `Layout`
+constructor. To start, we can just call `token` twice per element
+node, emulating the old token-based layout:
 
 ``` {.python indent=4 expected=False}
-def layout(self, tree):
+def recurse(self, tree):
     if isinstance(tree, TextNode):
         self.text(tree.text)
     else:
         self.token(Tag(tree.tag))
         for child in tree.children:
-            self.layout(child)
+            self.recurse(child)
         self.token(Tag("/" + tree.tag))
 ```
 
@@ -347,7 +347,7 @@ def close(self, tag):
     # ...
 ```
 
-Make sure to update `layout` to call these two new functions; now it
+Make sure to update `recurse` to call these two new functions; now it
 no longer has to construct `Tag` objects or add slashes to things to
 indicate a close tag!
 

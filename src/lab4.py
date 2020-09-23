@@ -176,15 +176,15 @@ class Layout:
         self.size = 16
 
         self.line = []
-        self.layout(tree)
+        self.recurse(tree)
 
-    def layout(self, tree):
+    def recurse(self, tree):
         if isinstance(tree, TextNode):
             self.text(tree.text)
         else:
             self.open(tree.tag)
             for child in tree.children:
-                self.layout(child)
+                self.recurse(child)
             self.close(tree.tag)
 
     def open(self, tag):
