@@ -270,7 +270,7 @@ class Browser:
 if __name__ == "__main__":
     import sys
     headers, body = request(sys.argv[1])
-    text = parse(lex(body))
+    nodes = parse(lex(body))
     browser = Browser()
-    browser.layout(text)
+    browser.layout(nodes)
     tkinter.mainloop()

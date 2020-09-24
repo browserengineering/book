@@ -21,6 +21,17 @@ for both open and close tags. But HTML is a tree, and each open and
 close tag pair are one node in the tree, as is each text token. We
 need to convert from tokens to nodes.
 
+We'll need a new `parse` function to do that:
+
+``` {.python}
+if __name__ == "__main__":
+    # ...
+    nodes = parse(lex(body))
+    browser = Browser()
+    browser.layout(nodes)
+    # ...
+```
+
 Let's start by defining the two types of nodes:[^1]
 
 [^1]: In reality there are other types of nodes too, like comments,
