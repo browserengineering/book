@@ -233,7 +233,8 @@ def __init__(self, text):
 ```
 
 This code assumes all attributes have a value, but in fact the value
-can be omitted! If no value is given, it defaults to the empty string:
+can be omitted, like in `<input disabled>`. In this case, the
+attribute value is supposed to default to the empty string:
 
 ``` {.python indent=8}
 for attrpair in parts[1:]:
