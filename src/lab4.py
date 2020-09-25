@@ -1,3 +1,9 @@
+"""
+This file compiles the code in Web Browser Engineering,
+up to and including Chapter 4 (Constructing a Document Tree),
+without exercises.
+"""
+
 import socket
 import ssl
 import tkinter
