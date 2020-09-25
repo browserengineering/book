@@ -22,9 +22,11 @@ I am editing the chapters following the first iteration of the course.
 - [ ] [Chapter 5](layout.md)
 - [ ] [Chapter 7](chrome.md) should add forward buttons
 - [ ] [Chapter 8](forms.md) needs minor edits
-- [ ] [Chapter 10](reflow.md) needs to fix a major bug
+- [ ] [Chapter 10](reflow.md) needs to fix a [major bug][reflow-bug]
 - [ ] [Chapter 11](security.md) must remove the straw-man insecure
   implementations
+  
+[reflow-bug]: https://github.com/pavpanchekha/emberfox/issues/8
 
 Code
 ====
