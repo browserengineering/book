@@ -664,13 +664,7 @@ shows the HTML source of this chapter rather than its rendered output.
 Add support for the view-source scheme. Your browser should print the entire
 HTML file as if it was text. *Hint*: To do so, you can utilize the entities from
 the previous exercise, and add an extra `transform()` method that adjusts the
-input to `show()` when in view-source mode, like this:
-``` {.python}
-  def transform(body):
-    # ...
- 
-  show(transform(body)
-```
+input to `show()` when in view-source mode, like this: `show(transform(body))`.
 
 *data:* Yet another scheme is *data*, which
 allow inlining HTML content into the URL itself. Try navigating to
