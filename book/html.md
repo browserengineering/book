@@ -8,8 +8,8 @@ next: layout
 So far, your web browser sees web pages as a stream of open tags,
 close tags, and text. But HTML is actually a tree, and though the tree
 structure hasn't been important yet, you'll need it to draw
-backgrounds, add margins, and let alone implement CSS. So this chapter
-adds a proper HTML parser and converts the layout engine to use it.
+backgrounds, add margins, and implement CSS. So this chapter adds a
+proper HTML parser and converts the layout engine to use it.
 
 
 A tree of nodes
@@ -207,16 +207,18 @@ totally ignored.
 Attributes
 ==========
 
-It doesn't help; why? Because the problem tags aren't just `<meta>`:
-they have attributes, like in `<meta charset="utf-8" />`. HTML
-attributes give additional information about an element; open tags can
-have any number of attributes (though close tags can't have any).
-Attribute values can be either quoted, unquoted, or omitted entirely.
+Strangely, the self-closing tag code in the previous section doesn't
+help; why? Because the problem tags aren't just `<meta>`: they have
+attributes, like in `<meta charset="utf-8" />`. HTML attributes give
+additional information about an element; open tags can have any number
+of attributes (though close tags can't have any). Attribute values can
+be either quoted, unquoted, or omitted entirely.
 
-For simplicity, let's stick to unquoted attribute values. Since
-neither tag names nor attribute-value pairs can contain
-whitespace,[^because-unquoted] we can split the tag contents on
-whitespace:
+Attribute values can be anything, and if they're quoted they can even
+contain whitespace. But for simplicity, let's stick to unquoted
+attribute values. Then neither tag names nor attribute-value pairs can
+contain whitespace, so we can split the tag contents on whitespace to
+get the tag name and the attribute-value pairs:
 
 ``` {.python}
 class Tag:
@@ -224,8 +226,6 @@ class Tag:
         parts = text.split()
         self.tag = parts[0].lower()
 ```
-
-[^because-unquoted]: Because only unquoted attribute values are supported!
 
 Note that the tag name is converted to lower case, because HTML tag
 names are case-insensitive.
@@ -296,7 +296,10 @@ This special tag is called a [doctype][html5-doctype], and it's not
 really an element at all. It's not supposed to have close tag, but we
 can't mark it a self-closing tag—it's always the very first thing in
 the document, so there wouldn't be an open element to append it to.
-It's best to throw it away:
+It's best to throw it away:[^quirks-mode]
+
+[^quirks-mode]: Real browsers also set some flags that switch between
+    standards-compliant and legacy parsing and layout modes.
 
 ``` {.python indent=8}
 elif tok.tag.startswith("!"):
@@ -504,7 +507,7 @@ wrote that HTML, and are now codified in the [HTML parsing
 standard](html5-parsing).
 
 ::: {.further}
-HTML parsers also have an [algorithm][adoption] to handle misnested
+HTML parsers also have an [algorithm][adoption] to handle mis-nested
 elements, plus a [list of active formatting
 elements][html5-formatting-list] to handle formatting like
 `<b>b<i>bi</b>i</i>`.
@@ -517,14 +520,14 @@ Summary
 =======
 
 This chapter taught our browser that HTML is a tree, not just a flat
-list of tokens:
+list of tokens. We added:
 
 - A parser now transforms HTML tokens to a tree
-- Layout operates recursively on the tree
-- The lexer recognizes and handles attributes on elements
-- Some malformed HTML documents are automatically fixed
+- Layout operating recursively on the tree
+- Code to recognize and handle attributes on elements
+- Automatic fixes for some malformed HTML documents
 
-The tree structure of HTML is essential to lay out visually complex
+The tree structure of HTML is essential to display visually complex
 web pages, as we will see in the [next chapter](layout.md).
 
 ::: {.signup}
