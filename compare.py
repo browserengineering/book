@@ -109,6 +109,9 @@ if __name__ == "__main__":
         expected = name.get("expected", "True") == "True"
         count += 1
         if any(l2 for l2, l in cng) == expected:
+            # If expected to pass (True) and there are lines,
+            # or if expected to fail (False) and there are no lines,
+            # it is a failure
             failure += 1
             print("Block <{}> ({} lines)".format(name, block.count("\n")))
             if "hide" in name: continue
