@@ -61,10 +61,13 @@ The inline layout mode is effectively what we implemented in [Chapter
 Second: creating this box tree. The current layout algorithm is a
 recursive function which (eventually) adds things to a linear
 `display_list`. Tree-based layout means the recursive function must
-traverse the HTML tree and builds a box tree instead. A good way to
-structure this kind of thing is a `BlockLayout` class which is given
-an `ElementNode` and which then recursively constructs `BlockLayout`s
-for each child of that element.
+traverse the HTML tree and builds a box tree instead.
+
+Since we have two types of of layout modes, the elements of the box
+tree will have one of two types: inline and block boxes. We'll follow
+a simple rule, which is that a block box either contains any number of
+block boxes, or a single inline box, while inline boxes have no
+children. This invariant will make it easier when we're doing layout.
 
 Finally: layout. With the box tree created, how do we compute the size
 and position of each box? The general rule is that a block, like a
@@ -176,7 +179,8 @@ Usually, a block box has one block child per child in the element
 tree. But not always! When you get to something like a paragraph, the
 children are like text, so the child layout object is a single inline
 layout box. We can tell the difference by examining the children of
-the node we are laying out:
+the node we are laying out: some elements are only used inside running
+text, other elements are only used as blocks:
 
 ``` {.python}
 INLINE_ELEMENTS = [
@@ -185,12 +189,18 @@ INLINE_ELEMENTS = [
     "sub", "sup", "i", "b", "u", "mark", "bdi", "bdo", "span", "br",
     "wbr", "big"
 ]
+```
 
+A block box has can look at its children's types and tags to determine
+whether it should have block or inline contents:
+
+```
 def has_block_children(self):
     for child in self.node.children:
         if isinstance(child, TextNode):
-            return False
-        if child.tag in INLINE_ELEMENTS:
+            if not child.text.isspace():
+                return False
+        elif child.tag in INLINE_ELEMENTS:
             return False
     return True
 ```
@@ -201,487 +211,350 @@ The `layout` method can use this to create child layout objects:
 def layout(self):
     if self.has_block_children():
         for child in self.node.children:
+            if isinstance(child, TextNode): continue
             self.children.append(BlockLayout(child, self))
     else:
         self.children.append(InlineLayout(self.node, self))
 ```
 
-Now that the child layout objects are created, we can move on to do
-some layout.
+One final nit: what forms the root of this box tree? Since both
+`BlockLayout` and `InlineLayout` require a parent in their
+constructor, we need another layout object at the root. Since I think
+of that root as the page itself, let's call it `PageLayout`:
+
+``` {.python}
+class PageLayout:
+    def __init__(self, node):
+        self.node = node
+        self.parent = None
+        self.children = []
+
+    def layout(self):
+        child = BlockLayout(self.node, self)
+        self.children.append(child)
+```
+
+To summarize the rules of box tree creation:
+
+1. The root of the box tree is always a `PageLayout`.
+2. Its first child is always a `BlockLayout`.
+3. Each `BlockLayout` either contains all `BlockLayout` children, or a
+   single `InlineLayout`.
+4. An `InlineLayout` doesn't have children.
+
+With the box tree set up, let's move on to laying out each box in the
+tree.
 
 Computing size and position
 ===========================
 
-Let's start by defining a data structure to store an area where text
-can be laid out. I'm going to call this a `Block`:
+The general structure of layout is clear: each box computes its width,
+then lays out its children, and then computes its height. Besides
+width and height, we also need to position each element. This is
+tricky, because if you have several paragraphs, the position of the
+second depends on the height of the first. I'll use the rule that each
+element it positioned by its parent before its own `layout` method is
+called.
+
+For the width, the idea is that a paragraph or header or something
+like that should take up all the horizontal space it can. So it should
+use the parent's width:
 
 ``` {.python}
-class Block:
-    def __init__(self, x, y, w):
-        self.x = x
-        self.y = y
-        self.w = w
+self.w = self.parent.w
 ```
 
-Now I\'m going to rearrange the `layout` functions into a class called
-`InlineLayout`, which will sort of combine the three `layout`
-functions and the `State` class together:
+Then, each of the children need to be laid out. That means each child
+has to be positioned, and then its `layout` method must be called:
+
+``` {.python expected=True}
+y = self.y
+for child in self.children:
+    child.pos = (self.x, y)
+    child.layout()
+    y += child.h
+```
+
+Finally, the height of an element has to encompass all its children.
+We conveniently already added all the children's heights into `y`, so
+we can just subtract its starting value:
+
+``` {.python}
+self.h = y - self.y
+```
+
+That settles the matter in `BlockLayout`; let's turn our attention to
+`InlineLayout`. Its `layout` method needs to set up the same `w`, `h`;
+it doesn't need to assign `pos` for any children since inline boxes
+don't have any children:
 
 ``` {.python}
 class InlineLayout:
-    def __init__(self, block):
-        self.parent = block
-        self.x = block.x
-        self.y = block.y
-        self.bold = False
-        self.italic = False
-        self.terminal_space = True
-        self.dl = []
+    def layout(self):
+        self.w = self.parent.w
+        # ...
+        self.h = self.y - self.parent.y
 ```
 
-Here, the `parent` field will point to a `block` data structure from
-above, which will define the area where text will be placed.
+Note that in `InlineLayout` the `x` and `y` fields mark the location
+of the next word, not the position of the box itself.
 
-The `layout` function will become a method in this class:
+Finally even `PageLayout` needs some layout code, though since the
+page is always in the same place it's pretty simple:
+
+``` {.python}
+class PageLayout:
+    def layout(self):
+        self.w = WIDTH
+        child.pos = self.pos = (0, 0)
+        child.layout()
+        self.h = child.h
+```
+
+To summarize the rules of layout computation:
+
+1. Before a box is laid out, its parent must set its `pos` field.
+2. When a box is laid out, it must first compute its `w` field.
+3. Next, the box must lay out its children, which requires setting
+   their `pos` fields and then calling their `layout` methods.
+4. Finally, the box must set its `h` field.
+
+Using tree-based layout
+=======================
+
+With tree-based layout implemented, let's use it in the browser
+itself, in its `layout` method. First, we need to create the box tree
+and lay it out:
+
+``` {.python}
+class Browser:
+    def layout(self, tree):
+        page = PageLayout(tree)
+        page.layout()
+```
+
+Once the page is laid out, it must be drawn, which means first
+collecting a display list of things to draw and then calling
+`self.render()` to actually draw those things.
+
+To collect the display list itself, we'll need to recurse down the
+tree; I think it's most convenient to do that by adding a `draw`
+function to each box type which does the recursion. A neat trick when
+accumulating a list like this is to pass the list itself in as an
+argument, and have the method just append to that list instead of
+returning anything. For `PageLayout`, which only has one child, it
+looks like this:
+
+``` {.python}
+class PageLayout:
+    def draw(self, to):
+        self.children[0].draw(to)
+```
+
+For `BlockLayout`, which has multiple, `draw` is called on each child::
+
+``` {.python}
+class BlockLayout:
+    def draw(self, to):
+        for child in self.children:
+            child.draw(to)
+```
+
+Finally, `InlineLayout` is already storing things to draw in its
+`display_list` variable, so we can copy them over:
 
 ``` {.python}
 class InlineLayout:
-    # ...
-    def layout(self, node):
-        if isinstance(node, ElementNode):
-            self.open(node)
-            for child in node.children:
-                self.layout(child)
-            self.close(node)
-        else:
-            self.text(node)
+    def draw(self, to):
+        to.extend(self.display_list)
 ```
 
-The `open`, `close`, and `text` methods will be the similarly-named
-functions from the previous lab. Just make sure to replace all
-references to the parts of `state` with references to `self`.^[Be
-careful with this. Python in particular will not warn you if you
-assign to an undeclared variable, because it has no notion of variable
-declaration as separate from assignment!]
-
-As we're doing this, we need to update the hard-coded constants that
-used to define the page boundaries with references to `parent`. So
-instead of...
-
-``` {.python}
-if self.x + w > 787:
-    self.x = 13
-    self.y += font.metrics('linespace') * 1.2
-```
-
-... we now now want to reset `self.x` not to 13 but to the left edge of
-the block that we are doing layout inside of; and likewise the right
-hand edge is no longer 787 but instead `self.parent.x + self.parent.w`:
-
-``` {.python}
-if self.x + w > self.parent.x + self.parent.w:
-    self.x = self.parent.x
-    self.y += font.metrics('linespace') * 1.2
-```
-
-You should be able to use `InlineLayout` in `show` by creating a `Block`
-representing the page and then laying out to it:
-
-``` {.python}
-page = Block(13, 13, 774)
-layout = InlineLayout(page)
-layout.layout(nodes)
-display_list = layout.dl
-```
-
-Layout uses its block parent as an input, to define where text should
-go, but that block is also an output, since we only discover how tall
-a block of text is during inline layout. So at the end of `layout`,
-let's set the `h` field on the `InlineLayout` to define its height:
-
-``` {.python}
-font = self.font()
-last_line = font.metrics('linespace') * 1.2
-self.h = (self.y + last_line) - self.parent.y
-```
-
-Here the height is computed by taking the bottom of the laid out text
-(using `self.y` for its top and adding its height) and subtracting the
-place where we started laying out text. Note that I\'m calling a new
-helper function `self.font` to compute the current font, setting the
-weight and slant properly.
-
-We can make use of this height in `show` to stop users from scrolling
-past the bottom of the page. First, store the height in the `maxh`
+Now the browser can use draw to collect its own `display_list`
 variable:
 
 ``` {.python}
-maxh = layout.h
-```
-
-Then, when the user scrolls down, we won\'t let them scroll past the
-bottom of the page:
-
-``` {.python}
-def scrolldown(e):
-    nonlocal scrolly
-    scrolly = min(scrolly + SCROLL_STEP, 13 + maxh - 600)
-    render()
-```
-
-Here, the `13` accounts for the 13 pixels of padding we have at the
-beginning of the page and the `600` is the height of the screen.
-
-Block layout
-============
-
-`InlineLayout` is good for laying out lines of text, but what about
-paragraphs of text, with succeeding paragraphs stacked vertically atop
-each other? The current code treats paragraphs as just part of the
-general left-to-right line-oriented layout method, which does't make
-much sense. Instead it makes sense to treat paragraphs as separate
-`InlineLayout` contexts that later get vertically stacked.
-
-To do that, I\'m going to rename `Block` to `BlockLayout`, and it'll
-be a separate *layout mode*, which is intended for things like
-paragraphs and headings. Block layouts will have multiple children, so
-we\'ll add fields for children and parents.
-
-``` {.python}
-class BlockLayout:
-    def __init__(self, parent, node):
-        self.parent = parent
-        self.children = []
-        self.node = node
-        self.x = 13
-        self.y = 13
-        self.w = 774
-```
-
-For now, I'm hard-coding the `x`, `y`, and `w` values in the
-constructor from the parent, but that'll eventually change.
-
-We\'ll have a `layout` function for `BlockLayout`to lay out blocks
-vertically one after another. You might write it like this:
-
-``` {.python}
-class BlockLayout
-    def layout(self):
-        y = self.y
-        for child in node.children:
-            layout = BlockLayout(self, child)
-            self.children.append(layout)
-            layout.layout(y)
-            y += layout.h
-```
-
-This isn\'t too far off conceptually, but there are a bunch of flaws:
-
--   We don't set the `h` field, so we can't use it yet;
--   We\'re passing the child *y* position to the `layout` function,
-    which doesn\'t expect that input;
--   Now we\'re only ever using `BlockLayout` and never calling
-    `InlineLayout`;
--   `TextNode` has no `children` field, but this `layout` method will
-    eventually reach a `TextNode` and crash.
-
-Let\'s fix these one by one. First, the height. At the end of
-`BlockLayout.layout` we know the current `y` position, and it is after
-every child node\'s layout, so we just use that to change the value of
-`self.h`:
-
-``` {.python}
-def layout(self, y):
-    # ...
-    self.h = y - self.y
-```
-
-Second, the `y` argument. Let\'s add a `y` parameter to `layout`
-function and use that to set `self.y`:
-
-``` {.python}
-def layout(self, y):
-    self.y = y
-    # ...
-```
-
-That also lets us remove the hard-coded assignment to `self.y` in
-`__init__`, and while we're at it, let's change `self.x` and `self.w`
-to not be hard-coded:
-
-``` {.python}
-def __init__(self, parent):
-    # ...
-    self.x = self.parent.x
-    self.y = self.parent.y
-```
-
-Since we're now looking for data in the parent, let's add a new type
-of node to be the root node:
-
-``` {.python}
-class Page:
-    def __init__(self):
-        self.x = 13
-        self.y = 13
-        self.w = 774
-        self.children = []
-```
-
-Third and fourth, we need to call `InlineLayout` to handle
-`TextNode`s, plus the `ElementNode`s that are supposed to be inline,
-like `<b>` and `<i>`. The idea is that instead using `BlockLayout` to
-lay out each child node, we\'ll look to see what that node contains.
-If it contains a `TextNode`, or if contains a `<b>` or `<i>` element,
-it will be laid out with `InlineLayout` instead:
-
-``` {.python}
-def is_inline(node):
-    if isinstance(node, TextNode):
-        return true
-    else:
-        return node.tag in ["b", "i"]
-
-def layout(self, y):
-    self.y = y
-    if any(is_inline(child) for child in node.children):
-        layout = InlineLayout(self)
-        self.children.append(layout)
-        layout.layout(node)
-        y += layout.height()
-    else:
+class Browser:
+    def layout(self, tree):
         # ...
+        self.display_list = []
+        page.draw(self.display_list)
+        self.render()
 ```
 
-Let\'s try it out. We\'ll need to tweak `show`:
+And since we're already working on `Browser`, let's add one more
+feature, made possible by tree-based layout. The overall height of the
+page content is now available in `page.h`; let's use that to avoid
+scrolling past the bottom of the page. First, we'll need to store it
+in `layout`:
 
 ``` {.python}
-page = Page()
-layout = BlockLayout(page)
-layout.layout(nodes)
-maxh = layout.h
-display_list = layout.display_list()
+class Browser:
+    def layout(self, tree):
+        # ...
+        self.page_h = page.h
 ```
 
-Here I\'m calling `layout.display_list()` instead of directly
-accessing `layout.dl`, because display lists will be computed
-differently for `InlineLayout` and `BlockLayout`. On an `InlineLayout`
-that function should just return the `dl` field, and on a
-`BlockLayout` it should concatenate all its childrens\' display
-lists:^[I\'m trying to avoid fancy Python features where possible, but
-if your language supports iterators it makes a lot of sense to return
-an iterator from `display_list` instead of a list. That will also
-avoid a lot of copying.]
+Then the `scrolldown` hander should make sure you can't go past it:
 
-``` {.python}
-def display_list(self):
-    dl = []
-    for child in self.children:
-        dl.extend(child.display_list())
-    return dl
+``` {.python last=True}
+class Browser:
+    def scrolldown(self, e):
+        self.scroll = min(self.scroll + SCROLL_STEP, self.page_h - HEIGHT)
+        self.render()
 ```
 
-If you run this, you\'ll find that everything is laid out in one giant
-paragraph, despite all our work putting each paragraph in its own
-`ElementNode`. That\'s because most elements have an all-whitespace
-`TextNode`; that causes those elements to be laid out with
-`InlineLayout`. A small tweak to `is_inline` will mostly fix it:
+Try it out—your browser should now work, all using the fancy new
+tree-based layout algorithm! I recommend taking this moment to debug:
+tree-based layout is powerful but complex. Adding more features, as
+we're about to do, leverages the power but adds to the complexity, so
+it's good to have stable foundations before we move on to that.
 
-``` {.python}
-if isinstance(node, TextNode):
-    return not node.text.isspace()
-# ...
-```
+Backgrounds
+===========
 
-We\'ll also need to skip these empty `TextNode` objects when we create
-layouts for each child of a block:
+Tree-based layout gives every block box a size and position. We'll end
+up using this capability for a lot of different things (dispatching
+clicks, for example), but for now let's use it for something simple
+and visually compelling: background colors.
 
-``` {.python}
-for child in node.children:
-    if isinstance(child, TextNode): continue
-    # ...
-```
-
-You should see now see paragraphs vertically stacked, and headings
-should now automatically take up their own lines, as should list
-items, code snippets, and every other element of that sort.
-
-One thing we lost with this big layout refactor, though, is the blank
-line between paragraphs. Let\'s add it back.
-
-The box model
-=============
-
-Let\'s add support for *margins*, *borders*, and *padding*, which are
-the main ways you change the position of block layout elements.
-Here\'s how those work. In effect, every block element has four
-rectangles associated with it: the *margin rectangle*, the *border
-rectangle*, the *padding rectangle*, and the *content rectangle*:
-
-![](https://www.w3.org/TR/CSS2/images/boxdim.png)
-
-The margin, border, and padding, gives the width of the gap between
-each of these rectangles. Margin, border, and padding can be different
-on each side of the block). That makes for a lot of variables:
-
-``` {.python}
-class BlockLayout:
-    def __init__(self, parent, node):
-        # ....
-        self.mt = self.mr = self.mb = self.ml = 0
-        self.bt = self.br = self.bb = self.bl = 0
-        self.pt = self.pr = self.pb = self.pl = 0
-```
-
-The naming convention here is that the first letter stands for margin,
-border, or padding, while the second letter stands for top, right,
-bottom, or left. Let's stick with the convention that the `x` and `y`
-fields on a layout object represent the top right of the *border*
-rectangle, so that the top margin goes *above* `self.y`, and likewise
-for the left margin, but the top and left borders and padding are
-below and to the right of `self.y` and `self.x`. Similarly, `self.w`
-and `self.h` should give the width and height of the border rectangle.
-We can add helper functions to get some other useful sizes:
-
-``` {.python}
-def content_left(self):
-    return self.x + self.bl + self.pl
-def content_top(self):
-    return self.y + self.bt + self.pt
-def content_width(self):
-    return self.w - self.bl - self.br - self.pl - self.pr
-```
-
-We\'ll now need to take a look at every place we use these variables and
-add the appropriate padding, margin, or border:
-
--   In the `BlockLayout` constructor, instead of using `parent.x` for
-    `self.x`, we\'ll use `parent.content_left()`.
--   In the `BlockLayout` constructor, instead of using `parent.w` for
-    `self.w`, we\'ll use `parent.content_width()`.
--   In `BlockLayout.layout`, we\'ll want to add top and left margins to
-    `self.x` and `self.y`, and subtract left and right margins from
-    `self.w.`
--   In `BlockLayout.layout`, we\'ll need to add the vertical padding and
-    border to the `y` variable after laying out all of the children.
--   In the `InlineLayout` constructor, instead of using `block.x` and
-    `block.y`, we\'ll use `block.content_left()` and
-    `block.content_top()`.
--   In `InlineLayout.text`, we\'ll use `block.content_left()` and
-    `block.content_top()`.
-
-We\'ll also want to modify `BlockLayout.layout` to insert vertical
-margins between the children that it lays out:
-
-``` {.python}
-y += layout.height() + layout.mt + layout.mb
-```
-
-Note that `InlineLayout` does not have margin fields, but that\'s OK
-because every `InlineLayout` is safely hidden inside a `BlockLayout`.
-
-Right now, all of these changes are useless since all of the fields are
-set to 0. Let\'s add code to the top of `BlockLayout.layout` to set
-those fields:
-
-``` {.python}
-if node.tag == "p":
-    self.mb = 16
-elif node.tag == "ul":
-    self.mt = self.mb = 16
-    self.pl = 20
-elif node.tag == "li":
-    self.mb = 8
-```
-
-You should now see blanks between paragraphs, and list items (like in a
-table of contents) should be indented.
-
-One more stop: let's actually draw the borders. That means drawing
-lines (one per border) or, more precisely, rectangles (since the
-borders have width). That\'s going to mean extending the display list
-to draw both rectangles and text. Let\'s create some data structures
-for that.
+To draw backgrounds for the elements on the page, we'll need to draw
+rectangles on our canvas, and to draw something on the canvas we first
+need to put it in the display list. Right now, the display list only
+contains text to draw—that's going to have to change. Conceptually,
+the display list contains *commands*, so let's have two types of
+commands, for text and for rectangles:
 
 ``` {.python}
 class DrawText:
-    def __init__(self, x, y, text, font):
-        self.x = x
-        self.y = y
+    def __init__(self, x1, y1, text, font):
+        self.x1 = x1
+        self.y1 = y1
         self.text = text
         self.font = font
-
-    def draw(self, scrolly, canvas):
-        canvas.create_text(
-            self.x, self.y - scrolly,
-            text=self.text,
-            font=self.font,
-            anchor='nw',
-        )
-
+    
 class DrawRect:
-    def __init__(self, x1, y1, x2, y2):
+    def __init__(self, x1, y1, x2, y2, color):
         self.x1 = x1
         self.y1 = y1
         self.x2 = x2
         self.y2 = y2
+        self.color = color
+```
 
-    def draw(self, scrolly, canvas):
+Now `InlineLayout` needs to add `DrawText` objects to the display
+list:
+
+``` {.python}
+class InlineLayout:
+    def draw(self, to):
+        for x, y, word, font in self.display_list:
+            to.append(DrawText(x, y, word, font)
+```
+
+Meanwhile block boxes can add backgrounds by adding `DrawRect`
+commands. I'm going to add a gray background to `pre` tags, which
+surround code snippets:
+
+``` {.python}
+class BlockLayout:
+    def draw(self, to):
+        if self.node.tag == "pre":
+            x1, y1 = self.pos
+            x2, y2 = x + self.w, y + self.h
+            to.append(DrawRect(x, y, x2, y2, "gray"))
+        # ...
+```
+
+Note that this code has to come *before* we call `draw` on the child
+layout objects, because the background has to be drawn *before* the
+text inside the element, lest the background obscure the
+text.
+
+Once graphics commands are on the display list, we need to run them on
+our actual canvas. Let's do this with a `draw` method. On `DrawText`
+it's just a call to `create_text`:
+
+``` {.python}
+class DrawText:
+    def draw(self, scroll, canvas):
+        canvas.create_text(
+            self.x1, self.y1 - scroll,
+            text=self.text,
+            font=self.font,
+            anchor='nw',
+        )
+```
+
+In `DrawRect` it calls `create_rectangle`. Remember to pass `width=0`,
+because by default `create_rectangle` draws a one-pixel black border:
+
+``` {.python}
+
+class DrawRect:
+    def draw(self, scroll, canvas):
         canvas.create_rectangle(
-            self.x1, self.y1 - scrolly,
-            self.x2, self.y2 - scrolly,
+            self.x1, self.y1 - scroll,
+            self.x2, self.y2 - scroll,
             width=0,
             fill="black",
         )
 ```
 
-Here I\'ve passed `width=0` to `create_rectangle`, because otherwise
-`create_rectangle` would draw a one-pixel black border.
-
-Now `InlineLayout.layout` will create `DrawText` objects, while
-`BlockLayout.display_list` will create `DrawRect` objects for the
-borders.
+We do still want to clip out graphics commands that only occur
+offscreen. For a rectangle, that means testing `y1` and `y2`; let's
+just add those fields to `DrawText`:
 
 ``` {.python}
-def display_list(self):
-    dl = []
+def __init__(self, x1, y1, text, font):
     # ...
-    _ol, _ot = self.x, self.y
-    _or, _ob = _ol + self.w, _ot + self.h
-    _il, _it = _ol + self.bl, _ot + self.bt
-    _ir, _ib = _or - self.br, _ob - self.bb
-    if self.bl: dl.append(DrawRect(_ol, _ot, _il, _ob))
-    if self.br: dl.append(DrawRect(_ir, _ot, _or, _ob))
-    if self.bt: dl.append(DrawRect(_ol, _ot, _or, _it))
-    if self.bb: dl.append(DrawRect(_ol, _ib, _or, _ob))
-    return dl
+    self.x2 = x1 + font.measure(text)
+    self.y2 = y1 + font.metrics("linespace")
 ```
 
-Here I define the variables `_ol`, `_il`, `_ot`, `_it`, `_or`, `_ir`,
-`_ob`, and `_ib` for the outer and inner left, top, right, and bottom
-coordinates. The underscore is because otherwise `or` would conflict
-with a keyword.
+::: {.quirks}
+On some systems, the `measure` and `metrics` commands are awfully
+slow. Adding two more calls to those methods, as here, would only make
+things slower.
 
-Finally, when we use the display list, we\'ll now just call `draw` on
-each command in the display list:
+Luckily, these two calls aren't necessary; the `measure` call
+duplicates an equivalent call in `InlineLayout.text`, while the
+`metrics` call duplicates a call in `InlineLayout.flush`. If you're
+careful you can pass the results of those calls all the way into
+`DrawText`.
+:::
+
+Since all the drawing logic is now in the drawing commands themselves,
+the browser's `render` method just needs to determine which commands
+to execute, and then call their `draw` method.
 
 ``` {.python}
-def render():
-    canvas.delete("all")
-    for cmd in display_list:
-        cmd.draw(scrolly, canvas)
+    def render(self):
+        self.canvas.delete("all")
+        for cmd in self.display_list:
+            if cmd.y1 > self.scroll + HEIGHT: continue
+            if cmd.y2 < self.scroll: continue
+            cmd.draw(self.scroll, self.canvas)
 ```
 
-This setup also makes it fairly easy to change the appearance of
-elements. For example, a few lines will indent code blocks 8 pixels,
-surround them with a one pixel border, and then add another 8 pixels
-between the border and the code itself:
+Try it on this page, which has lots of code snippets; each should now
+have a gray background. By the way, we not only have access to the
+height of any element, but also the height of the whole page. We can
+use that to stop the user from scrolling past the bottom of the page.
+In `layout`, store the height in a `max_y` variable:
 
 ``` {.python}
-elif node.tag == "pre":
-    self.mr = self.ml = 8
-    self.bt = self.br = self.bb = self.bl = 1
-    self.pt = self.pr = self.pb = self.pl = 8
+def layout(self, tree):
+    # ...
+    self.max_y = page.h
+```
+
+Then, when the user scrolls down, don't let them scroll past the
+bottom of the page:
+
+``` {.python}
+def scrolldown(self, e):
+    self.scroll = min(self.scroll + SCROLL_STEP, self.max_y)
+    self.render()
 ```
 
 Summary
