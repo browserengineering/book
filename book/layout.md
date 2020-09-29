@@ -99,13 +99,121 @@ each attribute.
 
 [wiki-atgram]: https://en.wikipedia.org/wiki/Attribute_grammar
 
-Inline layout
-=============
+Layout modes
+============
 
-Our `layout` function doesn\'t do this yet, so let's fix it.
+Let's start with the scaffolding for layout modes. We'll have two,
+block and inline layout, and since what we've written now is basically
+inline layout let's rename `Layout` to `InlineLayout` and add a new
+`BlockLayout` class:
+
+``` {.python}
+class InlineLayout:
+    # ...
+
+class BlockLayout:
+    # ...
+```
+
+These layout objects will be the nodes of the box tree, and in fact
+some browsers call it a layout tree. To make it a tree, we'll want
+both types of layout objects to know their children, their parent, and
+the HTML element they correspond to:
+
+``` {.python}
+def __init__(self, node, parent):
+    self.node = node
+    self.parent = parent
+    self.children = []
+    # ...
+```
+
+The `InlineLayout` constructor also sets up the `weight`, `style`,
+`size`, `x`, and `y`; plus, the constructor calls the `recurse` method
+to do the actual layout. It'll be convenient to trigger layout
+separately from constructing the box tree itself, so let's move all of
+that—setting the field values, calling `recurse`—to a new method:
+
+``` {.python}
+def layout(self):
+    self.display_list = []
+
+    self.x = HSTEP
+    self.y = VSTEP
+    self.weight = "normal"
+    self.style = "roman"
+    self.size = 16
+
+    self.line = []
+    self.recurse(node)
+    self.flush()
+```
+
+The `BlockLayout` class will need the same structure:
+
+``` {.python}
+def BlockLayout:
+    def __init__(self, node, parent):
+        self.node = node
+        self.parent = parent
+        self.children = []
+
+    def layout(self):
+        pass
+```
+
+With the two layout modes now drafted, the next step is to construct a
+whole tree of these things.
+
+Creating the box tree
+=====================
+
+The first job of the `layout` method is to create the child layout
+objects. For `InlineLayout` that's already done, so let's focus on
+`BlockLayout`.
+
+Usually, a block box has one block child per child in the element
+tree. But not always! When you get to something like a paragraph, the
+children are like text, so the child layout object is a single inline
+layout box. We can tell the difference by examining the children of
+the node we are laying out:
+
+``` {.python}
+INLINE_ELEMENTS = [
+    "a", "em", "strong", "small", "s", "cite", "q", "dfn", "abbr",
+    "ruby", "rt", "rp", "data", "time", "code", "var", "samp", "kbd",
+    "sub", "sup", "i", "b", "u", "mark", "bdi", "bdo", "span", "br",
+    "wbr", "big"
+]
+
+def has_block_children(self):
+    for child in self.node.children:
+        if isinstance(child, TextNode):
+            return False
+        if child.tag in INLINE_ELEMENTS:
+            return False
+    return True
+```
+
+The `layout` method can use this to create child layout objects:
+
+``` {.python}
+def layout(self):
+    if self.has_block_children():
+        for child in self.node.children:
+            self.children.append(BlockLayout(child, self))
+    else:
+        self.children.append(InlineLayout(self.node, self))
+```
+
+Now that the child layout objects are created, we can move on to do
+some layout.
+
+Computing size and position
+===========================
 
 Let's start by defining a data structure to store an area where text
-can be laid out. I\'m going to call this a `Block`:
+can be laid out. I'm going to call this a `Block`:
 
 ``` {.python}
 class Block:
