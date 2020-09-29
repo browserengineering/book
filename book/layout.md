@@ -17,20 +17,87 @@ for backgrounds and make our web pages more colorful.
 Tree-based layout
 =================
 
-The way layout works now, every time we lay out an element, we first
-modify the state (in `layout_open`), then lay out each child, and then
-modify the state again (in `layout_close`). The actual measurements of
-each element (like their height and width) don't exist as data; you
-can only glimpse them by watching the pattern of state modifications.
+The way layout works now, every element is laid out by modifying
+global state three times: for the open tag, for each child, and then
+for the close tag. While things do get put in the right place, there's
+data for the element as a whole (like its height and width) isn't
+present, because the element itself is split into independent open and
+close tags. That might work for simple layouts, but it's pretty hard
+to draw a background without knowing how wide and tall to draw it.
 
-Well, that works for simple layouts, but it's pretty hard to draw a
-border without knowing how wide and tall to draw the border.
+Web browsers actually structure layout differently. In a browser, the
+job of layout is to produce a tree, called the *box tree*. Each
+element has an associated box[^no-box] and each box has a size and a
+position. The layout process is thought of as generating the box tree
+from the element tree.
 
-So web browsers actually structure layout differently. In a browser,
-the job of layout is to produce a tree, called the *box tree*, so that
-each element has an associated box and each box is annotated with a
-size and a position. When you lay out text, you do so relative to the
-box the element is contained in.
+[^no-box]: Well, some elements like `<script>` don't generate boxes,
+    and some elements like `<li>` generate multiple, but for most
+    elements it's one element one box.
+    
+Before we jump to code, let's talk through some layout concepts.
+
+First: layout modes. Web pages contain different kinds of things.
+We've already talked a lot about [text](text.md), which is laid out
+left-to-right in lines[^in-english]. But that text is organized in
+paragraphs, which are laid out top-to-bottom, usually with gaps in
+between. To account for the difference, browsers have an "inline"
+layout mode for things like text and a "block" layout mode for things
+like paragraphs. Different layout modes correspond to different types
+of boxes. So for example, a document with a heading and two paragraphs
+would correspond to a tree like this:
+
+[^in-english]: In European languages. But not universally!
+
+![A tree of boxes. The root is a block for the `<html>` element; it
+    has one child, a block for the `<body>` element; it has three
+    children, each blocks as well (for the `<h1>` and two `<p>`
+    elements); and each of those have a single child, an
+    inline.](im/layout-modes.png)
+
+The inline layout mode is effectively what we implemented in [Chapter
+3](text.md), so this chapter will be about implementing block layout.
+
+Second: creating this box tree. The current layout algorithm is a
+recursive function which (eventually) adds things to a linear
+`display_list`. Tree-based layout means the recursive function must
+traverse the HTML tree and builds a box tree instead. A good way to
+structure this kind of thing is a `BlockLayout` class which is given
+an `ElementNode` and which then recursively constructs `BlockLayout`s
+for each child of that element.
+
+Finally: layout. With the box tree created, how do we compute the size
+and position of each box? The general rule is that a block, like a
+paragraph, should take up as much horizontal room as it can, and
+should be tall enough to contain everything inside it. That means that
+a box's width is based on its *parent*'s width, while its *height* is
+based on its *children*'s height:
+
+![The flow of information through layout. Width information flows down
+    the tree, from parent to child, while height information flows up,
+    from child to parent.](im/layout-order.png)
+
+This suggests a step-by-step approach to layout. First, an element
+must compute its width, based on its parent's width. That makes it
+possible to lay out the children, which comes next. Finally, the
+children's heights are now available, so the element's height can be
+calculated.
+
+[^and-inlines]: On the web, all boxes have margin, padding, and
+    borders, though they work in complicated ways for non-block boxes.
+    For simplicity this book only gives block boxes the full box
+    model.
+
+Let's now turn these concepts into code.
+
+::: {.further}
+Formally, computations on a tree like this can be described by an
+[attribute grammar](wiki-atgram). Attribute grammar engines use the
+same logic we used above to determine the right order to calculate
+each attribute.
+:::
+
+[wiki-atgram]: https://en.wikipedia.org/wiki/Attribute_grammar
 
 Inline layout
 =============
