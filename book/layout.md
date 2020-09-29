@@ -5,15 +5,17 @@ prev: html
 next: styles
 ...
 
-So far, layout has been an unstructured process, with each tag just
-directly modifying state like the current *x* and *y* position.
-That\'s an appropriate way to lay out text, but gets cumbersome as
-we add more and more layout features. Plus, it's patently unsuited for
-handling things like borders and margins. This chapter describes a
-better way to do layout.
+So far, layout is a linear process, processing each open tag, text
+node, and close tag in order. But web pages are trees not just
+syntactically but also visually: borders and backgrounds draw one
+element inside another in a way that requires tracking the layout of
+parent elements. So this chapter switches to *tree-based layout*,
+where the tree of elements is transformed into a tree of *boxes*, each
+of which draws a part of the page. In the process, we'll add support
+for backgrounds and make our web pages more colorful.
 
-Inline layout
-=============
+Tree-based layout
+=================
 
 The way layout works now, every time we lay out an element, we first
 modify the state (in `layout_open`), then lay out each child, and then
@@ -29,6 +31,9 @@ the job of layout is to produce a tree, called the *box tree*, so that
 each element has an associated box and each box is annotated with a
 size and a position. When you lay out text, you do so relative to the
 box the element is contained in.
+
+Inline layout
+=============
 
 Our `layout` function doesn\'t do this yet, so let's fix it.
 
