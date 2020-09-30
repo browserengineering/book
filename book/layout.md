@@ -134,7 +134,7 @@ to do the actual layout. It'll be convenient to trigger layout
 separately from constructing the layout tree itself, so let's move all of
 that—setting the field values, calling `recurse`—to a new method:
 
-``` {.python}
+``` {.python expected=False}
 def layout(self):
     self.display_list = []
 
@@ -145,21 +145,21 @@ def layout(self):
     self.size = 16
 
     self.line = []
-    self.recurse(node)
+    self.recurse(self.node)
     self.flush()
 ```
 
 The `BlockLayout` class will need the same structure:
 
 ``` {.python}
-def BlockLayout:
+class BlockLayout:
     def __init__(self, node, parent):
         self.node = node
         self.parent = parent
         self.children = []
 
     def layout(self):
-        pass
+        # block layout here
 ```
 
 With the two layout modes now drafted, the next step is to construct a
@@ -204,7 +204,7 @@ def has_block_children(self):
 
 The `layout` method can use this to create child layout objects:
 
-``` {.python}
+``` {.python indent=4}
 def layout(self):
     if self.has_block_children():
         for child in self.node.children:
@@ -264,10 +264,10 @@ self.w = self.parent.w
 Then, each of the children need to be laid out. That means each child
 has to be positioned, and then its `layout` method must be called:
 
-``` {.python expected=True}
-y = self.y
+``` {.python indent=8}
+y = self.pos[1]
 for child in self.children:
-    child.pos = (self.x, y)
+    child.pos = (self.pos[0], y)
     child.layout()
     y += child.h
 ```
@@ -277,7 +277,7 @@ We conveniently already added all the children's heights into `y`, so
 we can just subtract its starting value:
 
 ``` {.python}
-self.h = y - self.y
+self.h = y - self.pos[1]
 ```
 
 That settles the matter in `BlockLayout`; let's turn our attention to
@@ -290,11 +290,18 @@ class InlineLayout:
     def layout(self):
         self.w = self.parent.w
         # ...
-        self.h = self.y - self.parent.y
+        self.h = self.y - self.parent.pos[1]
 ```
 
 Note that in `InlineLayout` the `x` and `y` fields mark the location
-of the next word, not the position of the layout object itself.
+of the next word, not the position of the layout object itself. So
+those should start with the parent's `pos`:
+
+``` {.python}
+self.x, self.y = self.pos
+```
+
+Something similar has to happen in `flush`, which also resets `x`.
 
 Finally even `PageLayout` needs some layout code, though since the
 page is always in the same place it's pretty simple:
