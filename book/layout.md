@@ -182,9 +182,9 @@ text, other elements are only used as blocks:
 ``` {.python}
 INLINE_ELEMENTS = [
     "a", "em", "strong", "small", "s", "cite", "q", "dfn", "abbr",
-    "ruby", "rt", "rp", "data", "time", "code", "var", "samp", "kbd",
-    "sub", "sup", "i", "b", "u", "mark", "bdi", "bdo", "span", "br",
-    "wbr", "big"
+    "ruby", "rt", "rp", "data", "time", "code", "var", "samp",
+    "kbd", "sub", "sup", "i", "b", "u", "mark", "bdi", "bdo",
+    "span", "br", "wbr", "big"
 ]
 ```
 
@@ -242,8 +242,8 @@ To summarize the rules of layout tree creation:
 With the layout tree set up, let's move on to laying out each object
 in the tree.
 
-Computing size and position
-===========================
+Size and position
+=================
 
 The general structure of layout is clear: each layout object computes
 its width, then lays out its children, and then computes its height.
@@ -565,19 +565,26 @@ capabilities of our browser by adding margins, border, and padding.
 Exercises
 =========
 
--   Remove the magic numbers from the `Page` object by instead assigning
-    padding to the `<body>` element
--   Add bullets to list items, which in HTML are `<li>` tags. You can
-    make them little squares, located to the left of the list item
-    itself.
--   Add support for background colors and border colors. Code blocks
-    (`<pre>` tags) should have light-gray background color, while
-    headings (`<h2>` tags) should have light-gray bottom borders, or
-    some other colors you like better. Make sure background colors are
-    located behind the text, not in front of it!
--   Implement *margin collapsing*. In margin collapsing, when one block
-    has a bottom margin and the next block has a top margin, the actual
-    gap between them is the *larger* of the two margins, not their sum.
--   Extend margin collapsing to allow the top (bottom) margin of an
-    element to overlap with the top (bottom) margin of its first
-    (last) child, as long as it has no top (bottom) border or padding.
+*Links Bar*: At the top and bottom of each chapter of this book is a
+gray bar naming the chapter and offering back and forward links. It is
+enclosed in a `<nav class="links">` tag. Have your browser give this
+links bar the same light gray background that any other browser does.
+
+*Hidden Head*: There's a good chance your browser is still showing
+scripts, styles, and page titles at the top of every page you visit.
+Make it so that the `<head>` element and its contents are never
+displayed.
+
+*Padding*: Right now the text rides right up against the edge of the
+screen. Modify your browser so that the `<body>` element is only 700
+pixels wide, centered in the window.
+
+*Bullets*: Add bullets to list items, which in HTML are `<li>` tags.
+You can make them little squares, located to the left of the list item
+itself. Also indent `<li>` elements so the bullets are to the left of
+the text of the bullet point.
+
+*Table of Contents*: This book has a table of contents at the top of
+each chapter, enclosed in a `<nav id="toc">` tag, which contains a
+list of links. Add the text "Table of Contents", with a gray
+background, above that list. Don't modifying the lexer or parser.
