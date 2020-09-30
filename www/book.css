@@ -118,6 +118,8 @@ body { counter-reset: fn; }
 
 pre { margin-left: 2ex; }
 
+figure img { width: 100%; }
+
 .quirk { border: 2px solid purple; }
 .quirk:before { content: "Quirk"; color: purple; }
 .warning { border: 2px solid red; }

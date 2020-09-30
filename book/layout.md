@@ -6,34 +6,36 @@ next: styles
 ...
 
 So far, layout is a linear process, processing each open tag, text
-node, and close tag in order. But web pages are trees not just
-syntactically but also visually: borders and backgrounds draw one
-element inside another in a way that requires tracking the layout of
-parent elements. So this chapter switches to *tree-based layout*,
-where the tree of elements is transformed into a tree of *boxes*, each
-of which draws a part of the page. In the process, we'll add support
-for backgrounds and make our web pages more colorful.
+node, and close tag in order. But web pages are trees, and not just
+syntactically: elements with borders or backgrounds clearly nest
+inside one another. So this chapter switches to *tree-based layout*,
+where the tree of elements is transformed into a tree of *layout
+objects*, each of which draws a part of the page. In the process,
+we'll add support for backgrounds and make our web pages more
+colorful.
 
 Tree-based layout
 =================
 
 The way layout works now, every element is laid out by modifying
-global state three times: for the open tag, for each child, and then
-for the close tag. While things do get put in the right place, there's
-data for the element as a whole (like its height and width) isn't
-present, because the element itself is split into independent open and
-close tags. That might work for simple layouts, but it's pretty hard
-to draw a background without knowing how wide and tall to draw it.
+global state three times: once for the open tag, recursively for each
+child, and then once more for the close tag. While things do get put
+in the right place, information about the element as a whole, like its
+height and width, isn't ever computed because the element itself is
+split into independent open and close tags. That might work for simple
+layouts, but it's pretty hard to draw a background without knowing how
+wide and tall to draw it.
 
-Web browsers actually structure layout differently. In a browser, the
-job of layout is to produce a tree, called the *box tree*. Each
-element has an associated box[^no-box] and each box has a size and a
-position. The layout process is thought of as generating the box tree
-from the element tree.
+So web browsers structure layout differently. In a browser, layout
+produce a tree, called the *layout tree*. Each element has an
+associated layout object[^no-box] and each of those has a size and a
+position. The layout process is thought of as generating the layout
+tree from the element tree.
 
-[^no-box]: Well, some elements like `<script>` don't generate boxes,
-    and some elements like `<li>` generate multiple, but for most
-    elements it's one element one box.
+[^no-box]: Well, some elements like `<script>` don't generate layout
+    objects, and some elements like `<li>` generate multiple (one for
+    the bullet point!), but for most elements it's one element one
+    layout object.
     
 Before we jump to code, let's talk through some layout concepts.
 
@@ -44,52 +46,47 @@ paragraphs, which are laid out top-to-bottom, usually with gaps in
 between. To account for the difference, browsers have an "inline"
 layout mode for things like text and a "block" layout mode for things
 like paragraphs. Different layout modes correspond to different types
-of boxes. So for example, a document with a heading and two paragraphs
-would correspond to a tree like this:
+of layout objects. So for example, a document with a heading and two
+paragraphs would correspond to a tree like this:
 
 [^in-english]: In European languages. But not universally!
 
-![A tree of boxes. The root is a block for the `<html>` element; it
-    has one child, a block for the `<body>` element; it has three
-    children, each blocks as well (for the `<h1>` and two `<p>`
-    elements); and each of those have a single child, an
-    inline.](im/layout-modes.png)
+![A tree of layout objects. The root is a block for the `<html>`
+    element; it has one child, a block for the `<body>` element; it
+    has three children, each blocks as well (for the `<h1>` and two
+    `<p>` elements); and each of those have a single child, an
+    inline.](/im/layout-modes.png)
 
 The inline layout mode is effectively what we implemented in [Chapter
 3](text.md), so this chapter will be about implementing block layout.
 
-Second: creating this box tree. The current layout algorithm is a
+Second: creating the layout tree. The current layout algorithm is a
 recursive function which (eventually) adds things to a linear
 `display_list`. Tree-based layout means the recursive function must
-traverse the HTML tree and builds a box tree instead.
+traverse the HTML tree and builds a layout tree instead.
 
-Since we have two types of of layout modes, the elements of the box
-tree will have one of two types: inline and block boxes. We'll follow
-a simple rule, which is that a block box either contains any number of
-block boxes, or a single inline box, while inline boxes have no
-children. This invariant will make it easier when we're doing layout.
+Since we have two types of of layout modes, the elements of the layout
+tree will have one of two types: inline and block. We'll follow a
+simple rule, which is that a block layout either contains any number
+of blocks, or a single inline, while inline layout has no children.
+This invariant will make it easier when we're doing layout.
 
-Finally: layout. With the box tree created, how do we compute the size
-and position of each box? The general rule is that a block, like a
-paragraph, should take up as much horizontal room as it can, and
-should be tall enough to contain everything inside it. That means that
-a box's width is based on its *parent*'s width, while its *height* is
-based on its *children*'s height:
+Finally: layout. With the layout tree created, how do we compute the
+size and position of each layout object? The general rule is that a
+block, like a paragraph, should take up as much horizontal room as it
+can, and should be tall enough to contain everything inside it. That
+means that a layout objects's width is based on its *parent*'s width,
+while its *height* is based on its *children*'s height:
 
 ![The flow of information through layout. Width information flows down
     the tree, from parent to child, while height information flows up,
-    from child to parent.](im/layout-order.png)
+    from child to parent.](/im/layout-order.png)
 
 This suggests a step-by-step approach to layout. First, an element
 must compute its width, based on its parent's width. That makes it
 possible to lay out the children, which comes next. Finally, the
 children's heights are now available, so the element's height can be
 calculated.
-
-[^and-inlines]: On the web, all boxes have margin, padding, and
-    borders, though they work in complicated ways for non-block boxes.
-    For simplicity this book only gives block boxes the full box
-    model.
 
 Let's now turn these concepts into code.
 
@@ -118,7 +115,7 @@ class BlockLayout:
     # ...
 ```
 
-These layout objects will be the nodes of the box tree, and in fact
+These layout objects will be the nodes of the layout tree, and in fact
 some browsers call it a layout tree. To make it a tree, we'll want
 both types of layout objects to know their children, their parent, and
 the HTML element they correspond to:
@@ -134,7 +131,7 @@ def __init__(self, node, parent):
 The `InlineLayout` constructor also sets up the `weight`, `style`,
 `size`, `x`, and `y`; plus, the constructor calls the `recurse` method
 to do the actual layout. It'll be convenient to trigger layout
-separately from constructing the box tree itself, so let's move all of
+separately from constructing the layout tree itself, so let's move all of
 that—setting the field values, calling `recurse`—to a new method:
 
 ``` {.python}
@@ -168,18 +165,18 @@ def BlockLayout:
 With the two layout modes now drafted, the next step is to construct a
 whole tree of these things.
 
-Creating the box tree
-=====================
+Creating the layout tree
+========================
 
 The first job of the `layout` method is to create the child layout
 objects. For `InlineLayout` that's already done, so let's focus on
 `BlockLayout`.
 
-Usually, a block box has one block child per child in the element
+Usually, a block layout has one block child per child in the element
 tree. But not always! When you get to something like a paragraph, the
 children are like text, so the child layout object is a single inline
-layout box. We can tell the difference by examining the children of
-the node we are laying out: some elements are only used inside running
+layout. We can tell the difference by examining the children of the
+node we are laying out: some elements are only used inside running
 text, other elements are only used as blocks:
 
 ``` {.python}
@@ -191,7 +188,7 @@ INLINE_ELEMENTS = [
 ]
 ```
 
-A block box has can look at its children's types and tags to determine
+A block layout has can look at its children's types and tags to determine
 whether it should have block or inline contents:
 
 ```
@@ -217,7 +214,7 @@ def layout(self):
         self.children.append(InlineLayout(self.node, self))
 ```
 
-One final nit: what forms the root of this box tree? Since both
+One final nit: what forms the root of this layout tree? Since both
 `BlockLayout` and `InlineLayout` require a parent in their
 constructor, we need another layout object at the root. Since I think
 of that root as the page itself, let's call it `PageLayout`:
@@ -234,24 +231,24 @@ class PageLayout:
         self.children.append(child)
 ```
 
-To summarize the rules of box tree creation:
+To summarize the rules of layout tree creation:
 
-1. The root of the box tree is always a `PageLayout`.
+1. The root of the layout tree is always a `PageLayout`.
 2. Its first child is always a `BlockLayout`.
 3. Each `BlockLayout` either contains all `BlockLayout` children, or a
    single `InlineLayout`.
 4. An `InlineLayout` doesn't have children.
 
-With the box tree set up, let's move on to laying out each box in the
-tree.
+With the layout tree set up, let's move on to laying out each object
+in the tree.
 
 Computing size and position
 ===========================
 
-The general structure of layout is clear: each box computes its width,
-then lays out its children, and then computes its height. Besides
-width and height, we also need to position each element. This is
-tricky, because if you have several paragraphs, the position of the
+The general structure of layout is clear: each layout object computes
+its width, then lays out its children, and then computes its height.
+Besides width and height, we also need to position each element. This
+is tricky, because if you have several paragraphs, the position of the
 second depends on the height of the first. I'll use the rule that each
 element it positioned by its parent before its own `layout` method is
 called.
@@ -285,7 +282,7 @@ self.h = y - self.y
 
 That settles the matter in `BlockLayout`; let's turn our attention to
 `InlineLayout`. Its `layout` method needs to set up the same `w`, `h`;
-it doesn't need to assign `pos` for any children since inline boxes
+it doesn't need to assign `pos` for any children since inline layouts
 don't have any children:
 
 ``` {.python}
@@ -297,7 +294,7 @@ class InlineLayout:
 ```
 
 Note that in `InlineLayout` the `x` and `y` fields mark the location
-of the next word, not the position of the box itself.
+of the next word, not the position of the layout object itself.
 
 Finally even `PageLayout` needs some layout code, though since the
 page is always in the same place it's pretty simple:
@@ -313,18 +310,18 @@ class PageLayout:
 
 To summarize the rules of layout computation:
 
-1. Before a box is laid out, its parent must set its `pos` field.
-2. When a box is laid out, it must first compute its `w` field.
-3. Next, the box must lay out its children, which requires setting
+1. Before an object is laid out, its parent must set its `pos` field.
+2. When an object is laid out, it must first compute its `w` field.
+3. Next, the object must lay out its children, which requires setting
    their `pos` fields and then calling their `layout` methods.
-4. Finally, the box must set its `h` field.
+4. Finally, the object must set its `h` field.
 
 Using tree-based layout
 =======================
 
 With tree-based layout implemented, let's use it in the browser
-itself, in its `layout` method. First, we need to create the box tree
-and lay it out:
+itself, in its `layout` method. First, we need to create the layout
+tree and lay it out:
 
 ``` {.python}
 class Browser:
@@ -339,8 +336,8 @@ collecting a display list of things to draw and then calling
 
 To collect the display list itself, we'll need to recurse down the
 tree; I think it's most convenient to do that by adding a `draw`
-function to each box type which does the recursion. A neat trick when
-accumulating a list like this is to pass the list itself in as an
+function to each layout object which does the recursion. A neat trick
+when accumulating a list like this is to pass the list itself in as an
 argument, and have the method just append to that list instead of
 returning anything. For `PageLayout`, which only has one child, it
 looks like this:
@@ -412,8 +409,8 @@ it's good to have stable foundations before we move on to that.
 Backgrounds
 ===========
 
-Tree-based layout gives every block box a size and position. We'll end
-up using this capability for a lot of different things (dispatching
+Tree-based layout gives every block a size and position. We'll end up
+using this capability for a lot of different things (dispatching
 clicks, for example), but for now let's use it for something simple
 and visually compelling: background colors.
 
@@ -451,7 +448,7 @@ class InlineLayout:
             to.append(DrawText(x, y, word, font)
 ```
 
-Meanwhile block boxes can add backgrounds by adding `DrawRect`
+Meanwhile block layouts can add backgrounds by adding `DrawRect`
 commands. I'm going to add a gray background to `pre` tags, which
 surround code snippets:
 
