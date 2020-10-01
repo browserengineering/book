@@ -177,11 +177,17 @@ class InlineLayout:
         self.parent = parent
         self.children = []
 
+        self.x = -1
+        self.y = -1
+        self.w = -1
+        self.h = -1
+
     def layout(self):
         self.w = self.parent.w
         self.display_list = []
 
-        self.x, self.y = self.pos
+        self.cx = self.x
+        self.cy = self.y
         self.weight = "normal"
         self.style = "roman"
         self.size = 16
@@ -190,7 +196,7 @@ class InlineLayout:
         self.recurse(self.node)
         self.flush()
 
-        self.h = self.y - self.parent.pos[1]
+        self.h = self.cy - self.y
 
     def recurse(self, node):
         if isinstance(node, TextNode):
@@ -224,7 +230,7 @@ class InlineLayout:
             self.size -= 4
         elif tag == "p":
             self.flush()
-            self.y += VSTEP
+            self.cy += VSTEP
         
     def text(self, text):
         font = tkinter.font.Font(
@@ -234,26 +240,27 @@ class InlineLayout:
         )
         for word in text.split():
             w = font.measure(word)
-            if self.x + w > WIDTH - HSTEP:
+            if self.cx + w > WIDTH - HSTEP:
                 self.flush()
-            self.line.append((self.x, w, word, font))
-            self.x += w + font.measure(" ")
+            self.line.append((self.cx, word, font))
+            self.cx += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
-        metrics = [font.metrics() for x, w, word, font in self.line]
+        metrics = [font.metrics() for x, word, font in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
-        baseline = self.y + 1.2 * max_ascent
-        for (x, w, word, font), metric in zip(self.line, metrics):
+        baseline = self.cy + 1.2 * max_ascent
+        for x, word, font in self.line:
             y = baseline - font.metrics("ascent")
-            self.display_list.append(DrawText(x, y, x + w, y + metric["linespace"], word, font))
-        self.x = self.pos[0]
+            self.display_list.append((x, y, word, font))
+        self.cx = self.x
         self.line = []
         max_descent = max([metric["descent"] for metric in metrics])
-        self.y = baseline + 1.2 * max_descent
+        self.cy = baseline + 1.2 * max_descent
 
     def draw(self, to):
-        to.extend(self.display_list)
+        for x, y, word, font in self.display_list:
+            to.append(DrawText(x, y, word, font)
 
 INLINE_ELEMENTS = [
     "a", "em", "strong", "small", "s", "cite", "q", "dfn", "abbr",
@@ -267,6 +274,11 @@ class BlockLayout:
         self.node = node
         self.parent = parent
         self.children = []
+
+        self.x = -1
+        self.y = -1
+        self.w = -1
+        self.h = -1
 
     def has_block_children(self):
         for child in self.node.children:
@@ -287,33 +299,39 @@ class BlockLayout:
             self.children.append(InlineLayout(self.node, self))
 
         self.w = self.parent.w
-        y = self.pos[1]
+        y = self.y
         for child in self.children:
-            child.pos = (self.pos[0], y)
+            child.x = self.x
+            child.y = y
             child.layout()
             y += child.h
-        self.h = y - self.pos[1]
+        self.h = y - self.y
 
     def draw(self, to):
         if self.node.tag == "pre":
-            x, y = self.pos
-            x2, y2 = x + self.w, y + self.h
-            to.append(DrawRect(x, y, x2, y2, "gray"))
+            x2, y2 = self.x + self.w, self.y + self.h
+            to.append(DrawRect(self.x, self.y, x2, y2, "gray"))
         for child in self.children:
             child.draw(to)
 
-class PageLayout:
+class DocumentLayout:
     def __init__(self, node):
         self.node = node
         self.parent = None
         self.children = []
+
+        self.x = -1
+        self.y = -1
+        self.w = -1
+        self.h = -1
 
     def layout(self):
         self.w = WIDTH
         child = BlockLayout(self.node, self)
         self.children.append(child)
 
-        child.pos = self.pos = (0, 0)
+        child.x = self.x = 0
+        child.y = self.y = 0
         child.layout()
         self.h = child.h
 
@@ -321,17 +339,17 @@ class PageLayout:
         self.children[0].draw(to)
 
 class DrawText:
-    def __init__(self, x1, y1, x2, y2, text, font):
+    def __init__(self, x1, y1, text, font):
         self.x1 = x1
         self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
         self.text = text
         self.font = font
 
-    def draw(self, scrolly, canvas):
+        self.y2 = y1 + font.metrics("linespace")
+
+    def draw(self, scroll, canvas):
         canvas.create_text(
-            self.x1, self.y1 - scrolly,
+            self.x1, self.y1 - scroll,
             text=self.text,
             font=self.font,
             anchor='nw',
@@ -345,10 +363,10 @@ class DrawRect:
         self.y2 = y2
         self.color = color
 
-    def draw(self, scrolly, canvas):
+    def draw(self, scroll, canvas):
         canvas.create_rectangle(
-            self.x1, self.y1 - scrolly,
-            self.x2, self.y2 - scrolly,
+            self.x1, self.y1 - scroll,
+            self.x2, self.y2 - scroll,
             width=0,
             fill=self.color,
         )
@@ -368,12 +386,12 @@ class Browser:
         self.display_list = []
 
     def layout(self, tree):
-        page = PageLayout(tree)
-        page.layout()
+        document = DocumentLayout(tree)
+        document.layout()
         self.display_list = []
-        page.draw(self.display_list)
+        document.draw(self.display_list)
         self.render()
-        self.page_h = page.h
+        self.max_y = document.h
 
     def render(self):
         self.canvas.delete("all")
@@ -383,7 +401,9 @@ class Browser:
             cmd.draw(self.scroll, self.canvas)
 
     def scrolldown(self, e):
-        self.scroll = min(self.scroll + SCROLL_STEP, self.page_h - HEIGHT)
+        self.scroll = self.scroll + SCROLL_STEP
+        self.scroll = min(self.scroll, self.max_y)
+        self.scroll = max(0, self.scroll))
         self.render()
 
 if __name__ == "__main__":
