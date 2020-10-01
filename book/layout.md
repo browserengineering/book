@@ -588,7 +588,7 @@ def scrolldown(self, e):
     self.render()
 ```
 
-Make sure those `max` and `min` happen in the right order!
+Make sure those `max` and `min` calls happen in the right order!
 
 Summary
 =======
