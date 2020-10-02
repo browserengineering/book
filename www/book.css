@@ -13,6 +13,8 @@ pre { font-size: 80%; overflow: auto; }
 dt { margin-top: 1em; }
 dd { margin-bottom: 1em; }
 
+abbr { font-variant: small-caps; font-weight: bold; }
+
 blockquote { border-left: 1ex solid #eee; padding-left: 1ex; margin-left: 0; }
 
 footer { text-align: center; font: italic 60% serif; margin: 5em 0; }

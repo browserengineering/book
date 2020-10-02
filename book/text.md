@@ -735,15 +735,6 @@ You can now use your browser to read an essay, a blog post, or a book!
 Exercises
 =========
 
-*Links:* The `<a>` tag[^a-for-anchor] defines links. Color them in
-blue with an underline; there's an `underline` argument to the `Font`
-constructor. Note that links normally have attributes, as in `<a
-href="...">`.
-
-[^a-for-anchor]: The `<a>` tag is short for "anchor". I don't think it
-    makes sense, but (despite an attempt to get rid of the tag in
-    XHTML 2) we're stuck with it.
-
 *Centered Text:* This book's page titles are centered: find them
 between `<h1 class="title">` and `</h1>`. Make your browser center the
 text in these titles. Each line has to be centered individually,
@@ -753,6 +744,10 @@ because different lines will have different lengths.
 should be smaller (perhaps half the normal text size) and be placed so
 that the top of a superscript lines up with the top of a normal
 letter.
+
+*Small caps:* Make the `<abbr>` element render text in small caps,
+<abbr>like this</abbr>. Upper-case letters should be in a normal font,
+while lower-case letters should be small, capitalized, and bold.
 
 *Soft hyphens:* The soft hyphen character, written `\N{soft hyphen}`
 in Python, represents a place where the text renderer can, but doesn't

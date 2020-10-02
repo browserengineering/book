@@ -14,3 +14,4 @@ jobs:
       - run: python3 compare.py book/http.md src/lab1.py
       - run: python3 compare.py book/graphics.md src/lab2.py
       - run: python3 compare.py book/text.md src/lab3.py
+      - run: python3 compare.py book/html.md src/lab4.py

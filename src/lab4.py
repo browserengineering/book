@@ -1,6 +1,6 @@
 """
 This file compiles the code in Web Browser Engineering,
-up to and including Chapter 3 (Formatting Text),
+up to and including Chapter 4 (Constructing a Document Tree),
 without exercises.
 """
 
@@ -57,9 +57,30 @@ class Text:
     def __init__(self, text):
         self.text = text
 
+    def __repr__(self):
+        return "\"" + self.text.replace("\n", "\\n") + "\""
+
+SELF_CLOSING_TAGS = [
+    "area", "base", "br", "col", "embed", "hr", "img", "input",
+    "link", "meta", "param", "source", "track", "wbr",
+]
+
 class Tag:
-    def __init__(self, tag):
-        self.tag = tag
+    def __init__(self, text):
+        parts = text.split()
+        self.tag = parts[0].lower()
+        self.attributes = {}
+        for attrpair in parts[1:]:
+            if "=" in attrpair:
+                key, value = attrpair.split("=", 1)
+                if len(value) > 2 and value[0] in ["'", "\""]:
+                    value = value[1:-1]
+                self.attributes[key.lower()] = value
+            else:
+                self.attributes[attrpair.lower()] = ""
+
+    def __repr__(self):
+        return "<" + self.tag + ">"
 
 def lex(body):
     out = []
@@ -80,6 +101,70 @@ def lex(body):
         out.append(Text(text))
     return out
 
+class ElementNode:
+    def __init__(self, tag):
+        self.tag = tag
+        self.children = []
+
+    def __repr__(self):
+        return "<" + self.tag + ">"
+
+class TextNode:
+    def __init__(self, text):
+        self.text = text
+
+    def __repr__(self):
+        return self.text.replace("\n", "\\n")
+        
+def parse(tokens):
+    currently_open = []
+    for tok in tokens:
+        implicit_tags(tok, currently_open)
+        if isinstance(tok, Text):
+            node = TextNode(tok.text)
+            if not currently_open: continue
+            currently_open[-1].children.append(node)
+        elif tok.tag.startswith("/"):
+            node = currently_open.pop()
+            if not currently_open: return node
+            currently_open[-1].children.append(node)
+        elif tok.tag in SELF_CLOSING_TAGS:
+            node = ElementNode(tok.tag)
+            currently_open[-1].children.append(node)
+        elif tok.tag.startswith("!"):
+            continue
+        else:
+            node = ElementNode(tok.tag)
+            currently_open.append(node)
+    while currently_open:
+        node = currently_open.pop()
+        if not currently_open: return node
+        currently_open[-1].children.append(node)
+
+HEAD_TAGS = [
+    "base", "basefont", "bgsound", "noscript",
+    "link", "meta", "title", "style", "script",
+]
+            
+def implicit_tags(tok, currently_open):
+    tag = tok.tag if isinstance(tok, Tag) else None
+    while True:
+        open_tags = [node.tag for node in currently_open]
+        if open_tags == [] and tag != "html":
+            currently_open.append(ElementNode("html"))
+        elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
+            if tag in HEAD_TAGS:
+                implicit = "head"
+            else:
+                implicit = "body"
+            currently_open.append(ElementNode(implicit))
+        elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
+            node = currently_open.pop()
+            currently_open[-1].children.append(node)
+            currently_open.append(ElementNode("body"))
+        else:
+            break
+
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 LINEHEIGHT = 1.2
@@ -87,8 +172,7 @@ LINEHEIGHT = 1.2
 SCROLL_STEP = 100
 
 class Layout:
-    def __init__(self, tokens):
-        self.tokens = tokens
+    def __init__(self, tree):
         self.display_list = []
 
         self.x = HSTEP
@@ -98,31 +182,39 @@ class Layout:
         self.size = 16
 
         self.line = []
-        for tok in tokens:
-            self.token(tok)
+        self.recurse(tree)
 
-    def token(self, tok):
-        if isinstance(tok, Text):
-            self.text(tok.text)
-        elif tok.tag == "i":
+    def recurse(self, tree):
+        if isinstance(tree, TextNode):
+            self.text(tree.text)
+        else:
+            self.open(tree.tag)
+            for child in tree.children:
+                self.recurse(child)
+            self.close(tree.tag)
+
+    def open(self, tag):
+        if tag == "i":
             self.style = "italic"
-        elif tok.tag == "/i":
-            self.style = "roman"
-        elif tok.tag == "b":
+        elif tag == "b":
             self.weight = "bold"
-        elif tok.tag == "/b":
-            self.weight = "normal"
-        elif tok.tag == "small":
+        elif tag == "small":
             self.size -= 2
-        elif tok.tag == "/small":
-            self.size += 2
-        elif tok.tag == "big":
+        elif tag == "big":
             self.size += 4
-        elif tok.tag == "/big":
-            self.size -= 4
-        elif tok.tag == "br":
+        elif tag == "br":
             self.flush()
-        elif tok.tag == "/p":
+
+    def close(self, tag):
+        if tag == "i":
+            self.style = "roman"
+        elif tag == "b":
+            self.weight = "normal"
+        elif tag == "small":
+            self.size += 2
+        elif tag == "big":
+            self.size -= 4
+        elif tag == "p":
             self.flush()
             self.y += VSTEP
         
@@ -166,8 +258,8 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
         self.display_list = []
 
-    def layout(self, tokens):
-        self.display_list = Layout(tokens).display_list
+    def layout(self, tree):
+        self.display_list = Layout(tree).display_list
         self.render()
 
     def render(self):
@@ -184,7 +276,7 @@ class Browser:
 if __name__ == "__main__":
     import sys
     headers, body = request(sys.argv[1])
-    text = lex(body)
+    nodes = parse(lex(body))
     browser = Browser()
-    browser.layout(text)
+    browser.layout(nodes)
     tkinter.mainloop()
