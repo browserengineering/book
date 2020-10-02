@@ -381,8 +381,14 @@ the `link` element, which looks like this:
 The `rel` attribute here tells that browser that this is a link to a
 stylesheet; web pages can also link to a home-page, or a translation,
 or similar. Browsers mostly don\'t do anything with those other kinds
-of links, but search engines do^[for example, [rel=canonical](https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types) indicates the
-"master copy" of a page], so `rel` is widely used.
+of links, but search engines do[^like-canonical], so `rel` is widely
+used.
+
+[^like-canonical]: For example, [`rel=canonical`][link-types] names
+    the "master copy" of a page and is used by search engines to
+    track pages that appear at multiple URLs.
+
+[link-types]: https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types
 
 The `href` attribute gives a location for the stylesheet in question.
 The browser is expected to make a GET request to that location, parse
