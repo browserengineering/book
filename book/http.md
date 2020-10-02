@@ -650,6 +650,29 @@ control caches using the `Cache-Control` header. Add support for this
 header, specifically for `no-store` and `max-age` values. If the
 header contains some other value, it's best not to cache the response.
 
+*Entities:* Implement support for the less-than (`&lt;`) and greater-than (`&gt;`)
+entities. These should be printed as  `<` and `>`, respectively.
+For example, if the HTML response was `&lt;div&gt;abc&lt;div&gt;`, the `show`
+method of your browser should print `<div>abc</div>` (and *not* just `abc`).
+Entities allow web pages to include these special characters without the browser
+interpreting them as tags.
+
+*view-source:* In addition to HTTP and HTTP, there are other schemes, such as
+*view-source*;
+navigating in a real browser to `view-source:browser.engineering/http.html`
+shows the HTML source of this chapter rather than its rendered output.
+Add support for the view-source scheme. Your browser should print the entire
+HTML file as if it was text. *Hint*: To do so, you can utilize the entities from
+the previous exercise, and add an extra `transform()` method that adjusts the
+input to `show()` when in view-source mode, like this: `show(transform(body))`.
+
+*data:* Yet another scheme is *data*, which
+allow inlining HTML content into the URL itself. Try navigating to
+`data:text/html,Hello world!` in a real browser to see what happens. Add support
+for this scheme to your browser. The *data* scheme is especially
+convenient for making testcases without having to put them in separate files.
+
+
 [^5]: On some systems, you can run `dig +short example.org` to do this
     conversion yourself.
 
