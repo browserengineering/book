@@ -546,12 +546,6 @@ web pages, as we will see in the [next chapter](layout.md).
 Exercises
 =========
 
-*Entities:* Implement support for `&amp;`, `&lt;`, `&gt;`, and
-`&quot;`, which expand to ampersand, less than, greater than, and the
-quotation mark in HTML. These "entities" can go either in ordinary
-text or inside tags. Should you handle entities in the lexer or the
-parser?
-
 *Comments:* Update the HTML lexer to support comments. Comments in
 HTML begin with `<!--` and end with `-->`. However, comments aren't
 the same as tags: they can contain any text, including left and right
@@ -581,3 +575,10 @@ inside `<script>`, except the `</script>` close tag.[^or-space]
 angle brackets. Fix the lexer so that this is supported properly.
 Hint: the current lexer is a finite state machine, with two states
 (determined by `in_tag`). You'll need more states.
+
+*Syntax Highlighting:* Implement the `view-source:` protocol as in
+[Chapter 1](http.md#exercises), but make it syntax-highlight the
+source code of HTML pages. Keep source code for HTML tags in a normal
+font, but make text contents bold. If you've implemented it, wrap text
+in `<pre>` tags as well to preserve line breaks. Use your browser's
+HTML lexer to implement the syntax highlighter.
