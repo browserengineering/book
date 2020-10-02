@@ -567,7 +567,15 @@ sibling paragraphs instead of one paragraph inside another.
 *Scripts:* JavaScript code embedded in a `<script>` tag uses the left
 angle bracket to mean less-than. Modify your lexer so that the
 contents of `<script>` tags are treated specially: no tags are allowed
-inside `<script>`, except the `</script>` close tag.
+inside `<script>`, except the `</script>` close tag.[^or-space]
+
+[^or-space]: Technically it's just `</script` followed by a [space,
+    tab, `\v`, `\r`, slash, or greater than sign][script-end-state].
+    If you need to talk about `</script>` tags inside your JavaScript
+    code, split it across multiple strings. I talk about it in a
+    video.
+
+[script-end-state]: https://html.spec.whatwg.org/multipage/parsing.html#script-data-end-tag-name-state
 
 *Quoted attributes:* Quoted attributes can contain spaces and right
 angle brackets. Fix the lexer so that this is supported properly.
