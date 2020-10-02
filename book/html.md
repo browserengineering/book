@@ -449,7 +449,8 @@ if open_tags == [] and tag != "html":
 ```
 
 With the `<head>` and `<body>` elements, you need to look at the tag
-being handled. Some tags go in the `<head>` element:
+being handled. Only a few tags are actually supposed to go in the
+`<head>` element:
 
 ``` {.python}
 HEAD_TAGS = [
@@ -458,7 +459,13 @@ HEAD_TAGS = [
 ]
 ```
 
-That tells you whether to insert `<head>` or `<body>`:
+That tells you whether to insert `<head>` or `<body>`:[^where-script]
+
+[^where-script]: Note that some tags, like `<script>`, can go in
+    either the head or body section of an HTML document. The code
+    below places it inside a `<head>` tag by default, but doesn't
+    prevent its being explicitly placed inside `<body>` by the page
+    author.
 
 ``` {.python indent=8}
 elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
@@ -476,21 +483,23 @@ need to implicitly close the `<head>` section:
 elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
     node = currently_open.pop()
     currently_open[-1].children.append(node)
-    currently_open.append(ElementNode("body"))
 ```
 
-In all other cases, implicit tags aren't needed, and we can exit the
-loop:
+Note that the this code doesn't create the `<body>` element itself.
+That's for the next iteration of the loop.
+
+The loop ends for all other cases, with no additional implicit tags
+being inserted:
 
 ``` {.python indent=8}
 else:
     break
 ```
 
-We haven't yet handled the implicit close tags `</body>` and
-`</html>`. Usually, leaving them out will mean the `parse` function
-reaches the end of its loop without closing all open tags, and would
-thus return nothing. Let's make it return *something* instead:
+We also want implicit close tags for `</body>` and `</html>`. Usually,
+leaving them out will mean the `parse` function reaches the end of its
+loop without closing all open tags, and would thus return nothing.
+Let's make it return *something* instead:
 
 ``` {.python}
 def parse(tokens):
