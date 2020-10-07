@@ -31,75 +31,153 @@ punctuation, but your attribute parser may not support it.] We want store
 these pairs in a `style` field on the `ElementNode` so we could
 consult them during layout.
 
-You should already have some attribute parsing code in your
-`ElementNode` class to create the `attributes` field. We just need to
-take out the `style` attribute, split it on semicolons and then on the
-colon, and save the results:^[The `get` method for dictionaries gets a
-value out of a dictionary, or uses a default value if it's not
-present.]
+The first step is adding attributes to `ElementNode`s; attributes are
+currently stored in `Tag`s but not `ElementNode`s:
 
 ``` {.python}
 class ElementNode:
-    def __init__(self, parent, tagname):
+    def __init__(self, tag, attributes):
+        self.tag = tag
+        self.attributes = attributes
+        self.children = []
+```
+
+These attributes need to be passed from the token to the `ElementNode`
+it creates, both in `parse` and in `implicit_tags`. With the
+attributes stored on the `ElementNode`, we can extract[^python-get]
+and parse the `style` attribute in particular:
+
+[^python-get]: The `get` method for dictionaries gets a value out of a
+    dictionary, or uses a default value if it's not present.
+
+``` {.python}
+class ElementNode:
+    def __init__(self, tag, attributes):
         # ...
-        self.style = self.compute_style()
-    
-    def compute_style(self):
-        style = {}
-        style_value = self.attributes.get("style", "")
-        for line in style_value.split(";"):
+        self.style = {}
+        for pair in self.attributes.get("style", "").split(";"):
             prop, val = line.split(":")
-            style[prop.lower().strip()] = val.strip()
-        return style
+            self.style[prop.lower().strip()] = val.strip()
 ```
 
-To use this information, we'll need to modify `BlockLayout`:
+With these changes, each `ElementNode` should now have a `style`
+field with any stylistic choices made by the author.
+
+The CSS box model
+=================
+
+It'd be nice to have add some stylistic properties for authors to
+manipulate with this `style` attribute. Let's add support for
+*margins*, *borders*, and *padding*, which change the position of
+block layout objects. Here's how those work. In effect, every block
+has four rectangles associated with it: the *margin rectangle*, the
+*border rectangle*, the *padding rectangle*, and the *content
+rectangle*:
+
+![](https://www.w3.org/TR/CSS2/images/boxdim.png)
+
+So far, our block layout objects have had just one size and position;
+these will refer to the border rectangle (so that the `x` and `y`
+fields point to the top-left corner of the outside of the layout
+object's border). To track the margin, border, and padding, we'll also
+store the margin, border, and padding widths on each side of the
+layout object. That makes for a lot of variables:
 
 ``` {.python}
-def __init__(self, parent, node):
+class BlockLayout:
+    def __init__(self, parent, node):
+        # ....
+        self.mt = self.mr = self.mb = self.ml = -1
+        self.bt = self.br = self.bb = self.bl = -1
+        self.pt = self.pr = self.pb = self.pl = -1
+```
+
+The naming convention here is that the first letter stands for margin,
+border, or padding, while the second letter stands for top, right,
+bottom, or left.
+
+Since each block layout object now has more variables, we'll need to
+add code to `layout` to compute them:
+
+``` {.python}
+def px(s):
+    if str.endswith("px"):
+        return int(str[:-2])
+    else:
+        return 0
+
+class BlockLayout:
+    def layout(self):
+        self.mt = px(self.node.style.get("margin-top", "0px"))
+        self.bt = px(self.node.style.get("border-top-width", "0px"))
+        self.pt = px(self.node.style.get("padding-top", "0px"))
+        # ... repeat for the right, bottom, and left edges
+```
+
+Remember to write out the code to access the other 9 properties, and
+don't forget that the border one is called `border-X-width`, not
+`border-X`.[^because-colors]
+
+[^because-colors]: Because borders have not only widths but also
+    colors and styles, while paddings are margins are thought of as
+    whitespace, not something you draw.
+
+With their values now loaded, we can use these fields to drive layout.
+First of all, when we compute width, we need to account for the space
+taken up by the parent's border and padding:[^backslash-continue]
+
+[^backslash-continue]: In Python, if you end a line with a backslash,
+    the newline is ignored by the parser, letting you split a logical
+    line of code across two actual lines in your file.
+
+``` {.python}
+def layout(self):
     # ...
-    self.mt = px(self.style.get("margin-top", "0px"))
-    # ... repeat for the right, bottom, and left edges
-    # ... and for padding and border as well
-```
-
-where the `px` function is this little helper:
-
-``` {.python}
-def px(str):
-    assert str.endswith("px")
-    return int(str[:-2])
-```
-
-Remember to write out the code to access the other 11 properties; the
-border one is called `border-top-width`, not `border-top`, but other
-than that, they're very repetitive.
-
-You'll notice that I set the default for each of the property values
-to `0px`. For now, let's stick the per-element defaults at the top of
-`compute_style`:
-
-``` {.python}
-def compute_style(self):
-    style = {}
-    if self.tag == "p":
-        style["margin-bottom"] = "16px"
-    # ... other cases for ul, li, and pre
+    self.w = self.parent.w - self.parent.pl - self.parent.pr \
+        - self.parent.bl - self.parent.br \
+        - self.ml - self.mr
     # ...
 ```
 
-Make sure the defaults come first in `compute_style` so they can be
-overridden by values from the `style` attribute.
+Similarly, when we position boxes, we'll need to account for our own
+border and padding:
+
+``` {.python}
+def layout(self):
+    # ...
+    self.y += self.mt
+    self.x += self.ml
+    y = self.y
+    for child in self.children:
+        child.x = self.x + self.pl + self.pr + self.bl + self.br
+        child.y = y
+        child.layout()
+        y += child.h + child.mt + child.mb
+    self.h = y - self.y
+```
+
+Likewise, in `InlineLayout` we'll need to account for the parent's
+padding and border:
+
+``` {.python}
+class InlineLayout:
+    def layout(self):
+        self.w = self.parent.w - self.parent.pl - self.parent.pr \
+            - self.parent.bl - self.parent.br
+```
+
+It's now possible to indent a single element by giving it a `style`
+attribute that adds a `margin-left`. But while that's good for one-off
+changes, but is a tedious way to change the style of, say, every
+paragraph on the page. And if you have a site with many pages, you'll
+need to remember to add the same `style` attributes to every web page
+to achieve a measure of consistency. CSS provides a better way.
 
 Parsing CSS
 ===========
 
-The `style` attribtue is set element by element. It's good for one-off
-changes, but is a tedious way to change the style of, say, every
-paragraph on the page. Plus, if multiple web pages are supposed to
-share the same style, you're liable to forget the `style` attribute.
-In the early days of the web,^[I\'m talking Netscape 3. The late 90s.]
-this element-by-element approach was all there was.^[Though back then
+In the early days of the web,^[I'm talking Netscape 3. The late 90s.]
+the element-by-element approach was all there was.^[Though back then
 it wasn't the `style` attribute, it was a custom elements like `font`
 and `center`.] CSS was invented to improve on this state of affairs:
 
@@ -109,31 +187,35 @@ and `center`.] CSS was invented to improve on this state of affairs:
 
 To achieve these goals, CSS extends the key-value `style` attribute
 with two connected ideas: *selectors* and *cascading*. In CSS, you
-have blocks of key-value pairs, and those blocks apply to *multiple
-elements*, specified using a selector. Since that allows multiple
-key-values pairs to apply to one element, *cascading* resolves
-conflicts by using the most specific rule.
-
-Those blocks look like this:
+have blocks of style information, but those blocks apply to *multiple
+elements*, specified using a selector:
 
 ``` {.css}
 selector {
     property: value;
     property: value;
     property: value;
+    ...
 }
 ```
 
-To support CSS in our browser, we'll need to parse this kind of code.
-I\'ll use a traditional recursive-descent parser, which is is a bunch
-of *parsing functions*, each of which advances along the input and
-returns the parsed data as output.
+To account for the possibility that allows blocks apply to a single
+element, there's a *cascading* mechanism to resolve conflicts in favor
+of the most specific rule.
 
-Specifically, I'll implement a `CSSParser` class, which will store the
-input string. Each parsing function will take an index into the input
-and return a new index, plus it will return the parsed data.
+To support CSS in our browser, we'll need to:
 
-Here's the class:
+- Parse CSS files to understand the selector for each block and also
+  the property values that block sets;
+- Run each selector to figure out which elements on the page each
+  block selects;
+- Add the block's property values to those elements' `style` fields.
+
+Let's start with the parsing. I'll use recursive *parsing functions*,
+each parsing a certain type of CSS element like selectors, properties,
+or blocks. Parsing function will take an index into the input and
+return a new index, plus the data it parsed. Since we'll have a lot of
+parsing functions, let's organize them in a `CSSParser` class:
 
 ``` {.python}
 class CSSParser:
@@ -141,23 +223,37 @@ class CSSParser:
         self.s = s
 ```
 
-So here, for example, is a parsing function for values:
+The class wraps the string we're parsing. Parsing functions access the
+string through `self.s`; for example, to parse values:
 
 ``` {.python}
 def value(self, i):
     j = i
-    while self[j].isalnum() or self.s[j] in "#-":
+    while self[j].isalnum() or self.s[j] in "-.":
         j += 1
     return s[i:j], j
 ```
 
-Let's pick this apart. First of all, it takes index `i` pointing to
-the start of the value and returns index `j` pointing to its end. It
-also returns the string between them, which in this case is the parsed
-data that we're interested in.
+This function takes index `i` pointing to the start of the value and
+returns index `j` pointing to its end. It comuputes `j` by
+advancing through letters, numbers, and minus and period characters
+(which might be present in numbers).
 
-The point of recursive-descent parsing is that it's easy to build one
-parsing function by calling others. So here's how to parse
+This parsing function the string between `i` and `j`, which will be
+the value it just read. In another parsing function, we might
+transform or change the returned data; for example, whitespace is
+insignificant in CSS, so when we parse whitespace we just return
+`None` instead of the whitespace parsed:
+
+``` {.python}
+def whitespace(self, i):
+    j = i
+    while j < len(self.s) and self.s[j].isspace():
+        j += 1
+    return None, j
+```
+
+Parsing functions can also build upon one another. Here's how to parse
 property-value pairs:
 
 ``` {.python}
@@ -166,16 +262,15 @@ def pair(self, i):
     _, i = self.whitespace(i)
     assert self.s[i] == ":"
     val, i = self.value(i + 1)
-    return (prop, val), i
+    return (prop.lower(), val), i
 ```
 
-The `whitespace` function increases `i` until it sees a non-whitespace
-character (or the end of the document); you can write it yourself.
-
-
-Note the `assert`: that raises an error if you are trying to parse a
-pair but there isn't one there. When we parse rule bodies, we can
-catch this error to skip property-value pairs that don't parse:
+I'm using `value` here for both properties and values. In reality they
+have different syntaxes, but we'll support few enough values in our
+parser that this simplification will be alright. And note the
+`assert`: that raises an error if what you're parsing isn't a valid
+pair. When we parse rule bodies, we can catch this error to skip
+property-value pairs that don't parse:
 
 ``` {.python}
 def body(self, i):
@@ -183,6 +278,7 @@ def body(self, i):
     assert self.s[i] == "{"
     _, i = self.whitespace(i+1)
     while True:
+        if i > len(self.s): break
         if self.s[i] == "}": break
 
         try:
@@ -200,11 +296,11 @@ def body(self, i):
     return pairs, i+1
 ```
 
-I should stop and mention the importance of skipping code that causes
-parse errors. This is a double-edged sword. It hides error messages,
-making debugging CSS files more difficult, and also makes it harder to
-debug your parser.^[Try debugging without the `try` block first.] This
-makes "catch-all" error handling like this a code smell in most cases.
+Skipping parse errors is a double-edged sword. It hides error
+messages, making debugging CSS files more difficult, and also makes it
+harder to debug your parser.^[Try debugging without the `try` block
+first.] This makes "catch-all" error handling like this a code smell
+in most cases.
 
 However, on the web there is an unusual benefit: it supports an
 ecosystem of multiple implementations. For example, different browsers
@@ -230,7 +326,7 @@ come in multiple types; for now, our browser will support three:
 - ID selectors: `#main` selects the element with an `id` value of
   `main`.
 
-We\'ll start by defining some data structures for selectors:^[I\'m
+We'll start by defining some data structures for selectors:^[I'm
 calling the `ClassSelector` field `cls` instead of `class` because
 `class` is a reserved word in Python.]
 
@@ -261,24 +357,53 @@ def selector(self, i):
         return ClassSelector(name), i
     else:
         name, i = self.value(i)
-        return TagSelector(name), i
+        return TagSelector(name.lower()), i
 ```
 
-Here I'm using `property` for tag, class, and identifier names. This
-is a hack, since in fact tag names, classes, and identifiers have
-different allowed characters. Also tags are case-insensitive (as by
-the way are property names), while classes and identifiers are
-case-sensitive. I'm ignoring that but a real browser would not. Note
-the arithmetic with `i`: we pass `i+1` to `value` in the class and ID
-cases (to skip the hash or dot) but not in the tag case (since that
-first character is part of the tag).
+Note the arithmetic with `i`: we pass `i+1` to `value` in the class
+and ID cases (to skip the hash or dot) but not in the tag case (since
+that first character is part of the tag). Like with property names,
+I'm using `value` for tag, class, and identifier names, a
+simplification a real browser couldn't do.
 
-I'll leave it to you to finish up the parser, writing the `whitespace`
-helper, the `rule` function for parsing a selector followed by a body
-(making sure to skip rules with unknown selectors), and the `parse`
-function, which unlike the others should not take an index input (it
-should start at 0) or produce an index output and should return a list
-of parsed selector/body pairs.
+Finally, selectors and bodies can be combined:
+
+``` {.python}
+def rule(self, i):
+    selector, i = self.selector(i)
+    _, i = self.whitespace(i)
+    body, i = self.body(i)
+    return (selector, body), i
+```
+
+Finally, a CSS file itself is just a sequence of rules:
+
+``` {.python}
+def file(self, i):
+    rules = []
+    _, i = self.whitespace(i)
+    while i < len(self.s):
+        try:
+            rule, i = self.rule(i)
+        except AssertionError:
+            while i < len(self.s) and self.s[i] != "}":
+                i += 1
+        else:
+            rules.append(rule)
+        _, i = self.whitespace()
+    return rules, i
+
+```
+
+With all our parsing functions written, we can give the `CSSParser`
+function a simple entry point:
+
+``` {.python}
+class CSSParser:
+    def parse(self):
+        rules, _ = self.file(0)
+        return rules
+```
 
 Make sure to test your parser, like you did the [HTML parser](html.md)
 two chapters back. If you find an error, the best way to proceed is to
@@ -291,6 +416,90 @@ on the page.
 
 Selecting styled elements
 =========================
+
+Our next step, after parsing CSS, is to figure out which elements each
+rule applies to. The easiest way to do that is to add a method to the
+selector classes, which tells you if the selector matches. Here's how
+it looks like for `ClassSelector`:
+
+``` {.python}
+def matches(self, node):
+    return self.cls == node.attributes.get("class", "").split()
+```
+
+You can write `matches` for `TagSelector` and `IdSelector` on your
+own.
+
+Now that we know which rules applies to an element, we need use their
+property-value pairs to change its `style`. The logic is pretty
+simple:
+
+-   Recursive over the tree of `ElementNode`s;
+-   For each rule, check if the rule matches;
+-   If it does, go through the property/value pairs and assign them.
+
+Here's what the code would look like:
+
+``` {.python}
+def style(node, rules):
+    if not isinstance(node, ElementNode): return
+    for selector, pairs in rules:
+        if selector.matches(node):
+            for property in pairs:
+                if property not in node.style:
+                    node.style[property] = pairs[property]
+    for child in node.children:
+        style(child, rules)
+```
+
+We're skipping `TextNode` objects because text doesn't have styles in
+CSS (just the elements that wrap the text).
+
+Note that we skip properties that already have a value. That's because
+`style` attributes are loaded into the `style` field first, and should
+take priority. But it means that it matters what order you apply the
+rules in.
+
+What's the correct order? In CSS, it's called *cascade order*, and it
+is based on the selector used by the rule. Tag selectors get the
+lowest priority; class selectors one higher; and id selectors higher
+still. Just like how the `style` attribute comes first, we need to
+sort the rules in priority order, with higher-priority rules first.
+
+So let's add a `priority` method to the selector classes that return
+this priority. In this simplest implementation the exact numbers don't
+matter if they sort right, but with an eye toward the future let's
+assign tag selectors priority `1`, class selectors priority `16`, and
+id selectors priority `256`:
+
+``` {.python}
+class TagSelector:
+    def priority(self):
+        return 1
+        
+class ClassSelector:
+    def priority(self):
+        return 16
+        
+class IdSelector:
+    def priority(self):
+        return 256
+```
+
+Now, before you call `style`, you should sort your list of rules:
+
+``` {.python}
+rules.sort(key=lambda (selector, body): selector.priority(), reverse=True)
+```
+
+Note the `reverse` flag: we want higher-priority rules to come first.
+In Python, the `sort` function is *stable*, which means that things
+keep their relative order if possible. This means that in general, a
+later rule has higher priority, unless the selectors used force
+something different.
+
+Downloading styles
+==================
 
 Browsers get CSS code from two sources. First, each browser ships with a
 *browser style sheet*, which defines the default styles for all sorts of
@@ -307,109 +516,42 @@ pre {
     margin-top: 8px; margin-bottom: 8px;
     padding-top: 8px; padding-right: 8px;
     padding-bottom: 8px; padding-left: 8px;
-    border-top-width: 1px; border-bottom-width: 1px;
-    border-left-width: 1px; border-right-width: 1px;
 }
 ```
 
-That moves code from `compute_style` to a data file, let\'s call it
-`browser.css`. Then we can run our CSS parser on it to extract the rules:
+Our CSS parser can convert this CSS source code to text:
 
 ``` {.python}
-with open("browser.css") as f:
-    browser_style = f.read()
-    rules = CSSParser(browser_style).parse()
+class Browser:
+    def load(self, url):
+        header, body = request(url)
+        nodes = parse(lex(body))
+
+        with open("browser.css") as f:
+            browser_style = f.read()
+            rules = CSSParser(browser_style).parse()
 ```
 
-We now want to apply the rules to change the `style` field of the
-`ElementNode` objects on the page; let's call the function that does
-that `style(tree, rules)`. Its logic is pretty simple:
-
--   Recursively operate on every `ElementNode` in the tree
--   For each rule, check if the rule matches
--   If it does, go through the property/value pairs and assign them
-
-Here\'s what the code would look like:
-
-``` {.python}
-def style(node, rules):
-    if not isinstance(node, ElementNode): return
-    node.style = {}
-    for selector, pairs in rules:
-        if selector.matches(node):
-            for property in pairs:
-                node.style[property] = pairs[property]
-    for child in node.children:
-        style(child, rules)
-```
-
-Note that we\'re skipping `TextNode` objects; that\'s because only
-elements can be selected in CSS.^[Well, there are also
-pseudo-elements, but we\'re not going to implement them...] We're also
-calling a currently-nonexistant `matches` method on selectors. Here\'s
-how it looks like for `ClassSelector`:
-
-``` {.python}
-def matches(self, node):
-    return self.cls == node.attributes.get("class", "").split()
-```
-
-You can write `matches` for `TagSelector` and `IdSelector` on your
-own. You can then call `style`:
-
-``` {.python}
-style(rules, nodes)
-```
-
-Once you're done, you should be able to delete the default
-element styles from `compute_style` and still see elements property
-styled.
-
-Downloading styles
-==================
-
-This moves some code out of our browser into a plain CSS file, which
-is nice. But the goal is to go beyond just the browser styles; to do
-that, our browser needs to find website-specific CSS files, download
-them, and use them as well. Web pages call out their CSS files using
-the `link` element, which looks like this:
+Beyond the browser styles, our browser needs to find website-specific
+CSS files, download them, and use them as well. Web pages call out
+their CSS files using the `link` element, which looks like this:
 
 ``` {.example}
 <link rel="stylesheet" href="/main.css">
 ```
 
 The `rel` attribute here tells that browser that this is a link to a
-stylesheet; web pages can also link to a home-page, or a translation,
-or similar. Browsers mostly don\'t do anything with those other kinds
-of links, but search engines do[^like-canonical], so `rel` is widely
-used.
+stylesheet. Browsers mostly don't care about any [other kinds of
+links][link-types], but search engines do[^like-canonical], so `rel`
+is mandatory.
 
-[^like-canonical]: For example, [`rel=canonical`][link-types] names
-    the "master copy" of a page and is used by search engines to
-    track pages that appear at multiple URLs.
+[^like-canonical]: For example, `rel=canonical` names the "master
+    copy" of a page and is used by search engines to track pages that
+    appear at multiple URLs.
 
 [link-types]: https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types
 
-The `href` attribute gives a location for the stylesheet in question.
-The browser is expected to make a GET request to that location, parse
-the stylesheet, and use it. Note that the location is not a full URL;
-it is something called a *relative URL*, which can come in three
-flavors:^[There are more flavors, including query-relative and
-scheme-relative URLs, which I'm skipping.]
-
--   A normal URL, which specifies a scheme, host, path, and so on
--   A host-relative URL, which starts with a slash but reuses the
-    existing scheme and host
--   A path-relative URL, which doesn\'t start with a slash and is
-    instead tacked onto the current URL (up but not past its last slash)
-
-So to download CSS files, we\'re going to need to do three things:
-
--   Find the relevant `<link>` elements
--   Turn the relative URLs into real URLs
--   Download the CSS and parse it
-
-For the first one, we\'ll need a recursive function that adds to a list:
+To find these links, we'll need another recursive function:
 
 ``` {.python}
 def find_links(node, lst):
@@ -423,7 +565,21 @@ def find_links(node, lst):
     return lst
 ```
 
-Then, to turn a relative URL into a full URL:
+For each link, the `href` attribute gives a location for the
+stylesheet in question. The browser is expected to make a GET request
+to that location, parse the stylesheet, and use it. Note that the
+location is not a full URL; it is something called a *relative URL*,
+which can come in three flavors:^[There are more flavors, including
+query-relative and scheme-relative URLs, which I'm skipping.]
+
+-   A normal URL, which specifies a scheme, host, path, and so on
+-   A host-relative URL, which starts with a slash but reuses the
+    existing scheme and host
+-   A path-relative URL, which doesn't start with a slash and is
+    instead tacked onto the current URL (up but not past its last slash)
+
+To turn a relative URL into a full URL, then, we need to figure out
+which case we're in:
 
 ``` {.python}
 def relative_url(url, current):
@@ -440,117 +596,105 @@ slashes that come after `http:` in the URL, while in the last case,
 the logic ensures that a link to `foo.html` on `http://a.com/bar.html`
 goes to `http://a.com/foo.html`, not `http://a.com/bar.html/foo.html`.
 
-We want to collect CSS rules from each of the linked files, and the
-browser style sheet, into one big list so we can apply each of them.
-So let's add them onto the end of the `rules` list:
+Let's put it all together. We want to collect CSS rules from each of
+the linked files, and the browser style sheet, into one big list so we
+can apply each of them. So let's add them onto the end of the `rules`
+list:
 
 ``` {.python}
-for link in find_links(nodes, []):
-    header, body = request(relative_url(link, url))
-    rules.extend(CSSParser(body).parse())
+def load(self, url):
+    # ...
+    for link in find_links(nodes, []):
+        header, body = request(relative_url(link, url))
+        rules.extend(CSSParser(body).parse())
 ```
 
-Put that block *after* you read the browser style, because user styles
-should to take priority over the browser style sheet,^[In reality this
-is handled by browser styles having a lower score than user styles in
-the cascade order, but our browser style sheet only has tag selectors
-in it, so every rule already has the lowest possible score.] but
-before the call to `style`, so you actually use the newly downloaded
-rules.
-
-Our CSS engine should now change some margins and paddings as
-specified by the web page in question. For example, on this web page,
-you should see that the title of the page has moved down
-significantly.
-
-Cascade order
-=============
-
-So far, `style` applies the rules in order, one after another. And
-furthermore, it overwrites existing styles, such as the styles
-that come from attribute values. We need to fix that.
-
-In CSS, this is governed by the *cascade order*, which assigns a score
-to each selector; rules with higher-scoring selectors overwrite rules
-with lower-scoring selectors. Tag selectors get the lowest score;
-class selectors one higher; and id selectors higher still. The `style`
-attribute has the highest-possible score, so it overwrites everything.
-So let\'s add the `score` method to the selector classes that return
-this score. Maybe tag selectors have score 1, class selectors 16, id
-selectors 256.^[In this simplest implementation the exact numbers
-don\'t matter if they sort right, but choosing these numbers makes the
-exercises a little easier.]
+Since the page's stylesheets come *after* browser style, user styles
+take priority over the browser style sheet.^[In reality this is
+handled by browser styles having a lower score than user styles in the
+cascade order, but our browser style sheet only has tag selectors in
+it, so every rule already has the lowest possible score.] With the
+rules loaded, we need only sort and apply them and then do layout:
 
 ``` {.python}
-class TagSelector:
-    def score(self):
-        return 1
+def load(self, url):
+    # ...
+    rules.sort(key=lambda (selector, body): selector.priority(),
+        reverse=True)
+    style(nodes, rules)
+    self.layout(nodes)
 ```
 
-You can write the code for the other selector types.
-
-We\'ll use the score to the rules before passing them to `style`:
-
-``` {.python}
-rules.sort(key=lambda x: x[0].score())
-```
-
-Here `x[0]` refers to the selector half of a rule, and I\'m calling
-the new `score` method. In Python, the `sort` function is *stable*,
-which means that things keep their relative order if possible. This
-means that in general, a later rule, from a later `<link>` or just
-later in a file, will override an earlier one, which is what CSS does
-as well.
-
-This works for rules with selectors. We also need inline styles to
-override linked stylesheets. We can just tack that on after the rules
-loop in `style`:^[The `items()` call is a Python way to get the key
-and value out of a dictionary as you iterate over it.]
-
-``` {.python}
-def style(node, rules):
-    # for selector, pair in rules ...
-    for property, value in node.compute_style().items():
-        node.style[property] = value
-    # for child in node.children ...
-```
-
-Our CSS engine now correctly handles conflicts between different rules.
+With this done, each page should now automatically apply the margins
+and paddings specified in the browser stylesheet, making it possible
+to delete some of `InlineLayout`'s tag handlers in its `close` method.
 
 Inherited styles
 ================
 
-Right now, our CSS styles only affect the block layout mode. We\'d like
-to extend CSS to affect inline layout mode as well, but there\'s a
-catch: inline layout is mostly concerned with text, but text nodes
-don\'t have any styles at all. How can that work?
+Our implementation of margins, borders, and padding styles only affect
+the block layout mode.[^inline-margins] We'd like to extend CSS to
+affect inline layout mode as well, for example to change text styling.
+But there's a catch: inline layout is mostly concerned with text, but
+text nodes don't have any styles at all. How can that work?
+
+[^inline-margins]: Margins, borders, and padding can be applied to
+    inline layout objects in a real browser, but they work kind of a
+    funky way.
 
 The solution in CSS is *inheritance*. Inheritance means that if some
-node doesn\'t have a value for a certain property, it uses its
-parent\'s value instead. Some properties are inherited and some
-aren\'t; it depends on the property. Let\'s implement two inherited
-properties: `font-weight` (which can be `normal` or `bold`) and
-`font-style` (which can be `normal` or `italic`). To inherit a property, we simple need to
-check, after all the rules and inline styles have been applied,
-whether the property is set and, if it isn\'t, to use the parent
-node\'s style:
+node doesn't have a value for a certain property, it uses its
+parent's value instead. Some properties are inherited and some
+aren't; it depends on the property: the margin, border, and padding
+properties aren't inherited, but the font properties are.
+
+Let's implement three inherited properties: `font-weight` (which can
+be `normal` or `bold`), `font-style` (which can be `normal` or
+`italic`), and `font-size` (which can be any pixel value). To inherit
+a property, we need to check, after all the rules and inline styles
+have been applied, whether the property is set and, if it isn't, to
+use the parent node's style. To begin with, let's list our inherited
+properties and their default values:
 
 ``` {.python}
-INHERITED_PROPERTIES = [ "font-style", "font-weight" ]
-def style(node, rules):
-    # handle inline styles
-    for prop in INHERITED_PROPERTIES:
-        if prop not in node.style and node.parent is None:
-            node.style[prop] = "normal"
-    # recurse into child nodes
+INHERITED_PROPERTIES = {
+    "font-style": "normal",
+    "font-weight": "normal",
+    "font-size": "16px",
+]
 ```
 
-This little loop has to come *before* the recursive calling of `style`
-on the child nodes because getting the parent\'s value only makes
-sense if the parent has already inherited the correct property value.
+Now, in our `style` loop we'll need access to the parent node, so
+let's pass that along recursively:
 
-On `TextNode` objects we can do an even simpler trick, since it always
-inherits its styles from its parent:
+``` {.python}
+def style(node, parent, rules):
+    # ...
+    for child in node.children:
+        style(child, node, rules)
+```
+
+Now let's add another loop to `style`, *after* the handling of rules
+but *before* the recursive calls, to inherit properties:
+
+``` {.python}
+def style(node, parent, rules):
+    # ...
+    for property, default in INHERITED_PROPERTIES.items():
+        if property not in node.style:
+            if parent:
+                node.style[property] = parent.style[property]
+            else:
+                node.style[property] = default
+    # ...
+```
+
+Because this loop comes *before* the recursive call, the parent has
+already inherited the correct property value when the children try to
+read it.
+
+On `TextNode` objects we can do an even simpler trick, since never has
+styles of its own and only inherits from its parent:
 
 ``` {.python}
 def style(node, rules):
@@ -560,115 +704,137 @@ def style(node, rules):
         # ...
 ```
 
-Now that we have `font-weight` and `font-style` set on every node, we
-can use them in `InlineLayout` to set the font:
+With `font-weight` and `font-style` set on every node, `InlineLayout`
+no longer needs `style`, `weight`, and `size` fields; they were only
+there to track when text was inside or outside `<i>` and `<b>` tags,
+and now styles and inheritance are doing that job:
 
 ``` {.python}
-self.bold = node.style.get("font-weight", "normal") == "bold"
-self.italic = node.style.get("font-style", "normal") == "italic"
+class InlineLayout:
+    def font(self):
+        bold = node.style["font-weight"]
+        italic = node.style["font-style"]
+        if italic == "normal": italic = "roman"
+        size = int(px(node.style.get("font-size")) * .75)
+        return tkinter.font.Font(size=size, weight=weight, slant=slant)
+    
+    def text(self, text):
+        font = self.font()
+        for word in text.split():
+            # ...
 ```
 
-Now that we have styles on both block and inline nodes, we can
-refactor `is_inline`. Instead of testing directly for the `<b>` and
-`<i>`, we could test for a CSS property both share. The standard
-property is `display`, which can be either `block` or `inline`; it
-basically tells you which of the two layout modes to use.^[Modern CSS
-adds some funny new values, like `run-in` or `inline-block`, and it
-has layout modes set by other properties, like `float` and
-`position`. Nothing gold can stay.] So instead of...
+Note that the `font-style` needs to replace the CSS default of
+"normal" with the Tk value "roman", and the `font-size` needs to be
+converted from points to pixels.[^72ppi]
 
-``` {.python}
-return node.tag in ["i", "b"]
-```
+[^72ppi]: Normally you think of points as a physical length unit (one
+    72^nd^ of an inch) and pixels as a digital unit (dependent on the
+    screen) but in CSS, the conversion is fixed at exactly 75% (or 96
+    pixels per inch). I'm not sure why, it seems weird and it does
+    cause problems.
 
-... do ...
-
-``` {.python}
-return node.style.get("display", "block") == "inline"
-```
-
-With inheritance and the `display` property, we can move some more
-code into the CSS file.
+Now support for the `i`, `b`, `small`, and `big` tags can all be moved
+to CSS:
 
 ``` {.css}
-i { display: inline; font-style: italic; }
-b { display: inline; font-weight: bold; }
+i { font-style: italic; }
+b { font-weight: bold; }
+small { font-size: 12px; }
+big { font-size: 20px; }
 ```
 
-By the way---why move code to a data file? The advantage is that that
-the data file may be easier to write, especially independently of the
-rest of the code. So here, you could experiment with new browser
-default styles more quickly. But as a software design decision, it is
-not always a winner, since you have to maintain a new format (for the
-data file) and also code to parse the data and then to apply it as
-code. That's true in general, but here in particular, we need a CSS
-parser and applier anyway, so the downsides do not apply, and the
-refactoring is very much worth it.
+Another place where the code depends on specific tag names is
+`has_block_children`, which relies on a list of inline elements. The
+CSS `display`, which can be either `block` or `inline`, replaces that
+mechanism.^[Modern CSS adds way more values, like `run-in` or
+`inline-block` or `flex` or `grid`, and it has layout modes set by
+other properties, like `float` and `position`. Design matters.]
+So we can add all the inline elements to our browser style sheet:
 
-::: {.todo}
-I think I'd like nodes to have a `font()` method that returns the font
-to use.
-:::
+``` {.css}
+a { display: inline; }
+em { display: inline; }
+/* ... */
+```
+
+And then read that in `has_block_children`:
+
+``` {.python}
+def has_block_children(self):
+    for child in self.node.children:
+        # ...
+        elif child.style.get("display", "inline") == "inline":
+            return False
+    return True
+```
+
+With these changes, `InlineLayout` can lose its `open` and `close`
+methods, becoming a small, self-contained engine for line layout while
+most of its domain-specific knowledge of tags is moved to the browser
+style sheet.
+
+That style sheet is easier to edit, since it's independent of the rest
+of the code. And while sometimes moving things to a data file means
+maintaining a new format. Here we get to reuse a format, CSS, that our
+browser needs to support anyway.
 
 Summary
 =======
 
-This chapter was quite a lot of work! We implemented a rudimentary but
-complete layout engine, including a parser, selector matching,
-cascading, and even downloading and applying CSS files. Not only that,
-but the CSS engine should be relatively easy to extend, with new
-properties and selectors; our engine ignores selectors and properties it
-does not understand, so selectors and properties will immediately start
-working as they are implemented.
+This chapter implemented a rudimentary but complete styling engine,
+including downloading, parser, matching, sorting, and applying CSS
+files. That means we:
+
+- Added styling support in both `style` attributes and `link`ed CSS files;
+- Implemented for margins, borders, and padding to block layout objects;
+- Refactored `InlineLayout` to move the font properties to CSS;
+- Removed most tag-specific reasoning from our layout code.
+
+Our styling engine is also relatively easy to extend with properties
+and selectors.
 
 Exercises
 =========
 
--   Right now, your browser is (probably) still displaying the page
-    title as the first line of text on the page. Of course in a real
-    browser, the `<title>` element is hidden, as is everything inside
-    the `<head>` element (try adding a `<p>` to the head in a real
-    browser!). The way this works is that `display` can have the value
-    `none`, in which case the element is not displayed and neither are
-    any of its children. Implement `display: none` and use that in
-    your browser style sheet to hide the `<head>` element.
--   CSS has some \"shortcut properties\". For example, you can write
-    `margin: 1px` to set all four margins to the same width; the same
-    applies to `padding` and `border-width`. You can also give multiple
-    values to `margin`, which distributes those values to the various
-    sides: if there is one value, it is for all four sides; if there are
-    two values, the first is for top and bottom and the second for left
-    and right; if there are four, they are the top, right, bottom, and
-    left values, in that unusual order; and finally if there are three
-    values the middle one is both left and right. Implement shortcut
-    properties. The best place to do this is in the parsing function
-    `css_body`, since that way it\'ll automatically happen wherever the
-    rule is applied.
--   CSS allows a rule to have multiple selectors, which is basically the
-    same as separate rules sharing a body. To do that, you list multiple
-    selectors with a comma in between. Implement this feature, and use
-    it to shorten and simplify the browser style sheet. (For example,
-    both `<b>` and `<i>` have `display: inline`.)
--   Sometimes it is helpful to select an element that matches *both* a
-    tag and a class. In CSS, you do this by just concatenating the
-    selectors together without anything in between; for example
-    `span.announce` selects elements that match both `span` and
-    `.announce`. Implement those, both in the parser and with a new
-    `AndSelector` class that combines multiple selectors into one.
-    You\'re supposed to use lexicographic scoring for these
-    `AndSelector` things, but the easy thing to do is to sum the
-    scores of the selectors being combined in `AndSelector.score`.
-    This will work fine as long as no strings more than 16 selectors
-    together, if you used the scores suggested above.
--   Tags, class, and identifiers are not the only selectors! Another
-    commonly-used selector is the *descendent* selector; the syntax is
-    multiple space-separated selectors, like `ul strong`, which
-    selects all `<strong>` elements^[This is basically a `<b>` tag but
-    with a hipper name. The idea was to drop all visual aspects from
-    element names.] with a `<ul>` ancestor. Implement descendent
-    selectors, both in parsing and with a new `DescendentSelector`
-    class. Scoring for descendent selectors works just like in
-    `AndSelector`. Make sure that something like `section .warning`
-    selects warnings inside sections, while `section.warning` selects
-    warnings that *are* sections.
+*Shortcuts*: CSS "shortcut properties" set multiple related CSS
+properties at the same time; `margin`, `padding`, `border-width`, and
+`font` are all popular shortcuts. Implement these four shortcut
+properties. If you do it in the `body` parsing function, you won't
+need to change the rest of the code. Start with the case where all of
+the subproperties are specified, then add default values.
+
+*Comma*: CSS allows a rule to have multiple, comma-separated
+selectors, which is basically the same as multiple rules with the same
+body. Implement this and use it to shorten and shorten the browser
+style sheet.
+
+*Width/Height*: Add support to block layout objects for the `width`
+and `height` properties. These can either be a pixel value, which
+directly sets the width or height of the layout object, or the word
+`auto`, in which case the existing layout algorithm is used.
+
+*Percentages*: Most places where you can specify a pixel value in CSS,
+you can also write a percentage value like `50%`. When you do that for
+`margin`, `border`, or `padding` properties, it's relative to the
+layout object's width, while when you do it for `font-weight` it's
+relative to the parent's font size. Implement percentage values for
+all of these properties.
+
+*Comnbinations*: Sometimes you want to select an element by tag *and*
+class. You do this by concatenating the selectors without anything in
+between: `span.announce` selects elements that match both `span` and
+`.announce`. Implement a new `AndSelector` class to represent these
+and modify the parser to parse them. Sum priorities.[^lexicographic]
+
+[^lexicographic]: You're supposed to use lexicographic scoring for
+    these `AndSelector` things, but sums will work fine as long as no
+    one strings more than 16 selectors together.
+
+*Descendants*: When multiple selectors are separated with spaces, like
+`ul b`, that selects all `<b>` elements with a `<ul>` ancestor.
+Implement descendent selectors; scoring for descendent selectors works
+just like for comnbination selectors. Make sure that something like `section
+.warning` selects warnings inside sections, while `section.warning`
+selects warnings that *are* sections.
 
