@@ -261,6 +261,7 @@ def pair(self, i):
     prop, i = self.value(i)
     _, i = self.whitespace(i)
     assert self.s[i] == ":"
+    _, i = self.whitespace(i)
     val, i = self.value(i + 1)
     return (prop.lower(), val), i
 ```
@@ -390,7 +391,7 @@ def file(self, i):
                 i += 1
         else:
             rules.append(rule)
-        _, i = self.whitespace()
+        _, i = self.whitespace(i)
     return rules, i
 
 ```
