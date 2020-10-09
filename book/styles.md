@@ -27,8 +27,8 @@ It looks like this:
 It's a `<div>` element with its `style` attribute set. That attribute
 contains two key-value pairs, which set `margin-left` and
 `margin-right` to 10 pixels each.^[CSS allows spaces around the
-punctuation, but your attribute parser may not support it.] We want store
-these pairs in a `style` field on the `ElementNode` so we could
+punctuation, but your attribute parser may not support it.] We want to
+store these pairs in a `style` field on the `ElementNode` so we could
 consult them during layout.
 
 The first step is adding attributes to `ElementNode`s; attributes are
@@ -66,7 +66,7 @@ field with any stylistic choices made by the author.
 The CSS box model
 =================
 
-It'd be nice to have add some stylistic properties for authors to
+It'd be nice to have some stylistic properties for authors to
 manipulate with this `style` attribute. Let's add support for
 *margins*, *borders*, and *padding*, which change the position of
 block layout objects. Here's how those work. In effect, every block
@@ -822,7 +822,7 @@ layout object's width, while when you do it for `font-weight` it's
 relative to the parent's font size. Implement percentage values for
 all of these properties.
 
-*Comnbinations*: Sometimes you want to select an element by tag *and*
+*Combinations*: Sometimes you want to select an element by tag *and*
 class. You do this by concatenating the selectors without anything in
 between: `span.announce` selects elements that match both `span` and
 `.announce`. Implement a new `AndSelector` class to represent these
