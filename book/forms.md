@@ -31,13 +31,7 @@ which are for short, one-line inputs, and `<textarea>` elements, which
 are for long, multi-line text. I\'d like to implement both, because
 I\'d like to support both search boxes (where queries are short,
 single-line things) and comment forms (where text inputs are a lot
-longer). Usually, web browsers communicate with the operating system
-and ask the OS to draw the input areas themselves, because that way
-the input areas will match the behavior and appearance of OS input
-areas. That\'s *possible* in Tk,[^1] but in the interests of
-simplicity we\'ll be drawing the input areas ourselves.
-
-[^1]: In Python, you use the `ttk` library.
+longer).
 
 Both `<input>` and `<textarea>` elements are inline content, like
 text, laid out in lines. So to support inputs we\'ll need a new kind
@@ -86,7 +80,9 @@ to be set on text layout objects even before we call `layout`, so
 we\'ll set the size in the constructor and the position in `layout`:
 
 [^2]: In real browsers, the `width` and `height` CSS properties can
-    change the size of input elements.
+    change the size of input elements. The reason we need to hard-code
+    is that an input element is not sized to the text inside of it; in turn
+    this is because text may not exist yet!
 
 
 ``` {.python}
@@ -289,7 +285,7 @@ def relayout(self):
     self.render()
 ```
 
-Now `edit_input` can call `self.relayout()` at to update the layout
+Now `edit_input` can call `self.relayout()` to update the layout
 and redraw the page.
 
 You should now be able to run the browser on the following example web
@@ -347,10 +343,13 @@ naturally, draws a button, and clicking on that button causes the form
 to be submitted.
 
 When this form is submitted, the browser will first determine that it is
-making a POST request to `http://my-domain.com/submit` (using the normal
-rules of relative URLs). Then, it will gather up all of the input areas
-inside that form and create a big dictionary where the keys are the
-`name` attributes and the values are the text content:
+making a POST request to `http://my-domain.com/submit`. It does this by
+observing that the `method` attribute says `post`, and that the `action`
+attribute has a (relative) URL of `submit`, which we can turn into the
+mentioned URL using the rules for resolving relative URLs into absolute
+ones. Then it will gather up all of the input areas inside that form and
+create a big dictionary where the keys are the `name` attributes and the
+values are the text content:
 
 ``` {.example}
 { "name": "1", "comment": "2" }
@@ -772,12 +771,12 @@ is better with friends!
 Exercises
 =========
 
--   Add check boxes. In HTML, check boxes `<input>` elements with the
+-   Add check boxes. In HTML, check boxes are `<input>` elements with the
     `type` attribute set to `checkbox`. The check box is checked if it
     has the `checked` attribute set, and unchecked otherwise.
     Submitting check boxes in a form is a little tricky, though. A
     check box named `foo` only appears in the form encoding if it is
-    checked. Its key is its identifier and its value is the empty
+    checked. Its key is its `name` attribute and its value is the empty
     string.
 
 -   Forms can be submitted via GET requests as well as POST requests.
