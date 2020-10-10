@@ -89,9 +89,9 @@ for text color, which is controlled by the `color` property:
     so that its default is `black`.
 -   Next, I add the default style `a { color: blue; }` to our browser
     style sheet to color links blue.
--   Finally, I add a `color` field to `DrawText` and fill it out in
+-   Third, I add a `color` field to `DrawText` and fill it out in
     `InlineLayout.text`.
--   Modified `DrawText.draw` to use the color for the `fill` parameter
+-   Finally, I modify `DrawText.draw` to use the color for the `fill` parameter
     of `create_text`.
 
 Once links have colors, you can actually *find* them on the page. So
@@ -152,7 +152,8 @@ below.
     classes into a hierarchy, but I\'m trying to stick to some kind of
     easily-translatable subset of Python.
 
-[^5]: Because of line breaking.
+[^5]: Because of line breaking. Note that in real browsers, even words can
+have line breaks in them, via hyphenation.
 
 
 Next, since each `TextLayout` corresponds to a particular `TextNode`, we
@@ -223,7 +224,7 @@ Note that I\'ve removed the `DrawText` command and the display list.
 I\'m planning to do that in `TextLayout` now.
 
 Here, `TextLayout.attach` just adds text to a line and increments the
-line\'s width
+line\'s width:
 
 ``` {.python}
 def attach(self, parent):
@@ -293,6 +294,7 @@ class LineLayout:
         self.w = x - self.x
 ```
 
+::: {.further}
 Note the height computation. It will be totally wrong if you mix fonts
 of different sizes in one line. You should instead first compute the
 largest ascenders and descenders, use that to compute a baseline, then
@@ -300,6 +302,7 @@ place all the boxes, and finally compute the line height. Leading
 would be computed per-word and would factor into the placement of the
 baseline. I\'m not doing any of that here because we don\'t have any
 elements of different font sizes anyway.[^8]
+:::
 
 Now that we have words and lines laying themselves out, we need only
 modify `InlineLayout`. This involves the most surgery, but the end
@@ -355,8 +358,8 @@ def display_list(self):
 
 *Phew*. That was a lot of surgery to `InlineLayout`. But as a result,
 `InlineLayout` should now look a lot like the other layout classes.
-And, we now have individual layout object corresponding to each word
-in the document. The `handle_click` function should now working
+And, we now have individual layout objects corresponding to each word
+in the document. The `handle_click` function should now be working
 correctly: when you click on a link `find_element` should return the
 exact `TextNode` that you clicked on, from which you could get a link:
 
@@ -391,7 +394,7 @@ it\'s split between two functions: `show`, which executes the last three
 bullet points, and the browser entry point that does the first few. I\'m
 going to rejigger this architecture by introducing a new `Browser`
 object, which will both manage the canvas and do the page-related stuff.
-The GUI will be set up in the constructor:
+The page UI state will be set up in the constructor:
 
 ``` {.python}
 class Browser:
@@ -465,7 +468,7 @@ Browser chrome
 
 Now that we are navigating between pages all the time, it\'s easy to
 get a little lost and forget what web page you\'re looking at.
-Browsers solve this issue by with an address bar that shows the URL.
+Browsers solve this issue with an address bar that shows the URL.
 Let\'s implement a little address bar ourselves.
 
 The idea is to reserve the top 60 pixels of the canvas and then draw
@@ -626,7 +629,7 @@ Adding favicons is a nice exercise
     with that somehow. I recommend adding the `visited` class to all
     links that have been visited, right after parsing and before
     styling. Then you could add a browser style that uses that class.
-    You could add *pseudo*-class, like in [Chapter 10](reflow.md),
+    You could add support for *pseudo*-classes, like in [Chapter 10](reflow.md),
     which is what real browsers do.
 
 -   Right now, line layout looks super weird if some text is bigger
