@@ -56,7 +56,8 @@ class ElementNode:
         # ...
         self.style = {}
         for pair in self.attributes.get("style", "").split(";"):
-            prop, val = line.split(":")
+            if ":" not in pair: continue
+            prop, val = pair.split(":")
             self.style[prop.lower().strip()] = val.strip()
 ```
 
