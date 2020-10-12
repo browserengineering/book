@@ -391,9 +391,10 @@ def file(self, i):
         except AssertionError:
             while i < len(self.s) and self.s[i] != "}":
                 i += 1
+            i += 1
         else:
             rules.append(rule)
-        _, i = self.whitespace(i + 1)
+        _, i = self.whitespace(i)
     return rules, i
 
 ```
