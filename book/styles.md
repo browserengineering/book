@@ -393,7 +393,7 @@ def file(self, i):
                 i += 1
         else:
             rules.append(rule)
-        _, i = self.whitespace(i)
+        _, i = self.whitespace(i + 1)
     return rules, i
 
 ```
