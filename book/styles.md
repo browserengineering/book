@@ -492,7 +492,7 @@ class IdSelector:
 Now, before you call `style`, you should sort your list of rules:
 
 ``` {.python}
-rules.sort(key=lambda (selector, body): selector.priority(), reverse=True)
+rules.sort(key=lambda x: x[0].priority(), reverse=True)
 ```
 
 Note the `reverse` flag: we want higher-priority rules to come first.
