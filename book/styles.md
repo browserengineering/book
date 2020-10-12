@@ -264,6 +264,7 @@ def pair(self, i):
     assert self.s[i] == ":"
     _, i = self.whitespace(i + 1)
     val, i = self.value(i)
+    _, i = self.whitespace(i + 1)
     return (prop.lower(), val), i
 ```
 
@@ -701,7 +702,7 @@ styles of its own and only inherits from its parent:
 ``` {.python}
 def style(node, rules):
     if isinstance(node, TextNode):
-        node.style = node.parent.style
+        node.style = parent.style
     else:
         # ...
 ```
