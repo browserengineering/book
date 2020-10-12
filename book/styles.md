@@ -262,8 +262,8 @@ def pair(self, i):
     prop, i = self.value(i)
     _, i = self.whitespace(i)
     assert self.s[i] == ":"
-    _, i = self.whitespace(i)
-    val, i = self.value(i + 1)
+    _, i = self.whitespace(i + 1)
+    val, i = self.value(i)
     return (prop.lower(), val), i
 ```
 
