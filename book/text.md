@@ -63,16 +63,24 @@ world of magic ink.
     the computer how to best to align it to the pixel grid.
 
 Yet Tk's *font objects* correspond to the older meaning of font: a
-type at a fixed size, style, and weight. For example:
+type at a fixed size, style, and weight. For example:[^after-tk]
+
+[^after-tk]: You can only create `Font` objects, or any other kinds of
+    Tk objects, after calling `tkinter.Tk()`, which is why I'm putting
+    this code in the Browser constructor.
 
 ``` {.python expected=False}
 import tkinter.font
-bi_times = tkinter.font.Font(
-    family="Times",
-    size=16,
-    weight="bold",
-    slant="italic",
-)
+
+class Browser:
+    def __init__(self):
+        # ...
+        bi_times = tkinter.font.Font(
+            family="Times",
+            size=16,
+            weight="bold",
+            slant="italic",
+        )
 ```
 
 ::: {.quirk}
