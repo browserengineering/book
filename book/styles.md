@@ -58,7 +58,7 @@ class ElementNode:
         for pair in self.attributes.get("style", "").split(";"):
             if ":" not in pair: continue
             prop, val = pair.split(":")
-            self.style[prop.lower().strip()] = val.strip()
+            self.style[prop.strip().lower()] = val.strip()
 ```
 
 With these changes, each `ElementNode` should now have a `style`
@@ -102,8 +102,8 @@ add code to `layout` to compute them:
 
 ``` {.python}
 def px(s):
-    if str.endswith("px"):
-        return int(str[:-2])
+    if s.endswith("px"):
+        return int(s[:-2])
     else:
         return 0
 
@@ -122,6 +122,9 @@ don't forget that the border one is called `border-X-width`, not
 [^because-colors]: Because borders have not only widths but also
     colors and styles, while paddings are margins are thought of as
     whitespace, not something you draw.
+
+You'll also want to add these twelve variables to `DocumentLayout` and
+`InlineLayout` objects. Set them all to zero.
 
 With their values now loaded, we can use these fields to drive layout.
 First of all, when we compute width, we need to account for the space
@@ -193,9 +196,9 @@ elements*, specified using a selector:
 
 ``` {.css}
 selector {
-    property: value;
-    property: value;
-    property: value;
+    property-1: value-1;
+    property-2: value-2;
+    property-3: value-3;
     ...
 }
 ```
@@ -230,7 +233,7 @@ string through `self.s`; for example, to parse values:
 ``` {.python}
 def value(self, i):
     j = i
-    while self[j].isalnum() or self.s[j] in "-.":
+    while self.s[j].isalnum() or self.s[j] in "-.":
         j += 1
     return s[i:j], j
 ```
@@ -428,7 +431,7 @@ it looks like for `ClassSelector`:
 
 ``` {.python}
 def matches(self, node):
-    return self.cls == node.attributes.get("class", "").split()
+    return self.cls in node.attributes.get("class", "").split()
 ```
 
 You can write `matches` for `TagSelector` and `IdSelector` on your
