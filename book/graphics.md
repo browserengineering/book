@@ -240,14 +240,15 @@ every letter in the same place, so they all overlap! Let's fix that:
 
 ``` {.python expected=False}
 HSTEP, VSTEP = 13, 18
-x, y = HSTEP, VSTEP
+row, col = VSTEP, HSTEP
 for c in text:
-    self.canvas.create_text(x, y, text=c)
-    x += HSTEP
+    self.canvas.create_text(col, row, text=c)
+    col += HSTEP
 ```
 
-I picked the magic numbers—13 and 18—by trying a few different values
-and picking one that looked most readable. In the [next
+The variables `row` and `col` point to where the next character will
+go, and I picked the magic numbers—13 and 18—by trying a few different
+values and picking one that looked most readable. In the [next
 chapter](text.md), we'll replace magic numbers with font metrics.
 
 The text now forms a line from left to right. But with an 800 pixel
@@ -258,14 +259,26 @@ to *wrap* the text once we reach the edge of the screen:
 ``` {.python indent=8}
 for c in text:
     # ...
-    if x >= WIDTH - HSTEP:
-        y += VSTEP
-        x = HSTEP
+    if col >= WIDTH - HSTEP:
+        row += VSTEP
+        col = HSTEP
 ```
 
-The code wraps text by increasing *y* and resetting *x*[^13] once *x*
-goes past 787 pixels.[^14] Wrapping makes it possible to see a lot
-more text.
+The code wraps text by increasing `row` and resetting `col`[^crlf]
+once `col` goes past 787 pixels.[^not-800] Wrapping makes it possible
+to see a lot more text.
+
+[^crlf]: In the olden days of type writers, increasing *y* meant
+    *feed*ing in a new *line*, and resetting *x* meant *return*ing the
+    *carriage* that printed letters to the left edge of the page. So
+    ASCII standardizes two separate characters—"carriage return" and
+    "line feed"—for these operations, so that ASCII could be directly
+    executed by teletypewriters. That's why headers in HTTP are
+    separated by `\r\n`, even though modern computers have no
+    mechanical carriage.
+
+[^not-800]: Not 800, because we started at pixel 13 and I want to leave an
+    even gap on both sides.
 
 ::: {.further}
 Chinese characters are usually, but not always, independent: <span
@@ -317,8 +330,9 @@ a standalone function:
 ``` {.python}
 def layout(self, text):
     display_list = []
+    row, col = VSTEP, HSTEP
     for c in text:
-        display_list.append((x, y, c))
+        display_list.append((col, row, c))
         # ...
     return display_list
 ```
@@ -602,16 +616,3 @@ sleeps unless it has inputs that wake it up from another thread or process.
 
 [^12]: If you're not in Asia, you'll probably see this phase take a
     while: China is far away!
-
-[^13]: In the olden days of type writers, a new line was two
-    operations: you would *feed* in a new *line* to move down the
-    page, and then *return* the *carriage* that printed letters to its
-    left edge. You can see these same operations in the code. When
-    ASCII was standardized, they added two separate
-    characters—"carriage return" and "line feed"—for these operations,
-    so that ASCII characters could be directly executed by
-    teletypewriters. That's why headers in HTTP are separated by
-    `\r\n`, even though modern computers have no mechanical carriage.
-
-[^14]: Not 800, because we started at pixel 13 and I want to leave an
-    even gap on both sides.

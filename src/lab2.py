@@ -71,13 +71,13 @@ SCROLL_STEP = 100
 
 def layout(self, text):
     display_list = []
-    x, y = HSTEP, VSTEP
+    row, col = VSTEP, HSTEP
     for c in text:
-        display_list.append((x, y, c))
-        x += HSTEP
-        if x >= WIDTH - HSTEP:
-            y += VSTEP
-            x = HSTEP
+        display_list.append((col, row, c))
+        col += HSTEP
+        if col >= WIDTH - HSTEP:
+            row += VSTEP
+            col = HSTEP
     return display_list
 
 class Browser:
