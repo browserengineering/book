@@ -246,10 +246,15 @@ for c in text:
     col += HSTEP
 ```
 
-The variables `row` and `col` point to where the next character will
-go, and I picked the magic numbers—13 and 18—by trying a few different
-values and picking one that looked most readable. In the [next
-chapter](text.md), we'll replace magic numbers with font metrics.
+The variables[^the-grid] `row` and `col` point to where the next
+character will go, and I picked the magic numbers—13 and 18—by trying
+a few different values and picking one that looked most readable. In
+the [next chapter](text.md), we'll replace magic numbers with font
+metrics.
+
+[^the-grid]: Later, when we [add font metrics](text.md), `row` and
+    `col` will be less appropriate, since text will stop being a grid.
+    But I want to use `x` and `y` [later in the book](layout.md).
 
 The text now forms a line from left to right. But with an 800 pixel
 wide canvas and 13 pixels per character, one line only fits about 60
