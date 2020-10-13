@@ -100,6 +100,7 @@ class Layout:
         self.line = []
         for tok in tokens:
             self.token(tok)
+        self.flush()
 
     def token(self, tok):
         if isinstance(tok, Text):

@@ -611,15 +611,26 @@ def text(self, text):
         self.line.append((self.x, word, font))
 ```
 
-The second phase, meanwhile, needs to happen when we're finished with
-a line; I'm calling that second phase `flush()`:
+The new `line` field is essentially a buffer, where words are held
+temporarily before they can be placed. The second phase is that buffer
+being flushed when we're finished with a line:
 
-``` {.python}
+``` {.python indent=12}
 if self.x + w > WIDTH - HSTEP:
     self.flush()
 ```
 
-This new `flush` function has three main responsibilities:
+As usual with buffers, we also need to make sure the buffer is flushed
+once all tokens are processed:
+
+``` {.python}
+class Layout:
+    def __init__(self, tokens):
+        # ...
+        self.flush()
+```
+
+This new `flush` function has three responsibilities:
 
 1. It must align the words along the line;
 2. It must add all those words to the display list; and
@@ -694,7 +705,7 @@ the current line and starts a new one:
     this. Some people like adding a final slash to self-closing tags,
     like `<br/>`, but this is not required in HTML.
 
-``` {.python}
+``` {.python indent=4}
 def token(self, tok):
     # ...
     elif tok.tag == "br":
