@@ -153,7 +153,7 @@ def layout(self):
     self.x += self.ml
     y = self.y
     for child in self.children:
-        child.x = self.x + self.pl + self.pr + self.bl + self.br
+        child.x = self.x + self.pl + self.bl
         child.y = y
         child.layout()
         y += child.h + child.mt + child.mb
@@ -496,10 +496,11 @@ class IdSelector:
 Now, before you call `style`, you should sort your list of rules:
 
 ``` {.python}
-rules.sort(key=lambda x: x[0].priority(), reverse=True)
+rules.sort(key=lambda x: x[0].priority())
+rules.reverse()
 ```
 
-Note the `reverse` flag: we want higher-priority rules to come first.
+Note the `reverse` call: we want higher-priority rules to come first.
 In Python, the `sort` function is *stable*, which means that things
 keep their relative order if possible. This means that in general, a
 later rule has higher priority, unless the selectors used force
@@ -590,7 +591,7 @@ which case we're in:
 
 ``` {.python}
 def relative_url(url, current):
-    if url.startswith("http://"):
+    if "://" in url:
         return url
     elif url.startswith("/"):
         return "/".join(current.split("/")[:3]) + url
@@ -718,17 +719,13 @@ and now styles and inheritance are doing that job:
 
 ``` {.python}
 class InlineLayout:
-    def font(self):
+    def font(self, node):
         bold = node.style["font-weight"]
         italic = node.style["font-style"]
         if italic == "normal": italic = "roman"
         size = int(px(node.style.get("font-size")) * .75)
         return tkinter.font.Font(size=size, weight=weight, slant=slant)
     
-    def text(self, text):
-        font = self.font()
-        for word in text.split():
-            # ...
 ```
 
 Note that the `font-style` needs to replace the CSS default of
@@ -738,8 +735,27 @@ converted from points to pixels.[^72ppi]
 [^72ppi]: Normally you think of points as a physical length unit (one
     72^nd^ of an inch) and pixels as a digital unit (dependent on the
     screen) but in CSS, the conversion is fixed at exactly 75% (or 96
-    pixels per inch). I'm not sure why, it seems weird and it does
-    cause problems.
+    pixels per inch). The goal is device-independence, though it seems
+    weird to me and it does cause problems.
+
+To use this new `font` method, we need `text` to take a `TextNode` as
+input, not just the text inside of it, so that `text` has access to
+the element style:
+
+``` {.python}
+class InlineLayout:
+    def recurse(self, node):
+        if isinstance(node, TextNode):
+            self.text(node)
+        else:
+            for child in node.children:
+                self.recurse(child)
+
+    def text(self, node):
+        font = self.font(node)
+        for word in node.text.split():
+            # ...
+```
 
 Now support for the `i`, `b`, `small`, and `big` tags can all be moved
 to CSS:
@@ -765,13 +781,18 @@ em { display: inline; }
 /* ... */
 ```
 
-And then read that in `has_block_children`:
+And then read that in `has_block_children`:[^default-block]
+
+[^default-block]: Actually, the `display` property is specified to
+    default to `inline`, not `block`, so a real browser would list all
+    the block elements in its browser stylesheet. But there are a lot
+    more of them, so I'm cutting a corner here.
 
 ``` {.python}
 def has_block_children(self):
     for child in self.node.children:
         # ...
-        elif child.style.get("display", "inline") == "inline":
+        elif child.style.get("display", "block") == "inline":
             return False
     return True
 ```
@@ -824,7 +845,7 @@ directly sets the width or height of the layout object, or the word
 *Percentages*: Most places where you can specify a pixel value in CSS,
 you can also write a percentage value like `50%`. When you do that for
 `margin`, `border`, or `padding` properties, it's relative to the
-layout object's width, while when you do it for `font-weight` it's
+layout object's width, while when you do it for `font-size` it's
 relative to the parent's font size. Implement percentage values for
 all of these properties.
 
