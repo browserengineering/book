@@ -383,7 +383,7 @@ up later is easier.
 The browser chrome area is now our playbox. Let's add an address bar:
 
 ``` {.python}
-self.canvas.create_rectangle(10, 10, 790, 50)
+self.canvas.create_rectangle(50, 10, 790, 50)
 self.canvas.create_text(15, 15, anchor='nw', text=self.url)
 ```
 
@@ -460,9 +460,111 @@ One way to go to another page is by clicking on a link. But most
 browsers also allow you to type into the address bar to visit a new
 URL, if you happen to know the URL off-hand.
 
-::: {.todo}
-How do you edit the URL
-:::
+But take a moment to notice the complex ritual involved in typing in a
+new address:
+
+- First, you have to click on the address bar to "focus" on it
+- That also selects the full address, so that it's all deleted when
+  you start typing
+- Then, letters you type go into the address bar
+- The address bar updates itself, but the browser doesn't yet navigate
+  to the new page
+- Finally, you type the "Enter" key which navigates to a new page.
+
+This ritual suggests that the browser stores a boolean for whether or
+not you've clicked on the address bar and a string with the contents
+of the address bar, separate from the `url` field. Let's call that
+boolean `focus` and the string `address_bar`:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        self.focus = None
+        self.address_bar = ""
+
+    def load(self, url):
+        self.address_bar = url
+        # ...
+```
+
+Clicking on the address bar should set `focus` and clear the
+`address_bar` variable:[^why-not-select]
+
+[^why-not-select]: I'm not going to implement the selection bit, since
+    text selection is actually quite hard.
+
+``` {.python}
+def handle_click(self, e):
+    self.focus = None
+    if e.y < 60: # Browser chrome
+        # ...
+        elif 50 <= e.x < 790 and 10 <= e.y < 50:
+            self.focus = "address_bar"
+            self.address_bar = ""
+            self.render()
+    # ...
+```
+
+The click method now resets the text focus by default, and only
+focuses on the address bar when it is clicked on. Note that I call
+`render()` to make sure the screen is redrawn with the new address bar
+content. Make sure to modify `render` to use `address_bar` as the text
+in the address bar. If the address bar is focused let's also draw a
+cursor:
+
+``` {.python}
+def render(self):
+    # ...
+    font = tkinter.font.Font(family="Courier", size=20)
+    self.canvas.create_text(15, 15, anchor="nw", text=self.address_bar)
+    if self.focus == "address_bar":
+        w = font.measure(self.address_bar)
+        self.canvas.create_line(15 + w, 15, 15 + w, 45)
+```
+
+Next, when the address bar is focused, typing letters should add them
+to the address bar. In Tk, you can bind to `<Key>` and access the
+letter typed with the event object's `char` field:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.window.bind("<Key>", self.keypress)
+
+    def keypress(self, e):
+        if self.focus == "address_bar" and \
+            len(e.char) == 1 and 0x20 <= ord(e.char) < 0x7f \
+            and e.state ^ 4 == 0:
+            self.address_bar += e.char
+            self.render()
+```
+
+Again, because we modified `address_bar` and want the browser chrome
+to be redrawn, we need to call `render()`. Note the conditions in that
+`if` statement: `<Key>` is Tk's catchall event handler for keys, and
+fires for every key press, not just regular letters. So, I make that
+sure a character was typed (instead of just a modifier key being
+pressed), that it is in the ASCII range between "space" and "tilde"
+(as opposed to the arrow keys), and that no modifier keys were held
+(such as Control or Alt) except Shift (that's what "4" means).
+
+Now you can type into the address bar, but it doesn't do anything. So
+our last step is to handle the "Enter" key, which Tk calls `<Return>`:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.window.bind("<Return>", self.pressenter)
+
+    def pressenter(self, e):
+        if self.focus == "address_bar":
+            self.focus = None
+            self.load(self.address_bar)
+```
+
+In this case, `load` calls `render` so we don't need to do so directly.
 
 Summary
 =======
@@ -472,41 +574,47 @@ line and text layout. That's allowed us to determine which piece of
 text a user clicked on, which allows us to determine what link they've
 clicked on and where that links goes. And as a cherry on top, we've
 implemented a simple browser chrome, which displays the URL of the
-current page and allows the user to go back.
+current page and allows the user to navigate back and forth.
 
 Exercises
 =========
 
-- Add a forward button, which should "undo" the back button. If the
-  most recent navigation action wasn't a back button, the forward
-  button shouldn't do anything. Draw it in gray in that case, so
-  the user isn't stuck wondering why it doesn't work.
+*Forward*: Add a forward button, which should "undo" the back button.
+If the most recent navigation action wasn't a back button, the forward
+button shouldn't do anything. Draw it in gray in that case, so the
+user isn't stuck wondering why it doesn't work.
 
-- URLs can contain a *fragment*, which comes at the end of a URL and
-  is separated from the path by a hash sign `#`. When the browser
-  navigates to a URL with a fragment, it should scroll the page so
-  that the element with that identifier is at the top of the screen.
-  Also, implement fragment links: relative URLs that begin with a `#`
-  don't load a new page, but instead scroll the element with that
-  identifier to the top of the screen.
+*Fragments*: URLs can contain a *fragment*, which comes at the end of
+a URL and is separated from the path by a hash sign `#`. When the
+browser navigates to a URL with a fragment, it should scroll the page
+so that the element with that identifier is at the top of the screen.
+Also, implement fragment links: relative URLs that begin with a `#`
+don't load a new page, but instead scroll the element with that
+identifier to the top of the screen.
 
-- In real browsers, links are a different color when you've visited
-  them before---usually purple. Implement that feature by storing
-  the set of all visited pages and checking them when you lay out
-  links. Link color is currently driven by CSS: you need to work
-  with that somehow. I recommend adding the `visited` class to all
-  links that have been visited, right after parsing and before
-  styling. Then you could add a browser style that uses that class.
-  You could add *pseudo*-class, like in [Chapter 10](reflow.md),
-  which is what real browsers do.
+*Visited Links*: In real browsers, links are a different color when
+you've visited them before---usually purple. Implement that feature by
+storing the set of all visited pages and checking them when you lay
+out links. Link color is currently driven by CSS: you need to work
+with that somehow. I recommend adding the `visited` class to all links
+that have been visited, right after parsing and before styling. Then
+you could add a browser style that uses that class. You could add
+*pseudo*-class, like in [Chapter 10](reflow.md), which is what real
+browsers do.
 
 ::: {.todo}
 Adding favicons is a nice exercise
 :::
 
-- Implement basic *bookmarks*. Add a button to the browser chrome;
-  clicking it should bookmark the page. When you're looking at a
-  bookmarked page, that bookmark button should look different to
-  remind the user that the page is bookmarked, and clicking it
-  should un-bookmark it. Add a special web page, `about:bookmarks`,
-  for viewing the list of bookmarks
+*Bookmarks*: Implement basic *bookmarks*. Add a button to the browser
+chrome; clicking it should bookmark the page. When you're looking at a
+bookmarked page, that bookmark button should look different to remind
+the user that the page is bookmarked, and clicking it should
+un-bookmark it. Add a special web page, `about:bookmarks`, for viewing
+the list of bookmarks, and make `Ctrl+B` navigate to that page.
+
+*Cursor*: Make the left and right arrow keys move the text cursor
+around the address bar when it is focused. Pressing the backspace key
+should delete the character before the cursor, and typing other keys
+should add characters at the cursor. Remember that the cursor can be
+before the first character or after the last.
