@@ -602,10 +602,6 @@ you could add a browser style that uses that class. You could add
 *pseudo*-class, like in [Chapter 10](reflow.md), which is what real
 browsers do.
 
-::: {.todo}
-Adding favicons is a nice exercise
-:::
-
 *Bookmarks*: Implement basic *bookmarks*. Add a button to the browser
 chrome; clicking it should bookmark the page. When you're looking at a
 bookmarked page, that bookmark button should look different to remind
