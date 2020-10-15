@@ -82,20 +82,10 @@ these will refer to the border rectangle (so that the `x` and `y`
 fields point to the top-left corner of the outside of the layout
 object's border). To track the margin, border, and padding, we'll also
 store the margin, border, and padding widths on each side of the
-layout object. That makes for a lot of variables:
-
-``` {.python}
-class BlockLayout:
-    def __init__(self, parent, node):
-        # ....
-        self.mt = self.mr = self.mb = self.ml = -1
-        self.bt = self.br = self.bb = self.bl = -1
-        self.pt = self.pr = self.pb = self.pl = -1
-```
-
-The naming convention here is that the first letter stands for margin,
-border, or padding, while the second letter stands for top, right,
-bottom, or left.
+layout object in the variables `mt`, `mr`, `mb,` and `ml`; `bt`, `br`,
+`bb`, and `bl`; and `pt`, `pr`, `pb`, and `pl`. The naming convention
+here is that the first letter stands for margin, border, or padding,
+while the second letter stands for top, right, bottom, or left.
 
 Since each block layout object now has more variables, we'll need to
 add code to `layout` to compute them:
@@ -128,7 +118,8 @@ You'll also want to add these twelve variables to `DocumentLayout` and
 
 With their values now loaded, we can use these fields to drive layout.
 First of all, when we compute width, we need to account for the space
-taken up by the parent's border and padding:[^backslash-continue]
+taken up by the parent's border and padding; and likewise we'll need
+to adjust each layout object's `x` and `y` based on its margins:[^backslash-continue]
 
 [^backslash-continue]: In Python, if you end a line with a backslash,
     the newline is ignored by the parser, letting you split a logical
@@ -140,23 +131,23 @@ def layout(self):
     self.w = self.parent.w - self.parent.pl - self.parent.pr \
         - self.parent.bl - self.parent.br \
         - self.ml - self.mr
+    self.y += self.mt
+    self.x += self.ml
     # ...
 ```
 
-Similarly, when we position boxes, we'll need to account for our own
-border and padding:
+Similarly, when we position child layout objects, we'll need to
+account for our their parent's border and padding:
 
-``` {.python}
+``` {.python indent=4}
 def layout(self):
     # ...
-    self.y += self.mt
-    self.x += self.ml
     y = self.y
     for child in self.children:
         child.x = self.x + self.pl + self.bl
         child.y = y
         child.layout()
-        y += child.h + child.mt + child.mb
+        y += child.mt + child.h + child.mb
     self.h = y - self.y
 ```
 
@@ -228,98 +219,141 @@ class CSSParser:
 ```
 
 The class wraps the string we're parsing. Parsing functions access the
-string through `self.s`; for example, to parse values:
+string through `self.s`. Let's start small and build up. A parsing
+function for whitespace would look like this:
 
 ``` {.python}
-def value(self, i):
+def whitespace(self, i):
+    while i < len(self.s) and self.s[i].isspace():
+        i += 1
+    return None, i
+```
+
+This parsing function takes index `i`, pointing to the part of the
+string we are currently parsing, and increments it through every
+whitespace character. It then returns the new value of `i` that points
+to a non-whitespace character. Whitespace is insignificant, so it
+returns `None` for the parsed data.
+
+Parsing functions can also fail. For example, it's often helpful to
+check that there's a certain piece of text at the current location:
+
+``` {.python}
+def literal(self, i, literal):
+    l = len(literal)
+    assert self.s[i:i+l] == literal
+    return None, i + l
+```
+
+Here the check is done by `assert`, which raises an exception if the
+condition is false.[^add-a-comma]
+
+[^add-a-comma]: Add a comma after the condition, and you can add some
+    error text to the assertion. I recommend doing that for all of
+    your assertions to help in debugging.
+
+Parsing functions can also return data. For example, to parse CSS
+properties and values, we'll use:
+
+``` {.python}
+def word(self, i):
     j = i
-    while self.s[j].isalnum() or self.s[j] in "-.":
+    while j < len(self.s) and self.s[j].isalnum() or self.s[j] in "-.":
         j += 1
-    return s[i:j], j
+    assert j > i
+    return self.s[i:j], j
 ```
 
 This function takes index `i` pointing to the start of the value and
 returns index `j` pointing to its end. It comuputes `j` by
 advancing through letters, numbers, and minus and period characters
-(which might be present in numbers).
+(which might be present in numbers), and returns all the text it
+iterated through as the parsed data. Also note the check: if `j`
+didn't advance, that means `i` didn't point at a word to begin with.
 
-This parsing function the string between `i` and `j`, which will be
-the value it just read. In another parsing function, we might
-transform or change the returned data; for example, whitespace is
-insignificant in CSS, so when we parse whitespace we just return
-`None` instead of the whitespace parsed:
-
-``` {.python}
-def whitespace(self, i):
-    j = i
-    while j < len(self.s) and self.s[j].isspace():
-        j += 1
-    return None, j
-```
-
-Parsing functions can also build upon one another. Here's how to parse
-property-value pairs:
+Parsing functions can also build upon one another. Property-value
+pairs, for example, are a word, a colon, and another word, with
+whitespace in between:
 
 ``` {.python}
 def pair(self, i):
-    prop, i = self.value(i)
+    prop, i = self.word(i)
     _, i = self.whitespace(i)
-    assert self.s[i] == ":"
-    _, i = self.whitespace(i + 1)
-    val, i = self.value(i)
-    _, i = self.whitespace(i + 1)
+    _, i = self.literal(i, ":")
+    _, i = self.whitespace(i)
+    val, i = self.word(i)
     return (prop.lower(), val), i
 ```
 
-I'm using `value` here for both properties and values. In reality they
-have different syntaxes, but we'll support few enough values in our
-parser that this simplification will be alright. And note the
-`assert`: that raises an error if what you're parsing isn't a valid
-pair. When we parse rule bodies, we can catch this error to skip
-property-value pairs that don't parse:
+This builds upon `word`, `whitespace`, and `literal` to build a more
+complicated parsing function.[^technically-different] And note that if
+`i` does not actually point to a property-value pair, one of the
+`word` calls, or the `literal` call, will fail. When we parse rule
+bodies, we can catch this error to skip property-value pairs that
+don't parse:
 
-``` {.python}
+[^technically-different]: In reality properties and values have
+    different syntaxes, so using `word` for both isn't quite right,
+    but our browser supports few enough values in our parser that this
+    simplification will be alright.
+
+``` {.python indent=4}
 def body(self, i):
     pairs = {}
-    assert self.s[i] == "{"
-    _, i = self.whitespace(i+1)
-    while True:
-        if i > len(self.s): break
-        if self.s[i] == "}": break
-
+    _, i = self.literal(i, "{")
+    _, i = self.whitespace(i)
+    while i < len(self.s) and self.s[i] != "}":
         try:
             (prop, val), i = self.pair(i)
             pairs[prop] = val
             _, i = self.whitespace(i)
-            assert self.s[i] == ";"
-            _, i = self.whitespace(i+1)
+            _, i = self.literal(i, ";")
         except AssertionError:
-            while self.s[i] not in [";", "}"]:
-                i += 1
-            if self.s[i] == ";":
-                _, i = self.whitespace(i + 1)
-    assert self.s[i] == "}"
-    return pairs, i+1
+            _, i = self.ignore_until(i, [";", "}"])
+            if i < len(self.s) and self.s[i] == ";":
+                _, i = self.literal(i, ";")
+        _, i = self.whitespace(i)
+    _, i = self.literal(i, "}")
+    return pairs, i
+```
+
+This parsing function introduces a few new tricks. First, it has a
+while loop to collect multiple property-value pairs into a dictionary.
+Secondly, it uses a `try` block to catch exceptions from malformed
+property-value pairs. When a malformed pair is seen, it uses this
+`ignore_until` function:
+
+``` {.python}
+def ignore_until(self, i, chars):
+    while i < len(self.s) and self.s[i] not in chars:
+        i += 1
+    return None, i
 ```
 
 Skipping parse errors is a double-edged sword. It hides error
-messages, making debugging CSS files more difficult, and also makes it
-harder to debug your parser.^[Try debugging without the `try` block
-first.] This makes "catch-all" error handling like this a code smell
-in most cases.
+messages, so debugging CSS files becomes more difficult, and also
+makes it harder to debug your parser.[^try-no-try] This makes
+"catch-all" error handling like this a code smell in most cases.
+
+[^try-no-try]: Try debugging without the `try` block first.
 
 However, on the web there is an unusual benefit: it supports an
 ecosystem of multiple implementations. For example, different browsers
-may support different syntaxes for property values.^[Our browser does
-not support parentheses in property values, which are valid in real
-browsers, for example.] Crashing on a parse error would mean web pages
-can't use a feature until all browsers support it, while skipping
-parse errors means a feature is useful once a single browser supports
-it. This is variously called "Postel's Law",^[After a line in the
-specification of TCP, written by Jon Postel] the "Digital
-Principle",^[After a similar idea in circuit design.] or the
-"Robustness Principle": produce maximally supported output but accept
-unsupported input.
+may support different syntaxes for property values.[^like-parens]
+Thanks to silent parse errors, web pages can't use features that only
+some browsers support, with other browsers just ignoring it. This
+principle variously called "Postel's Law",[^for-jon] the "Digital
+Principle",[^from-circuits] or the "Robustness Principle": produce
+maximally supported output but accept unsupported input.
+
+[^like-parens]: Our browser does not support parentheses in property
+    values, which are valid in real browsers, for example.
+    
+[^for-jon]: After a line in the specification of TCP, written by Jon
+    Postel
+
+[^from-circuits]: After a similar idea in circuit design, where
+    transistors must be nonlinear to reduce analog noise.
 
 Finally, to parse a full CSS rule, we need to parse selectors. Selectors
 come in multiple types; for now, our browser will support three:
@@ -353,16 +387,18 @@ class IdSelector:
 We now want parsing functions for each of these data structures.
 That'll look like:
 
-``` {.python}
+``` {.python indent=4}
 def selector(self, i):
     if self.s[i] == "#":
-        name, i = self.value(i+1)
+        _, i = self.literal(i, "#")
+        name, i = self.word(i)
         return IdSelector(name), i
     elif self.s[i] == ".":
-        name, i = self.value(i+1)
+        _, i = self.literal(i, ".")
+        name, i = self.word(i)
         return ClassSelector(name), i
     else:
-        name, i = self.value(i)
+        name, i = self.word(i)
         return TagSelector(name.lower()), i
 ```
 
@@ -384,22 +420,19 @@ def rule(self, i):
 
 Finally, a CSS file itself is just a sequence of rules:
 
-``` {.python}
+``` {.python indent=4}
 def file(self, i):
     rules = []
     _, i = self.whitespace(i)
     while i < len(self.s):
         try:
             rule, i = self.rule(i)
-        except AssertionError:
-            while i < len(self.s) and self.s[i] != "}":
-                i += 1
-            i += 1
-        else:
             rules.append(rule)
+        except AssertionError:
+            _, i = self.ignore_until(i, "}")
+            _, i = self.literal(i, "}")
         _, i = self.whitespace(i)
     return rules, i
-
 ```
 
 With all our parsing functions written, we can give the `CSSParser`
@@ -418,8 +451,8 @@ print the index at the beginning of every parsing function, and print
 both the index and parsed value at the end. You'll get a lot of
 output, but if you step through it by hand, you will find your mistake.
 
-Now that we've parsed a CSS file, we need to apply it to the elements
-on the page.
+Once we've parsed a CSS file, we need to apply it to the elements on
+the page.
 
 Selecting styled elements
 =========================
@@ -447,7 +480,7 @@ simple:
 
 Here's what the code would look like:
 
-``` {.python}
+``` {.python expected=False}
 def style(node, rules):
     if not isinstance(node, ElementNode): return
     for selector, pairs in rules:
@@ -529,15 +562,14 @@ pre {
 
 Our CSS parser can convert this CSS source code to text:
 
-``` {.python}
+``` {.python replace=browser.css/browser6.css}
 class Browser:
     def load(self, url):
         header, body = request(url)
         nodes = parse(lex(body))
 
         with open("browser.css") as f:
-            browser_style = f.read()
-            rules = CSSParser(browser_style).parse()
+            rules = CSSParser(f.read()).parse()
 ```
 
 Beyond the browser styles, our browser needs to find website-specific
@@ -624,11 +656,11 @@ cascade order, but our browser style sheet only has tag selectors in
 it, so every rule already has the lowest possible score.] With the
 rules loaded, we need only sort and apply them and then do layout:
 
-``` {.python}
+``` {.python expected=False}
 def load(self, url):
     # ...
-    rules.sort(key=lambda (selector, body): selector.priority(),
-        reverse=True)
+    rules.sort(key=lambda x: x[0].priority())
+    rules.reverse()
     style(nodes, rules)
     self.layout(nodes)
 ```
@@ -705,7 +737,7 @@ On `TextNode` objects we can do an even simpler trick, since never has
 styles of its own and only inherits from its parent:
 
 ``` {.python}
-def style(node, rules):
+def style(node, parent, rules):
     if isinstance(node, TextNode):
         node.style = parent.style
     else:
