@@ -627,7 +627,9 @@ class Browser:
                 self.render()
         else:
             x, y = e.x, e.y + self.scroll - 60
-            elt = find_layout(x, y, self.document).node
+            obj = find_layout(x, y, self.document)
+            if not obj: return
+            elt = obj.node
             while elt and not is_link(elt):
                 elt = elt.parent
             if elt:

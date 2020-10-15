@@ -62,7 +62,9 @@ size and position to find the element clicked on:
 ``` {.python}
 def handle_click(self, e):
     # ...
-    elt = find_layout(x, y, self.document).node
+    obj = find_layout(x, y, self.document)
+    if not obj: return
+    elt = obj.node
 ```
 
 Here the `find_layout` function is a straightforward variant of code
@@ -287,7 +289,6 @@ def is_link(node):
 
 def handle_click(self, e):
     # ...
-    elt = find_layout(x, y, self.document).node
     while elt and not is_link(elt):
         elt = elt.parent
     if elt:
