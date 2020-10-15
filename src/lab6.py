@@ -360,11 +360,11 @@ class InlineLayout:
                 self.recurse(child)
 
     def font(self, node):
-        bold = node.style["font-weight"]
-        italic = node.style["font-style"]
-        if italic == "normal": italic = "roman"
-        size = int(px(node.style.get("font-size")) * .75)
-        return tkinter.font.Font(size=size, weight=weight, slant=slant)
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(px(node.style["font-size"]) * .75)
+        return tkinter.font.Font(size=size, weight=weight, slant=style)
 
     def text(self, node):
         font = self.font(node)
