@@ -701,7 +701,7 @@ INHERITED_PROPERTIES = {
     "font-style": "normal",
     "font-weight": "normal",
     "font-size": "16px",
-]
+}
 ```
 
 Now, in our `style` loop we'll need access to the parent node, so
