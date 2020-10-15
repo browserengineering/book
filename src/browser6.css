@@ -1,0 +1,48 @@
+body { margin-left: 8px; margin-top: 8px; margin-bottom: 8px; margin-right: 8px; }
+p { margin-bottom: 16px; }
+ul { margin-top: 16px; margin-bottom: 16px; padding-left: 20px; }
+li { margin-bottom: 8px; }
+pre {
+    margin-top: 8px; margin-bottom: 8px;
+    padding-top: 8px; padding-right: 8px;
+    padding-bottom: 8px; padding-left: 8px;
+}
+
+i { font-style: italic; }
+b { font-weight: bold; }
+small { font-size: 12px; }
+big { font-size: 20px; }
+
+a { display: inline; }
+em { display: inline; }
+strong { display: inline; }
+small { display: inline; }
+s { display: inline; }
+cite { display: inline; }
+q { display: inline; }
+dfn { display: inline; }
+abbr { display: inline; }
+
+ruby { display: inline; }
+rt { display: inline; }
+rp { display: inline; }
+data { display: inline; }
+time { display: inline; }
+code { display: inline; }
+var { display: inline; }
+samp { display: inline; }
+
+kbd { display: inline; }
+sub { display: inline; }
+sup { display: inline; }
+i { display: inline; }
+b { display: inline; }
+u { display: inline; }
+mark { display: inline; }
+bdi { display: inline; }
+bdo { display: inline; }
+
+span { display: inline; }
+br { display: inline; }
+wbr { display: inline; }
+big { display: inline; }
