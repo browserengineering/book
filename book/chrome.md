@@ -27,10 +27,8 @@ will define `handle_click` and bind it to `<Button-1>`, button number
 ``` {.python}
 class Browser:
     def __init__(self):
+        # ...
         self.window.bind("<Button-1>", self.handle_click)
-
-    def handle_click(self, e):
-        pass
 ```
 
 Inside `handle_click`, we want to figure out what link the user has
