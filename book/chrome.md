@@ -40,7 +40,7 @@ those are also the *x* and *y* coordinates relative to the canvas. To
 get coordinates relative to the web page, we need to account for
 scrolling:
 
-``` {.python}
+``` {.python expected=False}
 def handle_click(self, e):
     x, y = e.x, e.y + self.scroll
 ```
@@ -62,21 +62,20 @@ size and position to find the element clicked on:
 ``` {.python}
 def handle_click(self, e):
     # ...
-    elt = find_element(x, y, self.document)
-    print(elt.tag)
+    elt = find_layout(x, y, self.document).node
 ```
 
-Here the `find_element` function is a straightforward variant of code
+Here the `find_layout` function is a straightforward variant of code
 we've already written a few times:
 
 ``` {.python}
-def find_element(x, y, layout):
-    for child in reversed(layout.children):
-        result = find_element(x, y, child)
+def find_layout(x, y, tree):
+    for child in reversed(tree.children):
+        result = find_layout(x, y, child)
         if result: return result
-    if layout.x <= x < layout.x + layout.w and \
-       layout.y <= y < layout.y + layout.h:
-        return layout.node
+    if tree.x <= x < tree.x + tree.w and \
+       tree.y <= y < tree.y + tree.h:
+        return tree
 ```
 
 In this code snippet, I am checking the children of a given node
@@ -104,7 +103,7 @@ for text color, which is controlled by the `color` property:
   into the `DrawText` constructor.
 
 Once links have colors, you can actually *find* them on the page. So
-try clicking on them!
+add a print statement to `handle_click` and try clicking on them!
 
 Adding line and text layout
 ===========================
@@ -152,7 +151,7 @@ for convenience.[^4] Second, it has both a `node` and a `word`
 argument. That's because a single `TextNode` contains multiple words,
 and I want each `TextLayout` to be a single word.[^5] Finally,
 `TextLayout` does not take a `parent` argument. That's because we'll
-decide the parent later, in a separate `attach` method, which I'll
+decide the parent later, in a separate `append` method, which I'll
 define below.
 
 [^4]: You may want to use inheritance to group all the `Layout`
@@ -162,30 +161,23 @@ define below.
 [^5]: Because of line breaking.
 
 Next, since each `TextLayout` corresponds to a particular `TextNode`, we
-can immediately compute its width and height:[^6]
+can compute its font and based on that its width and height:[^6]
 
 [^6]: Make sure you measure `word`, not `node.text`, which contains
     multiple words! That's an easy and confusing bug.
 
 ``` {.python}
 class TextLayout:
-    def __init__(self, node, word):
-        # ...
-        bold = node.style["font-weight"] == "bold"
-        italic = node.style["font-style"] == "italic"
-        self.color = node.style["color"]
-        self.font = tkinter.font.Font(
-            family="Times", size=16,
-            weight="bold" if bold else "normal",
-            slant="italic" if italic else "roman"
-        )
-        self.w = self.font.measure(word)
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(px(self.node.style["font-size"]) * .75)
+        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
+
+        self.w = self.font.measure(self.word)
         self.h = self.font.metrics('linespace')
 ```
-
-We can compute all this immediately in the constructor; that's one of
-the benefits of implementing styles and inheritance in the previous
-chapter.
 
 With `TextLayout` and `LineLayout` in place, we can start surgery on
 `InlineLayout`. First, let's create that list of lines, and initialize
@@ -206,29 +198,25 @@ The `text` function adds each word to the `line` field and then
 increments `x`. It should add the word to the last open line instead.
 At a high level, it should look something like this:
 
-``` {.python}
-def text(self, node, text):
-    for word in text.split():
+``` {.python indent=4}
+def text(self, node):
+    for word in node.text.split():
         child = TextLayout(node, word)
-        line = self.children[-1]
-        if line.cx + tl.w > self.w:
+        child.layout()
+        if self.children[-1].cx + child.w > self.w:
             self.flush()
-        line.add(child)
+        self.children[-1].append(child)
 ```
 
-Where the `add` call on `LineLayout`s is pretty simple:
+Where the `append` call on `LineLayout`s is pretty simple:
 
 ``` {.python}
 class LineLayout:
-    def add(self, child):
+    def append(self, child):
         self.children.append(child)
         child.parent = self
-        child.x = self.cx
         self.cx += child.w + child.font.measure(" ")
 ```
-
-Note that the `text` method gained the `node` variable, which we need
-to pass to `TextLayout` so that it styles itself correctly.
 
 Meanwhile, `flush` now needs to do two things: lay out the current
 line and then create a new one. Laying out the current line is what
@@ -249,10 +237,22 @@ class InlineLayout:
 Meanwhile the new `layout` method for `LineLayout`s is nearly the same
 as the old `flush` method, except:
 
-1. Instead of adding things to a display list, it now just sets the
-   `y` field on `TextNode` objects;
-2. Instead of updating the `cx` and `cy` fields, it just computes an
-   `h` field.
+1. It need to compute a `w` field, via `parent.w`
+2. It must loop over its children, instead of a `line` field.
+2. It needs to compute `x` and `y` fields on each child instead of
+   adding them to a display list
+3. Instead of updating the `cy` field, it must compute an `h` field.
+
+One annoyance is that, since `InlineLayout` always adds a new line in
+`flush`, the last flush call will add a new, unwanted line to the end.
+Let's just throw it away:
+
+``` {.python}
+class InlineLayout:
+    def layout(self):
+        # ...
+        self.children.pop()
+```
 
 Now that words and lines lay themselves out, a lot of stuff disappears
 from`InlineLayout`. The `style`, `size`, `weight` fields are no longer
@@ -262,13 +262,13 @@ themselves in their draw call:
 
 ``` {.python}
 class TextLayout:
-    def draw(self):
-        to.append(DrawText(self.x, self.y, self.word, self.font))
+    def draw(self, to):
+        color = self.node.style["color"]
+        to.append(DrawText(self.x, self.y, self.word, self.font, color))
 ```
 
 The `InlineLayout` and `LineLayout` versions of the `draw` method
 don't do anything but recurse on their children.
-
 
 Navigating between pages
 ========================
@@ -277,7 +277,7 @@ Navigating between pages
 `InlineLayout` should now look a lot like the other layout classes,
 and we now have individual layout object corresponding to each word in
 the document. Test clicks in your browser again: when you click on a
-link `find_element` should now return the exact `TextNode` that you
+link `find_layout` should now return the exact `TextNode` that you
 clicked on, from which you could get a link:
 
 ``` {.python}
@@ -287,12 +287,17 @@ def is_link(node):
 
 def handle_click(self, e):
     # ...
-    elt = find_element(x, y, self.document)
+    elt = find_layout(x, y, self.document).node
     while elt and not is_link(elt):
         elt = elt.parent
     if elt:
-        print("Time to go to new page", elt.attributes["href"])
+        # ...
 ```
+
+Note the `while` loop. That's because the most specific thing the user
+clicked on is a `TextNode`; we need to walk up the HTML tree to find
+an `ElementNode` that is a link. To do this, you'll need to add a
+`parent` field to `ElementNode`s, so make sure to do that.
 
 Once we've found the link, we need to navigate to that page. That
 would mean:
@@ -355,43 +360,33 @@ to subtract in `render`:
 def render(self):
     self.canvas.delete("all")
     for cmd in self.display_list:
-        if cmd.y1 > self.scroll + (HEIGHT - 60): continue
+        if cmd.y1 > self.scroll + HEIGHT - 60: continue
         if cmd.y2 < self.scroll: continue
         cmd.draw(self.scroll - 60, self.canvas)
 ```
 
 We need to make a similar change in `handle_click` to subtract that 60
 pixels off when we convert back from screen to page coordinates. Next,
-we need to cover up any actual page contents that got drawn to that top
+we need to cover up[^11] any actual page contents that got drawn to that top
 60 pixels:
 
 ``` {.python}
 def render(self):
     # ...
-    self.canvas.create_rectangle(0, 0, 800, 60, fill='light gray')
+    self.canvas.create_rectangle(0, 0, 800, 60, width=0, fill='light gray')
 ```
 
-Of course a real browser wouldn't draw that content in the first
-place, but in Tk that's a little tricky to do,[^11] and covering it
-up later is easier.
-
-[^11]: Text that is partially covered by the browser chrome would be
-    hard to handle.
+[^11]: Of course a real browser wouldn't draw that content in the
+    first place, but in Tk that's a little tricky to do, and covering
+    it up later is easier.
 
 The browser chrome area is now our playbox. Let's add an address bar:
 
-``` {.python}
+``` {.python replace=url/address_bar}
 self.canvas.create_rectangle(50, 10, 790, 50)
-self.canvas.create_text(15, 15, anchor='nw', text=self.url)
+font = tkinter.font.Font(family="Courier", size=30)
+self.canvas.create_text(55, 15, anchor='nw', text=self.url, font=font)
 ```
-
-::: {.todo}
-I'd like to tweak this a little to make the results look passable,
-tweaking the font and the size of things.
-:::
-
-Browser history
-===============
 
 The back button is another classic browser feature our browser really
 needs. I'll start by drawing the back button itself:
@@ -410,7 +405,7 @@ Now we need to detect when that button is clicked on. This will go in
 `handle_click`, which must now have two cases, for clicks in the chrome
 and clicks in the page:
 
-``` {.python}
+``` {.python expected=False}
 def handle_click(self, e):
     if e.y < 60: # Browser chrome
         if 10 <= e.x < 35 and 10 <= e.y < 50:
@@ -425,22 +420,27 @@ a `history` field to `Browser`, and have `browse` append to it when
 navigating to a page:
 
 ``` {.python}
-def browse(self, url):
-    self.url = url
-    self.history.append(url)
-    # ...
+class Browser:
+    def __init__(self):
+        # ...
+        self.history = []
+
+    def load(self, url):
+        self.url = url
+        self.history.append(url)
+        # ...
 ```
 
 Now `self.go_back()` knows where to go:
 
-``` {.python}
+``` {.python expected=False}
 def go_back(self):
     if len(self.history) > 1:
-        self.browse(self.history[-2])
+        self.load(self.history[-2])
 ```
 
 This is almost correct, but if you click the back button twice, you'll
-go forward instead, because `browse` has appended to the history.
+go forward instead, because `load` has appended to the history.
 Instead, we need to do something more like:
 
 ``` {.python}
@@ -448,7 +448,7 @@ def go_back(self):
     if len(self.history) > 1:
         self.history.pop()
         back = self.history.pop()
-        self.browse(back)
+        self.load(back)
 ```
 
 Editing the URL
@@ -477,6 +477,7 @@ boolean `focus` and the string `address_bar`:
 ``` {.python}
 class Browser:
     def __init__(self):
+        # ...
         self.focus = None
         self.address_bar = ""
 
@@ -497,7 +498,7 @@ def handle_click(self, e):
     if e.y < 60: # Browser chrome
         # ...
         elif 50 <= e.x < 790 and 10 <= e.y < 50:
-            self.focus = "address_bar"
+            self.focus = "address bar"
             self.address_bar = ""
             self.render()
     # ...
@@ -510,14 +511,12 @@ content. Make sure to modify `render` to use `address_bar` as the text
 in the address bar. If the address bar is focused let's also draw a
 cursor:
 
-``` {.python}
+``` {.python indent=4}
 def render(self):
     # ...
-    font = tkinter.font.Font(family="Courier", size=20)
-    self.canvas.create_text(15, 15, anchor="nw", text=self.address_bar)
-    if self.focus == "address_bar":
+    if self.focus == "address bar":
         w = font.measure(self.address_bar)
-        self.canvas.create_line(15 + w, 15, 15 + w, 45)
+        self.canvas.create_line(55 + w, 15, 55 + w, 45)
 ```
 
 Next, when the address bar is focused, typing letters should add them
@@ -531,11 +530,10 @@ class Browser:
         self.window.bind("<Key>", self.keypress)
 
     def keypress(self, e):
-        if self.focus == "address_bar" and \
-            len(e.char) == 1 and 0x20 <= ord(e.char) < 0x7f \
-            and e.state ^ 4 == 0:
-            self.address_bar += e.char
-            self.render()
+        if self.focus == "address bar":
+            if len(e.char) == 1 and 0x20 <= ord(e.char) < 0x7f:
+                self.address_bar += e.char
+                self.render()
 ```
 
 Again, because we modified `address_bar` and want the browser chrome
@@ -557,7 +555,7 @@ class Browser:
         self.window.bind("<Return>", self.pressenter)
 
     def pressenter(self, e):
-        if self.focus == "address_bar":
+        if self.focus == "address bar":
             self.focus = None
             self.load(self.address_bar)
 ```
