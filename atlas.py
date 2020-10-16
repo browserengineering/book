@@ -14,6 +14,9 @@ class Function:
     def str(self):
         return "def {}({}): ...".format(self.name, ", ".join(self.args))
 
+    def json(self):
+        return { "type": "function", "name": self.name, "args": self.args }
+
     def sub(self):
         return None
 
@@ -25,6 +28,9 @@ class Class:
     def str(self):
         return "class {}:".format(self.name)
 
+    def json(self):
+        return { "type": "class", "name": self.name, "fns": [fn.json() for fn in self.fns] }
+
     def sub(self):
         return self.fns
 
@@ -35,6 +41,9 @@ class Const:
     def str(self):
         return "{} = ...".format(", ".join(self.names))
 
+    def json(self):
+        return { "type": "const", "names": self.names }
+
     def sub(self):
         return None
 
@@ -44,6 +53,9 @@ class IfMain:
     
     def str(self):
         return "if __name__ == \"__main__\": ..."
+
+    def json(self):
+        return { "type": "ifmain" }
 
     def sub(self):
         return None
@@ -104,9 +116,25 @@ def outline(tree):
 
 if __name__ == "__main__":
     import sys
-    for fname in sys.argv[1:]:
-        with open(fname) as f:
-            tree = ast.parse(f.read(), fname)
-            print("{}:".format(fname))
-            write_outline(outline(tree), indent=2)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generates outlines for each chapter's code")
+    parser.add_argument("files", nargs="+", type=argparse.FileType())
+    parser.add_argument("--output", type=argparse.FileType("w"), default=None)
+    args = parser.parse_args()
+
+    outlines = {}
+    for f in args.files:
+        tree = ast.parse(f.read(), f.name)
+        outlines[f.name] = outline(tree)
+
+    if args.output:
+        import json
+        args.output.write("save_outline(")
+        json.dump({ k: [v.json() for v in vs] for k, vs in outlines.items() }, args.output)
+        args.output.write(")")
+    else:
+        for k, vs in outlines.items():
+            print(k)
+            write_outline(vs, indent=2)
             print()

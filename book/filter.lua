@@ -67,6 +67,10 @@ function Div(el)
   or (main and not draft and el.classes[1] == "warning") then
     local signup = assert(io.open("book/signup.html")):read("*all")
     return pandoc.RawBlock("html", signup)
+  elseif el.classes[1] == "outline" then
+    local src = el.attributes["src"]
+    local outline = "<div class='outline' data-file='" .. src .. "'></div>"
+    return pandoc.RawBlock("html", outline)
   else
     return el
   end

@@ -600,6 +600,15 @@ it already has some of the core capabilities of a browser.
 ::: {.signup}
 :::
 
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should look something like this:
+
+::: {.outline src=src/lab1.py}
+:::
+
 Exercises
 =========
 
