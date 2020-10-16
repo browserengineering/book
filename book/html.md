@@ -316,7 +316,7 @@ all text nodes that only contain whitespace:[^ignore-them]
 [^ignore-them]: Real browsers retain whitespace nodes: whitespace is
     significant inside `<pre>` tags and in some other cases. But our
     browser already renders `He<b>llo</b>` as two words, so let's just
-    say it's not a focus. Plus, ignoring all whitespace tags simplifies
+    ignore that complication. Plus, ignoring all whitespace tags simplifies
     [later chapters](layout.md) by avoiding special-case reasoning
     about whitespace-only text tags.
 
