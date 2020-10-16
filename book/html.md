@@ -310,13 +310,20 @@ Furthermore, text can appear after the doctype declaration but before
 any other elements; in that case `currently_open` is empty so there's
 no node to add that text to. Usually that text is just whitespace
 between `<!DOCTYPE html>` and `<html>` in the HTML source, so it's
-silly to have the parser crash here. Let's hand it by simply skipping
-text nodes when there aren't any currently-open elements:
+silly to have the parser crash here. Let's handle it just skipping
+all text nodes that only contain whitespace:[^ignore-them]
+
+[^ignore-them]: Real browsers retain whitespace nodes: whitespace is
+    significant inside `<pre>` tags and in some other cases. But our
+    browser already renders `He<b>llo</b>` as two words, so let's just
+    ignore that complication. Plus, ignoring all whitespace tags simplifies
+    [later chapters](layout.md) by avoiding special-case reasoning
+    about whitespace-only text tags.
 
 ``` {.python indent=8}
 if isinstance(tok, Text):
+    if tok.text.isspace(): continue
     node = TextNode(tok.text)
-    if not currently_open: continue
     currently_open[-1].children.append(node)
 ```
 
