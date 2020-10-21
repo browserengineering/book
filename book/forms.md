@@ -13,35 +13,31 @@ out form information and then send that form to the server. Web forms
 are used almost everywhere: you fill one out to post on Facebook, to
 register to vote, or to search Google.
 
-::: {.todo}
-I may decide to implement focus tracking and GUI text entry.
-:::
-
 Rendering widgets
 =================
 
 When your browser sends information to a web server, that is usually
-information that you\'ve typed into some kind of input area, or a
-check-box of some sort that you\'ve checked. So the first step in
+information that you've typed into some kind of input area, or a
+check-box of some sort that you've checked. So the first step in
 communicating with other servers is going to be to draw input areas on
 the screen and then allow the user to fill them out.
 
 On the web, there are two kinds of input areas: `<input>` elements,
 which are for short, one-line inputs, and `<textarea>` elements, which
-are for long, multi-line text. I\'d like to implement both, because
-I\'d like to support both search boxes (where queries are short,
+are for long, multi-line text. I'd like to implement both, because
+I'd like to support both search boxes (where queries are short,
 single-line things) and comment forms (where text inputs are a lot
 longer). Usually, web browsers communicate with the operating system
 and ask the OS to draw the input areas themselves, because that way
 the input areas will match the behavior and appearance of OS input
-areas. That\'s *possible* in Tk,[^1] but in the interests of
-simplicity we\'ll be drawing the input areas ourselves.
+areas. That's *possible* in Tk,[^1] but in the interests of
+simplicity we'll be drawing the input areas ourselves.
 
 [^1]: In Python, you use the `ttk` library.
 
 Both `<input>` and `<textarea>` elements are inline content, like
-text, laid out in lines. So to support inputs we\'ll need a new kind
-of layout object, which I\'ll call `InputLayout`. It\'ll need to
+text, laid out in lines. So to support inputs we'll need a new kind
+of layout object, which I'll call `InputLayout`. It'll need to
 support the same kind of API as `TextLayout`, namely `attach` and
 `add_space`, so that it won't confuse `InlineLayout`:
 
@@ -68,8 +64,8 @@ class InputLayout:
             self.parent.w += gap
 ```
 
-You\'ll note the `add_space` function hardcodes a 5-pixel space, unlike
-`TextLayout`, which uses the current font. That\'s because the
+You'll note the `add_space` function hardcodes a 5-pixel space, unlike
+`TextLayout`, which uses the current font. That's because the
 *contents* of a text input generally use a custom font, not the same
 font used by surrounding text, so I might as well hard-code in the size
 of spaces.
@@ -83,7 +79,7 @@ operation?
 For simplicity, the `layout` method hard-codes a specific size for
 input elements.[^2] One quirk is that `InlineLayout.text` requires `w`
 to be set on text layout objects even before we call `layout`, so
-we\'ll set the size in the constructor and the position in `layout`:
+we'll set the size in the constructor and the position in `layout`:
 
 [^2]: In real browsers, the `width` and `height` CSS properties can
     change the size of input elements.
@@ -101,7 +97,7 @@ class InputLayout:
         self.y = y
 ```
 
-Finally, we\'ll need to draw the input element itself, which is going to
+Finally, we'll need to draw the input element itself, which is going to
 be a large rectangle:
 
 ``` {.python}
@@ -147,10 +143,10 @@ them in the browser stylesheet as well.
 Interacting with widgets
 ========================
 
-We\'ve now got input elements rendering, but only as empty rectangles.
+We've now got input elements rendering, but only as empty rectangles.
 We need the *input* part! Let's 1) draw the content of input elements;
 and 2) allow the user to change that content. I'll start with the
-second, since until we do that there\'s no content to draw.
+second, since until we do that there's no content to draw.
 
 In this toy browser, I'm going to require the user to click on an
 input element to change its content. We detect the click in
@@ -174,7 +170,7 @@ else:
 
 So, how does editing an input element work? Well, `<input>` and
 `<textarea>` work differently. For `<input>`, the text in the input
-area is the element\'s `value` attribute, like this:
+area is the element's `value` attribute, like this:
 
 ``` {.example}
 Name: <input value="Pavel Panchekha">
@@ -189,7 +185,7 @@ which I'm ignoring here.]
 <textarea>This is the content.</textarea>
 ```
 
-Whereever the content is, editing the input has to change it. Let\'s
+Whereever the content is, editing the input has to change it. Let's
 add that to our browser, soliciting input on the command line and then
 updating the element with it:^[GUI text input is hard, which is why
 I'm soliciting input on the command line. See the last exercise.]
@@ -231,7 +227,7 @@ def layout(self, x, y):
         layout.layout(y)
 ```
 
-Since `InlineLayout` requires them, let\'s add some of these helper
+Since `InlineLayout` requires them, let's add some of these helper
 functions:
 
 ::: {.todo}
@@ -273,9 +269,9 @@ The browser now displays text area contents!
 
 One final thing: when we enter new text in a text area, we change the
 node tree, and that means that the layout that we derived from that tree
-is now invalid and needs to be recomputed, and we can\'t just call
+is now invalid and needs to be recomputed, and we can't just call
 `browse`, since that will reload the web page and wipe out our changes.
-Instead, let\'s split the second half of `browse` into its own function,
+Instead, let's split the second half of `browse` into its own function,
 which `browse` will now call:
 
 ``` {.python}
@@ -293,7 +289,7 @@ Now `edit_input` can call `self.relayout()` at to update the layout
 and redraw the page.
 
 You should now be able to run the browser on the following example web
-page:^[Don\'t worry---the mangled HTML should be just fine for our [HTML parser](html.md).]
+page:^[Don't worry---the mangled HTML should be just fine for our [HTML parser](html.md).]
 
 ``` {.example}
 <body>
@@ -303,7 +299,7 @@ page:^[Don\'t worry---the mangled HTML should be just fine for our [HTML parser]
 ```
 
 One quirk---if you add `style=font-weight:bold` to the `<body>`, so
-that the labels are bold, you\'ll find that the input area content
+that the labels are bold, you'll find that the input area content
 isn't bolded (because we override the font) but the text area content
 is. We can fix that by adding to the browser stylesheet:
 
@@ -329,7 +325,7 @@ submit all the input elements it contains through its `action` and
 and refers to an HTTP method; the `action` attribute is a relative
 URL. The browser generates an HTTP request by combining the two.
 
-Let\'s focus on POST submissions (the default). Suppose you have the
+Let's focus on POST submissions (the default). Suppose you have the
 following form, on the web page `http://my-domain.com/form`:
 
 ``` {.html}
@@ -340,9 +336,9 @@ following form, on the web page `http://my-domain.com/form`:
 </form>
 ```
 
-This is the same as the little example web page above, except there\'s
+This is the same as the little example web page above, except there's
 now a `<form>` element and also the two text areas now have `name`
-attributes, plus I\'ve added a new `<button>` element. That element,
+attributes, plus I've added a new `<button>` element. That element,
 naturally, draws a button, and clicking on that button causes the form
 to be submitted.
 
@@ -365,7 +361,7 @@ name=1&comment=2
 
 This form-encoded string will be the *body* of the HTTP POST request
 the browser is going to send. Bodies are allowed on HTTP requests just
-like they are in responses, even though up until now we\'ve been
+like they are in responses, even though up until now we've been
 sending requests without bodies. The only caveat is that if you send a
 body, you must send the `Content-Length` header, so that the server
 knows how much of the request to wait for. So the overall request is:
@@ -383,7 +379,7 @@ which the browser will render.
 Implementing forms
 ==================
 
-We\'re going to need to implement a couple of different things:
+We're going to need to implement a couple of different things:
 
 -   Buttons
 -   Handling button clicks
@@ -392,11 +388,11 @@ We\'re going to need to implement a couple of different things:
 -   Form-encoding their data
 -   Making POST requests
 
-We\'ll go in order.
+We'll go in order.
 
 First, buttons. Buttons are a lot like input elements, and can use
 `InputLayout`. They get their contents like `<textarea>` but are only
-one line tall; luckily, the way I\'ve implemented `InputLayout` allows
+one line tall; luckily, the way I've implemented `InputLayout` allows
 those two aspects to be mixed, so we just need to modify
 `InlineLayout.recurse` to handle buttons.
 
@@ -478,7 +474,7 @@ Having `post` and `browse` methods is crazy.
 This isn't real form-encoding---I'm just replacing spaces by `"%20"`.
 Real form-encoding escapes characters like the equal sign, the
 ampersand, and so on; but given that our browser is a toy anyway,
-let\'s just try to avoid typing equal signs, ampersands, and so on
+let's just try to avoid typing equal signs, ampersands, and so on
 into forms.
 
 Sixth and finally, to actually send a POST request, we need to modify
@@ -506,9 +502,9 @@ This needs to match the actual `request` code (and fit on screen).
 Remember to modify all other calls to `request` (there are several calls
 in `Browser.browse`) to pass in the method.
 
-Once we\'ve made the POST request, the server will send back a new web
+Once we've made the POST request, the server will send back a new web
 page to render. We need to lex, parse, style, and lay that page out.
-Once again, let\'s split `browse` into a simpler `browse` function that
+Once again, let's split `browse` into a simpler `browse` function that
 just makes the GET request and a more complex `parse` function that does
 lexing, parsing, and style, and call that from the end of `post`:
 
@@ -529,13 +525,13 @@ simple forms!
 Receiving POST requests
 =======================
 
-We need to test our browser's forms functionality. Let\'s test with
+We need to test our browser's forms functionality. Let's test with
 our own simple web server. This server will show a simple form with a
 single text entry and remember anything submitted through that form.
-Then, it\'ll show you all of the things that it remembers. Call it a
+Then, it'll show you all of the things that it remembers. Call it a
 guest book.^[Online guest books... so 90s...]
 
-A web server is a different program from a web browser, so let\'s start
+A web server is a different program from a web browser, so let's start
 a new file. The server will need to:
 
 -   Open a socket and listen for connections
@@ -558,7 +554,7 @@ s = socket.socket(
 ```
 
 Now, instead of calling `connect` on this socket (which causes it to
-connect to some other server), we\'ll call `bind`, which opens a port
+connect to some other server), we'll call `bind`, which opens a port
 waits for other computers to connect to it:
 
 ``` {.python}
@@ -568,8 +564,8 @@ s.bind(('', 8000))
 Here, the first argument to `bind`, the address, is set to the empty
 string, which means that the socket will accept connections from any
 other computer. The second argument is the port on *your* machine that
-you want the server to listen on. I\'ve chosen `8000` here, since
-that\'s probably open and, being larger than 1024, doesn\'t require
+you want the server to listen on. I've chosen `8000` here, since
+that's probably open and, being larger than 1024, doesn't require
 administrator privileges. But you can pick a different number if, for
 whatever reason, port 8000 is taken on your machine.
 
@@ -577,7 +573,7 @@ whatever reason, port 8000 is taken on your machine.
 A note about debugging servers. If a server crashes with a connection
 open on some port, your OS prevents the port from being
 reused[^why-wait] for a few seconds. So if your server crashes, you
-might need to wait about a minute before you restart it, or you\'ll
+might need to wait about a minute before you restart it, or you'll
 get errors about addresses being in use.
 :::
 
@@ -586,7 +582,7 @@ get errors about addresses being in use.
     opens the same port, it could receive data means for the old,
     now-dead process.
 
-Now, we tell the socket we\'re ready to accept connections:
+Now, we tell the socket we're ready to accept connections:
 
 ``` {.python}
 s.listen()
@@ -604,12 +600,12 @@ while True:
 
 That connection object is, confusingly, also socket: it is the socket
 corresponding to that one connection. We know what to do with those:
-we read the contents and parse the HTTP message. But it\'s a little
+we read the contents and parse the HTTP message. But it's a little
 trickier to do this in the server than in the browser, because the
-browser waits for the server, and that means the server can\'t just
+browser waits for the server, and that means the server can't just
 read from the socket until the connection closes.
 
-Instead, we\'ll read from the socket line-by-line. First, we read the
+Instead, we'll read from the socket line-by-line. First, we read the
 request line:
 
 ``` {.python}
@@ -635,7 +631,7 @@ def handle_connection(conx):
 ```
 
 Finally we read the body, but only when the `Content-Length` header
-tells us how much of it to read (that\'s why that header is mandatory on
+tells us how much of it to read (that's why that header is mandatory on
 `POST` requests):
 
 ``` {.python}
@@ -665,13 +661,13 @@ conx.close()
 I need to do something about the Content-Length line being so long.
 :::
 
-This is a bare-bones server: it doesn\'t check that the browser is
-using HTTP 1.0 to talk to it, it doesn\'t send back any headers at all
-except `Content-Length`, and so on. But look: it\'s a toy web server
+This is a bare-bones server: it doesn't check that the browser is
+using HTTP 1.0 to talk to it, it doesn't send back any headers at all
+except `Content-Length`, and so on. But look: it's a toy web server
 that talks to a toy web browser. Cut it some slack.
 
-All that\'s left is implementing `handle_request`. We want some kind of
-guest book, so let\'s create a list to store guest book entries:
+All that's left is implementing `handle_request`. We want some kind of
+guest book, so let's create a list to store guest book entries:
 
 ``` {.python}
 ENTRIES = [ 'Pavel was here' ]
@@ -688,7 +684,7 @@ def handle_request(method, url, headers, body):
     return out
 ```
 
-For now, I\'m ignoring the method, the URL, the headers, and the body
+For now, I'm ignoring the method, the URL, the headers, and the body
 entirely.
 
 You should be able to run this minimal core of a web server and then
@@ -696,7 +692,7 @@ direct your browser to `http://localhost:8000/`, `localhost` being
 what your computer calls itself and `8000` being the port we chose
 earlier. You should see a list of (one) guest book entry.
 
-Let\'s now make it possible to add to the guest book. First, let\'s
+Let's now make it possible to add to the guest book. First, let's
 add a form to the top of the page:
 
 ``` {.python}
