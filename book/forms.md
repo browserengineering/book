@@ -379,7 +379,7 @@ def submit_form(self, elt):
     inputs = find_inputs(elt, [])
     body = ""
     for input in inputs:
-        name = input.attributes['name]
+        name = input.attributes['name']
         value = input.attributes.get('value', '')
         body += "&" + name + "="
         body += value.replace(" ", "%20")
