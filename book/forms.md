@@ -58,7 +58,7 @@ their size, which for simplicity I'll hard-code:[^2]
 class InputLayout:
     def layout(self):
         self.w = 200
-        self.h = 60 if self.multiline else 20
+        self.h = 20
 
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
