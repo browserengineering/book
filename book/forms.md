@@ -24,88 +24,75 @@ the screen and then allow the user to fill them out.
 
 On the web, there are two kinds of input areas: `<input>` elements,
 which are for short, one-line inputs, and `<textarea>` elements, which
-are for long, multi-line text. I'd like to implement both, because
-I'd like to support both search boxes (where queries are short,
-single-line things) and comment forms (where text inputs are a lot
-longer). Usually, web browsers communicate with the operating system
-and ask the OS to draw the input areas themselves, because that way
-the input areas will match the behavior and appearance of OS input
-areas. That's *possible* in Tk,[^1] but in the interests of
-simplicity we'll be drawing the input areas ourselves.
+are for long, multi-line text. I'll implement `<input>` only, because
+because `<textarea>` has a lot of strange properties.[^sig-ws]
+Usually, web browsers communicate with the operating system and ask
+the OS to draw the input areas themselves, because that way the input
+areas will match the behavior and appearance of OS input areas. That's
+*possible* in Tk,[^1] but in the interests of simplicity we'll be
+drawing the input areas ourselves.
 
+[^sig-ws]: Whitespace inside a text area is significant, but text
+    still wraps, an unsual combination. Plus, they are pretty similar
+    to ordinary `<input>` elements in implementation.
 [^1]: In Python, you use the `ttk` library.
 
-Both `<input>` and `<textarea>` elements are inline content, like
-text, laid out in lines. So to support inputs we'll need a new kind
-of layout object, which I'll call `InputLayout`. It'll need to
-support the same kind of API as `TextLayout`, namely `attach` and
-`add_space`, so that it won't confuse `InlineLayout`:
+`<input>` elements are inline content, like text, laid out in lines.
+So to support inputs we'll need a new kind of layout object, which
+I'll call `InputLayout`, implemented much like `TextLayout`:
 
 ``` {.python}
 class InputLayout:
-    def __init__(self, node, multiline=False):
-        self.children = []
+    def __init__(self, node):
         self.node = node
-        self.space = 0
-        self.multiline = multiline
-
-    def layout(self, x, y):
-        pass
-
-    def attach(self, parent):
-        self.parent = parent
-        parent.children.append(self)
-        parent.w += self.w
-
-    def add_space(self):
-        if self.space == 0:
-            gap = 5
-            self.space = gap
-            self.parent.w += gap
+        self.children = []
 ```
 
-You'll note the `add_space` function hardcodes a 5-pixel space, unlike
-`TextLayout`, which uses the current font. That's because the
-*contents* of a text input generally use a custom font, not the same
-font used by surrounding text, so I might as well hard-code in the size
-of spaces.
-
-::: {.todo}
-This explanation is very odd: the size of the space should be the size
-of the surrounding text. Perhaps `add_space` should execute a `max`
-operation?
-:::
-
-For simplicity, the `layout` method hard-codes a specific size for
-input elements.[^2] One quirk is that `InlineLayout.text` requires `w`
-to be set on text layout objects even before we call `layout`, so
-we'll set the size in the constructor and the position in `layout`:
+These `InputLayout` objects need a `layout` method needs to compute
+their size, which for simplicity I'll hard-code:[^2]
 
 [^2]: In real browsers, the `width` and `height` CSS properties can
     change the size of input elements.
 
-
 ``` {.python}
 class InputLayout:
-    def __init__(self, node, multiline=False):
-        # ...
+    def layout(self):
         self.w = 200
         self.h = 60 if self.multiline else 20
 
-    def layout(self, x, y):
-        self.x = x
-        self.y = y
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(px(self.node.style["font-size"]) * .75)
+        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
 ```
 
-Finally, we'll need to draw the input element itself, which is going to
-be a large rectangle:
+Finally, we'll need to add a `draw` method for input elements, which
+needs to both draw the text contents and make the input area noticably
+distinct, so the user can find and click on it. For `<input>`, the
+text in the input area is the element's `value` attribute, like this:
+
+``` {.example}
+Name: <input value="Pavel Panchekha">
+```
+
+
+For simplicity, I'll make input elements have a light gray background:
 
 ``` {.python}
-def display_list(self):
-    _ol, _or = self.x, self.x + self.w
-    _ot, _ob = self.y, self.y + self.h
-    return [DrawRect(_ol, _ot, _or, _ob)]
+class InputLayout:
+    def draw(self, to):
+        x1, x2 = self.x, self.x + self.w
+        y1, y2 = self.y, self.y + self.h
+        to.append(DrawRect(x1, y1, x2, y2, "light gray"))
+
+        text = self.node.attribute.get("value", "")
+        color = self.node.style["color"]
+        to.append(DrawText(self.x, self.y, text, self.font, color)
 ```
+
+Note that the background has to come before the text, lest the text be
+obscured!
 
 Finally, we need to create these `InputLayout` objects; we can do that
 in `InlineLayout.recurse`:
@@ -113,7 +100,7 @@ in `InlineLayout.recurse`:
 ``` {.python}
 def recurse(self, node):
     if isinstance(node, ElementNode):
-        if node.tag in ["input", "textarea"]:
+        if node.tag == "input":
             self.input(node)
         else:
             for child in node.children:
@@ -127,18 +114,15 @@ don't need to be split into multiple words:
 
 ``` {.python}
 def input(self, node):
-    tl = InputLayout(node, node.tag == "textarea")
-    line = self.children[-1]
-    if line.w + tl.w > self.w:
-        line = LineLayout(self)
-    tl.attach(line)
+    child = InputLayout(node)
+    child.layout()
+    if self.children[-1].cx + child.w > self.w:
+        self.flush()
+    self.childre[-1].append(child)
 ```
 
-Finally, to make sure these elements are parsed and styled right, we
-need to inform our HTML parser that `<input>` is self-closing (but not
-`<textarea>`, see below) and, since both `<input>` and `<textarea>`
-are supposed to be drawn inline, we need to set `display: inline` for
-them in the browser stylesheet as well.
+Try it out: you should now be able to see basic input elements as
+light gray rectangles.
 
 Interacting with widgets
 ========================
@@ -150,168 +134,93 @@ second, since until we do that there's no content to draw.
 
 In this toy browser, I'm going to require the user to click on an
 input element to change its content. We detect the click in
-`Browser.handle_click`, which must now search for an ancestor link
-*or* input element:
+`Browser.handle_click`:
 
 ``` {.python}
-# ...
-while elt and not \
-    (isinstance(elt, ElementNode) and \
-     (elt.tag == "a" and "href" in elt.attributes or \
-      elt.tag in ["input", "textarea"])):
-    elt = elt.parent
-if not elt:
-    pass
-elif elt.tag == "a":
+obj = find_layout(x, y, self.document)
+if not obj: return
+if obj.node.tag == "input":
+    self.click_input(obj)
+```
+
+Once we find an input element, we need to edit it. First of all, like
+with the address bar, clicking on an input should clear its
+content:[^unless-cursor]
+
+[^unless-cursor]: Unless you've implemented some basic editing
+    controls, like the "Cursor" exercise in [Chapter 7](chrome.md).
+
+``` {.python}
+def click_input(self, obj):
+    elt = obj.node
+    elt.attributes["value"] = ""
+```
+
+Next, typing on the keyboard needs to change the value, and in order
+to do that, we need to set the `focus` to point to this element:
+
+``` {.python}
+elif is_input(elt):
     # ...
-else:
-    self.edit_input(elt)
+    self.focus = obj
 ```
 
-So, how does editing an input element work? Well, `<input>` and
-`<textarea>` work differently. For `<input>`, the text in the input
-area is the element's `value` attribute, like this:
+Until now, the `focus` field was either `None` (nothing has been
+clicked on) or `"address bar"` (the address bar has been clicked on).
+Now we're adding the additional possibility that it is a layout object
+that the user is typing into.
 
-``` {.example}
-Name: <input value="Pavel Panchekha">
-```
-
-Meanwhile, `<textarea>` tags enclose text that is their
-content:^[The text area can also contain manual line
-breaks, unlike normal text (but it does wrap lines, unlike `<pre>`),
-which I'm ignoring here.]
-
-``` {.example}
-<textarea>This is the content.</textarea>
-```
-
-Whereever the content is, editing the input has to change it. Let's
-add that to our browser, soliciting input on the command line and then
-updating the element with it:^[GUI text input is hard, which is why
-I'm soliciting input on the command line. See the last exercise.]
+Finally, since we've changed the content of the input element (by
+clearing it) we need to redraw the screen. But unlike before, where a
+simple `render` call was enough, we're now changing the web page HTML
+itself! This means we must change the layout tree, and to do that, we
+must call `layout`:
 
 ``` {.python}
-def edit_input(self, elt):
-    new_text = input("Enter new text: ")
-    if elt.tag == "input":
-        elt.attributes["value"] = new_text
-    else:
-        elt.children = [TextNode(elt, new_text)]
-```
-
-Now that input areas have text content, we need to draw that text. For
-single-line input elements, we just add a `DrawText` command to the
-display list:
-
-``` {.python}
-def display_list(self):
-    border = # ...
-    font = self.node.font()
-    value = self.node.attributes.get("value", "")
-    x, y = self.x + 1, self.y + 1
-    text = DrawText(x, y, value, font, 'black')
-    return [border, text]
-```
-
-This won't work for multi-line inputs, though, because we need to do
-line breaking on that text. Instead of implementing line breaking
-*again*, let's reuse `InlineLayout` by constructing one as a child of
-our `InputLayout`:
-
-``` {.python}
-def layout(self, x, y):
+elif is_input(elt):
     # ...
-    for child in self.node.children:
-        layout = InlineLayout(self, child)
-        self.children.append(layout)
-        layout.layout(y)
+    self.layout(self.document.node)
 ```
 
-Since `InlineLayout` requires them, let's add some of these helper
-functions:
-
-::: {.todo}
-It's ugly that I have these
-:::
+Once focus has been moved to an input element, typing on the keyboard
+has to change the input's contents. Let's add that to our browser,
+soliciting input on the command line and then updating the element
+with it:
 
 ``` {.python}
-def content_left(self):
-    return self.x + 1
+def keypress(self, e):
+    if len(e.char) != 1 or ord(e.char) < 0x20 or 0x7f <= ord(e.char):
+        return
 
-def content_top(self):
-    return self.y + 1
-
-def content_width(self):
-    return self.w - 2
+    if not self.focus:
+        return
+    if self.focus == "address bar":
+        # ...
+    elif isinstance(self.focus, InputLayout):
+        self.focus.node.attribute["value"] += e.char
+        self.layout(self.document.node)
 ```
 
-::: {.todo}
-I'd rather the recursion be external.
-:::
-
-We also need to propagate this child's display list to its parent:
+While we're at it, let's modify `render` to draw a cursor into the
+focused input area:
 
 ``` {.python}
-def display_list(self):
-    border = # ...
-    if self.children:
-        dl = []
-        for child in self.children:
-            dl.extend(child.display_list())
-        dl.append(border)
-        return dl
-    else:
-        text = # ...
-        return [border, text]
+def render(self):
+    # ...
+    if self.focus == "address bar":
+        # ...
+    elif isinstance(self.focus, InputLayout):
+        text = self.focus.attributes.get("value", "")
+        x = self.focus.x + self.focus.font.measure()
+        y = self.focus.y
+        self.canvas.create_line(x, y, x, y + self.focus.h)
 ```
 
-The browser now displays text area contents!
-
-One final thing: when we enter new text in a text area, we change the
-node tree, and that means that the layout that we derived from that tree
-is now invalid and needs to be recomputed, and we can't just call
-`browse`, since that will reload the web page and wipe out our changes.
-Instead, let's split the second half of `browse` into its own function,
-which `browse` will now call:
-
-``` {.python}
-def relayout(self):
-    style(self.nodes, self.rules)
-    self.page = Page()
-    self.layout = BlockLayout(self.page, self.nodes)
-    self.layout.layout(0)
-    self.max_h = self.layout.h
-    self.display_list = self.layout.display_list()
-    self.render()
-```
-
-Now `edit_input` can call `self.relayout()` at to update the layout
-and redraw the page.
-
-You should now be able to run the browser on the following example web
-page:^[Don't worry---the mangled HTML should be just fine for our [HTML parser](html.md).]
-
-``` {.example}
-<body>
-<p>Name: <input value=1></p>
-<p>Comment: <textarea>2</textarea></p>
-</body>
-```
-
-One quirk---if you add `style=font-weight:bold` to the `<body>`, so
-that the labels are bold, you'll find that the input area content
-isn't bolded (because we override the font) but the text area content
-is. We can fix that by adding to the browser stylesheet:
-
-``` {.css}
-textarea {
-    font-style: normal;
-    font-weight: normal;
-}
-```
-
-That'll prevent the text area from inheriting its font styles from its
-parent.
+Note that again, `layout` needs to be called because adding text into
+the input means changing the HTML. Most likely, `layout` is now quite
+slow in your browser, so typing into input forms is actually going to
+be quite painful. We'll return to this in [Chapter 10](reflow.md) and
+implement incremental layout to resolve this issue.
 
 How forms work
 ==============
@@ -331,7 +240,7 @@ following form, on the web page `http://my-domain.com/form`:
 ``` {.html}
 <form action=submit method=post>
     <p>Name: <input name=name value=1></p>
-    <p>Comment: <textarea name=comment>2</textarea></p>
+    <p>Comment: <input name=comment value=2></p>
     <p><button>Submit!</button></p>
 </form>
 ```
@@ -390,15 +299,48 @@ We're going to need to implement a couple of different things:
 
 We'll go in order.
 
-First, buttons. Buttons are a lot like input elements, and can use
-`InputLayout`. They get their contents like `<textarea>` but are only
-one line tall; luckily, the way I've implemented `InputLayout` allows
-those two aspects to be mixed, so we just need to modify
-`InlineLayout.recurse` to handle buttons.
+First, buttons. Buttons are a bit like `<input>` elements, in that
+they are little rectangles placed in lines. Unlike `<input>` elements,
+`<button>` elements aren't self-closing, and the contents of that
+`<button>` element is what text goes inside the button. Modify
+`InlineLayout` to create `InputLayout` objects for `<button>`
+elements; now, we need to make `InputLayout` do something different in
+its `draw` call.
 
-Second, button clicks. We need to extend `handle_click` with button
-support. That requires modifying the condition in the big `while` loop
-and then adding a new case to the big `if` statement:
+First, let's give buttons a different color:
+
+``` {.python}
+class InputLayout:
+    def draw(self, to):
+        # ...
+        bgcolor = "light gray" if self.node.tag == "input" else "yellow"
+        to.append(DrawRect(x1, y1, x2, y2, bgcolor)
+```
+
+Then, buttons should get text from their contents instead of their
+attributes:
+
+``` {.python}
+class InputLayout:
+    def draw(self, to):
+        # ...
+        if self.node.tag == "input":
+            text = self.node.attribute.get("value", "")
+        else:
+            text = self.node.children[0].text
+        # ...
+```
+
+The real reason buttons surround their contents is because a button
+might contain an image, or styled text, or something like that---this
+code doesn't support that, which in real browsers relies on something
+called the `inline-block` display mode. You could implement that by
+having the `InputLayout` have a child `BlockLayout`, but I'm skipping
+it here for simplicity.
+
+Ok, next up, button clicks. We need to extend `handle_click` with
+button support. That requires modifying the condition in the big
+`while` loop and then adding a new case to the big `if` statement:
 
 ``` {.python}
 # ...
@@ -410,10 +352,10 @@ elif elt.tag == "button":
 Third, we need to find the form containing our button. That can happen
 inside `submit_form`:[^3]
 
-[^3]: Fun fact: HTML standardizes the `form` attribute for input
-    elements, which in principle allows an input element to be outside
-    the form it is supposed to be submitted with. But no browser
-    implements that.
+[^3]: Fun fact: HTML standardizes the `form` attribute for _input
+    elements_, which in principle allows an input element to be
+    outside the form it is supposed to be submitted with. But no
+    browser implements that.
 
 ``` {.python}
 def submit_form(self, elt):
@@ -427,97 +369,98 @@ Fourth, we need to find all of the input elements inside this form:
 ``` {.python}
 def find_inputs(elt, out):
     if not isinstance(elt, ElementNode): return
-    if elt.tag in ['input', 'textarea'] and 'name' in elt.attributes:
+    if elt.tag == 'input' and 'name' in elt.attributes:
         out.append(elt)
     for child in elt.children:
         find_inputs(child, out)
     return out
 ```
 
-We can use this in `submit_form` to make a dictionary mapping
-identifiers to values:
+Fifth, we can form-encode the resulting parameters:
+
 
 ``` {.python}
 def submit_form(self, elt):
     # ...
     inputs = find_inputs(elt, [])
-    params = {}
-    for input in inputs:
-        if input.tag == 'input':
-            value = input.attributes.get('value', '')
-        else:
-            if input.children:
-                value = input.children[0].text
-            else:
-                value = ""
-        params[input.attributes['id']] = value
-    self.post(relative_url(elt.attributes['action'], self.history[-1]), params)
-```
-
-Fifth, we can form-encode the resulting parameters:
-
-``` {.python}
-def post(self, url, params):
     body = ""
-    for param, value in params.items():
-        body += "&" + param + "="
+    for input in inputs:
+        name = input.attributes['name]
+        value = input.attributes.get('value', '')
+        body += "&" + name + "="
         body += value.replace(" ", "%20")
     body = body[1:]
-    host, port, path = parse_url(url)
-    headers, body = request('POST', host, port, path, body)
 ```
 
-::: {.todo}
-Having `post` and `browse` methods is crazy.
-:::
+This isn't real form-encoding; this just replaces spaces by `"%20"`,
+while real form-encoding escapes characters like the equal sign, the
+ampersand, and so on. But our browser is a toy anyway, so for now
+let's just try to avoid typing equal signs, ampersands, and so on into
+forms.
 
-This isn't real form-encoding---I'm just replacing spaces by `"%20"`.
-Real form-encoding escapes characters like the equal sign, the
-ampersand, and so on; but given that our browser is a toy anyway,
-let's just try to avoid typing equal signs, ampersands, and so on
-into forms.
+Finally, we need to submit this form-encoded data in a POST request:
+
+``` {.python}
+def submit_form(self, elt):
+    # ...
+    url = relative_url(elt.attributes['action'], self.url)
+    self.load(url, body)
+```
+
+This adds a new parameter to the browser's `load` method, which we can
+pass to `request`:
+
+``` {.python}
+def load(self, url, body = None):
+    # ...
+    header, body = request(url, body)
+```
 
 Sixth and finally, to actually send a POST request, we need to modify
-the `request` function to allow multiple methods:
+the `request` function to support the new argument. First, the method
+needs to be configurable:
 
 ``` {.python}
-def request(method, host, port, path, body=None):
-    # create socket s
-    s.send("{} {} HTTP/1.0\r\nHost: {}\r\n".format(method, path, host).encode("utf8"))
-    if body:
-        body = body.encode("utf8")
-        s.send("Content-Length: {}\r\n\r\n".format(len(body)).encode("utf8"))
-        s.send(body)
-    else:
-        s.send("\r\n".encode('utf8'))
-    response = s.makefile("rb").read().decode("utf8")
-    s.close()
+def request(url, payload=None):
     # ...
+    method = "POST" if payload else "GET"
 ```
 
-::: {.todo}
-This needs to match the actual `request` code (and fit on screen).
-:::
+We need to use this method:
 
-Remember to modify all other calls to `request` (there are several calls
-in `Browser.browse`) to pass in the method.
+``` {.python}
+def request(url, payload=None):
+    # ...
+    body = "{} {} HTTP/1.0\r\n".format(method, path)
+    body += "Host: {}\r\n".format(host)
+    body += "\r\n" + payload
+    s.send(body.encode("utf8"))
+```
+
+Also, when you send a payload like this in the request, you need to
+send the `Content-Length` header. That's because the server, which is
+receiving the POST request, needs to know how much content to read
+before responding. So let's add another header, after `Host` and
+before the payload itself:
+
+``` {.python}
+def request(url, payload=None):
+    # ...
+    content_length = len(payload.encode("utf8"))
+    body += "Content-Length: {}\r\n".format(content_length)
+```
+
+Note that I grab the length of the payload in bytes, not the length in
+letters.
+
+By the way, here we have form submissions when you click on the form
+button---but browsers usually also submit forms if you type "Enter"
+inside a form input field. Implement that by calling `submit_form`
+inside `pressenter` when a input element is in focus.
 
 Once we've made the POST request, the server will send back a new web
-page to render. We need to lex, parse, style, and lay that page out.
-Once again, let's split `browse` into a simpler `browse` function that
-just makes the GET request and a more complex `parse` function that does
-lexing, parsing, and style, and call that from the end of `post`:
-
-``` {.python}
-def post(self, url, params):
-    # ...
-    self.history.append(url)
-    self.parse(body)
-```
-
-::: {.todo}
-I don't like `parse` for this.
-:::
+page to render, which our browser needs to lex, parse, style, and lay
+that page out. That all happens in `load` in the same way.
 
 With these changes we should now have a browser capable of submitting
 simple forms!
@@ -643,23 +586,19 @@ def handle_connection(conx):
     else:
         body = None
 
-    response = handle_request(method, url, headers, body)
+    body = handle_request(method, url, headers, body)
 ```
 
 Let's fill in `handle_request` later; it returns a string containing
 the resulting HTML web page. We need to send it back to the browser:
 
 ``` {.python}
-response = response.encode("utf8")
-conx.send('HTTP/1.0 200 OK\r\n'.encode('utf8'))
-conx.send('Content-Length: {}\r\n\r\n'.format(len(response)).encode('utf8'))
-conx.send(response)
+response = "HTTP/1.0 200 OK\r\n"
+response += "Content-Length: {}\r\n".format(len(response))
+response += "\r\n" + body
+conx.send(response.encode('utf8'))
 conx.close()
 ```
-
-::: {.todo}
-I need to do something about the Content-Length line being so long.
-:::
 
 This is a bare-bones server: it doesn't check that the browser is
 using HTTP 1.0 to talk to it, it doesn't send back any headers at all
@@ -677,15 +616,15 @@ The `handle_request` function outputs a little HTML page with those entries:
 
 ``` {.python}
 def handle_request(method, url, headers, body):
-    out = "<!doctype html><body>"
+    out = "<!doctype html>"
     for entry in ENTRIES:
         out += "<p>" + entry + "</p>"
-    out += "</body>"
     return out
 ```
 
-For now, I'm ignoring the method, the URL, the headers, and the body
-entirely.
+This is---let's call it "minimal"---HTML, so it's a good thing our
+browser will insert implicit tags and so on. For now, I'm ignoring the
+method, the URL, the headers, and the body entirely.
 
 You should be able to run this minimal core of a web server and then
 direct your browser to `http://localhost:8000/`, `localhost` being
@@ -715,12 +654,11 @@ def form_decode(body):
     return params
 ```
 
-To handle submissions, we'll want to get the guest book comment, add
-it to `ENTRIES`, and then draw the page with the new comment shown.
-Furthermore, `handle_request` will first need to figure out what kind
-of request this is (browsing or form submission) and then executed the
-relevant code. To keep this organized, let's rename `handle_request`
-to `show_comments`:
+To handle submissions, `handle_request` will first need to figure out
+what kind of request this is (browsing or form submission), then get
+the guest book comment, add it to `ENTRIES`, and then draw the page
+with the new comment shown. To keep this organized, let's rename
+`handle_request` to `show_comments`:
 
 ``` {.python}
 def show_comments():
@@ -768,48 +706,41 @@ is better with friends!
 Exercises
 =========
 
--   Add check boxes. In HTML, check boxes `<input>` elements with the
-    `type` attribute set to `checkbox`. The check box is checked if it
-    has the `checked` attribute set, and unchecked otherwise.
-    Submitting check boxes in a form is a little tricky, though. A
-    check box named `foo` only appears in the form encoding if it is
-    checked. Its key is its identifier and its value is the empty
-    string.
+*Check boxes*: Add check boxes. In HTML, check boxes `<input>`
+elements with the `type` attribute set to `checkbox`. The check box is
+checked if it has the `checked` attribute set, and unchecked
+otherwise. Submitting check boxes in a form is a little tricky,
+though. A check box named `foo` only appears in the form encoding if
+it is checked. Its key is its identifier and its value is the empty
+string.
 
--   Forms can be submitted via GET requests as well as POST requests.
-    In GET requests, the form-encoded data is pasted onto the end of
-    the URL, separated from the path by a question mark, like
-    `/search?q=hi`; GET form submissions have no body. Implement GET
-    form submissions.
+*GET forms*: Forms can be submitted via GET requests as well as POST
+requests. In GET requests, the form-encoded data is pasted onto the
+end of the URL, separated from the path by a question mark, like
+`/search?q=hi`; GET form submissions have no body. Implement GET form
+submissions.
 
--   One reason to separate GET and POST requests is that GET requests
-    are supposed to be *idempotent* (read-only, basically) while POST
-    requests are assumed to change the web server state. That means
-    that going "back" to a GET request (making the request again) is
-    safe, while going "back" to a POST request is a bad idea. Change
-    the browser history to record what method was used to access each
-    URL, and the POST body if one was used. When you go back to a
-    POST-ed URL, ask the user if they want to resubmit the form. Don't
-    go back if they say no; if they say yes, submit a POST request
-    with the same body as before.
+*Resubmit requests*: One reason to separate GET and POST requests is
+that GET requests are supposed to be *idempotent* (read-only,
+basically) while POST requests are assumed to change the web server
+state. That means that going "back" to a GET request (making the
+request again) is safe, while going "back" to a POST request is a bad
+idea. Change the browser history to record what method was used to
+access each URL, and the POST body if one was used. When you go back
+to a POST-ed URL, ask the user if they want to resubmit the form.
+Don't go back if they say no; if they say yes, submit a POST request
+with the same body as before.
 
--   Right now our web server is a simple guest book. Extend it into a
-    simple message board by adding support for topics. Each URL should
-    correspond to a topic, and each topic should have its own list of
-    messages. So, for example, `/cooking` should be a page of posts
-    (about cooking) and comments submitted through the form on that
-    page should only show up when you go to `/cooking`, not when you
-    go to `/cars`.
+*Message board*: Right now our web server is a simple guest book.
+Extend it into a simple message board by adding support for topics.
+Each topic should have its own URL and its own list of messages. So,
+for example, `/cooking` should be a page of posts (about cooking) and
+comments submitted through the form on that page should only show up
+when you go to `/cooking`, not when you go to `/cars`. Make the home
+page, from `/`, show links to each topic's page.
 
--   Implement proper GUI text entry. When the user clicks on an input
-    area, store the input element to a new `Browser.focus` field.
-    Clicks elsewhere should clear that field. Next, bind the `<Key>`
-    event in Tkinter and use the event's `char` field in the event
-    handler to determine the character the user typed. Add that
-    character the value of the element in `Browser.focus`. If there's
-    no focused element, don't do anything.[^4]
-
-[^4]: You can implement more features if you'd like, but it quickly
-    gets difficult. Backspace: doable; arrow keys: hard; selection:
-    crazy!
+*Tab*: In most browsers, the `<Tab>` key moves focus from one input
+field to the next. Implement this behavior in your browser. The "tab
+order" of input elements should be the same as the order of `<input>`
+elements on the page.
 
