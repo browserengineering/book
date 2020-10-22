@@ -191,5 +191,5 @@ form > div.s-error { color: red; }
 
 .outline { font-size: 60%; font-family: monospace; column-width: 30ch; }
 .outline code { break-inside: avoid; display: block; }
+.outline > code { margin: .33em 0; }
 .outline code > code { margin-left: 2ch; }
-.outline > code { margin: .25em 0; }

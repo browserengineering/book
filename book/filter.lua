@@ -1,3 +1,5 @@
+require "os"
+
 -- Links in disabled.conf disabled unless mode is set to draft
 local disabled = {}
 local draft = nil
@@ -67,10 +69,21 @@ function Div(el)
   or (main and not draft and el.classes[1] == "warning") then
     local signup = assert(io.open("book/signup.html")):read("*all")
     return pandoc.RawBlock("html", signup)
-  elseif el.classes[1] == "outline" then
-    local src = el.attributes["src"]
-    local outline = "<div class='outline' data-file='" .. src .. "'></div>"
-    return pandoc.RawBlock("html", outline)
+  elseif el.classes[1] == "cmd" then
+    if #el.content ~= 1 or
+       el.content[1].t ~= "CodeBlock" then
+      error("`cmd` block does not contain a code block")
+    end
+    local cmd = el.content[1].text
+    local proc = io.popen(cmd)
+    local pre = nil
+    if el.attributes["html"] then
+       pre = pandoc.Div({ pandoc.RawBlock("html", proc:read("*all")) })
+    else
+       pre = pandoc.CodeBlock(proc:read("*all"))
+    end
+    pre.classes = el.classes
+    return pre
   else
     return el
   end

@@ -12,10 +12,10 @@ class Function:
     args: List[str]
     
     def str(self):
-        return "def {}({}): ...".format(self.name, ", ".join(self.args))
+        return "def {}({})".format(self.name, ", ".join(self.args))
 
-    def json(self):
-        return { "type": "function", "name": self.name, "args": self.args }
+    def html(self):
+        return self.str().replace("def", "<span class=kw>def</span>")
 
     def sub(self):
         return None
@@ -28,8 +28,8 @@ class Class:
     def str(self):
         return "class {}:".format(self.name)
 
-    def json(self):
-        return { "type": "class", "name": self.name, "fns": [fn.json() for fn in self.fns] }
+    def html(self):
+        return self.str().replace("class", "<span class=kw>class</span>")
 
     def sub(self):
         return self.fns
@@ -39,10 +39,10 @@ class Const:
     names: List[str]
     
     def str(self):
-        return "{} = ...".format(", ".join(self.names))
+        return "{}".format(", ".join(self.names))
 
-    def json(self):
-        return { "type": "const", "names": self.names }
+    def html(self):
+        return self.str()
 
     def sub(self):
         return None
@@ -52,23 +52,18 @@ class IfMain:
     pass
     
     def str(self):
-        return "if __name__ == \"__main__\": ..."
+        return "if __name__ == \"__main__\""
 
-    def json(self):
-        return { "type": "ifmain" }
+    def html(self):
+        return self.str().replace("if", "<span class=cf>if</span>") \
+            .replace("==", "<span class=op>==</span>") \
+            .replace("\"__main__\"", "<span class=st>\"__main__\"</span>")
 
     def sub(self):
         return None
 
-def write_outline(objs, indent=0):
-    prev = None
+def write_str(objs, indent=0):
     for obj in objs:
-        if prev and type(prev) != type(obj): print()
-        if isinstance(prev, Class) and isinstance(obj, Class) and \
-           any((group in prev.name) != (group in obj.name) for group in groups):
-            print()
-        prev = obj
-
         print(" " * indent, obj.str(), sep="")
         subs = obj.sub()
         if subs is None:
@@ -76,7 +71,19 @@ def write_outline(objs, indent=0):
         elif len(subs) == 0:
             print(" " * (indent + 4), "pass", sep="")
         else:
-            write_outline(subs, indent=indent+4)
+            write_str(subs, indent=indent+4)
+
+def write_html(objs, indent=0):
+    for obj in objs:
+        print("<code class=line>", " " * indent, obj.html(), sep="")
+        subs = obj.sub()
+        if subs is None:
+            pass
+        elif len(subs) == 0:
+            print("<code class=line>", " " * (indent + 4), "pass", "</code>", sep="")
+        else:
+            write_html(subs, indent=indent+4)
+        print("</code>")
 
 def outline(tree):
     objs = []
@@ -119,22 +126,13 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Generates outlines for each chapter's code")
-    parser.add_argument("files", nargs="+", type=argparse.FileType())
-    parser.add_argument("--output", type=argparse.FileType("w"), default=None)
+    parser.add_argument("file", type=argparse.FileType())
+    parser.add_argument("--html", action="store_true", default=False)
     args = parser.parse_args()
 
-    outlines = {}
-    for f in args.files:
-        tree = ast.parse(f.read(), f.name)
-        outlines[f.name] = outline(tree)
-
-    if args.output:
-        import json
-        args.output.write("save_outline(")
-        json.dump({ k: [v.json() for v in vs] for k, vs in outlines.items() }, args.output)
-        args.output.write(")")
+    tree = ast.parse(args.file.read(), args.file.name)
+    ol = outline(tree)
+    if args.html:
+        write_html(ol)
     else:
-        for k, vs in outlines.items():
-            print(k)
-            write_outline(vs, indent=2)
-            print()
+        write_str(ol)
