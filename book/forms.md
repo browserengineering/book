@@ -251,17 +251,11 @@ attributes, plus I've added a new `<button>` element. That element,
 naturally, draws a button, and clicking on that button causes the form
 to be submitted.
 
-When this form is submitted, the browser will first determine that it is
-making a POST request to `http://my-domain.com/submit` (using the normal
-rules of relative URLs). Then, it will gather up all of the input areas
-inside that form and create a big dictionary where the keys are the
-`name` attributes and the values are the text content:
-
-``` {.example}
-{ "name": "1", "comment": "2" }
-```
-
-Finally, this content has the be *form-encoded*, which in this case will
+When this form is submitted, the browser will first determine that it
+is making a POST request to `http://my-domain.com/submit` (using the
+normal rules of relative URLs). Then, it will gather up all of the
+input areas inside that form and create a *form-encoded* string
+containing those input area names and values, which in this case will
 look like this:
 
 ``` {.example}
