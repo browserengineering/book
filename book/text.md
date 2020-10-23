@@ -751,6 +751,16 @@ You can now use your browser to read an essay, a blog post, or a book!
 ::: {.signup}
 :::
 
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 outlines.py --html src/lab3.py
+:::
+
 Exercises
 =========
 

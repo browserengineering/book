@@ -167,7 +167,6 @@ def implicit_tags(tok, currently_open):
 
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
-LINEHEIGHT = 1.2
 
 SCROLL_STEP = 100
 

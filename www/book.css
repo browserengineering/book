@@ -188,3 +188,8 @@ form.states.s-error > div { display: none}
 form.states.s-error > div.s-error { display: block}
 form > div.status { text-align: center; font-size: 120%; }
 form > div.s-error { color: red; }
+
+.outline { font-size: 60%; font-family: monospace; column-width: 30ch; }
+.outline code { break-inside: avoid; display: block; }
+.outline > code { margin: .33em 0; }
+.outline code > code { margin-left: 2ch; }
