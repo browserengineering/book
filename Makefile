@@ -2,8 +2,14 @@ html := $(patsubst book/%.md,www/%.html,$(wildcard book/*.md))
 blog := $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md))
 FLAGS=
 
-all: $(html) $(blog)
-draft: $(patsubst www/%.html,www/draft/%.html,$(html))
+all: blogdir $(html) $(blog)
+draft: draftdir $(patsubst www/%.html,www/draft/%.html,$(html))
+
+draftdir:
+	mkdir -p www/draft/
+
+blogdir:
+	mkdir -p www/blog/
 
 www/%.html: book/%.md book/template.html book/signup.html book/filter.lua disabled.conf
 	pandoc --toc --template book/template.html $(FLAGS) -c book.css --variable=script:feedback.js --from markdown --to html --lua-filter=book/filter.lua $< -o $@
