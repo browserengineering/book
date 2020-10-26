@@ -118,7 +118,7 @@ def input(self, node):
     child.layout()
     if self.children[-1].cx + child.w > self.w:
         self.flush()
-    self.childre[-1].append(child)
+    self.children[-1].append(child)
 ```
 
 Try it out: you should now be able to see basic input elements as
@@ -160,9 +160,12 @@ Next, typing on the keyboard needs to change the value, and in order
 to do that, we need to set the `focus` to point to this element:
 
 ``` {.python}
-elif is_input(elt):
+def handle_click(self, e):
     # ...
-    self.focus = obj
+    if obj.node.tag == "input":
+        self.click_input(obj)
+        self.focus = obj
+    # ...
 ```
 
 Until now, the `focus` field was either `None` (nothing has been
@@ -177,7 +180,7 @@ itself! This means we must change the layout tree, and to do that, we
 must call `layout`:
 
 ``` {.python}
-elif is_input(elt):
+if obj.node.tag == "input":
     # ...
     self.layout(self.document.node)
 ```
@@ -197,7 +200,7 @@ def keypress(self, e):
     if self.focus == "address bar":
         # ...
     elif isinstance(self.focus, InputLayout):
-        self.focus.node.attribute["value"] += e.char
+        self.focus.node.attributes["value"] += e.char
         self.layout(self.document.node)
 ```
 
