@@ -3,7 +3,7 @@ blog := $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md))
 FLAGS=
 
 all: $(html) $(blog)
-draft: draftdir $(patsubst www/%.html,www/draft/%.html,$(html))
+draft: $(patsubst www/%.html,www/draft/%.html,$(html))
 
 www/%/:
 	mkdir -p $@
