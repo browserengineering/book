@@ -17,3 +17,6 @@ jobs:
       - run: python3 compare.py book/html.md src/lab4.py
       - run: python3 compare.py book/layout.md src/lab5.py
       - run: python3 compare.py book/styles.md src/lab6.py
+      - run: python3 compare.py book/chrome.md src/lab7.py
+      - run: python3 compare.py --class browser book/forms.md src/lab8.py
+      - run: python3 compare.py --class server book/forms.md src/server8.py

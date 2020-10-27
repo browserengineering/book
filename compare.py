@@ -53,12 +53,14 @@ def indent(block, n=0):
 
 def replace(block, *cmds):
     for find, replace in cmds:
+        find = find.replace("%20", " ")
+        replace = replace.replace("%20", " ")
         block = block.replace(find, replace)
     return block
 
-def tangle(file):
+def tangle(file, cls):
     with open("/tmp/test", "wb") as f:
-        f.write(FILTER.encode("utf8"))
+        f.write(FILTER.replace('"python"', '"{}"'.format(cls)).encode("utf8"))
         f.close()
         cmd = ["pandoc", "--from", "markdown", "--to", "html", "--lua-filter", f.name, file]
         out = subprocess.run(cmd, capture_output=True)
@@ -96,11 +98,16 @@ def find_block(block, text):
 
     
 if __name__ == "__main__":
-    import sys
-    with open(sys.argv[2], "r") as f:
-        src = f.read()
-    
-    blocks = tangle(sys.argv[1])
+    import sys, argparse
+    argparser = argparse.ArgumentParser(description="Compare book blocks to teacher's copy")
+    argparser.add_argument("book", metavar="book.md", type=argparse.FileType("r"))
+    argparser.add_argument("code", metavar="code.py", type=argparse.FileType("r"))
+    argparser.add_argument("--class", dest="cls", default="python",
+                           help="Only consider code blocks with this class")
+    args = argparser.parse_args()
+ 
+    src = args.code.read()
+    blocks = tangle(args.book.name, args.cls)
     failure, count = 0, 0
     for name, block in blocks:
         block = indent(block, name.get("indent", "0"))
