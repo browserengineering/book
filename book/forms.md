@@ -592,7 +592,7 @@ the resulting HTML web page. We need to send it back to the browser:
 def handle_connection(conx):
     # ...
     response = "HTTP/1.0 200 OK\r\n"
-    response += "Content-Length: {}\r\n".format(len(response))
+    response += "Content-Length: {}\r\n".format(len(body.encode("utf8")))
     response += "\r\n" + body
     conx.send(response.encode('utf8'))
     conx.close()
