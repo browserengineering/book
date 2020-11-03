@@ -36,8 +36,9 @@ def request(url, payload=None):
     method = "POST" if payload else "GET"
     body = "{} {} HTTP/1.0\r\n".format(method, path)
     body += "Host: {}\r\n".format(host)
-    content_length = len(payload.encode("utf8"))
-    body += "Content-Length: {}\r\n".format(content_length)
+    if payload:
+        content_length = len(payload.encode("utf8"))
+        body += "Content-Length: {}\r\n".format(content_length)
     body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
     response = s.makefile("r", encoding="utf8", newline="\r\n")

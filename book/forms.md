@@ -712,8 +712,7 @@ elements with the `type` attribute set to `checkbox`. The check box is
 checked if it has the `checked` attribute set, and unchecked
 otherwise. Submitting check boxes in a form is a little tricky,
 though. A check box named `foo` only appears in the form encoding if
-it is checked. Its key is its identifier and its value is the empty
-string.
+it is checked. Its key is its `name` and its value is the empty string.
 
 *GET forms*: Forms can be submitted via GET requests as well as POST
 requests. In GET requests, the form-encoded data is pasted onto the
