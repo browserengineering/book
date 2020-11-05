@@ -158,7 +158,7 @@ registered on a `JSInterpreter` object, which we'll need to create:
 ``` {.python}
 class Browser:
     def setup_js(self):
-        self.js = dukpy.JSInterpreter()
+        self.js_environment = dukpy.JSInterpreter()
 ```
 
 We can call this `setup_js` function when pages load:
@@ -180,7 +180,7 @@ argument---`print`.[^5] We can register it using `export_function`:
 ``` {.python}
 def setup_js(self):
     # ...
-    self.js.export_function("log", print)
+    self.js_environment.export_function("log", print)
 ```
 
 You can call this registered function via Dukpy's `call_python`
@@ -197,7 +197,7 @@ booleans, but I wouldn't try it with other objects.] and run the
 
 We actually want a `console.log` function, not a `call_python`
 function, so we need define a `console` object and then give it a
-`log` field. We do that *in JavaScript*, with code like this:
+`log` property. We do that *in JavaScript*, with code like this:
 
 ``` {.javascript}
 console = { log: function(x) { call_python("log", x); } }
@@ -206,22 +206,21 @@ console = { log: function(x) { call_python("log", x); } }
 In case you're not too familiar with JavaScript,^[Now's a good time to
 brush up---this chapter has a ton of JavaScript!] this defines a
 variable called `console`, whose value is an object literal with the
-field `log`, whose value is the function you see defined there.
+property `log`, whose value is the function you see defined there.
 
 Taking a step back, when we run JavaScript in our browser, we're
 mixing: C code, which implements the JavaScript interpreter; Python
 code, which handles certain JavaScript functions; and JavaScript code,
 which wraps the Python API to look more like the JavaScript one. We
 can call that JavaScript code our "JavaScript runtime"; we run it
-before we run any user code. So let's stick it in a `runtime.js`
-file, and run it after all of our functions are registered but before
-any user code is run:
+before we run any user code, so let's stick it in a `runtime.js`
+file that's run in `setup_js`:
 
 ``` {.python}
 def setup_js(self):
     # ...
     with open("runtime.js") as f:
-        self.js.evaljs(f.read())
+        self.js_environment.evaljs(f.read())
 ```
 
 Now you should be able to run the script `console.log("Hi from JS!")`
@@ -308,12 +307,15 @@ Let's start with `querySelectorAll`. First, register a function:
 ``` {.python}
 def setup_js(self):
     # ...
-    self.js.export_function("querySelectorAll", self.js_querySelectorAll)
+    self.js_environment.export_function(
+        "querySelectorAll",
+        self.js_querySelectorAll
+    )
     # ...
 ```
 
-Normally, `querySelectorAll` is a method on the `document` object, so
-define one in the JavaScript runtime:
+In JavaScript, `querySelectorAll` is a method on the `document`
+object, so define one in the JavaScript runtime:
 
 ``` {.python}
 document = { querySelectorAll: function(s) {
@@ -398,10 +400,8 @@ handles, and a `handle_to_node` map that goes the other way:
 ``` {.python}
 class Browser:
     def setup_js(self):
-        # ...
-        self.js = dukpy.JSInterpreter()
         self.node_to_handle = {}
-        self.handle_to_node = {}}
+        self.handle_to_node = {}
         # ...
 ```
 
@@ -533,16 +533,16 @@ actions. Bridging the gap, most scripts set code to run when *page
 events*, like button clicks or key presses, occur.
 
 Here's how that works. First, any time the user interacts with the
-page, the browser generates *events*. Each event has a type, like
+page, the browser generates *events*. Each event has a name, like
 `change`, `click`, or `submit`, and a target element (an input area, a
 link, or a form). JavaScript code can call `addEventListener` to react
-to those events: `elt.addEventListener('click', handler)` sets
-`handler` to run every time the element `elt` generates a `click`
-event.
+to those events: `node.addEventListener('click', handler)` sets
+`handler` to run every time the element corresponding to `node`
+generates a `click` event.
 
-Let's start with generating events. First, create an `event` method
-and call it whenever an event is generated. First, any time we click
-in the page:
+Let's start with generating events. First, create a `dispatch_event`
+method and call it whenever an event is generated. First, any time we
+click in the page:
 
 ``` {.python}
 def handle_click(self, e):
@@ -551,7 +551,7 @@ def handle_click(self, e):
     else:
         # ...
         elt = obj.node
-        if elt: self.event('click', elt)
+        if elt: self.dispatch_event('click', elt)
         # ...
 ```
 
@@ -562,20 +562,21 @@ def keypress(self, e):
     # ...
     else:
         self.focus.node.attributes["value"] += e.char
-        self.event("change", self.focus.node)
+        self.dispatch_event("change", self.focus.node)
         self.layout(self.document.node)
 ```
 
 [^edit-then-event]: After, not before, so that any event handlers see
     the new value.
 
-And finally, when submitting forms:
+And finally, when submitting forms but before actually sending the
+request to the server:
 
 ``` {.python}
 def submit_form(self, elt):
     # ...
     if not elt: return
-    self.event("submit", elt)
+    self.dispatch_event("submit", elt)
     # ...
 ```
 
@@ -618,9 +619,10 @@ generated on.
 So `event` now just calls `__runHandlers` from Python:
 
 ``` {.python}
-def event(self, type, elt):
+def dispatch_event(self, type, elt):
     handle = self.node_to_handle.get(elt, -1)
-    self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
+    code = "__runHandlers({}, \"{}\")".format(handle, type)
+    self.js_environment.evaljs(code)
 ```
 
 There are two quirks with this code. First, if the target of the event
@@ -666,14 +668,14 @@ Modifying the DOM
 
 So far, we've only implemented read-only DOM methods; now we need to
 write to the DOM. The full DOM API provides a lot of such methods, but
-for simplicity I'm going implementing only `innerHTML`. That method
-works like this:
+for simplicity I'm going implementing only `innerHTML`, which is used
+like this:
 
 ``` {.javascript}
 node.innerHTML = "This is my <b>new</b> bit of content!";
 ```
 
-In other words, `innerHTML` is a *field* on node objects, with a
+In other words, `innerHTML` is a *property* of node objects, with a
 *setter* that is run when the field is modified. That setter takes the
 new value, which must be a string, parses it as HTML, and makes the
 new, parsed HTML nodes children of the original node.
@@ -695,7 +697,10 @@ string. Next, we need to register the `innerHTML` function:
 ``` {.python}
 def setup_js(self):
     # ...
-    self.js.export_function("innerHTML", self.js_innerHTML)
+    self.js_environment.export_function(
+        "innerHTML",
+        self.js_innerHTML
+    )
     # ...
 ```
 
@@ -848,28 +853,28 @@ function __runHandlers(handle, type) {
 On the Python side, `event` can return that boolean to its handler
 
 ``` {.python}
-def event(self, type, elt):
+def dispatch_event(self, type, elt):
     # ...
-    do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
+    do_default = self.js_environment.evaljs(code)
     return do_default
 ```
 
-Finally, `event`'s caller should check that return value and stop if
-it is `True`. So in `handle_click`:
+Finally, whatever event handler runs `dispatch_event` should check
+that return value and stop if it is `True`. So in `handle_click`:
 
 ``` {.python}
 def handle_click(self, e):
     # ...
-    if elt and self.event('click', elt): return
+    if elt and self.dispatch_event('click', elt): return
     # ...
 ```
 
-A similar change happens in `submit_form`:
+And also in `submit_form`:
 
 ``` {.python}
 def submit_form(self, form):
     # ...
-    if self.event("submit", elt): return
+    if self.dispatch_event("submit", elt): return
 ```
 
 There's no default action for the `change` event on input areas, so we

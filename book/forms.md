@@ -227,8 +227,7 @@ implement incremental layout to resolve this issue.
 How forms work
 ==============
 
-Filled-out forms go to the server. The way this works in HTML is
-pretty tricky.
+HTML forms have a couple of moving pieces.
 
 First, in HTML, there is a `<form>` element, which describes how to
 submit all the input elements it contains through its `action` and
