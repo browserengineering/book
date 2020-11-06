@@ -2,12 +2,13 @@
 title: Advanced visual effects, GPU acceleration and compositing
 ...
 
-In chapter 2, you learned how to draw text to the screen and implement
-scrolling; in chapter 5 you will learn how to draw styled boxes, and in chapter
-6 how to parse and apply style sheets to change those styles. This extra chapter
-is a whirlwind tour of many of the additional effects browsers offer, the
-concepts underlying them, and techniques browsers use to take full advantage of
-modern computer hardware to accelerate these effects.
+In [Chapter 2](graphics.md), you learned how to draw text to the
+screen and implement scrolling; in (Chapter 5)[layout.md] you will
+learn how to draw styled boxes, and in [Chapter 6][styles.md] how to
+parse and apply style sheets to change those styles. This chapter is a
+whirlwind tour of many of the additional effects browsers offer, the
+concepts underlying them, and techniques browsers use to take full
+advantage of modern computer hardware to accelerate these effects.
 
 Visual effects
 ==============
@@ -52,7 +53,7 @@ the colors of B and A. The interpolation parameter is called alpha, which is a
 real number in `[0, 1]`. For a particular pixel, the final color is computed with
 this formula:
 
-```blend(B, A) = (Color from B) * (1-alpha_A) * alpha_B + (color from A) * alpha_A```
+    blend(B, A) = (Color from B) * (1-alpha_A) * alpha_B + (color from A) * alpha_A
 
 where `alpha_{A, B}` is a number in `[0, 1]` (remember that both A and B can
 have opacity!).
@@ -62,7 +63,7 @@ the color from a pixel of A might be rgba(0, 255, 255, 64), which is cyan with
 an alpha of 64/255 = 0.25. If the color from B in the example above was also
 `rgb(255, 0, 0, 255)`, then the above equation would become:
 
-``blend(B, A) = rgb(255, 0, 0) * 0.75 * 1 + rgb(0, 255, 255) * 0.25 = rgb(191, 191, 191)``
+    blend(B, A) = rgb(255, 0, 0) * 0.75 * 1 + rgb(0, 255, 255) * 0.25 = rgb(191, 191, 191)
 
 Note that each channel averages according to alpha independently. If three or
 more bitmaps are drawn to the screen, then the final pixel is the result of
@@ -187,9 +188,7 @@ origial Star Wars movies.
 Source over blend-mode is the default; let’s specify other blend modes with an
 additional parameter to blend():
 
-```
-blend(B, A, destination-in)
-```
+    blend(B, A, destination-in) = ...
 
 In prose, this means to output a bitmap that is the pixels of B that overlap A.
 Additional blend modes exist that combine a Porter Duff blend mode with additional features, such as transparency or other color manipulations. For historical reasons, [opacity] is represented as special and listed in a different spec, but otherwise functions [the same](opacity-blending) as the other blend modes. In addition, there are [“non-separable”](non-separable) blend modes where the color channels influence one another, such as hue, saturation, color and luminosity.
@@ -296,13 +295,13 @@ and “bitmap” are the same). The output of the clipping operation is another
 bitmap. This bitmap is then blended with the parent stacking context B of A. In
 equation form this is:
 
-```Output = blend(B, clip(A, clip_rect_A))```
+    Output = blend(B, clip(A, clip_rect_A))
 
 The clip() operation can be viewed as a kind of blend, as long as the rectangle
 is re-interpreted as an opaque bitmap of the same size and position as the
 rectangle:
 
-```Output = blend(B, blend(A, clip_rect_A, destination-in), source-over)```
+    Output = blend(B, blend(A, clip_rect_A, destination-in), source-over)
 
 Remember that from the blend-mode section, blend(A, clip_rect_A, destination-in)
 means to draw “the pixels of A that overlap clip_rect_A”, which of course is the
@@ -339,7 +338,7 @@ transform always end up inside the quad.
 The process of drawing a stacking context A with a transform into its ancestor B
 looks like this:
 
-``blend(B, transform(A))``
+    blend(B, transform(A))
 
 Here `transform(A)` is a different bitmap, that may be generated with an
 algorithm similar to this:
@@ -411,9 +410,9 @@ being adopted by the web.
 [pixel-shader]: https://en.wikipedia.org/wiki/Shader#Pixel_shaders
 [vertex-shader]: https://en.wikipedia.org/wiki/Shader#Vertex_shaders
 
-as long as the computation is a non-looping sequence of simple mathematical
-operations, and each pixel is independent of the other ones[^7]. It is also easy to
-apply transforms via vertex shaders.
+As long as the computation is a non-looping sequence of simple
+mathematical operations, each pixel is independent of the other
+ones[^7]. It is also easy to apply transforms via vertex shaders.
 
 [^7]: This is why filters and blend modes that do introduce such dependencies
 are more expensive, because they require multiple passes over the data.
@@ -435,13 +434,13 @@ the spec text makes pretty clear from its [pseudocode](blend-mode-pseudocode).
 [blend-mode-pseudocode]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators
 
 Filters are sometimes more complicated, and sometimes require some clever tricks
- to make them very efficient. Rectangular clips are easy to write as direct
- numerical  inputs to the shader (skipping the intermediate bitmap). Rounded
- corners can often be implemented with shaders as well, via parameterized
- descriptions of the shape of the rounded corner curve; the corresponding math
- to determine whether a pixel is inside or outside can run in the shader. Other
- clip shapes are often implemented via the generate-bitmap-on-the-CPU+GPU
- blend-mode method described in the Clipping section. 
+to make them very efficient. Rectangular clips are easy to write as direct
+numerical  inputs to the shader (skipping the intermediate bitmap). Rounded
+corners can often be implemented with shaders as well, via parameterized
+descriptions of the shape of the rounded corner curve; the corresponding math
+to determine whether a pixel is inside or outside can run in the shader. Other
+clip shapes are often implemented via the generate-bitmap-on-the-CPU+GPU
+blend-mode method described in the Clipping section. 
 
 Transforms also have special support in GPUs that makes them relatively easy to
 implement. GPUs also often have built-in support for different common approaches
@@ -460,7 +459,7 @@ into auxiliary bitmaps that can be saved for future re-use.
 Let’s look at scrolling as an example. You know from the previous section that
 if we can create a bitmap, then we can use the GPU to transform that bitmap
 extremely efficiently. Since scrolling is equivalent to a translation transform
-in the x or y direction, we can use the following technique to implement HTML
+in the *x* or *y* direction, we can use the following technique to implement HTML
 document scrolling very efficiently:
 
  1. Draw a solid white background bitmap
@@ -478,7 +477,7 @@ you already know about the main thread.
 Earlier in the chapter, I used the term blending to refer to how stacking
 contexts (aka bitmaps) get put together. In graphics and image processing, the
 process of putting together multiple bitmaps into a final image is actually
-called [compositing]; blending refers more to the particular math to use when
+called [compositing][compositing]; blending refers more to the particular math to use when
 compositing. However, in browsers the word compositing is often overloaded to
 mean not just this concept, but also the optimization technique - hence the
 term “composited scrolling”. To make sure everything is clear, let’s define and
