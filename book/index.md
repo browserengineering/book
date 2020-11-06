@@ -58,6 +58,12 @@ Part 3: Running Applications
 (@) [Keeping Data Private](security.md)\
     Cookies and logins, XSS and CSRF
 
+Part 4: Modern Browsers
+=======================
+
+(@) [Adding Visual Effects](advanced-rendering.md)\
+    Filters and transformations 
+
 Conclusion
 ==========
 

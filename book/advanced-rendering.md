@@ -1,5 +1,8 @@
 ---
-title: Advanced visual effects, GPU acceleration and compositing
+title: Adding Visual Effects
+chapter: 12
+prev: security
+next: skipped
 ...
 
 In [Chapter 2](graphics.md), you learned how to draw text to the
