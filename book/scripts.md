@@ -856,7 +856,7 @@ On the Python side, `event` can return that boolean to its handler
 def dispatch_event(self, type, elt):
     # ...
     do_default = self.js_environment.evaljs(code)
-    return do_default
+    return not do_default
 ```
 
 Finally, whatever event handler runs `dispatch_event` should check
