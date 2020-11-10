@@ -111,7 +111,7 @@ them:
 def load(self, url, body=None):
     # ... load, parse, style
     for script in find_scripts(self.nodes, []):
-        header, body = request('GET', relative_url(script, self.history[-1]))
+        header, body = request(relative_url(script, self.history[-1]))
         print("Script returned: ", dukpy.evaljs(body))
     self.layout(nodes)
 ```
@@ -253,10 +253,28 @@ function bad() { throw "bad"; }
 bad();
 ```
 
-You won't see a backtrace to help you debug this crash. Since
-JavaScript can call into Python and vice versa, DukPy can't produce
-backtraces to help you debug. Instead, wrapping each registered
-function to print any backtraces they produce:
+Your browser runs two kinds of JavaScript, and so there are two kinds
+of crashes: crashes in web page scripts, and crashes in your own
+JavaScript runtime. In the first case, you want to ignore those
+crashes:
+
+``` {.python}
+try:
+    print("Script returned: ", self.js.evaljs(body))
+except dukpy.JSRuntimeError as e:
+    print("Script", script, "crashed", e)
+```
+
+Note that besides printing the expression the error is ignored.
+Crashes in web page scripts shouldn't crash our browser.
+
+But crashes in the JavaScript runtime are different. We can't ignore
+those, because we want our runtime to work, and by default Dukpy won't
+show a backtrace to help you debug a crash. It's even worse if the
+runtime code calls into a registered function that crashes.
+
+To help, wrapp each registered function to print any backtraces it
+produces:
 
 ``` {.python}
 try:
@@ -267,9 +285,10 @@ except:
     raise
 ```
 
-Note that I re-raise the exception, so that I still get the crash.
+Re-raise the exception so that you still get the crash.
 
-Wrap JavaScript that Python calls into as well:
+Also wrap any function in the JavaScript runtime so that they print
+backtraces too:
 
 ``` {.javascript}
 try {
@@ -686,7 +705,7 @@ Let's implement this, starting on the JavaScript side. JavaScript has
 the obscure `Object.defineProperty` function to define setters:
 
 ``` {.javascript}
-Object.defineProperty(Node.prototype, 'innerHTML' {
+Object.defineProperty(Node.prototype, 'innerHTML', {
     set: function(s) {
         call_python("innerHTML", this.handle, "" + s);
     }

@@ -773,8 +773,11 @@ class Browser:
 
         self.setup_js()
         for script in find_scripts(self.nodes, []):
-            header, body = request('GET', relative_url(script, self.history[-1]))
-            print("Script returned: ", self.js.evaljs(body))
+            header, body = request(relative_url(script, self.history[-1]))
+            try:
+                print("Script returned: ", self.js.evaljs(body))
+            except dukpy.JSRuntimeError as e:
+                print("Script", script, "crashed", e)
         self.layout(self.nodes)
 
     def setup_js(self):
@@ -785,7 +788,7 @@ class Browser:
         self.js.export_function("querySelectorAll", self.js_querySelectorAll)
         self.js.export_function("getAttribute", self.js_getAttribute)
         self.js.export_function("innerHTML", self.js_innerHTML)
-        with open("runtime.js") as f:
+        with open("runtime9.js") as f:
             self.js.evaljs(f.read())
 
     def js_querySelectorAll(self, sel):
@@ -809,7 +812,7 @@ class Browser:
     def dispatch_event(self, type, elt):
        handle = self.node_to_handle.get(elt, -1)
        do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
-       return do_default
+       return not do_default
 
     def make_handle(self, elt):
         if elt not in self.node_to_handle:

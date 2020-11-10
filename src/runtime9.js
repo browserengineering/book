@@ -20,7 +20,7 @@ Node.prototype.addEventListener = function(type, handler) {
     list.push(handler);
 }
 
-Object.defineProperty(Node.prototype, 'innerHTML' {
+Object.defineProperty(Node.prototype, 'innerHTML', {
     set: function(s) {
         call_python("innerHTML", this.handle, "" + s);
     }
