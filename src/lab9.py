@@ -759,25 +759,23 @@ class Browser:
         self.url = url
         self.history.append(url)
         header, body = request(url, body)
-        nodes = parse(lex(body))
+        self.nodes = parse(lex(body))
         
         with open("browser8.css") as f:
-            rules = CSSParser(f.read()).parse()
+            self.rules = CSSParser(f.read()).parse()
 
-        for link in find_links(nodes, []):
+        for link in find_links(self.nodes, []):
             header, body = request(relative_url(link, url))
-            rules.extend(CSSParser(body).parse())
+            self.rules.extend(CSSParser(body).parse())
 
-        rules.sort(key=lambda x: x[0].priority())
-        rules.reverse()
-        style(nodes, None, rules)
+        self.rules.sort(key=lambda x: x[0].priority())
+        self.rules.reverse()
 
         self.setup_js()
         for script in find_scripts(self.nodes, []):
             header, body = request('GET', relative_url(script, self.history[-1]))
             print("Script returned: ", self.js.evaljs(body))
-
-        self.layout(nodes)
+        self.layout(self.nodes)
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -823,6 +821,7 @@ class Browser:
         return handle
 
     def layout(self, tree):
+        style(tree, None, self.rules)
         self.document = DocumentLayout(tree)
         self.document.layout()
         self.display_list = []

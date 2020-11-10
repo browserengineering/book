@@ -116,6 +116,9 @@ def load(self, url, body=None):
     self.layout(nodes)
 ```
 
+That snippet refers to `self.nodes`; let's just create that field and
+store the element tree in it.
+
 Try this out on a simple script like this:
 
 ``` {.javascript}
@@ -168,7 +171,8 @@ class Browser:
     def load(self, url, body=None):
         # ...
         self.setup_js()
-        self.layout(nodes)
+        for script in find_scripts(self.nodes, []):
+            # ...
 ```
 
 For `console.log`, we'll first need a Python function that print its
@@ -416,16 +420,19 @@ def js_querySelectorAll(self, sel):)
 ```
 
 Where `make_handle` creates a new handle if one doesn't exist
-yet:
+yet:[^id-elt]
+
+[^id-elt]: `node_to_handle` uses `id(elt)` instead of `elt` as its key
+    because Python objects can't be used as hash keys by default.
 
 ``` {.python}
 def make_handle(self, elt):
-    if elt not in self.node_to_handle:
+    if id(elt) not in self.node_to_handle:
         handle = len(self.node_to_handle)
-        self.node_to_handle[elt] = handle
+        self.node_to_handle[id(elt)] = handle
         self.handle_to_node[handle] = elt
     else:
-        handle = self.node_to_handle[elt]
+        handle = self.node_to_handle[id(elt)]
     return handle
 ```
 
@@ -620,20 +627,15 @@ So `event` now just calls `__runHandlers` from Python:
 
 ``` {.python}
 def dispatch_event(self, type, elt):
-    handle = self.node_to_handle.get(elt, -1)
+    handle = self.make_handle(elt)
     code = "__runHandlers({}, \"{}\")".format(handle, type)
     self.js_environment.evaljs(code)
 ```
 
-There are two quirks with this code. First, if the target of the event
-doesn't have a handle, I'm using `-1`. Luckily, if a node has never
-been assigned a handle, it couldn't have been made into a `Node`, and
-then `addEventListener` couldn't have been called on it, so ultimately
-no handlers will be run. Second, I pass arguments to `__runHandlers`by
-generating JavaScript code that embeds those arguments directly. This
-would be a bad idea if, say, `type` contained a quote or a newline.
-But since the browser supplies that value that won't ever
-happen.[^dukpy-object]
+Note that this code passes arguments to `__runHandlers`by generating
+JavaScript code that embeds those arguments directly. This would be a
+bad idea if, say, `type` contained a quote or a newline. But since the
+browser supplies that value that won't ever happen.[^dukpy-object]
 
 [^dukpy-object]: DukPy provides the `dukpy` object to do this better,
     but in the interest of simplicity I'm not using it
@@ -732,12 +734,32 @@ def js_innerHTML(self, handle, s):
 
 We need to update the parent pointers of those parsed child nodes
 because until we do that, they point to the fake `<body>` element that
-we added. Since the page changed, we need to lay it out again:
+we added. Since the page changed, we need to lay it out again. You
+might be tempted to do that by calling `layout`, like so:
 
 ``` {.python}
 def js_innerHTML(self, handle, s):
     # ...
-    self.layout(self.document.node)
+    self.layout(self.nodes)
+```
+
+But remember that before we lay out a node, we need to style it,
+and the new nodes added from JavaScript haven't been styled yet.
+To fix this, we'll need to save the CSS rules in `load`
+
+``` {.python}
+def load(self, url, body=None):
+    # ...
+    self.rules = rules
+    self.layout(self.nodes)
+```
+
+and then move the call to `style` into `layout`:
+
+``` {.python}
+def layout(self, tree):
+    style(tree, None, self.rules)
+    # ...
 ```
 
 JavaScript can now modify the web page!
@@ -932,8 +954,9 @@ Exercises
 =========
 
 *Node.children*: Add support for the [`children` field][children] on
-`Nodes`. `Node.children` returns the immediate `ElementNode` children
-of a node, as an array. `TextNode` children are not included.[^13]
+JavaScript `Node`s. `Node.children` returns the immediate
+`ElementNode` children of a node, as an array. `TextNode` children are
+not included.[^13]
     
 [children]: https://developer.mozilla.org/en-US/docs/Web/API/ParentNode/children
 
