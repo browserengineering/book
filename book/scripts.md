@@ -489,7 +489,7 @@ this:[^9]
 ``` {.javascript}
 scripts = document.querySelectorAll("script")
 for (var i = 0; i < scripts.length; i++) {
-    console.log(call_python("getAttribute", scripts[i], "src"));
+    console.log(call_python("getAttribute", scripts[i].handle, "src"));
 }
 ```
 
@@ -509,7 +509,7 @@ runtime.[^10]
 ``` {.javascript}
 function Node(handle) { this.handle = handle; }
 Node.prototype.getAttribute = function(attr) {
-    return call_python("getAttribute", self.handle, attr);
+    return call_python("getAttribute", this.handle, attr);
 }
 ```
 
