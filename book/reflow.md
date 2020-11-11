@@ -225,6 +225,9 @@ right before `size` is. So you'll need to initialize the `children`
 field to the empty list at the top of `size`, instead of in the
 constructor. Make this change for `InlineLayout` as well!
 
+More layout modes
+=================
+
 Let's review the layout object methods before moving on to other
 layout modes:
 
@@ -390,8 +393,8 @@ over every layout object's `size` and `position` methods to check them
 over before we we make things more complicated by sometimes avoiding
 calls to `size`.
 
-Moving between phases
-=====================
+Balancing the phases
+====================
 
 Time your browser again, now that layout is split into two phases:
 
@@ -678,6 +681,9 @@ paragraph had its `size` method invoked, so that its height changed,
 the `div` that contains it didn't change, so its `size` method was
 never invoked, which means its height was never recomputed, which
 means the example text was never moved down.
+
+A third layout phase
+====================
 
 How do we fix this?
 
