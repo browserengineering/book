@@ -355,9 +355,9 @@ class LineLayout:
     def __init__(self, node, parent):
         self.node = node
         self.parent = parent
-        self.children = []
         self.cx = 0
         self.laid_out = False
+        self.children = []
 
     def append(self, child):
         self.children.append(child)
@@ -366,6 +366,9 @@ class LineLayout:
 
     def size(self):
         self.w = self.parent.w
+        self.compute_height()
+
+    def compute_height(self):
         if not self.children:
             self.h = 0
             return
@@ -382,7 +385,8 @@ class LineLayout:
 
     def position(self):
         baseline = self.y + 1.2 * self.max_ascent
-        for cx, child, metrics in zip(self.cxs, self.children, self.metrics):
+        for cx, child, metrics in \
+          zip(self.cxs, self.children, self.metrics):
             child.x = self.x + cx
             child.y = baseline - metrics["ascent"]
 
@@ -404,6 +408,9 @@ class TextLayout:
         self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
         
         self.w = self.font.measure(self.word)
+        self.compute_height()
+
+    def compute_height(self):
         self.h = self.font.metrics('linespace')
 
     def position(self):
@@ -425,6 +432,9 @@ class InputLayout:
         size = int(px(self.node.style["font-size"]) * .75)
         self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
         self.w = 200
+        self.compute_height()
+
+    def compute_height(self):
         self.h = 20
 
     def position(self):
@@ -447,9 +457,9 @@ class InlineLayout:
     def __init__(self, node, parent):
         self.node = node
         self.parent = parent
-        self.children = [LineLayout(self.node, self)]
 
     def size(self):
+        self.children = [LineLayout(self.node, self)]
         self.mt = self.bt = self.pt = 0
         self.mr = self.br = self.pr = 0
         self.mb = self.bb = self.pb = 0
@@ -458,10 +468,15 @@ class InlineLayout:
         self.w = self.parent.w - self.parent.pl - self.parent.pr \
             - self.parent.bl - self.parent.br
 
-        self.h = 0
         self.recurse(self.node)
         self.flush()
         self.children.pop()
+        self.compute_height()
+
+    def compute_height(self):
+        self.h = 0
+        for child in self.children:
+            self.h += child.h
 
     def recurse(self, node):
         if isinstance(node, TextNode):
@@ -469,6 +484,8 @@ class InlineLayout:
         elif node.tag == "br":
             self.flush()
         elif node.tag == "input":
+            self.input(node)
+        elif node.tag == "button":
             self.input(node)
         else:
             for child in node.children:
@@ -492,7 +509,6 @@ class InlineLayout:
     def flush(self):
         child = self.children[-1]
         child.size()
-        self.h += child.h
         self.children.append(LineLayout(self.node, self))
 
     def position(self):
@@ -517,7 +533,6 @@ class BlockLayout:
     def __init__(self, node, parent):
         self.node = node
         self.parent = parent
-        self.children = []
 
         self.x = -1
         self.y = -1
@@ -534,6 +549,7 @@ class BlockLayout:
         return True
 
     def size(self):
+        self.children = []
         # block layout here
         if self.has_block_children():
             for child in self.node.children:
@@ -558,10 +574,13 @@ class BlockLayout:
         self.w = self.parent.w - self.parent.pl - self.parent.pr \
             - self.parent.bl - self.parent.br \
             - self.ml - self.mr
-
-        self.h = 0
         for child in self.children:
             child.size()
+        self.compute_height()
+
+    def compute_height(self):
+        self.h = 0
+        for child in self.children:
             self.h += child.mt + child.h + child.mb
 
     def position(self):
@@ -604,7 +623,10 @@ class DocumentLayout:
         self.ml = self.bl = self.pl = 0
 
         child.size()
-        self.h = child.h
+        self.compute_height()
+
+    def compute_height(self):
+        self.h = self.children[0].h
 
     def position(self):
         child = self.children[0]
@@ -623,7 +645,7 @@ class DrawText:
         self.font = font
         self.color = color
 
-        self.y2 = y1 + font.metrics("linespace")
+        self.y2 = y1 + font.measure("linespace")
 
     def draw(self, scroll, canvas):
         canvas.create_text(
@@ -701,9 +723,21 @@ def find_selected(node, sel, out):
         find_selected(child, sel, out)
     return out
 
+def layout_for_node(tree, node):
+    if tree.node == node:
+        return tree
+    for child in tree.children:
+        out = layout_for_node(child, node)
+        if out: return out
+
 def is_link(node):
     return isinstance(node, ElementNode) \
         and node.tag == "a" and "href" in node.attributes
+
+def drawTree(node, indent=0):
+    print(" "*indent, type(node).__name__, " ", node.node, sep="")
+    for child in node.children:
+        drawTree(child, indent + 2)
 
 class Browser:
     def __init__(self):
@@ -751,7 +785,7 @@ class Browser:
                 elif elt.tag == "input":
                     elt.attributes["value"] = ""
                     self.focus = obj
-                    return self.layout(self.document.node)
+                    return self.reflow(self.focus)
                 elif elt.tag == "button":
                     self.submit_form(elt)
                 elt = elt.parent
@@ -768,7 +802,7 @@ class Browser:
         else:
             self.focus.node.attributes["value"] += e.char
             self.dispatch_event("change", self.focus.node)
-            self.layout(self.document.node)
+            self.reflow(self.focus)
 
     def submit_form(self, elt):
         while elt and elt.tag != "form":
@@ -847,13 +881,18 @@ class Browser:
         return elt.attributes.get(attr, None)
 
     def js_innerHTML(self, handle, s):
-        doc = parse(lex("<html><body>" + s + "</body></html>"))
-        new_nodes = doc.children[0].children
-        elt = self.handle_to_node[handle]
-        elt.children = new_nodes
-        for child in elt.children:
-            child.parent = elt
-        self.layout(self.document.node)
+        try:
+            doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
+            new_nodes = doc.children[0].children
+            elt = self.handle_to_node[handle]
+            elt.children = new_nodes
+            for child in elt.children:
+                child.parent = elt
+            self.reflow(layout_for_node(self.document, elt))
+        except:
+            import traceback
+            traceback.print_exc()
+            raise
 
     def dispatch_event(self, type, elt):
        handle = self.node_to_handle.get(elt, -1)
@@ -870,11 +909,18 @@ class Browser:
         return handle
 
     def layout(self, tree):
-        self.timer.start("Style")
-        style(tree, None, self.rules)
-        self.timer.start("Layout (phase 1)")
         self.document = DocumentLayout(tree)
-        self.document.size()
+        self.reflow(self.document)
+
+    def reflow(self, obj):
+        self.timer.start("Style")
+        style(obj.node, None, self.rules)
+        self.timer.start("Layout (phase 1A)")
+        obj.size()
+        self.timer.start("Layout (phase 1B)")
+        while obj.parent:
+            obj.parent.compute_height()
+            obj = obj.parent
         self.timer.start("Layout (phase 2)")
         self.document.position()
         self.timer.start("Display list")

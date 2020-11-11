@@ -203,6 +203,7 @@ this:
 ``` {.python}
 class BlockLayout:
     def size(self):
+        self.children = []
         # ...
         self.h = 0
         for child in self.children:
@@ -221,7 +222,8 @@ by first calling `size` and then calling `position`.
 One final subtlety: since the plan is to keep layout objects around
 between reflows, you can now longer rely on the constructor being run
 right before `size` is. So you'll need to initialize the `children`
-field to the empty list at the top of `size`, instead of in the constructor.
+field to the empty list at the top of `size`, instead of in the
+constructor. Make this change for `InlineLayout` as well!
 
 Let's review the layout object methods before moving on to other
 layout modes:
@@ -275,30 +277,6 @@ class LineLayout:
             child.x = self.x + cx
             child.y = baseline - metrics["ascent"]
             cx += child.w + child.font.measure(" ")
-```
-
-One quirk here is that we want to do as little work as possible in
-`position`. So let's compute `cx` variable metrics in `size`:
-
-``` {.python}
-class LineLayout:
-    def size(self):
-        cx = 0
-        self.cxs = []
-        for child in self.children:
-            self.cxs.append(cx)
-            cx += child.w + child.font.measure(" ")
-```
-
-Then we can use `self.cxs` in `position`:
-
-``` {.python}
-class LineLayout:
-    def position(self):
-        baseline = self.y + 1.2 * self.max_ascent
-        for cx, child, metrics in zip(self.cxs, self.children, self.metrics):
-            child.x = self.x + cx
-            child.y = baseline - metrics["ascent"]
 ```
 
 Next, `DocumentLayout`. You can rename `layout` to `size` and move the
@@ -412,23 +390,106 @@ over every layout object's `size` and `position` methods to check them
 over before we we make things more complicated by sometimes avoiding
 calls to `size`.
 
-Incrementalizing layout
-=======================
+Moving between phases
+=====================
 
-Time your browser again, and note how much time it spends in the first
-and second phase of layout:
+Time your browser again, now that layout is split into two phases:
 
-    [  0.698471] Layout (phase 1)
-    [  0.002454] Layout (phase 2)
-    [  0.108819] Display list
+    [  0.026640] Style
+    [  0.585366] Layout (phase 1)
+    [  0.204182] Layout (phase 2)
+    [  0.113936] Display list
 
-So we've succeeded in making the second phase near-instantaneous.[^8]
-That motivates the next step: avoiding the first phase whenever we can.
+If you total these phases up, you get 0.93 seconds. Before this
+refactor, the style, layout, and display list phases took 0.86
+seconds, which means the refactor made our browser a little slower.
+
+That's not too surprising: two phases mean we have to traverse the
+tree twice, and in a couple of places we now have to loop over all
+children in each phase. But this refactor wasn't supposed to make our
+code faster. Our goal here is to make phase 1 layout much faster by
+running it on only some nodes, not all of them.
+
+Let's suppose that works, and phase 1 layout becomes much faster.
+For example, suppose it gets 100 times faster:
+
+    [  0.026640] Style
+    [  0.005853] Layout (phase 1)
+    [  0.204182] Layout (phase 2)
+    [  0.113936] Display list
+
+Then the total amount of time our browser needs to reflow the
+page---that is, lay it out after a small change---will go from 0.93
+seconds to 0.35 seconds. That's quite a bit better! But it's also a
+bit disappointing: we made the slowest thing 100 times faster, and
+reflow itself didn't even get 3 times faster. This general phenomenon
+is called [Amdahl's law][amdahl]: as you speed up some component of a
+program, it becomes a smaller and smaller part of the program's run
+time, and that means speed-ups in that component translate to smaller
+and smaller speed-ups to the program.
+
+[amdahl]: https://en.wikipedia.org/wiki/Amdahl's_law
+
+We want reflow to be as fast as possible. We can't run phase 2 layout
+on fewer elements---since changes to one element can change the
+position of every other element---but we can try moving things from
+phase 2 to phase 1. Look through your layout objects' `position`
+methods: are any doing unnecessary computation?
+
+Well, looking them over, `BlockLayout` and `InlineLayout` just have a
+loop over their children to compute their `y` position---a bit of
+math, nothing else. `DocumentLayout` does even less. And `TextLayout`
+and `InputLayout` do nothing at all. But `LineLayout`'s `position`
+method is a bit different: it computes font measures and metrics in
+order to update the `cx` variable, and those font metrics take time to
+compute.
+
+Luckily, the `cx` variable isn't involved with any `x` and `y`
+positions at all. That means it could be computed in `size` instead.
+So let's change `LineLayout` so that the `cx` variable is computed in
+phase 1, and just passed along to phase 2:
+
+``` {.python}
+class LineLayout:
+    def size(self):
+        # ...
+        cx = 0
+        self.cxs = []
+        for child in self.children:
+            self.cxs.append(cx)
+            cx += child.w + child.font.measure(" ")
+```
+
+Then we can use `self.cxs` in `position`:
+
+``` {.python}
+class LineLayout:
+    def position(self):
+        baseline = self.y + 1.2 * self.max_ascent
+        for cx, child, metrics in \
+          zip(self.cxs, self.children, self.metrics):
+            child.x = self.x + cx
+            child.y = baseline - metrics["ascent"]
+```
+
+Now the timings look a bit like this:
+
+    [  0.024881] Style
+    [  0.737944] Layout (phase 1)
+    [  0.002762] Layout (phase 2)
+    [  0.120213] Display list
+
+Phase 1 layout is longer, but phase 2 is near-instantaneous,[^8] and
+now if we manage to run phase 1 on fewer elements, reflow will be a
+lot faster. So let's work on avoiding the first phase whenever we can.
 
 [^8]: "Near-instantaneous‽ 2.454 milliseconds is almost 14% of our
     one-frame time budget! And then there's the display list!" Yeah,
     uh, this is a toy web browser written in Python. Cut me some
     slack.
+
+Incrementalizing layout
+=======================
 
 The idea is simple, but the implementation will be tricky, because
 sometimes you *do* need to lay an element out again; for example, the
@@ -441,7 +502,7 @@ above, will be our guide to what must run when.
 Let's plan. Look over your browser and list all of the places where
 `layout` is called. For me, these are:
 
--   In `parse`, on initial page load.
+-   In `load`, on initial page load.
 -   In `handle_click`, when the user clicks on an input element.
 -   In `keypress`, when the user adds text to an input element.
 -   In `js_innerHTML`, when new elements are added to the page (and old
@@ -449,227 +510,84 @@ Let's plan. Look over your browser and list all of the places where
 
 Each of these needs a different approach:
 
--   In `parse`, we are doing the initial page load so we don't even
+-   In `load`, we are doing the initial page load so we don't even
     have an existing layout. We need to create one, and that involves
     calling both layout phases for everything.
 -   In `js_innerHTML`, the new elements and their parent are the only
     elements that have had their nodes or style changed, so only they
     need the first layout phase.
--   In `handle_click` and `keypres`, only the input element itself has had a change to
-    node or style, so only it needs the first layout phase.
+-   In `handle_click` and `keypress`, only the input element itself
+    has had a change to node or style, so only it needs the first
+    layout phase.
 
-::: {.todo}
-Stopped here. It's going pretty well, but I still need:
-- Split the `layout` function into two pieces
-- Talk them through computing heights for ancestors
-- Talk them through debugging
-:::
+We'll need to split `layout` into pieces to satisfy the above. Let's
+have a `layout` function, which is called on initial layout, and a
+`reflow` function that is called when the page changes, to fix up the
+layout. The `layout` function will create the `document` object, and
+ask to fix up that new object:
 
-Let's split `relayout` into pieces to reflect the above. First,
-let's move the construction of `self.page` and `self.layout` into
-`parse`, since they only occur on initial load. Then let's create a
-new `reflow` function that calls `style` and `layout1` on an element
-of your choice. And finally, `relayout` will just contain the call to
-`layout2` and the computation of the display list. Here's `parse` and
-`relayout`:
-
-``` {.python}
+```
 class Browser:
-    def parse(self, body):
-        # ...
-        self.page = Page()
-        self.layout = BlockLayout(self.page, self.nodes)
-        self.reflow(self.nodes)
-        self.relayout()
+    def layout(self, tree):
+        self.document = DocumentLayout(tree)
+        self.reflow(self.document)
+```
 
-    def relayout(self):
-        self.start("Layout2")
-        self.layout.layout2(0)
-        self.max_h = self.layout.h
-        self.timer.start("Display List")
-        self.display_list = self.layout.display_list()
+Meanwhile `reflow` will contain the steps of the old `layout` method:
+applying styles, calling `size` on the changed elements, and then
+calling `position` and `draw` on all elements:
+
+```
+class Browser:
+    def reflow(self, obj):
+        style(obj.node, None, self.rules)
+        obj.size()
+        self.document.position()
+        self.display_list = []
+        self.document.draw(self.display_list)
         self.render()
+        self.max_y = self.document.h
 ```
 
-The new `reflow` method is a little more complex. Here's what it looks
-like after a simple reorganization:
+Note that `style` and `size` are called just on the layout object
+passed into `reflow`, while `position` and `draw` are called on the
+whole document. When the page it loaded, it'll create the `document`
+object and call `reflow` to reflow the whole document. But later
+changes to the page can just invoke `reflow` with a particular layout
+object, and only that object will be styled and go through phase 1
+layout.
+
+Let's go make those changes.
+
+The `load` function doesn't need any changes, because it calls
+`layout`, which does initial layout for the whole document.
+
+In `handle_click`, we're interested in the case where the user clicks
+on an input element, and we only need to reflow that input element:
 
 ``` {.python}
-class Browser:
-    def reflow(self, elt):
-        self.timer.start("Style")
-        style(self.nodes, self.rules)
-        self.timer.start("Layout1")
-        self.layout.layout1()
-```
-
-Note that while `reflow` takes an element as an argument, it ignores it,
-and restyles and re-lays-out the whole page. That's clearly silly, so
-let's fix that. First, the `style` call only needs to be passed
-`elt`:
-
-``` {.python}
-style(elt, self.rules)
-```
-
-Second, instead of calling `layout1` on `self.layout`, we only want to
-call it on the layout object corresponding to `elt`. The easiest way to
-find that is with a big loop:[^10]
-
-``` {.python}
-def find_layout(layout, elt):
-    if not isinstance(layout, LineLayout) and layout.node == elt:
-        return layout
-    for child in layout.children:
-        out = find_layout(child, elt)
-        if out: return out
-```
-
-This is definitely inefficient, because we could store the
-element-layout correspondence on the node itself, but let's run with it
-for the sake of simplicity. We can now change the
-`self.layout.layout1()` line to:
-
-``` {.python}
-layout = find_layout(self.layout, elt)
-if layout: layout.layout1()
-```
-
-This mostly works, but `find_layout` won't be happy on initial page
-load because at that point some of the layout objects don't have
-children yet. Let's add a line for that:[^11]
-
-``` {.python}
-def find_layout(layout, elt):
-    if not hasattr(layout, "children"):
-        return layout
+def handle_click:
+    # ...
+    elif elt.tag == "input":
+        elt.attributes["value"] = ""
+        self.focus = obj
+        return self.reflow(self.focus)
     # ...
 ```
 
-::: {.todo}
-Relying on `hasattr` is extremely ugly. Perhaps we need dirty bits?
-:::
-
-The logic of returning any layout object without a `children` field is
-that if some layout object does not have such a field, it definitely
-hasn't had `layout1` called on it and therefore we should, which we do
-by returning it from `find_layout`.
-
-Finally, let's go back to place where we call `relayout` and add a call
-to `reflow`. The only complicated case is `handle_hover`, where you need
-to call `reflow` both on the old `hovered_elt` and on the new one. (You
-only need to call `layout` once, though.)
-
-With this tweak, you should see `layout1` taking up almost no time,
-except on initial page load, and hovering should be much more
-responsive. For me the timings now look like this:
+Likewise in `keypress`:
 
 ``` {.python}
-[  0.009246] Layout1
-[  0.003590] Layout2
+def keypress(self, e):
+    # ...
+    else:
+        self.focus.node.attributes["value"] += e.char
+        self.dispatch_event("change", self.focus.node)
+        self.reflow(self.focus)
 ```
 
-::: {.todo}
-I should add rendering times.
-:::
-
-So now rendering takes up roughly 89% of the runtime when hovering, and
-everything else takes up 32 milliseconds total. That's not one frame,
-but it's not bad for a Python application!
-
-Faster rendering
-================
-
-Let's put a bow on this lab by speeding up `render`. It's actually
-super easy: we just need to avoid drawing stuff outside the browser
-window; in the graphics world this is called *clipping*. Now,
-sometimes stuff is half-inside and half-outside the browser window. We
-still want to draw it! For that, we'll need to know where that stuff
-starts and ends. I'm going to update the `DrawText` constructor to
-compute that:
-
-``` {.python}
-self.y1 = y
-self.y2 = y + 50
-```
-
-::: {.todo}
-This misdirection is stupid. It should implement it the right way,
-notice the slowdown, and improve it.
-:::
-
-Ok, wait, that's not the code you expected. Why 50? Why not use
-`font.measure` and `font.metrics`? Because `font.measure` and
-`font.metrics` are quite slow: they actually execute text layout, and
-that takes a long time! So I'll be using only *y* position for
-clipping, and I'll be using an overapproximation to `font.metrics`. The
-50 is not a magic value; it just needs to be *bigger* than any actual
-line height. If it's too big, we render a few too many `DrawText`
-objects, but it won't change the resulting page.
-
-Now both `DrawText` and `DrawRect` objects have top-left and
-bottom-right coordinates and we can check those in `render`:
-
-``` {.python}
-for cmd in self.display_list:
-    if cmd.y2 - self.scrolly < 0: continue
-    if cmd.y2 - self.scrolly > 600: continue
-    cmd.draw(self.scrolly - 60, self.canvas)
-```
-
-That takes rendering down from a quarter-second to a hundredth of a
-second for me, and makes the hover animation fairly smooth. A hover
-reflow now takes roughly 25 milliseconds, with the display list
-computation 44% of that, rendering 39%, and `layout2` 13%. We could
-continue optimizing (for example, tracking invalidation rectangles in
-rendering), but I'm going to call this a success. We've made
-interacting with our browser more than 30 times faster, and in the
-process made the `:hover` selector perfectly usable.
-
-Summary
-=======
-
-The more complex, two-phase layout algorithm in this chapter sped up
-my toy browser by roughly 30×, to the point that it can now run simple
-animations like hovering.
-
-Exercises
-=========
-
--   When `TextLayout.display_list` creates a `DrawText`, it already
-    knows the width and height of the text to be laid out. Use that to
-    compute `y2` and `x2` in `DrawText`. Add horizontal clipping to
-    the rendering function.
--   Turns out, the `font.measure` function is quite slow! Change Add a
-    cache for the size of each word in a given font. Measure the
-    speed-up that results.
--   Extend the timer to measure the time to lay out each type of
-    layout object. That is---compute how much time is spent laying out
-    `BlockLayout` objects, how much in `InlineLayout`, and so on. What
-    percentage of the `layout1` time is spent handling inline layouts?
-    If you did the first and second exercises, measure the effect.
--   Add support for the `setAttribute` method in JavaScript. Note that
-    this method can be used to change the `id`, `class`, or `style`
-    attribute, which can change which styles apply to the affected
-    element; make sure to handle that with reflow. Furthermore, you can
-    use `setAttribute` to update the `href` attribute of a `<link>`
-    element, which means you must download a new CSS file and recompute
-    the set of CSS rules. Make sure to handle that edge case as well. If
-    you change the `src` attribute of a `<script>` tag, oddly enough,
-    the new JavaScript file is not downloaded or executed.
--   Add support for `setTimeout` command in JavaScript;
-    `setTimeout(ms, f)` should run the function `f` in `ms`
-    milliseconds. In Python, you can use the `Timer` class from the
-    `threading` library, but be careful---the callback on the timer is
-    called in a separate thread, so you need to make sure no other
-    JavaScript is running when calling the timeout handler. Use
-    `setTimeout` to implement a simple animation; for example, you might
-    implement a "typewriter effect" where a paragraph is typed out
-    letter-by-letter. Check that your browser handles the animation
-    relatively smoothly.
-
-[^7]: Because it calls `font.measure`, which has to do a slow and
-    expensive text rendering to get the right size. Text is crazy.
+In `js_innerHTML` we don't have a reference to the layout object lying
+around, but we can find it by traversing the tree:[^10]
 
 [^10]: There is a subtlety in the code below. It's important to check
     the current node before recursing, because some nodes have two
@@ -678,11 +596,214 @@ Exercises
     want the parent, and doing the check before recursing guarantees us
     that.
 
-[^11]: I recognize that in many languages, unlike in Python, you can't
-    just add fields in some method without declaring them earlier on. I
-    assume that in all of those cases you've been initializing the
-    fields with dummy values, and then you'd check for that dummy value
-    instead of using `hasattr`. Just make sure your dummy value for
-    `children` isn't the empty list, since that is also a valid value.
-    Better to use a null pointer or something like that, whatever your
-    language provides.
+``` {.python}
+def layout_for_node(tree, node):
+    if tree.node == node:
+        return tree
+    for child in tree.children:
+        out = layout_for_node(child, node)
+        if out: return out
+
+def js_innerHTML(self, handle, s):
+    # ...
+    self.reflow(layout_for_node(self.document, elt))
+```
+
+With these changes, phase 1 layout is usually run on very few
+elements---if you're typing into an input box, just one! The timings
+for typing into an input field now look something like this:
+
+    [  0.000042] Style
+    [  0.000023] Layout (phase 1)
+    [  0.002l37] Layout (phase 2)
+    [  0.118164] Display list
+
+You can see that phase 1 layout takes a truly miniscule amount of time
+now, and if you try typing into a input box you'll find that input is
+smooth and you can see each letter as you type it.
+
+Tracking dependencies
+=====================
+
+Recall the general structure of our layout algorithm:
+
+![Width information flows from parent to child, while height
+    information flows from child to parent.](/im/layout-order.png)
+
+We're now only running width and height computations for some of our
+elements. Why is this OK? Let's think it through to make sure we got
+it right.
+
+Think about the subtree that changed, whether due to keypress or
+`innerHTML` or something else. It got its width from its parent---and
+that parent is unchanged. Every element in that tree computed its
+width based on that correct, unchanged parent width, so all the widths
+are correct. Then those widths impact heights all through the changed
+subtree, and those heights flow up until they reach node being
+reflowed.
+
+But if that node's height ended up changing---for example, because
+`innerHTML` gave it more or less content---we actually need that
+height to keep flowing up, to its unchanged parent and then that
+parent's parent and so on. We're not doing that, so we should have a
+bug if a node changes height.
+
+Let's try to reproduce the bug. We'll need an HTML page like this:
+
+``` {.html}
+<!doctype html>
+<script src="test10.js"></script>
+<div><button id="button">Click me</button></div>
+<div><p id="test">Test</p></div>
+<p>Example text which should go below the previous paragraph</p>
+```
+
+The idea is that clicking the button should change the page that
+makes the `test` paragraph much longer:
+
+``` {.javascript}
+var button = document.querySelectorAll("#button")[0]
+var test = document.querySelectorAll("#test")[0]
+button.addEventListener("click", function() {
+    test.innerHTML = "This is a lot of text that is going" +
+        " to break over multiple lines, causing this test" +
+        " paragraph to change height, which should be a" +
+        " problem for our reflow algorithm."
+})
+```
+
+Try it out. When you click the button, you expect the example text to
+move down, but it doesn't. That's because even though the `test`
+paragraph had its `size` method invoked, so that its height changed,
+the `div` that contains it didn't change, so its `size` method was
+never invoked, which means its height was never recomputed, which
+means the example text was never moved down.
+
+How do we fix this?
+
+Well, we need to rerun the height computation not just for the
+modified elements, but also their parent, and their parent's parent,
+and so on. Ok, let's start by moving the code that computes a layout
+object's height to a new `compute_height` function. That code should
+include the line that sets the `h` field and also any other code that
+reads properties of child elements. Call `compute_height` at the end
+of `size`. So for `DocumentLayout` the new `compute_height` method
+looks like this:
+
+```
+class DocumentLayout:
+    def compute_height(self):
+        self.h = self.children[0].h
+```
+
+Remember to also call `compute_height` at the end of the `size`
+method.
+
+Next up: the `BlockLayout`. Here `compute_height` looks like this:
+
+``` {.python}
+class BlockLayout:
+    def compute_height(self):
+        self.h = 0
+        for child in self.children:
+            self.h += child.mt + child.h + child.mb
+```
+
+You'll need to call it at the end of `size`, after calling `size` on
+all the children.
+
+Next, `InlineLayout`. Here, the height is the sum of the children's
+heights, but it's computed incrementally in `flush`. Let's remove the
+line that adjusts `h` inside `flush`, and move that into a new
+`compute_height` method that just sums the height of the children:
+
+``` {.python}
+class InlineLayout:
+    def compute_height(self):
+        self.h = 0
+        for child in self.children:
+            self.h += child.h
+```
+
+Make sure `flush` no longer adjusts the `h` field.
+
+Next, `LineLayout`. Here, most of the function involves reading
+properties on child layout objects, so let's just move all of it,
+except the single line that sets the `w` field, to `compute_height`.
+
+``` {.python}
+class LineLayout:
+    def size(self):
+        self.w = self.parent.w
+        self.compute_height()
+```
+
+Finally, for `InputLayout` and `TextLayout` we just need to move the
+single line that sets the element's height into `compute_height`.
+
+Now that we've split `size` into two pieces, we can call the full
+`size` method on the changed elements, and just the `compute_height`
+method on those elements' parents and ancestors:
+
+``` {.python}
+class Browser:
+    def reflow(self, obj):
+        # ...
+        self.timer.start("Layout (phase 1A)")
+        obj.size()
+        self.timer.start("Layout (phase 1B)")
+        while obj.parent:
+            obj.parent.compute_height()
+            obj = obj.parent
+```
+
+Note that I've now got phase 1A layout and phase 1B layout---it's
+really a three phase layout algorithm here!
+
+Try the buggy web page we wrote earlier. You should see it correctly
+adjust heights after you click the button, making sure that no text
+overlaps.
+
+By the way, you might worry that all these extra `compute_height`
+calls slowed our browser back down to where we started, but that's not
+the case:
+
+    [  0.000046] Style
+    [  0.005434] Layout (phase 1A)
+    [  0.000025] Layout (phase 1B)
+    [  0.003215] Layout (phase 2)
+    [  0.110548] Display list
+
+Phase 1B doesn't take a long time because it's only modifying the
+ancestors, which there aren't that many of, and also because all of
+the `compute_height` methods are very short, just doing a few
+additions.
+
+Summary
+=======
+
+Over the course of this chapter, we've replaced the simplistic,
+single-phase layout algorithm with a complex three-phase algorithm
+that allows us to skip most of the work when just one part of the page
+changes. That's made typing into input elements much smoother and
+means JavaScript interactions go much faster.
+
+Exercises
+=========
+
+*Granular timing*: Extend the timer to measure the time to for each
+layout phase for each type of layout object. For the initial load of a
+large web page (like this one), what percentage of the phase 1A layout
+is spent handling inline layouts?
+
+*setAttribute*: Add support for the `setAttribute` method in
+JavaScript. Note that this method can be used to change the `id`,
+`class`, or `style` attribute, which can change which styles apply to
+the affected element; handle that with reflow. Furthermore, you can
+use `setAttribute` to update the `href` attribute of a `<link>`
+element, which means you must download a new CSS file and recompute
+the set of CSS rules. Make sure to handle that edge case as
+well.[^not-script]
+
+[^not-script]: If you change the `src` attribute of a `<script>` tag,
+oddly enough, the new JavaScript file is not downloaded or executed.
