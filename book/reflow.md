@@ -239,7 +239,7 @@ The constructor
 `size`
 
 :   This method creates the child layout objects and computes `w` and
-    `h` fields. Plus, it calls `ize` on its children. It may not read
+    `h` fields. Plus, it calls `size` on its children. It may not read
     any layout object's `x` or `y` fields, or call any layout object's
     `position` method.
 
