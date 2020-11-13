@@ -121,8 +121,8 @@ def parse(tokens):
     for tok in tokens:
         implicit_tags(tok, currently_open)
         if isinstance(tok, Text):
+            if tok.text.isspace(): continue
             node = TextNode(tok.text)
-            if not currently_open: continue
             currently_open[-1].children.append(node)
         elif tok.tag.startswith("/"):
             node = currently_open.pop()
@@ -167,7 +167,6 @@ def implicit_tags(tok, currently_open):
 
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
-LINEHEIGHT = 1.2
 
 SCROLL_STEP = 100
 
