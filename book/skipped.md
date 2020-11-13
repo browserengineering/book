@@ -85,28 +85,6 @@ no point in the book did the lack of a cache feel painful, so I
 decided to leave this topic out. Nor, sadly, did I find a chapter
 where caching would make a good exercise.
 
-High-speed Graphics
-===================
-
-Web browsers now include impressive graphics engines for getting a
-picture to the screen as fast as possible. This has become ever more
-important as the web gains graphical bells and whistles.^[Shadows,
-rounded corners, and transparency all feel like new features to me,
-since I started web development with IE 5.5. The truly new stuff is
-even wilder.] High-speed graphics may mean retaining display lists
-(instead of recomputing them after every reflow), compositing portions
-of the display list (to avoid rerendering expensive shapes like text),
-and rendering on the graphics card. The major browsers have recently
-(as of late 2019) been pushing vigorously on this front.
-
-[Chapter 10](reflow.md) does talk a bit about fast graphics, since
-rendering eventually takes more time than reflow, but to be honest
-graphics speed is hurt more by the choice of Tk and Python than any
-algorithm or implementation decision in the browser itself. More
-broadly, I didn't want to focus too much on the low-level details of
-performance. Those change frequently and often don't teach broader
-lessons for students to apply elsewhere.
-
 Text Rendering
 ==============
 

@@ -2,7 +2,7 @@
 title: Keeping Data Private
 chapter: 11
 prev: reflow
-next: skipped
+next: advanced-rendering
 ...
 
 Our browser has grown up and now runs (small) web applications. Now
