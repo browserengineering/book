@@ -89,11 +89,6 @@ self.timer.stop()
 Your results may not match mine,[^1] but here's what I saw on my
 console on a full page load for this web page.
 
-[^1]: These results were recorded on a 2019 13-inch MacBook Pro with a
-    2.4GHz i5, 8 GB of LPDDR3 memory, and an Intel Iris Plus graphics
-    655 with 1.5 GB of video memory, running macOS 10.14.6 and Python
-    3.8.5 and Tk 8.5.
-
     [  0.333341] Downloading
     [  0.023406] Parsing HTML
     [  0.406265] Parsing CSS
@@ -103,6 +98,12 @@ console on a full page load for this web page.
     [  0.113295] Display list
     [  0.005794] Rendering
     [  0.003216] Chrome
+
+
+[^1]: These results were recorded on a 2019 13-inch MacBook Pro with a
+    2.4GHz i5, 8 GB of LPDDR3 memory, and an Intel Iris Plus graphics
+    655 with 1.5 GB of video memory, running macOS 10.14.6 and Python
+    3.8.5 and Tk 8.5.
     
 The overall process takes about 1.76 seconds (105 frames), with layout
 consuming the largest portion. Moreover, consider that the first four
