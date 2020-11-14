@@ -927,7 +927,7 @@ class Browser:
         self.display_list = []
         self.document.draw(self.display_list)
         self.render()
-        self.max_y = self.document.h
+        self.max_y = self.document.h - HEIGHT
 
     def render(self):
         self.timer.start("Rendering")

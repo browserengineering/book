@@ -585,7 +585,7 @@ class Browser:
         self.display_list = []
         document.draw(self.display_list)
         self.render()
-        self.max_y = document.h
+        self.max_y = document.h - HEIGHT
 
     def render(self):
         self.canvas.delete("all")
