@@ -679,8 +679,8 @@ But there's a catch: inline layout is mostly concerned with text, but
 text nodes don't have any styles at all. How can that work?
 
 [^inline-margins]: Margins, borders, and padding can be applied to
-    inline layout objects in a real browser, but they work kind of a
-    funky way.
+    inline layout objects in a real browser, but they work in a kind
+    of funky way.
 
 The solution in CSS is *inheritance*. Inheritance means that if some
 node doesn't have a value for a certain property, it uses its
@@ -802,10 +802,14 @@ big { font-size: 20px; }
 Another place where the code depends on specific tag names is
 `has_block_children`, which relies on a list of inline elements. The
 CSS `display`, which can be either `block` or `inline`, replaces that
-mechanism.^[Modern CSS adds way more values, like `run-in` or
-`inline-block` or `flex` or `grid`, and it has layout modes set by
-other properties, like `float` and `position`. Design matters.]
-So we can add all the inline elements to our browser style sheet:
+mechanism.[^lots-of-values] So we can add all the inline elements to
+our browser style sheet:
+
+[^lots-of-values]: Modern CSS adds way more values, like `run-in` or
+    `inline-block` or `flex` or `grid`, and it has layout modes set by
+    other properties, like `float` and `position`. These values allow
+    for layouts you couldn't do with just `block` and `inline`, and
+    people really care about making their web pages look good.
 
 ``` {.css}
 a { display: inline; }
@@ -836,7 +840,7 @@ style sheet.
 
 That style sheet is easier to edit, since it's independent of the rest
 of the code. And while sometimes moving things to a data file means
-maintaining a new format. Here we get to reuse a format, CSS, that our
+maintaining a new format, here we get to reuse a format, CSS, that our
 browser needs to support anyway.
 
 Summary
@@ -857,17 +861,18 @@ and selectors.
 Exercises
 =========
 
-*Shortcuts*: CSS "shortcut properties" set multiple related CSS
-properties at the same time; `margin`, `padding`, `border-width`, and
-`font` are all popular shortcuts. Implement these four shortcut
-properties. If you do it in the `body` parsing function, you won't
-need to change the rest of the code. Start with the case where all of
-the subproperties are specified, then add default values.
+*Shorthand Properties*: CSS "shorthand properties" set multiple
+related CSS properties at the same time; for example, `margin: 10px`
+sets all four margin properties to `10px`, while `margin: 1px 2px 3px
+4px` sets the top, right, bottom, and left margins to one, two, three,
+and four pixels respectively. Implement the `margin`, `padding`,
+`border-width`, and `font` shorthands as part of the parser.
 
-*Comma*: CSS allows a rule to have multiple, comma-separated
-selectors, which is basically the same as multiple rules with the same
-body. Implement this and use it to shorten and shorten the browser
-style sheet.
+*Selector Groups*: CSS allows grouping multiple rules, all with the
+same body, by listing all their selectors with commas in between. For
+example, `b, strong { font-weight: bold }` makes both the `b` and
+`strong` tags bold. Implement this as part of your parser and use it
+to shorten and shorten the browser style sheet.
 
 *Width/Height*: Add support to block layout objects for the `width`
 and `height` properties. These can either be a pixel value, which
@@ -881,20 +886,24 @@ layout object's width, while when you do it for `font-size` it's
 relative to the parent's font size. Implement percentage values for
 all of these properties.
 
-*Combinations*: Sometimes you want to select an element by tag *and*
-class. You do this by concatenating the selectors without anything in
-between: `span.announce` selects elements that match both `span` and
-`.announce`. Implement a new `AndSelector` class to represent these
-and modify the parser to parse them. Sum priorities.[^lexicographic]
+*Selector Sequences*: Sometimes you want to select an element by tag
+*and* class. You do this by concatenating the selectors without
+anything in between:[^no-ws] `span.announce` selects elements that
+match both `span` and `.announce`. Implement a new `SelectorSequence`
+class to represent these and modify the parser to parse them. Sum
+priorities.[^lexicographic]
 
-[^lexicographic]: You're supposed to use lexicographic scoring for
-    these `AndSelector` things, but sums will work fine as long as no
-    one strings more than 16 selectors together.
+[^no-ws]: Not even whitespace!
 
-*Descendants*: When multiple selectors are separated with spaces, like
-`ul b`, that selects all `<b>` elements with a `<ul>` ancestor.
-Implement descendent selectors; scoring for descendent selectors works
-just like for comnbination selectors. Make sure that something like `section
-.warning` selects warnings inside sections, while `section.warning`
-selects warnings that *are* sections.
+[^lexicographic]: Priorities for `SelectorSequence`s are supposed to
+    compare the number of ID, class, and tag selectors in
+    lexicographic order, but summing the priorities of the selectors
+    in the sequence will work fine as long as no one strings more than
+    16 selectors together.
 
+*Descendant Selectors*: When multiple selectors are separated with
+spaces, like `ul b`, that selects all `<b>` elements with a `<ul>`
+ancestor. Implement descendent selectors; scoring for descendent
+selectors works just like for comnbination selectors. Make sure that
+something like `section .warning` selects warnings inside sections,
+while `section.warning` selects warnings that *are* sections.

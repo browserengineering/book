@@ -66,12 +66,13 @@ paragraphs would correspond to a tree like this:
     `<p>` elements); and each of those have a single child, an
     inline.](/im/layout-modes.png)
 
-Finally: layout. With the layout tree created, how do we compute the
-size and position of each layout object? The general rule is that a
-block, like a paragraph, should take up as much horizontal room as it
-can, and should be tall enough to contain everything inside it. That
-means that a layout objects's width is based on its *parent*'s width,
-while its *height* is based on its *children*'s height:
+Finally: the layout algorithm. With the layout tree created, how do we
+compute the size and position of each layout object? The general rule
+is that a block, like a paragraph, should take up as much horizontal
+room as it can, and should be tall enough to contain everything inside
+it. That means that a layout objects's width is based on its
+*parent*'s width, while its *height* is based on its *children*'s
+height:
 
 ![The flow of information through layout. Width information flows down
     the tree, from parent to child, while height information flows up,
@@ -110,10 +111,9 @@ class BlockLayout:
     # ...
 ```
 
-These layout objects will be the nodes of the layout tree, and in fact
-some browsers call it a layout tree. To make it a tree, we'll want
-both types of layout objects to know their children, their parent, and
-the HTML element they correspond to:
+These layout objects will be the nodes of a *layout tree*. So we'll
+want layout objects to have children, a parent, and an HTML element
+that they correspond to:
 
 ``` {.python}
 def __init__(self, node, parent):
@@ -303,9 +303,9 @@ the second depends on the height of the first. I'll use the rule that
 each element it positioned by its parent before its own `layout`
 method is called.
 
-Let's start in `BlockLayout`. For the width, the idea is that a
-paragraph or header or something like that should take up all the
-horizontal space it can. So it should use the parent's width:
+Let's start in `BlockLayout`. For the width, elements are greedy:
+paragraph and headings and other things take up all the horizontal
+space they can. So it should use the parent's width:
 
 ``` {.python}
 self.w = self.parent.w
@@ -324,7 +324,8 @@ for child in self.children:
 ```
 
 Note that the call to the child's `layout` method not only asks it to
-compute its size, but also to build more of the layout tree.
+compute its size, but also to its own children to the layout tree and
+recursively call `layout` on them.
 
 The height of an element must include all its children. Since the
 children's heights have already all been summed into `y`, we can just
@@ -401,7 +402,8 @@ class DocumentLayout:
         self.children[0].draw(to)
 ```
 
-For `BlockLayout`, which has multiple, `draw` is called on each child::
+For `BlockLayout`, which has multiple children, `draw` is called on
+each child:
 
 ``` {.python}
 class BlockLayout:
@@ -534,9 +536,9 @@ class DrawRect:
         )
 ```
 
-We do still want to clip out graphics commands that only occur
-offscreen. `DrawRect` already contains a `y2` field we can use, so
-let's add the same `DrawText`:
+We do still want to skip graphics commands that occur offscreen, and
+`DrawRect` already contains a `y2` field we can use, so let's add the
+same to `DrawText`:
 
 ``` {.python}
 def __init__(self, x1, y1, text, font):
@@ -566,15 +568,15 @@ def render(self):
         cmd.draw(self.scroll, self.canvas)
 ```
 
-Not only have access to the height of any element, but also of the
-whole page. We can use that to stop the user from scrolling past the
-bottom of the page. In `layout`, store the height in a `max_y`
-variable:
+We not only have access to the height of any element, but also of the
+whole page. The browser can use that to stop the user from scrolling
+past the bottom of the page. In `layout`, store the height in a
+`max_y` variable:
 
 ``` {.python}
 def layout(self, tree):
     # ...
-    self.max_y = document.h
+    self.max_y = document.h - HEIGHT
 ```
 
 Then, when the user scrolls down, don't let them scroll past the
