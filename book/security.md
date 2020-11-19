@@ -755,41 +755,41 @@ vulnerabilities.
 Exercises
 =========
 
--   Add support for hidden input elements. Since they don't need to be
-    laid out, there's no need for a layout type at all!
--   Add support for cookie expiration. Cookie expiration dates are set
-    in the `Set-Cookie` header, and can be overwritten if the same
-    cookie is set again with a later date. Save the same expiration
-    dates in the `TOKENS` variable and use it to delete old tokens to
-    save memory.
--   Add support for cookie origins. Due to the same-origin policy, a
-    cookie set by `mail.google.com` cannot be read by, say,
-    `calendar.google.com`, because the host name is the same. This is a
-    good default,[^23] but is sometimes annoying. Cookies can thus set
-    an origin parameter in the `Set-Cookie` header, changing their
-    origin to a more general domain (stripping off some subdomains).
-    Implement this in your browser, making sure to send these
-    generalized-origin cookies on any requests covered by the
-    generalized origin.
--   The `Content-Security-Policy` header is a very powerful tool
-    modern browsers have developed to prevent XSS attacks. The full
-    specification is quite complex, but in the simplest use case, the
-    header value is the keyword `default-src` followed by a
-    space-separated list of origins. That instructs the browser to
-    refuse to load any resources for that page (CSS, JavaScript,
-    images, and so on) except from those origins. Implement support
-    for this header.
--   When your browser visits a web page, or when it loads a CSS or
-    JavaScript file, it sends a `Referer` header[^24] containing the URL
-    it is coming from. Sites often use this for analytics. However, for
-    some servers, the URL contains meaningful data that they don't want
-    revealed to other websites. For these cases there is a
-    `Referer-Policy` header, which can contain values like `no-referer`
-    (never send the `Referer` header when leaving this page) or
-    `same-origin` (only do so if navigating to another page on the same
-    origin). There are other values too, but let's ignore them.
-    Implement both the `Referer` header and the `Referer-Policy` header,
-    with those two values supported.
+*Hidden input*: Add support for hidden input elements. Since they
+don't need to be laid out, there's no need for a layout type at all!
+
+*Cookie Expiration*: Add support for cookie expiration. Cookie
+expiration dates are set in the `Set-Cookie` header, and can be
+overwritten if the same cookie is set again with a later date. Save
+the same expiration dates in the `TOKENS` variable and use it to
+delete old tokens to save memory.
+
+*Cookie Origins*: Add support for cookie origins. Due to the
+same-origin policy, a cookie set by `mail.google.com` cannot be read
+by, say, `calendar.google.com`, because the host name is the same.
+This is a good default,[^23] but is sometimes annoying. A server can
+set an `origin` parameter in the `Set-Cookie` header to strip off some
+subdomains from the cookie origin. Implement this in your browser,
+making sure to send these generalized-origin cookies on any requests
+covered by the generalized origin.
+
+*Content Security Policy*: The `Content-Security-Policy` header is a
+powerful tool in modern browsers to prevent XSS attacks. The full
+specification is quite complex, but in the simplest case, the header
+is set to the keyword `default-src` followed by a space-separated list
+of origins. That instructs the browser to refuse to load any resources
+for that page (CSS, JavaScript, images, and so on) except from those
+origins. Implement support for this header.
+
+*Referer*: When your browser visits a web page, or when it loads a CSS
+or JavaScript file, it sends a `Referer` header[^24] containing the
+URL it is coming from. Sites often use this for analytics. Implement
+this in your browser. However, some URLs contain personal data that
+they don't want revealed to other websites, so browsers support a
+`Referer-Policy` header, which can contain values like `no-referer`
+(never send the `Referer` header when leaving this page) or
+`same-origin` (only do so if navigating to another page on the same
+origin). Implement those two values for `Referer-Policy`.
 
 [^10]: Our browser only supports one scheme, `http`, so I'm not
     including that in the origin.
