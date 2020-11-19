@@ -583,7 +583,9 @@ as text, not a tag,[^19] and won't run any code inside. Success! Most
 languages that you might write a web server in come with helper
 functions to do this escaping for you.[^python-html]
 
-[^python-html]: In Python, use the `html` module's `escape` method.
+[^python-html]: In Python, use the `html` module's `escape` method. In
+    JavaScript, use `innerText` instead of `innerHTML` when you don't
+    intend to add HTML content.
 
 I should add that there are other approaches to this bug. You could
 remove tags instead of escaping the angle bracket. You could prevent
