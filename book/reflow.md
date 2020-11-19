@@ -544,7 +544,7 @@ calling `position` and `draw` on all elements:
 ```
 class Browser:
     def reflow(self, obj):
-        style(obj.node, None, self.rules)
+        style(obj.node, obj.node.parent, self.rules)
         obj.size()
         self.document.position()
         self.display_list = []
