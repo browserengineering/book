@@ -803,9 +803,20 @@ layout phase for each type of layout object. For the initial load of a
 large web page (like this one), what percentage of the phase 1A layout
 is spent handling inline layouts?
 
+*Debugging*: It's easy to make a mistake implementing this incremental
+layout stuff. And a mistake, like our mistake with heights, just means
+the page looks wrong. Add a "debug mode" to your web browser. When run
+in debug mode, your browser should do *both* incremental layout and a
+full, from-scratch layout, and compare the two trees to make sure
+every width, height, and position matches up. Fix any mismatches.
+
 *Display list*: What's slow about display lists? Use a profiler, or an
 extension to the `Timer` class, to figure out which layout object's
 `draw` method is slow, and fix it.
+
+*Hover*: Add support for the `:hover` CSS selector, which selects
+whatever element the cursor is currently over. You can bind to the
+`<Motion>` event to get callbacks every time the mouse moves.
 
 *setAttribute*: Add support for the `setAttribute` method in
 JavaScript. Note that this method can be used to change the `id`,
@@ -815,18 +826,6 @@ use `setAttribute` to update the `href` attribute of a `<link>`
 element, which means you must download a new CSS file and recompute
 the set of CSS rules. Make sure to handle that edge case as
 well.[^not-script]
-
-*Debugging*: It's easy to make a mistake implementing this incremental
-layout stuff. And a mistake, like our mistake with heights, just means
-the page looks wrong. Add a "debug mode" to your web browser. When run
-in debug mode, your browser should do *both* incremental layout and a
-full, from-scratch layout, and compare the two trees to make sure
-every width, height, and position matches up. Fix any mismatches.
-
-*Hover*: Add support for the `:hover` CSS selector, which selects
-whatever element the cursor is currently over. You can bind to the
-`<Motion>` event to get callbacks every time the mouse moves. Make
-sure 
 
 [^not-script]: If you change the `src` attribute of a `<script>` tag,
 oddly enough, the new JavaScript file is not downloaded or executed.
