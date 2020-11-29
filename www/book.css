@@ -157,6 +157,7 @@ p, li, pre, .note { position: relative; }
     position: absolute; right: 0; top: -1.5em; background: #eee;
     padding: .125em .75em; border-radius: .75em;
 }
+pre .tools { top: 0; }
 .tools a { margin: 0 1ex; }
 .feedback.note { font-size: 66%; color: purple; }
 .feedback.note span { outline: none; }
