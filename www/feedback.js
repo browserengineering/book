@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-var EDITABLE_ELEMENTS = "p, li, pre, .note";
+var EDITABLE_ELEMENTS = "p, li, div.sourceCode, .note";
 
 function markdown(elt, arr, recursive) {
     if (elt.nodeType == Node.TEXT_NODE) {
