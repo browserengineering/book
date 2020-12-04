@@ -1,6 +1,6 @@
 """
 This file compiles the code in Web Browser Engineering,
-up to and including Chapter 6 (Applying User Styles),
+up to and including Chapter 9 (Running Interactive Scripts),
 without exercises.
 """
 
