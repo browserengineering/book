@@ -108,11 +108,19 @@ console on a full page load for this web page.
 The overall process takes about 1.76 seconds (105 frames), with layout
 consuming the largest portion. Moreover, consider that the first four
 phases (totalling 0.89 seconds) only happen on initial load, so they
-only run once per page. And the final two steps, which run every time
-you scroll, take less than a frame, so scrolling is smooth. But style,
-layout, and display list generation together---the steps that run when
-the page changes, whether due to JavaScript or just from typing in an
-input area---take 0.86 seconds or over 50 frames!
+only run once per page.[^css-js-slow] And the final two steps, which
+run every time you scroll, take less than a frame, so scrolling is
+smooth. But style, layout, and display list generation together---the
+steps that run when the page changes, whether due to JavaScript or
+just from typing in an input area---take 0.86 seconds or over 50
+frames!
+
+[^css-js-slow]: The "Parsing CSS" and "Running JS" phases include
+    downloading those scripts, which is why they seem to take so long.
+    The actual parsing step is very fast, though real web browsers
+    take pains to optimize their parsers, especially for JS-heavy
+    sites where the parser needs to finish before the website does
+    anything.
 
 You can get a good feel for this latency by typing into an input box
 on a large web page. Compare it to typing into the address bar; typing
