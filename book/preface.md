@@ -42,9 +42,11 @@ changes and refactorings. If you feel particularly interested in some
 component, you can flesh it out and add missing features without
 making later chapters more difficult.
 
-[^2]: This idea is from J. Wilcox, inspired in turn by
-    [S. Zdancewic](http://www.cis.upenn.edu/~stevez/)\'s course on
-    compilers.
+[^2]: This idea is from [J.R. Wilcox][jrw], inspired in turn by
+    [S. Zdancewic][sz]'s course on compilers.
+    
+[jrw]: https://jamesrwilcox.com
+[sz]: http://www.cis.upenn.edu/~stevez/
 
 This book's browser is irreverent toward standards: it handles only a
 sliver of the full HTML, CSS, and JavaScript languages, mishandles
