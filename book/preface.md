@@ -63,8 +63,8 @@ dreamed up this course during a late-night chat at ICFP 2018. [Max
 Willsey](https://mwillsey.com/) proof-read and helped sequence the
 chapters. [Zach Tatlock](https://homes.cs.washington.edu/~ztatlock/)
 encouraged me to develop this into a course. I am thankful to all of
-them. I also thank the students of CS 6968, who found many errors and
-suggested important simplifications.
+them. I also thank the students of CS 6968 at the University of Utah,
+who found many errors and suggested important simplifications.
 
 This book is, and will remain, a work in progress. Please leave
 comments and mark typos; the book has built-in feedback tools, which
