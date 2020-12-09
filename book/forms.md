@@ -26,16 +26,16 @@ On the web, there are two kinds of input areas: `<input>` elements,
 which are for short, one-line inputs, and `<textarea>` elements, which
 are for long, multi-line text. I'll implement `<input>` only, because
 because `<textarea>` has a lot of strange properties.[^sig-ws]
-Usually, web browsers communicate with the operating system and ask
-the OS to draw the input areas themselves, because that way the input
-areas will match the behavior and appearance of OS input areas. That's
-*possible* in Tk,[^1] but in the interests of simplicity we'll be
-drawing the input areas ourselves.
+Applications usually want input areas look the same as in other
+applications, so they use operating-system libraries to draw an input
+area directly.[^ttk] But browsers need a lot of control over
+application styling, so our browser will be drawing input areas
+itself.
 
 [^sig-ws]: Whitespace inside a text area is significant, but text
     still wraps, an unsual combination. Plus, they are pretty similar
     to ordinary `<input>` elements in implementation.
-[^1]: In Python, you use the `ttk` library.
+[^ttk]: For Python's Tk library, that's possible with the `ttk` library.
 
 `<input>` elements are inline content, like text, laid out in lines.
 So to support inputs we'll need a new kind of layout object, which
