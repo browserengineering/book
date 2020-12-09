@@ -258,9 +258,10 @@ class InlineLayout:
 
 Now that words and lines lay themselves out, a lot of stuff disappears
 from`InlineLayout`. The `style`, `size`, `weight` fields are no longer
-needed. Neither is `line` or `cx`. And the display list is no longer
-needed: instead of addings words to a display list, they can print
-themselves in their draw call:
+needed. Neither is `line` or `cx`. And the display list variable is no
+longer needed: instead of an `InlineLayout` drawing all the words in a
+paragraph, each word can now be drawn by its corresponding a
+`TextLayout` object:
 
 ``` {.python}
 class TextLayout:
@@ -270,7 +271,7 @@ class TextLayout:
 ```
 
 The `InlineLayout` and `LineLayout` versions of the `draw` method
-don't do anything but recurse on their children.
+now don't need to do anything but recurse on their children.
 
 Navigating between pages
 ========================
