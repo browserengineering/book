@@ -48,7 +48,7 @@ class InputLayout:
         self.children = []
 ```
 
-These `InputLayout` objects need a `layout` method needs to compute
+These `InputLayout` objects need a `layout` method to compute
 their size, which for simplicity I'll hard-code:[^2]
 
 [^2]: In real browsers, the `width` and `height` CSS properties can
@@ -706,11 +706,11 @@ is better with friends!
 Exercises
 =========
 
-*Check boxes*: Add check boxes. In HTML, check boxes `<input>`
-elements with the `type` attribute set to `checkbox`. The check box is
+*Check boxes*: Add checkboxes. In HTML, checkbox `<input>`
+elements with the `type` attribute set to `checkbox`. The checkbox is
 checked if it has the `checked` attribute set, and unchecked
-otherwise. Submitting check boxes in a form is a little tricky,
-though. A check box named `foo` only appears in the form encoding if
+otherwise. Submitting checkboxes in a form is a little tricky,
+though. A checkbox named `foo` only appears in the form encoding if
 it is checked. Its key is its `name` and its value is the empty string.
 
 *GET forms*: Forms can be submitted via GET requests as well as POST
@@ -742,4 +742,3 @@ page, from `/`, show links to each topic's page.
 field to the next. Implement this behavior in your browser. The "tab
 order" of input elements should be the same as the order of `<input>`
 elements on the page.
-

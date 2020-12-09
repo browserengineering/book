@@ -166,7 +166,7 @@ Next, since each `TextLayout` corresponds to a particular `TextNode`, we
 can compute its font and based on that its width and height:[^6]
 
 [^6]: Make sure you measure `word`, not `node.text`, which contains
-    multiple words! That's an easy and confusing bug.
+    multiple words! That's an easy-to-make and confusing bug.
 
 ``` {.python}
 class TextLayout:
@@ -277,7 +277,7 @@ Navigating between pages
 
 *Phew*. That was a lot of surgery to `InlineLayout`. But as a result,
 `InlineLayout` should now look a lot like the other layout classes,
-and we now have individual layout object corresponding to each word in
+and we now have an individual layout object corresponding to each word in
 the document. Test clicks in your browser again: when you click on a
 link `find_layout` should now return the exact `TextNode` that you
 clicked on, from which you could get a link:
@@ -343,7 +343,7 @@ Browser chrome
 
 Now that we are navigating between pages all the time, it's easy to
 get a little lost and forget what web page you're looking at.
-Browsers solve this issue by with an address bar that shows the URL.
+Browsers solve this issue with an address bar that shows the URL.
 Let's implement a little address bar ourselves.
 
 The idea is to reserve the top 60 pixels of the canvas and then draw
