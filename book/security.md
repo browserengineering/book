@@ -43,9 +43,7 @@ cookie should be stored and who it should be shown to. For example,
 the following `Set-Cookie` header sets the value of the `foo` key to
 `bar` and saves it until 2020:
 
-``` {.example}
-Set-Cookie: foo=bar; expires=Wed, 1 Jan 2020 00:00:00 GMT
-```
+    Set-Cookie: foo=bar; expires=Wed, 1 Jan 2020 00:00:00 GMT
 
 The expiration date is not mandatory, and there are other parameters
 you could add to a cookie; for now let's focus just on the key-value
@@ -53,9 +51,7 @@ pair involved. That's what your browser needs to remember: that `foo`
 is `bar`. Every time it visits the server again it tells the server
 that `foo=bar` using the `Cookie` header:
 
-``` {.example}
-Cookie: foo=bar
-```
+    Cookie: foo=bar
 
 Parameters like expiration dates are not reported to the server.
 If the browser is storing multiple cookies for that server, it
@@ -81,7 +77,7 @@ Then, when responses are processed:
 def load(self, url, body=None)
     # ...
     if "set-cookie" in headers:
-        kv, *params = headers["set-cookie"].split(";")
+        kv, params = headers["set-cookie"].split(";", 1)
         key, value = kv.split("=", 1)
         self.cookies[key] = value
     # ...
@@ -151,7 +147,7 @@ Let's start coding. First, we'll need to store usernames in `ENTRIES`:[^3]
     [Hack the Planet!](https://xkcd.com/1337)
 
 
-``` {.python}
+``` {.python .browser}
 ENTRIES = [
     ("No names. We are nameless!", "cerealkiller"),
     ("HACK THE PLANET!!!", "crashoverride"),
@@ -161,14 +157,14 @@ ENTRIES = [
 
 When we print the guest book entries, print the username as well:
 
-``` {.python}
+``` {.python .browser}
 for entry, who in ENTRIES:
     out += '<p>' + entry + " <i>from " + who + '</i></p>'
 ```
 
 We'll also need a data structure to store usernames and passwords:
 
-``` {.python}
+``` {.python .browser}
 LOGINS = { "crashoverride": "0cool", "cerealkiller": "emmanuel" }
 ```
 
@@ -176,9 +172,12 @@ Next, let's add the `/login` URL:
 
 ``` {.python}
 def handle_request(method, url, headers, body):
-    # ...
-    if url == "/login":
-        return login_form()
+    if method == 'POST':
+        # ...
+    else:
+        # ...
+        elif url == "/login":
+            return login_form()
 
 def login_form():
     body = "<!doctype html>"
@@ -202,10 +201,11 @@ implement the login logic directly in `handle_request`:
 ``` {.python}
 def handle_request(method, url, headers, body):
     username = None
-    if method == "post" and url == "/":
+    if method == 'POST' and url == "/":
         params = form_decode(body)
         if check_login(params.get("username"), params.get("password")):
             username = params["username"]
+    # ...
 ```
 
 The `check_login` method does exactly what you'd expect:
@@ -231,19 +231,20 @@ def handle_request(method, url, headers, body):
             # ...
             resp_headers["Set-Cookie"] = "username=" + username
     # ...
-    
-    return out, resp_headers
 ```
 
-We'll modify `handle_connection` to use the returned headers:
+We'll need to send those headers in `handle_connection`, so first
+modify `handle_request` to return `resp_headers` in each case (there
+are lots!). Then, modify `handle_connection` to use them:
 
 ``` {.python}
 def handle_connection(conx):
     # ...
-    response, headers = handle_request(method, url, headers, body)
-    # ...
+    body, headers = handle_request(method, url, headers, body)
+    response = "HTTP/1.0 200 OK"
     for header, value in headers.items():
-        conx.send("{}: {}\r\n".format(header, value).encode('utf8'))
+        response += "{}: {}\r\n".format(header, value)
+    # ...
 ```
 
 Since we're now setting cookies we should also be reading them:[^6]
@@ -264,7 +265,10 @@ That allows us to automatically log in users with the login cookie:
 
 ``` {.python}
 def handle_request(method, url, headers, body):
-    if "cookie" in headers:
+    resp_headers = {}
+    if method == "POST" and url = "/":
+        # ...
+    elif "cookie" in headers:
         username = parse_cookies(headers["cookie"]).get("username")
 ```
 
@@ -272,31 +276,25 @@ That will log a user in if they have the right cookie. Now we need to
 make some changes to the existing guest book code to handle logins.
 
 We can pass `username` to `show_comments` and use it to either send
-the user the new guest book entry form or to give them a login link:
+the user the input form or to give them a login link:
 
 ``` {.python}
 def show_comments(username):
+    # ...
     if username:
-        out += # form ...
+        # ...
     else:
         out += "<p><a href=/login>Log in to add to the guest list</a></p>"
-```
-
-We now have two types of POST requests: one to post a new guest book
-entry and one to log in. We'll distinguish them by URL, so make sure
-that posting to the guest book uses the condition
-
-``` {.python}
-if method == "POST" and url == "/add":
     # ...
 ```
 
-Also, when you post to the guest book, we'll need to know your
+When you post to the guest book, we'll also need to know your
 username:
 
 ``` {.python}
-if 'guest' in params and len(params['guest']) <= 100 and username:
-    ENTRIES.append((params['guest'], username))
+def add_entry(params, username):
+    if 'guest' in params and len(params['guest']) <= 100 and username:
+        ENTRIES.append((params['guest'], username))
 ```
 
 We aren't showing the new guest book entry form to users who aren't
@@ -325,7 +323,7 @@ Changing your login
 Right now, the cookie just stores your username. It's not hard to
 change! Let's go back to our browser and hard-code the cookie value:
 
-``` {.python}
+``` {.python expected=False}
 self.cookies["username"] = "nameless"
 ```
 
@@ -364,17 +362,23 @@ Then where we set `Set-Cookie` we'll create a new token and remember
 its username:
 
 ``` {.python}
-token = str(random.random())[2:]
-TOKENS[token] = username
-headers["Set-Cookie"] = "token=" + token
+def handle_request(method, url, headers, body):
+    # ...
+    token = str(random.random())[2:]
+    TOKENS[token] = username
+    headers["Set-Cookie"] = "token=" + token
+    # ...
 ```
 
 Then when we read the `Cookie` header, we'll use the token to retrieve
 the username:
 
 ``` {.python}
-if "cookie" in headers:
-    username = TOKENS.get(parse_cookies(headers["cookie"]).get("token"))
+def handle_request(method, url, headers, body):
+    # ...
+    elif "cookie" in headers:
+        username = TOKENS.get(parse_cookies(headers["cookie"]).get("token"))
+    # ...
 ```
 
 As long as the tokens are hard to guess,[^9] the only way to get one is
@@ -408,7 +412,7 @@ are sent where. The rule is: a cookie is only sent in HTTP requests to
 the same origin---where the origin is the scheme, host, and
 port---where it was set. Let's update our cookie policy to do this.
 I'll change the `cookies` field so it stores a map from origins to
-key-value pairs:[^10]
+key-value pairs:
 
 ``` {.python}
 def load(self, url, body=None):
@@ -418,12 +422,23 @@ def load(self, url, body=None):
         self.cookies.setdefault(origin, {})[key] = value
 ```
 
-Then, when generating the `Cookie` header, instead of using
-`self.cookies.items()`, we'll use a `cookies` dictionary defined like this:
+Then, in `cookie_string` instead of iterating over all cookies we'll
+do:
 
 ``` {.python}
-host, port, path = parse_url(self.history[-1])
-cookies = self.cookies.get((host, port), {})
+def cookie_string(self):
+    cookie_string = ""
+    origin = url_origin(self.history[-1])
+    for key, value in self.cookies.get((host, port), {}).items():
+        # ...
+```
+
+In both functions, `url_origin` just extracts the scheme, host, and
+port for a URL:
+
+``` {.python}
+def url_origin(url):
+    return "/".join(url.split("/")[:3])
 ```
 
 Now it's not quite so easy for a rogue web server to steal our cookies.
@@ -458,17 +473,8 @@ value:
 class Browser:
     def setup_js(self):
         # ...
-        self.js.export_function("cookie", self.js_cookie)
+        self.js.export_function("cookie", self.cookie_string)
         # ...
-
-    def js_cookie(self):
-        origin = url_origin(self.history[-1])
-        cookies = self.cookies.get(origin, {})
-
-        cookie_string = ""
-        for key, value in cookies.items():
-            cookie_string += "&" + key + "=" + value
-        return cookie_string[1:]
 ```
 
 Accessing cookies from JavaScript may seem benign, since the
@@ -478,7 +484,7 @@ services sometimes turn into battlegrounds between users. And consider
 the code we wrote to output guest book entries:
 
 ``` {.python}
-out += '<p>' + entry + ' <i> by ' + username + '</i></p>'
+out += '<p>' + entry + ' <i> from ' + who + '</i></p>'
 ```
 
 Note that `entry` can be anything, anything the user might stick into
@@ -573,8 +579,14 @@ Instead, we'd do something to ensure the browser would not interpret it
 as code, something like:
 
 ``` {.python}
-entry = entry.replace("&", "&amp;").replace("<", "&lt;")
-out += # ...
+def html_escape(text):
+    return text.replace("&", "&amp;").replace("<", "&lt;")
+
+def show_comments(username):
+    # ...
+    out += "<p>" + html_escape(entry)
+    out += " <i>from " + html_escape(who) + "</i></p>"
+    # ...
 ```
 
 Now the comment would would be printed as the code `&lt;script`,
@@ -696,8 +708,13 @@ Let's implement nonces in our guest book. Generate a secret nonce and
 add it to the form:
 
 ``` {.python}
-nonce = str(random.random())[2:]
-out += "<input name=nonce type=hidden value=" + nonce + ">"
+def show_comments(username):
+    # ...
+    if username:
+        nonce = str(random.random())[2:]
+        out += "<form action=add method=post>"
+        out +=   "<p><input name=nonce type=hidden value=" + nonce + "></p>"
+        # ...
 ```
 
 The `hidden` input type basically instructs a browser not to render the
@@ -707,7 +724,7 @@ area with a random string of digits---not ideal, but as long as you
 don't touch it form submission will work fine.
 
 We'll also need to save the nonce so that we can tell valid from
-invalid nonces. I'm going to store that in a `NONCE` variable, which
+invalid nonces. I'm going to store that in a `NONCES` variable, which
 will store one nonce per user. We'll then check both that the nonce is
 valid and also that it is associated with the correct user:[^22]
 
@@ -715,15 +732,25 @@ valid and also that it is associated with the correct user:[^22]
     then use in a CSRF attack for another user's submission.
 
 ``` {.python}
-NONCES[username] = nonce
+def show_comments(username):
+    # ...
+    if username:
+        nonce = str(random.random())[2:]
+        NONCES[username] = nonce
 ```
 
 When the form is submitted, we will check the nonce:
 
 ``` {.python}
-if 'nonce' not in params or username not in NONCES \
-  or params['nonce'] != NONCES[username]:
-    return "Invalid nonce", {}
+def add_entry(params, username):
+    if not check_nonce(params, username):
+        return "Invalid nonce", {}
+    # ...
+
+def check_nonce(params, username):
+    if 'nonce' not in params: return False
+    if username not in NONCES: return False
+    return params['nonce'] == NONCES[username]
 ```
 
 Thanks to this change, in order to add an entry to the guest book, you
@@ -790,9 +817,6 @@ they don't want revealed to other websites, so browsers support a
 (never send the `Referer` header when leaving this page) or
 `same-origin` (only do so if navigating to another page on the same
 origin). Implement those two values for `Referer-Policy`.
-
-[^10]: Our browser only supports one scheme, `http`, so I'm not
-    including that in the origin.
 
 [^11]: Well... Our connection isn't encrypted, so an attacker could
     pick up the token from there. But another *server* couldn't.

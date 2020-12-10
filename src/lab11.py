@@ -1,6 +1,6 @@
 """
 This file compiles the code in Web Browser Engineering,
-up to and including Chapter 10 (Saving Partial Layouts),
+up to and including Chapter 11 (Keeping Data Private),
 without exercises.
 """
 
@@ -26,7 +26,10 @@ class Timer:
         print("[{:>10.6f}] {}".format(dt, self.phase))
         self.phase = None
 
-def request(url, payload=None):
+def url_origin(url):
+    return "/".join(url.split("/")[:3])
+
+def request(url, headers={}, payload=None):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
@@ -53,6 +56,8 @@ def request(url, payload=None):
     method = "POST" if payload else "GET"
     body = "{} {} HTTP/1.0\r\n".format(method, path)
     body += "Host: {}\r\n".format(host)
+    for header, value in headers.items():
+        s.send("{}: {}\r\n".format(header, value).encode("utf8"))
     if payload:
         content_length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(content_length)
@@ -748,18 +753,19 @@ class Browser:
             height=HEIGHT
         )
         self.canvas.pack()
+        self.cookies = {}
 
         self.history = []
         self.focus = None
         self.address_bar = ""
         self.scroll = 0
+        self.display_list = []
 
         self.timer = Timer()
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
         self.window.bind("<Key>", self.keypress)
         self.window.bind("<Return>", self.pressenter)
-        self.display_list = []
 
     def handle_click(self, e):
         self.focus = None
@@ -830,12 +836,25 @@ class Browser:
             back = self.history.pop()
             self.load(back)
 
+    def cookie_string(self):
+        cookie_string = ""
+        for key, value in self.cookies.items():
+            cookie_string += "&" + key + "=" + value
+        return cookie_string[1:]
+
     def load(self, url, body=None):
         self.timer.start("Downloading")
         self.address_bar = url
         self.url = url
         self.history.append(url)
-        header, body = request(url, body)
+        req_headers = { "Cookie": self.cookie_string() }
+        header, body = request(url, headers=req_headers, payload=body)
+        if "set-cookie" in headers:
+            kv, params = headers["set-cookie"].split(";", 1)
+            key, value = kv.split("=", 1)
+            origin = url_origin(self.history[-1])
+            self.cookies.setdefault(origin, {})[key] = value
+
         self.timer.start("Parsing HTML")
         self.nodes = parse(lex(body))
         
@@ -844,7 +863,7 @@ class Browser:
             self.rules = CSSParser(f.read()).parse()
 
         for link in find_links(self.nodes, []):
-            header, body = request(relative_url(link, url))
+            header, body = request(relative_url(link, url), headers=req_headers)
             self.rules.extend(CSSParser(body).parse())
 
         self.rules.sort(key=lambda x: x[0].priority())
@@ -853,7 +872,7 @@ class Browser:
         self.timer.start("Running JS")
         self.setup_js()
         for script in find_scripts(self.nodes, []):
-            header, body = request(relative_url(script, self.history[-1]))
+            header, body = request(relative_url(script, self.history[-1]), headers=req_headers)
             try:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
@@ -868,6 +887,7 @@ class Browser:
         self.js.export_function("querySelectorAll", self.js_querySelectorAll)
         self.js.export_function("getAttribute", self.js_getAttribute)
         self.js.export_function("innerHTML", self.js_innerHTML)
+        self.js.export_function("cookie", self.cookie_string)
         with open("runtime9.js") as f:
             self.js.evaljs(f.read())
 
