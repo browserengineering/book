@@ -3,6 +3,7 @@ import difflib
 import subprocess
 import json
 import tempfile
+import urllib.parse
 
 def get_blocks(file):
     status = None
@@ -53,8 +54,8 @@ def indent(block, n=0):
 
 def replace(block, *cmds):
     for find, replace in cmds:
-        find = find.replace("%20", " ")
-        replace = replace.replace("%20", " ")
+        find = urllib.parse.unquote(find)
+        replace = urllib.parse.unquote(replace)
         block = block.replace(find, replace)
     return block
 

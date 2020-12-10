@@ -77,7 +77,7 @@ Name: <input value="Pavel Panchekha">
 
 For simplicity, I'll make input elements have a light gray background:
 
-``` {.python replace="light%20gray"/bgcolor}
+``` {.python replace=%22light%20gray%22/bgcolor }
 class InputLayout:
     def draw(self, to):
         x1, x2 = self.x, self.x + self.w
@@ -450,10 +450,10 @@ button---but browsers usually also submit forms if you press the
 calling `submit_form` inside `pressenter` when a input element is in
 focus.
 
-[^return]: Which macOS calls "Return", in homage to old type writers
-    and referencing the fact that very old Mac operating systems used
-    the carriage return character (instead of the line feed character)
-    for new lines.
+[^mac-return]: Which macOS calls "Return", in homage to old type
+    writers and referencing the fact that very old Mac operating
+    systems used the carriage return character (instead of the line
+    feed character) for new lines.
 
 Once we've made the POST request, the server will send back a new web
 page to render, which our browser needs to lex, parse, style, and lay
