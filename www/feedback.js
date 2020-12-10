@@ -19,7 +19,7 @@ function markdown(elt, arr, recursive) {
     if (elt.nodeType == Node.TEXT_NODE) {
         arr.push(elt.textContent);
     } else if (elt.nodeType == Node.ELEMENT_NODE) {
-        if (recursive && elt.matches(".tools")) {
+        if (recursive && elt.matches(".tools, .feedback")) {
             // pass
         } else if (recursive && elt.matches(EDITABLE_ELEMENTS)) {
             arr.push("[*]");
