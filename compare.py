@@ -58,9 +58,9 @@ def replace(block, *cmds):
         block = block.replace(find, replace)
     return block
 
-def tangle(file, cls):
+def tangle(file):
     with open("/tmp/test", "wb") as f:
-        f.write(FILTER.replace('"python"', '"{}"'.format(cls)).encode("utf8"))
+        f.write(FILTER.encode("utf8"))
         f.close()
         cmd = ["pandoc", "--from", "markdown", "--to", "html", "--lua-filter", f.name, file]
         out = subprocess.run(cmd, capture_output=True)
@@ -102,14 +102,14 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Compare book blocks to teacher's copy")
     argparser.add_argument("book", metavar="book.md", type=argparse.FileType("r"))
     argparser.add_argument("code", metavar="code.py", type=argparse.FileType("r"))
-    argparser.add_argument("--class", dest="cls", default="python",
-                           help="Only consider code blocks with this class")
+    argparser.add_argument("--file", dest="file", help="Only consider code blocks from this file")
     args = argparser.parse_args()
  
     src = args.code.read()
-    blocks = tangle(args.book.name, args.cls)
+    blocks = tangle(args.book.name)
     failure, count = 0, 0
     for name, block in blocks:
+        if name.get("file") != args.file: continue
         block = indent(block, name.get("indent", "0"))
         block = replace(block, *[item.split("/", 1) for item in name.get("replace", "/").split(",")])
         cng = find_block(block, src)

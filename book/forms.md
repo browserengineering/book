@@ -40,7 +40,7 @@ styling, so our browser will be drawing input areas itself.
 So to support inputs we'll need a new kind of layout object, which
 I'll call `InputLayout`, implemented much like `TextLayout`:
 
-``` {.python .browser}
+``` {.python}
 class InputLayout:
     def __init__(self, node):
         self.node = node
@@ -53,7 +53,7 @@ their size, which for simplicity I'll hard-code:[^2]
 [^2]: In real browsers, the `width` and `height` CSS properties can
     change the size of input elements.
 
-``` {.python .browser}
+``` {.python}
 class InputLayout:
     def layout(self):
         weight = self.node.style["font-weight"]
@@ -77,7 +77,7 @@ Name: <input value="Pavel Panchekha">
 
 For simplicity, I'll make input elements have a light gray background:
 
-``` {.python .browser replace="light%20gray"/bgcolor}
+``` {.python replace="light%20gray"/bgcolor}
 class InputLayout:
     def draw(self, to):
         x1, x2 = self.x, self.x + self.w
@@ -95,7 +95,7 @@ obscured!
 Finally, we need to create these `InputLayout` objects; we can do that
 in `InlineLayout.recurse`:
 
-``` {.python .browser indent=4}
+``` {.python indent=4}
 def recurse(self, node):
     if isinstance(node, TextNode):
         self.text(node)
@@ -109,7 +109,7 @@ def recurse(self, node):
 The new `input` function is similar to `text`, except that input areas
 don't need to be split into multiple words:
 
-``` {.python .browser indent=4}
+``` {.python indent=4}
 def input(self, node):
     child = InputLayout(node)
     child.layout()
@@ -133,7 +133,7 @@ In this toy browser, I'm going to require the user to click on an
 input element to change its content. We detect the click in
 `Browser.handle_click`:
 
-``` {.python .browser indent=8}
+``` {.python indent=8}
 elt = obj.node
 while elt:
     if isinstance(elt, TextNode):
@@ -152,7 +152,7 @@ content:[^unless-cursor]
 [^unless-cursor]: Unless you've implemented some basic editing
     controls, like the "Cursor" exercise in [Chapter 7](chrome.md).
 
-``` {.python .browser indent=12}
+``` {.python indent=12}
 elif elt.tag == "input":
     elt.attributes["value"] = ""
 ```
@@ -160,7 +160,7 @@ elif elt.tag == "input":
 Next, typing on the keyboard needs to change the value, and in order
 to do that, we need to set the `focus` to point to this element:
 
-``` {.python .browser indent=12}
+``` {.python indent=12}
 elif elt.tag == "input":
     # ...
     self.focus = obj
@@ -177,7 +177,7 @@ simple `render` call was enough, we're now changing the web page HTML
 itself! This means we must change the layout tree, and to do that, we
 must call `layout`:
 
-``` {.python .browser indent=12}
+``` {.python indent=12}
 elif elt.tag == "input":
     # ...
     self.layout(self.document.node)
@@ -186,7 +186,7 @@ elif elt.tag == "input":
 Once focus has been moved to an input element, typing on the keyboard
 has to change the input's contents:
 
-``` {.python .browser indent=4}
+``` {.python indent=4}
 def keypress(self, e):
     # ...
 
@@ -202,7 +202,7 @@ def keypress(self, e):
 While we're at it, let's modify `render` to draw a cursor into the
 focused input area:
 
-``` {.python .browser indent=4}
+``` {.python indent=4}
 def render(self):
     # ...
     if self.focus == "address bar":
@@ -300,7 +300,7 @@ its `draw` call.
 
 First, let's give buttons a different color:
 
-``` {.python .browser}
+``` {.python}
 class InputLayout:
     def draw(self, to):
         # ...
@@ -312,7 +312,7 @@ class InputLayout:
 Then, buttons should get text from their contents instead of their
 attributes:
 
-``` {.python .browser}
+``` {.python}
 class InputLayout:
     def draw(self, to):
         # ...
@@ -334,7 +334,7 @@ Ok, next up, button clicks. We need to extend `handle_click` with
 button support. That requires modifying the condition in the big
 `while` loop and then adding a new case to the big `if` statement:
 
-``` {.python .browser indent=16}
+``` {.python indent=16}
 # ...
 elif elt.tag == "button":
     self.submit_form(elt)
@@ -349,7 +349,7 @@ inside `submit_form`:[^3]
     outside the form it is supposed to be submitted with. But no
     browser implements that.
 
-``` {.python .browser}
+``` {.python}
 def submit_form(self, elt):
     while elt and elt.tag != "form":
         elt = elt.parent
@@ -358,7 +358,7 @@ def submit_form(self, elt):
 
 Fourth, we need to find all of the input elements inside this form:
 
-``` {.python .browser}
+``` {.python}
 def find_inputs(elt, out):
     if not isinstance(elt, ElementNode): return
     if elt.tag == "input" and "name" in elt.attributes:
@@ -371,7 +371,7 @@ def find_inputs(elt, out):
 Fifth, we can form-encode the resulting parameters:
 
 
-``` {.python .browser}
+``` {.python}
 def submit_form(self, elt):
     # ...
     inputs = find_inputs(elt, [])
@@ -391,7 +391,7 @@ forms.
 
 Finally, we need to submit this form-encoded data in a POST request:
 
-``` {.python .browser}
+``` {.python}
 def submit_form(self, elt):
     # ...
     url = relative_url(elt.attributes["action"], self.url)
@@ -401,7 +401,7 @@ def submit_form(self, elt):
 This adds a new parameter to the browser's `load` method, which we can
 pass to `request`:
 
-``` {.python .browser}
+``` {.python}
 def load(self, url, body=None):
     # ...
     header, body = request(url, body)
@@ -411,7 +411,7 @@ Sixth and finally, to actually send a POST request, we need to modify
 the `request` function to support the new argument. First, the method
 needs to be configurable:
 
-``` {.python .browser}
+``` {.python}
 def request(url, payload=None):
     # ...
     method = "POST" if payload else "GET"
@@ -419,7 +419,7 @@ def request(url, payload=None):
 
 We need to use this method:
 
-``` {.python .browser}
+``` {.python}
 def request(url, payload=None):
     # ...
     body = "{} {} HTTP/1.0\r\n".format(method, path)
@@ -434,7 +434,7 @@ receiving the POST request, needs to know how much content to read
 before responding. So let's add another header, after `Host` and
 before the payload itself:
 
-``` {.python .browser}
+``` {.python}
 def request(url, payload=None):
     # ...
     content_length = len(payload.encode("utf8"))
@@ -484,7 +484,7 @@ because this is, after all, a book on web *browser* engineering.
 Let's start by opening a socket. Like for the browser, we need to
 create an internet streaming socket using TCP:
 
-``` {.python .server}
+``` {.python file=server}
 import socket
 s = socket.socket(
     family=socket.AF_INET,
@@ -497,7 +497,7 @@ Now, instead of calling `connect` on this socket (which causes it to
 connect to some other server), we'll call `bind`, which opens a port
 waits for other computers to connect to it:
 
-``` {.python .server}
+``` {.python file=server}
 s.bind(('', 8000))
 ```
 
@@ -524,7 +524,7 @@ get errors about addresses being in use.
 
 Now, we tell the socket we're ready to accept connections:
 
-``` {.python .server}
+``` {.python file=server}
 s.listen()
 ```
 
@@ -532,7 +532,7 @@ To actually accept those connections, we enter a loop that runs once
 per connection. At the top of the loop we call `s.accept` to wait for
 a new connection:
 
-``` {.python .server}
+``` {.python file=server}
 while True:
     conx, addr = s.accept()
     handle_connection(conx)
@@ -548,7 +548,7 @@ read from the socket until the connection closes.
 Instead, we'll read from the socket line-by-line. First, we read the
 request line:
 
-``` {.python .server}
+``` {.python file=server}
 def handle_connection(conx):
     req = conx.makefile("rb")
     reqline = req.readline().decode('utf8')
@@ -559,7 +559,7 @@ def handle_connection(conx):
 Then we read the headers until we get to a blank line, accumulating the
 headers in a dictionary:
 
-``` {.python .server}
+``` {.python file=server}
 def handle_connection(conx):
     # ...
     headers = {}
@@ -574,7 +574,7 @@ Finally we read the body, but only when the `Content-Length` header
 tells us how much of it to read (that's why that header is mandatory on
 `POST` requests):
 
-``` {.python .server}
+``` {.python file=server}
 def handle_connection(conx):
     # ...
     if 'content-length' in headers:
@@ -589,7 +589,7 @@ def handle_connection(conx):
 Let's fill in `handle_request` later; it returns a string containing
 the resulting HTML web page. We need to send it back to the browser:
 
-``` {.python .server}
+``` {.python file=server}
 def handle_connection(conx):
     # ...
     response = "HTTP/1.0 200 OK\r\n"
@@ -607,13 +607,13 @@ that talks to a toy web browser. Cut it some slack.
 All that's left is implementing `handle_request`. We want some kind of
 guest book, so let's create a list to store guest book entries:
 
-``` {.python .server}
+``` {.python file=server}
 ENTRIES = [ 'Pavel was here' ]
 ```
 
 The `handle_request` function outputs a little HTML page with those entries:
 
-``` {.python .server}
+``` {.python file=server}
 def handle_request(method, url, headers, body):
     out = "<!doctype html>"
     for entry in ENTRIES:
@@ -633,7 +633,7 @@ earlier. You should see a list of (one) guest book entry.
 Let's now make it possible to add to the guest book. First, let's
 add a form to the top of the page:
 
-``` {.python .server}
+``` {.python file=server}
 def handle_request(method, url, headers, body):
     # ...
     out += "<form action=add method=post>"
@@ -647,7 +647,7 @@ This form tells the browser to submit data to
 `http://localhost:8000/add`; the server needs to react to such
 submissions. First, we will need to undo the form-encoding:
 
-``` {.python .server}
+``` {.python file=server}
 def form_decode(body):
     params = {}
     for field in body.split("&"):
@@ -662,7 +662,7 @@ the guest book comment, add it to `ENTRIES`, and then draw the page
 with the new comment shown. To keep this organized, let's rename
 `handle_request` to `show_comments`:
 
-``` {.python .server}
+``` {.python file=server}
 def show_comments():
     # ...
     return out
@@ -670,7 +670,7 @@ def show_comments():
 
 We can have a `add_entry` function to handle form submissions:
 
-``` {.python .server}
+``` {.python file=server}
 def add_entry(params):
     if 'guest' in params:
         ENTRIES.append(params['guest'])
@@ -680,7 +680,7 @@ def add_entry(params):
 This frees up the `handle_request` function to just figure out which
 of these two functions to call:
 
-``` {.python .server}
+``` {.python file=server}
 def handle_request(method, url, headers, body):
     if method == 'POST':
         params = form_decode(body)
