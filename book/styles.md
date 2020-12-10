@@ -21,14 +21,14 @@ The simplest mechanism for that is the `style` attribute on elements.
 It looks like this:
 
 ``` {.example}
-<div style="margin-left:10px;margin-right;10px;"></div>
+<div style="margin-left:10px;margin-right:10px;"></div>
 ```
 
 It's a `<div>` element with its `style` attribute set. That attribute
 contains two key-value pairs, which set `margin-left` and
 `margin-right` to 10 pixels each.^[CSS allows spaces around the
 punctuation, but your attribute parser may not support it.] We want to
-store these pairs in a `style` field on the `ElementNode` so we could
+store these pairs in a `style` field on the `ElementNode` so we can
 consult them during layout.
 
 The first step is adding attributes to `ElementNode`s; attributes are
@@ -194,7 +194,7 @@ selector {
 }
 ```
 
-To account for the possibility that allows blocks apply to a single
+To account for the possibility that several blocks apply to a single
 element, there's a *cascading* mechanism to resolve conflicts in favor
 of the most specific rule.
 
@@ -240,9 +240,8 @@ check that there's a certain piece of text at the current location:
 
 ``` {.python}
 def literal(self, i, literal):
-    l = len(literal)
-    assert self.s[i:i+l] == literal
-    return None, i + l
+    assert self.s[i:i+len(literal)] == literal
+    return None, i + len(literal)
 ```
 
 Here the check is done by `assert`, which raises an exception if the
@@ -265,15 +264,20 @@ def word(self, i):
 ```
 
 This function takes index `i` pointing to the start of the value and
-returns index `j` pointing to its end. It comuputes `j` by
-advancing through letters, numbers, and minus and period characters
-(which might be present in numbers), and returns all the text it
-iterated through as the parsed data. Also note the check: if `j`
-didn't advance, that means `i` didn't point at a word to begin with.
+returns index `j` pointing to its end. It computes `j` by advancing
+through letters, numbers, and minus and period characters (which might
+be present in numbers), and returns all the text it iterated through
+as the parsed data. Also note the check: if `j` didn't advance, that
+means `i` didn't point at a word to begin with.
 
 Parsing functions can also build upon one another. Property-value
-pairs, for example, are a word, a colon, and another word, with
-whitespace in between:
+pairs, for example, are a word, a colon, and another
+word,[^technically-different] with whitespace in between:
+
+[^technically-different]: In reality properties and values have
+    different syntaxes, so using `word` for both isn't quite right,
+    but our browser supports few enough values in our parser that this
+    simplification will be alright.
 
 ``` {.python}
 def pair(self, i):
@@ -286,16 +290,11 @@ def pair(self, i):
 ```
 
 This builds upon `word`, `whitespace`, and `literal` to build a more
-complicated parsing function.[^technically-different] And note that if
+complicated parsing function. And note that if
 `i` does not actually point to a property-value pair, one of the
 `word` calls, or the `literal` call, will fail. When we parse rule
 bodies, we can catch this error to skip property-value pairs that
 don't parse:
-
-[^technically-different]: In reality properties and values have
-    different syntaxes, so using `word` for both isn't quite right,
-    but our browser supports few enough values in our parser that this
-    simplification will be alright.
 
 ``` {.python indent=4}
 def body(self, i):
@@ -402,11 +401,9 @@ def selector(self, i):
         return TagSelector(name.lower()), i
 ```
 
-Note the arithmetic with `i`: we pass `i+1` to `value` in the class
-and ID cases (to skip the hash or dot) but not in the tag case (since
-that first character is part of the tag). Like with property names,
-I'm using `value` for tag, class, and identifier names, a
-simplification a real browser couldn't do.
+While I'm using `word` for tag, class, and identifier names (a
+simplification a real browser couldn't do) I'm at least being careful
+to tag names case-insensitive.
 
 Finally, selectors and bodies can be combined:
 
@@ -459,7 +456,7 @@ Selecting styled elements
 
 Our next step, after parsing CSS, is to figure out which elements each
 rule applies to. The easiest way to do that is to add a method to the
-selector classes, which tells you if the selector matches. Here's how
+selector classes, which tells you if the selector matches. Here's what
 it looks like for `ClassSelector`:
 
 ``` {.python}
@@ -474,7 +471,7 @@ Now that we know which rules applies to an element, we need use their
 property-value pairs to change its `style`. The logic is pretty
 simple:
 
--   Recursive over the tree of `ElementNode`s;
+-   Recurse over the tree of `ElementNode`s;
 -   For each rule, check if the rule matches;
 -   If it does, go through the property/value pairs and assign them.
 
@@ -631,7 +628,7 @@ def relative_url(url, current):
         return current.rsplit("/", 1)[0] + "/" + url
 ```
 
-In the first case, the `[:3]` and the `"/".join` handle the two
+In the second case, the `[:3]` and the `"/".join` handle the two
 slashes that come after `http:` in the URL, while in the last case,
 the logic ensures that a link to `foo.html` on `http://a.com/bar.html`
 goes to `http://a.com/foo.html`, not `http://a.com/bar.html/foo.html`.
@@ -733,8 +730,8 @@ Because this loop comes *before* the recursive call, the parent has
 already inherited the correct property value when the children try to
 read it.
 
-On `TextNode` objects we can do an even simpler trick, since never has
-styles of its own and only inherits from its parent:
+On `TextNode` objects we can do an even simpler trick, since a text
+node never has styles of its own and only inherits from its parent:
 
 ``` {.python}
 def style(node, parent, rules):
@@ -762,7 +759,7 @@ class InlineLayout:
 
 Note that the `font-style` needs to replace the CSS default of
 "normal" with the Tk value "roman", and the `font-size` needs to be
-converted from points to pixels.[^72ppi]
+converted from pixels to points.[^72ppi]
 
 [^72ppi]: Normally you think of points as a physical length unit (one
     72^nd^ of an inch) and pixels as a digital unit (dependent on the
@@ -828,7 +825,7 @@ And then read that in `has_block_children`:[^default-block]
 def has_block_children(self):
     for child in self.node.children:
         # ...
-        elif child.style.get("display", "block") == "inline":
+        elif child.style.get("display", "inline") == "inline":
             return False
     return True
 ```
@@ -904,6 +901,6 @@ priorities.[^lexicographic]
 *Descendant Selectors*: When multiple selectors are separated with
 spaces, like `ul b`, that selects all `<b>` elements with a `<ul>`
 ancestor. Implement descendent selectors; scoring for descendent
-selectors works just like for comnbination selectors. Make sure that
+selectors works just like for combination selectors. Make sure that
 something like `section .warning` selects warnings inside sections,
 while `section.warning` selects warnings that *are* sections.
