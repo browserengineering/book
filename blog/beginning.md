@@ -2,7 +2,7 @@
 title: The Beginning
 author: Pavel Panchekha
 date: 24 July 2020
-prev: index
+next: feedback
 ...
 
 I did it—I finally put up this website, created the sign-up form, and

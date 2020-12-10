@@ -15,17 +15,16 @@ and using Python makes is slower for minimal benefit.
 
 That's true, but the browser of *Web Browser Engineering* is not going
 to be fast. Its Javascript engine is bytecode interpreted, its
-rendering engine is Tk's canvas, and its parsers are hand-coded.
-In fact, there's a benefit to being slow: this toy browser is simple
-enough, and readers are likely to test it on small enough pages, that
-some important optimizations (such as reflow or clipping) wouldn't be
-necessary if the systems they optimize were faster to begin with. For
+rendering engine is Tk's canvas, and its parsers are hand-coded. In
+fact, there's a benefit to being slow: some important optimizations
+wouldn't be necessary if the browser were much faster. My toy browser
+is very simple and readers are likely to test it on small pages. For
 example, the chapter on [Drawing to the Screen](../graphics.md)
 implements clipping for a visible impact even on moderately-sized
 pages. But if the code were written in C against Harfbuzz, instead of
 in Python against Tk, that optimization wouldn't make a noticable
-impact until the browser became much more graphically complex.
-That may be good for usability, but it's bad for pedagogy.
+impact until the browser became much more graphically complex. That
+may be good for usability, but it's bad for pedagogy.
 
 Writing good C, C++, and Rust also means being very careful to handle
 errors, because errors cause compiler errors or mysterious runtime
@@ -42,7 +41,7 @@ networking in the book.
 Finally, systems languages usually present more details than helpful.
 Rust has *how* many string types? Which is still better than C's count
 of zero! And string processing is a big part of the book. Similarly,
-large, mutable, interlinked data structures are a bit part of the
+large, mutable, interlinked data structures are a big part of the
 browser, and deciding ownership or memory management for those is
 difficult. I wouldn't want readers to be writing `unsafe` code or
 handling use-after-free errors.

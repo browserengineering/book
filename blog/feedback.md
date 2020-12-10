@@ -3,6 +3,7 @@ title: Typos and Comments
 author: Pavel Panchekha
 date: 4 August 2020
 prev: beginning
+next: why-python
 ...
 
 [Web Browser Engineering](../) is a book about the web, on the web,
@@ -26,7 +27,7 @@ content[^1] and ship it to a server, which saves the results.
 
 Submitting a typo doesn't change the book for anyone else.[^2] But I
 can review all the changes, and fix any typos I find. The server uses
-Python's [`difflib][difflib] package, to show a word-level diff,[^3]
+Python's [difflib][difflib] package, to show a word-level diff,[^3]
 so the typos are easy to find and assess. Since I ask for your name
 before enabling feedback, I can thank you in the final version of the
 book.
