@@ -200,7 +200,7 @@ booleans, but I wouldn't try it with other objects.] and run the
 `print` function with that argument.
 
 We actually want a `console.log` function, not a `call_python`
-function, so we need define a `console` object and then give it a
+function, so we need to define a `console` object and then give it a
 `log` property. We do that *in JavaScript*, with code like this:
 
 ``` {.javascript}
@@ -273,7 +273,7 @@ those, because we want our runtime to work, and by default Dukpy won't
 show a backtrace to help you debug a crash. It's even worse if the
 runtime code calls into a registered function that crashes.
 
-To help, wrapp each registered function to print any backtraces it
+To help, wrap each registered function to print any backtraces it
 produces:
 
 ``` {.python}
@@ -287,7 +287,7 @@ except:
 
 Re-raise the exception so that you still get the crash.
 
-Also wrap any function in the JavaScript runtime so that they print
+Also wrap all functions in the JavaScript runtime so that they print
 backtraces too:
 
 ``` {.javascript}
@@ -320,7 +320,7 @@ full API:
 -   `getAttribute` returns an element's value for some attribute; and
 -   `innerHTML` replaces the contents of an element with new HTML.
 
-I'm implemented a simplified version of these methods.
+I've implemented a simplified version of these methods.
 `querySelectorAll` will return an array, not this thing called a
 `NodeList`; `innerHTML` will only write the HTML contents of an
 element, and won't allow reading those contents.
@@ -351,8 +351,8 @@ find and return the matching elements. To parse just the selector,
 I'll call into the `CSSParser`'s `selector` method:
 
 ``` {.python}
-def js_querySelectorAll(self, sel):
-    selector, _ = CSSParser(sel + "{").selector(0)
+def js_querySelectorAll(self, selector_text):
+    selector, _ = CSSParser(selector_text + "{").selector(0)
 ```
 
 I'm parsing, say, `#id{` instead of `#id`, because that way the
@@ -361,7 +361,7 @@ error. I've moved the actual selector matching to a recursive helper
 function:[^6]
 
 ``` {.python}
-def js_querySelectorAll(self, sel):
+def js_querySelectorAll(self, selector_text):
     # ...
     return find_selected(self.nodes, selector, [])
 ```
@@ -386,7 +386,7 @@ By the way, now is a good time to wonder what would happen if you
 passed `querySelectorAll` an invalid selector. We're helped out here
 by some of the nice features of DukPy. For example, with an invalid
 selector, `CSSParser.selector` throws an error and the registered
-function crashs. DukPy would turn that Python-side exception into a
+function crashes. DukPy would turn that Python-side exception into a
 JavaScript-side exception in the web script we are running, which can
 catch it or do something else.
 
@@ -533,7 +533,7 @@ document = { querySelectorAll: function(s) {
     handle. That means you can't use equality to compare `Node`
     objects. I'll ignore that but a real browser wouldn't.
 
-We finally have enough JavaScript features to implement little
+We finally have enough JavaScript features to implement a little
 character count function for text areas:
 
 ``` {.javascript}
@@ -606,13 +606,13 @@ def submit_form(self, elt):
     # ...
 ```
 
-So far so good---but what should the `event` method do? Well, it needs
-to run the handlers set up by `addEventListener`, so those need to be
-stored somewhere. Where? I propose we keep that data on the JavaScript
-side, in an variable in the runtime. I'll call that variable
-`LISTENERS`; we'll use it to look up handles and event types, so let's
-make map handles to a dictionary that maps event types to a list of
-handlers:
+So far so good---but what should the `dispatch_event` method do? Well,
+it needs to run the handlers set up by `addEventListener`, so those
+need to be stored somewhere. Where? I propose we keep that data on the
+JavaScript side, in an variable in the runtime. I'll call that
+variable `LISTENERS`; we'll use it to look up handles and event types,
+so let's make map handles to a dictionary that maps event types to a
+list of handlers:
 
 ``` {.javascript}
 LISTENERS = {}
@@ -651,7 +651,7 @@ def dispatch_event(self, type, elt):
     self.js_environment.evaljs(code)
 ```
 
-Note that this code passes arguments to `__runHandlers`by generating
+Note that this code passes arguments to `__runHandlers` by generating
 JavaScript code that embeds those arguments directly. This would be a
 bad idea if, say, `type` contained a quote or a newline. But since the
 browser supplies that value that won't ever happen.[^dukpy-object]
@@ -689,7 +689,7 @@ Modifying the DOM
 
 So far, we've only implemented read-only DOM methods; now we need to
 write to the DOM. The full DOM API provides a lot of such methods, but
-for simplicity I'm going implementing only `innerHTML`, which is used
+for simplicity I'm going to implement only `innerHTML`, which is used
 like this:
 
 ``` {.javascript}
@@ -785,7 +785,7 @@ JavaScript can now modify the web page!
 
 Let's go ahead and use this in our guest book server. Do you want
 people writing long rants in *your* guest book? I don't, so I'm
-going to put a 200-character limit on guest book entries.
+going to put a 100-character limit on guest book entries.
 
 First, let's add a new paragraph `<p id=errors></p>` after the guest
 book form. Initially this paragraph will be empty, but we'll write an
@@ -822,7 +822,7 @@ p_error = document.querySelectorAll("#errors")[0];
 
 function lengthCheck() {
     var value = this.getAttribute("value");
-    if (value.length > 200) {
+    if (value.length > 100) {
         p_error.innerHTML = "Comment too long!"
     }
 }
@@ -840,7 +840,7 @@ server, `/comment.css`, with the contents:
 #errors { font-weight: bold; color: red; }
 ```
 
-But even though we tell the user that their comment is too longthe
+But even though we tell the user that their comment is too long the
 user can submit the guest book entry anyway. Oops!
 
 Event defaults

@@ -196,7 +196,7 @@ class BlockLayout:
         self.y += self.mt
         self.x += self.ml
 
-        y = self.y
+        y = self.y + self.pt
         for child in self.children:
             child.x = self.x + self.pl + self.bl
             child.y = y
@@ -247,10 +247,10 @@ The constructor
 
 `size`
 
-:   This method creates the child layout objects and computes `w` and
-    `h` fields. Plus, it calls `size` on its children. It may not read
-    any layout object's `x` or `y` fields, or call any layout object's
-    `position` method.
+:   This method creates the child layout objects and computes the `w`
+    and `h` fields. Plus, it calls `size` on its children. It may not
+    read any layout object's `x` or `y` fields, nor call any layout
+    object's `position` method.
 
 `position`
 
@@ -283,6 +283,7 @@ class LineLayout:
         self.h = 1.2 * (self.max_descent + self.max_ascent)
 
     def position(self):
+        if not self.children: return
         baseline = self.y + 1.2 * self.max_ascent
         cx = 0
         for child, metrics in zip(self.children, self.metrics):
@@ -393,6 +394,7 @@ class Browser:
         self.document.size()
         self.timer.start("Layout (phase 2)")
         self.document.position()
+        # ...
 ```
 
 Take the time now to stop and debug. We've done a big refactoring, but
@@ -563,7 +565,7 @@ class Browser:
 
 Note that `style` and `size` are called just on the layout object
 passed into `reflow`, while `position` and `draw` are called on the
-whole document. When the page it loaded, it'll create the `document`
+whole document. When the page is loaded, it'll create the `document`
 object and call `reflow` to reflow the whole document. But later
 changes to the page can just invoke `reflow` with a particular layout
 object, and only that object will be styled and go through phase 1
@@ -719,7 +721,7 @@ Next up: the `BlockLayout`. Here `compute_height` looks like this:
 ``` {.python}
 class BlockLayout:
     def compute_height(self):
-        self.h = 0
+        self.h = self.pt + self.pb
         for child in self.children:
             self.h += child.mt + child.h + child.mb
 ```
@@ -734,6 +736,14 @@ line that adjusts `h` inside `flush`, and move that into a new
 
 ``` {.python}
 class InlineLayout:
+    def size(self):
+        # ...
+        
+        self.recurse(self.node)
+        self.flush()
+        self.children.pop()
+        self.compute_height()
+
     def compute_height(self):
         self.h = 0
         for child in self.children:
@@ -824,7 +834,9 @@ extension to the `Timer` class, to figure out which layout object's
 
 *Hover*: Add support for the `:hover` CSS selector, which selects
 whatever element the cursor is currently over. You can bind to the
-`<Motion>` event to get callbacks every time the mouse moves.
+`<Motion>` event to get callbacks every time the mouse moves. Try
+changing the background of whatever element is under the user's
+cursor.
 
 *setAttribute*: Add support for the `setAttribute` method in
 JavaScript. Note that this method can be used to change the `id`,

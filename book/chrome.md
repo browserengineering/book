@@ -5,7 +5,7 @@ prev: styles
 next: forms
 ...
 
-Our toy browser draws web pages, but it is is still missing the key
+Our toy browser draws web pages, but it is still missing the key
 insight of *hypertext*: pages linked together into a web of
 information. We can watch the waves, but cannot yet surf the web. We
 need to implement hyperlinks, and we might as well add an address bar
@@ -162,8 +162,8 @@ define below.
 
 [^5]: Because of line breaking.
 
-Next, since each `TextLayout` corresponds to a particular `TextNode`, we
-can compute its font and based on that its width and height:[^6]
+Next, since each `TextLayout` corresponds to a particular `TextNode`,
+we can compute its font based on its width and height:[^6]
 
 [^6]: Make sure you measure `word`, not `node.text`, which contains
     multiple words! That's an easy-to-make and confusing bug.
@@ -178,7 +178,7 @@ class TextLayout:
         self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
 
         self.w = self.font.measure(self.word)
-        self.h = self.font.metrics('linespace')
+        self.h = self.font.metrics("linespace")
 ```
 
 With `TextLayout` and `LineLayout` in place, we can start surgery on
@@ -239,7 +239,7 @@ class InlineLayout:
 Meanwhile the new `layout` method for `LineLayout`s is nearly the same
 as the old `flush` method, except:
 
-1. It need to compute a `w` field, via `parent.w`
+1. It needs to compute a `w` field, via `parent.w`
 2. It must loop over its children, instead of a `line` field.
 2. It needs to compute `x` and `y` fields on each child instead of
    adding them to a display list
@@ -332,11 +332,11 @@ def handle_click(self, e):
         self.load(url)
 ```
 
-Note that because we we use the current URL to resolve relative URLs
-in links.
+Note that relative URLs are relative to the page the browser is
+currently looking at.
 
 Try the code out, say on this page---you could use the links at the
-top of the page, for example. Our toy browser now sufficies to read
+top of the page, for example. Our toy browser now suffices to read
 not just a chapter, but the whole book.
 
 Browser chrome
@@ -532,23 +532,25 @@ class Browser:
         self.window.bind("<Key>", self.keypress)
 
     def keypress(self, e):
+        if len(e.char) == 0: return
+        if not (0x20 <= ord(e.char) < 0x7f): return
+
         if self.focus == "address bar":
-            if len(e.char) == 1 and 0x20 <= ord(e.char) < 0x7f:
-                self.address_bar += e.char
-                self.render()
+            self.address_bar += e.char
+            self.render()
 ```
 
-Again, because we modified `address_bar` and want the browser chrome
-to be redrawn, we need to call `render()`. Note the conditions in that
-`if` statement: `<Key>` is Tk's catchall event handler for keys, and
-fires for every key press, not just regular letters. So, I make that
-sure a character was typed (instead of just a modifier key being
-pressed), that it is in the ASCII range between "space" and "tilde"
-(as opposed to the arrow keys), and that no modifier keys were held
-(such as Control or Alt) except Shift (that's what "4" means).
+This `keypress` handler starts with some conditions: `<Key>` is Tk's
+catchall event handler for keys, and fires for every key press, not
+just regular letters. So the handler ignores cases where no character
+is typed (a modifier key is pressed) or the character is outside the
+ASCII range (the arrow keys and function keys correspond to larger key
+codes).
 
-Now you can type into the address bar, but it doesn't do anything. So
-our last step is to handle the "Enter" key, which Tk calls `<Return>`:
+Because we modify `address_bar`, we want the browser chrome redrawn,
+so we need to call `render()`. So now you can type into the address
+bar. Our last step is to handle the "Enter" key, which Tk calls
+`<Return>`, so that you can navigate to a new address:
 
 ``` {.python}
 class Browser:

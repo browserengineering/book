@@ -25,16 +25,15 @@ the screen and then allow the user to fill them out.
 On the web, there are two kinds of input areas: `<input>` elements,
 which are for short, one-line inputs, and `<textarea>` elements, which
 are for long, multi-line text. I'll implement `<input>` only, because
-because `<textarea>` has a lot of strange properties.[^sig-ws]
-Applications usually want input areas look the same as in other
-applications, so they use operating-system libraries to draw an input
-area directly.[^ttk] But browsers need a lot of control over
-application styling, so our browser will be drawing input areas
-itself.
+`<textarea>` has a lot of strange properties.[^sig-ws] Applications
+usually want input areas look the same as in other applications, so
+they use operating-system libraries to draw an input area
+directly.[^ttk] But browsers need a lot of control over application
+styling, so our browser will be drawing input areas itself.
 
 [^sig-ws]: Whitespace inside a text area is significant, but text
-    still wraps, an unsual combination. Plus, they are pretty similar
-    to ordinary `<input>` elements in implementation.
+    still wraps, an unsual combination. But ultimately the
+    implementation is similar to `<input>` elements.
 [^ttk]: For Python's Tk library, that's possible with the `ttk` library.
 
 `<input>` elements are inline content, like text, laid out in lines.
@@ -185,14 +184,11 @@ elif elt.tag == "input":
 ```
 
 Once focus has been moved to an input element, typing on the keyboard
-has to change the input's contents. Let's add that to our browser,
-soliciting input on the command line and then updating the element
-with it:
+has to change the input's contents:
 
 ``` {.python .browser indent=4}
 def keypress(self, e):
-    if not (len(e.char) == 1 and 0x20 <= ord(e.char) < 0x7f):
-        return
+    # ...
 
     if not self.focus:
         return
@@ -449,9 +445,15 @@ Note that I grab the length of the payload in bytes, not the length in
 letters.
 
 By the way, here we have form submissions when you click on the form
-button---but browsers usually also submit forms if you type "Enter"
-inside a form input field. Implement that by calling `submit_form`
-inside `pressenter` when a input element is in focus.
+button---but browsers usually also submit forms if you press the
+"Enter" key inside a form input field.[^mac-return] Implement that by
+calling `submit_form` inside `pressenter` when a input element is in
+focus.
+
+[^return]: Which macOS calls "Return", in homage to old type writers
+    and referencing the fact that very old Mac operating systems used
+    the carriage return character (instead of the line feed character)
+    for new lines.
 
 Once we've made the POST request, the server will send back a new web
 page to render, which our browser needs to lex, parse, style, and lay
@@ -517,7 +519,7 @@ get errors about addresses being in use.
 
 [^why-wait]: When your process crashes, the computer on the end of the
     connection won't be informed immediately; if some other process
-    opens the same port, it could receive data means for the old,
+    opens the same port, it could receive data meant for the old,
     now-dead process.
 
 Now, we tell the socket we're ready to accept connections:
@@ -536,11 +538,11 @@ while True:
     handle_connection(conx)
 ```
 
-That connection object is, confusingly, also socket: it is the socket
-corresponding to that one connection. We know what to do with those:
-we read the contents and parse the HTTP message. But it's a little
-trickier to do this in the server than in the browser, because the
-browser waits for the server, and that means the server can't just
+That connection object is, confusingly, also a socket: it is the
+socket corresponding to that one connection. We know what to do with
+those: we read the contents and parse the HTTP message. But it's a
+little trickier to do this in the server than in the browser, because
+the browser waits for the server, and that means the server can't just
 read from the socket until the connection closes.
 
 Instead, we'll read from the socket line-by-line. First, we read the

@@ -111,8 +111,8 @@ def request(url, headers={}, payload=None):
     # ...
 ```
 
-Now before calling `request` in `load`, let's construct
-construct the cookie string:
+Now before calling `request` in `load`, let's construct the cookie
+string:
 
 ``` {.python}
 class Browser:
@@ -404,8 +404,8 @@ cookie, they'd overwrite each other and you'd constantly be getting
 logged out!
 
 Web browsers use the *same origin policy* to determine which cookies
-are sent where. The rule is: if a cookie is only sent in HTTP requests
-to the same origin---where the origin is the scheme, host, and
+are sent where. The rule is: a cookie is only sent in HTTP requests to
+the same origin---where the origin is the scheme, host, and
 port---where it was set. Let's update our cookie policy to do this.
 I'll change the `cookies` field so it stores a map from origins to
 key-value pairs:[^10]
@@ -633,7 +633,7 @@ guest-book form:
 Our browser (and a real one) does not care what origin a form is on:
 you can submit a form on one origin to another origin, and this
 ability is widely used for some reason.[^21] So even if the user fills
-out this form on the evil website, the form is still be submitted to
+out this form on the evil website, the form is still submitted to
 the guest-book. When the browser makes that POST request to the
 guest-book, it will *also* send along its guest-book cookie. Since the
 user has no idea where a form is going---the browser does not show
@@ -688,9 +688,9 @@ that don't come with this secret value.
 
 A nonce is like a login token, but instead of getting it on login, you
 get a new one every time you're presented with a form to fill out. In
-some sense, it's like a cookie, except that it's not stored on a
-per-request basis (inside the HTML!) instead of on a per-server basis,
-so it can't be misused in the same way.
+some sense, it's like a cookie, except that it's stored inside the
+HTML and thus lasts for just one request (instead of across many
+requests to the same server), so it can't be misused in the same way.
 
 Let's implement nonces in our guest book. Generate a secret nonce and
 add it to the form:
@@ -812,10 +812,10 @@ origin). Implement those two values for `Referer-Policy`.
     this won't happen, unless you did the relevant exercise in [Chapter
     4](html.md).
 
-[^20]: Why is the user on the attacker's site? Perhaps it funny memes,
-    or it's been hacked and is being used for the attack against its
-    will, or perhaps the evil-doer paid for ads on sketchy websites
-    where users have low standards for security anyway.
+[^20]: Why is the user on the attacker's site? Perhaps it has funny
+    memes, or it's been hacked and is being used for the attack
+    against its will, or perhaps the evil-doer paid for ads on sketchy
+    websites where users have low standards for security anyway.
 
 [^21]: For example, search forms that actually just direct you to a
     Google search.
