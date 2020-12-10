@@ -374,7 +374,7 @@ class TextLayout:
         self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
         
         self.w = self.font.measure(self.word)
-        self.h = self.font.metrics('linespace')
+        self.h = self.font.metrics("linespace")
 
     def draw(self, to):
         color = self.node.style["color"]
@@ -637,10 +637,11 @@ class Browser:
                 self.load(url)
 
     def keypress(self, e):
+        if len(e.char) == 0: return
+        if not (0x20 <= ord(e.char) < 0x7f): return
         if self.focus == "address bar":
-            if len(e.char) == 1 and 0x20 <= ord(e.char) < 0x7f:
-                self.address_bar += e.char
-                self.render()
+            self.address_bar += e.char
+            self.render()
 
     def pressenter(self, e):
         if self.focus == "address bar":

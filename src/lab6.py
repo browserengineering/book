@@ -182,9 +182,8 @@ class CSSParser:
         return None, i
 
     def literal(self, i, literal):
-        l = len(literal)
-        assert self.s[i:i+l] == literal
-        return None, i + l
+        assert self.s[i:i+len(literal)] == literal
+        return None, i + len(literal)
 
     def word(self, i):
         j = i
@@ -421,7 +420,7 @@ class BlockLayout:
             if isinstance(child, TextNode):
                 if not child.text.isspace():
                     return False
-            elif child.style.get("display", "block") == "inline":
+            elif child.style.get("display", "inline") == "inline":
                 return False
         return True
 

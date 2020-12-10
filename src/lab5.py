@@ -260,7 +260,7 @@ class InlineLayout:
 
     def draw(self, to):
         for x, y, word, font in self.display_list:
-            to.append(DrawText(x, y, word, font)
+            to.append(DrawText(x, y, word, font))
 
 INLINE_ELEMENTS = [
     "a", "em", "strong", "small", "s", "cite", "q", "dfn", "abbr",
