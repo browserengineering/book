@@ -25,8 +25,8 @@ place, it's pretty hard to draw a background without knowing how wide
 and tall to draw it.
 
 So web browsers structure layout differently. In a browser, layout
-produces a *layout tree* of layout object associated with the HTML
-elements[^no-box]. Each layout object of those has a size and a
+produces a *layout tree* of layout objects associated with the HTML
+elements[^no-box]. Each of those layout objects has a size and a
 position, and the layout process is thought of as generating the
 layout tree and then computing those sizes and positions.
 
@@ -300,7 +300,7 @@ children, and then computes its height.
 Besides width and height, we also need to position each element. This
 is trickier, because if you have several paragraphs, the position of
 the second depends on the height of the first. I'll use the rule that
-each element it positioned by its parent before its own `layout`
+each element is positioned by its parent before its own `layout`
 method is called.
 
 Let's start in `BlockLayout`. For the width, elements are greedy:
@@ -482,7 +482,7 @@ list:[^why-not-change]
 class InlineLayout:
     def draw(self, to):
         for x, y, word, font in self.display_list:
-            to.append(DrawText(x, y, word, font)
+            to.append(DrawText(x, y, word, font))
 ```
 
 Meanwhile `BlockLayout` can draw backgrounds with `DrawRect` commands.
@@ -635,4 +635,4 @@ document. Hide the scrollbar if the whole document fits onscreen.
 *Table of Contents*: This book has a table of contents at the top of
 each chapter, enclosed in a `<nav id="toc">` tag, which contains a
 list of links. Add the text "Table of Contents", with a gray
-background, above that list. Don't modifying the lexer or parser.
+background, above that list. Don't modify the lexer or parser.
