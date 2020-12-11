@@ -546,7 +546,11 @@ def relative_url(url, current):
     elif url.startswith("/"):
         return "/".join(current.split("/")[:3]) + url
     else:
-        return current.rsplit("/", 1)[0] + "/" + url
+        current = current.rsplit("/", 1)[0]
+        while url.startswith("../"):
+            current = current.rsplit("/", 1)[0]
+            url = url[3:]
+        return current + "/" + url
 
 class Browser:
     def __init__(self):

@@ -610,14 +610,19 @@ For each link, the `href` attribute gives a location for the
 stylesheet in question. The browser is expected to make a GET request
 to that location, parse the stylesheet, and use it. Note that the
 location is not a full URL; it is something called a *relative URL*,
-which can come in three flavors:^[There are more flavors, including
-query-relative and scheme-relative URLs, which I'm skipping.]
+which can come in three flavors:^[There are even more flavors,
+including query-relative and scheme-relative URLs, that I'm skipping.]
 
 -   A normal URL, which specifies a scheme, host, path, and so on
 -   A host-relative URL, which starts with a slash but reuses the
     existing scheme and host
 -   A path-relative URL, which doesn't start with a slash and is
-    instead tacked onto the current URL (up but not past its last slash)
+    resolved like a file name would be[^how-file]
+    
+[^how-file]: The "file name" after the last slash of the current URL
+    is dropped; if the relative URL starts with "../", slash-separated
+    "directories" are dropped from the current URL; and then the
+    relative URL is put at the end.
 
 To turn a relative URL into a full URL, then, we need to figure out
 which case we're in:
@@ -629,7 +634,11 @@ def relative_url(url, current):
     elif url.startswith("/"):
         return "/".join(current.split("/")[:3]) + url
     else:
-        return current.rsplit("/", 1)[0] + "/" + url
+        current = current.rsplit("/", 1)[0]
+        while url.startswith("../"):
+            current = current.rsplit("/", 1)[0]
+            url = url[3:]
+        return current + "/" + url
 ```
 
 In the second case, the `[:3]` and the `"/".join` handle the two
