@@ -132,7 +132,7 @@ doesn't return anything; let's find out why:
 def parse(tokens):
     # ...
     print(currently_open)
-    raise Exception("Reached last token before end of document"))
+    raise Exception("Reached last token before end of document")
 ```
 
 Python prints a list of `ElementNode` objects, meaning that there were
@@ -520,7 +520,7 @@ def parse(tokens):
 These rules for malformed HTML may seem arbitrary, and they are: they
 evolved over years of trying to guess what people "meant" when they
 wrote that HTML, and are now codified in the [HTML parsing
-standard](html5-parsing).
+standard][html5-parsing].
 
 ::: {.further}
 HTML parsers also have an [algorithm][adoption] to handle mis-nested

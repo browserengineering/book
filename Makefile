@@ -2,7 +2,7 @@ FLAGS=
 
 book: $(patsubst book/%.md,www/%.html,$(wildcard book/*.md))
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md))
-draft: $(patsubst www/%.html,www/draft/%.html,$(html))
+draft: $(patsubst book/%.md,www/draft/%.html,$(wildcard book/*.md))
 
 www/%.html: book/%.md book/template.html book/signup.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)

@@ -3,6 +3,7 @@ import difflib
 import subprocess
 import json
 import tempfile
+import urllib.parse
 
 def get_blocks(file):
     status = None
@@ -53,6 +54,8 @@ def indent(block, n=0):
 
 def replace(block, *cmds):
     for find, replace in cmds:
+        find = urllib.parse.unquote(find)
+        replace = urllib.parse.unquote(replace)
         block = block.replace(find, replace)
     return block
 
@@ -96,13 +99,18 @@ def find_block(block, text):
 
     
 if __name__ == "__main__":
-    import sys
-    with open(sys.argv[2], "r") as f:
-        src = f.read()
-    
-    blocks = tangle(sys.argv[1])
+    import sys, argparse
+    argparser = argparse.ArgumentParser(description="Compare book blocks to teacher's copy")
+    argparser.add_argument("book", metavar="book.md", type=argparse.FileType("r"))
+    argparser.add_argument("code", metavar="code.py", type=argparse.FileType("r"))
+    argparser.add_argument("--file", dest="file", help="Only consider code blocks from this file")
+    args = argparser.parse_args()
+ 
+    src = args.code.read()
+    blocks = tangle(args.book.name)
     failure, count = 0, 0
     for name, block in blocks:
+        if name.get("file") != args.file: continue
         block = indent(block, name.get("indent", "0"))
         block = replace(block, *[item.split("/", 1) for item in name.get("replace", "/").split(",")])
         cng = find_block(block, src)
