@@ -110,7 +110,7 @@ don't forget that the border one is called `border-X-width`, not
 `border-X`.[^because-colors]
 
 [^because-colors]: Because borders have not only widths but also
-    colors and styles, while paddings are margins are thought of as
+    colors and styles, while paddings and margins are thought of as
     whitespace, not something you draw.
 
 You'll also want to add these twelve variables to `DocumentLayout` and
@@ -163,7 +163,7 @@ class InlineLayout:
 
 It's now possible to indent a single element by giving it a `style`
 attribute that adds a `margin-left`. But while that's good for one-off
-changes, but is a tedious way to change the style of, say, every
+changes, it is a tedious way to change the style of, say, every
 paragraph on the page. And if you have a site with many pages, you'll
 need to remember to add the same `style` attributes to every web page
 to achieve a measure of consistency. CSS provides a better way.
@@ -339,7 +339,7 @@ makes it harder to debug your parser.[^try-no-try] This makes
 However, on the web there is an unusual benefit: it supports an
 ecosystem of multiple implementations. For example, different browsers
 may support different syntaxes for property values.[^like-parens]
-Thanks to silent parse errors, web pages can't use features that only
+Thanks to silent parse errors, web pages can use features that only
 some browsers support, with other browsers just ignoring it. This
 principle variously called "Postel's Law",[^for-jon] the "Digital
 Principle",[^from-circuits] or the "Robustness Principle": produce
@@ -467,7 +467,7 @@ def matches(self, node):
 You can write `matches` for `TagSelector` and `IdSelector` on your
 own.
 
-Now that we know which rules applies to an element, we need use their
+Now that we know which rules apply to an element, we need use their
 property-value pairs to change its `style`. The logic is pretty
 simple:
 
@@ -539,10 +539,14 @@ something different.
 Downloading styles
 ==================
 
-Browsers get CSS code from two sources. First, each browser ships with a
-*browser style sheet*, which defines the default styles for all sorts of
-elements; second, browsers download CSS code from the web, as directed
-by web pages they browse to. Let's start with the browser style sheet.
+Browsers get CSS code from two sources. First, each browser ships with
+a *browser style sheet*,[^technically-ua] which defines the default
+styles for all sorts of elements; second, browsers download CSS code
+from the web, as directed by web pages they browse to. Let's start
+with the browser style sheet.
+
+[^technically-ua]: Technically called a "user agent" style sheet,
+    because the browser acts as an agent of the user.
 
 Our browser's style sheet might look like this:
 
