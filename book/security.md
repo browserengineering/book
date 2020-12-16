@@ -255,7 +255,7 @@ Since we're now setting cookies we should also be reading them:[^6]
 ``` {.python}
 def parse_cookies(s):
     out = {}
-    for cookie in s.split(";"):
+    for cookie in s.split("&"):
         k, v = cookie.strip().split("=", 1)
         out[k] = v
     return out
