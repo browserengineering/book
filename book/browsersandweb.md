@@ -1,5 +1,6 @@
 ---
 title: Browsers and the Web
+type: Intro
 next: http
 prev: preliminaries
 ...
