@@ -1,4 +1,5 @@
 ---
+cur: preface
 title: Preface
 type: Preface
 next: preliminaries

@@ -1,0 +1,47 @@
+<div$if(main)$ class="main"$endif$ id=$cur$>
+
+$for(include-before)$
+$include-before$
+$endfor$
+
+$if(title)$
+<header>
+<h1 class="title">$title$</h1>
+</header>
+$endif$
+
+$if(chapter)$
+<nav class="links">
+  Chapter $chapter$ of <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="#$prev$">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="#$next$">&gt;</a>$endif$
+
+</nav>
+$endif$
+$if(type)$
+<nav class="links">
+  The $type$ to <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="#$prev$">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="#$next$">&gt;</a>$endif$
+</nav>
+$endif$
+$if(date)$
+<nav class="links">
+  The <a href="../index.html" title="Table of Contents">Web Browser Engineering</a> blog, dated <time>$date$</time>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="#$prev$">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="#$next$">&gt;</a>$endif$
+</nav>
+$endif$
+
+$if(table-of-contents)$
+<nav id="toc">
+$table-of-contents$
+</nav>
+$endif$
+
+$body$
+
+
+</div>
+
+</html>

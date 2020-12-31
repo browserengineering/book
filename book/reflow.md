@@ -1,6 +1,7 @@
 ---
 title: Saving Partial Layouts
 chapter: 10
+cur: reflow
 prev: scripts
 next: security
 ...
