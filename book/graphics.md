@@ -32,11 +32,35 @@ environment:
 -   The desktop environment will periodically ask the program to redraw
     its window.
 
-Though the desktop environment is responsible for displaying the window,
-the program is responsible for drawing its contents. Applications have
-to redraw these contents sixty times per second or so for interactions
-to feel fluid,[^3] and must respond quickly to clicks and key presses so
-the user doesn't get frustrated.
+Though the desktop environment is responsible for displaying the window, the
+program is responsible for drawing its contents. Applications have to redraw
+these contents quickly for interactions to feel fluid,[^3] and must respond
+quickly to clicks and key presses so the user doesn't get frustrated.
+
+"Feel fluid" can be made more precise. Graphical applications such as browsers
+typically aim to redraw at a speed equal to the refresh rate, or *frame rate*,
+of the screen, and/or a fixed 60Hz[^sixty-hertz]. This means that the browser
+has to finish all its work in less than 1/60th of a second, or 16ms, in order
+to keep up. For this reason, 16ms is called the *frame budget* of the
+application.
+
+::: {.further}
+You should also keep in mind that not all web page interactions are animations -
+there are also discrete actions such as mouse clicks. Research has shown that it
+usually suffices to respond to a discrete action in 100ms - below that
+threshold, most humans are not sensitive to discrete action speed. This is very
+different than interactions such as scroll, where speed less than 60Hz or so is
+quite noticeable. The difference between the two has to do with the way the
+human mind processes movement (animation) versus discrete action, and the time
+it takes for the brain to decide upon such an action, exceute it, and understand
+its result.
+:::
+
+[^sixty-hertz]: Most screens today have a refresh rate of 60Hz, and that
+is generally considered fast enough to look smooth. However, new hardware
+is increasingly appearing with higher refresh rates, such as 120Hz. Sometimes
+rendering engines, games in particular, refresh at lower rates on purpose if
+they know the rendering speed cann keep up.
 
 Doing all of this by hand is a bit of a drag, so programs usually use a
 *graphical toolkit* to simplify these steps. These toolkits allow you to
@@ -404,34 +428,9 @@ the second skips characters above it. In that second `if` statement,
 `y + VSTEP` computes the bottom edge of the character, so that
 character that are halfway inside the viewing window are still drawn.
 
-Scrolling should now be pleasantly fast. And because we split `layout`
-and `render`, we don't need to change `layout` at all to implement
-this optimization.
-
-::: {.further}
-"Pleasantly fast" can be made more precise. Real browsers
-typically aim  to animate (scrolling is a type of user-interaction-driven
-animation) at a speed equal to the refresh rate, or *frame rate*, of the screen,
-and/or a fixed 60Hz[^sixty-hertz]. This means that the browser has to finish
-all its work in less than 1/60th of a second, or 16ms, in order to keep up. For
-this reason, 16ms is called the *frame budget* of the rendering engine.
-
-You should also keep in mind that not all web page interactions are animations -
-there are also discrete actions such as mouse clicks. Research has shown that it
-usually suffices to respond to a discrete action in 100ms - below that
-threshold, most humans are not sensitive to discrete action speed. This is very
-different than interactions such as scroll, where speed less than 60Hz or so is
-quite noticeable. The difference between the two has to do with the way the
-human mind processes movement (animation) versus discrete action, and the time
-it takes for the brain to decide upon such an action, exceute it, and understand
-its result.
-:::
-
-[^sixty-hertz]: Most screens today have a refresh rate of 60Hz, and it
-is generally considered fast enough to look smooth. However, new hardware
-is increasingly appearing with higher refresh rates, such as 120Hz. Sometimes
-rendering engines, games in particular, refresh at lower rates on purpose if
-they know the rendering speed cann keep up.
+Scrolling should now be pleasantly fast, and hopefully well within the 16ms
+frame budget. And because we split `layout` and `render`, we don't need to
+change `layout` at all to implement this optimization.
 
 Summary
 =======
