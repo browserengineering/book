@@ -6,23 +6,19 @@ next: text
 ...
 
 A web browser doesn't just download web page; it also has to show that
-page to the user. Since we're not savages,[^1] we browse the web
-through a graphical user interface. How? In this chapter we'll equip the
-toy browser with a graphical user interface.
+page to the user. How? In this chapter we'll equip the
+toy browser with a graphical user interface [^1].
 
-[^1]: For most of 2011, I mostly used the command-line `w3m` browser. It
-    built character.
+[^1]: There are text-based browsers, though! Fun fact: in 2011, I used the
+command-line `w3m` browser most of the time.
 
 Creating windows
 ================
 
 Desktop and laptop computers run operating systems that provide *desktop
-environments*, with windows, icons, menus, and a pointer.[^2] So in
+environments*, with windows, icons, menus, and a pointer. So in
 order to draw to the screen, a program communicates with the desktop
 environment:
-
-[^2]: Terminal diehards call it a "WIMP environment" as a snide
-    insult.
 
 -   The program asks for a new window and the desktop environment shows
     it somewhere on the screen.
@@ -34,7 +30,7 @@ environment:
 
 Though the desktop environment is responsible for displaying the window,
 the program is responsible for drawing its contents. Applications have
-to redraw these contents sixty times per second or so for interactions
+to redraw these contents 60 times per second or so for interactions
 to feel fluid,[^3] and must respond quickly to clicks and key presses so
 the user doesn't get frustrated.
 
@@ -506,7 +502,7 @@ text. Be careful in how you split the task between `layout` and
 
 [^11]: Right click on the link and "Copy URL".
 
-[^12]: If you're in the US, you'll probably see this phase take a
+[^12]: If you're not in Asia, you'll probably see this phase take a
     while: China is far away!
 
 [^13]: In the olden days of type writers, a new line was two
