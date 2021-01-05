@@ -1,7 +1,7 @@
 ---
 title: Code Outlines
 author: Pavel Panchekha
-date: 4 January 2020
+date: 4 January 2021
 prev: why-python
 ...
 
