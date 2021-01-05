@@ -6,26 +6,28 @@ next: text
 ...
 
 A web browser doesn't just download web page; it also has to show that
-page to the user. How? In this chapter we'll equip the
-toy browser with a graphical user interface [^1].
+page to the user. In the 21^st^ century, that means a graphical
+application. How does that work? In this chapter we'll equip the toy
+browser with a graphical user interface [^1].
 
-[^1]: There are text-based browsers, though! Fun fact: in 2011, I used the
-command-line `w3m` browser most of the time.
+[^1]: There are some obscure text-based browsers: I used `w3m` as my
+    main browser for most of 2011. I don't anymore.
 
 Creating windows
 ================
 
-Desktop and laptop computers run operating systems that provide *desktop
-environments*, with windows, icons, menus, and a pointer. So in
-order to draw to the screen, a program communicates with the desktop
-environment:
+Desktop and laptop computers run operating systems that provide
+*desktop environments*: windows, buttons, and a mouse. So programs
+don't directly draw to the screen; the desktop environment controls
+the screen. Instead:
 
 -   The program asks for a new window and the desktop environment shows
     it somewhere on the screen.
--   The program draws things in its window.
+-   The program draws things in its window and the desktop environment
+    puts that on the screen.
 -   The desktop environment tells the program about clicks and key
     presses.
--   The desktop environment will periodically ask the program to redraw
+-   The desktop environment periodically asks the program to redraw
     its window.
 
 Though the desktop environment is responsible for displaying the window,
