@@ -50,7 +50,7 @@ Plus, in this book's coding style, individual functions directly refer
 to specific browser concepts and are usually organized into classes
 that refer to specific browser components.
 
-As far as I know, code folding (like a lot of text editor tools) are
+As far as I know, code folding (like a lot of text editor tools) is
 generally based on regular expressions. So my first attempt at code
 outlines was literally to `grep` the code for lines beginning with
 `def` or `class`. That worked fairly well to identify functions and
@@ -62,7 +62,7 @@ one from the current Chapter 11 draft:
 I don't really want to show all of this. Default values aren't
 important when you're trying to get a birds-eye view of the code, and
 the `self` parameter that Python requires might be pedagogically
-useful when writing code but it's redundant when you're looking at an
+useful when writing code, but it's redundant when you're looking at an
 outline where methods and functions are clearly distinct.
 
 I could fix some of these by further mangling the text with regular
@@ -94,7 +94,7 @@ each chapter.
 I want code outlines at the end of every chapter. But the book itself
 is written in Markdown and converted to static HTML with Pandoc, so I
 need to somehow run my parser/outliner inside Pandoc. Luckily, Pandoc
-is [scriptable in Lua][pandoc-lua]^[1] and also supports [custom
+is [scriptable in Lua][pandoc-lua][^1] and also supports [custom
 blocks][pandoc-blocks], which can furthermore be adorned with classes.
 That means I can write a Pandoc plugin that detects blocks with the
 `cmd` class and acts on them specifically:
@@ -142,8 +142,8 @@ local proc = io.popen(cmd)
 local results = proc:read("*all")
 ```
 
-I'm not Lua expert but I think the colon means calling a function as a
-method while the dot means calling it like a namespaced member. The
+I'm not a Lua expert, but I think the colon means calling a function as a
+method, while the dot means calling it like a namespaced member. The
 `*all` argument to `read` is a special argument that tells `read` to
 read the whole contents of the file descriptor.
 
@@ -189,7 +189,7 @@ prevents that, but I didn't have any HTML element around individual
 classes, since I was presenting the output as a source block.
 
 The only way I could think of to fix this (other than rearranging my
-code so that column breaks only occur between classes) would be to
+code so that column breaks only occur between classes) was to
 produce richer output than raw text. In Pandoc you can use the
 `RawBlock` construct to do that:
 
