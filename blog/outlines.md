@@ -31,15 +31,13 @@ a high-level overview of how a browser is structured helps a lot.
 
 I saw both of these factors when teaching last year. Over the course
 of a few months, students see many different parts of a browser. When
-it comes time to edit and refactor (like in [Chapter 10][reflow]) it's
+it comes time to edit and refactor (like in Chapter 10) it's
 easy to have only a hazy recollection of how the code you're
 refactoring actually works. And since I wanted my students to come
 away with an understanding of a browser's high-level components, I
 wanted to give them a quick way to view the completed browser at an
 intermediate level of detail somewhere between the full code listing
 and the book's table of contents.
-
-[reflow]: ../reflow.html
 
 # Outlining code
 
