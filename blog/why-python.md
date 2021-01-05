@@ -3,6 +3,7 @@ title: Why Python?
 author: Pavel Panchekha
 date: 5 September 2020
 prev: feedback
+next: outlines
 ...
 
 Why use Python for [Web Browser Engineering](../)?

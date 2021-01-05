@@ -94,7 +94,7 @@ def outline(tree):
             objs.append(Class(cmd.name, fns))
             for subcmd in cmd.body:
                 if isinstance(subcmd, ast.FunctionDef):
-                    fns.append(Function(subcmd.name, [arg.arg for arg in subcmd.args.args]))
+                    fns.append(Function(subcmd.name, [arg.arg for arg in subcmd.args.args if arg.arg != "self"]))
                 else:
                     raise Exception(ast.dump(cmd))
         elif isinstance(cmd, ast.FunctionDef):

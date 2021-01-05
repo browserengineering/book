@@ -76,11 +76,12 @@ function Div(el)
     end
     local cmd = el.content[1].text
     local proc = io.popen(cmd)
+    local results = proc:read("*all")
     local pre = nil
     if el.attributes["html"] then
-       pre = pandoc.Div({ pandoc.RawBlock("html", proc:read("*all")) })
+       pre = pandoc.Div({ pandoc.RawBlock("html", results) })
     else
-       pre = pandoc.CodeBlock(proc:read("*all"))
+       pre = pandoc.CodeBlock(results)
     end
     pre.classes = el.classes
     return pre
