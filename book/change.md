@@ -1,5 +1,6 @@
 ---
 title: A Changing Landscape
+cur: change
 type: Post-script
 prev: skipped
 ...

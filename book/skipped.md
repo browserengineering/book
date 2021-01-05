@@ -1,6 +1,7 @@
 ---
 title: What Wasn't Covered
 type: Conclusion
+cur: skipped
 prev: security
 next: change 
 ...
