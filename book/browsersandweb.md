@@ -460,7 +460,7 @@ advertisements; a secondary typical funding motivation is to improve the
 competitive position of an operating system or device owned or controlled by
 the company building the browser[^26].
 
-An important important and interesting outcome of the second browser war was
+An important and interesting outcome of the second browser war was
 that all mainstream browsers today (of which there are *many* more than three)
 are based on _three open-source web rendering / JavaScript engines_: Chromium,
 Gecko and WebKit[^27]. Further, all three of these engines date back to the
