@@ -18,9 +18,8 @@ desktop platforms, many applications are actually built and delivered as _web
 apps_ - web sites that are intended to be used in similar ways to installed
 applications, not just documents. Many people now spend
 their entire day in a browser, not using a single other application. Even on
-mobile devices such as phones, while a minority of time is spent within a
-browser in the classical sense, many or even most native apps are actually
-_hybrid apps_. Hybrid apps combine traditional native code and _web views_ that
+mobile devices such as phones, even non-browser apps often
+combine traditional native code and _web views_ that
 embed a web site into the application to render parts of its UI. These web
 views are implemented by an actual browser, embedded like a kind of widget,
 within another application. The fraction of hybrid apps that are web content
