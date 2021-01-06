@@ -285,7 +285,7 @@ HTML plays a critical role in both rendering and links. It’s best to just
 consider browsers, HTML (and CSS and JavaScript) part of the core definition of
 the web. In any case, as with all technology, the web continues to evolve. The
 above definition may change over time, but for the purposes of this book, it’s
-apretty good one.
+a pretty good one.
 
 Technologies leading up to the web
 ==================================
