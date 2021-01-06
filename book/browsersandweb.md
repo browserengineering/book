@@ -306,7 +306,7 @@ The earliest exploration of how computers might revolutionize information is a
 1945 essay[^19] entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
 machine called a [Memex](https://en.wikipedia.org/wiki/Memex). The Memex was an
-imagined machine that helps (cf. User Agent) a single human to see and explore
+imagined machine that helps a single human (a "User Agent", in other words) to see and explore
 all the information in the world. It was described in terms of microfilm screen
 technology of the time, but the purpose and concept has some clear similarities
 to the web as we know it today, even if the user interface and technology
