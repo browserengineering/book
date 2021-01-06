@@ -16,7 +16,7 @@ do with computers, and has long since gone beyond the original vision of
 document-based information sharing to many other kinds of applications. On
 desktop platforms, many applications are actually built and delivered as _web
 apps_ - web sites that are intended to be used in similar ways to installed
-applications, not just documents. Many professionals and students now spend
+applications, not just documents. Many people now spend
 their entire day in a browser, not using a single other application. Even on
 mobile devices such as phones, while a minority of time is spent within a
 browser in the classical sense, many or even most native apps are actually
@@ -620,4 +620,3 @@ what comes next!
 
 [^27]:
      The JavaScript engines are actually in different repositories (as are various other sub-components that we won’t get into here), and can and do exist outside of browsers as JavaScript VMs. The most important such application is the use of [v8](https://en.wikipedia.org/wiki/V8_(JavaScript_engine)) to power [node.js](https://nodejs.org/en/). However, each of the three rendering engines does have its own JavaScript VM, so conflating the two is reasonable.
-
