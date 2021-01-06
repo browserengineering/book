@@ -86,39 +86,6 @@ handle errors.
 
 [tkcmds]: https://core.tcl.tk/tk/artifact/51492a6da90068a5
 
-Mobile devices
-==============
-
-Though you're probably writing your browser on a desktop computer, many people
-access the web through mobile devices such as phones or tablets. On mobile
-devices, there's still a screen, a rendering loop, and most other things discussed in this book.[^same-code-on-mobile] But there are several differences worth noting:
-
-* Applications are usually full-screen, with only one
-application drawing to the screen at a time. Also, "background"
-applications may be killed and restarted at any time.
-* There is always a touch screen, no mouse, and a virtual keyboard instead of a
-physical one.
-* There is a concept of a "visual viewport" not present on
-desktop. [^meta-viewport]
-* Screen pixel density is much higher, and the total screen resolution is lower.
-* Power efficiency is much more important, because the device runs on a battery,
-while at the same time the CPU and memory are significantly slower and less
-capable. As a a result, it becomes more important to take advantage of GPU
-hardware on these devices, as well as an even greater focus on performance than
-usual.
-
-[^same-code-on-mobile]: For example, most real browsers have both desktop and
-mobile editions, and the rendering engine code is almost exactly the same for
-both.
-
-[^meta-viewport]: Look at the source of this webpage. In the `<head>` you'll see
-a "viewport" `<meta>` tag. This tag gives instructions to the browser for how to
-handle zooming on a mobile device. Without this tag, the browser makes
-assumptions, for historical reasons, that the site is "desktop-only" and needs
-some special tricks to make it readable on a mobile device, such as allowing the
-user to use a pinch-zoom or double-tap touchscreen gesture to focus in on one
-part of the page. Once zoomed in, the part of the page visible on the screen is
-the "visual viewport" and the whole documents' bounds are the "layout viewport".
 
 Drawing to the window
 =====================
@@ -441,6 +408,40 @@ character that are halfway inside the viewing window are still drawn.
 Scrolling should now be pleasantly fast. And because we split `layout`
 and `render`, we don't need to change `layout` at all to implement
 this optimization.
+
+Mobile devices
+==============
+
+Though you're probably writing your browser on a desktop computer, many people
+access the web through mobile devices such as phones or tablets. On mobile
+devices, there's still a screen, a rendering loop, and most other things discussed in this book.[^same-code-on-mobile] But there are several differences worth noting:
+
+* Applications are usually full-screen, with only one
+application drawing to the screen at a time. Also, "background"
+applications may be killed and restarted at any time.
+* There is always a touch screen, no mouse, and a virtual keyboard instead of a
+physical one.
+* There is a concept of a "visual viewport" not present on
+desktop. [^meta-viewport]
+* Screen pixel density is much higher, and the total screen resolution is lower.
+* Power efficiency is much more important, because the device runs on a battery,
+while at the same time the CPU and memory are significantly slower and less
+capable. As a a result, it becomes more important to take advantage of GPU
+hardware on these devices, as well as an even greater focus on performance than
+usual.
+
+[^same-code-on-mobile]: For example, most real browsers have both desktop and
+mobile editions, and the rendering engine code is almost exactly the same for
+both.
+
+[^meta-viewport]: Look at the source of this webpage. In the `<head>` you'll see
+a "viewport" `<meta>` tag. This tag gives instructions to the browser for how to
+handle zooming on a mobile device. Without this tag, the browser makes
+assumptions, for historical reasons, that the site is "desktop-only" and needs
+some special tricks to make it readable on a mobile device, such as allowing the
+user to use a pinch-zoom or double-tap touchscreen gesture to focus in on one
+part of the page. Once zoomed in, the part of the page visible on the screen is
+the "visual viewport" and the whole documents' bounds are the "layout viewport".
 
 Summary
 =======
