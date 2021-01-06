@@ -89,13 +89,9 @@ handle errors.
 Mobile devices
 ==============
 
-Though you'll probably be implementing your browser on a desktop computer
-(because software development is much easier on such computers), many people
-access the web through mobile devices such as phones or tablets. On these
-devices, there is still a screen and a rendering loop, and for the most part
-all of the things you will learn in this book also apply to
-mobile[^same-code-on-mobile]. However, the typical mobile device has several
-differences worth noting:
+Though you're probably writing your browser on a desktop computer, many people
+access the web through mobile devices such as phones or tablets. On mobile
+devices, there's still a screen, a rendering loop, and most other things discussed in this book.[^same-code-on-mobile] But there are several differences worth noting:
 
 * Applications are usually full-screen, and in those situations, only one
 application is able to draw to the screen at a time. As a result, "background"
