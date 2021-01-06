@@ -93,10 +93,9 @@ Though you're probably writing your browser on a desktop computer, many people
 access the web through mobile devices such as phones or tablets. On mobile
 devices, there's still a screen, a rendering loop, and most other things discussed in this book.[^same-code-on-mobile] But there are several differences worth noting:
 
-* Applications are usually full-screen, and in those situations, only one
-application is able to draw to the screen at a time. As a result, "background"
-applications may be killed and restarted at any time. There is no virtual
-memory.
+* Applications are usually full-screen, with only one
+application drawing to the screen at a time. Also, "background"
+applications may be killed and restarted at any time.
 * There is always a touch screen, no mouse, and a virtual keyboard instead of a
 physical one.
 * There is a concept of a "visual viewport" not present on
