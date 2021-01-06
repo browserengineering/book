@@ -236,9 +236,8 @@ most popular web sites’ HTML payloads literally exist on a hard drive
 somewhere. Instead, their component pieces and dependent databases exist, and
 the final product is dynamically assembled on the fly by complex build and
 “rendering”[^14] systems and sent over the Internet on-demand to your browser.
-The reason for this is that their contents themselves are dynamic - the result
-of automated computer indexes, representing the latest news, blog posts, inbox
-contents, advertisements, or simply personalization to your particular tastes.
+The reason for this is that their contents themselves are dynamic - composed
+by indices of news, blog posts, inbox contents, advertisements, and your particular tastes.
 
 There is also now the aforementioned _web app_, which is a computer application
 written entirely as a web page. These applications are very widespread and are
