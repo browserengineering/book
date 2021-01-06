@@ -31,7 +31,7 @@ Clearly, the browser is a critical piece of software at the center of
 computing. But just as fascinating is that this critical software is all built
 on a few simple, yet revolutionary, concepts that add up to a vision of the
 future of computing and information: open, universal and decentralized
-computing; thedeclarative document model for describing a UI; stateless
+computing; declarative document models for describing UIs; stateless
 applications with progressive enhancement; hyperlinks; and the User Agen
 concept[^3]. While these concepts are easy to state now that we have put them
 together, they came into existence only over time, through a sequence of
