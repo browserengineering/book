@@ -1,6 +1,7 @@
 ---
 title: Sending Information to Servers
 chapter: 8
+cur: forms
 prev: chrome
 next: scripts
 ...

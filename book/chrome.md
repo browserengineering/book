@@ -1,6 +1,7 @@
 ---
 title: Handling Buttons and Links
 chapter: 7
+cur: chrome
 prev: styles
 next: forms
 ...

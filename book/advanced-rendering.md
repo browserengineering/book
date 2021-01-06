@@ -1,13 +1,14 @@
 ---
 title: Adding Visual Effects
 chapter: 12
+cur: advanced-rendering
 prev: security
 next: skipped
 ...
 
 In [Chapter 2](graphics.md), you learned how to draw text to the
-screen and implement scrolling; in (Chapter 5)[layout.md] you will
-learn how to draw styled boxes, and in [Chapter 6][styles.md] how to
+screen and implement scrolling; in [Chapter 5](layout.md) you will
+learn how to draw styled boxes, and in [Chapter 6](styles.md) how to
 parse and apply style sheets to change those styles. This chapter is a
 whirlwind tour of many of the additional effects browsers offer, the
 concepts underlying them, and techniques browsers use to take full

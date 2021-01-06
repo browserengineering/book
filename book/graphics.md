@@ -1,35 +1,34 @@
 ---
 title: Drawing to the Screen
 chapter: 2
+cur: graphics
 prev: http
 next: text
 ...
 
 A web browser doesn't just download web page; it also has to show that
-page to the user. Since we're not savages,[^1] we browse the web
-through a graphical user interface. How? In this chapter we'll equip the
-toy browser with a graphical user interface.
+page to the user. In the 21^st^ century, that means a graphical
+application. How does that work? In this chapter we'll equip the toy
+browser with a graphical user interface [^1].
 
-[^1]: For most of 2011, I mostly used the command-line `w3m` browser. It
-    built character.
+[^1]: There are some obscure text-based browsers: I used `w3m` as my
+    main browser for most of 2011. I don't anymore.
 
 Creating windows
 ================
 
-Desktop and laptop computers run operating systems that provide *desktop
-environments*, with windows, icons, menus, and a pointer.[^2] So in
-order to draw to the screen, a program communicates with the desktop
-environment:
-
-[^2]: Terminal diehards call it a "WIMP environment" as a snide
-    insult.
+Desktop and laptop computers run operating systems that provide
+*desktop environments*: windows, buttons, and a mouse. So programs
+don't directly draw to the screen; the desktop environment controls
+the screen. Instead:
 
 -   The program asks for a new window and the desktop environment shows
     it somewhere on the screen.
--   The program draws things in its window.
+-   The program draws things in its window and the desktop environment
+    puts that on the screen.
 -   The desktop environment tells the program about clicks and key
     presses.
--   The desktop environment will periodically ask the program to redraw
+-   The desktop environment periodically asks the program to redraw
     its window.
 
 Though the desktop environment is responsible for displaying the window, the
@@ -109,6 +108,7 @@ handle errors.
 :::
 
 [tkcmds]: https://core.tcl.tk/tk/artifact/51492a6da90068a5
+
 
 Drawing to the window
 =====================
@@ -432,6 +432,40 @@ Scrolling should now be pleasantly fast, and hopefully well within the 16ms
 frame budget. And because we split `layout` and `render`, we don't need to
 change `layout` at all to implement this optimization.
 
+Mobile devices
+==============
+
+Though you're probably writing your browser on a desktop computer, many people
+access the web through mobile devices such as phones or tablets. On mobile
+devices, there's still a screen, a rendering loop, and most other things discussed in this book.[^same-code-on-mobile] But there are several differences worth noting:
+
+* Applications are usually full-screen, with only one
+application drawing to the screen at a time. Also, "background"
+applications may be killed and restarted at any time.
+* There is always a touch screen, no mouse, and a virtual keyboard instead of a
+physical one.
+* There is a concept of a "visual viewport" not present on
+desktop. [^meta-viewport]
+* Screen pixel density is much higher, and the total screen resolution is lower.
+* Power efficiency is much more important, because the device runs on a battery,
+while at the same time the CPU and memory are significantly slower and less
+capable. As a a result, it becomes more important to take advantage of GPU
+hardware on these devices, as well as an even greater focus on performance than
+usual.
+
+[^same-code-on-mobile]: For example, most real browsers have both desktop and
+mobile editions, and the rendering engine code is almost exactly the same for
+both.
+
+[^meta-viewport]: Look at the source of this webpage. In the `<head>` you'll see
+a "viewport" `<meta>` tag. This tag gives instructions to the browser for how to
+handle zooming on a mobile device. Without this tag, the browser makes
+assumptions, for historical reasons, that the site is "desktop-only" and needs
+some special tricks to make it readable on a mobile device, such as allowing the
+user to use a pinch-zoom or double-tap touchscreen gesture to focus in on one
+part of the page. Once zoomed in, the part of the page visible on the screen is
+the "visual viewport" and the whole documents' bounds are the "layout viewport".
+
 Summary
 =======
 
@@ -530,7 +564,7 @@ text. Be careful in how you split the task between `layout` and
 
 [^11]: Right click on the link and "Copy URL".
 
-[^12]: If you're in the US, you'll probably see this phase take a
+[^12]: If you're not in Asia, you'll probably see this phase take a
     while: China is far away!
 
 [^13]: In the olden days of type writers, a new line was two

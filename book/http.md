@@ -1,6 +1,7 @@
 ---
 title: Downloading Web Pages
 chapter: 1
+cur: http
 prev: preliminaries
 next: graphics
 ...
@@ -581,6 +582,13 @@ TLS is pretty complicated. You can read the details in [RFC
 not recommended. It's very difficult to write a custom TLS
 implementation that is not only correct but secure.
 :::
+
+A reference implementation
+==========================
+
+There are of course many implementations already of the HTTP protocol. You
+should take advantage of this to use one of the existing implementations
+as a *reference implementation*, in order to test the whether your 
 
 Summary
 =======

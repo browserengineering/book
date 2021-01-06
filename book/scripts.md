@@ -1,6 +1,7 @@
 ---
 title: Running Interactive Scripts
 chapter: 9
+cur: scripts
 prev: forms
 next: reflow
 ...

@@ -1,6 +1,7 @@
 ---
 title: Keeping Data Private
 chapter: 11
+cur: security
 prev: reflow
 next: advanced-rendering
 ...
