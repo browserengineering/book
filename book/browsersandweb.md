@@ -462,10 +462,10 @@ the company building the browser[^26].
 An important and interesting outcome of the second browser war was
 that all mainstream browsers today (of which there are *many* more than three)
 are based on _three open-source web rendering / JavaScript engines_: Chromium,
-Gecko and WebKit[^27]. Further, all three of these engines date back to the
-1990s - i.e. almost to the beginning of the web, and two of them (Chromium and
-WebKit) have a common ancestral codebase. Gecko is an open-source descendant of
-code from Netscape. That this occurred is not an accident, and in fact tells us
+Gecko and WebKit[^27]. Since Chromium and
+WebKit have a common ancestral codebase, while Gecko is an open-source descendant of
+Netscape, all three date back to the 1990s---almost to the beginning of the web.
+That this occurred is not an accident, and in fact tells us
 something quite interesting about the most cost-effective way to implement a
 rendering engine based on a commodity set of platform APIs.
 
