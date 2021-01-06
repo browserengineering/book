@@ -23,7 +23,7 @@ combine traditional native code and _web views_ that
 embed a web site into the application to render parts of its UI. These web
 views are implemented by an actual browser, embedded like a kind of widget,
 within another application. The fraction of hybrid apps that are web content
-is alsolikely increasing over time, suggesting a possible future in which
+is also likely increasing over time; maybe in the future
 mobile
 devices end up being web-driven.
 
