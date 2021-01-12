@@ -80,7 +80,7 @@ Here `tkinter.Tk()` creates a window and `tkinter.mainloop()` starts
 the process of redrawing the screen. Inside Tk, `tkinter.Tk()` asks
 the desktop environment to create the window and returns its
 identifier, while `tkinter.mainloop()` enters a loop that looks
-similar to this:
+similar to this [^5]:
 
 ``` {.python expected=False}
 while True:
@@ -540,13 +540,20 @@ text. Be careful in how you split the task between `layout` and
     they didn't update, whatever was there last would stay in place,
     which is why in error conditions you'd often have one window leave
     "trails" on another. Modern systems use a technique called
-    [compositing](https://en.wikipedia.org/wiki/Compositing_window_manager)
-    to avoid trails (at the cost of using more memory), but applications
-    must still redraw their window contents to change what is displayed.
+    [compositing](https://en.wikipedia.org/wiki/Compositing_window_manager),
+    in part to avoid trails (performance and application isolation are
+    additional reasons). Even while using compositing, applications
+    must redraw their window contents to change what is
+    displayed. Chapter 12 will discuss compositing in more detail.
 
 [^4]: The library is called Tk, and it was originally written for a
     different language called Tcl. Python contains an interface to it,
     hence the name.
+
+[^5]: The example event loop above may look like an infinite loop that
+locks up the computer, but it's not, because of preemptive multitasking
+among threads and processes and/or a variant of the event loop that
+sleeps unless it has inputs that wake it up from another thread or process.
 
 [^6]: You may be familiar with the HTML `<canvas>` element, which is a
     similar idea: a 2D rectangle in which you can draw shapes.
