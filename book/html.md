@@ -51,8 +51,10 @@ That tree can also contain text at the leaves:
 
 ```
 class TextNode:
-    def __init__(self, text):
+    def __init__(self, text, parent):
         self.text = text
+        self.parent = parent
+        self.children = []
 ```
 
 Element nodes start empty, and our parser fills them in. The idea is
@@ -75,8 +77,9 @@ open element.
 
 ``` {.python indent=8}
 if isinstance(tok, Text):
-    node = TextNode(tok.text)
-    currently_open[-1].children.append(node)
+    parent = currently_open[-1]
+    node = TextNode(tok.text, parent)
+    parent.children.append(node)
 ```
 
 End tags are similar, but instead of making a new node they take the
@@ -344,17 +347,16 @@ silly to have the parser crash here. Let's handle it just skipping
 all text nodes that only contain whitespace:[^ignore-them]
 
 [^ignore-them]: Real browsers retain whitespace nodes: whitespace is
-    significant inside `<pre>` tags and in some other cases. But our
-    browser already renders `He<b>llo</b>` as two words, so let's just
-    ignore that complication. Plus, ignoring all whitespace tags simplifies
-    [later chapters](layout.md) by avoiding special-case reasoning
-    about whitespace-only text tags.
+    significant inside `<pre>` tags or in cases like the difference
+    between `make<span>up</span>` and `make <span>up</span>`. Our
+    browser won't support that, and ignoring all whitespace tags
+    simplifies [later chapters](layout.md) by avoiding a special-case
+    for whitespace-only text tags.
 
 ``` {.python indent=8}
 if isinstance(tok, Text):
     if tok.text.isspace(): continue
-    node = TextNode(tok.text)
-    currently_open[-1].children.append(node)
+    # ...
 ```
 
 With this change, the parser can now parse this page, and most other

@@ -112,8 +112,10 @@ class ElementNode:
         return "<" + self.tag + ">"
 
 class TextNode:
-    def __init__(self, text):
+    def __init__(self, text, parent):
         self.text = text
+        self.parent = parent
+        self.children = []
 
     def __repr__(self):
         return self.text.replace("\n", "\\n")
@@ -124,8 +126,9 @@ def parse(tokens):
         implicit_tags(tok, currently_open)
         if isinstance(tok, Text):
             if tok.text.isspace(): continue
-            node = TextNode(tok.text)
-            currently_open[-1].children.append(node)
+            parent = currently_open[-1]
+            node = TextNode(tok.text, parent)
+            parent.children.append(node)
         elif tok.tag.startswith("/"):
             node = currently_open.pop()
             if not currently_open: return node
