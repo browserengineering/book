@@ -298,8 +298,7 @@ def handle_click(self, e):
 
 Note the `while` loop. That's because the most specific thing the user
 clicked on is a `TextNode`; we need to walk up the HTML tree to find
-an `ElementNode` that is a link. To do this, you'll need to add a
-`parent` field to `ElementNode`s, so make sure to do that.
+an `ElementNode` that is a link.
 
 Once we've found the link, we need to navigate to that page. That
 would mean:
