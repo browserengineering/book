@@ -32,18 +32,23 @@ if __name__ == "__main__":
     # ...
 ```
 
-Let's start by defining the two types of nodes:[^1]
+Let's start by defining the two types of nodes.[^1] Element nodes
+correspond to tag pairs and form a tree:
 
 [^1]: In reality there are other types of nodes too, like comments,
     doctypes, and `CDATA` sections, and processing instructions. There
     are even some deprecated types!
 
-``` {.python}
+``` {.python expected=False}
 class ElementNode:
     def __init__(self, tag):
         self.tag = tag
         self.children = []
+```
 
+That tree can also contain text at the leaves:
+
+```
 class TextNode:
     def __init__(self, text):
         self.text = text
@@ -67,7 +72,7 @@ tag, or a close tag, and do the appropriate thing. `Text` tokens are
 the easiest: create a new `TextNode` and add it to the bottom-most
 open element.
 
-``` {.python indent=8 expected=True}
+``` {.python indent=8}
 if isinstance(tok, Text):
     node = TextNode(tok.text)
     currently_open[-1].children.append(node)
@@ -76,7 +81,7 @@ if isinstance(tok, Text):
 End tags are similar, but instead of making a new node they take the
 bottom-most open element:
 
-``` {.python indent=8 expected=True}
+``` {.python indent=8}
 elif tok.tag.startswith("/"):
     node = currently_open.pop()
     currently_open[-1].children.append(node)
@@ -85,7 +90,7 @@ elif tok.tag.startswith("/"):
 Finally, for open tags, we need to create a new `ElementNode` and add
 it to the list of currently open elements:
 
-``` {.python indent=8}
+``` {.python indent=8 replace=tok.tag/tok.tag%2c%20tok.attributes}
 else:
     node = ElementNode(tok.tag)
     currently_open.append(node)
@@ -172,7 +177,7 @@ ever write `</meta>` or `</link>`. These tags don't need a close tag
 because they never surround content. Let's add that to our parser:
 
 
-``` {.python indent=8}
+``` {.python indent=8 replace=tok.tag)/tok.tag%2c%20tok.attributes)}
 # ...
 elif tok.tag in SELF_CLOSING_TAGS:
     node = ElementNode(tok.tag)
@@ -268,6 +273,24 @@ if "=" in attrpair:
 This conditional checks the first character of the value to determine
 if it's quoted, and if so strips off the first and last character,
 leaving the contents of the quotes.
+
+When we convert `Tag`s to `ElementNode`s, we need to move the
+attributes as well. Let's add an `attributes` field on `ElementNode`:
+
+``` {.python}
+class ElementNode:
+    def __init__(self, tag, attributes):
+        self.tag = tag
+        self.attributes = attributes
+        self.children = []
+```
+
+When we create an `ElementNode`, we'll copy the attributes over from
+the corresponding `Tag`:
+
+``` {.python indent=12}
+node = ElementNode(tok.tag, tok.attributes)
+```
 
 ::: {.further}
 This is [not the right way][case-hard] to do case
@@ -452,7 +475,7 @@ That loop needs to handle each possible implicit tag. The implicit
 
 ``` {.python indent=8}
 if open_tags == [] and tag != "html":
-    currently_open.append(ElementNode("html"))
+    currently_open.append(ElementNode("html", {}))
 ```
 
 With the `<head>` and `<body>` elements, you need to look at the tag
@@ -480,7 +503,7 @@ elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
         implicit = "head"
     else:
         implicit = "body"
-    currently_open.append(ElementNode(implicit))
+    currently_open.append(ElementNode(implicit, {}))
 ```
 
 If you see an element that's not supposed to go in the `<head>`, you

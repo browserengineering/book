@@ -27,25 +27,9 @@ It looks like this:
 It's a `<div>` element with its `style` attribute set. That attribute
 contains two key-value pairs, which set `margin-left` and
 `margin-right` to 10 pixels each.^[CSS allows spaces around the
-punctuation, but your attribute parser may not support it.] We want to
+punctuation, but our attribute parser does not support it.] We want to
 store these pairs in a `style` field on the `ElementNode` so we can
-consult them during layout.
-
-The first step is adding attributes to `ElementNode`s; attributes are
-currently stored in `Tag`s but not `ElementNode`s:
-
-``` {.python}
-class ElementNode:
-    def __init__(self, tag, attributes):
-        self.tag = tag
-        self.attributes = attributes
-        self.children = []
-```
-
-These attributes need to be passed from the token to the `ElementNode`
-it creates, both in `parse` and in `implicit_tags`. With the
-attributes stored on the `ElementNode`, we can extract[^python-get]
-and parse the `style` attribute in particular:
+consult them during layout:[^python-get]
 
 [^python-get]: The `get` method for dictionaries gets a value out of a
     dictionary, or uses a default value if it's not present.
@@ -61,19 +45,12 @@ class ElementNode:
             self.style[prop.strip().lower()] = val.strip()
 ```
 
-With these changes, each `ElementNode` should now have a `style`
-field with any stylistic choices made by the author.
-
-The CSS box model
-=================
-
-It'd be nice to have some stylistic properties for authors to
-manipulate with this `style` attribute. Let's add support for
-*margins*, *borders*, and *padding*, which change the position of
-block layout objects. Here's how those work. In effect, every block
-has four rectangles associated with it: the *margin rectangle*, the
-*border rectangle*, the *padding rectangle*, and the *content
-rectangle*:
+Each `ElementNode` now has a `style` field with any stylistic choices
+made by the author. Let's add support for *margins*, *borders*, and
+*padding*, which change the position of block layout objects. Here's
+how those work. In effect, every block has four rectangles associated
+with it: the *margin rectangle*, the *border rectangle*, the *padding
+rectangle*, and the *content rectangle*:
 
 ![](https://www.w3.org/TR/CSS2/images/boxdim.png)
 

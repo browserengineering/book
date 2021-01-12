@@ -104,6 +104,7 @@ def lex(body):
 class ElementNode:
     def __init__(self, tag):
         self.tag = tag
+        self.attributes = attributes
         self.children = []
 
     def __repr__(self):
@@ -129,12 +130,12 @@ def parse(tokens):
             if not currently_open: return node
             currently_open[-1].children.append(node)
         elif tok.tag in SELF_CLOSING_TAGS:
-            node = ElementNode(tok.tag)
+            node = ElementNode(tok.tag, tok.attributes)
             currently_open[-1].children.append(node)
         elif tok.tag.startswith("!"):
             continue
         else:
-            node = ElementNode(tok.tag)
+            node = ElementNode(tok.tag, tok.attributes)
             currently_open.append(node)
     while currently_open:
         node = currently_open.pop()
@@ -151,17 +152,17 @@ def implicit_tags(tok, currently_open):
     while True:
         open_tags = [node.tag for node in currently_open]
         if open_tags == [] and tag != "html":
-            currently_open.append(ElementNode("html"))
+            currently_open.append(ElementNode("html", {}))
         elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
             if tag in HEAD_TAGS:
                 implicit = "head"
             else:
                 implicit = "body"
-            currently_open.append(ElementNode(implicit))
+            currently_open.append(ElementNode(implicit, {}))
         elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
             node = currently_open.pop()
             currently_open[-1].children.append(node)
-            currently_open.append(ElementNode("body"))
+            currently_open.append(ElementNode("body", {}))
         else:
             break
 
