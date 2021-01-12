@@ -36,7 +36,7 @@ consult them during layout:[^python-get]
 
 ``` {.python}
 class ElementNode:
-    def __init__(self, tag, attributes):
+    def __init__(self, tag, parent, attributes):
         # ...
         self.style = {}
         for pair in self.attributes.get("style", "").split(";"):
@@ -454,16 +454,18 @@ simple:
 
 Here's what the code would look like:
 
-``` {.python expected=False}
+``` {.python replace=return/node.style%20=%20node.parent.style}
 def style(node, rules):
-    if not isinstance(node, ElementNode): return
-    for selector, pairs in rules:
-        if selector.matches(node):
-            for property in pairs:
-                if property not in node.style:
-                    node.style[property] = pairs[property]
-    for child in node.children:
-        style(child, rules)
+    if isinstance(node, TextNode):
+        return
+    else:
+        for selector, pairs in rules:
+            if selector.matches(node):
+                for property in pairs:
+                    if property not in node.style:
+                        node.style[property] = pairs[property]
+        for child in node.children:
+            style(child, rules)
 ```
 
 We're skipping `TextNode` objects because text doesn't have styles in
@@ -643,7 +645,7 @@ cascade order, but our browser style sheet only has tag selectors in
 it, so every rule already has the lowest possible score.] With the
 rules loaded, we need only sort and apply them and then do layout:
 
-``` {.python expected=False}
+``` {.python}
 def load(self, url):
     # ...
     rules.sort(key=lambda x: x[0].priority())
@@ -691,26 +693,16 @@ INHERITED_PROPERTIES = {
 }
 ```
 
-Now, in our `style` loop we'll need access to the parent node, so
-let's pass that along recursively:
-
-``` {.python}
-def style(node, parent, rules):
-    # ...
-    for child in node.children:
-        style(child, node, rules)
-```
-
 Now let's add another loop to `style`, *after* the handling of rules
 but *before* the recursive calls, to inherit properties:
 
 ``` {.python}
-def style(node, parent, rules):
+def style(node, rules):
     # ...
     for property, default in INHERITED_PROPERTIES.items():
         if property not in node.style:
-            if parent:
-                node.style[property] = parent.style[property]
+            if node.parent:
+                node.style[property] = node.parent.style[property]
             else:
                 node.style[property] = default
     # ...
@@ -724,9 +716,9 @@ On `TextNode` objects we can do an even simpler trick, since a text
 node never has styles of its own and only inherits from its parent:
 
 ``` {.python}
-def style(node, parent, rules):
+def style(node, rules):
     if isinstance(node, TextNode):
-        node.style = parent.style
+        node.style = node.parent.style
     else:
         # ...
 ```
