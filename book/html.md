@@ -114,14 +114,18 @@ elif tok.tag.startswith("/"):
 Time to test this parser out!
 
 ::: {.further}
-HTML parsers don't actually stop at the `</html>` tag; they
-move to a state called [`after after body`][html5-after-body],
-where any additional nodes are added to the end of the `<body>`
-element.
+HTML derives from a long line of document processing systems. Its
+predecessor, [SGML][sgml] traces back to [RUNOFF][runoff] and is a
+sibling to [troff][troff], now used for Linux man pages. The
+[committee][jtc1-sc34] that standardized SGML now works on the `.odf`,
+`.docx`, and `.epub` formats.
 :::
 
-[html5-parsing]: https://html.spec.whatwg.org/multipage/parsing.html
-[html5-after-body]: https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
+[sgml]: https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language
+[runoff]: https://en.wikipedia.org/wiki/TYPSET_and_RUNOFF
+[troff]: https://troff.org
+[jtc1-sc34]: https://www.iso.org/committee/45374.html
+
 
 Self-closing tags
 =================
@@ -198,12 +202,14 @@ SELF_CLOSING_TAGS = [
 Test your parser on this page to see if that helped.
 
 ::: {.further}
-Some people put a slash at the end of a self-closing tag (like
-`<br/>`) but unlike [XML][xml-self-closing] that final slash is
-totally ignored.
+Putting a slash at the end of self-closing tags, like `<br/>`,
+became fashionable when [XHTML][xhtml] looked like it might replace
+HTML. But unlike in [XML][xml-self-closing], in HTML self-closing tags
+are identified by name, not by some special syntax.
 :::
 
 [xml-self-closing]: https://www.w3.org/TR/xml/#sec-starttags
+[xhtml]: https://www.w3.org/TR/xhtml1/
 
 Attributes
 ==========
@@ -228,8 +234,16 @@ class Tag:
         self.tag = parts[0].lower()
 ```
 
-Note that the tag name is converted to lower case, because HTML tag
-names are case-insensitive.
+Note that the tag name is converted to lower case,[^case-fold] because
+HTML tag names are case-insensitive.
+
+[^case-fold]: This is [not the right way][case-hard] to do case
+    insensitive comparisons; the Unicode case folding algorithm should
+    be used if you want to handle languages other than English. But in
+    HTML specifically, tag names only use the ASCII characters where
+    this test is sufficient.
+    
+[case-hard]: https://www.b-list.org/weblog/2018/nov/26/case/
 
 This fixes the problem of identifying self-closing tags, but since
 we're already here, let's also turn the attribute-value pairs into a
@@ -271,14 +285,13 @@ if it's quoted, and if so strips off the first and last character,
 leaving the contents of the quotes.
 
 ::: {.further}
-This is [not the right way][case-hard] to do case
-insensitive comparisons; the Unicode case folding algorithm should be
-used if you want to handle languages other than English. But in HTML
-specifically, tag names only use the ASCII characters where this test
-is sufficient.
+Prior to the invention of CSS, some browsers supported web page
+styling using attributes like `bgcolor` and `vlink` (the
+color of visited links) and tags like `font`. These [are
+obsolete][html5-obsolete], but browsers still support some of them.
 :::
-    
-[case-hard]: https://www.b-list.org/weblog/2018/nov/26/case/
+
+[html5-obsolete]: https://html.spec.whatwg.org/multipage/obsolete.html#obsolete
 
 
 Doctype declarations
@@ -375,14 +388,12 @@ no longer has to construct `Tag` objects or add slashes to things to
 indicate a close tag!
 
 ::: {.further}
-Document type declarations are a holdover from [SGML][sgml], the
-80s-era precursor to XML, and originally included a URL pointing to a
-full definition of the SGML variant you were using. Browsers use the
-absense of a document type declaration to identify [older HTML
-versions][quirks-mode].[^almost-standards-mode]
+SGML document type declarations had a URL to define the valid tags.
+Browsers use the absense of a document type declaration to
+[identify][quirks-mode] very old, pre-SGML versions of
+HTML,[^almost-standards-mode] but don't need the URL, so `<!doctype
+html>` is the best document type declaration today.
 :::
-
-[sgml]: https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language
 
 [quirks-mode]: https://developer.mozilla.org/en-US/docs/Web/HTML/Quirks_Mode_and_Standards_Mode
 
@@ -523,15 +534,21 @@ evolved over years of trying to guess what people "meant" when they
 wrote that HTML, and are now codified in the [HTML parsing
 standard][html5-parsing].
 
+[html5-parsing]: https://html.spec.whatwg.org/multipage/parsing.html
+
 ::: {.further}
-HTML parsers also have an [algorithm][adoption] to handle mis-nested
-elements, plus a [list of active formatting
-elements][html5-formatting-list] to handle formatting like
-`<b>b<i>bi</b>i</i>`.
+Thanks to implicit tags, you can often skip the `<html>`, `<body>`,
+and `<head>` elements. They'll be implicitly added back for you.
+Nor does writing them explicitly let you do anything weird; the HTML
+parser's [many states][after-after-body] guarantee that there's only
+one `<head>` and one `<body>`.[^except-templates]
 :::
 
-[html5-formatting-list]: https://html.spec.whatwg.org/multipage/parsing.html#the-list-of-active-formatting-elements
-[adoption]: https://html.spec.whatwg.org/multipage/parsing.html#adoption-agency-algorithm
+[^except-templates]: At least, per document. An HTML file that uses
+    frames or templates can have more than one `<head>` and `<body>`,
+    but they correspond to different documents.
+
+[after-after-body]: https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
 
 Summary
 =======
