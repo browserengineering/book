@@ -33,28 +33,33 @@ if __name__ == "__main__":
     # ...
 ```
 
-Let's start by defining the two types of nodes:[^1]
+Let's start by defining the two types of nodes.[^1] Element nodes
+correspond to tag pairs and form a tree:
 
 [^1]: In reality there are other types of nodes too, like comments,
     doctypes, and `CDATA` sections, and processing instructions. There
     are even some deprecated types!
 
-``` {.python}
+``` {.python expected=False}
 class ElementNode:
-    def __init__(self, tag):
+    def __init__(self, tag, parent):
         self.tag = tag
+        self.parent = parent
         self.children = []
+```
 
+That tree can also contain text at the leaves:
+
+```
 class TextNode:
-    def __init__(self, text):
+    def __init__(self, text, parent):
         self.text = text
+        self.parent = parent
+        self.children = []
 ```
 
 Element nodes start empty, and our parser fills them in. The idea is
-simple: keep track of the currently open elements, and any time we
-finish a node (at a text or end tag token) we add it to the
-bottom-most currently-open element. Let's store the currently open
-elements in a list, from top to bottom:
+simple: keep track of the currently open elements, a list from top to bottom:
 
 ``` {.python}
 def parse(tokens):
@@ -63,21 +68,32 @@ def parse(tokens):
         # ...
 ```
 
+The *end* of this list---the most recently opened element---is the
+parent of any new nodes we come across. Any time we finish a node (at
+a text or end tag token) the last thing in the `currently_open` list
+is its parent:
+
+``` {.python}
+for tok in tokens:
+    parent = currently_open[-1] if currently_open else None
+    # ...
+```
+
 Inside the loop, we need to figure out if the token is text, an open
 tag, or a close tag, and do the appropriate thing. `Text` tokens are
 the easiest: create a new `TextNode` and add it to the bottom-most
 open element.
 
-``` {.python indent=8 expected=True}
+``` {.python indent=8}
 if isinstance(tok, Text):
-    node = TextNode(tok.text)
-    currently_open[-1].children.append(node)
+    node = TextNode(tok.text, parent)
+    parent.children.append(node)
 ```
 
 End tags are similar, but instead of making a new node they take the
 bottom-most open element:
 
-``` {.python indent=8 expected=True}
+``` {.python indent=8}
 elif tok.tag.startswith("/"):
     node = currently_open.pop()
     currently_open[-1].children.append(node)
@@ -86,9 +102,9 @@ elif tok.tag.startswith("/"):
 Finally, for open tags, we need to create a new `ElementNode` and add
 it to the list of currently open elements:
 
-``` {.python indent=8}
+``` {.python indent=8 replace=parent)/parent%2c%20tok.attributes)}
 else:
-    node = ElementNode(tok.tag)
+    node = ElementNode(tok.tag, parent)
     currently_open.append(node)
 ```
 
@@ -177,11 +193,11 @@ ever write `</meta>` or `</link>`. These tags don't need a close tag
 because they never surround content. Let's add that to our parser:
 
 
-``` {.python indent=8}
+``` {.python indent=8 replace=parent)/parent%2c%20tok.attributes)}
 # ...
 elif tok.tag in SELF_CLOSING_TAGS:
-    node = ElementNode(tok.tag)
-    currently_open[-1].children.append(node)
+    node = ElementNode(tok.tag, parent)
+    parent.children.append(node)
 ```
 
 Use the following `SELF_CLOSING_TAGS` list, straight from the
@@ -284,6 +300,25 @@ This conditional checks the first character of the value to determine
 if it's quoted, and if so strips off the first and last character,
 leaving the contents of the quotes.
 
+When we convert `Tag`s to `ElementNode`s, we need to move the
+attributes as well. Let's add an `attributes` field on `ElementNode`:
+
+``` {.python}
+class ElementNode:
+    def __init__(self, tag, parent, attributes):
+        self.tag = tag
+        self.parent = parent
+        self.attributes = attributes
+        self.children = []
+```
+
+When we create an `ElementNode`, we'll copy the attributes over from
+the corresponding `Tag`:
+
+``` {.python indent=12}
+node = ElementNode(tok.tag, parent, tok.attributes)
+```
+
 ::: {.further}
 Prior to the invention of CSS, some browsers supported web page
 styling using attributes like `bgcolor` and `vlink` (the
@@ -328,17 +363,16 @@ silly to have the parser crash here. Let's handle it just skipping
 all text nodes that only contain whitespace:[^ignore-them]
 
 [^ignore-them]: Real browsers retain whitespace nodes: whitespace is
-    significant inside `<pre>` tags and in some other cases. But our
-    browser already renders `He<b>llo</b>` as two words, so let's just
-    ignore that complication. Plus, ignoring all whitespace tags simplifies
-    [later chapters](layout.md) by avoiding special-case reasoning
-    about whitespace-only text tags.
+    significant inside `<pre>` tags or in cases like the difference
+    between `make<span>up</span>` and `make <span>up</span>`. Our
+    browser won't support that, and ignoring all whitespace tags
+    simplifies [later chapters](layout.md) by avoiding a special-case
+    for whitespace-only text tags.
 
 ``` {.python indent=8}
 if isinstance(tok, Text):
     if tok.text.isspace(): continue
-    node = TextNode(tok.text)
-    currently_open[-1].children.append(node)
+    # ...
 ```
 
 With this change, the parser can now parse this page, and most other
@@ -464,7 +498,7 @@ That loop needs to handle each possible implicit tag. The implicit
 
 ``` {.python indent=8}
 if open_tags == [] and tag != "html":
-    currently_open.append(ElementNode("html"))
+    currently_open.append(ElementNode("html", None, {}))
 ```
 
 With the `<head>` and `<body>` elements, you need to look at the tag
@@ -492,7 +526,8 @@ elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
         implicit = "head"
     else:
         implicit = "body"
-    currently_open.append(ElementNode(implicit))
+    parent = currently_open[-1]
+    currently_open.append(ElementNode(implicit, parent, {}))
 ```
 
 If you see an element that's not supposed to go in the `<head>`, you
@@ -501,7 +536,8 @@ need to implicitly close the `<head>` section:
 ``` {.python indent=8}
 elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
     node = currently_open.pop()
-    currently_open[-1].children.append(node)
+    parent = currently_open[-1]
+    parent.children.append(node)
 ```
 
 Note that the this code doesn't create the `<body>` element itself.

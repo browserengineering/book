@@ -102,16 +102,20 @@ def lex(body):
     return out
 
 class ElementNode:
-    def __init__(self, tag):
+    def __init__(self, tag, parent, attributes):
         self.tag = tag
+        self.parent = parent
+        self.attributes = attributes
         self.children = []
 
     def __repr__(self):
         return "<" + self.tag + ">"
 
 class TextNode:
-    def __init__(self, text):
+    def __init__(self, text, parent):
         self.text = text
+        self.parent = parent
+        self.children = []
 
     def __repr__(self):
         return self.text.replace("\n", "\\n")
@@ -119,22 +123,24 @@ class TextNode:
 def parse(tokens):
     currently_open = []
     for tok in tokens:
+        parent = currently_open[-1] if currently_open else None
+
         implicit_tags(tok, currently_open)
         if isinstance(tok, Text):
-            node = TextNode(tok.text)
-            if not currently_open: continue
-            currently_open[-1].children.append(node)
+            if tok.text.isspace(): continue
+            node = TextNode(tok.text, parent)
+            parent.children.append(node)
         elif tok.tag.startswith("/"):
             node = currently_open.pop()
             if not currently_open: return node
             currently_open[-1].children.append(node)
         elif tok.tag in SELF_CLOSING_TAGS:
-            node = ElementNode(tok.tag)
-            currently_open[-1].children.append(node)
+            node = ElementNode(tok.tag, tok.attributes, parent)
+            parent.children.append(node)
         elif tok.tag.startswith("!"):
             continue
         else:
-            node = ElementNode(tok.tag)
+            node = ElementNode(tok.tag, parent, tok.attributes)
             currently_open.append(node)
     while currently_open:
         node = currently_open.pop()
@@ -151,17 +157,18 @@ def implicit_tags(tok, currently_open):
     while True:
         open_tags = [node.tag for node in currently_open]
         if open_tags == [] and tag != "html":
-            currently_open.append(ElementNode("html"))
+            currently_open.append(ElementNode("html", None, {}))
         elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
             if tag in HEAD_TAGS:
                 implicit = "head"
             else:
                 implicit = "body"
-            currently_open.append(ElementNode(implicit))
+            parent = currently_open[-1]
+            currently_open.append(ElementNode(implicit, parent, {}))
         elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
             node = currently_open.pop()
-            currently_open[-1].children.append(node)
-            currently_open.append(ElementNode("body"))
+            parent = currently_open[-1]
+            parent.children.append(node)
         else:
             break
 

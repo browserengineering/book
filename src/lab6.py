@@ -102,8 +102,9 @@ def lex(body):
     return out
 
 class ElementNode:
-    def __init__(self, tag, attributes):
+    def __init__(self, tag, parent, attributes):
         self.tag = tag
+        self.parent = parent
         self.attributes = attributes
         self.children = []
 
@@ -117,8 +118,9 @@ class ElementNode:
         return "<" + self.tag + ">"
 
 class TextNode:
-    def __init__(self, text):
+    def __init__(self, text, parent):
         self.text = text
+        self.parent = parent
         self.children = []
 
     def __repr__(self):
@@ -127,22 +129,24 @@ class TextNode:
 def parse(tokens):
     currently_open = []
     for tok in tokens:
+        parent = currently_open[-1] if currently_open else None
+
         implicit_tags(tok, currently_open)
         if isinstance(tok, Text):
-            node = TextNode(tok.text)
-            if not currently_open: continue
-            currently_open[-1].children.append(node)
+            if tok.text.isspace(): continue
+            node = TextNode(tok.text, parent)
+            parent.children.append(node)
         elif tok.tag.startswith("/"):
             node = currently_open.pop()
             if not currently_open: return node
             currently_open[-1].children.append(node)
         elif tok.tag in SELF_CLOSING_TAGS:
-            node = ElementNode(tok.tag, tok.attributes)
-            currently_open[-1].children.append(node)
+            node = ElementNode(tok.tag, tok.attributes, parent)
+            parent.children.append(node)
         elif tok.tag.startswith("!"):
             continue
         else:
-            node = ElementNode(tok.tag, tok.attributes)
+            node = ElementNode(tok.tag, parent, tok.attributes)
             currently_open.append(node)
     while currently_open:
         node = currently_open.pop()
@@ -153,22 +157,24 @@ HEAD_TAGS = [
     "base", "basefont", "bgsound", "noscript",
     "link", "meta", "title", "style", "script",
 ]
-            
+
 def implicit_tags(tok, currently_open):
     tag = tok.tag if isinstance(tok, Tag) else None
     while True:
         open_tags = [node.tag for node in currently_open]
         if open_tags == [] and tag != "html":
-            currently_open.append(ElementNode("html", {}))
+            currently_open.append(ElementNode("html", None, {}))
         elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
             if tag in HEAD_TAGS:
                 implicit = "head"
             else:
                 implicit = "body"
-            currently_open.append(ElementNode(implicit, {}))
+            parent = currently_open[-1]
+            currently_open.append(ElementNode(implicit, parent, {}))
         elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
             node = currently_open.pop()
-            currently_open[-1].children.append(node)
+            parent = currently_open[-1]
+            parent.children.append(node)
         else:
             break
 
@@ -295,9 +301,9 @@ INHERITED_PROPERTIES = {
     "font-size": "16px",
 }
 
-def style(node, parent, rules):
+def style(node, rules):
     if isinstance(node, TextNode):
-        node.style = parent.style
+        node.style = node.parent.style
     else:
         for selector, pairs in rules:
             if selector.matches(node):
@@ -306,12 +312,12 @@ def style(node, parent, rules):
                         node.style[property] = pairs[property]
         for property, default in INHERITED_PROPERTIES.items():
             if property not in node.style:
-                if parent:
-                    node.style[property] = parent.style[property]
+                if node.parent:
+                    node.style[property] = node.parent.style[property]
                 else:
                     node.style[property] = default
-    for child in node.children:
-        style(child, node, rules)
+        for child in node.children:
+            style(child, rules)
 
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
@@ -579,7 +585,7 @@ class Browser:
 
         rules.sort(key=lambda x: x[0].priority())
         rules.reverse()
-        style(nodes, None, rules)
+        style(nodes, rules)
         self.layout(nodes)
 
     def layout(self, tree):

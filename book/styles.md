@@ -28,32 +28,16 @@ It looks like this:
 It's a `<div>` element with its `style` attribute set. That attribute
 contains two key-value pairs, which set `margin-left` and
 `margin-right` to 10 pixels each.^[CSS allows spaces around the
-punctuation, but your attribute parser may not support it.] We want to
+punctuation, but our attribute parser does not support it.] We want to
 store these pairs in a `style` field on the `ElementNode` so we can
-consult them during layout.
-
-The first step is adding attributes to `ElementNode`s; attributes are
-currently stored in `Tag`s but not `ElementNode`s:
-
-``` {.python}
-class ElementNode:
-    def __init__(self, tag, attributes):
-        self.tag = tag
-        self.attributes = attributes
-        self.children = []
-```
-
-These attributes need to be passed from the token to the `ElementNode`
-it creates, both in `parse` and in `implicit_tags`. With the
-attributes stored on the `ElementNode`, we can extract[^python-get]
-and parse the `style` attribute in particular:
+consult them during layout:[^python-get]
 
 [^python-get]: The `get` method for dictionaries gets a value out of a
     dictionary, or uses a default value if it's not present.
 
 ``` {.python}
 class ElementNode:
-    def __init__(self, tag, attributes):
+    def __init__(self, tag, parent, attributes):
         # ...
         self.style = {}
         for pair in self.attributes.get("style", "").split(";"):
@@ -62,19 +46,12 @@ class ElementNode:
             self.style[prop.strip().lower()] = val.strip()
 ```
 
-With these changes, each `ElementNode` should now have a `style`
-field with any stylistic choices made by the author.
-
-The CSS box model
-=================
-
-It'd be nice to have some stylistic properties for authors to
-manipulate with this `style` attribute. Let's add support for
-*margins*, *borders*, and *padding*, which change the position of
-block layout objects. Here's how those work. In effect, every block
-has four rectangles associated with it: the *margin rectangle*, the
-*border rectangle*, the *padding rectangle*, and the *content
-rectangle*:
+Each `ElementNode` now has a `style` field with any stylistic choices
+made by the author. Let's add support for *margins*, *borders*, and
+*padding*, which change the position of block layout objects. Here's
+how those work. In effect, every block has four rectangles associated
+with it: the *margin rectangle*, the *border rectangle*, the *padding
+rectangle*, and the *content rectangle*:
 
 ![](https://www.w3.org/TR/CSS2/images/boxdim.png)
 
@@ -478,16 +455,18 @@ simple:
 
 Here's what the code would look like:
 
-``` {.python expected=False}
+``` {.python replace=return/node.style%20=%20node.parent.style}
 def style(node, rules):
-    if not isinstance(node, ElementNode): return
-    for selector, pairs in rules:
-        if selector.matches(node):
-            for property in pairs:
-                if property not in node.style:
-                    node.style[property] = pairs[property]
-    for child in node.children:
-        style(child, rules)
+    if isinstance(node, TextNode):
+        return
+    else:
+        for selector, pairs in rules:
+            if selector.matches(node):
+                for property in pairs:
+                    if property not in node.style:
+                        node.style[property] = pairs[property]
+        for child in node.children:
+            style(child, rules)
 ```
 
 We're skipping `TextNode` objects because text doesn't have styles in
@@ -667,7 +646,7 @@ cascade order, but our browser style sheet only has tag selectors in
 it, so every rule already has the lowest possible score.] With the
 rules loaded, we need only sort and apply them and then do layout:
 
-``` {.python expected=False}
+``` {.python}
 def load(self, url):
     # ...
     rules.sort(key=lambda x: x[0].priority())
@@ -715,26 +694,16 @@ INHERITED_PROPERTIES = {
 }
 ```
 
-Now, in our `style` loop we'll need access to the parent node, so
-let's pass that along recursively:
-
-``` {.python}
-def style(node, parent, rules):
-    # ...
-    for child in node.children:
-        style(child, node, rules)
-```
-
 Now let's add another loop to `style`, *after* the handling of rules
 but *before* the recursive calls, to inherit properties:
 
 ``` {.python}
-def style(node, parent, rules):
+def style(node, rules):
     # ...
     for property, default in INHERITED_PROPERTIES.items():
         if property not in node.style:
-            if parent:
-                node.style[property] = parent.style[property]
+            if node.parent:
+                node.style[property] = node.parent.style[property]
             else:
                 node.style[property] = default
     # ...
@@ -748,9 +717,9 @@ On `TextNode` objects we can do an even simpler trick, since a text
 node never has styles of its own and only inherits from its parent:
 
 ``` {.python}
-def style(node, parent, rules):
+def style(node, rules):
     if isinstance(node, TextNode):
-        node.style = parent.style
+        node.style = node.parent.style
     else:
         # ...
 ```
