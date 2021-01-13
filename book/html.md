@@ -58,16 +58,24 @@ class TextNode:
 ```
 
 Element nodes start empty, and our parser fills them in. The idea is
-simple: keep track of the currently open elements, and any time we
-finish a node (at a text or end tag token) we add it to the
-bottom-most currently-open element. Let's store the currently open
-elements in a list, from top to bottom:
+simple: keep track of the currently open elements, a list from top to bottom:
 
 ``` {.python}
 def parse(tokens):
     currently_open = []
     for tok in tokens:
         # ...
+```
+
+The *end* of this list---the most recently opened element---is the
+parent of any new nodes we come across. Any time we finish a node (at
+a text or end tag token) the last thing in the `currently_open` list
+is its parent:
+
+``` {.python}
+for tok in tokens:
+    parent = currently_open[-1] if currently_open else None
+    # ...
 ```
 
 Inside the loop, we need to figure out if the token is text, an open
@@ -77,7 +85,6 @@ open element.
 
 ``` {.python indent=8}
 if isinstance(tok, Text):
-    parent = currently_open[-1]
     node = TextNode(tok.text, parent)
     parent.children.append(node)
 ```
@@ -96,10 +103,6 @@ it to the list of currently open elements:
 
 ``` {.python indent=8 replace=parent)/parent%2c%20tok.attributes)}
 else:
-    if currently_open:
-        parent = currently_open[-1]
-    else:
-        parent = None
     node = ElementNode(tok.tag, parent)
     currently_open.append(node)
 ```
@@ -188,7 +191,6 @@ because they never surround content. Let's add that to our parser:
 ``` {.python indent=8 replace=parent)/parent%2c%20tok.attributes)}
 # ...
 elif tok.tag in SELF_CLOSING_TAGS:
-    parent = currently_open[-1]
     node = ElementNode(tok.tag, parent)
     parent.children.append(node)
 ```

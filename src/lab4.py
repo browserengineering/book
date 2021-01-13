@@ -123,10 +123,11 @@ class TextNode:
 def parse(tokens):
     currently_open = []
     for tok in tokens:
+        parent = currently_open[-1] if currently_open else None
+
         implicit_tags(tok, currently_open)
         if isinstance(tok, Text):
             if tok.text.isspace(): continue
-            parent = currently_open[-1]
             node = TextNode(tok.text, parent)
             parent.children.append(node)
         elif tok.tag.startswith("/"):
@@ -134,16 +135,11 @@ def parse(tokens):
             if not currently_open: return node
             currently_open[-1].children.append(node)
         elif tok.tag in SELF_CLOSING_TAGS:
-            parent = currently_open[-1]
             node = ElementNode(tok.tag, tok.attributes, parent)
             parent.children.append(node)
         elif tok.tag.startswith("!"):
             continue
         else:
-            if currently_open:
-                parent = currently_open[-1]
-            else:
-                parent = None
             node = ElementNode(tok.tag, parent, tok.attributes)
             currently_open.append(node)
     while currently_open:
