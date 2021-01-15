@@ -294,7 +294,7 @@ page---draws everything---in terms of screen coordinates.[^screen-coordinates]
 
 [^screen-coordinates]: Sort of. What actually happens is that the page is
 first drawn into a bitmap or GPU texture, then that bitmap/texture is shifted
-according to the scroll, and the result is rendered to the screen. Chapter 12
+according to the scroll, and the result is rendered to the screen. [Chapter 12][advanced-rendering.md]
 will have more on this topic.
 
 Our browser will have the same split. Right now `layout` both computes
