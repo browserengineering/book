@@ -290,7 +290,12 @@ coordinates (since you've scrolled 60 pixels down, this text is 72
 pixels from the top of the *screen*). Generally speaking, a browser
 *lays out* the page---determines where everything on the page
 goes---in terms of page coordinates and then *renders* the
-page---draws everything---in terms of screen coordinates.
+page---draws everything---in terms of screen coordinates.[^screen-coordinates]
+
+[^screen-coordinates]: Sort of. What actually happens is that the page is
+first drawn into a bitmap or GPU texture, then that bitmap/texture is shifted
+according to the scroll, and the result is rendered to the screen. [Chapter 12][advanced-rendering.md]
+will have more on this topic.
 
 Our browser will have the same split. Right now `layout` both computes
 the position of each character and draws it: layout and rendering.
@@ -358,8 +363,8 @@ Reacting to the user
 ====================
 
 Most browsers scroll the page when you press the up and down keys,
-rotate the scroll wheel, or drag the scroll bar. To keep things simple,
-let's just implement the down key.
+rotate the scroll wheel, drag the scroll bar, or apply a touch gesture to the
+screen. To keep things simple, let's just implement the down key.
 
 Tk allows you to *bind* a function to a key, which instructs Tk to
 call that function when the key is pressed. For example, to bind to
@@ -511,7 +516,7 @@ wheel.[^laptop-mousewheel] The associated event object has an
 `event.delta` value which tells you how far and in what direction to
 scroll.
 
-[^laptop-mousewheel]: It also seems to trigger with touchpad gestures,
+[^laptop-mousewheel]: It will also trigger with touchpad gestures,
     if you don't have a mouse.
 
 *Emoji*: Add support for emoji 😀 to our browser. Emoji are
