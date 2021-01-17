@@ -598,9 +598,9 @@ storing the set of all visited pages and checking them when you lay
 out links. Link color is currently driven by CSS: you need to work
 with that somehow. I recommend adding the `visited` class to all links
 that have been visited, right after parsing and before styling. Then
-you could add a browser style that uses that class. You could add
-*pseudo*-class, like in [Chapter 10](reflow.md), which is what real
-browsers do.
+you could add a browser style that uses that class. You could add a
+[*pseudo*-class](https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes)
+feature to your CSS parser, which is what real browsers do.
 
 *Bookmarks*: Implement basic *bookmarks*. Add a button to the browser
 chrome; clicking it should bookmark the page. When you're looking at a

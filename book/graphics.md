@@ -411,7 +411,8 @@ Faster Rendering
 But this scrolling is pretty slow.[^slow-scroll] Why? It turns out
 that loading information about the shape of a character, inside
 `create_text`, takes a while. To speed up scrolling we need to make
-sure to do it only when necessary.
+sure to do it only when necessary (while at the same time ensuring the
+pixels on the screen are always correct).
 
 [^slow-scroll]: How fast exactly seems to depend a lot on your
     operating system and default font.

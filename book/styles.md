@@ -887,3 +887,11 @@ ancestor. Implement descendent selectors; scoring for descendent
 selectors works just like for combination selectors. Make sure that
 something like `section .warning` selects warnings inside sections,
 while `section.warning` selects warnings that *are* sections.
+
+*Ancestor Selectors*: an ancestor selector is the inverse of a descendant
+selector - it styles an ancestor according to the presence of a descendant.
+This feature is one of the benefits provided by the
+[`:has` syntax](https://drafts.csswg.org/selectors-4/#relational). However, you
+will find that `:has` is not implemented in any real browser as yet. Can you
+guess why? Hint: try to implement ancestor selectors and analyze the speed of
+your algorithm.
