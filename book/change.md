@@ -16,7 +16,7 @@ obsolete.
 
 This book skips modern developments like HTTP 2+ and Web Assembly;
 perhaps a later edition of this book will have to cover them. Nor does
-this book talk much about hardware virtualization like Web Bluetooth
+this book talk much about hardware access APIs like Web Bluetooth
 or format centralization like web video. Maybe in the future those
 will be more central to what browsers do.
 

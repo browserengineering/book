@@ -21,7 +21,7 @@ inappropriate.
 JavaScript Execution
 ====================
 
-A solid third of a modern web browser is a very-high-performance
+A large part of a modern web browser is a very-high-performance
 implementation of JavaScript. Today, every major browser not only runs
 JavaScript, but compiles it, in flight, to low-level machine code
 using runtime type analysis. Plus, techniques like hidden classes
@@ -43,10 +43,9 @@ Accessibility
 Web pages should be usable despite physical (blind, difficulty seeing,
 Parkinson's), mental (learning disabilities, dyslexia), or situational
 (car console, gloves, eye dilation) disabilities. The web has grown a
-rich but sadly seldom-used garden of accessibility technologies. Not
-only is this a topic of technical interest and moral imperative, the
-developing legal landscape in the US means it will only grow in
-importance over time.
+rich garden of accessibility technologies. Not only is this a topic of
+technical interest and moral imperative, the developing legal landscape in
+many countries means it will only grow in importance over time.
 
 To be honest I skipped this topic because I worried that web
 accessibility was a difficult topic to engage students in. I also

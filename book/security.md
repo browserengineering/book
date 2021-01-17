@@ -29,8 +29,8 @@ cookie---the name is meaningless, ignore it---is a little bit of
 information stored by your browser on behalf of a web server. It's
 that information that allows the server to distinguish one web request
 from another. Bereft of cookies, your web browser is effectively
-anonymous:[^1] it isn't logged in anywhere so it can't do anything
-useful.
+anonymous:[^1] it isn't logged in anywhere so it can't do any useful
+personalization or show you your private data.
 
 [^1]: I don't mean anonymous against malicious attackers, who might
     use *browser fingerprinting* or similar techniques to tell users
@@ -613,7 +613,7 @@ showing the entry. These are all worse than escaping:
     something benign, like old-school heart emoticons `<3`.
 -   Saving the character-replaced entry assumes you'll only consume
     the entry in HTML. Your server might later want to use that data
-    in JSON (you'll need to escape single quotes), or raw JavaScript
+    in [JSON](https://www.json.org/) (you'll need to escape single quotes), or raw JavaScript
     (you'll need to escape `</script>`), or JSON embedded in
     JavaScript embedded in HTML. Data should be a single source of
     truth, not a place to store mangled HTML.
