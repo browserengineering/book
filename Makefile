@@ -1,6 +1,6 @@
 FLAGS=
 
-ORDERED_PAGES=preface preliminaries http graphics text html layout styles chrome forms scripts reflow security advanced-rendering skipped change
+ORDERED_PAGES=preface browsersandweb preliminaries http graphics text html layout styles chrome forms scripts reflow security visual-effects skipped change glossary
 
 PANDOC_COMMON_ARGS=--from markdown --to html --lua-filter=book/filter.lua --fail-if-warnings
 

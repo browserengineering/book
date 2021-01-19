@@ -20,8 +20,8 @@ Introduction
 
 ::: {.intro}
 1. [Preface](preface.md)
-
-2. [Preliminaries](preliminaries.md)
+2. [Browsers and the web](browsersandweb.md)
+3. [Preliminaries](preliminaries.md)
 :::
 
 Part 1: Drawing Graphics
@@ -61,7 +61,7 @@ Part 3: Running Applications
 Part 4: Modern Browsers
 =======================
 
-(@) [Adding Visual Effects](advanced-rendering.md)\
+(@) [Adding Visual Effects](visual-effects.md)\
     Filters and transformations 
 
 Conclusion
