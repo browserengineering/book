@@ -16,8 +16,8 @@ Profiling our browser
 =====================
 
 Before we start speeding up our browser, let's confirm that layout is
-taking up a lot of time. And before that, let's list out everything
-our browser does. First, on initial load:
+taking up a lot of time, and what is taking up the time[^benchmark]. And before
+that, let's list out everything our browser does. First, on initial load:
 
 -   It downloads a web page (including parsing the URL, opening a
     connection, sending a request, and getting a response);
@@ -26,6 +26,8 @@ our browser does. First, on initial load:
     downloading them, parsing them, and sorting them)
 -   Then it runs the JavaScript (including finding linked JS files,
     downloading them, and running them)
+
+[^benchmark]: You should always benchmark code before jumping to conclusions!
 
 And then every time it does layout:
 
@@ -97,7 +99,7 @@ console on a full page load for this web page.
     [  0.023172] Style
     [  0.722214] Layout
     [  0.113295] Display list
-    [  0.005794] Rendering
+    [  0.005794] Painting
     [  0.003216] Chrome
 
 
@@ -499,7 +501,7 @@ now if we manage to run phase 1 on fewer elements, reflow will be a
 lot faster. So let's work on avoiding the first phase whenever we can.
 
 [^8]: "Near-instantaneous‽ 2.454 milliseconds is almost 14% of our
-    one-frame time budget! And then there's the display list!" Yeah,
+    16ms [frame time budget](graphics.html#framebudget)! And then there's the display list!" Yeah,
     uh, this is a toy web browser written in Python. Cut me some
     slack.
 
@@ -833,7 +835,8 @@ every width, height, and position matches up. Fix any mismatches.
 extension to the `Timer` class, to figure out which layout object's
 `draw` method is slow, and fix it.
 
-*Hover*: Add support for the `:hover` CSS selector, which selects
+*Hover*: Add support for the `:hover` CSS selector (this particular type of
+selector is called a pseudo-class), which selects
 whatever element the cursor is currently over. You can bind to the
 `<Motion>` event to get callbacks every time the mouse moves. Try
 changing the background of whatever element is under the user's

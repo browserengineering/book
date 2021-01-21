@@ -36,6 +36,7 @@ program is responsible for drawing its contents. Applications have to redraw
 these contents quickly for interactions to feel fluid,[^3] and must respond
 quickly to clicks and key presses so the user doesn't get frustrated.
 
+<a name="framebudget">
 "Feel fluid" can be made more precise. Graphical applications such as browsers
 typically aim to redraw at a speed equal to the refresh rate, or *frame rate*,
 of the screen, and/or a fixed 60Hz[^sixty-hertz]. This means that the browser
