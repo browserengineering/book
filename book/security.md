@@ -3,7 +3,7 @@ title: Keeping Data Private
 chapter: 11
 cur: security
 prev: reflow
-next: advanced-rendering
+next: visual-effects
 ...
 
 Our browser has grown up and now runs (small) web applications. Let's
