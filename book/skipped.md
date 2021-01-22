@@ -2,7 +2,7 @@
 title: What Wasn't Covered
 type: Conclusion
 cur: skipped
-prev: security
+prev: visual-effects
 next: change 
 ...
 

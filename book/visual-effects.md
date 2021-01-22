@@ -1,7 +1,7 @@
 ---
 title: Adding Visual Effects
 chapter: 12
-cur: advanced-rendering
+cur: visual-effects
 prev: security
 next: skipped
 ...
