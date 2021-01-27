@@ -40,7 +40,7 @@ class Text:
 We'll do the same for `Tag`. Since it takes two tags (the open and the
 close tag) to make a node, let's rename the `Tag` class to `Element`:
 
-``` {.python}
+``` {.python expected=False}
 class Element:
     def __init__(self, tag, parent):
         self.tag = tag
@@ -104,7 +104,7 @@ create `Element` and `Text` objects, and to add them somehow to a
 tree. Since a tree is a bit more complex than a list, let's move the
 adding-to-a-tree logic to two new functions: `add_text` and `add_tag`:
 
-``` {.python}
+``` {.python indent=4}
 def parse(self):
     text = ""
     in_tag = False
@@ -144,8 +144,8 @@ an open *or* a close tag:
 
 ``` {.python}
 class HTMLParser:
-    def add_tag(self, text):
-        if text.startswith("/"):
+    def add_tag(self, tag):
+        if tag.startswith("/"):
             # ...
         else:
             # ...
@@ -153,9 +153,9 @@ class HTMLParser:
 
 A close tag finishes the last element of the `unfinished` list:
 
-``` {.python}
-def add_tag(self, text):
-    if text.startswith("/"):
+``` {.python indent=4}
+def add_tag(self, tag):
+    if tag.startswith("/"):
         node = self.unfinished.pop()
         parent = self.unfinished[-1]
         parent.children.append(node)
@@ -164,12 +164,12 @@ def add_tag(self, text):
 
 An open tag instead adds a new unfinished tag:
 
-``` {.python}
-def add_tag(self, text):
+``` {.python indent=4 expected=False}
+def add_tag(self, tag):
     # ...
     else:
         parent = self.unfinished[-1]
-        node = Element(text, parent)
+        node = Element(tag, parent)
         self.unfinished.append(node)
 ```
 
@@ -191,7 +191,7 @@ beginning and end of the document. First, the very first tag needs a
 special case, since it doesn't have a parent:
 
 ``` {.python}
-def add_tag(self, text):
+def add_tag(self, tag):
     # ...
     else:
         parent = self.unfinished[-1] if self.unfinished else None
@@ -201,8 +201,8 @@ def add_tag(self, text):
 And second, the very last tag needs a special case, since if we remove
 *it* from the list of unfinished tags that list will be empty:
 
-``` {.python}
-def add_tag(self, text):
+``` {.python indent=4}
+def add_tag(self, tag):
     if tag.startswith("/"):
         if len(self.unfinished) == 1: return
         # ...
@@ -233,8 +233,8 @@ We can do that with a quick, recursive pretty-printer:
 
 ``` {.python}
 def print_tree(node, indent=0):
-    print(" " * indent, elt)
-    for child in elt.children:
+    print(" " * indent, node)
+    for child in node.children:
         print_tree(child, indent + 2)
 ```
 
@@ -243,7 +243,7 @@ show the tree structure. Since we need to print each node, it's worth
 taking the time to give them a nice printed form, which in Python
 means defining the `__repr__` function:
 
-``` {.python}
+``` {.python expected=False}
 class Text:
     def __repr__(self):
         return repr(self.text)
@@ -256,7 +256,7 @@ class Element:
 Try this out on this web page, parsing the HTML source code and then
 calling `print_tree` to visualize it:
 
-``` {.python}
+``` {.python expected=False}
 headers, body = request(sys.argv[1])
 nodes = HTMLParser(body).parse()
 print_tree(nodes)
@@ -286,9 +286,9 @@ This special tag is called a [doctype][html5-doctype] that's s always the very f
 [^quirks-mode]: Real browsers use doctypes to switch between
     standards-compliant and legacy parsing and layout modes.
 
-``` {.python}
-def add_tag(self, text):
-    if text.startswith("!"): return
+``` {.python indent=4}
+def add_tag(self, tag):
+    if tag.startswith("!"): return
     # ...
 ```
 
@@ -303,7 +303,7 @@ Just throwing out doctypes isn't quite enough though---if you run your parser no
     simplifies [later chapters](layout.md) by avoiding a special-case
     for whitespace-only text tags.
 
-``` {.python}
+``` {.python indent=4}
 def add_text(self, text):
     if text.isspace(): return
     # ...
@@ -363,10 +363,10 @@ SELF_CLOSING_TAGS = [
 
 When our parser sees a tag from this list, it needs to treat it like a finished tag:
 
-``` {.python}
-def add_tag(self, text):
+``` {.python indent=4 expected=False}
+def add_tag(self, tag):
     # ...
-    elif text in self.SELF_CLOSING_TAGS:
+    elif tag in self.SELF_CLOSING_TAGS:
         parent = self.unfinished[-1]
         node = Element(text, parent)
         parent.children.append(node)
@@ -400,13 +400,14 @@ Since we're not handling attributes with whitespace, we can split the tag conten
 get the tag name and the attribute-value pairs:
 
 ``` {.python}
-def get_attributes(self, text):
-    parts = text.split()
-    tag = parts[0].lower()
-    attributes = {}
-    for attrpair in parts[1:]:
-        # ...
-    return tag, attributes
+class HTMLParser:
+    def get_attributes(self, text):
+        parts = text.split()
+        tag = parts[0].lower()
+        attributes = {}
+        for attrpair in parts[1:]:
+            # ...
+        return tag, attributes
 ```
 
 Note that the tag name is converted to lower case,[^case-fold] because
@@ -422,12 +423,12 @@ HTML tag names are case-insensitive. Now, inside the loop, we need to split each
 
 The easiest case is an unquoted attribute, where an equal sign separates the attribute's name and value:
 
-``` {.python}
-def get_attribute(self, text):
+``` {.python indent=4}
+def get_attributes(self, text):
     # ...
-    for attrpair in parts[1:]
+    for attrpair in parts[1:]:
         key, value = attrpair.split("=", 1)
-        self.attributes[key.lower()] = value
+        attributes[key.lower()] = value
     # ...
 ```
 
@@ -440,7 +441,7 @@ for attrpair in parts[1:]:
     if "=" in attrpair:
         # ...
     else:
-        self.attributes[attrpair.lower()] = ""
+        attributes[attrpair.lower()] = ""
 ```
 
 And finally, when there is a value, it might also be quoted, in which case the quotes have to be stripped out:
@@ -466,11 +467,11 @@ class Element:
         # ...
 ```
 
-This means we'll need to call `get_attribute` at the top of `add_tag`:
+This means we'll need to call `get_attributes` at the top of `add_tag`:
 
 ``` {.python indent=4}
-def add_tag(self, text):
-    tag, attributes = self.get_attributes(text)
+def add_tag(self, tag):
+    tag, attributes = self.get_attributes(tag)
 ```
 
 and then use the extracted `tag` and `attribute` values instead of `text` in the rest of `add_tag`.
@@ -592,8 +593,8 @@ class HTMLParser:
         self.implicit_tags(None)
         # ...
 
-    def add_tag(self, text):
-        tag, attributes = self.get_attributes(text)
+    def add_tag(self, tag):
+        tag, attributes = self.get_attributes(tag)
         if tag.startswith("!"): return
         self.implicit_tags(tag)
         # ...

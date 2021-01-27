@@ -73,9 +73,9 @@ class Element:
         attrs = [k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
         return "<" + self.tag + " " + " ".join(attrs) + ">"
 
-def print_tree(elt, indent=0):
-    print(" " * indent, elt)
-    for child in elt.children:
+def print_tree(node, indent=0):
+    print(" " * indent, node)
+    for child in node.children:
         print_tree(child, indent + 2)
 
 class HTMLParser:
@@ -127,8 +127,8 @@ class HTMLParser:
         "link", "meta", "param", "source", "track", "wbr",
     ]
 
-    def add_tag(self, text):
-        tag, attributes = self.get_attributes(text)
+    def add_tag(self, tag):
+        tag, attributes = self.get_attributes(tag)
         if tag.startswith("!"): return
         self.implicit_tags(tag)
 
@@ -170,7 +170,8 @@ class HTMLParser:
         while self.unfinished:
             node = self.unfinished.pop()
             if not self.unfinished: return node
-            self.unfinished[-1].children.append(node)
+            parent = self.unfinished[-1]
+            parent.children.append(node)
             
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
