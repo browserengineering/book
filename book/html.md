@@ -265,21 +265,26 @@ print_tree(nodes)
 Run it on this web page, and you'll see something like this:
 
 ``` {.example}
- <!DOCTYPE html >
+ <!DOCTYPE html>
    '\n'
-   <html lang="en-US" xml:lang="en-US" >
+   <html lang="en-US" xml:lang="en-US">
      '\n'
-     <head >
+     <head>
        '\n  '
-       <meta charset="utf-8" / >
+       <meta charset="utf-8" />
          '\n  '
-         <meta name="generator" content="pandoc" / >
+         <meta name="generator" content="pandoc" />
            '\n  '
 ```
 
-Immediately a couple of things stand out. Let's start at the top, with the `<!DOCTYPE html>` tag.
+Immediately a couple of things stand out. Let's start at the top, with
+the `<!DOCTYPE html>` tag.
 
-This special tag is called a [doctype][html5-doctype] that's s always the very first thing in an HTML document. But it's not really an element at all, nor is it supposed to have close tag. Our toy browser won't be using the doctype for anything, so it's best to throw it away:[^quirks-mode]
+This special tag is called a [doctype][html5-doctype] that's always
+the very first thing in an HTML document. But it's not really an
+element at all, nor is it supposed to have close tag. Our toy browser
+won't be using the doctype for anything, so it's best to throw it
+away:[^quirks-mode]
 
 [html5-doctype]: https://html.spec.whatwg.org/multipage/syntax.html#the-doctype
 
@@ -292,9 +297,16 @@ def add_tag(self, tag):
     # ...
 ```
 
-This ignores all tags that start with an exclamation mark, which not only throws out doctype declarations but also most comments, which in HTML are written `<!-- comment text -->`.
+This ignores all tags that start with an exclamation mark, which not
+only throws out doctype declarations but also most comments, which in
+HTML are written `<!-- comment text -->`.
 
-Just throwing out doctypes isn't quite enough though---if you run your parser now, it will crash. That's because after the doctype comes a newline, which our parser treats as text and tries to insert into the tree. Except there isn't a tree, since there haven't been any open tags. For simplicity, let's just have our browser skip whitespace-only text nodes to side-step the problem:[^ignore-them]
+Just throwing out doctypes isn't quite enough though---if you run your
+parser now, it will crash. That's because after the doctype comes a
+newline, which our parser treats as text and tries to insert into the
+tree. Except there isn't a tree, since there haven't been any open
+tags. For simplicity, let's just have our browser skip whitespace-only
+text nodes to side-step the problem:[^ignore-them]
 
 [^ignore-them]: Real browsers retain whitespace nodes: whitespace is
     significant inside `<pre>` tags or in cases like the difference
@@ -312,19 +324,20 @@ def add_text(self, text):
 The parsed HTML tree now looks like this:
 
 ``` {.example}
-<html lang="en-US" xml:lang="en-US" >
-   <head >
-     <meta charset="utf-8" / >
-       <meta name="generator" content="pandoc" / >
-         <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes" / >
-           <meta name="author" content="Pavel Panchekha &amp; Chris Harrelson" / >
-             <link rel="stylesheet" href="book.css" / >
-               <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn%7CLora&display=swap" / >
-                 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn:400i%7CLora:400i&display=swap" / >
-                   <title >
+<html lang="en-US" xml:lang="en-US">
+   <head>
+     <meta charset="utf-8" />
+       <meta name="generator" content="pandoc" />
+         <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes" />
+           <meta name="author" content="Pavel Panchekha &amp; Chris Harrelson" />
+             <link rel="stylesheet" href="book.css" />
+               <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn%7CLora&display=swap" />
+                 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn:400i%7CLora:400i&display=swap" />
+                   <title>
 ```
 
-Why's everything so deeply indented? Why aren't these open elements ever closed?
+Why's everything so deeply indented? Why aren't these open elements
+ever closed?
 
 ::: {.further}
 SGML document type declarations had a URL to define the valid tags.
@@ -346,8 +359,11 @@ html>` is the best document type declaration today.
 Self-closing tags
 =================
 
-Elements like `<meta>` and `<link>` are what are called self-closing: you don't
-ever write `</meta>` or `</link>`, because these tags don't surround content. To get a reasonable-looking tree out of our parser, we'll need special support for them. In HTML, there's a [fixed list][html-void-elements] of these self-closing tags:[^void-elements]
+Elements like `<meta>` and `<link>` are what are called self-closing:
+you don't ever write `</meta>` or `</link>`, because these tags don't
+surround content. To get a reasonable-looking tree out of our parser,
+we'll need special support for them. In HTML, there's a [fixed
+list][html5-void-elements] of these self-closing tags:[^void-elements]
 
 [html5-void-elements]: https://html.spec.whatwg.org/multipage/syntax.html#void-elements
 
@@ -361,7 +377,8 @@ SELF_CLOSING_TAGS = [
 ]
 ```
 
-When our parser sees a tag from this list, it needs to treat it like a finished tag:
+When our parser sees a tag from this list, it needs to treat it like a
+finished tag:
 
 ``` {.python indent=4 expected=False}
 def add_tag(self, tag):
@@ -372,11 +389,15 @@ def add_tag(self, tag):
         parent.children.append(node)
 ```
 
-This code looks right, but if you test it out it won't seem to help. Why not? Because our parser doesn't yet understand attributes! It's looking for a tag named `meta`, but finding only a tag with the unweildy name
+This code looks right, but if you test it out it won't seem to help.
+Why not? Because our parser doesn't yet understand attributes! It's
+looking for a tag named `meta`, but finding only a tag with the
+unweildy name
 
     meta name="generator" content="pandoc" /
 
-We're going to need to add support for attributes if we want this parser to work right.
+We're going to need to add support for attributes if we want this
+parser to work right.
 
 ::: {.further}
 Prior to the invention of CSS, some browsers supported web page
@@ -390,14 +411,17 @@ obsolete][html5-obsolete], but browsers still support some of them.
 Attributes
 ==========
 
-HTML attributes give
-additional information about an element; an open tag can have any number
-of attributes (though close tags can't have any). Attribute values can
-be anything, and they can be written quoted, unquoted, or omitted entirely. Quoted attributes can even
-contain whitespace. For simplicity, let's skip the case where attribute values contain whitespace, and extend our parser to understand attributes.
+HTML attributes give additional information about an element; an open
+tag can have any number of attributes (though close tags can't have
+any). Attribute values can be anything, and they can be written
+quoted, unquoted, or omitted entirely. Quoted attributes can even
+contain whitespace. For simplicity, let's skip the case where
+attribute values contain whitespace, and extend our parser to
+understand attributes.
 
-Since we're not handling attributes with whitespace, we can split the tag contents on whitespace to
-get the tag name and the attribute-value pairs:
+Since we're not handling attributes with whitespace, we can split the
+tag contents on whitespace to get the tag name and the attribute-value
+pairs:
 
 ``` {.python}
 class HTMLParser:
@@ -411,7 +435,8 @@ class HTMLParser:
 ```
 
 Note that the tag name is converted to lower case,[^case-fold] because
-HTML tag names are case-insensitive. Now, inside the loop, we need to split each attribute-value pair into the attribute name and its value.
+HTML tag names are case-insensitive. Now, inside the loop, we need to
+split each attribute-value pair into the attribute name and its value.
 
 [^case-fold]: This is [not the right way][case-hard] to do case
     insensitive comparisons; the Unicode case folding algorithm should
@@ -421,7 +446,8 @@ HTML tag names are case-insensitive. Now, inside the loop, we need to split each
     
 [case-hard]: https://www.b-list.org/weblog/2018/nov/26/case/
 
-The easiest case is an unquoted attribute, where an equal sign separates the attribute's name and value:
+The easiest case is an unquoted attribute, where an equal sign
+separates the attribute's name and value:
 
 ``` {.python indent=4}
 def get_attributes(self, text):
@@ -432,9 +458,9 @@ def get_attributes(self, text):
     # ...
 ```
 
-But actually, not all attributes have a value: the value
-can be omitted, like in `<input disabled>`, in which case, the
-attribute value defaults to the empty string:
+But actually, not all attributes have a value: the value can be
+omitted, like in `<input disabled>`, in which case, the attribute
+value defaults to the empty string:
 
 ``` {.python indent=8}
 for attrpair in parts[1:]:
@@ -444,7 +470,8 @@ for attrpair in parts[1:]:
         attributes[attrpair.lower()] = ""
 ```
 
-And finally, when there is a value, it might also be quoted, in which case the quotes have to be stripped out:
+And finally, when there is a value, it might also be quoted, in which
+case the quotes have to be stripped out:
 
 ``` {.python indent=12}
 if "=" in attrpair:
@@ -474,7 +501,8 @@ def add_tag(self, tag):
     tag, attributes = self.get_attributes(tag)
 ```
 
-and then use the extracted `tag` and `attribute` values instead of `text` in the rest of `add_tag`.
+and then use the extracted `tag` and `attribute` values instead of
+`text` in the rest of `add_tag`.
 
 Try your parser again:
 
@@ -491,13 +519,19 @@ Try your parser again:
      <title>
 ```
 
-Yeah, it's a little funky: attributes with whitespace (like `author` on the fourth `meta` tag) end up mis-parsed as multiple attributes, and the final slash on self-closing tags is treated as an attribute as well. But let's hit pause of refining our parser for now---these issues aren't going to be a problem for the toy browser we're building---and move on to integrating it with our browser.
+Yeah, it's a little funky: attributes with whitespace (like `author`
+on the fourth `meta` tag) end up mis-parsed as multiple attributes,
+and the final slash on self-closing tags is treated as an attribute as
+well. But let's hit pause of refining our parser for now---these
+issues aren't going to be a problem for the toy browser we're
+building---and move on to integrating it with our browser.
 
 ::: {.further}
-Putting a slash at the end of self-closing tags, like `<br/>`,
-became fashionable when [XHTML][xhtml] looked like it might replace
-HTML, and old-timers like me never broke the habit. But unlike in [XML][xml-self-closing], in HTML self-closing tags
-are identified by name, not by some special syntax.
+Putting a slash at the end of self-closing tags, like `<br/>`, became
+fashionable when [XHTML][xhtml] looked like it might replace HTML, and
+old-timers like me never broke the habit. But unlike in
+[XML][xml-self-closing], in HTML self-closing tags are identified by
+name, not by some special syntax.
 :::
 
 [xml-self-closing]: https://www.w3.org/TR/xml/#sec-starttags
@@ -506,9 +540,14 @@ are identified by name, not by some special syntax.
 Using the node tree
 ===================
 
-Right now, the `Layout` class lays out the page token-by-token; we now want it to go node-by-node instead.
+Right now, the `Layout` class lays out the page token-by-token; we now
+want it to go node-by-node instead.
 
-So let's sepate the old `token` method into three parts: all the cases for open tags will go into a new `open` method; all the cases for close tags will to into a new `close` method; and instead of having a case for text tokens our browser can just call the existing `text` method directly:
+So let's sepate the old `token` method into three parts: all the cases
+for open tags will go into a new `open` method; all the cases for
+close tags will to into a new `close` method; and instead of having a
+case for text tokens our browser can just call the existing `text`
+method directly:
 
 ``` {.python}
 class Layout:
@@ -523,7 +562,8 @@ class Layout:
         # ...
 ```
 
-Now we need the `Layout` object to walk the node tree, calling `open`, `close`, and `text` in the right order:
+Now we need the `Layout` object to walk the node tree, calling `open`,
+`close`, and `text` in the right order:
 
 ``` {.python indent=4 expected=False}
 def recurse(self, tree):
@@ -540,10 +580,16 @@ Make sure to update `recurse` to call these two new functions; now it
 no longer has to construct `Tag` objects or add slashes to things to
 indicate a close tag!
 
-Update the browser entry point to use the node tree, and run it---you should see the browser again render web pages, this time with a proper understanding of the HTML tree.
+Update the browser entry point to use the node tree, and run it---you
+should see the browser again render web pages, this time with a proper
+understanding of the HTML tree.
 
 ::: {.further}
-The ill-considered Javascript `document.write` method allows Javascript to modify the HTML source code while it's being parsed! Modern browsers use [speculative][speculative-parsing] parsing to avoid waiting on Javascript in the parser as long as that method isn't called.
+The ill-considered Javascript `document.write` method allows
+Javascript to modify the HTML source code while it's being parsed!
+Modern browsers use [speculative][speculative-parsing] parsing to
+avoid waiting on Javascript in the parser as long as that method isn't
+called.
 :::
 
 [seculative-parsing]: https://developer.mozilla.org/en-US/docs/Glossary/speculative_parsing
@@ -554,14 +600,15 @@ Handling author errors
 The parser now handles HTML pages correctly—at least, pages written by
 the sorts of goody-two-shoes programmers who remember the HTML
 boilerplate, close their open tags, and make their bed in the morning.
-Since us mere mortals lack such discipline, browsers have to additionally
-handle poorly-written, confusing, boilerplate-less HTML.
+Since us mere mortals lack such discipline, browsers have to
+additionally handle poorly-written, confusing, boilerplate-less HTML.
 
 In fact, modern HTML parsers are capable of transforming *any* string
-of characters into an HTML tree, no matter how confusing the markup.[^3]
-The full algorithm is, as you might expect, complicated beyond belief,
-with dozens of ever-more-special cases forming a taxonomy of human
-error, but one of the nicer time-saving innovations is *implicit* tags.
+of characters into an HTML tree, no matter how confusing the
+markup.[^3] The full algorithm is, as you might expect, complicated
+beyond belief, with dozens of ever-more-special cases forming a
+taxonomy of human error, but one of the nicer time-saving innovations
+is *implicit* tags.
 
 [^3]: Yes, it's crazy, and for a few years in the early '00s the W3C
     tried to [do away with it](https://www.w3.org/TR/xhtml1/). They
@@ -582,9 +629,11 @@ Normally, an HTML document starts with a familiar boilerplate:
 In reality, *all six* of these tags, except the doctype, are optional:
 browsers insert them automatically. To do so, they compare the current
 token's tag to the list of currently open elements; that reveals
-whether any additional elements need to be created:
+whether any additional elements need to be created.
 
-Let's add support for implicit tags to our browser via a new `implicit_tags` function that adds implicit tags when the web page omits them. We'll want to call it in both `add_text` and `add_tag`:
+Let's add support for implicit tags to our browser via a new
+`implicit_tags` function that adds implicit tags when the web page
+omits them. We'll want to call it in both `add_text` and `add_tag`:
 
 ``` {.python indent=4}
 class HTMLParser:
@@ -600,7 +649,11 @@ class HTMLParser:
         # ...
 ```
 
-Note that the `implicit_tags` call comes after the lines that ignore whitespace and doctypes; this way those bits of the source code are truly ignored. The argument to `implicit_tags` is the tag name (or `None` for text nodes), which we'll compare to the list of unfinished tags to determine what's been omitted:
+Note that the `implicit_tags` call comes after the lines that ignore
+whitespace and doctypes; this way those bits of the source code are
+truly ignored. The argument to `implicit_tags` is the tag name (or
+`None` for text nodes), which we'll compare to the list of unfinished
+tags to determine what's been omitted:
 
 ``` {.python}
 class HTMLParser:
@@ -610,9 +663,14 @@ class HTMLParser:
             # ...
 ```
 
-`implicit_tags` has a loop because more than one tag could have been omitted in a row; every iteration around the loop will add just one. To determine which implicit tag to add, if any, requires examining the open tags and the tag being inserted.
+`implicit_tags` has a loop because more than one tag could have been
+omitted in a row; every iteration around the loop will add just one.
+To determine which implicit tag to add, if any, requires examining the
+open tags and the tag being inserted.
 
-Let's start with the easiest case, the implicit `<html>` tag. An implicit `<html>` tag is necessary if the first tag in the document is something other than `<html>`:
+Let's start with the easiest case, the implicit `<html>` tag. An
+implicit `<html>` tag is necessary if the first tag in the document is
+something other than `<html>`:
 
 ``` {.python indent=8}
 while True:
@@ -621,7 +679,8 @@ while True:
         self.add_tag("html")
 ```
 
-Both `<head>` and `<body>` can also be omitted, but to figure out which it is we need to look at which tag is being added:
+Both `<head>` and `<body>` can also be omitted, but to figure out
+which it is we need to look at which tag is being added:
 
 ``` {.python indent=8}
 while True:
@@ -633,7 +692,8 @@ while True:
             self.add_tag("body")
 ```
 
-Here `HEAD_TAGS` is just a list of all the tags that go into the `<head>` element by default:[^where-script]
+Here `HEAD_TAGS` is just a list of all the tags that go into the
+`<head>` element by default:[^where-script]
 
 [^where-script]: Note that some tags, like `<script>`, can go in
     either the head or body section of an HTML document. The code
@@ -649,9 +709,15 @@ class HTMLParser:
     ]
 ```
 
-Note that if both the `<html>` and `<head>` tags are omitted, `implicit_tags` is going to insert both of them by going around the loop twice. The first iteration add the `<html>` tag, and then in the second iteration `open_tags` is `["html"]` and a `<head>` tag is added.
+Note that if both the `<html>` and `<head>` tags are omitted,
+`implicit_tags` is going to insert both of them by going around the
+loop twice. The first iteration add the `<html>` tag, and then in the
+second iteration `open_tags` is `["html"]` and a `<head>` tag is
+added.
 
-Finally, the `</head>` tag can also be implicit, if the parser is inside the `<head>` and sees an element that's supposed to go in the `<body>`:
+Finally, the `</head>` tag can also be implicit, if the parser is
+inside the `<head>` and sees an element that's supposed to go in the
+`<body>`:
 
 ``` {.python indent=8}
 while True:
@@ -660,7 +726,10 @@ while True:
         self.add_tag("/head")
 ```
 
-In HTML the `</body>` and `</html>` tags can also be implicit. Luckily, our `finish` function already handles this case, closing any unfinished tags. So all that's left for `implicit` tags is to exit out of the loop:
+In HTML the `</body>` and `</html>` tags can also be implicit.
+Luckily, our `finish` function already handles this case, closing any
+unfinished tags. So all that's left for `implicit` tags is to exit out
+of the loop:
 
 ``` {.python indent=8}
 while True:
@@ -672,7 +741,10 @@ while True:
 These rules for malformed HTML may seem arbitrary, and they are: they
 evolved over years of trying to guess what people "meant" when they
 wrote that HTML, and are now codified in the [HTML parsing
-standard][html5-parsing]. Of course, sometimes these rules "guess" wrong---but as so often happens on the web, it's often more important that every browser does the *same* thing, rather than each trying to guess what the *right* thing is.
+standard][html5-parsing]. Of course, sometimes these rules "guess"
+wrong---but as so often happens on the web, it's often more important
+that every browser does the *same* thing, rather than each trying to
+guess what the *right* thing is.
 
 [html5-parsing]: https://html.spec.whatwg.org/multipage/parsing.html
 
