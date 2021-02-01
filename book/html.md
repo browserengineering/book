@@ -556,7 +556,7 @@ class Layout:
 Now we need the `Layout` object to walk the node tree, calling `open`,
 `close`, and `text` in the right order:
 
-``` {.python indent=4 expected=False}
+``` {.python}
 def recurse(self, tree):
     if isinstance(tree, TextNode):
         self.text(tree.text)
