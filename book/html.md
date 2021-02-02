@@ -8,130 +8,129 @@ next: layout
 
 So far, your web browser sees web pages as a stream of open tags,
 close tags, and text. But HTML is actually a tree, and though the tree
-structure hasn't been important yet, you'll need it to draw
-backgrounds, add margins, and implement CSS. So this chapter adds a
-proper HTML parser and converts the layout engine to use it.
+structure hasn't been important yet, it will be once backgrounds,
+margins, and CSS enter this picture. So this chapter adds a proper
+HTML parser and converts the layout engine to use it.
 
 
 A tree of nodes
 ===============
 
-Right now, the browser sees web pages as a flat sequence of tags and
-text, which is why the `Layout` object's `token` method includes code
-for both open and close tags. But HTML is a tree, and each open and
-close tag pair are one node in the tree, as is each text token. We
-need to convert from tokens to nodes.
-
-We'll need a new `parse` function to do that:
-
-``` {.python}
-if __name__ == "__main__":
-    # ...
-    nodes = parse(lex(body))
-    browser = Browser()
-    browser.layout(nodes)
-    # ...
-```
-
-Let's start by defining the two types of nodes.[^1] Element nodes
-correspond to tag pairs and form a tree:
+The HTML tree has one node for each open and close tag pair and for
+each span of text.[^1] So for our browser to be a tree, tokens need to
+evolve into nodes. That means adding a list of children and a parent
+pointer to each one. Here's the new `Text` class:
 
 [^1]: In reality there are other types of nodes too, like comments,
     doctypes, and `CDATA` sections, and processing instructions. There
     are even some deprecated types!
 
-``` {.python expected=False}
-class ElementNode:
-    def __init__(self, tag, parent):
-        self.tag = tag
-        self.parent = parent
-        self.children = []
-```
-
-That tree can also contain text at the leaves:
-
-```
-class TextNode:
-    def __init__(self, text, parent):
-        self.text = text
-        self.parent = parent
-        self.children = []
-```
-
-Element nodes start empty, and our parser fills them in. The idea is
-simple: keep track of the currently open elements, a list from top to bottom:
 
 ``` {.python}
-def parse(tokens):
-    currently_open = []
-    for tok in tokens:
+class Text:
+    def __init__(self, text, parent):
+        self.text = text
+        self.children = []
+        self.parent = parent
+```
+
+Since it takes two tags (the open and the close tag) to make a node,
+let's rename the `Tag` class to `Element`, and make it look like this:
+
+``` {.python expected=False}
+class Element:
+    def __init__(self, tag, parent):
+        self.tag = tag
+        self.children = []
+        self.parent = parent
+```
+
+Constructing a tree of nodes from source code is called parsing. A
+parser builds a tree one element or text node at a time. But that
+means the parser needs to store an *incomplete* tree. For example,
+suppose the parser is has so far read this bit of HTML:
+
+    <html><head></head><body><h1>This is my webpage
+
+The parser has seen five tags (and one text node). The rest of the
+HTML will contain more open tags, close tags, and text; but no matter
+which tokens it sees, no new nodes will be added to the `<head>` tag,
+which has already been closed. So that node is "finished". But the
+other nodes are unfinished: more children can be added to the
+`<html>`, `<body>`, and `<h1>` nodes, depending on what HTML comes
+next.
+
+Since the parser reads the HTML file from left to right, these
+unfinished tags are always in a certain part of the tree. The
+unfinished tags have always been *opened* but not yet closed; they are
+always the *to the right* of the finished nodes; and they are always
+*children of other unfinished tags*. To leverage these facts, let's
+represent an incomplete tree by storing a list of unfinished tags,
+ordered with parents before children. The first node in the list is
+the root of the HTML tree; the last node in the list is the most
+recent unfinished tag.[^touch-last]
+
+[^touch-last]: In Python, and most other languages, it's faster to add
+    and remove from the end of a list, instead of the beginning.
+
+Parsing is a little more complex than `lex`, so we're going to want to
+break it into several functions, organized in a new `HTMLParser`
+class. That class can also store the source code it's analyzing and
+the incomplete tree:
+
+``` {.python}
+class HTMLParser:
+    def __init__(self, body):
+        self.body = body
+        self.unfinished = []
+```
+
+
+Before the parser starts, it hasn't seen any tags at all, so the
+`unfinished` list storing the tree starts empty. But as the parser
+reads tokens, that list fills up. Let's start that by renaming the
+`lex` function we have now, aspirationally, to `parse`:
+
+``` {.python}
+class HTMLParser:
+    def parse(self):
         # ...
 ```
 
-The *end* of this list---the most recently opened element---is the
-parent of any new nodes we come across. Any time we finish a node (at
-a text or end tag token) the last thing in the `currently_open` list
-is its parent:
+We'll need to do a bit of surgery on `parse`. Right now `parse`
+creates `Tag` and `Text` objects and appends them to the `out` array.
+We need it to create `Element` and `Text` objects and add them to the
+`unfinished` tree. Since a tree is a bit more complex than a list,
+I'll move the adding-to-a-tree logic to two new methods `add_text` and
+`add_tag`.
 
-``` {.python}
-for tok in tokens:
-    parent = currently_open[-1] if currently_open else None
-    # ...
+``` {.python indent=4}
+def parse(self):
+    text = ""
+    in_tag = False
+    for c in self.body:
+        if c == "<":
+            in_tag = True
+            if text: self.add_text(text)
+            text = ""
+        elif c == ">":
+            in_tag = False
+            self.add_tag(text)
+            text = ""
+        else:
+            text += c
+    if not in_tag and text:
+        self.add_text(text)
+    return self.finish()
 ```
 
-Inside the loop, we need to figure out if the token is text, an open
-tag, or a close tag, and do the appropriate thing. `Text` tokens are
-the easiest: create a new `TextNode` and add it to the bottom-most
-open element.
-
-``` {.python indent=8}
-if isinstance(tok, Text):
-    node = TextNode(tok.text, parent)
-    parent.children.append(node)
-```
-
-End tags are similar, but instead of making a new node they take the
-bottom-most open element:
-
-``` {.python indent=8}
-elif tok.tag.startswith("/"):
-    node = currently_open.pop()
-    currently_open[-1].children.append(node)
-```
-
-Finally, for open tags, we need to create a new `ElementNode` and add
-it to the list of currently open elements:
-
-``` {.python indent=8 replace=parent)/parent%2c%20tok.attributes)}
-else:
-    node = ElementNode(tok.tag, parent)
-    currently_open.append(node)
-```
-
-The core of this logic is about right, but what and when does the
-parser return? Try parsing
-
-``` {.html}
-<html><body><h1>Hi!</h1></body></html>
-```
-
-and the parser will read the `</html>` element, pop the last open
-element off the list of open elements, and then crash since there's no
-open element to append it to. So in this case we actually want to
-return that root element:
-
-``` {.python indent=8}
-elif tok.tag.startswith("/"):
-    node = currently_open.pop()
-    if not currently_open: return node
-    currently_open[-1].children.append(node)
-```
-
-Time to test this parser out!
+The `out` variable is gone, and note that I've also moved the return
+value to a new `finish` method, which converts the incomplete tree to
+the final, complete tree. So: how do we add things to the tree?
 
 ::: {.further}
 HTML derives from a long line of document processing systems. Its
-predecessor, [SGML][sgml] traces back to [RUNOFF][runoff] and is a
+predecessor, [SGML][sgml], traces back to [RUNOFF][runoff] and is a
 sibling to [troff][troff], now used for Linux man pages. The
 [committee][jtc1-sc34] that standardized SGML now works on the `.odf`,
 `.docx`, and `.epub` formats.
@@ -142,71 +141,245 @@ sibling to [troff][troff], now used for Linux man pages. The
 [troff]: https://troff.org
 [jtc1-sc34]: https://www.iso.org/committee/45374.html
 
+Constructing the tree
+=====================
 
-Self-closing tags
-=================
-
-Try running this parser on this page, and you'll find that `parse`
-doesn't return anything; let's find out why:
-
-``` {.python expected=False}
-def parse(tokens):
-    # ...
-    print(currently_open)
-    raise Exception("Reached last token before end of document")
-```
-
-Python prints a list of `ElementNode` objects, meaning that there were
-open HTML elements still around when it reached the last token:
-
-```
-[<__main__.ElementNode object at 0x101399c70>,  ...]
-```
-
-Ok, that's not too helpful. Python needs a method called `__repr__` to
-be defined to print things a little more reasonably:
+Let's talk about adding nodes to a tree. To add a text node we add it
+as a child of the last unfinished node:
 
 ``` {.python}
-class ElementNode:
+class HTMLParser:
+    def add_text(self, text):
+        parent = self.unfinished[-1]
+        node = Text(text, parent)
+        parent.children.append(node)
+```
+
+On the other hand, tags are a little more complex since they might be
+an open *or* a close tag:
+
+``` {.python}
+class HTMLParser:
+    def add_tag(self, tag):
+        if tag.startswith("/"):
+            # ...
+        else:
+            # ...
+```
+
+A close tag removes an unfinished node, by finishing it, and add it to
+the next unfinished node in the list:
+
+``` {.python indent=4}
+def add_tag(self, tag):
+    if tag.startswith("/"):
+        node = self.unfinished.pop()
+        parent = self.unfinished[-1]
+        parent.children.append(node)
     # ...
+```
+
+An open tag instead adds an unfinished node to the end of the list:
+
+``` {.python indent=4 expected=False}
+def add_tag(self, tag):
+    # ...
+    else:
+        parent = self.unfinished[-1]
+        node = Element(tag, parent)
+        self.unfinished.append(node)
+```
+
+Once the parser is done, it turns our incomplete tree into a complete
+tree by just finishing any unfinished nodes:
+
+``` {.python}
+class HTMLParser:
+    def finish(self):
+        while self.unfinished:
+            node = self.unfinished.pop()
+            if not self.unfinished: return node
+            parent = self.unfinished[-1]
+            parent.children.append(node)
+```
+
+This is *almost* a complete parser, but it doesn't quite work at the
+beginning and end of the document. The very first open tag is an edge
+case without a parent:
+
+``` {.python}
+def add_tag(self, tag):
+    # ...
+    else:
+        parent = self.unfinished[-1] if self.unfinished else None
+        # ...
+```
+
+The very last tag is also an edge case, because there's no unfinished
+node to add it to:
+
+``` {.python indent=4}
+def add_tag(self, tag):
+    if tag.startswith("/"):
+        if len(self.unfinished) == 1: return
+        # ...
+```
+
+Ok, that's all done. Let's test out parser out and see how well it
+works!
+
+::: {.further}
+The ill-considered Javascript `document.write` method allows
+Javascript to modify the HTML source code while it's being parsed!
+Modern browsers use [speculative][speculative-parsing] parsing to
+make this fast and avoid evaluating Javascript while parsing.
+:::
+
+[speculative-parsing]: https://developer.mozilla.org/en-US/docs/Glossary/speculative_parsing
+
+Debugging a parser
+==================
+
+How do we know our parser does the right thing---that it builds the
+right tree? Well the place to start is *seeing* the tree it produces.
+We can do that with a quick, recursive pretty-printer:
+
+``` {.python}
+def print_tree(node, indent=0):
+    print(" " * indent, node)
+    for child in node.children:
+        print_tree(child, indent + 2)
+```
+
+Here we're printing each node in the tree, and using indentation to
+show the tree structure. Since we need to print each node, it's worth
+taking the time to give them a nice printed form, which in Python
+means defining the `__repr__` function:
+
+``` {.python expected=False}
+class Text:
+    def __repr__(self):
+        return repr(self.text)
+
+class Element:
     def __repr__(self):
         return "<" + self.tag + ">"
 ```
 
-This produces a more reasonable result:
+Try this out on this web page, parsing the HTML source code and then
+calling `print_tree` to visualize it:
 
-``` 
-[<!DOCTYPE html>,
- <html lang="en-US" xml:lang="en-US">,
- <head>,
- <meta charset="utf-8" />,
- <meta name="generator" content="pandoc" />,
- <meta name="viewport" content=... />,
- <link rel="prev" href="text" />,
- <link rel="next" href="layout" />,
- <link rel="stylesheet" href="../book.css" />]
+``` {.python expected=False}
+headers, body = request(sys.argv[1])
+nodes = HTMLParser(body).parse()
+print_tree(nodes)
 ```
 
-Why aren't these open elements closed? Well, most of them (like
-`<meta>` and `<link>`) are what are called self-closing: you don't
-ever write `</meta>` or `</link>`. These tags don't need a close tag
-because they never surround content. Let's add that to our parser:
+Run it on this web page, and you'll see something like this:
 
-
-``` {.python indent=8 replace=parent)/parent%2c%20tok.attributes)}
-# ...
-elif tok.tag in SELF_CLOSING_TAGS:
-    node = ElementNode(tok.tag, parent)
-    parent.children.append(node)
+``` {.example}
+ <!doctype html>
+   '\n'
+   <html lang="en-US" xml:lang="en-US">
+     '\n'
+     <head>
+       '\n  '
+       <meta charset="utf-8" />
+         '\n  '
+         <meta name="generator" content="pandoc" />
+           '\n  '
 ```
 
-Use the following `SELF_CLOSING_TAGS` list, straight from the
-[standard][html5-void-elements]:[^void-elements]
+Immediately a couple of things stand out. Let's start at the top, with
+the `<!doctype html>` tag.
+
+This special tag, called a [doctype][html5-doctype], is always the
+very first thing in an HTML document. But it's not really an element
+at all, nor is it supposed to have a close tag. Our toy browser won't
+be using the doctype for anything, so it's best to throw it
+away:[^quirks-mode]
+
+[html5-doctype]: https://html.spec.whatwg.org/multipage/syntax.html#the-doctype
+
+[^quirks-mode]: Real browsers use doctypes to switch between
+    standards-compliant and legacy parsing and layout modes.
+
+``` {.python indent=4}
+def add_tag(self, tag):
+    if tag.startswith("!"): return
+    # ...
+```
+
+This ignores all tags that start with an exclamation mark, which not
+only throws out doctype declarations but also most comments, which in
+HTML are written `<!-- comment text -->`.
+
+Just throwing out doctypes isn't quite enough though---if you run your
+parser now, it will crash. That's because after the doctype comes a
+newline, which our parser treats as text and tries to insert into the
+tree. Except there isn't a tree, since the parser hasn't seen any open
+tags. For simplicity, let's just have our browser skip whitespace-only
+text nodes to side-step the problem:[^ignore-them]
+
+[^ignore-them]: Real browsers retain whitespace to correctly render
+    `make<span></span>up` as one word and `make<span> </span>up` as
+    two. Our browser won't. Plus, ignoring whitespace simplifies
+    [later chapters](layout.md) by avoiding a special-case for
+    whitespace-only text tags.
+
+``` {.python indent=4}
+def add_text(self, text):
+    if text.isspace(): return
+    # ...
+```
+
+The parsed HTML tree now looks like this:
+
+``` {.example}
+<html lang="en-US" xml:lang="en-US">
+   <head>
+     <meta charset="utf-8" />
+       <meta name="generator" content="pandoc" />
+         <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes" />
+           <meta name="author" content="Pavel Panchekha &amp; Chris Harrelson" />
+             <link rel="stylesheet" href="book.css" />
+               <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn%7CLora&display=swap" />
+                 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn:400i%7CLora:400i&display=swap" />
+                   <title>
+```
+
+Why's everything so deeply indented? Why aren't these open elements
+ever closed?
+
+::: {.further}
+In SGML, document type declarations had a URL to define the valid
+tags. Browsers use the absense of a document type declaration to
+[identify][quirks-mode] very old, pre-SGML versions of
+HTML,[^almost-standards-mode] but don't use the URL, so `<!doctype
+html>` is the best document type declaration for HTML.
+:::
+
+[quirks-mode]: https://developer.mozilla.org/en-US/docs/Web/HTML/Quirks_Mode_and_Standards_Mode
+
+[^almost-standards-mode]: There's also this crazy thing called "[almost
+    standards][limited-quirks]" or "limited quirks" mode, due to a
+    backwards-incompatible change in table cell vertical layout. Yes.
+    I don't need to make these up!
+
+[limited-quirks]: https://hsivonen.fi/doctype/
+
+Self-closing tags
+=================
+
+Elements like `<meta>` and `<link>` are what are called self-closing:
+these tags don't surround content, so you don't ever write `</meta>`
+or `</link>`. Our parser needs special support for them. In HTML,
+there's a [specific list][html5-void-elements] of these self-closing
+tags:[^void-elements]
 
 [html5-void-elements]: https://html.spec.whatwg.org/multipage/syntax.html#void-elements
 
-[^void-elements]: A lot of these tags are obscure or obsolete, but
-    it's nice that there's a complete list.
+[^void-elements]: A lot of these tags are obscure or obsolete.
 
 ``` {.python}
 SELF_CLOSING_TAGS = [
@@ -215,79 +388,82 @@ SELF_CLOSING_TAGS = [
 ]
 ```
 
-Test your parser on this page to see if that helped.
+Our parser needs to auto-close tags from this list:
 
-::: {.further}
-Putting a slash at the end of self-closing tags, like `<br/>`,
-became fashionable when [XHTML][xhtml] looked like it might replace
-HTML. But unlike in [XML][xml-self-closing], in HTML self-closing tags
-are identified by name, not by some special syntax.
-:::
-
-[xml-self-closing]: https://www.w3.org/TR/xml/#sec-starttags
-[xhtml]: https://www.w3.org/TR/xhtml1/
-
-Attributes
-==========
-
-Strangely, the self-closing tag code in the previous section doesn't
-help; why? Because the problem tags aren't just `<meta>`: they have
-attributes, like in `<meta charset="utf-8" />`. HTML attributes give
-additional information about an element; open tags can have any number
-of attributes (though close tags can't have any). Attribute values can
-be either quoted, unquoted, or omitted entirely.
-
-Attribute values can be anything, and if they're quoted they can even
-contain whitespace. But for simplicity, let's stick to unquoted
-attribute values. Then neither tag names nor attribute-value pairs can
-contain whitespace, so we can split the tag contents on whitespace to
-get the tag name and the attribute-value pairs:
-
-``` {.python}
-class Tag:
-    def __init__(self, text):
-        parts = text.split()
-        self.tag = parts[0].lower()
+``` {.python indent=4 expected=False}
+def add_tag(self, tag):
+    # ...
+    elif tag in self.SELF_CLOSING_TAGS:
+        parent = self.unfinished[-1]
+        node = Element(text, parent)
+        parent.children.append(node)
 ```
 
-Note that the tag name is converted to lower case,[^case-fold] because
-HTML tag names are case-insensitive.
+This code is right, but if you test it out it won't seem to help. Why
+not? Our parser is looking for a tag named `meta`, but it's finding a
+tag named "`meta name=...`". The self-closing code isn't triggered
+because the `<meta>` tag has attributes.
+
+HTML attributes add information about an element; open tags can have
+any number of attributes. Attribute values can be quoted, unquoted, or
+omitted entirely. Let's focus on basic attribute support, ignoring
+values that contain whitespace, which are a little complicated.
+
+Since we're not handling whitespace in values, we can split on
+whitespace to get the tag name and the attribute-value pairs:
+
+``` {.python}
+class HTMLParser:
+    def get_attributes(self, text):
+        parts = text.split()
+        tag = parts[0].lower()
+        attributes = {}
+        for attrpair in parts[1:]:
+            # ...
+        return tag, attributes
+```
+
+HTML tag names are case-insensitive,[^case-fold] as by the way are
+attribute values, so I convert them to lower case. Then, inside the
+loop, I split each attribute-value pair into a name and a value.
+The easiest case is an unquoted attribute, where an equal sign
+separates the two:
 
 [^case-fold]: This is [not the right way][case-hard] to do case
     insensitive comparisons; the Unicode case folding algorithm should
     be used if you want to handle languages other than English. But in
-    HTML specifically, tag names only use the ASCII characters where
-    this test is sufficient.
+    HTML specifically, tag names only use the ASCII characters so
+    lower-casing them is sufficient.
     
 [case-hard]: https://www.b-list.org/weblog/2018/nov/26/case/
 
-This fixes the problem of identifying self-closing tags, but since
-we're already here, let's also turn the attribute-value pairs into a
-dictionary:
 
 ``` {.python indent=4}
-def __init__(self, text):
+def get_attributes(self, text):
     # ...
-    self.attributes = {}
     for attrpair in parts[1:]:
-        key, value = attrpair.split("=", 1)
-        self.attributes[key.lower()] = value
+        if "=" in attrpair:
+            key, value = attrpair.split("=", 1)
+            attributes[key.lower()] = value
+    # ...
 ```
 
-This code assumes all attributes have a value, but in fact the value
-can be omitted, like in `<input disabled>`. In this case, the
-attribute value is supposed to default to the empty string:
+The value can also be omitted, like in `<input disabled>`, in which
+case the attribute value defaults to the empty string:
 
 ``` {.python indent=8}
 for attrpair in parts[1:]:
-    if "=" in attrpair:
-        # ...
+    # ...
     else:
-        self.attributes[attrpair.lower()] = ""
+        attributes[attrpair.lower()] = ""
 ```
 
-Finally, this code misbehaves on quoted values, since it includes the
-quotes as part of the value. We can fix that:
+Finally, the value can be quoted, in which case the quotes have to be
+stripped out:[^for-ws]
+
+[^for-ws]: Quoted attributes allow whitespace between the quotes. That
+    requires something like a finite state machine instead of just
+    splitting on whitespace.
 
 ``` {.python indent=12}
 if "=" in attrpair:
@@ -296,28 +472,111 @@ if "=" in attrpair:
     # ...
 ```
 
-This conditional checks the first character of the value to determine
-if it's quoted, and if so strips off the first and last character,
-leaving the contents of the quotes.
-
-When we convert `Tag`s to `ElementNode`s, we need to move the
-attributes as well. Let's add an `attributes` field on `ElementNode`:
+We'll store these attributes inside `Element`s:
 
 ``` {.python}
-class ElementNode:
-    def __init__(self, tag, parent, attributes):
+class Element:
+    def __init__(self, tag, attributes, parent):
         self.tag = tag
-        self.parent = parent
         self.attributes = attributes
-        self.children = []
+        # ...
 ```
 
-When we create an `ElementNode`, we'll copy the attributes over from
-the corresponding `Tag`:
+That means we'll need to call `get_attributes` at the top of
+`add_tag`, to get the `attributes` we need to construct an `Element`.
 
-``` {.python indent=12}
-node = ElementNode(tok.tag, parent, tok.attributes)
+``` {.python indent=4}
+def add_tag(self, tag):
+    tag, attributes = self.get_attributes(tag)
 ```
+
+Remember to use `tag` and `attribute` instead of `text` in `add_tag`,
+and try your parser again:
+
+``` {.example}
+<html>
+   <head>
+     <meta>
+     <meta>
+     <meta>
+     <meta>
+     <link>
+     <link>
+     <link>
+     <title>
+```
+
+It's close! Yes, if you print the attributes, you'll see that
+attributes with whitespace (like `author` on the fourth `meta` tag)
+are mis-parsed as multiple attributes, and the final slash on the
+self-closing tags is incorrectly treated as an extra attribute. A
+better parser would fix these issues. But let's instead leave our
+parser as is---these issues aren't going to be a problem for the toy
+browser we're building---and move on to integrating it with our
+browser.
+
+::: {.further}
+Putting a slash at the end of self-closing tags, like `<br/>`, became
+fashionable when [XHTML][xhtml] looked like it might replace HTML, and
+old-timers like me never broke the habit. But unlike in
+[XML][xml-self-closing], in HTML self-closing tags are identified by
+name, not by some special syntax, so the slash is optional.
+:::
+
+[xml-self-closing]: https://www.w3.org/TR/xml/#sec-starttags
+[xhtml]: https://www.w3.org/TR/xhtml1/
+
+
+Using the node tree
+===================
+
+Right now, the `Layout` class works token-by-token; we now want it to
+go node-by-node instead. So let's sepate the old `token` method into
+three parts: all the cases for open tags will go into a new `open`
+method; all the cases for close tags will to into a new `close`
+method; and instead of having a case for text tokens our browser can
+just call the existing `text` method directly:
+
+``` {.python}
+class Layout:
+    def open(self, tag):
+        if tag == "i":
+            self.style = "italic"
+        # ...
+
+    def close(self, tag):
+        if tag == "i":
+            self.style = "roman"
+        # ...
+```
+
+Now we need the `Layout` object to walk the node tree, calling `open`,
+`close`, and `text` in the right order:
+
+``` {.python}
+def recurse(self, tree):
+    if isinstance(tree, Text):
+        self.text(tree.text)
+    else:
+        self.open(tree.tag)
+        for child in tree.children:
+            self.recurse(child)
+        self.close(tree.tag)
+```
+
+The `Layout` constructor can now call `recurse` instead of looping
+through the list of tokens. We'll also need the browser to construct
+the node tree, like this:
+
+``` {.python}
+class Browser:
+    def layout(self, body):
+        tree = HTMLParser(body).parse()
+        self.display_list = Layout(tree).display_list
+        self.render()
+```
+
+Run it---the browser should now work off of the parsed HTML tree.
 
 ::: {.further}
 Prior to the invention of CSS, some browsers supported web page
@@ -328,136 +587,25 @@ obsolete][html5-obsolete], but browsers still support some of them.
 
 [html5-obsolete]: https://html.spec.whatwg.org/multipage/obsolete.html#obsolete
 
-
-Doctype declarations
-====================
-
-Self-closing elements are now handled correctly and the list of open
-elements when parsing this page is now shorter:
-
-```
-[<!DOCTYPE>]
-```
-
-[html5-doctype]: https://html.spec.whatwg.org/multipage/syntax.html#the-doctype
-
-This special tag is called a [doctype][html5-doctype], and it's not
-really an element at all. It's not supposed to have close tag, but we
-can't mark it a self-closing tag—it's always the very first thing in
-the document, so there wouldn't be an open element to append it to.
-It's best to throw it away:[^quirks-mode]
-
-[^quirks-mode]: Real browsers also set some flags that switch between
-    standards-compliant and legacy parsing and layout modes.
-
-``` {.python indent=8}
-elif tok.tag.startswith("!"):
-    continue
-```
-
-Furthermore, text can appear after the doctype declaration but before
-any other elements; in that case `currently_open` is empty so there's
-no node to add that text to. Usually that text is just whitespace
-between `<!DOCTYPE html>` and `<html>` in the HTML source, so it's
-silly to have the parser crash here. Let's handle it just skipping
-all text nodes that only contain whitespace:[^ignore-them]
-
-[^ignore-them]: Real browsers retain whitespace nodes: whitespace is
-    significant inside `<pre>` tags or in cases like the difference
-    between `make<span>up</span>` and `make <span>up</span>`. Our
-    browser won't support that, and ignoring all whitespace tags
-    simplifies [later chapters](layout.md) by avoiding a special-case
-    for whitespace-only text tags.
-
-``` {.python indent=8}
-if isinstance(tok, Text):
-    if tok.text.isspace(): continue
-    # ...
-```
-
-With this change, the parser can now parse this page, and most other
-valid HTML pages!
-
-Now our browser should *use* this element tree. Let's add a `recurse`
-method to replace the current `for` loop inside the `Layout`
-constructor. To start, we can just call `token` twice per element
-node, emulating the old token-based layout:
-
-``` {.python indent=4 expected=False}
-def recurse(self, tree):
-    if isinstance(tree, TextNode):
-        self.text(tree.text)
-    else:
-        self.token(Tag(tree.tag))
-        for child in tree.children:
-            self.recurse(child)
-        self.token(Tag("/" + tree.tag))
-```
-
-This works but it's a little ridiculous. We've gone through all this
-effort to construct a tree, and now we're just emulating tokens? It's
-now a little clearer that the old `token` function had three different
-parts to it:
-
-- The part that handled `Text` tokens, which now isn't being used;
-- The part that handled start tags; and
-- The part that handled end tags.
-
-Let's split `token` into two functions, then, `open` and `close`:
-
-``` {.python indent=4}
-def open(self, tag):
-    if tag == "i":
-        self.style = "italic"
-    # ...
-
-def close(self, tag):
-    if tag == "i":
-        self.style = "roman"
-    # ...
-```
-
-Make sure to update `recurse` to call these two new functions; now it
-no longer has to construct `Tag` objects or add slashes to things to
-indicate a close tag!
-
-::: {.further}
-SGML document type declarations had a URL to define the valid tags.
-Browsers use the absense of a document type declaration to
-[identify][quirks-mode] very old, pre-SGML versions of
-HTML,[^almost-standards-mode] but don't need the URL, so `<!doctype
-html>` is the best document type declaration today.
-:::
-
-[quirks-mode]: https://developer.mozilla.org/en-US/docs/Web/HTML/Quirks_Mode_and_Standards_Mode
-
-[^almost-standards-mode]: There's also a crazy thing called "[almost
-    standards][limited-quirks]" or "limited quirks" mode, due to a
-    backwards-incompatible change in table cell vertical layout. Yes.
-    I don't need to make these up!
-
-[limited-quirks]: https://hsivonen.fi/doctype/
-
 Handling author errors
 ======================
 
-The parser now handles HTML pages correctly—at least, pages written by
-the sorts of goody-two-shoes programmers who remember the HTML
-boilerplate, close their open tags, and make their bed in the morning.
-We, or at least I, am not such a person, so browsers have had to adapt
-to handle poorly-written, confusing, boilerplate-less HTML.
-
-In fact, modern HTML parsers are capable of transforming *any* string
-of characters into an HTML tree, no matter how confusing the markup.[^3]
-The full algorithm is, as you might expect, complicated beyond belief,
-with dozens of ever-more-special cases forming a taxonomy of human
-error, but one of the nicer time-saving innovations is *implicit* tags.
+The parser now handles HTML pages correctly—at least when the HTML is
+written by the sorts of goody-two-shoes programmers who remember the
+`<head>` tag, close every open tag, and make their bed in the morning.
+Mere mortals lack such discipline and so browsers also have to handle
+broken, confusing, headless HTML. In fact, modern HTML parsers are
+capable of transforming *any* string of characters into an HTML tree,
+no matter how confusing the markup.[^3]
 
 [^3]: Yes, it's crazy, and for a few years in the early '00s the W3C
     tried to [do away with it](https://www.w3.org/TR/xhtml1/). They
     failed.
 
-Normally, an HTML document starts with a familiar boilerplate:
+The full algorithm is, as you might expect, complicated beyond belief,
+with dozens of ever-more-special cases forming a taxonomy of human
+error, but one its the nicer features is *implicit* tags. Normally, an
+HTML document starts with a familiar boilerplate:
 
 ``` {.html}
 <!doctype html>
@@ -470,111 +618,137 @@ Normally, an HTML document starts with a familiar boilerplate:
 ```
 
 In reality, *all six* of these tags, except the doctype, are optional:
-browsers insert them automatically. To do so, they compare the current
-token's tag to the list of currently open elements; that reveals
-whether any additional elements need to be created:
+browsers insert them automatically. Let's add support for implicit
+tags to our browser via a new `implicit_tags` function that adds
+implicit tags when the web page omits them. We'll want to call it in
+both `add_text` and `add_tag`:
 
 ``` {.python indent=4}
-for tok in tokens:
-    implicit_tags(tok, currently_open)
-    # ...
-```
+class HTMLParser:
+    def add_text(self, text):
+        if text.isspace(): return
+        self.implicit_tags(None)
+        # ...
 
-The `implicit_tags` function examines the incoming token and
-determines whether any implicit tags need to be added. Importantly,
-more than one implicit tag may need to be added, so the function uses
-a loop:
-
-``` {.python}
-def implicit_tags(tok, currently_open):
-    tag = tok.tag if isinstance(tok, Tag) else None
-    while True:
-        open_tags = [node.tag for node in currently_open]
+    def add_tag(self, tag):
+        tag, attributes = self.get_attributes(tag)
+        if tag.startswith("!"): return
+        self.implicit_tags(tag)
         # ...
 ```
 
-That loop needs to handle each possible implicit tag. The implicit
-`<html>` tag is easiest, since it must be the root element:
-
-``` {.python indent=8}
-if open_tags == [] and tag != "html":
-    currently_open.append(ElementNode("html", None, {}))
-```
-
-With the `<head>` and `<body>` elements, you need to look at the tag
-being handled. Only a few tags are actually supposed to go in the
-`<head>` element:
+Note that `implicit_tags` isn't called for the ignored whitespace and
+doctypes. The argument to `implicit_tags` is the tag name (or `None`
+for text nodes), which we'll compare to the list of unfinished tags to
+determine what's been omitted:
 
 ``` {.python}
-HEAD_TAGS = [
-    "base", "basefont", "bgsound", "noscript",
-    "link", "meta", "title", "style", "script",
-]
+class HTMLParser:
+    def implicit_tags(self, tag):
+        while True:
+            open_tags = [node.tag for node in self.unfinished]
+            # ...
 ```
 
-That tells you whether to insert `<head>` or `<body>`:[^where-script]
+`implicit_tags` has a loop because more than one tag could have been
+omitted in a row; every iteration around the loop will add just one.
+To determine which implicit tag to add, if any, requires examining the
+open tags and the tag being inserted.
 
-[^where-script]: Note that some tags, like `<script>`, can go in
-    either the head or body section of an HTML document. The code
-    below places it inside a `<head>` tag by default, but doesn't
-    prevent its being explicitly placed inside `<body>` by the page
-    author.
+Let's start with the easiest case, the implicit `<html>` tag. An
+implicit `<html>` tag is necessary if the first tag in the document is
+something other than `<html>`:
 
 ``` {.python indent=8}
-elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
-    if tag in HEAD_TAGS:
-        implicit = "head"
-    else:
-        implicit = "body"
-    parent = currently_open[-1]
-    currently_open.append(ElementNode(implicit, parent, {}))
-```
-
-If you see an element that's not supposed to go in the `<head>`, you
-need to implicitly close the `<head>` section:
-
-``` {.python indent=8}
-elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
-    node = currently_open.pop()
-    parent = currently_open[-1]
-    parent.children.append(node)
-```
-
-Note that the this code doesn't create the `<body>` element itself.
-That's for the next iteration of the loop.
-
-The loop ends for all other cases, with no additional implicit tags
-being inserted:
-
-``` {.python indent=8}
-else:
-    break
-```
-
-We also want implicit close tags for `</body>` and `</html>`. Usually,
-leaving them out will mean the `parse` function reaches the end of its
-loop without closing all open tags, and would thus return nothing.
-Let's make it return *something* instead:
-
-``` {.python}
-def parse(tokens):
+while True:
     # ...
-    while currently_open:
-        node = currently_open.pop()
-        if not currently_open: return node
-        currently_open[-1].children.append(node)
+    if open_tags == [] and tag != "html":
+        self.add_tag("html")
 ```
 
-These rules for malformed HTML may seem arbitrary, and they are: they
+Both `<head>` and `<body>` can also be omitted, but to figure out
+which it is we need to look at which tag is being added:
+
+``` {.python indent=8}
+while True:
+    # ...
+    elif open_tags == ["html"] \
+         and tag not in ["head", "body", "/html"]:
+        if tag in self.HEAD_TAGS:
+            self.add_tag("head")
+        else:
+            self.add_tag("body")
+```
+
+Here, `HEAD_TAGS` list the tags that you're supposed to put into the
+`<head>` element:[^where-script]
+
+[^where-script]: The `<script>`, can go in either the head or the body
+    section, but it goes into the head by default.
+
+``` {.python}
+class HTMLParser:
+    HEAD_TAGS = [
+        "base", "basefont", "bgsound", "noscript",
+        "link", "meta", "title", "style", "script",
+    ]
+```
+
+Note that if both the `<html>` and `<head>` tags are omitted,
+`implicit_tags` is going to insert both of them by going around the
+loop twice. In the first iteration `open_tags` is `[]`, so the code
+adds an `<html>` tag; then, in the second iteration, `open_tags` is
+`["html"]` so it adds a `<head>` tag.[^no-infinite-loop]
+
+[^no-infinite-loop]: These `add_tag` methods themselves call
+    `implicit_tags`, which means you can get into an infinite loop if
+    you forget a case. Remember that every time you add a tag in
+    `implicit_tags`, that tag itself shouldn't trigger more implicit
+    tags.
+
+Finally, the `</head>` tag can also be implicit, if the parser is
+inside the `<head>` and sees an element that's supposed to go in the
+`<body>`:
+
+``` {.python indent=8}
+while True:
+    # ...
+    elif open_tags == ["html", "head"] and \
+         tag not in ["/head"] + self.HEAD_TAGS:
+        self.add_tag("/head")
+```
+
+Technically, the `</body>` and `</html>` tags can also be implicit.
+But since our `finish` function already closes any unfinished tags,
+that doesn't need any extra code. So all that's left for
+`implicit_tags` tags is to exit out of the loop:
+
+``` {.python indent=8}
+while True:
+    # ...
+    else:
+        break
+```
+
+Of course, there are more rules for handling malformed HTML:
+formatting tags, nested paragraphs, embedded SVG and MathML, and all
+sorts of other complexity. Each has complicated rules abounding with
+edge cases. But let's end our discussion of handling author errors
+here.
+
+The rules for malformed HTML may seem arbitrary, and they are: they
 evolved over years of trying to guess what people "meant" when they
 wrote that HTML, and are now codified in the [HTML parsing
-standard][html5-parsing].
+standard][html5-parsing]. Of course, sometimes these rules "guess"
+wrong---but as so often happens on the web, it's often more important
+that every browser does the *same* thing, rather than each trying to
+guess what the *right* thing is.
 
 [html5-parsing]: https://html.spec.whatwg.org/multipage/parsing.html
 
 ::: {.further}
-Thanks to implicit tags, you can often skip the `<html>`, `<body>`,
-and `<head>` elements. They'll be implicitly added back for you.
+Thanks to implicit tags, you can mostly skip the `<html>`, `<body>`,
+and `<head>` elements, and they'll be implicitly added back for you.
 Nor does writing them explicitly let you do anything weird; the HTML
 parser's [many states][after-after-body] guarantee that there's only
 one `<head>` and one `<body>`.[^except-templates]
@@ -593,9 +767,9 @@ This chapter taught our browser that HTML is a tree, not just a flat
 list of tokens. We added:
 
 - A parser to transform HTML tokens to a tree
-- Layout operating recursively on the tree
 - Code to recognize and handle attributes on elements
 - Automatic fixes for some malformed HTML documents
+- A recursive layout algorithm to lay out an HTML tree
 
 The tree structure of HTML is essential to display visually complex
 web pages, as we will see in the [next chapter](layout.md).
@@ -603,6 +777,15 @@ web pages, as we will see in the [next chapter](layout.md).
 ::: {.signup}
 :::
 
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 outlines.py --html src/lab4.py
+:::
 
 Exercises
 =========
@@ -611,13 +794,12 @@ Exercises
 HTML begin with `<!--` and end with `-->`. However, comments aren't
 the same as tags: they can contain any text, including left and right
 angle brackets. The lexer should skip comments, not generating any
-token at all. Test: is `<!-->` a comment, or does it just start one?
+token at all. Check: is `<!-->` a comment, or does it just start one?
 
-*Paragraphs:* Since it's not clear what it would mean for one
-paragraph to contain another, the most common reason for this to
-happen in a web page is that someone forgot a close tag. Change the
-parser so that a document like `<p>hello<p>world</p>` results in two
-sibling paragraphs instead of one paragraph inside another.
+*Paragraphs:* It's not clear what it would mean for one paragraph to
+contain another. Change the parser so that a document like
+`<p>hello<p>world</p>` results in two sibling paragraphs instead of
+one paragraph inside another; real browsers do this too.
 
 *Scripts:* JavaScript code embedded in a `<script>` tag uses the left
 angle bracket to mean less-than. Modify your lexer so that the
@@ -626,9 +808,8 @@ inside `<script>`, except the `</script>` close tag.[^or-space]
 
 [^or-space]: Technically it's just `</script` followed by a [space,
     tab, `\v`, `\r`, slash, or greater than sign][script-end-state].
-    If you need to talk about `</script>` tags inside your JavaScript
-    code, split it across multiple strings. I talk about it in a
-    video.
+    If you need to talk about `</script>` tags inside JavaScript code,
+    you have to split it into multiple strings.
 
 [script-end-state]: https://html.spec.whatwg.org/multipage/parsing.html#script-data-end-tag-name-state
 
@@ -641,5 +822,5 @@ Hint: the current lexer is a finite state machine, with two states
 [Chapter 1](http.md#exercises), but make it syntax-highlight the
 source code of HTML pages. Keep source code for HTML tags in a normal
 font, but make text contents bold. If you've implemented it, wrap text
-in `<pre>` tags as well to preserve line breaks. Use your browser's
-HTML lexer to implement the syntax highlighter.
+in `<pre>` tags as well to preserve line breaks. Hint: subclass the
+HTML parser and use it to implement your syntax highlighter.
