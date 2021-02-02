@@ -263,7 +263,7 @@ class Text:
 
 class Element:
     def __repr__(self):
-        return "<" + self.tag.upper() + ">"
+        return "<" + self.tag + ">"
 ```
 
 Try this out on this web page, parsing the HTML source code and then
@@ -278,20 +278,20 @@ print_tree(nodes)
 Run it on this web page, and you'll see something like this:
 
 ``` {.example}
- <!DOCTYPE HTML>
+ <!doctype html>
    '\n'
-   <HTML LANG="EN-US" XML:LANG="EN-US">
+   <html lang="en-US" xml:lang="en-US">
      '\n'
-     <HEAD>
+     <head>
        '\n  '
-       <META CHARSET="UTF-8" />
+       <meta charset="utf-8" />
          '\n  '
-         <META NAME="GENERATOR" CONTENT="PANDOC" />
+         <meta name="generator" content="pandoc" />
            '\n  '
 ```
 
 Immediately a couple of things stand out. Let's start at the top, with
-the `<!DOCTYPE HTML>` tag.
+the `<!doctype html>` tag.
 
 This special tag, called a [doctype][html5-doctype], is always the
 very first thing in an HTML document. But it's not really an element
@@ -336,16 +336,16 @@ def add_text(self, text):
 The parsed HTML tree now looks like this:
 
 ``` {.example}
-<HTML LANG="EN-US" XML:LANG="EN-US">
-   <HEAD>
-     <META CHARSET="UTF-8" />
-       <META NAME="GENERATOR" CONTENT="PANDOC" />
-         <META NAME="VIEWPORT" CONTENT="WIDTH=DEVICE-WIDTH,INITIAL-SCALE=1.0,USER-SCALABLE=YES" />
-           <META NAME="AUTHOR" CONTENT="PAVEL PANCHEKHA &AMP; CHRIS HARRELSON" />
-             <LINK REL="STYLESHEET" HREF="BOOK.CSS" />
-               <LINK REL="STYLESHEET" HREF="HTTPS://FONTS.GOOGLEAPIS.COM/CSS?FAMILY=VOLLKORN%7CLORA&DISPLAY=SWAP" />
-                 <LINK REL="STYLESHEET" HREF="HTTPS://FONTS.GOOGLEAPIS.COM/CSS?FAMILY=VOLLKORN:400I%7CLORA:400I&DISPLAY=SWAP" />
-                   <TITLE>
+<html lang="en-US" xml:lang="en-US">
+   <head>
+     <meta charset="utf-8" />
+       <meta name="generator" content="pandoc" />
+         <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes" />
+           <meta name="author" content="Pavel Panchekha &amp; Chris Harrelson" />
+             <link rel="stylesheet" href="book.css" />
+               <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn%7CLora&display=swap" />
+                 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn:400i%7CLora:400i&display=swap" />
+                   <title>
 ```
 
 Why's everything so deeply indented? Why aren't these open elements
@@ -494,16 +494,16 @@ Remember to use `tag` and `attribute` instead of `text` in `add_tag`,
 and try your parser again:
 
 ``` {.example}
-<HTML>
-   <HEAD>
-     <META>
-     <META>
-     <META>
-     <META>
-     <LINK>
-     <LINK>
-     <LINK>
-     <TITLE>
+<html>
+   <head>
+     <meta>
+     <meta>
+     <meta>
+     <meta>
+     <link>
+     <link>
+     <link>
+     <title>
 ```
 
 It's close! Yes, if you print the attributes, you'll see that
@@ -555,7 +555,7 @@ Now we need the `Layout` object to walk the node tree, calling `open`,
 
 ``` {.python}
 def recurse(self, tree):
-    if isinstance(tree, TextNode):
+    if isinstance(tree, Text):
         self.text(tree.text)
     else:
         self.open(tree.tag)

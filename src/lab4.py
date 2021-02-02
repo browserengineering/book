@@ -71,7 +71,7 @@ class Element:
 
     def __repr__(self):
         attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
-        return "<" + self.tag.upper() + "".join(attrs) + ">"
+        return "<" + self.tag + "".join(attrs) + ">"
 
 def print_tree(node, indent=0):
     print(" " * indent, node)
@@ -194,7 +194,7 @@ class Layout:
         self.recurse(tree)
 
     def recurse(self, tree):
-        if isinstance(tree, TextNode):
+        if isinstance(tree, Text):
             self.text(tree.text)
         else:
             self.open(tree.tag)
