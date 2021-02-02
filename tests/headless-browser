@@ -45,9 +45,7 @@ yargs.usage('$0 <url> [args]')
   .argv
 
 function printDomInternal(node, DOM, indent, nodesInOrder) {
-  let arr = new Array(indent);
-  if (node.nodeName == 'HEAD' && !argv.include_head)
-    return;
+  if (node.nodeName == 'HEAD' && !argv.include_head) return;
 
   nodesInOrder.push(node);
   node.indent = indent;
@@ -63,14 +61,16 @@ const ELEMENT_NODE = 1
 const TEXT_NODE = 3
 
 function prettyPrintBox(box) {
+  if (!box) return "";
   let topLeft = [box[0], box[1]];
   let width = box[2] - box[0];
   let height = box[5] - box[1];
-  return `(${topLeft[0]},${topLeft[1]}) ${width}x${height}`;
+  return `(${width} x ${height} at ${topLeft[0]}, ${topLeft[1]})`;
 }
 
 async function printDom(rootNode, DOM) {
-  let nodesInOrder = []
+  let nodesInOrder = [];
+  if (rootNode.nodeType == 9) rootNode = rootNode.children[rootNode.children.length - 1];
   printDomInternal(rootNode, DOM, 0, nodesInOrder);
   for await (node of nodesInOrder) {
     if (node.nodeId && (node.nodeType == ELEMENT_NODE || node.nodeType == TEXT_NODE)) {
@@ -84,10 +84,10 @@ async function printDom(rootNode, DOM) {
     }
   };
   nodesInOrder.forEach(node => {
-    let arr = new Array(node.indent);
-    let borderBox = node.boxModel ? `borderBox=${prettyPrintBox(node.boxModel.border)}` : '';
-    let whitespace = arr.join(' ')
-    console.log(`${whitespace} ${node.nodeName} ${node.nodeValue} ${borderBox}`);
+    let indent = (new Array(node.indent + 1)).join(' ');
+    let name = node.nodeValue ? JSON.stringify(node.nodeValue) : `<${node.nodeName}>`;
+    let borderBox = node.boxModel ? ` ${prettyPrintBox(node.boxModel.border)}` : '';
+    console.log(`${indent}${name}${borderBox}`);
   });
 }
 
