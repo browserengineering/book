@@ -157,12 +157,13 @@ class HTMLParser:
             if open_tags == [] and tag != "html":
                 self.add_tag("html")
             elif open_tags == ["html"] \
-              and tag not in ["head", "body", "/html"]:
+                 and tag not in ["head", "body", "/html"]:
                 if tag in self.HEAD_TAGS:
                     self.add_tag("head")
                 else:
                     self.add_tag("body")
-            elif open_tags == ["html", "head"] and tag not in ["/head"] + self.HEAD_TAGS:
+            elif open_tags == ["html", "head"] and \
+                 tag not in ["/head"] + self.HEAD_TAGS:
                 self.add_tag("/head")
             else:
                 break
