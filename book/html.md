@@ -592,11 +592,11 @@ Handling author errors
 
 The parser now handles HTML pages correctly—at least when the HTML is
 written by the sorts of goody-two-shoes programmers who remember the
-`<head>` tag, close every open tag, and make their bed. Mere mortals
-lack such discipline and so browsers also have to handle broken,
-confusing, headless HTML. In fact, modern HTML parsers are capable of
-transforming *any* string of characters into an HTML tree, no matter
-how confusing the markup.[^3]
+`<head>` tag, close every open tag, and make their bed in the morning.
+Mere mortals lack such discipline and so browsers also have to handle
+broken, confusing, headless HTML. In fact, modern HTML parsers are
+capable of transforming *any* string of characters into an HTML tree,
+no matter how confusing the markup.[^3]
 
 [^3]: Yes, it's crazy, and for a few years in the early '00s the W3C
     tried to [do away with it](https://www.w3.org/TR/xhtml1/). They
