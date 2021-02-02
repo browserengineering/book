@@ -71,7 +71,7 @@ class Element:
 
     def __repr__(self):
         attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
-        return "<" + self.tag + "".join(attrs) + ">"
+        return "<" + self.tag.upper() + "".join(attrs) + ">"
 
 def print_tree(node, indent=0):
     print(" " * indent, node)

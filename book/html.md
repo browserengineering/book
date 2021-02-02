@@ -256,7 +256,7 @@ class Text:
 
 class Element:
     def __repr__(self):
-        return "<" + self.tag + ">"
+        return "<" + self.tag.upper() + ">"
 ```
 
 Try this out on this web page, parsing the HTML source code and then
