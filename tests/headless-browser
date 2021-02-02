@@ -1,0 +1,115 @@
+#!/usr/bin/env node
+
+// This is a simple script that uses the Chrome remote debugging protocol to
+// analyze websites loaded in Chromium. You can use this to compare a real
+// browser with the results you are computing while building your own browser.
+//
+// To use this script, you'll need to install the following on your computer:
+// * Chromium or Chrome (you might also be able to get it to work with Firefox -
+//   see https://firefox-source-docs.mozilla.org/remote/index.html)
+// * node.js and npm
+//   (https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+// * The chrome-remote-interface and yargs npm modules
+//   ("npm install chrome-remote-interface")
+//
+// To run this script, run these commands in a terminal:
+// /path/to/chromium --headless --remote-debugging-port=9222
+//
+// and in another terminal:
+// ./headless-browser --help
+//
+// Running ./headless-browser dump-dom https://browser.engineering
+// should print out the DOM for the browser.engineering webpage.
+
+const CDP = require('chrome-remote-interface');
+const yargs = require('yargs')
+
+let argv = 
+yargs.usage('$0 <url> [args]')
+  .command('dump-dom [url]',
+    'Dump DOM tree, with border box rects if available from layout', (yargs) => {
+    yargs.positional('include_head', {
+      type: 'boolean',
+      default: false,
+      describe: 'Whether to include elements under <head>'
+    }),
+    yargs.positional('url', {
+      type: 'string',
+      default: 'http://example.com',
+      describe: 'URL to load (defaults to http://example.com'
+    })
+  }, function (argv) {
+    dumpDom()
+  })
+  .help()
+  .argv
+
+function printDomInternal(node, DOM, indent, nodesInOrder) {
+  if (node.nodeName == 'HEAD' && !argv.include_head) return;
+
+  nodesInOrder.push(node);
+  node.indent = indent;
+
+  if (node.children) {
+     node.children.forEach(child =>
+        printDomInternal(child, DOM, indent + 2, nodesInOrder));
+  }
+}
+
+// https://dom.spec.whatwg.org/#dom-node-nodetype
+const ELEMENT_NODE = 1
+const TEXT_NODE = 3
+
+function prettyPrintBox(box) {
+  if (!box) return "";
+  let topLeft = [box[0], box[1]];
+  let width = box[2] - box[0];
+  let height = box[5] - box[1];
+  return `(${width} x ${height} at ${topLeft[0]}, ${topLeft[1]})`;
+}
+
+async function printDom(rootNode, DOM) {
+  let nodesInOrder = [];
+  if (rootNode.nodeType == 9) rootNode = rootNode.children[rootNode.children.length - 1];
+  printDomInternal(rootNode, DOM, 0, nodesInOrder);
+  for await (node of nodesInOrder) {
+    if (node.nodeId && (node.nodeType == ELEMENT_NODE || node.nodeType == TEXT_NODE)) {
+      try {
+        let boxes = await DOM.getBoxModel({nodeId: node.nodeId});
+        node.boxModel = boxes.model;
+      }
+      catch (err) {
+        node.boxModel = {border: ''}
+      }
+    }
+  };
+  nodesInOrder.forEach(node => {
+    let indent = (new Array(node.indent + 1)).join(' ');
+    let name = node.nodeValue ? JSON.stringify(node.nodeValue) : `<${node.nodeName}>`;
+    let borderBox = node.boxModel ? ` ${prettyPrintBox(node.boxModel.border)}` : '';
+    console.log(`${indent}${name}${borderBox}`);
+  });
+}
+
+function dumpDom() {
+  CDP((client) => {
+    // Extract used DevTools domains.
+    const {Page, DOM} = client;
+
+    // Enable events on domains we are interested in.
+    Promise.all([
+      Page.enable()
+    ]).then(() => {
+      return Page.navigate({url: argv.url});
+    });
+
+    // Print DOM once the page's onload event has fired.
+    Page.loadEventFired(() => {
+      DOM.getDocument({depth: -1}).then((result) => {
+        printDom(result.root, DOM).then(() => client.close());
+      });
+    });
+  }).on('error', (err) => {
+    console.error('Cannot connect to browser:', err);
+  });
+}

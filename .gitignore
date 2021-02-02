@@ -8,3 +8,4 @@ lectures/
 www/db.pickle
 www/pw.hash
 onepage/
+node_modules/
