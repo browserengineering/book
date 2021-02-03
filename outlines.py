@@ -6,8 +6,10 @@ from typing import List
 
 groups = [ "Node", "Layout", "Draw" ]
 
+class Item: pass
+
 @dataclass
-class Function:
+class Function(Item):
     name: str
     args: List[str]
     
@@ -23,7 +25,7 @@ class Function:
 @dataclass
 class Class:
     name: str
-    fns: List[Function]
+    fns: List[Item]
     
     def str(self):
         return "class {}:".format(self.name)
@@ -35,7 +37,7 @@ class Class:
         return self.fns
 
 @dataclass
-class Const:
+class Const(Item):
     names: List[str]
     
     def str(self):
@@ -85,40 +87,38 @@ def write_html(objs, indent=0):
             write_html(subs, indent=indent+4)
         print("</code>")
 
+def to_item(cmd):
+    if isinstance(cmd, ast.ClassDef):
+        return Class(cmd.name, [to_item(scmd) for scmd in cmd.body])
+    elif isinstance(cmd, ast.FunctionDef):
+        return Function(cmd.name, [arg.arg for arg in cmd.args.args])
+    elif isinstance(cmd, ast.Assign) and len(cmd.targets) == 1:
+        if isinstance(cmd.targets[0], ast.Name):
+            names = [cmd.targets[0].id]
+        elif isinstance(cmd.targets[0], ast.Tuple):
+            names = [elt.id for elt in cmd.targets[0].elts]
+        else:
+            raise Exception(ast.dump(cmd))
+        return Const(names)
+    elif isinstance(cmd, ast.Expr) and isinstance(cmd.value, ast.Str):
+        return
+    elif isinstance(cmd, ast.Import):
+        return
+    elif isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
+         isinstance(cmd.test.left, ast.Name) and cmd.test.left.id == "__name__" and \
+         len(cmd.test.comparators) == 1 and isinstance(cmd.test.comparators[0], ast.Str) and \
+         cmd.test.comparators[0].s == "__main__" and len(cmd.test.ops) == 1 and \
+         isinstance(cmd.test.ops[0], ast.Eq):
+        return IfMain()
+    else:
+        raise Exception(ast.dump(cmd))
+
 def outline(tree):
     objs = []
     assert isinstance(tree, ast.Module)
     for cmd in tree.body:
-        if isinstance(cmd, ast.ClassDef):
-            fns = []
-            objs.append(Class(cmd.name, fns))
-            for subcmd in cmd.body:
-                if isinstance(subcmd, ast.FunctionDef):
-                    fns.append(Function(subcmd.name, [arg.arg for arg in subcmd.args.args if arg.arg != "self"]))
-                else:
-                    raise Exception(ast.dump(cmd))
-        elif isinstance(cmd, ast.FunctionDef):
-            objs.append(Function(cmd.name, [arg.arg for arg in cmd.args.args]))
-        elif isinstance(cmd, ast.Assign) and len(cmd.targets) == 1:
-            if isinstance(cmd.targets[0], ast.Name):
-                names = [cmd.targets[0].id]
-            elif isinstance(cmd.targets[0], ast.Tuple):
-                names = [elt.id for elt in cmd.targets[0].elts]
-            else:
-                raise Exception(ast.dump(cmd))
-            objs.append(Const(names))
-        elif isinstance(cmd, ast.Expr) and isinstance(cmd.value, ast.Str):
-            pass
-        elif isinstance(cmd, ast.Import):
-            pass
-        elif isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
-             isinstance(cmd.test.left, ast.Name) and cmd.test.left.id == "__name__" and \
-             len(cmd.test.comparators) == 1 and isinstance(cmd.test.comparators[0], ast.Str) and \
-             cmd.test.comparators[0].s == "__main__" and len(cmd.test.ops) == 1 and \
-             isinstance(cmd.test.ops[0], ast.Eq):
-            objs.append(IfMain())
-        else:
-            raise Exception(ast.dump(cmd))
+        item = to_item(cmd)
+        if item: objs.append(item)
     return objs
 
 if __name__ == "__main__":
