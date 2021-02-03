@@ -408,6 +408,8 @@ goes beyond security---if you have two servers that both set the `token`
 cookie, they'd overwrite each other and you'd constantly be getting
 logged out!
 
+<a name="same-origin-policy">
+
 Web browsers use the *same origin policy* to determine which cookies
 are sent where. The rule is: a cookie is only sent in HTTP requests to
 the same origin---where the origin is the scheme, host, and
