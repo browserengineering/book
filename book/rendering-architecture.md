@@ -6,14 +6,16 @@ cur: event-loop-rendering-pipeline
 The Rendering Event Loop and Pipeline
 =====================================
 
-In previous chapters, you learned about how to load a web page with HTTP,
-parse HTML into DOM, compute styles for the DOM, construct the layout tree,
-layout its contents, and paint the result to the screen. These steps
-are called the [*rendering pipeline*](https://en.wikipedia.org/wiki/Graphics_pipeline)of the browser. 
+In previous chapters, you learned about how to load a web page with HTTP, parse
+HTML into DOM, compute styles for the DOM, construct the layout tree, layout its
+contents, and paint the result to the screen. These steps are the basics of the
+[*rendering pipeline*](https://en.wikipedia.org/wiki/Graphics_pipeline)of the
+browser. 
 
 Chapter 2 also introduced the notion of an [event loop](graphics.md#eventloop),
-which is how browsers find out about inputs that might cause changes to what is
-drawn on the screen. In terms of our new terminology, the code is:
+which is a how a browser iteratively finds out about inputs that affect
+rendering, then re-runs the rendering pipeline, leading to an update on the
+screen. In terms of our new terminology, the code is:
 
 ``` {.python expected=False}
 while True:
@@ -22,52 +24,79 @@ while True:
     runRenderingPipeline()
 ```
 
-Now that same chapter also says that there is a
-[frame budget](graphics.md#framebudget), which is the amount of time allocated
-between times that `drawScreen()` is called, and is typically about 16ms, in
-order to draw at 60Hz (`60 * 16.66ms ~= 1s`). Therefore means that the browser
-wants to call `drawScreen()` at that rate, and as a result it must be that each
-time through the while loop iteration takes only 16ms, or the frame budget is
-missed. To ensure this, there are two things the browser can do:
+Now that same chapter *also* says that there is a [frame
+budget](graphics.md#framebudget), which is the amount of time allocated to
+re-draw the screen after an input update. The frame budget is typically about
+16ms, in order to draw at 60Hz (`60 * 16.66ms ~= 1s`). This means that each time
+through the `while` loop must run in at most 16ms. To ensure this, there are two
+things the browser can do:
 
-1. Make `drawScreen() ` as fast as possible
+1. Make `runRenderingPipeline() ` as fast as possible
 2. Avoid using up the frame budget calling `handleEvent()`
 
-You've already seen several ways to optimize `drawScreen()`, such as not
-painting content that is offscreen, and optimizing partial layouts. Real
-browsers implement many more, and those will be described in detail in
-later chapters. What about `handleEvent()` though? While the browser might be
-fast to handle keyboard input in a form control or scroll, input events can
-also be handled by javascript, which can be arbitrarily slow.
+You've already seen several ways to optimize `runRenderingPipeline()`, such as
+not painting content that is offscreen, and optimizing partial layouts. Real
+browsers implement many more such optimizations, and some of those will be
+described in detail in later chapters. What about `handleEvent()` though? While
+the browser might be fast to handle keyboard input in a form control or scroll,
+input events can also be handled by JavaScript. The browser can optimize scripts
+to run faster, but of course has no idea how long a website-providee JavaScript
+function will take to run.
 
-Anther problem is that the "event loop" is not just for handling input events.
-It is also where javascript tasks of all kinds run [^except-webworkers]. For
-example, event listeners related to the DOM such as the
+Anther complication is that the "event loop" is not just for handling input
+events. It is also where javascript tasks of all kinds run [^except-webworkers].
+For example, event listeners related to the DOM such as the
 [`load`](https://developer.mozilla.org/en-US/docs/Web/API/Window/load_event) are
-run as tasks on the [event
-loop](https://html.spec.whatwg.org/multipage/webappapis.html#event-loops).
-Another example is that javascript has a function called `setTimeout`; calling
+run on the event loop; while `load` is an event, it's certainly not related to
+input. And there are plenty of event loop tasks that are not due to events at
+all. An example is the JavaScript function `setTimeout`; calling
 `setTimeout(foo, 100)` will place a task on the event loop to be executed 100ms
 in the future. There are other tasks as well, such as parsing HTML or loading
 objects such as images, style sheets, and fonts into the document after their
-network fetches complete. However, there is often a required order to the work;
-for example, responding to input events out of order is not allowed, and
-`setTimeout` callbacks scheduled to run earlier must execute before ones
-scheduled to run later (they are not ["in
-parallel"](https://html.spec.whatwg.org/multipage/infrastructure.html#in-parallel)).
-Further, the global javascript and DOM state must at all times be consistent
-with actions taken up to that point. Finally, the Javascript language does not
-support simultaneous execution of multiple pieces of code in the same [execution
-context](https://tc39.es/ecma262/#sec-execution-contexts).
+network fetches complete.
 
-For these reasons, the event loop for a web page is more or less required to
-happen on a single CPU thread (this primary web page thread is called the *main
-thread*). This is a huge problem for web site performance, because CPU
-parallelism is one of the best ways to reliably meet the requirements of the
-frame budget. This is for two reasons: first, doing two things in parallel is up
-to twice as fast as doing them in serial; second - and perhaps more importantly
-- two tasks need be slowed down by either other if they don't depend on each
-other (this is the main benefit of pre-emptive multitasking).
+[event
+loop](https://html.spec.whatwg.org/multipage/webappapis.html#event-loops)
+
+There is often a required order to the tasks on the event loop; each such group
+of ordered tasks is called a [task
+queue](https://html.spec.whatwg.org/multipage/webappapis.html#task-queue). Input
+events form a task queue, as it's not allowed to execute them in a different
+order than they occured (imagine the chaos if the browser saw your keypresses
+out of order while typing a sentence!). Likewise as you would
+expect,`setTimeout` callbacks form a task queue --- ones scheduled to run
+earlier must execute before ones scheduled to run later. Different task queues
+need not coordinate with each other; the browser may handle as many input events
+as it likes before the first `setTimeout` callback.
+
+However, just because there are multiple task queues in a single event loop does
+not mean that those task queues can run [in
+parallel](https://html.spec.whatwg.org/multipage/infrastructure.html#in-parallel)
+with each other. It just means that each queue must be run in queue order
+[^not-even-a-queue]. In fact, the vast majority of JavaScript tasks cannot be
+run in parallel with the event loop. This is due to a design choice for the web,
+namely that JavaScript is a an event-based, single-threaded programming language
+(at least wihin the same [execution
+context](https://tc39.es/ecma262/#sec-execution-contexts); more on that
+shortly). For these reasons, the event loop for a web page is more or less
+required to happen on a single CPU thread (this primary web page thread is
+called the *main thread*).
+
+[^not-even-a-queue]: Fun fact: tasks queues are technnically not even tasks,
+[they are
+sets](https://html.spec.whatwg.org/multipage/webappapis.html#task-queue). In
+practice they act like queues, but in certain corner cases, a task associated
+with an inactive document is skipped. This is a good example of how the web
+platform has a lot of subtlety in its fullest definition, but that subtlety
+is not necessary to understand for anyone but browser developers.
+
+Now let's come back to the problem of the frame budget. This is a huge problem
+for web site performance, because CPU parallelism is one of the best ways to
+reliably meet the requirements of the frame budget. This is for two reasons:
+first, doing two things in parallel is up to twice as fast as doing them in
+serial; second - and perhaps more importantly - two tasks need be slowed down by
+either other if they don't depend on each other (this is the main benefit of
+pre-emptive multitasking).
 
 [^except-webworkers]: Exect for javascript that is part of a WebWorker or
 Worklet, but we won't discuss that topic in this chapter.
