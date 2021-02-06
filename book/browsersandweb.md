@@ -100,7 +100,7 @@ page layout, which depends on many numerical factors such as font and browser
 window sizes, desired position and size of boxes, and tabular arrangement of
 widgets[^6].
 
-Even after answering the _what_ and _how, _there is still the _declarative
+Even after answering the _what_ and the _how_, there is still the _declarative
 programming_ aspect of the web - _when_ various computations happen. For
 example, when exactly does style (re-)calculation[^7] happen? From the point of
 view of the developer, style applies “immediately”, meaning that any subsequent
@@ -115,8 +115,8 @@ It turns out that a whole lot of the complexity and cleverness of real-world
 browsers involves maximally exploiting the performance-enhancing opportunities
 afforded by declarative programming.
 
-The browser and the software engineer
-=====================================
+The browser and me
+==================
 
 I[^8] have known the web almost all of my adult life. Ever since I first
 encountered the web and its predecessors[^9] in the early 90s, I was fascinated
@@ -159,8 +159,8 @@ of the web design, what you might call the _base level_ of progressive
 enhancement. I saw this in the relative simplicity of individual features of
 Chrome - for example, sometime during my first few months of working on Chrome,
 I came across the code implementing the
-[<br>](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/br) tag. Look
-at that, the good-old <br> tag that I’ve used many times as a convenient hack
+[`<br>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/br) tag. Look
+at that, the good-old `<br>` tag that I’ve used many times as a convenient hack
 to insert newlines in the text of my web pages! And as it turns out, there
 really isn’t much code at all to implement this tag, either in Chrome or the
 simple browser you’ll build.
@@ -209,8 +209,8 @@ interpreted language and JIT; world-class security sandboxes; and uniquely
 dynamic systems for storing data. On top of this, the browser interacts in a
 fascinating and symbiotic way with the huge number of websites deployed today.
 
-Encoding the history of computing
-=================================
+The web in history
+==================
 
 The public Internet and the Web co-evolved, and in fact many peoples’ first
 experiences of the Internet in the 1990s and onward were really more or less
@@ -286,8 +286,8 @@ the web. In any case, as with all technology, the web continues to evolve. The
 above definition may change over time, but for the purposes of this book, it’s
 a pretty good one.
 
-Technologies leading up to the web
-==================================
+Technological precursors
+========================
 
 The web is at its core organized around _representing and displaying
 information_, and how to provide a way for humans to efficiently learn and
@@ -351,20 +351,19 @@ browser and the concept on the [alt.hypertext Usenet
 group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 
 Berners-Lee has also written a [Brief History of the
-Web](https://www.w3.org/DesignIssues/TimBook-old/History.html) that 
-highlights a number of other interesting factors up to the
-establishment of the web as we know it. One key factor was its decentralized
-nature, which he describes as arising from the culture of CERN, where he
-worked. The decentralized nature of the web is the key feature that
-distinguishes it from many systems that came before or after, and his
-explanation of it is worth quoting here (highlight is
+Web](https://www.w3.org/DesignIssues/TimBook-old/History.html) that  highlights
+a number of other interesting factors up to the establishment of the web as we
+know it. One key factor was its decentralized nature, which he describes as
+arising from the culture of CERN, where he worked. The decentralized nature of
+the web is the key feature that distinguishes it from many systems that came
+before or after, and his explanation of it is worth quoting here (highlight is
 mine):
 
 > There was clearly a need for something like Enquire [ed: a predecessor
-> software _system] but accessible to everyone. I wanted it to scale so that if
+> software system] but accessible to everyone. I wanted it to scale so that if
 > two people started to use it independently, and later started to work
-> together, **they could start linking together their information without
-> making any other changes**. This was the concept of the web.
+> together, *they could start linking together their information without
+> making any other changes*. This was the concept of the web.
 
 This quote captures one of the key value propositions of the web. The web was successful for several reasons, but I believe it’s primarily the following three:
 
@@ -381,8 +380,8 @@ This quote captures one of the key value propositions of the web. The web was su
     standards organizations - and therefore not subject to problems of
     monopoly control or manipulation.
 
-Ecosystems, cooperation and competition
-=======================================
+The browser ecosystem
+=====================
 
 Browsers have a unique character in that they are _not proprietary_ - no
 company controls the APIs of the web, there are multiple independent
@@ -391,7 +390,7 @@ developed by a very wide array of people and entities. As a corollary, web
 sites are also not proprietary, and the information and capabilities contained
 within them are accessible to all people.
 
-The first_ widely distributed_ browser may have been
+The first _widely distributed_ browser may have been
 [ViolaWWW](https://en.wikipedia.org/wiki/ViolaWWW); this browser also pioneered
 multiple interesting features such as applets and images. This browser was in
 turn the inspiration for [NCSA
@@ -506,8 +505,8 @@ great precision (let alone five years), because it’s always unknown how well
 current ideas will work, what new ideas might surface, or what critical bugs
 may surface.
 
-Browsers, this book, and you
-============================
+Browsers and you
+================
 
 This book explains how to build a simple web rendering engine plus browser
 shell, as well as many details about advanced features and the architecture of
@@ -544,8 +543,8 @@ what comes next!
 [^2]:
      Broadly defined, the web is the interlinked network (“web”) of websites on the Internet.
 
-[^3]:
-     A User Agent is the idea that the computer is one’s trusted assistant and advocate; browsers are a kind of User Agent.
+[^3]: The User Agent is the concept that the computer is one’s trusted assistant
+and advocate; browsers are a kind of User Agent.
 
 [^4]:
      I usually prefer the word “engineer”, but on the web it’s much more common to use the word “developer”, or more specifically “web developer”, so I’ll use that term in this book. An additional advantage of using “developer” is that it’s not necessary to be a trained software engineer or computer scientist to build websites; on the contrary, one goal of the web has always been  to make its use accessible to all people, not just experts. In fact many websites are in large part built by those trained in other disciplines; “web developer” is more inclusive of these additional, critical roles.
