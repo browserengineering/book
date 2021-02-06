@@ -543,8 +543,9 @@ what comes next!
 [^2]:
      Broadly defined, the web is the interlinked network (“web”) of websites on the Internet.
 
-[^3]: The User Agent is the concept that the computer is one’s trusted assistant
-and advocate; browsers are a kind of User Agent.
+[^3]: The User Agent is the concept that the computer, or trusted software on
+the computer, is one’s trusted assistant and advocate; browsers are a kind of
+User Agent.
 
 [^4]:
      I usually prefer the word “engineer”, but on the web it’s much more common to use the word “developer”, or more specifically “web developer”, so I’ll use that term in this book. An additional advantage of using “developer” is that it’s not necessary to be a trained software engineer or computer scientist to build websites; on the contrary, one goal of the web has always been  to make its use accessible to all people, not just experts. In fact many websites are in large part built by those trained in other disciplines; “web developer” is more inclusive of these additional, critical roles.
