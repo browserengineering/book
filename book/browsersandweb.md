@@ -27,9 +27,6 @@ browser, not using a single other application.
 [^website]: You probably already know what a website is. If not, [see
 here](https://en.wikipedia.org/wiki/Website).
 
-
-
-
 On mobile devices such as phones, even non-browser applications (apps) often
 combine traditional native code and _web views_ that embed a website into the
 application to render parts of its UI. These web views are implemented by an
