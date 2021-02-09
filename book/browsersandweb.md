@@ -8,51 +8,72 @@ prev: preliminaries
 Why study browsers?
 ===================
 
-A web browser[^1] - and more broadly the web[^2] itself - is a marvel of
+The web browser[^webbrowser] - and more broadly the web[^theweb] itself - is a marvel of
 technology, and plays a central and increasing role in our lives. It is a
 primary, or _the_ primary, means by which we find information, learn and access
 the Internet. Every year the web expands its reach to more and more of what we
-do with computers, and has long since gone beyond the original vision of
+do with computers; it has long since gone beyond its original use for 
 document-based information sharing to many other kinds of applications. On
 desktop platforms, many applications are actually built and delivered as _web
-apps_ - web sites that are intended to be used in similar ways to installed
-applications, not just documents. Many people now spend
-their entire day in a browser, not using a single other application. Even on
-mobile devices such as phones, even non-browser apps often
-combine traditional native code and _web views_ that
-embed a web site into the application to render parts of its UI. These web
-views are implemented by an actual browser, embedded like a kind of widget,
-within another application. The fraction of hybrid apps that are web content
-is also likely increasing over time; maybe in the future
-mobile
-devices end up being web-driven.
+apps_---websites[^website] that are intended to be used in similar ways to installed
+applications, not just documents. Many people now spend their entire day in a
+browser, not using a single other application.
 
-Clearly, the browser is a critical piece of software at the center of
-computing. But just as fascinating is that this critical software is all built
-on a few simple, yet revolutionary, concepts that add up to a vision of the
-future of computing and information: open, universal and decentralized
-computing; declarative document models for describing UIs; stateless
-applications with progressive enhancement; hyperlinks; and the User Agent
-concept.[^3] While these concepts are easy to state now that we have put them
-together, they came into existence only over time, through a sequence of
-events reaching back more than 60 years, nearly to the beginning of computing
-itself - indeed, much longer than the age of the web itself, which first
-appeared in 1989. Further, even though all of these concepts were encoded into
-the web from its beginning, it proved very difficult to realize them in a way
-that lives up to their promise; the history of the web since then can be seen
-as a steady progress towards the realization of these goals.
+[^webbrowser]: Henceforth, simply “browser”.
 
-At the core of the web-based computing vision is the browser. The browser
-represents the User Agent, which _mediates_ the way the web works and
-_enforces_ its rules. Not only that, the browser is responsible for
-_implementing_ all of the ways information is explored - in particular, making
-the black box of the progressively enhanced, declarative document model work
-as well as possible, while at the same time adhering strictly to the open &
-decentralized web architecture. A browser’s implementation of that
-architecture has many goals; core among them include performance,
-productivity, security, accessibility, and reliability. Meeting those goals is
-indeed difficult, but also groundbreaking, endlessly fascinating even in the
-details, and often quite fun and exciting to work on.
+[^theweb]: Broadly defined, the web is the interlinked network (“web”) of
+[web pages](https://en.wikipedia.org/wiki/Web_page) on the Internet.
+
+[^website]: You probably already know what a website is. If not, [see
+here](https://en.wikipedia.org/wiki/Website).
+
+
+
+
+On mobile devices such as phones, even non-browser applications (apps) often
+combine traditional native code and _web views_ that embed a website into the
+application to render parts of its UI. These web views are implemented by an
+actual browser---embedded like a kind of widget---within another
+application. The fraction of these _hybrid apps_ that are web content is also
+likely increasing over time; maybe in the future mobile devices will end up
+being mostly a container for web apps like desktop computers.
+
+Clearly the browser is a critical piece of software at the center of computing.
+But just as fascinating is that this critical software is all built on a few
+simple, yet revolutionary, concepts that together present a vision of the future
+of software and information. Among them are open, decentralized and safe
+computing; declarative document models for describing UIs; hyperlinks; and the
+User Agent concept.
+
+Where did these concepts come from? Were they invented all at once for the web?
+And aren't they kind of simple or even obvious? The answers are: many places,
+no, and only in hindsight. These concepts are the the result of a large amount
+of experimentation and research reaching back to nearly the beginning of
+computing. The web itself only appeared decades later, in 1989, and stood on the
+shoulders of that work to put those concepts together in just the right way. And
+as with many technological breakthroughs, it also appeared at just the right
+time---in particular around the point at which the enabling technologies of
+computer displays, powerful UI-building libraries, and networking passed
+critical thresholds of maturity.
+
+At the core of the web-based computing vision is the browser. The browser is the
+User Agent[^useragent], the _mediator_ of web interactions and _enforcer_ of its
+rules. Not only that, the browser is the _implementer_ of all of the ways
+information is explored---in particular through algorithms to make the "black
+box" of the declarative document model as expressive and rich as possible, while
+at the same time adhering strictly to the web's decentralized architecture and
+commitment to openness. And of course, the web would be no fun if websites were
+not fast to load and smooth to use, so the browser must be hyper-efficient as
+well.
+
+[^useragent]: The User Agent is the concept that the computer, or trusted software on
+the computer, is one’s trusted assistant and advocate; browsers are a kind of
+User Agent.
+
+
+Figuring out how to meet all these lofty goals with real code is certainly
+difficult, but _also_ groundbreaking, endlessly fascinating even in the details,
+and often  just plain fun. That's what this book is about.
 
 Explaining the black box
 ========================
@@ -224,7 +245,7 @@ this sense, the Internet and the web really were closely related at that time.
 However, there is of course nothing inherent about this: nothing forces you to
 host your own web server on your home computer and Internet connection[^13],
 and the same goes for a university or corporation. Likewise, there is nothing
-requiring everyone to have their own web site rather than a social networking
+requiring everyone to have their own website rather than a social networking
 account. These days, almost everyone uses a virtual machine or service
 purchased from one kind of cloud computing service or another to run their
 websites, regardless of how small or large, and there are many products
@@ -232,7 +253,7 @@ available that can easily publish your web content on your behalf.
 
 The same “virtualization” concept applies to the implementation of web pages
 themselves. While it’s still possible to write HTML by hand, almost none of the
-most popular web sites’ HTML payloads literally exist on a hard drive
+most popular websites’ HTML payloads literally exist on a hard drive
 somewhere. Instead, their component pieces and dependent databases exist, and
 the final product is dynamically assembled on the fly by complex build and
 “rendering”[^14] systems and sent over the Internet on-demand to your browser.
@@ -527,7 +548,7 @@ the exercises - adding these features is one of the most fun parts! It’s also 
 lot of fun (and very satisfying) to compare your browser with a real one, or
 see how many websites you can successfully render. 
 
-In my view, the web browser is an essential part of computing. This chapter
+In my view, the browser is now an essential component of computing. This chapter
 demonstrated some of the depth and history of the web and browsers, but only in
 really understanding how a browser works will you really appreciate and
 understand its beauty and power fully. I hope you come away from this book with
@@ -536,16 +557,6 @@ and history of computing, what it’s like to be someone building a browser. But
 most of all, I hope you can connect all of that to you, your career in software
 and computers, and the future. After all, It’s up to you to invent and discover
 what comes next!
-
-[^1]:
-     Henceforth, simply “browser”.
-
-[^2]:
-     Broadly defined, the web is the interlinked network (“web”) of websites on the Internet.
-
-[^3]: The User Agent is the concept that the computer, or trusted software on
-the computer, is one’s trusted assistant and advocate; browsers are a kind of
-User Agent.
 
 [^4]:
      I usually prefer the word “engineer”, but on the web it’s much more common to use the word “developer”, or more specifically “web developer”, so I’ll use that term in this book. An additional advantage of using “developer” is that it’s not necessary to be a trained software engineer or computer scientist to build websites; on the contrary, one goal of the web has always been  to make its use accessible to all people, not just experts. In fact many websites are in large part built by those trained in other disciplines; “web developer” is more inclusive of these additional, critical roles.
@@ -575,10 +586,10 @@ User Agent.
      I say “forced’, which has a negative connotation, but it’s more of an iterative & continuous process of improvement.
 
 [^13]:
-     In the early days, people actually did this! And when their web site became very popular, it immediately ran out of bandwidth and computing power and became inaccessible.
+     In the early days, people actually did this! And when their website became very popular, it immediately ran out of bandwidth and computing power and became inaccessible.
 
 [^14]:
-     “Server-side rendering” is the process of assembling HTML on the server when loading a web page. In fact, server-side rendering is in fact often run in JavaScript, and sometimes even with a “headless” web browser.
+     “Server-side rendering” is the process of assembling HTML on the server when loading a web page. In fact, server-side rendering is in fact often run in JavaScript, and sometimes even with a “headless” browser.
 
 [^15]:
      Progressive Web App
@@ -605,7 +616,7 @@ User Agent.
      No CSS!
 
 [^23]:
-     For example, it included the concept of an index page meant for searching within a site (vestiges of which exist today in the “index.html” convention when a URL path ends in /”), and had a WYSIWYG web page editor (the “contenteditable” HTML attribute and “html()” method on DOM elements has similar semantic behavior, but built-in file saving is gone). Today, the index is replaced with a search engine, and web page editors as a concept are somewhat obsolete due to the highly dynamic nature of today’s web site rendering.
+     For example, it included the concept of an index page meant for searching within a site (vestiges of which exist today in the “index.html” convention when a URL path ends in /”), and had a WYSIWYG web page editor (the “contenteditable” HTML attribute and “html()” method on DOM elements has similar semantic behavior, but built-in file saving is gone). Today, the index is replaced with a search engine, and web page editors as a concept are somewhat obsolete due to the highly dynamic nature of today’s website rendering.
 
 [^24]:
      Also, as you can see clearly, that web page has not been updated in the meantime, and retains its original aesthetics!
