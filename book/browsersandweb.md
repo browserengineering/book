@@ -57,27 +57,30 @@ details, and often quite fun and exciting to work on.
 Explaining the black box
 ========================
 
-As you may already know from making websites, the core implementation
-components of the web are approachable enough - an HTML & CSS-based documen
-model, HTTP, links, and JavaScript. Most people can learn easily enough how to
-make simple HTML pages; programming abilities are not required. But how doe
-the browser actually do its job of rendering that HTML? Not many people wh
-don’t work on browsers actually know in much detail, even trained softwar
-developers[^4]. Most of us developers treat the browser as a black box, one
-that is either magical or frustrating (depending on whether it is workin
-correctly or not!). After all, HTML & CSS _are_ black boxes, or more precisel
-declarative APIs - one specifies _what_ outcome is desired, as opposed to _how_
-to achieve that outcome. It’s the _browser itself_ that is responsible for
-figuring out the how. Not only cannot website developers say how exactly the
-pixels on the screen are generated, in most cases there _is no feasible way_
-for developers to draw their website’s pixels “on their own”.  In that sense,
-they also lose control and some amount of agency - when those pixels are
-wrong, they cannot directly fix them.[^5] However, this loss of control comes
-with powerful upsides, such as: it’s much easier to make and deploy content on
-the web without having to implement many of the details, that content is
-instantly (magically!) available on every computing device in existence, and
-the content is likely to be accessible in the future, avoiding the inevitable
-obsolescence of most software.
+As you may already know from making websites, the core implementation components
+of the web are approachable enough - an HTML & CSS-based document model, HTTP,
+hyperlinks, and JavaScript. Most people can learn easily enough how to make simple
+HTML pages; programming abilities are not required. But how does the browser
+actually do its job of rendering that HTML? As it turns out, not many people
+who don’t work on browsers actually know in much detail, even trained software
+developers![^4]
+
+Most of us developers treat the browser as a black box, one that is either
+magical or frustrating (depending on whether it is working correctly or not!).
+After all, HTML & CSS _are_ black boxes, or more precisely declarative APIs -
+ones in which one specifies _what_ outcome is desired, as opposed to _how_ to
+achieve that outcome. It’s the _browser itself_ that is responsible for figuring
+out the how. Not only are website developers encouraged not to say how exactly
+the pixels on the screen are generated, in most cases there _is no feasible way_
+for developers to draw their website’s pixels “on their own”.
+
+In that sense, they also lose control and some amount of agency---when those
+pixels are wrong, they cannot directly fix them.[^5] However, this loss of
+control comes with powerful upsides, such as: it’s much easier to make and
+deploy content on the web without having to implement many of the details; that
+content is instantly (magically!) available on every computing device in
+existence; and the content is likely to be accessible in the future, avoiding
+(for the most part) the inevitable obsolescence of most software.
 
 This “what, not how” aspect of the web has multiple aspects, including
 [inversion of control](https://en.wikipedia.org/wiki/Inversion_of_control),
@@ -90,25 +93,30 @@ this case, the browser), and only specifying the parameters or extension points
 to the framework within the application itself. For example, in HTML there are
 many built-in [form control
 elements](https://developer.mozilla.org/en-US/docs/Learn/Forms/Basic_native_form_controls)
-that take care of the various ways the user of a website can provide input.  The developer need only specify parameters such as button names, sizing, and
-look-and-feel; the rest of the implementation is taken care of by the browser.
+that take care of the various ways the user of a website can provide input.  The
+developer need only specify parameters such as button names, sizing, and
+look-and-feel, or JavaScript extension points to handle form submission to the
+server. The rest of the implementation is taken care of by the browser.
 _Constraint programming_ is an approach for numerical-oriented algorithms that
 specifies constraints involving limits, relative proportions and sizes of
 numerical variables, plus an optimization function; the algorithm to find the
-optimal solution is the job of the browser. This concept appears in the web in
-page layout, which depends on many numerical factors such as font and browser
-window sizes, desired position and size of boxes, and tabular arrangement of
-widgets[^6].
+optimal solution is the job of someone else (the browser in our case). This
+concept appears in the web in page layout, which depends on many numerical
+factors such as font and browser window sizes, desired position and size of
+boxes, and tabular arrangement of widgets[^6].
 
 Even after answering the _what_ and the _how_, there is still the _declarative
-programming_ aspect of the web - _when_ various computations happen. For
+programming_ aspect of the web---_when_ various computations happen. For
 example, when exactly does style (re-)calculation[^7] happen? From the point of
-view of the developer, style applies “immediately”, meaning that any subsequent
+view of the developer, styles "apply immediately”, meaning that any subsequent
 API the developer might call gives an answer that takes the new style into
-account. But what if the developer never calls such an API - does the work ever
+account. But what if the developer never calls such an API---does the work ever
 need to be done? Clearly it does if it affects what the browser’s user
 experiences, such as what pixels are drawn on the screen, but not otherwise.
-For this reason, browsers are as
+
+It is to the advantage of the browser to not perform style re-calculation unless
+necessary, since it can avoid redundant work in situations such as the style
+inputs changing twice in quick succession. For this reason, browsers are as
 [lazy](https://en.wikipedia.org/wiki/Lazy_evaluation) as possible about doing
 work, but not so lazy as to unnecessarily delay pixels updating on the screen.
 It turns out that a whole lot of the complexity and cleverness of real-world
@@ -119,10 +127,10 @@ The browser and me
 ==================
 
 I[^8] have known the web almost all of my adult life. Ever since I first
-encountered the web and its predecessors[^9] in the early 90s, I was fascinated
+encountered the web, and its predecessors,[^9] in the early 90s, I was fascinated
 by browsers and the concept of networked user interfaces. When I surfed the
 web, even in its earliest form, I felt I was seeing the future of computing.
-In some ways, the web and I grew together - for example, in 1995, the year the
+In some ways, the web and I grew together---for example, in 1995, the year the
 web went commercial, was the same year I started college; while there I spent
 a fair amount of time surfing it, and by the time I graduated in 1999, the
 browser had fueled the famous dot-com speculation gold rush. The company for
@@ -141,8 +149,10 @@ browser”_[^10]_._ Even back then, in the very first year or so of the web, the
 browser was already becoming an absolutely necessary component of every
 computer. He even threw out a challenge: “how hard could it be to build a
 better browser?” Indeed, how hard could it be? What makes it so hard? That
-question stuck with me for a long time, and in the meantime the “better Linux
-browser than Netscape” took much longer to appear than anyone thought.
+question stuck with me for a long time.[^meantime-linux]
+
+[^meantime-linux]: Meanwhile, the “better Linux browser than Netscape” seemed to
+take quite a long time to appear....
 
 How hard indeed! After seven years in the trenches working on a browser
 (Chrome), I now know the answer to his question: building such a browser is
@@ -151,14 +161,15 @@ simple and unimaginably complex. And everywhere you look, you can see the
 evolution and history of the web all wrapped up in one codebase.
 
 As you’ll see when reading this book, it’s surprisingly easy to write a very
-simple browser, yet one that nevertheless can display interesting-looking web
-pages, and can even more-or-less correctly display many real ones, including
-this book. This starting point - it’s easy enough to implement and write web
-pages with the basics - encapsulates the (intentionally) easy-to-implement core
-of the web design, what you might call the _base level_ of progressive
-enhancement. I saw this in the relative simplicity of individual features of
-Chrome - for example, sometime during my first few months of working on Chrome,
-I came across the code implementing the
+simple browser, one that can despite its simplicity display interesting-looking
+web pages, and can even more-or-less correctly display many real ones, including
+this book. This starting point---it’s easy enough to implement (and write) web
+pages with the basics---encapsulates the (intentionally!) easy-to-implement core
+of the web architecture, what you might call the _base level_ of [progressive
+enhancement](https://en.wikipedia.org/wiki/Progressive_enhancement). I saw this
+in the relative simplicity of individual features of Chrome---for example,
+sometime during my first few months of working on Chrome, I came across the code
+implementing the
 [`<br>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/br) tag. Look
 at that, the good-old `<br>` tag that I’ve used many times as a convenient hack
 to insert newlines in the text of my web pages! And as it turns out, there
@@ -166,21 +177,21 @@ really isn’t much code at all to implement this tag, either in Chrome or the
 simple browser you’ll build.
 
 On the other hand, to make a browser that has all the features, performance,
-security and reliability of today’s top browsers -- well that is a whole lot of
-work; _thousands_ of person-years of effort went into what you see today. Not
-only that, but keeping a browser competitive is a lot of work: not only is
-there an inherent cost to maintaining such large codebases, but there is
-constant pressure to do more - add more features, continually improve
-performance to beat the competition, and in general keep up with everything
-going on in what we now call the “web ecosystem” - the millions of developers,
-billions of users, and all the businesses and economies that build on the web.
-There are tens of thousands of unfixed bugs, representing all the ways that
-bugs can appear with the smallest of mistakes, through the myriad of ways to
-mix and match features. There is the extreme complexity of trying to
-understand the complicated set of optimizations deemed necessary to squeeze
-out the last bit of performance from the system. And there is the painstaking,
-but necessary, work to continuously refactor the code to reduce its complexity
-through the careful[^11] introduction of modularization and abstraction.
+security and reliability of today’s top browsers---well that is a whole lot of
+work; _thousands_ of person-years of effort went into what you see today. On top
+of that, but keeping a browser competitive is a lot of work: not only is there
+an inherent cost to maintaining such large codebases, but there is constant
+pressure to do more---add more features, continually improve performance to beat
+the competition, and in general keep up with everything going on in what we now
+call the “web ecosystem”---the millions of developers, billions of users, and
+all the businesses and economies that build on the web. There are tens of
+thousands of unfixed bugs in every browser, representing all the ways that bugs
+can appear with the smallest of mistakes, through the myriad of ways to mix and
+match features. There is the extreme complexity of trying to understand the
+complicated set of optimizations deemed necessary to squeeze out the last bit of
+performance from the system. And there is the painstaking, but necessary, work
+to continuously refactor the code to reduce its complexity through the
+careful[^11] introduction of modularization and abstraction.
 
 Working on such a codebase is often daunting. For one thing, there is an
 immense history to each browser. It’s not uncommon to find lines of code last
@@ -189,16 +200,18 @@ working discover files and code that you didn’t even know existed; or see
 lines of code that don’t look necessary, and all tests pass without them. If I
 want to know what that 15-year-old code does, how can I do it? Does that code
 I just discovered matter at all? Can I just delete those lines of code that
-don’t seem necessary? These kinds of quandaries come up all the time when
-working on a browser - in fact they are common to all complex codebases. What
-makes a browser different is that there is often an _urgency to fix them_.
-Browsers are nearly as old as any “legacy” codebase, but are not legacy
-(meaning deprecated or half-deprecated, and scheduled to be replaced by some
-new codebase sometime soon) at all - on the contrary, they are vital to the
-world’s economy. For this reason, and the infeasibility of rewriting, browser
-engineers are forced[^12] to fix and improve rather than replace.
+don’t seem necessary?
 
-It’s not just urgency though - understanding the cumulative answers to these
+These kinds of quandaries come up all the time when working on a browser - in
+fact they are common to all complex codebases. What makes a browser different is
+that there is often an _urgency to fix them_. Browsers are nearly as old as any
+“legacy” codebase, but are _not_ legacy (meaning deprecated or half-deprecated,
+and scheduled to be replaced by some new codebase sometime soon) at all---on the
+contrary, they are vital to the world’s economy. For this reason, and the
+infeasibility of rewriting, browser engineers are forced[^12] to fix and improve
+rather than replace.
+
+It’s not just urgency though---understanding the cumulative answers to these
 small questions yields true insights into how computing actually works, and
 where future innovations may appear. In fact, browsers are where the fun of
 algorithms _comes to life_. Where else can one explore the limits of so many
@@ -280,11 +293,11 @@ or technology, HTTP by some other protocol, or HTML by its successor.
 
 In practice, it is not really the case that networking and rendering are
 separated, and there are in fact critical inter-dependencies  - for example,
-HTML plays a critical role in both rendering and links. It’s best to just
+HTML plays a critical role in both rendering and hyperlinks. It’s best to just
 consider browsers, HTML (and CSS and JavaScript) part of the core definition of
 the web. In any case, as with all technology, the web continues to evolve. The
-above definition may change over time, but for the purposes of this book, it’s
-a pretty good one.
+above definition may change over time, but for the purposes of this book, it’s a
+pretty good one.
 
 Technological precursors
 ========================
@@ -569,7 +582,7 @@ User Agent.
      Netscape Navigator was available for Linux at that time, but it wasn’t viewed as especially fast or featureful compared to its implementation on other operating systems.
 
 [^11]:
-     Browsers are so performance-sensitive in many places that merely the introduction of an abstraction - and the typical ensuing function call or branching overhead - can cause an unacceptable performance cost.
+     Browsers are so performance-sensitive in many places that merely the introduction of an abstraction - and the typical ensuing function call or branching overhead---can cause an unacceptable performance cost.
 
 [^12]:
      I say “forced’, which has a negative connotation, but it’s more of an iterative & continuous process of improvement.
