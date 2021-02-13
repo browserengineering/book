@@ -126,8 +126,8 @@ afforded by declarative programming.
 The browser and me
 ==================
 
-I[^8] have known the web almost all of my adult life. Ever since I first
-encountered the web, and its predecessors,[^9] in the early 90s, I was fascinated
+I[^chris] have known the web almost all of my adult life. Ever since I first
+encountered the web, and its predecessors,[^bbs] in the early 90s, I was fascinated
 by browsers and the concept of networked user interfaces. When I surfed the
 web, even in its earliest form, I felt I was seeing the future of computing.
 In some ways, the web and I grew together---for example, in 1995, the year the
@@ -138,18 +138,31 @@ which I now work, Google, is a child of the web and was founded during that
 time. The web for me is something of a technological companion, and I’ve never
 been far from it in my studies or work.
 
-In my freshman year at college, I attended a presentation at the university by
-a RedHat salesman. The presentation was of course aimed at selling RedHat
-Linux, and probably included statements like Linux being the operating system
-of the future, or the always-popular speculation about the “year of the Linux
-desktop.” However, when asked about challenges RedHat faced, the salesman
-mentioned not Linux but _the web_. He said something like “someone needs to
-make a good browser for Linux. _It’s hard to be competitive without a good
-browser”_[^10]_._ Even back then, in the very first year or so of the web, the
-browser was already becoming an absolutely necessary component of every
-computer. He even threw out a challenge: “how hard could it be to build a
+[^chris]: This is Chris speaking!
+
+[^bbs]: For me, this was mostly using
+[BBS](https://en.wikipedia.org/wiki/Bulletin_board_system) systems over a dialup
+modem connection. A BBS is not all that different in concept from a browser if
+you look at it from the point of view of “window into dynamic content created
+somewhere else on the Internet”.
+
+In my freshman year at college, I attended a presentation at the university by a
+RedHat salesman. The presentation was of course aimed at selling RedHat Linux,
+and probably included statements like Linux being the operating system of the
+future, or the always-popular speculation about the “year of the Linux desktop.”
+However, when asked about challenges RedHat faced, the salesman mentioned not
+Linux but _the web_. He said something like “someone needs to make a good
+browser for Linux. _It’s hard to be competitive without a good
+browser”_[^netscape-linux]_._ Even back then, in the very first year or so of
+the web, the browser was already becoming an absolutely necessary component of
+every computer. He even threw out a challenge: “how hard could it be to build a
 better browser?” Indeed, how hard could it be? What makes it so hard? That
 question stuck with me for a long time.[^meantime-linux]
+
+[^netscape-linux]: Netscape Navigator was available for Linux at that time, but
+it wasn’t viewed as especially fast or featureful compared to its implementation
+on other operating systems.
+
 
 [^meantime-linux]: Meanwhile, the “better Linux browser than Netscape” seemed to
 take quite a long time to appear....
@@ -191,7 +204,13 @@ match features. There is the extreme complexity of trying to understand the
 complicated set of optimizations deemed necessary to squeeze out the last bit of
 performance from the system. And there is the painstaking, but necessary, work
 to continuously refactor the code to reduce its complexity through the
-careful[^11] introduction of modularization and abstraction.
+careful[^browsers-abstraction-hard] introduction of modularization and
+abstraction.
+
+[^browsers-abstraction-hard]: Browsers are so performance-sensitive in many
+places that merely the introduction of an abstraction - and the typical ensuing
+function call or branching overhead---can cause an unacceptable performance
+cost.
 
 Working on such a codebase is often daunting. For one thing, there is an
 immense history to each browser. It’s not uncommon to find lines of code last
@@ -208,8 +227,11 @@ that there is often an _urgency to fix them_. Browsers are nearly as old as any
 “legacy” codebase, but are _not_ legacy (meaning deprecated or half-deprecated,
 and scheduled to be replaced by some new codebase sometime soon) at all---on the
 contrary, they are vital to the world’s economy. For this reason, and the
-infeasibility of rewriting, browser engineers are forced[^12] to fix and improve
-rather than replace.
+infeasibility of rewriting, browser engineers are forced[^forced-negative] to
+fix and improve rather than replace.
+
+[^forced-negative]: I say “forced’, which has a negative connotation, but it’s
+more of an iterative & continuous process of improvement.
 
 It’s not just urgency though---understanding the cumulative answers to these
 small questions yields true insights into how computing actually works, and
@@ -571,21 +593,6 @@ User Agent.
 
 [^7]:
      Style calculation is the process of figuring out, based on the current CSS and HTML, which styles apply to which elements.
-
-[^8]:
-     This is Chris speaking!
-
-[^9]:
-     For me, this was mostly using [BBS](https://en.wikipedia.org/wiki/Bulletin_board_system) systems over a dialup modem connection. A BBS is not all that different in concept from a browser if you look at it from the point of view of “window into dynamic content created somewhere else on the Internet”.
-
-[^10]:
-     Netscape Navigator was available for Linux at that time, but it wasn’t viewed as especially fast or featureful compared to its implementation on other operating systems.
-
-[^11]:
-     Browsers are so performance-sensitive in many places that merely the introduction of an abstraction - and the typical ensuing function call or branching overhead---can cause an unacceptable performance cost.
-
-[^12]:
-     I say “forced’, which has a negative connotation, but it’s more of an iterative & continuous process of improvement.
 
 [^13]:
      In the early days, people actually did this! And when their web site became very popular, it immediately ran out of bandwidth and computing power and became inaccessible.
