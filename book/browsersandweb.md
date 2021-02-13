@@ -8,16 +8,16 @@ prev: preliminaries
 Why study browsers?
 ===================
 
-The web browser[^webbrowser] - and more broadly the web[^theweb] itself - is a marvel of
-technology, and plays a central and increasing role in our lives. It is a
-primary, or _the_ primary, means by which we find information, learn and access
-the Internet. Every year the web expands its reach to more and more of what we
-do with computers; it has long since gone beyond its original use for 
+The web browser[^webbrowser] - and more broadly the web[^theweb] itself - is a
+marvel of technology, and plays a central and increasing role in our lives. It
+is a primary, or _the_ primary, means by which we find information, learn and
+access the Internet. Every year the web expands its reach to more and more of
+what we do with computers; it has long since gone beyond its original use for 
 document-based information sharing to many other kinds of applications. On
 desktop platforms, many applications are actually built and delivered as _web
-apps_---websites[^website] that are intended to be used in similar ways to installed
-applications, not just documents. Many people now spend their entire day in a
-browser, not using a single other application.
+apps_---websites[^website] that are intended to be used in similar ways to
+installed applications, not just documents. Many people now spend their entire
+day in a browser, not using a single other application.
 
 [^webbrowser]: Henceforth, simply “browser”.
 
@@ -63,10 +63,9 @@ commitment to openness. And of course, the web would be no fun if websites were
 not fast to load and smooth to use, so the browser must be hyper-efficient as
 well.
 
-[^useragent]: The User Agent is the concept that the computer, or trusted software on
-the computer, is one’s trusted assistant and advocate; browsers are a kind of
-User Agent.
-
+[^useragent]: The User Agent is the concept that the computer, or trusted
+software on the computer, is one’s trusted assistant and advocate; browsers are
+a kind of User Agent.
 
 Figuring out how to meet all these lofty goals with real code is certainly
 difficult, but _also_ groundbreaking, endlessly fascinating even in the details,
@@ -75,27 +74,42 @@ and often  just plain fun. That's what this book is about.
 Explaining the black box
 ========================
 
-As you may already know from making websites, the core implementation
-components of the web are approachable enough - an HTML & CSS-based documen
-model, HTTP, links, and JavaScript. Most people can learn easily enough how to
-make simple HTML pages; programming abilities are not required. But how doe
-the browser actually do its job of rendering that HTML? Not many people wh
-don’t work on browsers actually know in much detail, even trained softwar
-developers[^4]. Most of us developers treat the browser as a black box, one
-that is either magical or frustrating (depending on whether it is workin
-correctly or not!). After all, HTML & CSS _are_ black boxes, or more precisel
-declarative APIs - one specifies _what_ outcome is desired, as opposed to _how_
-to achieve that outcome. It’s the _browser itself_ that is responsible for
-figuring out the how. Not only cannot website developers say how exactly the
-pixels on the screen are generated, in most cases there _is no feasible way_
-for developers to draw their website’s pixels “on their own”.  In that sense,
-they also lose control and some amount of agency - when those pixels are
-wrong, they cannot directly fix them.[^5] However, this loss of control comes
-with powerful upsides, such as: it’s much easier to make and deploy content on
-the web without having to implement many of the details, that content is
-instantly (magically!) available on every computing device in existence, and
-the content is likely to be accessible in the future, avoiding the inevitable
-obsolescence of most software.
+As you may already know from making websites, the core implementation components
+of the web are approachable enough - an HTML & CSS-based documen model, HTTP,
+links, and JavaScript. Most people can learn easily enough how to make simple
+HTML pages; programming abilities are not required. But how doe the browser
+actually do its job of rendering that HTML? Not many people wh don’t work on
+browsers actually know in much detail, even trained softwar
+developers[^developer-not-engineer]. Most of us developers treat the browser as
+a black box, one that is either magical or frustrating (depending on whether it
+is workin correctly or not!). After all, HTML & CSS _are_ black boxes, or more
+precisel declarative APIs - one specifies _what_ outcome is desired, as opposed
+to _how_ to achieve that outcome. It’s the _browser itself_ that is responsible
+for figuring out the how.
+
+Not only cannot website developers say how exactly the pixels on the screen are
+generated, in most cases there _is no feasible way_ for developers to draw their
+website’s pixels “on their own”.  In that sense, they also lose control and some
+amount of agency - when those pixels are wrong, they cannot directly fix
+them.[^loss-of-control] However, this loss of control comes with powerful
+upsides, such as: it’s much easier to make and deploy content on the web without
+having to implement many of the details, that content is instantly (magically!)
+available on every computing device in existence, and the content is likely to
+be accessible in the future, avoiding the inevitable obsolescence of most
+software.
+
+[^developer-not-engineer]: I usually prefer the word “engineer”, but on the web
+it’s much more common to use the word “developer”, or more specifically “web
+developer”, so I’ll use that term in this book. An additional advantage of using
+“developer” is that it’s not necessary to be a trained software engineer or
+computer scientist to build websites; on the contrary, one goal of the web has
+always been  to make its use accessible to all people, not just experts. In fact
+many websites are in large part built by those trained in other disciplines;
+“web developer” is more inclusive of these additional, critical roles.
+
+[^loss-of-control]: Loss of control not necessarily specific to the web - much
+of computing these days involves relying on mountains of other peoples’ code.
+
 
 This “what, not how” aspect of the web has multiple aspects, including
 [inversion of control](https://en.wikipedia.org/wiki/Inversion_of_control),
@@ -108,7 +122,8 @@ this case, the browser), and only specifying the parameters or extension points
 to the framework within the application itself. For example, in HTML there are
 many built-in [form control
 elements](https://developer.mozilla.org/en-US/docs/Learn/Forms/Basic_native_form_controls)
-that take care of the various ways the user of a website can provide input.  The developer need only specify parameters such as button names, sizing, and
+that take care of the various ways the user of a website can provide input.  The
+developer need only specify parameters such as button names, sizing, and
 look-and-feel; the rest of the implementation is taken care of by the browser.
 _Constraint programming_ is an approach for numerical-oriented algorithms that
 specifies constraints involving limits, relative proportions and sizes of
@@ -116,22 +131,29 @@ numerical variables, plus an optimization function; the algorithm to find the
 optimal solution is the job of the browser. This concept appears in the web in
 page layout, which depends on many numerical factors such as font and browser
 window sizes, desired position and size of boxes, and tabular arrangement of
-widgets[^6].
+widgets[^layout-optimization-function].
+
+[^layout-optimization-function]: A fun question to consider: what might be the
+“optimization function” of layout?
 
 Even after answering the _what_ and the _how_, there is still the _declarative
 programming_ aspect of the web - _when_ various computations happen. For
-example, when exactly does style (re-)calculation[^7] happen? From the point of
-view of the developer, style applies “immediately”, meaning that any subsequent
-API the developer might call gives an answer that takes the new style into
-account. But what if the developer never calls such an API - does the work ever
-need to be done? Clearly it does if it affects what the browser’s user
-experiences, such as what pixels are drawn on the screen, but not otherwise.
-For this reason, browsers are as
+example, when exactly does style (re-)calculation[^style-calculation] happen?
+From the point of view of the developer, style applies “immediately”, meaning
+that any subsequent API the developer might call gives an answer that takes the
+new style into account. But what if the developer never calls such an API - does
+the work ever need to be done? Clearly it does if it affects what the browser’s
+user experiences, such as what pixels are drawn on the screen, but not
+otherwise. For this reason, browsers are as
 [lazy](https://en.wikipedia.org/wiki/Lazy_evaluation) as possible about doing
 work, but not so lazy as to unnecessarily delay pixels updating on the screen.
 It turns out that a whole lot of the complexity and cleverness of real-world
 browsers involves maximally exploiting the performance-enhancing opportunities
 afforded by declarative programming.
+
+[^style-calculation]: Style calculation is the process of figuring out, based on
+the current CSS and HTML, which styles apply to which elements.
+
 
 The browser and me
 ==================
@@ -554,18 +576,6 @@ and history of computing, what it’s like to be someone building a browser. But
 most of all, I hope you can connect all of that to you, your career in software
 and computers, and the future. After all, It’s up to you to invent and discover
 what comes next!
-
-[^4]:
-     I usually prefer the word “engineer”, but on the web it’s much more common to use the word “developer”, or more specifically “web developer”, so I’ll use that term in this book. An additional advantage of using “developer” is that it’s not necessary to be a trained software engineer or computer scientist to build websites; on the contrary, one goal of the web has always been  to make its use accessible to all people, not just experts. In fact many websites are in large part built by those trained in other disciplines; “web developer” is more inclusive of these additional, critical roles.
-
-[^5]:
-     Loss of control not necessarily specific to the web - much of computing these days involves relying on mountains of other peoples’ code.
-
-[^6]:
-     A fun question to consider: what might be the “optimization function” of layout?
-
-[^7]:
-     Style calculation is the process of figuring out, based on the current CSS and HTML, which styles apply to which elements.
 
 [^8]:
      This is Chris speaking!
