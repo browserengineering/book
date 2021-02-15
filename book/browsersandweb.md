@@ -290,72 +290,108 @@ Technological precursors
 ========================
 
 The web is at its core organized around _representing and displaying
-information_, and how to provide a way for humans to efficiently learn and
+information_, and how to provide a way for humans to effectively learn and
 explore that information. The collective knowledge and wisdom of the species
-long ago exceeded the capacity of a single mind, organization, library,
-country, culture, group or language. However, while we as humans cannot
-possibly know even a tiny fraction of what is possible to know, we can use
-technology to learn more efficiently than before, and most importantly, to
-quickly access information we need to learn or remember[^18]. Computers, and
-the Internet, allow us to process and store as much information as we want.
-The _web_ can be seen as a means of _organizing and scaling information and
-knowledge_ across all of these boundaries.
+long ago exceeded the capacity of a single mind, organization, library, country,
+culture, group or language. However, while we as humans cannot possibly know
+even a tiny fraction of what is possible to know, we can use technology to learn
+more efficiently than before, and most importantly, to quickly access
+information we need to learn or remember[^google-mission]. Computers, and the
+Internet, allow us to _process and store_ as much information as we want. The
+_web_, on the other hand, plays the role of _organizing and finding_ that
+information and knowledge to make it useful.
+
+[^google-mission]: The search engine Google’s [mission](https://about.google/)
+statement to “organize the world’s information and make it universally
+accessible and useful” is almost exactly the same as this. This is not a
+coincidence - the search engine concept is inherently connected to the web.
 
 The earliest exploration of how computers might revolutionize information is a
-1945 essay[^19] entitled [As We May
+1945 essay[^memex-essay] entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
 machine called a [Memex](https://en.wikipedia.org/wiki/Memex). The Memex was an
-imagined machine that helps a single human (a "User Agent", in other words) to see and explore
-all the information in the world. It was described in terms of microfilm screen
-technology of the time, but the purpose and concept has some clear similarities
-to the web as we know it today, even if the user interface and technology
-details differ.
+imagined machine that helps (think: User Agent) an individual human to see and
+explore all the information in the world. It was described in terms of microfilm
+screen technology of the time, but its purpose and concept has some clear
+similarities to the web as we know it today, even if the user interface and
+technology details differ.
+
+[^memex-essay]: This brief prehistory of the web is by no means exhaustive.
+Instead, you should view it as a brief view into a much larger - and quite
+interesting in its own right - subject.
 
 The concept of networked links of information began to appear in about
 [1964-65](https://en.wikipedia.org/wiki/Hyperlink), when the term “link”
-appeared, connected the concept to text rather than whole pages, and advocated
-for building a network of computers to realize the concept[^20]. Independently,
-the first hyperlink system appeared (though apparently not using that word) for
-navigating within a single document; it was later generalized to linking
-between multiple documents. This work formed one of the key parts of the
-[mother of all
+appeared (though connected to text rather than pages). Researchers then
+began to  advocate for building a network of computers to realize the
+concept.[^literary-criticism] Independently, the first hyperlink system appeared (though
+apparently not using that word[^hyperlink-first]) for navigating within a single
+document; it was later generalized to linking between multiple documents. This
+work also formed one of the key parts of the [mother of all
 demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos), the most famous
-technology demonstration in the history of computing. (Interestingly, it
-appears that it was not until 1987 did the word “hyperlink” appear, in
+technology demonstration in the history of computing.
+
+[^hyperlink-first]: The word "hyperlink" may have fisrt appeared in 1987, in
 connection with the HyperCard system on the Macintosh.)
+
+[^literary-criticism]: These concepts are also the computer-based evolution of
+the long tradition of citation in academics and literary criticism.
 
 In 1983 the [HyperTIES](http://www.cs.umd.edu/hcil/hyperties/) system was
 developed around highlighted hyperlinks. This was used to develop the world’s
-first electronic journal, the 1988 issue of the Communications of the ACM. Tim
-Berners-Lee cites this 1988 event as the source of the link concept in his
-World Wide Web concept (nowadays just “the web”, or “the web ecosystem” -
-ecosystem being another way to capture the today’s interpretation of “World
-Wide”), in which he proposed to join the link concept with the availability of
-the Internet, thus realizing (without necessarily knowing it at the time) many
-of the original goals of all the work in previous decades[^21]. Another system 
-that allowed linking across sites on the internet was
-[Gopher](https://en.wikipedia.org/wiki/Gopher_(protocol)), which was launched
-around 1991, but was quickly supplanted by the web.
+first electronic journal, the 1988 issue of the [Communications of the
+ACM](https://cacm.acm.org/). Tim Berners-Lee cites this 1988 event as the source
+of the link concept in his World Wide Web concept[^world-wide-web-terminology],
+in which he proposed to join the link concept with the availability of the
+Internet, thus realizing many of the original goals of all the work from
+previous decades.[^realize-web-decades]
 
-In 1989-1990, the first browser (named “WorldWideWeb” - hence the “www” in web
-site names today) and web server (named “httpd”, for “HTTP Daemon” according to
-UNIX naming conventions) were born, again written in their first version by
-Berners-Lee. Interestingly, the browser’s capabilities were in some ways
-inferior to the browser you will implement in this book[^22], and in some ways
-go beyond the capabilities available even in modern browsers[^23]. On December
-20, 1990 the
-[first web page](http://info.cern.ch/hypertext/WWW/TheProject.html)
-was created. The browser we will implement in this book is easily able to
-render this web page, even today[^24]. In 1991, Berners-Lee advertised his
+[^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
+web”, or “the web ecosystem”---ecosystem being another way to capture the same
+concept as “World Wide”). The original wording lives on in the "www" in many
+web site domain names.
+
+[^realize-web-decades]: The web itself is, therefore, an example of the
+realization of previous ambitions and dreams, just as today we strive to realize
+the vision laid out by the web.
+
+In 1989-1990, the first browser (named “WorldWideWeb”) and web server (named
+“httpd”, for “HTTP Daemon” according to UNIX naming conventions) were born,
+again written in their first version by Berners-Lee. Interestingly, the
+browser’s capabilities were in some ways inferior to the browser you will
+implement in this book[^no-css], and in some ways go beyond the capabilities
+available even in modern browsers.[^more-less-powerful] On December 20, 1990 the
+[first web page](http://info.cern.ch/hypertext/WWW/TheProject.html) was created.
+The browser we will implement in this book is easily able to render this web
+page, even today.[^original-aesthetics] In 1991, Berners-Lee advertised his
 browser and the concept on the [alt.hypertext Usenet
-group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
+group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt). [^gopher]
+
+[^no-css]: No CSS!
+
+[^more-less-powerful]: For example, it included the concept of an index page
+meant for searching within a site (vestiges of which exist today in the
+“index.html” convention when a URL path ends in /”), and had a WYSIWYG web page
+editor (the “contenteditable” HTML attribute and “html()” method on DOM elements
+has similar semantic behavior, but built-in file saving is gone). Today, the
+index is replaced with a search engine, and web page editors as a concept are
+somewhat obsolete due to the highly dynamic nature of today’s web site
+rendering.
+
+[^original-aesthetics]: Also, as you can see clearly, that web page has not been
+updated in the meantime, and retains its original aesthetics!
+
+
+[^gopher]: Another system that allowed linking across sites on the internet was
+[Gopher](https://en.wikipedia.org/wiki/Gopher_(protocol)), which appeared around
+1991, but was quickly supplanted by the web.
 
 Berners-Lee has also written a [Brief History of the
 Web](https://www.w3.org/DesignIssues/TimBook-old/History.html) that  highlights
-a number of other interesting factors up to the establishment of the web as we
-know it. One key factor was its decentralized nature, which he describes as
+a number of other interesting factors leading to the establishment of the web as
+we know it. One key factor was its decentralized nature, which he describes as
 arising from the culture of CERN, where he worked. The decentralized nature of
-the web is the key feature that distinguishes it from many systems that came
+the web is a key feature that distinguishes it from many systems that came
 before or after, and his explanation of it is worth quoting here (highlight is
 mine):
 
@@ -365,20 +401,23 @@ mine):
 > together, *they could start linking together their information without
 > making any other changes*. This was the concept of the web.
 
-This quote captures one of the key value propositions of the web. The web was successful for several reasons, but I believe it’s primarily the following three:
+This quote captures one of the key value propositions of the web. The web was
+successful for several reasons, but I believe it’s primarily the following
+three:
 
-*   It provides a very low-friction way to publish information and
-    applications: there is no gatekeeper to doing anything, and it’s easy for
-    novices to make a simple web page and publish it.
-*   Once bootstrapped, it builds quickly upon itself via
-    [network effects](https://en.wikipedia.org/wiki/Network_effect), due to
-    compatibility between sites and the power of the hyperlink to reinforce
-    this compatibility. Hyperlinks drive traffic between sites, but also into
-    the web _from the outside_, via email, social networking, and search
-    engines.
+*   It provides a very low-friction way to publish information and applications.
+There is no gatekeeper to doing anything, and it’s easy for novices to make a
+simple web page and publish it.
+
+*   Once bootstrapped, it builds quickly upon itself via [network
+effects](https://en.wikipedia.org/wiki/Network_effect) made possible by
+compatibility between sites and the power of the hyperlink to reinforce this
+compatibility. Hyperlinks drive traffic between sites, but also into the web
+_from the outside_, via email, social networking, and search engines.
+
 *   It is outside the control of any one entity - and kept that way via
-    standards organizations - and therefore not subject to problems of
-    monopoly control or manipulation.
+standards organizations - and therefore not subject to problems of monopoly
+control or manipulation.
 
 The browser ecosystem
 =====================
@@ -588,27 +627,6 @@ User Agent.
 
 [^17]:
      For example, if you’re using an installed PWA, are you using a browser?
-
-[^18]:
-     Google’s [mission](https://about.google/) statement to “organize the world’s information and make it universally accessible and useful” is almost exactly the same as this. This is not a coincidence - a search engine shares some characteristics with a browser.
-
-[^19]:
-     This brief prehistory of the web is by no means exhaustive. Instead, you should view it as a brief view into a much larger - and quite interesting in its own right - subject.
-
-[^20]:
-     These concepts are also the computer-based evolution of the long tradition of citation in academics and literary criticism.
-
-[^21]:
-     The web itself is, therefore, an example of the realization of previous ambitions and dreams, just as today we strive to realize the vision laid out by the web.
-
-[^22]:
-     No CSS!
-
-[^23]:
-     For example, it included the concept of an index page meant for searching within a site (vestiges of which exist today in the “index.html” convention when a URL path ends in /”), and had a WYSIWYG web page editor (the “contenteditable” HTML attribute and “html()” method on DOM elements has similar semantic behavior, but built-in file saving is gone). Today, the index is replaced with a search engine, and web page editors as a concept are somewhat obsolete due to the highly dynamic nature of today’s web site rendering.
-
-[^24]:
-     Also, as you can see clearly, that web page has not been updated in the meantime, and retains its original aesthetics!
 
 [^25]:
      There have even been operating systems built entirely on the web APIs! Examples include [webOS](https://en.wikipedia.org/wiki/WebOS), which powered some Palm smartphones, [Firefox OS](https://en.wikipedia.org/wiki/Firefox_OS) (that today lives on in [KaiOS](https://en.wikipedia.org/wiki/KaiOS)-based phones), and [ChromeOS](https://en.wikipedia.org/wiki/Chrome_OS), which is a desktop operating system. All of these OSes are based on using the Web as the UI layer for all applications, with some JavaScript-exposed APIs on top for system integration.
