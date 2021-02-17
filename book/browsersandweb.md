@@ -267,7 +267,7 @@ contrary, they are vital to the world’s economy. For this reason, and the
 infeasibility of rewriting, browser engineers are forced[^forced-negative] to
 fix and improve rather than replace.
 
-[^forced-negative]: I say “forced’, which has a negative connotation, but it’s
+[^forced-negative]: I say "forced", which has a negative connotation, but it’s
 more of an iterative & continuous process of improvement.
 
 It’s not just urgency though---understanding the cumulative answers to these
@@ -317,7 +317,7 @@ to your browser. The reason for this is that their contents themselves are
 dynamic---composed of data from news, blog posts, inbox contents,
 advertisements, and algorithms adjusting to your particular tastes.
 
-[^server-side-rendering]: “Server-side rendering” is the process of assembling
+[^server-side-rendering]: "Server-side rendering" is the process of assembling
 HTML on the server when loading a web page. Server-side rendering is sometimes
 run in JavaScript, and sometimes even with a
 [headless](https://en.wikipedia.org/wiki/Headless_browser) browser.
@@ -371,7 +371,7 @@ implementation choices could be replaced, and perhaps that will happen over
 time. For example, JavaScript might eventually be replaced by another language
 or technology, HTTP by some other protocol, or HTML by its successor.
 
-[^dedicated-applications]: For example, if you’re using an installed PWA, are
+[^dedicated-applications]: For example, if you're using an installed PWA, are
 you using a browser?
 
 In practice, it is not really the case that networking and rendering are
@@ -527,14 +527,14 @@ features are still standardized at the W3C. JavaScript is standardized at
 standards body). [HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
 the [IETF](https://www.ietf.org/about/).
 
-In the early days, it was not so clear that browsers would remain standard and
-that one browser might not end up “winning” and becoming another proprietary
-software platform. There are multiple reasons this didn’t happen, among them
-the egalitarian ethos of the computing community and the presence and strength
-of the W3C.  Equally important was the networked nature of the web, and
+In the first years of the web, it was not so clear that browsers would remain
+standard and that one browser might not end up “winning” and becoming another
+proprietary software platform. There are multiple reasons this didn’t happen,
+among them the egalitarian ethos of the computing community and the presence and
+strength of the W3C.  Equally important was the networked nature of the web, and
 therefore the desire of websites to make sure their site worked correctly in
-most or all of the browsers (otherwise they would lose customers), leading
-them to avoid any proprietary extensions.
+most or all of the browsers (otherwise they would lose customers), leading them
+to avoid any proprietary extensions.
 
 Despite fears that this might happen, there never really was a point where any
 browser openly attempted to break away from the standard. Instead, intense
@@ -633,36 +633,6 @@ and history of computing, what it’s like to be someone building a browser. But
 most of all, I hope you can connect all of that to you, your career in software
 and computers, and the future. After all, It’s up to you to invent and discover
 what comes next!
-
-[^8]:
-     This is Chris speaking!
-
-[^9]:
-     For me, this was mostly using [BBS](https://en.wikipedia.org/wiki/Bulletin_board_system) systems over a dialup modem connection. A BBS is not all that different in concept from a browser if you look at it from the point of view of “window into dynamic content created somewhere else on the Internet”.
-
-[^10]:
-     Netscape Navigator was available for Linux at that time, but it wasn’t viewed as especially fast or featureful compared to its implementation on other operating systems.
-
-[^11]:
-     Browsers are so performance-sensitive in many places that merely the introduction of an abstraction - and the typical ensuing function call or branching overhead - can cause an unacceptable performance cost.
-
-[^12]:
-     I say “forced’, which has a negative connotation, but it’s more of an iterative & continuous process of improvement.
-
-[^13]:
-     In the early days, people actually did this! And when their website became very popular, it immediately ran out of bandwidth and computing power and became inaccessible.
-
-[^14]:
-     “Server-side rendering” is the process of assembling HTML on the server when loading a web page. In fact, server-side rendering is in fact often run in JavaScript, and sometimes even with a “headless” browser.
-
-[^15]:
-     Progressive Web App
-
-[^16]:
-     It’s worth repeating here that this definition is not accidental and is part of the original design of the web.
-
-[^17]:
-     For example, if you’re using an installed PWA, are you using a browser?
 
 [^18]:
      Google’s [mission](https://about.google/) statement to “organize the world’s information and make it universally accessible and useful” is almost exactly the same as this. This is not a coincidence - a search engine shares some characteristics with a browser.
