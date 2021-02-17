@@ -303,9 +303,9 @@ computing service or another to run their websites, regardless of how small or
 large, and there are many products available that can easily publish your web
 content on your behalf on various social networking platforms.
 
-[^self-hosted]: In the early days, people actually did this! And when their web
-site became popular, it often ran out of bandwidth or computing power and
-became inaccessible.
+[^self-hosted]: People actually did this! And when their web site became
+popular, it often ran out of bandwidth or computing power and became
+inaccessible.
 
 This same *virtualization* concept also applies to the implementation of web
 pages themselves. While it’s still possible to write HTML by hand, few of the
@@ -672,58 +672,6 @@ and history of computing, what it’s like to be someone building a browser. But
 most of all, I hope you can connect all of that to you, your career in software
 and computers, and the future. After all, It’s up to you to invent and discover
 what comes next!
-
-[^1]:
-     Henceforth, simply “browser”.
-
-[^2]:
-     Broadly defined, the web is the interlinked network (“web”) of websites on the Internet.
-
-[^3]: The User Agent is the concept that the computer, or trusted software on
-the computer, is one’s trusted assistant and advocate; browsers are a kind of
-User Agent.
-
-[^4]:
-     I usually prefer the word “engineer”, but on the web it’s much more common to use the word “developer”, or more specifically “web developer”, so I’ll use that term in this book. An additional advantage of using “developer” is that it’s not necessary to be a trained software engineer or computer scientist to build websites; on the contrary, one goal of the web has always been  to make its use accessible to all people, not just experts. In fact many websites are in large part built by those trained in other disciplines; “web developer” is more inclusive of these additional, critical roles.
-
-[^5]:
-     Loss of control not necessarily specific to the web - much of computing these days involves relying on mountains of other peoples’ code.
-
-[^6]:
-     A fun question to consider: what might be the “optimization function” of layout?
-
-[^7]:
-     Style calculation is the process of figuring out, based on the current CSS and HTML, which styles apply to which elements.
-
-[^8]:
-     This is Chris speaking!
-
-[^9]:
-     For me, this was mostly using [BBS](https://en.wikipedia.org/wiki/Bulletin_board_system) systems over a dialup modem connection. A BBS is not all that different in concept from a browser if you look at it from the point of view of “window into dynamic content created somewhere else on the Internet”.
-
-[^10]:
-     Netscape Navigator was available for Linux at that time, but it wasn’t viewed as especially fast or featureful compared to its implementation on other operating systems.
-
-[^11]:
-     Browsers are so performance-sensitive in many places that merely the introduction of an abstraction - and the typical ensuing function call or branching overhead - can cause an unacceptable performance cost.
-
-[^12]:
-     I say “forced’, which has a negative connotation, but it’s more of an iterative & continuous process of improvement.
-
-[^13]:
-     In the early days, people actually did this! And when their web site became very popular, it immediately ran out of bandwidth and computing power and became inaccessible.
-
-[^14]:
-     “Server-side rendering” is the process of assembling HTML on the server when loading a web page. In fact, server-side rendering is in fact often run in JavaScript, and sometimes even with a “headless” web browser.
-
-[^15]:
-     Progressive Web App
-
-[^16]:
-     It’s worth repeating here that this definition is not accidental and is part of the original design of the web.
-
-[^17]:
-     For example, if you’re using an installed PWA, are you using a browser?
 
 [^25]:
      There have even been operating systems built entirely on the web APIs! Examples include [webOS](https://en.wikipedia.org/wiki/WebOS), which powered some Palm smartphones, [Firefox OS](https://en.wikipedia.org/wiki/Firefox_OS) (that today lives on in [KaiOS](https://en.wikipedia.org/wiki/KaiOS)-based phones), and [ChromeOS](https://en.wikipedia.org/wiki/Chrome_OS), which is a desktop operating system. All of these OSes are based on using the Web as the UI layer for all applications, with some JavaScript-exposed APIs on top for system integration.
