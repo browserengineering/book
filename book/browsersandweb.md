@@ -80,7 +80,16 @@ hyperlinks, and JavaScript. Most people can learn easily enough how to make simp
 HTML pages; programming abilities are not required. But how does the browser
 actually do its job of rendering that HTML? As it turns out, not many people
 who don’t work on browsers actually know in much detail, even trained software
-developers![^4]
+developers![^software-developers]
+
+[^software-developers]: I usually prefer the word “engineer”, but on the web
+it’s much more common to use the word “developer”, or more specifically “web
+developer”, so I’ll use that term in this book. An additional advantage of using
+“developer” is that it’s not necessary to be a trained software engineer or
+computer scientist to build websites; on the contrary, one goal of the web has
+always been  to make its use accessible to all people, not just experts. In fact
+many websites are in large part built by those trained in other disciplines;
+“web developer” is more inclusive of these additional, critical roles.
 
 Most of us developers treat the browser as a black box, one that is either
 magical or frustrating (depending on whether it is working correctly or not!).
@@ -92,12 +101,16 @@ the pixels on the screen are generated, in most cases there _is no feasible way_
 for developers to draw their website’s pixels “on their own”.
 
 In that sense, they also lose control and some amount of agency---when those
-pixels are wrong, they cannot directly fix them.[^5] However, this loss of
-control comes with powerful upsides, such as: it’s much easier to make and
-deploy content on the web without having to implement many of the details; that
-content is instantly (magically!) available on every computing device in
+pixels are wrong, they cannot directly fix them.[^loss-of-control] However, this
+loss of control comes with powerful upsides, such as: it’s much easier to make
+and deploy content on the web without having to implement many of the details;
+that content is instantly (magically!) available on every computing device in
 existence; and the content is likely to be accessible in the future, avoiding
 (for the most part) the inevitable obsolescence of most software.
+
+[^loss-of-control]: Loss of control not necessarily specific to the web - much
+of computing these days involves relying on mountains of other peoples’ code.
+
 
 This “what, not how” aspect of the web has multiple aspects, including
 [inversion of control](https://en.wikipedia.org/wiki/Inversion_of_control),
@@ -120,16 +133,20 @@ numerical variables, plus an optimization function; the algorithm to find the
 optimal solution is the job of someone else (the browser in our case). This
 concept appears in the web in page layout, which depends on many numerical
 factors such as font and browser window sizes, desired position and size of
-boxes, and tabular arrangement of widgets[^6].
+boxes, and tabular arrangement of widgets[^layout-optimization-function].
+
+[^layout-optimization-function]: A fun question to consider: what might be the
+“optimization function” of layout?
 
 Even after answering the _what_ and the _how_, there is still the _declarative
 programming_ aspect of the web---_when_ various computations happen. For
-example, when exactly does style (re-)calculation[^7] happen? From the point of
-view of the developer, styles "apply immediately”, meaning that any subsequent
-API the developer might call gives an answer that takes the new style into
-account. But what if the developer never calls such an API---does the work ever
-need to be done? Clearly it does if it affects what the browser’s user
-experiences, such as what pixels are drawn on the screen, but not otherwise.
+example, when exactly does style (re-)calculation[^style-calculation] happen?
+From the point of view of the developer, styles "apply immediately”, meaning
+that any subsequent API the developer might call gives an answer that takes the
+new style into account. But what if the developer never calls such an API---does
+the work ever need to be done? Clearly 	it does if it affects what the browser’s
+user experiences, such as what pixels are drawn on the screen, but not
+otherwise.
 
 It is to the advantage of the browser to not perform style re-calculation unless
 necessary, since it can avoid redundant work in situations such as the style
@@ -142,7 +159,6 @@ afforded by declarative programming.
 
 [^style-calculation]: Style calculation is the process of figuring out, based on
 the current CSS and HTML, which styles apply to which elements.
-
 
 The browser and me
 ==================
@@ -592,33 +608,6 @@ and history of computing, what it’s like to be someone building a browser. But
 most of all, I hope you can connect all of that to you, your career in software
 and computers, and the future. After all, It’s up to you to invent and discover
 what comes next!
-
-[^4]:
-     I usually prefer the word “engineer”, but on the web it’s much more common to use the word “developer”, or more specifically “web developer”, so I’ll use that term in this book. An additional advantage of using “developer” is that it’s not necessary to be a trained software engineer or computer scientist to build websites; on the contrary, one goal of the web has always been  to make its use accessible to all people, not just experts. In fact many websites are in large part built by those trained in other disciplines; “web developer” is more inclusive of these additional, critical roles.
-
-[^5]:
-     Loss of control not necessarily specific to the web - much of computing these days involves relying on mountains of other peoples’ code.
-
-[^6]:
-     A fun question to consider: what might be the “optimization function” of layout?
-
-[^7]:
-     Style calculation is the process of figuring out, based on the current CSS and HTML, which styles apply to which elements.
-
-[^8]:
-     This is Chris speaking!
-
-[^9]:
-     For me, this was mostly using [BBS](https://en.wikipedia.org/wiki/Bulletin_board_system) systems over a dialup modem connection. A BBS is not all that different in concept from a browser if you look at it from the point of view of “window into dynamic content created somewhere else on the Internet”.
-
-[^10]:
-     Netscape Navigator was available for Linux at that time, but it wasn’t viewed as especially fast or featureful compared to its implementation on other operating systems.
-
-[^11]:
-     Browsers are so performance-sensitive in many places that merely the introduction of an abstraction - and the typical ensuing function call or branching overhead - can cause an unacceptable performance cost.
-
-[^12]:
-     I say “forced’, which has a negative connotation, but it’s more of an iterative & continuous process of improvement.
 
 [^13]:
      In the early days, people actually did this! And when their website became very popular, it immediately ran out of bandwidth and computing power and became inaccessible.
