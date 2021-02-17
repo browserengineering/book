@@ -581,7 +581,7 @@ competition for market share was channeled into very fast innovation and an
 ever-expanding set of APIs and capabilities for the web, which we nowadays
 refer to as _the Web Platform,_ not just the “World Wide Web”. This recognizes
 the fact that the web is no longer a document viewing mechanism, but has
-evolved into a fully realized computing platform and ecosystem[^25]. Given
+evolved into a fully realized computing platform and ecosystem[^web-os]. Given
 these outcomes, it becomes clear that it’s not so relevant to know which
 browser “won” or “lost” each of the browser “wars”. In both cases _the web won_
 and was preserved and enhanced for the benefit of the world. In economics
@@ -592,17 +592,37 @@ platform - for example, tabbed UIs and search engine integration. Browser
 development is also primarily funded by revenue from search engine
 advertisements; a secondary typical funding motivation is to improve the
 competitive position of an operating system or device owned or controlled by
-the company building the browser[^26].
+the company building the browser[^compare-redhat].
+
+[^web-os]: There have even been operating systems built entirely on the web
+APIs! Examples include [webOS](https://en.wikipedia.org/wiki/WebOS), which
+powered some Palm smartphones, [Firefox
+OS](https://en.wikipedia.org/wiki/Firefox_OS) (that today lives on in
+[KaiOS](https://en.wikipedia.org/wiki/KaiOS)-based phones), and
+[ChromeOS](https://en.wikipedia.org/wiki/Chrome_OS), which is a desktop
+operating system. All of these OSes are based on using the Web as the UI layer
+for all applications, with some JavaScript-exposed APIs on top for system
+integration.
+
+[^compare-redhat]: Compare this with the RedHat anecdote I related earlier!
 
 An important and interesting outcome of the second browser war was
 that all mainstream browsers today (of which there are *many* more than three)
 are based on _three open-source web rendering / JavaScript engines_: Chromium,
-Gecko and WebKit[^27]. Since Chromium and
+Gecko and WebKit[^javascript-repo]. Since Chromium and
 WebKit have a common ancestral codebase, while Gecko is an open-source descendant of
 Netscape, all three date back to the 1990s---almost to the beginning of the web.
 That this occurred is not an accident, and in fact tells us
 something quite interesting about the most cost-effective way to implement a
 rendering engine based on a commodity set of platform APIs.
+
+[^javascript-repo]: The JavaScript engines are actually in different
+repositories (as are various other sub-components that we won’t get into here),
+and can and do exist outside of browsers as JavaScript VMs. The most important
+such application is the use of
+[v8](https://en.wikipedia.org/wiki/V8_(JavaScript_engine)) to power
+[node.js](https://nodejs.org/en/). However, each of the three rendering engines
+does have its own JavaScript VM, so conflating the two is reasonable.
 
 How browsers evolve
 ===================
@@ -672,12 +692,3 @@ and history of computing, what it’s like to be someone building a browser. But
 most of all, I hope you can connect all of that to you, your career in software
 and computers, and the future. After all, It’s up to you to invent and discover
 what comes next!
-
-[^25]:
-     There have even been operating systems built entirely on the web APIs! Examples include [webOS](https://en.wikipedia.org/wiki/WebOS), which powered some Palm smartphones, [Firefox OS](https://en.wikipedia.org/wiki/Firefox_OS) (that today lives on in [KaiOS](https://en.wikipedia.org/wiki/KaiOS)-based phones), and [ChromeOS](https://en.wikipedia.org/wiki/Chrome_OS), which is a desktop operating system. All of these OSes are based on using the Web as the UI layer for all applications, with some JavaScript-exposed APIs on top for system integration.
-
-[^26]:
-     Compare this with the RedHat anecdote!
-
-[^27]:
-     The JavaScript engines are actually in different repositories (as are various other sub-components that we won’t get into here), and can and do exist outside of browsers as JavaScript VMs. The most important such application is the use of [v8](https://en.wikipedia.org/wiki/V8_(JavaScript_engine)) to power [node.js](https://nodejs.org/en/). However, each of the three rendering engines does have its own JavaScript VM, so conflating the two is reasonable.
