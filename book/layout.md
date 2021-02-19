@@ -113,8 +113,8 @@ class BlockLayout:
 ```
 
 These layout objects will be the nodes of a *layout tree*. So we'll
-want layout objects to have children, a parent, and an HTML element
-that they correspond to. Each layout object will also have a layout to
+want layout objects to have references to their children, a parent, and an HTML element
+that they correspond to. Each layout object will also have a reference to
 its previous sibling in the tree.
 
 ``` {.python}
@@ -144,7 +144,7 @@ def layout(self):
     self.flush()
 ```
 
-Besides the references to other layout object, each layout object also
+Besides the references to other related layout objects, each layout object also
 needs a size and position, which we'll store in the `w`, `h`, `x`, and
 `y` fields.
 
@@ -331,7 +331,7 @@ object can be computed:
 self.h = sum([child.h for child in self.children])
 ```
 
-Note how important the order is here. A block layout's width depends
+Note how important the order is here. A block layout object's width depends
 on the parent's width; so by symmetry the width must be computed
 before laying out the children. The position is the same: it has to be
 computed before recursing so it's already available when the children
