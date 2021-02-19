@@ -377,8 +377,13 @@ class DocumentLayout:
         self.x = HSTEP
         self.y = VSTEP
         child.layout()
-        self.h = child.h
+        self.h = child.h + 2*VSTEP
 ```
+
+Note that I'm adding a little bit of padding around the main
+text---`HSTEP` on the left and right, and `VSTEP` above. That's so the
+text won't run into the very edge of the window, where a bit of it
+would get cut off.
 
 To summarize the rules of layout computation:
 
