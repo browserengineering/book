@@ -123,7 +123,6 @@ def __init__(self, node, parent, previous):
     self.parent = parent
     self.previous = previous
     self.children = []
-    # ...
 ```
 
 The `InlineLayout` constructor also initializes `weight`, `style`, and
@@ -176,7 +175,7 @@ of layout object:
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self, node, parent):
+    def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
         self.children = []
@@ -399,7 +398,8 @@ tree and lay it out:
 
 ``` {.python}
 class Browser:
-    def layout(self, tree):
+    def layout(self, body):
+        tree = HTMLParser(body).parse()
         document = DocumentLayout(tree)
         document.layout()
 ```
@@ -446,7 +446,7 @@ variable:
 
 ``` {.python}
 class Browser:
-    def layout(self, tree):
+    def layout(self, body):
         # ...
         self.display_list = []
         document.draw(self.display_list)
@@ -594,7 +594,7 @@ past the bottom of the page. In `layout`, store the height in a
 `max_y` variable:
 
 ``` {.python}
-def layout(self, tree):
+def layout(self, body):
     # ...
     self.max_y = document.h - HEIGHT
 ```
@@ -606,7 +606,7 @@ bottom of the page:
 def scrolldown(self, e):
     self.scroll = self.scroll + SCROLL_STEP
     self.scroll = min(self.scroll, self.max_y)
-    self.scroll = max(0, self.scroll))
+    self.scroll = max(0, self.scroll)
     self.render()
 ```
 
