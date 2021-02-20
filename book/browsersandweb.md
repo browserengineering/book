@@ -5,71 +5,52 @@ next: http
 prev: preliminaries
 ...
 
-Why study browsers?
-===================
-
-The web browser[^webbrowser] - and more broadly the web[^theweb] itself - is a
-marvel of technology, and plays a central and increasing role in our lives. It
-is a primary, or _the_ primary, means by which we find information, learn and
-access the Internet. Every year the web expands its reach to more and more of
-what we do with computers; it has long since gone beyond its original use for 
-document-based information sharing to many other kinds of applications. On
-desktop platforms, many applications are actually built and delivered as _web
-apps_---websites[^website] that are intended to be used in similar ways to
-installed applications, not just documents. Many people now spend their entire
-day in a browser, not using a single other application.
-
-[^webbrowser]: Henceforth, simply “browser”.
+The web browser, and the web[^theweb] more broadly, is a marvel. Every
+year it expands its reach to more and more of what we do with
+computers. It now goes far beyond its original use for document-based
+information sharing; many people now spend their entire day in a
+browser, not using a single other application.
 
 [^theweb]: Broadly defined, the web is the interlinked network (“web”) of
-[web pages](https://en.wikipedia.org/wiki/Web_page) on the Internet.
+    [web pages](https://en.wikipedia.org/wiki/Web_page) on the Internet.
 
-[^website]: You probably already know what a website is. If not, [see
-here](https://en.wikipedia.org/wiki/Website).
+Nowadays, desktop applications are often built and delivered as _web
+apps_: websites[^website] used in similar ways to installed
+applications. And on mobile devices even native apps often use _web
+views_ that embed a browser render parts of the application UI.
+Perhaps in the future mobile devices will, like desktop computers,
+mostly a container for web apps.
 
-On mobile devices such as phones, even non-browser applications (apps) often
-combine traditional native code and _web views_ that embed a website into the
-application to render parts of its UI. These web views are implemented by an
-actual browser---embedded like a kind of widget---within another
-application. The fraction of these _hybrid apps_ that are web content is also
-likely increasing over time; maybe in the future mobile devices will end up
-being mostly a container for web apps like desktop computers.
+[^website]: You probably already know what a website is. This is one.
+    If not, [see here](https://en.wikipedia.org/wiki/Website).
 
-Clearly the browser is a critical piece of software at the center of computing.
-But just as fascinating is that this critical software is all built on a few
-simple, yet revolutionary, concepts that together present a vision of the future
-of software and information. Among them are open, decentralized and safe
-computing; declarative document models for describing UIs; hyperlinks; and the
-User Agent concept.
+[^hybrid]: The fraction of these _hybrid apps_ that are web content is
+    also likely increasing over time.
 
-Where did these concepts come from? Were they invented all at once for the web?
-And aren't they kind of simple or even obvious? The answers are: many places,
-no, and only in hindsight. These concepts are the the result of a large amount
-of experimentation and research reaching back to nearly the beginning of
-computing. The web itself only appeared decades later, in 1989, and stood on the
-shoulders of that work to put those concepts together in just the right way. And
-as with many technological breakthroughs, it also appeared at just the right
-time---in particular around the point at which the enabling technologies of
-computer displays, powerful UI-building libraries, and networking passed
-critical thresholds of maturity.
+Yet this critical piece of software is built on a few simple, yet
+revolutionary, concepts that present a vision of the future of
+software and information: open, decentralized and safe computing;
+declarative UIs; hyperlinks; and user agents[^useragent]. This vision
+is neither simple nor obvious, even if it seems that way in hindsight:
+the web itself only appeared in 1989, and build upon breakthroughs in
+graphical computer displays, powerful UI-building libraries, and
+computer networking. All these made the browser possible.
 
-At the core of the web-based computing vision is the browser. The browser is the
-User Agent[^useragent], the _mediator_ of web interactions and _enforcer_ of its
-rules. Not only that, the browser is the _implementer_ of all of the ways
-information is explored---in particular through algorithms to make the "black
-box" of the declarative document model as expressive and rich as possible, while
-at the same time adhering strictly to the web's decentralized architecture and
-commitment to openness. And of course, the web would be no fun if websites were
-not fast to load and smooth to use, so the browser must be hyper-efficient as
-well.
+[^useragent]: The User Agent is the concept that the software on your
+    computer should be your trusted assistant and advocate; browsers
+    are a User Agent for the web.
 
-[^useragent]: The User Agent is the concept that the computer, or trusted
-software on the computer, is one’s trusted assistant and advocate; browsers are
-a kind of User Agent.
+The browser sits at the core of this vision of the web. As the user's
+agent, it is the _mediator_ of web interactions and _enforcer_ of the
+web's openness, decentralization, and safety. The browser is also the
+_implementer_ of the web's core concepts: its algorithms make the
+declarative document model expressive and rich, and implement
+functionality like links. And of course, the browser is responsible
+for the web's speed and responsiveness as well.
 
-Figuring out how to meet all these lofty goals with real code is certainly
-difficult, but _also_ groundbreaking, endlessly fascinating even in the details,
-and often  just plain fun. That's what this book is about.
+Meeting these lofty goals quickly and on every device is difficult,
+but also groundbreaking, endlessly fascinating, and just plain fun.
+That's what this book is about.
 
 Explaining the black box
 ========================
