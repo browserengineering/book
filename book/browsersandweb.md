@@ -539,7 +539,7 @@ turn the inspiration for [NCSA
 Mosaic](https://en.wikipedia.org/wiki/Mosaic_(web_browser)), which launched in
 1993. One of the two original authors of Mosaic went on to co-found
 [Netscape](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
-_commercial browser_[^commercial-browser], which launched in 1995. The era of
+_commercial browser_[^commercial-browser], which launched in 1994. The era of
 the [”first browser
 war”](https://en.wikipedia.org/wiki/Browser_wars#First_Browser_War_(1995%E2%80%932001))
 ensued, in a competition between Netscape and Internet Explorer. In addition,
@@ -556,7 +556,7 @@ originally developed by Netscape starting in 1997; the
 codebase.
 
  During this time, essentially all of the features you will implement in your
-browser were added - CSS, DOM, and JavaScript. The second browser war, which
+browser were added, including CSS, DOM, and JavaScript. The second browser war, which
 according to Wikipedia was
 [2004-2017](https://en.wikipedia.org/wiki/Browser_wars#Second_Browser_War_(2004%E2%80%932017)),
 was between a variety of browsers - Internet Explorer, Firefox, Safari and
@@ -600,14 +600,14 @@ ever-expanding set of APIs and capabilities for the web, which we nowadays refer
 to as _the Web Platform,_ not just the “World Wide Web”. This recognizes the
 fact that the web is no longer a document viewing mechanism, but has evolved
 into a fully realized computing platform and ecosystem.[^web-os] Given these
-outcomes, itn retrpspect clear that it’s not so relevant to know which browser
-“won” or “lost” each of the browser “wars”. In both cases _the web won_ and was
-preserved and enhanced for the benefit of the world. In economics terms,
+outcomes, in retrospect it is clear that it’s not so relevant to know which
+browser “won” or “lost” each of the browser “wars”. In both cases _the web won_
+and was preserved and enhanced for the benefit of the world. In economics terms,
 enforcing a standard set of APIs across browsers made the web platform a
 _commodity_; instead of competing based on lock-in, browsers compete on
-_performance_ and _quality_, and also _browser features_ that are not part of the
-web platform---for example, tabbed UIs and search engine integration. Browser
-development is also primarily funded by revenue from search engine
+_performance_ and _quality_, and also _browser features_ that are not part of
+the web platform---for example, tabbed UIs and search engine integration.
+Browser development is also primarily funded by revenue from search engine
 advertisements; a secondary typical funding motivation is to improve the
 competitive position of an operating system or device owned or controlled by the
 company building the browser.[^compare-redhat]
@@ -706,10 +706,10 @@ browser with a real one, or see how many websites you can successfully render.
 
 The browser is an essential part of computing, and this chapter gave evidence of
 that fact, along with a flavor of the depth and history of the web and browsers.
-However, only by really understanding how a browser works will you really
-appreciate and understand its beauty and power fully. I hope you come away from
-this book with a deeper sense of this beauty---how it works, its relationship to
-the culture and history of computing and information, what it’s like to be
-someone building a browser. But most of all, I hope you can connect all of that
-to you, your career in software and computers, and the future. After all, it’s
-up to you to invent and discover what comes next!
+However, I believe that only by really understanding how a browser works will
+you really appreciate and understand its beauty, complexity and power fully. I
+hope you come away from this book with a deeper sense of this beauty---how it
+works, its relationship to the culture and history of computing and information,
+what it’s like to be someone building a browser. But most of all, I hope you can
+connect all of that to you, your career in software and computers, and the
+future. After all, it’s up to you to invent and discover what comes next!
