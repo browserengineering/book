@@ -341,7 +341,7 @@ class DocumentLayout:
         self.x = HSTEP
         self.y = VSTEP
         child.layout()
-        self.h = child.h + 2*HSTEP
+        self.h = child.h + 2*VSTEP
 
     def draw(self, to):
         self.children[0].draw(to)
