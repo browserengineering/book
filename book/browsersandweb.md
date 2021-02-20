@@ -518,21 +518,29 @@ control or manipulation.
 The browser ecosystem
 =====================
 
-Browsers have a unique character in that they are _not proprietary_ - no
-company controls the APIs of the web, there are multiple independent
-implementations, and over time almost all of the code became open-source and
-developed by a very wide array of people and entities. As a corollary, web
-sites are also not proprietary, and the information and capabilities contained
-within them are accessible to all people.
+Browsers have a unique character in that they are _not proprietary_ - no company
+controls the APIs of the web and there are multiple independent implementations.
+In addition, it turned out that over time almost all of the code became
+open-source and developed by a very wide array of people and entities. As a
+corollary, the software platform for web sites is also not proprietary, and the
+information and capabilities contained within them are easy to make accessible 
+to everyone[^unless-restricted].
 
-The first _widely distributed_ browser may have been
+[^unless-restricted]: Unless, of course, the web site chooses to restrict
+availability for one reason or another. The point is that the _web platform_
+does not restrict availability, and therefore the web site has the freedom to
+choose.
+
+I'll now give a brief overview of the evolution of browser implementations. The
+first _widely distributed_ browser may have been
 [ViolaWWW](https://en.wikipedia.org/wiki/ViolaWWW); this browser also pioneered
 multiple interesting features such as applets and images. This browser was in
 turn the inspiration for [NCSA
 Mosaic](https://en.wikipedia.org/wiki/Mosaic_(web_browser)), which launched in
 1993. One of the two original authors of Mosaic went on to co-found
 [Netscape](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
-commercial browser, which launched in 1995. The era of the [”first browser
+_commercial browser_[^commercial-browser], which launched in 1995. The era of
+the [”first browser
 war”](https://en.wikipedia.org/wiki/Browser_wars#First_Browser_War_(1995%E2%80%932001))
 ensued, in a competition between Netscape and Internet Explorer. In addition,
 there were other browsers with smaller market shares; one notable example is
@@ -541,16 +549,26 @@ there were other browsers with smaller market shares; one notable example is
 ([Safari](https://en.wikipedia.org/wiki/Safari_(web_browser)) and
 [Chromium](https://www.chromium.org/)-based browsers, such as Chrome and newer
 versions of [Edge](https://en.wikipedia.org/wiki/Microsoft_Edge), descend from
-this codebase). During this time, essentially all of the features you will
-implement in your browser were added - CSS, DOM, and JavaScript. The second
-browser war, which according to Wikipedia was
+this codebase). Likewise, the
+[Gecko](https://en.wikipedia.org/wiki/Gecko_(software)) rendering engine was
+originally developed by Netscape starting in 1997; the
+[Firefox](https://en.wikipedia.org/wiki/Firefox) browser is descended from this
+codebase.
+
+ During this time, essentially all of the features you will implement in your
+browser were added - CSS, DOM, and JavaScript. The second browser war, which
+according to Wikipedia was
 [2004-2017](https://en.wikipedia.org/wiki/Browser_wars#Second_Browser_War_(2004%E2%80%932017)),
-was between a variety of browsers - IE, Firefox (descended from the Netscape
-codebase), Safari and Chrome in particular. Chrome split off its rendering
-engine subsystem into its own code base called
+was between a variety of browsers - Internet Explorer, Firefox, Safari and
+Chrome in particular. Chrome split off its rendering engine subsystem into its
+own code base called
 [Blink](https://en.wikipedia.org/wiki/Blink_(browser_engine)) in 2013.
 
-In parallel with these developments was another, equally important, one - the
+[^commercial-browser]: By commercial I mean built by a for-profit entity.
+Netscape's early versions were also not free software---you had to buy them from
+a store.
+
+In parallel with these developments was another, equally important, one---the
 standardization of Web APIs. In October 1994, the [World Wide Web
 Consortium](https://www.w3.org/Consortium/facts) (W3C) was founded in order to
 provide oversight and standards for web features. For a time after this point,
@@ -578,27 +596,26 @@ to avoid any proprietary extensions.
 Despite fears that this might happen, there never really was a point where any
 browser openly attempted to break away from the standard. Instead, intense
 competition for market share was channeled into very fast innovation and an
-ever-expanding set of APIs and capabilities for the web, which we nowadays
-refer to as _the Web Platform,_ not just the “World Wide Web”. This recognizes
-the fact that the web is no longer a document viewing mechanism, but has
-evolved into a fully realized computing platform and ecosystem[^web-os]. Given
-these outcomes, it becomes clear that it’s not so relevant to know which
-browser “won” or “lost” each of the browser “wars”. In both cases _the web won_
-and was preserved and enhanced for the benefit of the world. In economics
-terms, enforcing a standard set of APIs across browsers made the web platform a
+ever-expanding set of APIs and capabilities for the web, which we nowadays refer
+to as _the Web Platform,_ not just the “World Wide Web”. This recognizes the
+fact that the web is no longer a document viewing mechanism, but has evolved
+into a fully realized computing platform and ecosystem.[^web-os] Given these
+outcomes, itn retrpspect clear that it’s not so relevant to know which browser
+“won” or “lost” each of the browser “wars”. In both cases _the web won_ and was
+preserved and enhanced for the benefit of the world. In economics terms,
+enforcing a standard set of APIs across browsers made the web platform a
 _commodity_; instead of competing based on lock-in, browsers compete on
-_performance_, and also _browser features_ that are not part of the web
-platform - for example, tabbed UIs and search engine integration. Browser
+_performance_ and _quality_, and also _browser features_ that are not part of the
+web platform---for example, tabbed UIs and search engine integration. Browser
 development is also primarily funded by revenue from search engine
 advertisements; a secondary typical funding motivation is to improve the
-competitive position of an operating system or device owned or controlled by
-the company building the browser[^compare-redhat].
+competitive position of an operating system or device owned or controlled by the
+company building the browser.[^compare-redhat]
 
-[^web-os]: There have even been operating systems built entirely on the web
-APIs! Examples include [webOS](https://en.wikipedia.org/wiki/WebOS), which
-powered some Palm smartphones, [Firefox
-OS](https://en.wikipedia.org/wiki/Firefox_OS) (that today lives on in
-[KaiOS](https://en.wikipedia.org/wiki/KaiOS)-based phones), and
+[^web-os]: There have even been operating systems built around the web! Examples
+include [webOS](https://en.wikipedia.org/wiki/WebOS), which powered some Palm
+smartphones, [Firefox OS](https://en.wikipedia.org/wiki/Firefox_OS) (that today
+lives on in [KaiOS](https://en.wikipedia.org/wiki/KaiOS)-based phones), and
 [ChromeOS](https://en.wikipedia.org/wiki/Chrome_OS), which is a desktop
 operating system. All of these OSes are based on using the Web as the UI layer
 for all applications, with some JavaScript-exposed APIs on top for system
@@ -606,23 +623,31 @@ integration.
 
 [^compare-redhat]: Compare this with the RedHat anecdote I related earlier!
 
-An important and interesting outcome of the second browser war was
-that all mainstream browsers today (of which there are *many* more than three)
-are based on _three open-source web rendering / JavaScript engines_: Chromium,
-Gecko and WebKit[^javascript-repo]. Since Chromium and
-WebKit have a common ancestral codebase, while Gecko is an open-source descendant of
-Netscape, all three date back to the 1990s---almost to the beginning of the web.
-That this occurred is not an accident, and in fact tells us
-something quite interesting about the most cost-effective way to implement a
-rendering engine based on a commodity set of platform APIs.
+An important and interesting outcome of the _second_ browser war was that all
+mainstream browsers today (of which there are *many* more than
+three[^examples-of-browsers-today]) are based on _three open-source web
+rendering / JavaScript engines_: Chromium, Gecko and WebKit[^javascript-repo].
+Since Chromium and WebKit have a common ancestral codebase, while Gecko is an
+open-source descendant of Netscape, all three date back to the 1990s---almost to
+the beginning of the web. That this occurred is not an accident, and in fact
+tells us something quite interesting about the most cost-effective way to
+implement a rendering engine based on a commodity set of platform APIs.
+
+[^examples-of-browsers-today]: Examples of Chromium-based browsers include
+Chrome, Edge, Opera (which switched to Chromium from the
+[Presto](https://en.wikipedia.org/wiki/Presto_(browser_engine)) engine in 2013),
+Samsung Internet, Yandex Browser, and UC Browser. In addition, there are many
+"embedded" browsers, based on one or another of the three engines, for a wide
+variety of automobiles, phones, TVs and other electronic devices.
 
 [^javascript-repo]: The JavaScript engines are actually in different
 repositories (as are various other sub-components that we won’t get into here),
-and can and do exist outside of browsers as JavaScript VMs. The most important
-such application is the use of
+and can and do exist outside of browsers as JavaScript virtual machines. One
+important such application is the use of
 [v8](https://en.wikipedia.org/wiki/V8_(JavaScript_engine)) to power
-[node.js](https://nodejs.org/en/). However, each of the three rendering engines
-does have its own JavaScript VM, so conflating the two is reasonable.
+[node.js](https://en.wikipedia.org/wiki/Node.js). However, each of the three
+rendering engines does have its own JavaScript implementation, so conflating the
+two is reasonable.
 
 How browsers evolve
 ===================
@@ -630,36 +655,32 @@ How browsers evolve
 At the highest level, a browser has two major pieces of code: an implementation
 of the web platform APIs (sometimes called a _web rendering engine_), and a
 browsing UI and accompanying features, such as search engine integration,
-bookmarking, navigation, tabs, translation, autofill, password managers, data
-sync etc.
+bookmarks, navigation, tabs, translation, autofill, password managers, data sync
+and so on.
 
 Web rendering engines have a lot in common with any other very large software
-project - they have a _very high total cost of development_, and _significant &
-increasing over time_ cost of maintenance (due to the ever-expanding feature
+project---they have a _very high total cost of development_, and a _significant
+& increasing over time_ cost of maintenance (due to the ever-expanding feature
 set). However, they also have a unique character in that they are just as much
 community and ecosystem-driven as they are self-driven. In other words, since
 the character of the web itself is highly decentralized, what use cases end up
 getting met by browsers is to a significant extent _not determined_ by the
-companies “owning” or “controlling” a particular browser. For example, there
-are many other people, such as website developers, who contribute many good
-ideas and proposals that end up implemented in browsers.
+companies “owning” or “controlling” a particular browser. For example, there are
+many other people, such as website developers, who contribute many good ideas
+and proposals that end up implemented in browsers.
 
 Due to the very high cost of building and maintaining an implementation of the
 web platform, and the fact of being community-driven (and therefore having no
-sustainable proprietary advantage over competitors), it only makes sense that
-the engine source code itself open-source, so as to share the burden
-(opportunity?) of maintenance across the larger community, and allow a
-pressure-relief mechanism through accepting code from the community. These
-contributions are sometimes directly in the core engine, or by including
-third-party open-source code as dependencies. Another consequence of being
-driven collectively by the community is that a browser often functions like an
-R&D project, where new ideas are constantly being proposed and tested out in
-discussions and implementations. Like any R&D project, this leads to the
-browser having an iterative and incremental planning and shipping process - at
-any given time it’s not easy to lay out the exact plans for the next year in
-great precision (let alone five years), because it’s always unknown how well
-current ideas will work, what new ideas might surface, or what critical bugs
-may surface.
+sustainable proprietary advantage over competitors), it makes sense that the
+engine source code itself be open-source as well. This allows sharing the burden
+(opportunity?) of maintenance and feature development across a larger community.
+Another consequence of being driven collectively by the community is that a
+browser often functions like an R&D project, where new ideas are constantly
+being proposed and tested out in discussions and implementations. Like any R&D
+project, this leads to the browser having an iterative and incremental planning
+and shipping process---at any given time it’s not easy to lay out the exact
+plans for the next year in great precision (let alone five years), because it’s
+always unknown how well current projects will work or what new ideas might surface.
 
 Browsers and you
 ================
@@ -677,18 +698,18 @@ understand it without too much trouble.
 The intention of the book is for you to build your own browser as you work
 through the early chapters. Once your browser is up and running, there are
 endless opportunities to improve performance or add features. Many of the
-exercises at the ends of the chapters are suggestions of feature enhancements
-that are similar to ones that come up in real browsers. We encourage you to try
-the exercises - adding these features is one of the most fun parts! It’s also a
-lot of fun (and very satisfying) to compare your browser with a real one, or
-see how many websites you can successfully render. 
+exercises at the ends of the chapters are suggested feature enhancements that
+are similar to ones that come up in real browsers. We encourage you to try the
+exercises---adding these features is one of the most fun parts of browser
+development! It’s also a lot of fun (and very satisfying) to compare your
+browser with a real one, or see how many websites you can successfully render. 
 
-In my view, the browser is an essential part of computing. This chapter
-demonstrated some of the depth and history of the web and browsers, but only in
-really understanding how a browser works will you really appreciate and
-understand its beauty and power fully. I hope you come away from this book with
-a deeper sense of this beauty - how it works, its relationship to the culture
-and history of computing, what it’s like to be someone building a browser. But
-most of all, I hope you can connect all of that to you, your career in software
-and computers, and the future. After all, It’s up to you to invent and discover
-what comes next!
+The browser is an essential part of computing, and this chapter gave evidence of
+that fact, along with a flavor of the depth and history of the web and browsers.
+However, only by really understanding how a browser works will you really
+appreciate and understand its beauty and power fully. I hope you come away from
+this book with a deeper sense of this beauty---how it works, its relationship to
+the culture and history of computing and information, what it’s like to be
+someone building a browser. But most of all, I hope you can connect all of that
+to you, your career in software and computers, and the future. After all, it’s
+up to you to invent and discover what comes next!
