@@ -17,9 +17,9 @@ browser, not using a single other application.
 Nowadays, desktop applications are often built and delivered as _web
 apps_: websites[^website] used in similar ways to installed
 applications. And on mobile devices even native apps often use _web
-views_ that embed a browser render parts of the application UI.
+views_ that embed a browser to render parts of the application UI.
 Perhaps in the future mobile devices will, like desktop computers,
-mostly a container for web apps.
+mostly be a container for web apps.
 
 [^website]: You probably already know what a website is. This is one.
     If not, [see here](https://en.wikipedia.org/wiki/Website).
@@ -27,30 +27,45 @@ mostly a container for web apps.
 [^hybrid]: The fraction of these _hybrid apps_ that are web content is
     also likely increasing over time.
 
-Yet this critical piece of software is built on a few simple, yet
-revolutionary, concepts that present a vision of the future of
-software and information: open, decentralized and safe computing;
-declarative UIs; hyperlinks; and user agents[^useragent]. This vision
-is neither simple nor obvious, even if it seems that way in hindsight:
-the web itself only appeared in 1989, and build upon breakthroughs in
-graphical computer displays, powerful UI-building libraries, and
-computer networking. All these made the browser possible.
+The basis of this critical piece of software is the web. And the web
+itself is built on a few simple, yet revolutionary, concepts; concepts
+that that together present a vision of the future of software and
+information. Among them are open, decentralized and safe computing; a
+declarative document model for describing UIs; hyperlinks; and the
+User Agent concept[^useragent]. Since the browser makes the web real,
+all these concepts form the core structure of the browser code itself.
 
 [^useragent]: The User Agent is the concept that the software on your
     computer should be your trusted assistant and advocate; browsers
     are a User Agent for the web.
 
-The browser sits at the core of this vision of the web. As the user's
-agent, it is the _mediator_ of web interactions and _enforcer_ of the
-web's openness, decentralization, and safety. The browser is also the
-_implementer_ of the web's core concepts: its algorithms make the
-declarative document model expressive and rich, and implement
-functionality like links. And of course, the browser is responsible
-for the web's speed and responsiveness as well.
+Where did these concepts come from? Were they invented all at once for
+the web? And aren't they kind of simple or even obvious? The answers
+are: many places, no, and only in hindsight. These concepts are the
+the result of a large amount of experimentation and research reaching
+back to nearly the beginning of computing. The web itself only
+appeared decades later, standing on the shoulders of that work.
 
-Meeting these lofty goals quickly and on every device is difficult,
-but also groundbreaking, endlessly fascinating, and just plain fun.
-That's what this book is about.
+And as with many technological breakthroughs, the web did not appear
+as soon as the foundational research concluded. The web _also_ needed
+computers and networks powerful enough to build a browser and make web
+sites, and that did not come to pass until the late 1980s. That was
+when the key technologies of computer displays, powerful UI-building
+libraries, networking, CPU power and information storage capacity
+passed critical thresholds of maturity.
+
+How does the browser realize the web? It is the User Agent, the
+_mediator_ of web interactions and _enforcer_ of its rules. Not only
+that, the browser is the _implementer_ of all of the ways information
+is explored---in particular through algorithms to make the "black box"
+of the declarative document model as expressive and rich as possible,
+while at the same time adhering strictly to the web's decentralized
+architecture and commitment to openness. And of course, the web would
+be no fun if websites were not fast to load and smooth to use, so the
+browser must be hyper-efficient as well.
+
+Lofty goals! How does the browser deliver on them? It's a fascinating
+and fun journey. That's what this book is about.
 
 Explaining the black box
 ========================
