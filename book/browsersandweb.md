@@ -35,41 +35,42 @@ application. The fraction of these _hybrid apps_ that are web content is also
 likely increasing over time; maybe in the future mobile devices will end up
 being mostly a container for web apps like desktop computers.
 
-Clearly the browser is a critical piece of software at the center of computing.
-But just as fascinating is that this critical software is all built on a few
-simple, yet revolutionary, concepts that together present a vision of the future
-of software and information. Among them are open, decentralized and safe
-computing; declarative document models for describing UIs; hyperlinks; and the
-User Agent concept.
+The basis of this critical piece of software is the web. And the web
+itself is built on a few simple, yet revolutionary, concepts; concepts that that
+together present a vision of the future of software and information. Among them
+are open, decentralized and safe computing; a declarative document model for
+describing UIs; hyperlinks; and the User Agent concept[^useragent]. Since the
+browser makes the web real, all these concepts form the core structure of the
+browser code itself.
+
+[^useragent]: The User Agent is a way to view the computer, or software within
+the computer, as a trusted assistant and advocate.
 
 Where did these concepts come from? Were they invented all at once for the web?
 And aren't they kind of simple or even obvious? The answers are: many places,
 no, and only in hindsight. These concepts are the the result of a large amount
 of experimentation and research reaching back to nearly the beginning of
-computing. The web itself only appeared decades later, in 1989, and stood on the
-shoulders of that work to put those concepts together in just the right way. And
-as with many technological breakthroughs, it also appeared at just the right
-time---in particular around the point at which the enabling technologies of
-computer displays, powerful UI-building libraries, and networking passed
-critical thresholds of maturity.
+computing. The web itself only appeared decades later, standing on the shoulders
+of that work.
 
-At the core of the web-based computing vision is the browser. The browser is the
-User Agent[^useragent], the _mediator_ of web interactions and _enforcer_ of its
-rules. Not only that, the browser is the _implementer_ of all of the ways
-information is explored---in particular through algorithms to make the "black
-box" of the declarative document model as expressive and rich as possible, while
-at the same time adhering strictly to the web's decentralized architecture and
-commitment to openness. And of course, the web would be no fun if websites were
-not fast to load and smooth to use, so the browser must be hyper-efficient as
-well.
+And as with many technological breakthroughs, the web did not appear as soon as
+the foundational research concluded. The web _also_ needed computers and
+networks powerful enough to build a browser and make web sites, and that did not
+come to pass until the late 1980s. That was when the key technologies of
+computer displays, powerful UI-building libraries, networking, CPU power and
+information storage capacity passed critical thresholds of maturity.
 
-[^useragent]: The User Agent is the concept that the computer, or trusted
-software on the computer, is one’s trusted assistant and advocate; browsers are
-a kind of User Agent.
+How does the browser realize the web? It is the User Agent, the _mediator_ of
+web interactions and _enforcer_ of its rules. Not only that, the browser is the
+_implementer_ of all of the ways information is explored---in particular through
+algorithms to make the "black box" of the declarative document model as
+expressive and rich as possible, while at the same time adhering strictly to the
+web's decentralized architecture and commitment to openness. And of course, the
+web would be no fun if websites were not fast to load and smooth to use, so the
+browser must be hyper-efficient as well.
 
-Figuring out how to meet all these lofty goals with real code is certainly
-difficult, but _also_ groundbreaking, endlessly fascinating even in the details,
-and often  just plain fun. That's what this book is about.
+Lofty goals! How does the browser deliver on them? It's a fascinating and fun
+journey. That's what this book is about.
 
 Explaining the black box
 ========================
