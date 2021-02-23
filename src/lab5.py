@@ -54,143 +54,149 @@ def request(url):
     return headers, body
 
 class Text:
-    def __init__(self, text):
+    def __init__(self, text, parent):
         self.text = text
+        self.children = []
+        self.parent = parent
 
     def __repr__(self):
-        return "\"" + self.text.replace("\n", "\\n") + "\""
+        return repr(self.text)
 
-SELF_CLOSING_TAGS = [
-    "area", "base", "br", "col", "embed", "hr", "img", "input",
-    "link", "meta", "param", "source", "track", "wbr",
-]
+class Element:
+    def __init__(self, tag, attributes, parent):
+        self.tag = tag
+        self.attributes = attributes
+        self.children = []
+        self.parent = parent
 
-class Tag:
-    def __init__(self, text):
+    def __repr__(self):
+        attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
+        return "<" + self.tag + "".join(attrs) + ">"
+
+def print_tree(node, indent=0):
+    print(" " * indent, node)
+    for child in node.children:
+        print_tree(child, indent + 2)
+
+class HTMLParser:
+    def __init__(self, body):
+        self.body = body
+        self.unfinished = []
+
+    def parse(self):
+        text = ""
+        in_tag = False
+        for c in self.body:
+            if c == "<":
+                in_tag = True
+                if text: self.add_text(text)
+                text = ""
+            elif c == ">":
+                in_tag = False
+                self.add_tag(text)
+                text = ""
+            else:
+                text += c
+        if not in_tag and text:
+            self.add_text(text)
+        return self.finish()
+
+    def get_attributes(self, text):
         parts = text.split()
-        self.tag = parts[0].lower()
-        self.attributes = {}
+        tag = parts[0].lower()
+        attributes = {}
         for attrpair in parts[1:]:
             if "=" in attrpair:
                 key, value = attrpair.split("=", 1)
                 if len(value) > 2 and value[0] in ["'", "\""]:
                     value = value[1:-1]
-                self.attributes[key.lower()] = value
+                attributes[key.lower()] = value
             else:
-                self.attributes[attrpair.lower()] = ""
+                attributes[attrpair.lower()] = ""
+        return tag, attributes
 
-    def __repr__(self):
-        return "<" + self.tag + ">"
+    def add_text(self, text):
+        if text.isspace(): return
+        self.implicit_tags(None)
+        parent = self.unfinished[-1]
+        node = Text(text, parent)
+        parent.children.append(node)
 
-def lex(body):
-    out = []
-    text = ""
-    in_tag = False
-    for c in body:
-        if c == "<":
-            in_tag = True
-            if text: out.append(Text(text))
-            text = ""
-        elif c == ">":
-            in_tag = False
-            out.append(Tag(text))
-            text = ""
-        else:
-            text += c
-    if not in_tag and text:
-        out.append(Text(text))
-    return out
+    SELF_CLOSING_TAGS = [
+        "area", "base", "br", "col", "embed", "hr", "img", "input",
+        "link", "meta", "param", "source", "track", "wbr",
+    ]
 
-class ElementNode:
-    def __init__(self, tag, parent, attributes):
-        self.tag = tag
-        self.parent = parent
-        self.attributes = attributes
-        self.children = []
+    def add_tag(self, tag):
+        tag, attributes = self.get_attributes(tag)
+        if tag.startswith("!"): return
+        self.implicit_tags(tag)
 
-    def __repr__(self):
-        return "<" + self.tag + ">"
-
-class TextNode:
-    def __init__(self, text, parent):
-        self.text = text
-        self.parent = parent
-        self.children = []
-
-    def __repr__(self):
-        return self.text.replace("\n", "\\n")
-        
-def parse(tokens):
-    currently_open = []
-    for tok in tokens:
-        parent = currently_open[-1] if currently_open else None
-
-        implicit_tags(tok, currently_open)
-        if isinstance(tok, Text):
-            if tok.text.isspace(): continue
-            node = TextNode(tok.text, parent)
+        if tag.startswith("/"):
+            if len(self.unfinished) == 1: return
+            node = self.unfinished.pop()
+            parent = self.unfinished[-1]
             parent.children.append(node)
-        elif tok.tag.startswith("/"):
-            node = currently_open.pop()
-            if not currently_open: return node
-            currently_open[-1].children.append(node)
-        elif tok.tag in SELF_CLOSING_TAGS:
-            node = ElementNode(tok.tag, tok.attributes, parent)
+        elif tag in self.SELF_CLOSING_TAGS:
+            parent = self.unfinished[-1]
+            node = Element(tag, attributes, parent)
             parent.children.append(node)
-        elif tok.tag.startswith("!"):
-            continue
         else:
-            node = ElementNode(tok.tag, parent, tok.attributes)
-            currently_open.append(node)
-    while currently_open:
-        node = currently_open.pop()
-        if not currently_open: return node
-        currently_open[-1].children.append(node)
+            parent = self.unfinished[-1] if self.unfinished else None
+            node = Element(tag, attributes, parent)
+            self.unfinished.append(node)
 
-HEAD_TAGS = [
-    "base", "basefont", "bgsound", "noscript",
-    "link", "meta", "title", "style", "script",
-]
+    HEAD_TAGS = [
+        "base", "basefont", "bgsound", "noscript",
+        "link", "meta", "title", "style", "script",
+    ]
+
+    def implicit_tags(self, tag):
+        while True:
+            open_tags = [node.tag for node in self.unfinished]
+            if open_tags == [] and tag != "html":
+                self.add_tag("html")
+            elif open_tags == ["html"] \
+                 and tag not in ["head", "body", "/html"]:
+                if tag in self.HEAD_TAGS:
+                    self.add_tag("head")
+                else:
+                    self.add_tag("body")
+            elif open_tags == ["html", "head"] and \
+                 tag not in ["/head"] + self.HEAD_TAGS:
+                self.add_tag("/head")
+            else:
+                break
+
+    def finish(self):
+        while self.unfinished:
+            node = self.unfinished.pop()
+            if not self.unfinished: return node
+            parent = self.unfinished[-1]
+            parent.children.append(node)
             
-def implicit_tags(tok, currently_open):
-    tag = tok.tag if isinstance(tok, Tag) else None
-    while True:
-        open_tags = [node.tag for node in currently_open]
-        if open_tags == [] and tag != "html":
-            currently_open.append(ElementNode("html", None, {}))
-        elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
-            if tag in HEAD_TAGS:
-                implicit = "head"
-            else:
-                implicit = "body"
-            parent = currently_open[-1]
-            currently_open.append(ElementNode(implicit, parent, {}))
-        elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
-            node = currently_open.pop()
-            parent = currently_open[-1]
-            parent.children.append(node)
-        else:
-            break
 
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
-LINEHEIGHT = 1.2
 
 SCROLL_STEP = 100
 
 class InlineLayout:
-    def __init__(self, node, parent):
+    def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
+        self.previous = previous
         self.children = []
 
-        self.x = -1
-        self.y = -1
-        self.w = -1
-        self.h = -1
-
     def layout(self):
+        self.x = self.parent.x
         self.w = self.parent.w
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.h
+        else:
+            self.y = self.parent.y
+
         self.display_list = []
 
         self.cx = self.x
@@ -206,7 +212,7 @@ class InlineLayout:
         self.h = self.cy - self.y
 
     def recurse(self, node):
-        if isinstance(node, TextNode):
+        if isinstance(node, Text):
             self.text(node.text)
         else:
             self.open(node.tag)
@@ -277,42 +283,41 @@ INLINE_ELEMENTS = [
 ]
 
 class BlockLayout:
-    def __init__(self, node, parent):
+    def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
+        self.previous = previous
         self.children = []
-
-        self.x = -1
-        self.y = -1
-        self.w = -1
-        self.h = -1
 
     def has_block_children(self):
         for child in self.node.children:
-            if isinstance(child, TextNode):
-                if not child.text.isspace():
-                    return False
+            if isinstance(child, Text):
+                return False
             elif child.tag in INLINE_ELEMENTS:
                 return False
         return True
 
     def layout(self):
-        # block layout here
         if self.has_block_children():
+            previous = None
             for child in self.node.children:
-                if isinstance(child, TextNode): continue
-                self.children.append(BlockLayout(child, self))
+                previous = BlockLayout(child, self, previous)
+                self.children.append(previous)
         else:
-            self.children.append(InlineLayout(self.node, self))
+            self.children.append(InlineLayout(self.node, self, None))
 
+        self.x = self.parent.x
         self.w = self.parent.w
-        y = self.y
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.h
+        else:
+            self.y = self.parent.y
+
         for child in self.children:
-            child.x = self.x
-            child.y = y
             child.layout()
-            y += child.h
-        self.h = y - self.y
+
+        self.h = sum([child.h for child in self.children])
 
     def draw(self, to):
         if self.node.tag == "pre":
@@ -325,22 +330,18 @@ class DocumentLayout:
     def __init__(self, node):
         self.node = node
         self.parent = None
+        self.previous = None
         self.children = []
 
-        self.x = -1
-        self.y = -1
-        self.w = -1
-        self.h = -1
-
     def layout(self):
-        self.w = WIDTH
-        child = BlockLayout(self.node, self)
+        child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
-        child.x = self.x = 0
-        child.y = self.y = 0
+        self.w = WIDTH - 2*HSTEP
+        self.x = HSTEP
+        self.y = VSTEP
         child.layout()
-        self.h = child.h
+        self.h = child.h + 2*VSTEP
 
     def draw(self, to):
         self.children[0].draw(to)
@@ -392,7 +393,8 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
         self.display_list = []
 
-    def layout(self, tree):
+    def layout(self, body):
+        tree = HTMLParser(body).parse()
         document = DocumentLayout(tree)
         document.layout()
         self.display_list = []
@@ -410,13 +412,12 @@ class Browser:
     def scrolldown(self, e):
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
-        self.scroll = max(0, self.scroll))
+        self.scroll = max(0, self.scroll)
         self.render()
 
 if __name__ == "__main__":
     import sys
     headers, body = request(sys.argv[1])
-    nodes = parse(lex(body))
     browser = Browser()
-    browser.layout(nodes)
+    browser.layout(body)
     tkinter.mainloop()

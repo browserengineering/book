@@ -35,9 +35,8 @@ declarative document model for describing UIs; hyperlinks; and the
 User Agent concept[^useragent]. Since the browser makes the web real,
 all these concepts form the core structure of the browser code itself.
 
-[^useragent]: The User Agent is the concept that the software on your
-    computer should be your trusted assistant and advocate; browsers
-    are a User Agent for the web.
+[^useragent]: The User Agent is a way to view the computer, or software within
+the computer, as a trusted assistant and advocate.
 
 Where did these concepts come from? Were they invented all at once for
 the web? And aren't they kind of simple or even obvious? The answers
