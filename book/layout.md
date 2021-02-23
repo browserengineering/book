@@ -113,15 +113,16 @@ class BlockLayout:
 ```
 
 These layout objects will be the nodes of a *layout tree*. So we'll
-want layout objects to have children, a parent, and an HTML element
-that they correspond to:
+want layout objects to have references to their children, a parent, and an HTML element
+that they correspond to. Each layout object will also have a reference to
+its previous sibling in the tree.
 
 ``` {.python}
-def __init__(self, node, parent):
+def __init__(self, node, parent, previous):
     self.node = node
     self.parent = parent
+    self.previous = previous
     self.children = []
-    # ...
 ```
 
 The `InlineLayout` constructor also initializes `weight`, `style`, and
@@ -143,18 +144,9 @@ def layout(self):
     self.flush()
 ```
 
-Besides a node, a parent, and children, each layout object also needs
-a size and position, which we'll store in the `w`, `h`, `x`, and `y`
-fields:
-
-``` {.python}
-def __init__(self, node, parent):
-    # ...
-    self.x = -1
-    self.y = -1
-    self.w = -1
-    self.h = -1
-```
+Besides the references to other related layout objects, each layout object also
+needs a size and position, which we'll store in the `w`, `h`, `x`, and
+`y` fields.
 
 Unfortunately, `InlineLayout` already uses the `x` and `y` fields for
 the location of the next word. To avoid a *very* annoying conflict,
@@ -183,15 +175,10 @@ of layout object:
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self, node, parent):
+    def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
         self.children = []
-
-        self.x = -1
-        self.y = -1
-        self.w = -1
-        self.h = -1
 
     def layout(self):
         # ...
@@ -233,8 +220,7 @@ whether it should have block or inline contents:
 def has_block_children(self):
     for child in self.node.children:
         if isinstance(child, TextNode):
-            if not child.text.isspace():
-                return False
+            return False
         elif child.tag in INLINE_ELEMENTS:
             return False
     return True
@@ -246,11 +232,12 @@ create child layout objects:
 ``` {.python indent=4}
 def layout(self):
     if self.has_block_children():
+        previous = None
         for child in self.node.children:
-            if isinstance(child, TextNode): continue
-            self.children.append(BlockLayout(child, self))
+            previous = BlockLayout(child, self, previous)
+            self.children.append(previous)
     else:
-        self.children.append(InlineLayout(self.node, self))
+        self.children.append(InlineLayout(self.node, self, None))
 ```
 
 Note that when each child is created, `self` is passed as the parent.
@@ -277,7 +264,7 @@ class DocumentLayout:
         self.children = []
 
     def layout(self):
-        child = BlockLayout(self.node, self)
+        child = BlockLayout(self.node, self, None)
         self.children.append(child)
         child.layout()
 ```
@@ -295,56 +282,87 @@ Size and position
 
 The layout tree is now made, but the size and position of each layout
 object is still left unset. Let's fix that. The general strategy is
-clear: each layout object computes its width, then lays out its
-children, and then computes its height.
+clear: each layout object computes its width and position, then lays
+out its children, and then computes its height.
 
-Besides width and height, we also need to position each element. This
-is trickier, because if you have several paragraphs, the position of
-the second depends on the height of the first. I'll use the rule that
-each element is positioned by its parent before its own `layout`
-method is called.
-
-Let's start in `BlockLayout`. For the width, elements are greedy:
-paragraph and headings and other things take up all the horizontal
-space they can. So it should use the parent's width:
+Let's start in `BlockLayout`. For the width, block layout objects are
+greedy: paragraph and headings and other things take up all the
+horizontal space they can. So they use the parent's width:
 
 ``` {.python}
 self.w = self.parent.w
 ```
 
-Then, each of the children need to be laid out. That means each child
-has to be positioned, and its `layout` method must be called:
+This also means that a block layout object's horizontal position is
+the same as its parent's:
+
+``` {.python}
+self.x = self.parent.x
+```
+
+The vertical position of a block layout object depends on whether it
+is its parent's first child or not. First children start at the top of
+the parent, later children start where the previous layout object
+ended:
+
+``` {.python}
+if self.previous:
+    self.y = self.previous.y + self.previous.h
+else:
+    self.y = self.parent.y
+```
+
+After the width and position is computed, we can lay out all the
+children of a block layout:
 
 ``` {.python indent=8}
-y = self.y
 for child in self.children:
-    child.x = self.x
-    child.y = y
     child.layout()
-    y += child.h
 ```
 
 Note that the call to the child's `layout` method not only asks it to
 compute its size, but also to its own children to the layout tree and
 recursively call `layout` on them.
 
-The height of an element must include all its children. Since the
-children's heights have already all been summed into `y`, we can just
-subtract its starting value to compute the height:
+Finally, once all the children are laid out, a height of the layout
+object can be computed:
 
 ``` {.python}
-self.h = y - self.y
+self.h = sum([child.h for child in self.children])
 ```
 
-That settles `BlockLayout`; let's now work on `InlineLayout`. Its `x`
-and `y` will be set by its parent, so its `layout` just needs to set
-`w` and `h`:
+Note how important the order is here. A block layout object's width depends
+on the parent's width; so by symmetry the width must be computed
+before laying out the children. The position is the same: it has to be
+computed before recursing so it's already available when the children
+compute their own positions. But the height works the opposite way:
+the height of a block layout depends on the height of its children, so
+it must be computed after recursing, so that the heights of the
+children are available.
+
+This *dependency ordering* plays a really important role in
+understanding how layout works, especially as layout gets more
+complicated to support more features and faster speed. [Chapter
+10](reflow.md) will explore this topic more.
+
+That settles `BlockLayout`; let's now work on `InlineLayout`. Its `x`,
+`w`, and `y` are set the same way as for a `BlockLayout`, but its
+height is computed based on its *y*-cursor `cy` instead of the height
+of its children.
 
 ``` {.python}
 class InlineLayout:
     def layout(self):
+        self.x = self.parent.x
         self.w = self.parent.w
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.h
+        else:
+            self.y = self.parent.y
+
         # ...
+
         self.h = self.cy - self.y
 ```
 
@@ -354,13 +372,18 @@ document always starts in the same place it's pretty simple:
 ``` {.python}
 class DocumentLayout:
     def layout(self):
-        self.w = WIDTH
         # ...
-        child.x = self.x = 0
-        child.y = self.y = 0
+        self.w = WIDTH - 2*HSTEP
+        self.x = HSTEP
+        self.y = VSTEP
         child.layout()
-        self.h = child.h
+        self.h = child.h + 2*VSTEP
 ```
+
+Note that I'm adding a little bit of padding around the main
+text---`HSTEP` on the left and right, and `VSTEP` above. That's so the
+text won't run into the very edge of the window, where a bit of it
+would get cut off.
 
 To summarize the rules of layout computation:
 
@@ -380,7 +403,8 @@ tree and lay it out:
 
 ``` {.python}
 class Browser:
-    def layout(self, tree):
+    def layout(self, body):
+        tree = HTMLParser(body).parse()
         document = DocumentLayout(tree)
         document.layout()
 ```
@@ -427,7 +451,7 @@ variable:
 
 ``` {.python}
 class Browser:
-    def layout(self, tree):
+    def layout(self, body):
         # ...
         self.display_list = []
         document.draw(self.display_list)
@@ -575,7 +599,7 @@ past the bottom of the page. In `layout`, store the height in a
 `max_y` variable:
 
 ``` {.python}
-def layout(self, tree):
+def layout(self, body):
     # ...
     self.max_y = document.h - HEIGHT
 ```
@@ -587,7 +611,7 @@ bottom of the page:
 def scrolldown(self, e):
     self.scroll = self.scroll + SCROLL_STEP
     self.scroll = min(self.scroll, self.max_y)
-    self.scroll = max(0, self.scroll))
+    self.scroll = max(0, self.scroll)
     self.render()
 ```
 
