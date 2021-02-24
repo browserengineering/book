@@ -44,7 +44,7 @@ of computing. And the web _also_ needed rich computer displays,
 powerful UI-building libraries, fast consumer networks, and sufficient
 CPU power and information storage capacity. As so often happens, the
 web has many predecessors but only took its modern form in the late
-1990s.
+1980s, once all those technologies were available.
 
 The browser realizes the modern web. It is the User Agent, the
 _mediator_ of web interactions and _enforcer_ of its rules. Not only
