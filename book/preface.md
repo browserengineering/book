@@ -7,8 +7,11 @@ next: preliminaries
 
 A computer science degree traditionally includes courses in operating
 systems, compilers, and databases in order to replace mystery with
-code, so that Linux, Postgres, and LLVM look like improvements,
-additions, and optimizations atop an understandable core.[^1]
+code. These courses transform Linux, Postgres, and LLVM into
+improvements, additions, and optimizations to an understandable core
+architecture. The lesson transcends the specific system studied: _all_
+computer systems, no matter how big and seemingly complex, can be
+studied and understood.
 
 [^1]: Others reasons for these classes: a focus on speed; learning
     low-level APIs; practice with C; knowing the stack; using systems
@@ -54,7 +57,6 @@ sliver of the full HTML, CSS, and JavaScript languages, mishandles
 errors, and isn't resilient to malicious inputs. It is also quite
 slow. Despite that, its architecture matches that of real browsers,
 providing insight into those 10 million line of code behemoths.
-
 
 Acknowledgements
 ================
