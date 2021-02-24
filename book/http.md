@@ -39,9 +39,9 @@ telnet example.org 80
 You might need to install `telnet`; it is often disabled by default.
 On Windows, [go to Programs and Features / Turn Windows features on or
 off](https://www.lifewire.com/what-is-telnet-2626026) in the Control
-panel. When you run it, it'll clear the screen instead of printing
-something, but other than that works normally. On macOS, you can use
-the `nc -v` command as a replacement for `telnet`:
+panel; you'll need to reboot. When you run it, it'll clear the screen
+instead of printing something, but other than that works normally. On
+macOS, you can use the `nc -v` command as a replacement for `telnet`:
 
 ``` {.example}
 nc -v example.org 80
@@ -57,7 +57,8 @@ You'll get output that looks like this:
 
     Trying 93.184.216.34...
     Connected to example.org.
-    Escape character is '^]'.
+    Escape character is '^]
+    '.
 
 This means that the OS converted the host name `example.org` into the
 IP address `93.184.216.34` and was able to connect to it.[^10] You can
