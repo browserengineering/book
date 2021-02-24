@@ -5,72 +5,57 @@ next: http
 prev: preliminaries
 ...
 
-Why study browsers?
-===================
-
-The web browser[^webbrowser] - and more broadly the web[^theweb] itself - is a
-marvel of technology, and plays a central and increasing role in our lives. It
-is a primary, or _the_ primary, means by which we find information, learn and
-access the Internet. Every year the web expands its reach to more and more of
-what we do with computers; it has long since gone beyond its original use for 
-document-based information sharing to many other kinds of applications. On
-desktop platforms, many applications are actually built and delivered as _web
-apps_---websites[^website] that are intended to be used in similar ways to
-installed applications, not just documents. Many people now spend their entire
-day in a browser, not using a single other application.
-
-[^webbrowser]: Henceforth, simply “browser”.
+The web browser, and the web[^theweb] more broadly, is a marvel. Every
+year it expands its reach to more and more of what we do with
+computers. It now goes far beyond its original use for document-based
+information sharing; many people now spend their entire day in a
+browser, not using a single other application!
 
 [^theweb]: Broadly defined, the web is the interlinked network (“web”) of
-[web pages](https://en.wikipedia.org/wiki/Web_page) on the Internet.
+    [web pages](https://en.wikipedia.org/wiki/Web_page) on the Internet.
 
-[^website]: You probably already know what a website is. If not, [see
-here](https://en.wikipedia.org/wiki/Website).
+Nowadays, desktop applications are often built and delivered as _web
+apps_: websites[^website] used in similar ways to installed
+applications. And on mobile devices even native apps often use _web
+views_ that embed a browser to render parts of the application UI.
+Perhaps in the future mobile devices will, like desktop computers,
+mostly be a container for web apps.
 
-On mobile devices such as phones, even non-browser applications (apps) often
-combine traditional native code and _web views_ that embed a website into the
-application to render parts of its UI. These web views are implemented by an
-actual browser---embedded like a kind of widget---within another
-application. The fraction of these _hybrid apps_ that are web content is also
-likely increasing over time; maybe in the future mobile devices will end up
-being mostly a container for web apps like desktop computers.
+[^website]: You probably already know what a website is. This is one.
+    If not, [see here](https://en.wikipedia.org/wiki/Website).
+
+[^hybrid]: The fraction of these _hybrid apps_ that are web content is
+    also likely increasing over time.
 
 The basis of this critical piece of software is the web. And the web
-itself is built on a few simple, yet revolutionary, concepts; concepts that that
-together present a vision of the future of software and information. Among them
-are open, decentralized and safe computing; a declarative document model for
-describing UIs; hyperlinks; and the User Agent concept[^useragent]. Since the
-browser makes the web real, all these concepts form the core structure of the
-browser code itself.
+itself is built on a few simple, yet revolutionary, concepts; concepts
+that that together present a vision of the future of software and
+information. Among them are open, decentralized and safe computing; a
+declarative document model for describing UIs; hyperlinks; and the
+User Agent[^useragent]. Since the browser makes the web real,
+all these concepts form the core structure of the browser code itself.
 
-[^useragent]: The User Agent is a way to view the computer, or software within
-the computer, as a trusted assistant and advocate.
+[^useragent]: The User Agent is a way to view the computer, or
+    software within the computer, as a trusted assistant and advocate.
 
-Where did these concepts come from? Were they invented all at once for the web?
-And aren't they kind of simple or even obvious? The answers are: many places,
-no, and only in hindsight. These concepts are the the result of a large amount
-of experimentation and research reaching back to nearly the beginning of
-computing. The web itself only appeared decades later, standing on the shoulders
-of that work.
+This vision of the web is neither simple nor obvious; it is the result
+of experimentation and research reaching back to nearly the beginning
+of computing. And of course the web _also_ needs rich computer displays,
+powerful UI-building libraries, fast consumer networks, and sufficient
+CPU power and information storage capacity. As so often happens, the
+web has many predecessors but only took its modern form in the late
+1980s, once all those technologies were available.
 
-And as with many technological breakthroughs, the web did not appear as soon as
-the foundational research concluded. The web _also_ needed computers and
-networks powerful enough to build a browser and make web sites, and that did not
-come to pass until the late 1980s. That was when the key technologies of
-computer displays, powerful UI-building libraries, networking, CPU power and
-information storage capacity passed critical thresholds of maturity.
+The browser realizes the modern web. It is the User Agent, the
+_mediator_ of web interactions and _enforcer_ of its rules. Not only
+that, the browser is the _implementer_ of all of the ways information
+is explored. The browser keeps web browsing safe; its algorithms
+implement the declarative UI; it navigates links and represents you to
+web pages. And of course, for websites to load fast and react
+smoothly, the browser must be hyper-efficient as well.
 
-How does the browser realize the web? It is the User Agent, the _mediator_ of
-web interactions and _enforcer_ of its rules. Not only that, the browser is the
-_implementer_ of all of the ways information is explored---in particular through
-algorithms to make the "black box" of the declarative document model as
-expressive and rich as possible, while at the same time adhering strictly to the
-web's decentralized architecture and commitment to openness. And of course, the
-web would be no fun if websites were not fast to load and smooth to use, so the
-browser must be hyper-efficient as well.
-
-Lofty goals! How does the browser deliver on them? It's a fascinating and fun
-journey. That's what this book is about.
+Lofty goals! How does the browser deliver on them? It's a fascinating
+and fun journey. That's what this book is about.
 
 Explaining the black box
 ========================
