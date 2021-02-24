@@ -39,7 +39,7 @@ all these concepts form the core structure of the browser code itself.
     software within the computer, as a trusted assistant and advocate.
 
 This vision of the web is neither simple nor obvious; it is the result
-ofexperimentation and research reaching back to nearly the beginning
+of experimentation and research reaching back to nearly the beginning
 of computing. And the web _also_ needed rich computer displays,
 powerful UI-building libraries, fast consumer networks, and sufficient
 CPU power and information storage capacity. As so often happens, the
