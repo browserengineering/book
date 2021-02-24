@@ -9,8 +9,8 @@ next: layout
 So far, your web browser sees web pages as a stream of open tags,
 close tags, and text. But HTML is actually a tree, and though the tree
 structure hasn't been important yet, it will be once backgrounds,
-margins, and CSS enter this picture. So this chapter adds a proper
-HTML parser and converts the layout engine to use it.
+margins, and CSS enter the picture. So this chapter adds a proper HTML
+parser and converts the layout engine to use it.
 
 
 A tree of nodes
@@ -48,7 +48,7 @@ class Element:
 Constructing a tree of nodes from source code is called parsing. A
 parser builds a tree one element or text node at a time. But that
 means the parser needs to store an *incomplete* tree. For example,
-suppose the parser is has so far read this bit of HTML:
+suppose the parser has so far read this bit of HTML:
 
     <html><head></head><body><h1>This is my webpage
 
@@ -683,8 +683,8 @@ while True:
 Here, `HEAD_TAGS` list the tags that you're supposed to put into the
 `<head>` element:[^where-script]
 
-[^where-script]: The `<script>`, can go in either the head or the body
-    section, but it goes into the head by default.
+[^where-script]: The `<script>` tag can go in either the head or the
+    body section, but it goes into the head by default.
 
 ``` {.python}
 class HTMLParser:
