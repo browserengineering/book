@@ -40,7 +40,7 @@ all these concepts form the core structure of the browser code itself.
 
 This vision of the web is neither simple nor obvious; it is the result
 of experimentation and research reaching back to nearly the beginning
-of computing. And the web _also_ needed rich computer displays,
+of computing. And of course the web _also_ needs rich computer displays,
 powerful UI-building libraries, fast consumer networks, and sufficient
 CPU power and information storage capacity. As so often happens, the
 web has many predecessors but only took its modern form in the late
