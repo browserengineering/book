@@ -32,7 +32,7 @@ itself is built on a few simple, yet revolutionary, concepts; concepts
 that that together present a vision of the future of software and
 information. Among them are open, decentralized and safe computing; a
 declarative document model for describing UIs; hyperlinks; and the
-User Agent concept[^useragent]. Since the browser makes the web real,
+User Agent[^useragent]. Since the browser makes the web real,
 all these concepts form the core structure of the browser code itself.
 
 [^useragent]: The User Agent is a way to view the computer, or
