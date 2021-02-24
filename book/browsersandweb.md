@@ -9,7 +9,7 @@ The web browser, and the web[^theweb] more broadly, is a marvel. Every
 year it expands its reach to more and more of what we do with
 computers. It now goes far beyond its original use for document-based
 information sharing; many people now spend their entire day in a
-browser, not using a single other application.
+browser, not using a single other application!
 
 [^theweb]: Broadly defined, the web is the interlinked network (“web”) of
     [web pages](https://en.wikipedia.org/wiki/Web_page) on the Internet.
