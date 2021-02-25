@@ -162,98 +162,88 @@ been far from it in my studies or work.
 
 [^chris]: This is Chris speaking!
 
-[^bbs]: For me, this was mostly using
-[BBS](https://en.wikipedia.org/wiki/Bulletin_board_system) systems over a dialup
-modem connection. A BBS is not all that different in concept from a browser if
-you look at it from the point of view of “window into dynamic content created
-somewhere else on the Internet”.
+[^bbs]: For me, [BBS](https://en.wikipedia.org/wiki/Bulletin_board_system)
+systems over a dialup modem connection. A BBS is not all that different from a
+browser if you think of it as a window into dynamic content created somewhere
+else on the Internet.
 
-In my freshman year at college, I attended a presentation at the university by a
-RedHat salesman. The presentation was of course aimed at selling RedHat Linux,
-and probably included statements like Linux being the operating system of the
-future, or the always-popular speculation about the “year of the Linux desktop.”
-However, when asked about challenges RedHat faced, the salesman mentioned not
-Linux but _the web_. He said something like “someone needs to make a good
-browser for Linux. _It’s hard to be competitive without a good
-browser”_[^netscape-linux]_._ Even back then, in the very first year or so of
-the web, the browser was already becoming an absolutely necessary component of
-every computer. He even threw out a challenge: “how hard could it be to build a
-better browser?” Indeed, how hard could it be? What makes it so hard? That
-question stuck with me for a long time.[^meantime-linux]
+In my freshman year at college, I attended a presentation by a RedHat salesman.
+The presentation was of course aimed at selling RedHat Linux, probably calling
+it the "operating system of the future" and speculating about the "year of the
+Linux desktop". But when asked about challenges RedHat faced, the salesman
+mentioned not Linux but _the web_: he said that someone "needs to make a good
+browser for Linux".[^netscape-linux] Even back then, in the very first year or
+so of the web, the browser was already a necessary component of every computer.
+He even threw out a challenge: "how hard could it be to build a better browser?"
+Indeed, how hard could it be? What makes it so hard? That question stuck with me
+for a long time.[^meantime-linux]
 
 [^netscape-linux]: Netscape Navigator was available for Linux at that time, but
 it wasn’t viewed as especially fast or featureful compared to its implementation
 on other operating systems.
 
+[^meantime-linux]: Meanwhile, the "better Linux browser than Netscape" took a
+long time to appear....
 
-[^meantime-linux]: Meanwhile, the “better Linux browser than Netscape” seemed to
-take quite a long time to appear....
+How hard indeed! After seven years in the trenches working on Chrome, I now know
+the answer to his question: building a browser is both easy and incredibly hard,
+both intentional and accidental, both planned and organic, both simple and
+unimaginably complex. Everywhere you look, you see the evolution and history of
+the web wrapped up in one codebase.
 
-How hard indeed! After seven years in the trenches working on a browser
-(Chrome), I now know the answer to his question: building such a browser is
-both easy and incredibly hard, intentional and accidental, planned and organic,
-simple and unimaginably complex. And everywhere you look, you can see the
-evolution and history of the web all wrapped up in one codebase.
+As you’ll see in this book, it’s surprisingly easy to write a very simple
+browser, one that can despite its simplicity display interesting-looking web
+pages, and support many interesting behaviors. This starting point---that it’s
+easy to write and support basic web pages---encapsulates the (intentionally!)
+easy-to-implement core of the web architecture.[^prog-enhance] Sometime during
+my first few months of working on Chrome, I came across the code implementing
+the [`<br>`][br-tag] tag---look at that, the good-old `<br>` tag that I’ve used
+many times to insert newlines into web pages! And the implementation turns out
+to be barely any code at all, both in Chrome and in this book's simple browser.
 
-As you’ll see when reading this book, it’s surprisingly easy to write a very
-simple browser, one that can despite its simplicity display interesting-looking
-web pages, and can even more-or-less correctly display many real ones, including
-this book. This starting point---it’s easy enough to implement (and write) web
-pages with the basics---encapsulates the (intentionally!) easy-to-implement core
-of the web architecture, what you might call the _base level_ of [progressive
-enhancement](https://en.wikipedia.org/wiki/Progressive_enhancement). I saw this
-in the relative simplicity of individual features of Chrome---for example,
-sometime during my first few months of working on Chrome, I came across the code
-implementing the
-[`<br>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/br) tag. Look
-at that, the good-old `<br>` tag that I’ve used many times as a convenient hack
-to insert newlines in the text of my web pages! And as it turns out, there
-really isn’t much code at all to implement this tag, either in Chrome or the
-simple browser you’ll build.
+[^prog-enhance]: You might relate this to the history of the web and the idea of
+    [progressive enhancement][prog-enhance].
+[prog-enhance]: https://en.wikipedia.org/wiki/Progressive_enhancement
+[br-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/br
 
-On the other hand, to make a browser that has all the features, performance,
-security and reliability of today’s top browsers---well that is a whole lot of
-work; _thousands_ of person-years of effort went into what you see today. On top
-of that, but keeping a browser competitive is a lot of work: not only is there
-an inherent cost to maintaining such large codebases, but there is constant
-pressure to do more---add more features, continually improve performance to beat
-the competition, and in general keep up with everything going on in what we now
-call the “web ecosystem”---the millions of developers, billions of users, and
-all the businesses and economies that build on the web. There are tens of
-thousands of unfixed bugs in every browser, representing all the ways that bugs
-can appear with the smallest of mistakes, through the myriad of ways to mix and
-match features. There is the extreme complexity of trying to understand the
-complicated set of optimizations deemed necessary to squeeze out the last bit of
-performance from the system. And there is the painstaking, but necessary, work
-to continuously refactor the code to reduce its complexity through the
+On the other hand, a browser with all the features, performance, security, and
+reliability of today’s top browsers---_that_ is a whole lot of work. _Thousands_
+of person-years of effort went into the browsers you use today. And keeping a
+browser competitive is a lot of work as well: not only is there an inherent cost
+to maintaining large codebases, there is also constant pressure to do more---to
+add more features, improve performance, and keep up with the "web
+ecosystem"---the thousands of businesses, millions of developers, and billions
+of users that use the web. Every browser has thousands of unfixed bugs, from the
+smallest of mistakes to the myriad of ways to mix up and mis-match features.
+Every browser has a complicated set of optimizations to squeeze out that last
+bit of performance. And every browser has painstaking, but necessary, work to
+continuously refactor the code to reduce its complexity through the
 careful[^browsers-abstraction-hard] introduction of modularization and
 abstraction.
 
 [^browsers-abstraction-hard]: Browsers are so performance-sensitive in many
-places that merely the introduction of an abstraction - and the typical ensuing
-function call or branching overhead---can cause an unacceptable performance
-cost.
+places that merely the introduction of an abstraction---the function call or
+branching overhead---can cause an unacceptable performance cost.
 
-Working on such a codebase is often daunting. For one thing, there is an
-immense history to each browser. It’s not uncommon to find lines of code last
+Working on such a codebase is often daunting. For one thing, there is the
+weighty history of each browser. It’s not uncommon to find lines of code last
 touched 15 years ago by someone who you’ve never met; or even after years of
-working discover files and code that you didn’t even know existed; or see 
-lines of code that don’t look necessary, and all tests pass without them. If I
-want to know what that 15-year-old code does, how can I do it? Does that code
-I just discovered matter at all? Can I just delete those lines of code that
-don’t seem necessary?
+working discover files and code that you didn’t even know existed; or see lines
+of code that don’t look necessary, yet seem to do something important. If I want
+to know what that 15-year-old code does, how can I do it? Does that code I just
+discovered matter at all? Can I delete those lines of code, or are they there
+for a reason?
 
-These kinds of quandaries come up all the time when working on a browser - in
-fact they are common to all complex codebases. What makes a browser different is
-that there is often an _urgency to fix them_. Browsers are nearly as old as any
-“legacy” codebase, but are _not_ legacy (meaning deprecated or half-deprecated,
-and scheduled to be replaced by some new codebase sometime soon) at all---on the
-contrary, they are vital to the world’s economy. For this reason, and the
-infeasibility of rewriting, browser engineers are forced[^forced-negative] to
-fix and improve rather than replace.
+These kinds of quandaries are common to all complex codebases. But what makes a
+browser different is that there is often an _urgency to fix them_. Browsers are
+nearly as old as any “legacy” codebase, but are _not_ legacy, not abondoned or
+half-deprecated, not slated for replacement. On the contrary, they are vital to
+the world’s economy. Browser engineers are forced[^forced-negative] to fix and
+improve rather than abaondon and replace.
 
-[^forced-negative]: I say "forced", which has a negative connotation, but it’s
-more of an iterative & continuous process of improvement.
+[^forced-negative]: I don't intend the negative connotation. It’s because
+browsers are dynamic important that we browser developers can afford an
+iterative & continuous process of improvement.
 
 It’s not just urgency though---understanding the cumulative answers to these
 small questions yields true insights into how computing actually works, and
