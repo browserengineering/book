@@ -601,7 +601,7 @@ past the bottom of the page. In `load`, store the height in a
 
 ``` {.python}
 class Browser:
-    def load(self, body):
+    def load(self, url):
         # ...
         self.max_y = document.h - HEIGHT
 ```
