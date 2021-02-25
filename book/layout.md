@@ -398,12 +398,13 @@ Using tree-based layout
 =======================
 
 With tree-based layout implemented, let's use it in the browser
-itself, in its `layout` method. First, we need to create the layout
-tree and lay it out:
+itself, in the `load` method. First, we need to create the layout tree
+and lay it out:
 
 ``` {.python}
 class Browser:
-    def layout(self, body):
+    def load(self, url):
+        headers, body = request(url)
         tree = HTMLParser(body).parse()
         document = DocumentLayout(tree)
         document.layout()
@@ -446,12 +447,12 @@ class InlineLayout:
         to.extend(self.display_list)
 ```
 
-Now the browser can use draw to collect its own `display_list`
+Now the browser can use `draw` to collect its own `display_list`
 variable:
 
 ``` {.python}
 class Browser:
-    def layout(self, body):
+    def load(self, url):
         # ...
         self.display_list = []
         document.draw(self.display_list)
@@ -595,13 +596,14 @@ def render(self):
 
 We not only have access to the height of any element, but also of the
 whole page. The browser can use that to stop the user from scrolling
-past the bottom of the page. In `layout`, store the height in a
+past the bottom of the page. In `load`, store the height in a
 `max_y` variable:
 
 ``` {.python}
-def layout(self, body):
-    # ...
-    self.max_y = document.h - HEIGHT
+class Browser:
+    def load(self, body):
+        # ...
+        self.max_y = document.h - HEIGHT
 ```
 
 Then, when the user scrolls down, don't let them scroll past the

@@ -375,15 +375,18 @@ Note that `Text` and `Tag` are asymmetric: `lex` avoids empty
 `Tag` object represents the HTML code `<>`, while an empty `Text`
 object with empty text represents no content at all.
 
-Now `layout` has access not just to the text of the page, but also the
-tags in it. So `layout` must loop over tokens, not text:
+Since we've modified `lex` we are now passing `layout` not just the
+text of the page, but also the tags in it. So `layout` must loop over
+tokens, not text:
 
 ``` {.python expected=False}
-def layout(tokens):
+def layout(self, tokens):
+    # ...
     for tok in tokens:
         if isinstance(tok, Text):
             for word in tok.text.split():
                 # ...
+    # ...
 ```
 
 `layout` can also examine tag tokens to change font when directed by
@@ -504,13 +507,16 @@ def text(self, text):
         # ...
 ```
 
-Now that everything has moved out of `Browser`'s old `layout`
+Now that everything has moved out of `Browser`'s old `load`
 function, it can be replaced with calls into `Layout`:
 
 ``` {.python}
-def layout(self, tokens):
-    self.display_list = Layout(tokens).display_list
-    self.render()
+class Browser:
+    def load(self, url):
+        headers, body = request(url)
+        tokens = lex(body)
+        self.display_list = Layout(tokens).display_list
+        self.render()
 ```
 
 When you do big refactors like this, it's important to work

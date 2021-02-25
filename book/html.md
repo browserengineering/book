@@ -570,7 +570,8 @@ the node tree, like this:
 
 ``` {.python}
 class Browser:
-    def layout(self, body):
+    def load(self, url):
+        headers, body = request(url)
         tree = HTMLParser(body).parse()
         self.display_list = Layout(tree).display_list
         self.render()
