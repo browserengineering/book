@@ -206,11 +206,15 @@ text and something like a `<div>`?
 
 In real browsers, a somewhat complicated mechanism known as [anonymous
 block boxes][anon-block] is used, but in our toy browser we'll
-implement something a little simpler. We'll start with a list of
-elements used for formatting text, which should be inside an
-`InlineLayout`:
+implement something a little simpler.[^how-anon] We'll start by
+listing the elements used for formatting text:
 
-[anon-block]:https://developer.mozilla.org/en-US/docs/Web/CSS/Visual_formatting_model#anonymous_boxes 
+[^how-anon]: Anonymous block boxes handle cases like an element
+that contains text, formatted text, and also a container. You can
+think of this as a repair mechanism similar to the implicit tags in
+[Chapter 4][html.md].
+
+[anon-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Visual_formatting_model#anonymous_boxes
 
 ``` {.python}
 INLINE_ELEMENTS = [
