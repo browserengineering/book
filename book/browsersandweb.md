@@ -77,11 +77,11 @@ pages![^software-developers]
 [^software-developers]: I usually prefer “engineer”---hence the title of this
 book---but “developer” or “web developer” is much more common on the web. One
 important reason is that anyone can build a website---not just trained software
-engineers and computer scientists. “Web developer” is more inclusive of
+engineers and computer scientists. “Web developer” also is more inclusive of
 additional, critical roles like designers, authors, editors, or photographers.
 
-As a black box, the browser is either magical or frustrating, depending on
-whether it is working correctly or not! And HTML & CSS are meant to be black
+As a black box, the browser is either magical or frustrating (depending on
+whether it is working correctly or not!). And HTML & CSS are meant to be black
 boxes---declarative APIs---that one specifies _what_ outcome to achieve, as
 opposed to _how_ to achieve it. The _browser itself_ is responsible for figuring
 out the "how". Web developers don't, and mostly can't, draw their website’s
@@ -95,7 +95,7 @@ available on almost every computing device in existence, and to keep it
 accessible in the future, mostly avoiding the inevitable obsolescence of most
 software.
 
-[^loss-of-control]: Loss of control not necessarily specific to the web - much
+[^loss-of-control]: Loss of control is not necessarily specific to the web---much
 of computing these days involves relying on mountains of other peoples’ code.
 
 Behind the philosophy lies a web browser's implementations of [inversion of
@@ -104,21 +104,21 @@ programming][declarative]. The web _inverts control_, with an intermediary---the
 browser---handling most of the rendering, and the web developer specifying
 parameters and content to this intermediary. Further, these parameters usually
 take the form of _constraints_ over relative sizes and positions instead of
-specifying their values directly.[^constriants] It's the browser's job to solve
+specifying their values directly.[^constraints] It's the browser's job to solve
 the constraints or to pick which ones to break. The same idea applies for
 actions: web pages mostly require _that_ actions take place without specifying
 _when_ they do. This _declarative_ style means that from the point of view of a
 developer, changes "apply immediately", but under the hood, the browser can be
 [lazy][lazy] and delay applying the changes until they become externally
-visible, either due to subsequence API calls or because the page has to be
+visible, either due to subsequent API calls or because the page has to be
 displayed to the user.[^style-calculation]
 
 [inversion]: https://en.wikipedia.org/wiki/Inversion_of_control
-[contraints]: https://en.wikipedia.org/wiki/Constraint_programming#:~:text=Constraint%20programming%20(CP)%20is%20a,a%20set%20of%20decision%20variables.
+[contraints]: https://en.wikipedia.org/wiki/Constraint_programming.
 [declarative]: https://en.wikipedia.org/wiki/Declarative_programming
 [lazy]: https://en.wikipedia.org/wiki/Lazy_evaluation
 
-[^forms]: As just one examples, in HTML there are many built-in [form control
+[^forms]: As just one example, in HTML there are many built-in [form control
 elements][forms] that take care of the various ways the user of a website can
 provide input. The developer need only specify parameters such as button names,
 sizing, and look-and-feel, or JavaScript extension points to handle form
