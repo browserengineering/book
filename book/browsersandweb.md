@@ -61,7 +61,7 @@ Explaining the black box
 ========================
 
 HTML, CSS, HTTP, hyperlinks, and JavaScript---the core of the web---are
-approachaable enough, and if you've made a website before[^recommended] you've
+approachable enough, and if you've made a website before[^recommended] you've
 seen that programming ability is not required. But not many people---not even
 professional software developers---know much about how a browser renders web
 pages![^software-developers]
