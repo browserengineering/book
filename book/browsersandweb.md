@@ -188,7 +188,7 @@ long time to appear....
 How hard indeed! After seven years in the trenches working on Chrome, I now know
 the answer to his question: building a browser is both easy and incredibly hard,
 both intentional and accidental, both planned and organic, both simple and
-unimaginably complex. Everywhere you look, you see the evolution and history of
+unimaginably complex. And everywhere you look, you see the evolution and history of
 the web wrapped up in one codebase.
 
 As you’ll see in this book, it’s surprisingly easy to write a very simple
@@ -242,7 +242,7 @@ the world’s economy. Browser engineers are forced[^forced-negative] to fix and
 improve rather than abaondon and replace.
 
 [^forced-negative]: I don't intend the negative connotation. It’s because
-browsers are dynamic important that we browser developers can afford an
+browsers are so important that we browser developers can afford an
 iterative & continuous process of improvement.
 
 It’s not just urgency though---understanding the cumulative answers to these
