@@ -195,14 +195,22 @@ objects. Let's focus on `BlockLayout`, since `InlineLayout` won't have
 children for now.[^but-later]
 
 [^but-later]: Later, in [Chapter 7](chrome.md), we'll make inline
-    layouts contain lines, which themselves contain words.
+    layouts contain lines, which will themselves contain words.
 
-Usually, a block layout has one block child per child in the element
-tree. But when you get to something like a paragraph, the children are
-like text, so the child layout object is a single inline layout. We
-can tell the difference by examining the children of the node we are
-laying out: some elements are only used inside running text, other
-elements are only used as blocks:
+When creating child layout objects, the main question is whether each
+child should be a `BlockLayout` or an `InlineLayout`. Basically,
+elements that just contains text, or maybe formatted text, should have
+an `InlineLayout`, but containers like `<div>` or `<header>` should
+have a `BlockLayout`. But what happens if an elements contains both
+text and something like a `<div>`?
+
+In real browsers, a somewhat complicated mechanism known as [anonymous
+block boxes][anon-block] is used, but in our toy browser we'll
+implement something a little simpler. We'll start with a list of
+elements used for formatting text, which should be inside an
+`InlineLayout`:
+
+[anon-block]:https://developer.mozilla.org/en-US/docs/Web/CSS/Visual_formatting_model#anonymous_boxes 
 
 ``` {.python}
 INLINE_ELEMENTS = [
@@ -213,31 +221,49 @@ INLINE_ELEMENTS = [
 ]
 ```
 
-A block layout object looks at its children's tags to determine
-whether it should have block or inline contents:
+To determine whether an element has an `InlineLayout` or a
+`BlockLayout` we compare its children against that list. Let's add a
+top-level `layout_mode` function that function looks through the
+children of a node and categorizes them as either "text", including
+formatting tags, or containers:
 
-```
-def has_block_children(self):
-    for child in self.node.children:
-        if isinstance(child, TextNode):
-            return False
+``` {.python}
+def layout_mode(node):
+    has_text = False
+    has_containers = False
+    for child in node.children:
+        if isinstance(child, Text):
+            has_text = True
         elif child.tag in INLINE_ELEMENTS:
-            return False
-    return True
+            has_text = True
+        else:
+            has_containers = True
 ```
 
-Then `layout` can call `has_block_children` to figure out how to
-create child layout objects:
+We'll say that a node should have a `BlockLayout` if it has containers
+inside, or if it's empty:
+
+``` {.python}
+def layout_mode(node):
+    # ...
+    if has_containers or not has_text:
+        return "block"
+    else:
+        return "inline"
+```
+
+Now when `BlockLayout` creates its child layout nodes it can call
+`layout_mode` to determine what type of children to create:
 
 ``` {.python indent=4}
 def layout(self):
-    if self.has_block_children():
-        previous = None
-        for child in self.node.children:
+    previous = None
+    for child in self.node.children:
+        if layout_mode(child) == "inline":
+            previous = InlineLayout(child, self, previous)
+        else:
             previous = BlockLayout(child, self, previous)
-            self.children.append(previous)
-    else:
-        self.children.append(InlineLayout(self.node, self, None))
+        self.children.append(previous)
 ```
 
 Note that when each child is created, `self` is passed as the parent.
@@ -252,9 +278,9 @@ def layout(self):
 ```
 
 What sits at the root of the layout tree? Inconveniently, both
-`BlockLayout` and `InlineLayout` require a parent node, we need
+`BlockLayout` and `InlineLayout` require a parent node, so we need
 another kind of layout object at the root. I think of that root as the
-document itself, let's call it `DocumentLayout`:
+document itself, so let's call it `DocumentLayout`:
 
 ``` {.python}
 class DocumentLayout:
