@@ -61,7 +61,10 @@ def show(body):
         elif not in_angle:
             print(c, end="")
 
+def load(url):
+    headers, body = request(url)
+    show(body)
+
 if __name__ == "__main__":
     import sys
-    headers, body = request(sys.argv[1])
-    show(body)
+    load(sys.argv[1])

@@ -166,7 +166,9 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
         self.display_list = []
 
-    def layout(self, tokens):
+    def load(self, url):
+        headers, body = request(url)
+        tokens = lex(body)
         self.display_list = Layout(tokens).display_list
         self.render()
 
@@ -183,8 +185,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    headers, body = request(sys.argv[1])
-    text = lex(body)
-    browser = Browser()
-    browser.layout(text)
+    Browser().load(sys.argv[1])
     tkinter.mainloop()

@@ -150,23 +150,25 @@ class Browser:
 ```
 
 Once you've made a canvas, you can call methods that draw shapes on
-the canvas:
+the canvas. Let's do that inside `load`, which we'll move into the new
+`Browser` class:
 
 ``` {.python expected=False}
-def layout(self):
-    self.canvas.create_rectangle(10, 20, 400, 300)
-    self.canvas.create_oval(100, 100, 150, 150)
-    self.canvas.create_text(200, 150, text="Hi!")
+class Browser:
+    def load(self, url):
+        # ...
+        self.canvas.create_rectangle(10, 20, 400, 300)
+        self.canvas.create_oval(100, 100, 150, 150)
+        self.canvas.create_text(200, 150, text="Hi!")
 ```
 
 To run this code, create a `Browser`, call `layout`, and then start
 the Tk `mainloop`:
 
-``` {.python expected=False}
+``` {.python}
 if __name__ == "__main__":
-    # ...
-    browser = Browser()
-    browser.layout()
+    import sys
+    Browser().load(sys.argv[1])
     tkinter.mainloop()
 ```
 
@@ -216,10 +218,11 @@ def lex(body):
     return text
 ```
 
-Then, `layout` will draw that text, character by character:
+Then, `load` will draw that text, character by character:
 
 ``` {.python expected=False}
-def layout(self, text):
+def load(self, url):
+    # ...
     for c in text:
         self.canvas.create_text(100, 100, text=c)
 ```
@@ -298,22 +301,26 @@ first drawn into a bitmap or GPU texture, then that bitmap/texture is shifted
 according to the scroll, and the result is rendered to the screen. [Chapter 12](visual-effects.md)
 will have more on this topic.
 
-Our browser will have the same split. Right now `layout` both computes
+Our browser will have the same split. Right now `load` both computes
 the position of each character and draws it: layout and rendering.
-Let's have `layout` just compute and store the position of each
-character. A separate `render` function will then draw each character
-based on the stored position. This way, `layout` can operate with page
-coordinates and only `render` needs to think about screen coordinates.
+Let's have a `layout` function to compute and store the position of
+each character, and a separate `render` function to then draw each
+character based on the stored position. This way, `layout` can operate
+with page coordinates and only `render` needs to think about screen
+coordinates.
 
 Let's start with `layout`. Instead of calling `canvas.create_text` on
-each character let's add it to a list, together with its position:
+each character let's add it to a list, together with its position.
+Since `layout` doesn't need to access anything in `Browser`, it can be
+a standalone function:
 
 ``` {.python}
-self.display_list = []
-for c in text:
-    self.display_list.append((x, y, c))
-    # ...
-self.render()
+def layout(self, text):
+    display_list = []
+    for c in text:
+        display_list.append((x, y, c))
+        # ...
+    return display_list
 ```
 
 The resulting list is called a *display list*: it is a list of things
@@ -325,18 +332,33 @@ Once the display list is computed, `render` needs to loop through
 the display list and draw each character:
 
 ``` {.python expected=False}
-def render(self):
-    for x, y, c in self.display_list:
-      self.canvas.create_text(x, y, text=c)
+class Browser:
+    def render(self):
+        for x, y, c in self.display_list:
+          self.canvas.create_text(x, y, text=c)
+```
+
+Since `render` does need access to the canvas, we keep it a method on
+`Browser`. Now the `load` just needs to call `layout` followed by
+`render`:
+
+```
+class Browser:
+    def load(self, url):
+        headers, body = request(url)
+        text = lex(body)
+        self.display_list = layout(text)
+        self.render()
 ```
 
 Now we can add scrolling. Let's have a variable for how far you've
 scrolled:
 
 ``` {.python}
-def __init__(self):
-    # ...
-    self.scroll = 0
+class Browser:
+    def __init__(self):
+        # ...
+        self.scroll = 0
 ```
 
 The page coordinate `y` then has screen coordinate `y - self.scroll`:

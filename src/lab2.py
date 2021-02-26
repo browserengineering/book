@@ -69,6 +69,17 @@ HSTEP, VSTEP = 13, 18
 
 SCROLL_STEP = 100
 
+def layout(self, text):
+    display_list = []
+    x, y = HSTEP, VSTEP
+    for c in text:
+        display_list.append((x, y, c))
+        x += HSTEP
+        if x >= WIDTH - HSTEP:
+            y += VSTEP
+            x = HSTEP
+    return display_list
+
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -82,15 +93,10 @@ class Browser:
         self.scroll = 0
         self.window.bind("<Down>", self.scrolldown)
 
-    def layout(self, text):
-        self.display_list = []
-        x, y = HSTEP, VSTEP
-        for c in text:
-            self.display_list.append((x, y, c))
-            x += HSTEP
-            if x >= WIDTH - HSTEP:
-                y += VSTEP
-                x = HSTEP
+    def load(self, url):
+        headers, body = request(url)
+        text = lex(body)
+        self.display_list = layout(text)
         self.render()
 
     def render(self):
@@ -106,8 +112,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    headers, body = request(sys.argv[1])
-    text = lex(body)
-    browser = Browser()
-    browser.layout(text)
+    Browser().load(sys.argv[1])
     tkinter.mainloop()

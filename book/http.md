@@ -479,19 +479,26 @@ def show(body):
     # ...
 ```
 
-We can now string together `request` and `show`:
+We can now load a web page just by stringing together `request` and
+`show`:
+
+``` {.python}
+def load(url):
+    headers, body = request(url)
+    show(body)
+```
+
+Add the following code to run `load` from the command line:
 
 ``` {.python}
 if __name__ == "__main__":
     import sys
-    headers, body = request(sys.argv[1])
-    show(body)
+    load(sys.argv[1])
 ```
 
-The first line here is Python's version of a `main` function. The code
-reads the first argument (`sys.argv[1]`) from the command line using
-the `sys` module. That first argument is used as the URL. Try running
-this code on the URL `http://example.org/`:
+This is Python's version of a `main` function---it reads the first
+argument (`sys.argv[1]`) from the command line and uses it as a URL.
+Try running this code on the URL `http://example.org/`:
 
     python3 browser.py http://example.org/
 
