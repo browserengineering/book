@@ -11,8 +11,15 @@ computers. It now goes far beyond its original use for document-based
 information sharing; many people now spend their entire day in a
 browser, not using a single other application!
 
-[^theweb]: Broadly defined, the web is the interlinked network (“web”) of
-    [web pages](https://en.wikipedia.org/wiki/Web_page) on the Internet.
+[^theweb]: Broadly defined, the web is the interlinked network (“web”)
+of [web pages](https://en.wikipedia.org/wiki/Web_page) on the
+Internet. If you've never made a web page, I recommend MDN's [Learn
+Web Development][learn-web] series, especially the [Getting
+Started][learn-basics] guide. This book will be easier to read if
+you're familiar with the core technologies.
+    
+[learn-web]: https://developer.mozilla.org/en-US/docs/Learn
+[learn-basics]: https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web
 
 Nowadays, desktop applications are often built and delivered as _web
 apps_: websites[^website] used in similar ways to installed
@@ -61,18 +68,10 @@ Explaining the black box
 ========================
 
 HTML, CSS, HTTP, hyperlinks, and JavaScript---the core of the web---are
-approachaable enough, and if you've made a website before[^recommended] you've
+approachable enough, and if you've made a website before you've
 seen that programming ability is not required. But not many people---not even
 professional software developers---know much about how a browser renders web
 pages![^software-developers]
-
-[^recommended]: If you haven't, I recommend MDN's [Learn Web
-    Development][learn-web] series, especially the [Getting
-    Started][learn-basics] guide. This book will be easier to read if
-    you're familiar with the core technologies.
-    
-[learn-web]: https://developer.mozilla.org/en-US/docs/Learn
-[learn-basics]: https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web
 
 [^software-developers]: I usually prefer “engineer”---hence the title of this
 book---but “developer” or “web developer” is much more common on the web. One
@@ -110,7 +109,7 @@ actions: web pages mostly require _that_ actions take place without specifying
 _when_ they do. This _declarative_ style means that from the point of view of a
 developer, changes "apply immediately", but under the hood, the browser can be
 [lazy][lazy] and delay applying the changes until they become externally
-visible, either due to subsequence API calls or because the page has to be
+visible, either due to subsequent API calls or because the page has to be
 displayed to the user.[^style-calculation]
 
 [inversion]: https://en.wikipedia.org/wiki/Inversion_of_control
