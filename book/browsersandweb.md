@@ -99,7 +99,7 @@ software.
 of computing these days involves relying on mountains of other peoples’ code.
 
 Behind the philosophy lies a web browser's implementations of [inversion of
-control][inversion], [constraint programming][contraints], and [declarative
+control][inversion], [constraint programming][constraints], and [declarative
 programming][declarative]. The web _inverts control_, with an intermediary---the
 browser---handling most of the rendering, and the web developer specifying
 parameters and content to this intermediary. Further, these parameters usually
@@ -114,7 +114,7 @@ visible, either due to subsequent API calls or because the page has to be
 displayed to the user.[^style-calculation]
 
 [inversion]: https://en.wikipedia.org/wiki/Inversion_of_control
-[contraints]: https://en.wikipedia.org/wiki/Constraint_programming.
+[constraints]: https://en.wikipedia.org/wiki/Constraint_programming.
 [declarative]: https://en.wikipedia.org/wiki/Declarative_programming
 [lazy]: https://en.wikipedia.org/wiki/Lazy_evaluation
 
