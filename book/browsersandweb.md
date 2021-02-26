@@ -134,7 +134,7 @@ the browser "optimize for" when computing a layout?
 
 [^style-calculation]: For example, when exactly the browser compute which CSS
 styles apply to which HTML element, for example after a web page changes those
-styles? The change is visible to all subsequence API calls, so in that sense it
+styles? The change is visible to all subsequent API calls, so in that sense it
 applies "immediately". But it is better for the browser to delay style
 re-calculation, avoiding redundant work if styles change twice in quick
 succession. Maximally exploiting the opportunities afforded by declarative
