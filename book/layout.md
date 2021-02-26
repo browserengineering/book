@@ -201,7 +201,7 @@ When creating child layout objects, the main question is whether each
 child should be a `BlockLayout` or an `InlineLayout`. Basically,
 elements that just contains text, or maybe formatted text, should have
 an `InlineLayout`, but containers like `<div>` or `<header>` should
-have a `BlockLayout`. But what happens if an elements contains both
+have a `BlockLayout`. But what happens if an element contains both
 text and something like a `<div>`?
 
 In real browsers, a somewhat complicated mechanism known as [anonymous
@@ -227,7 +227,7 @@ INLINE_ELEMENTS = [
 
 To determine whether an element has an `InlineLayout` or a
 `BlockLayout` we compare its children against that list. Let's add a
-top-level `layout_mode` function that function looks through the
+top-level `layout_mode` function that looks through the
 children of a node and categorizes them as either "text", including
 formatting tags, or containers:
 
