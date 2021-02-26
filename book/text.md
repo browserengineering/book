@@ -599,7 +599,7 @@ computes their `x` positions, while the second pass vertically aligns
 the words and computes their `y` positions.
 
 Let's start with phase one. Since one line contains text from many
-tags, we need a a field on `Layout` to store the line-to-be. That
+tags, we need a field on `Layout` to store the line-to-be. That
 field, `line`, will be a list, and `text` will add words to it instead
 of the display list. Entries in `line` will have `x` but not `y`
 positions, since `y` positions aren't computed in the first phase:
