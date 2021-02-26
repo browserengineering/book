@@ -11,8 +11,15 @@ computers. It now goes far beyond its original use for document-based
 information sharing; many people now spend their entire day in a
 browser, not using a single other application!
 
-[^theweb]: Broadly defined, the web is the interlinked network (“web”) of
-    [web pages](https://en.wikipedia.org/wiki/Web_page) on the Internet.
+[^theweb]: Broadly defined, the web is the interlinked network (“web”)
+of [web pages](https://en.wikipedia.org/wiki/Web_page) on the
+Internet. If you've never made a web page, I recommend MDN's [Learn
+Web Development][learn-web] series, especially the [Getting
+Started][learn-basics] guide. This book will be easier to read if
+you're familiar with the core technologies.
+    
+[learn-web]: https://developer.mozilla.org/en-US/docs/Learn
+[learn-basics]: https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web
 
 Nowadays, desktop applications are often built and delivered as _web
 apps_: websites[^website] used in similar ways to installed
@@ -60,91 +67,82 @@ and fun journey. That's what this book is about.
 Explaining the black box
 ========================
 
-As you may already know from making websites, the core implementation components
-of the web are approachable enough - an HTML & CSS-based document model, HTTP,
-hyperlinks, and JavaScript. Most people can learn easily enough how to make simple
-HTML pages; programming abilities are not required. But how does the browser
-actually do its job of rendering that HTML? As it turns out, not many people
-who don’t work on browsers actually know in much detail, even trained software
-developers![^software-developers]
+HTML, CSS, HTTP, hyperlinks, and JavaScript---the core of the web---are
+approachable enough, and if you've made a website before you've seen that
+programming ability is not required. But not many people---not even professional
+software developers---know much about how a browser renders web
+pages![^software-developers]
 
-[^software-developers]: I usually prefer the word “engineer”, but on the web
-it’s much more common to use the word “developer”, or more specifically “web
-developer”, so I’ll use that term in this book. An additional advantage of using
-“developer” is that it’s not necessary to be a trained software engineer or
-computer scientist to build websites; on the contrary, one goal of the web has
-always been  to make its use accessible to all people, not just experts. In fact
-many websites are in large part built by those trained in other disciplines;
-“web developer” is more inclusive of these additional, critical roles.
+[^software-developers]: I usually prefer “engineer”---hence the title of this
+book---but “developer” or “web developer” is much more common on the web. One
+important reason is that anyone can build a website---not just trained software
+engineers and computer scientists. “Web developer” also is more inclusive of
+additional, critical roles like designers, authors, editors, or photographers.
 
-Most of us developers treat the browser as a black box, one that is either
-magical or frustrating (depending on whether it is working correctly or not!).
-After all, HTML & CSS _are_ black boxes, or more precisely declarative APIs -
-ones in which one specifies _what_ outcome is desired, as opposed to _how_ to
-achieve that outcome. It’s the _browser itself_ that is responsible for figuring
-out the how. Not only are website developers encouraged not to say how exactly
-the pixels on the screen are generated, in most cases there _is no feasible way_
-for developers to draw their website’s pixels “on their own”.
+As a black box, the browser is either magical or frustrating (depending on
+whether it is working correctly or not!). And HTML & CSS are meant to be black
+boxes---declarative APIs---that one specifies _what_ outcome to achieve, as
+opposed to _how_ to achieve it. The _browser itself_ is responsible for figuring
+out the "how". Web developers don't, and mostly can't, draw their website’s
+pixels “on their own”.
 
-In that sense, they also lose control and some amount of agency---when those
-pixels are wrong, they cannot directly fix them.[^loss-of-control] However, this
-loss of control comes with powerful upsides, such as: it’s much easier to make
-and deploy content on the web without having to implement many of the details;
-that content is instantly (magically!) available on every computing device in
-existence; and the content is likely to be accessible in the future, avoiding
-(for the most part) the inevitable obsolescence of most software.
+There are philosophical reasons for this unusual design. Yes, developers lose
+some control and agency---when those pixels are wrong, developers cannot fix
+them directly.[^loss-of-control] But they gain the ability to deploy content on
+the web without worrying about the details, to make that content instantly
+available on almost every computing device in existence, and to keep it
+accessible in the future, mostly avoiding the inevitable obsolescence of most
+software.
 
-[^loss-of-control]: Loss of control not necessarily specific to the web - much
+[^loss-of-control]: Loss of control is not necessarily specific to the web---much
 of computing these days involves relying on mountains of other peoples’ code.
 
+Behind the philosophy lies a web browser's implementations of [inversion of
+control][inversion], [constraint programming][constraints], and [declarative
+programming][declarative]. The web _inverts control_, with an intermediary---the
+browser---handling most of the rendering, and the web developer specifying
+parameters and content to this intermediary. Further, these parameters usually
+take the form of _constraints_ over relative sizes and positions instead of
+specifying their values directly.[^constraints] It's the browser's job to solve
+the constraints or to pick which ones to break. The same idea applies for
+actions: web pages mostly require _that_ actions take place without specifying
+_when_ they do. This _declarative_ style means that from the point of view of a
+developer, changes "apply immediately", but under the hood, the browser can be
+[lazy][lazy] and delay applying the changes until they become externally
+visible, either due to subsequent API calls or because the page has to be
+displayed to the user.[^style-calculation]
 
-This “what, not how” aspect of the web has multiple aspects, including
-[inversion of control](https://en.wikipedia.org/wiki/Inversion_of_control),
-[constraint
-programming](https://en.wikipedia.org/wiki/Constraint_programming#:~:text=Constraint%20programming%20(CP)%20is%20a,a%20set%20of%20decision%20variables.),
-and [declarative
-programming](https://en.wikipedia.org/wiki/Declarative_programming). _Inversion
-of control_ is a way of delegating most details of rendering to a framework (in
-this case, the browser), and only specifying the parameters or extension points
-to the framework within the application itself. For example, in HTML there are
-many built-in [form control
-elements](https://developer.mozilla.org/en-US/docs/Learn/Forms/Basic_native_form_controls)
-that take care of the various ways the user of a website can provide input.  The
-developer need only specify parameters such as button names, sizing, and
-look-and-feel, or JavaScript extension points to handle form submission to the
-server. The rest of the implementation is taken care of by the browser.
-_Constraint programming_ is an approach for numerical-oriented algorithms that
-specifies constraints involving limits, relative proportions and sizes of
-numerical variables, plus an optimization function; the algorithm to find the
-optimal solution is the job of someone else (the browser in our case). This
-concept appears in the web in page layout, which depends on many numerical
-factors such as font and browser window sizes, desired position and size of
-boxes, and tabular arrangement of widgets[^layout-optimization-function].
+[inversion]: https://en.wikipedia.org/wiki/Inversion_of_control
+[constraints]: https://en.wikipedia.org/wiki/Constraint_programming.
+[declarative]: https://en.wikipedia.org/wiki/Declarative_programming
+[lazy]: https://en.wikipedia.org/wiki/Lazy_evaluation
 
-[^layout-optimization-function]: A fun question to consider: what might be the
-“optimization function” of layout?
+[^forms]: As just one example, in HTML there are many built-in [form control
+elements][forms] that take care of the various ways the user of a website can
+provide input. The developer need only specify parameters such as button names,
+sizing, and look-and-feel, or JavaScript extension points to handle form
+submission to the server. The rest of the implementation is taken care of by the
+browser.
 
-Even after answering the _what_ and the _how_, there is still the _declarative
-programming_ aspect of the web---_when_ various computations happen. For
-example, when exactly does style (re-)calculation[^style-calculation] happen?
-From the point of view of the developer, styles "apply immediately”, meaning
-that any subsequent API the developer might call gives an answer that takes the
-new style into account. But what if the developer never calls such an API---does
-the work ever need to be done? Clearly 	it does if it affects what the browser’s
-user experiences, such as what pixels are drawn on the screen, but not
-otherwise.
+[forms]: https://developer.mozilla.org/en-US/docs/Learn/Forms/Basic_native_form_controls
 
-It is to the advantage of the browser to not perform style re-calculation unless
-necessary, since it can avoid redundant work in situations such as the style
-inputs changing twice in quick succession. For this reason, browsers are as
-[lazy](https://en.wikipedia.org/wiki/Lazy_evaluation) as possible about doing
-work, but not so lazy as to unnecessarily delay pixels updating on the screen.
-It turns out that a whole lot of the complexity and cleverness of real-world
-browsers involves maximally exploiting the performance-enhancing opportunities
-afforded by declarative programming.
+[^constraints]: Constraint programming is clearest during web page layout, where
+font and window sizes, desired positions and sizes, and the relative arrangement
+of widgets is rarely specified directly. A fun question to consider: what does
+the browser "optimize for" when computing a layout?
 
-[^style-calculation]: Style calculation is the process of figuring out, based on
-the current CSS and HTML, which styles apply to which elements.
+[^style-calculation]: For example, when exactly the browser compute which CSS
+styles apply to which HTML element, for example after a web page changes those
+styles? The change is visible to all subsequent API calls, so in that sense it
+applies "immediately". But it is better for the browser to delay style
+re-calculation, avoiding redundant work if styles change twice in quick
+succession. Maximally exploiting the opportunities afforded by declarative
+programming makes real-world browsers very complex.
+
+The up shot of all this is that a browser is a pretty unusual piece of software,
+with unique challenges, interesting algorithms, and clever optimizations
+invented just for this domain. That makes browsers worth studying for the pure
+pleasure of it---even leaving aside their importance!
 
 The browser and me
 ==================
