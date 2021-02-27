@@ -24,7 +24,7 @@ you're familiar with the core technologies.
 Nowadays, desktop applications are often built and delivered as _web
 apps_: websites[^website] used in similar ways to installed
 applications. And on mobile devices even native apps often use _web
-views_ that embed a browser to render parts of the application UI.
+views_ that embed a browser to render parts of the application UI[^hybrid].
 Perhaps in the future mobile devices will, like desktop computers,
 mostly be a container for web apps.
 
@@ -101,10 +101,10 @@ Behind the philosophy lies a web browser's implementations of [inversion of
 control][inversion], [constraint programming][constraints], and [declarative
 programming][declarative]. The web _inverts control_, with an intermediary---the
 browser---handling most of the rendering, and the web developer specifying
-parameters and content to this intermediary. Further, these parameters usually
-take the form of _constraints_ over relative sizes and positions instead of
-specifying their values directly.[^constraints] It's the browser's job to solve
-the constraints or to pick which ones to break. The same idea applies for
+parameters and content to this intermediary[^forms]. Further, these parameters
+usually take the form of _constraints_ over relative sizes and positions instead
+of specifying their values directly.[^constraints] It's the browser's job to
+solve the constraints or to pick which ones to break. The same idea applies for
 actions: web pages mostly require _that_ actions take place without specifying
 _when_ they do. This _declarative_ style means that from the point of view of a
 developer, changes "apply immediately", but under the hood, the browser can be
