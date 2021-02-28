@@ -162,7 +162,7 @@ been far from it in my studies or work.
 [^chris]: This is Chris speaking!
 
 [^bbs]: For me, [BBS](https://en.wikipedia.org/wiki/Bulletin_board_system)
-systems over a dialup modem connection. A BBS is not all that different from a
+systems over a dial-up modem connection. A BBS is not all that different from a
 browser if you think of it as a window into dynamic content created somewhere
 else on the Internet.
 
@@ -213,7 +213,7 @@ to maintaining large codebases, there is also constant pressure to do more---to
 add more features, improve performance, and keep up with the "web
 ecosystem"---the thousands of businesses, millions of developers, and billions
 of users that use the web. Every browser has thousands of unfixed bugs, from the
-smallest of mistakes to the myriad of ways to mix up and mis-match features.
+smallest of mistakes to the myriad of ways to mix up and mismatch features.
 Every browser has a complicated set of optimizations to squeeze out that last
 bit of performance. And every browser has painstaking, but necessary, work to
 continuously refactor the code to reduce its complexity through the
@@ -235,10 +235,10 @@ for a reason?
 
 These kinds of quandaries are common to all complex codebases. But what makes a
 browser different is that there is often an _urgency to fix them_. Browsers are
-nearly as old as any “legacy” codebase, but are _not_ legacy, not abondoned or
+nearly as old as any “legacy” codebase, but are _not_ legacy, not abandoned or
 half-deprecated, not slated for replacement. On the contrary, they are vital to
 the world’s economy. Browser engineers are forced[^forced-negative] to fix and
-improve rather than abaondon and replace.
+improve rather than abandon and replace.
 
 [^forced-negative]: I don't intend the negative connotation. It’s because
 browsers are so important that we browser developers can afford an
@@ -401,7 +401,7 @@ work also formed one of the key parts of the [mother of all
 demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos), the most famous
 technology demonstration in the history of computing.
 
-[^hyperlink-first]: The word "hyperlink" may have fisrt appeared in 1987, in
+[^hyperlink-first]: The word "hyperlink" may have first appeared in 1987, in
 connection with the HyperCard system on the Macintosh.)
 
 [^literary-criticism]: These concepts are also the computer-based evolution of
