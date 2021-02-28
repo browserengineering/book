@@ -11,7 +11,7 @@ code. These courses transform Linux, Postgres, and LLVM into
 improvements, additions, and optimizations to an understandable core
 architecture. The lesson transcends the specific system studied: _all_
 computer systems, no matter how big and seemingly complex, can be
-studied and understood.
+studied and understood[^1].
 
 [^1]: Others reasons for these classes: a focus on speed; learning
     low-level APIs; practice with C; knowing the stack; using systems
@@ -61,6 +61,8 @@ providing insight into those 10 million line of code behemoths.
 Acknowledgements
 ================
 
+#### Pavel
+
 [James R. Wilcox](https://homes.cs.washington.edu/~jrw12/) and I
 dreamed up this course during a late-night chat at ICFP 2018. [Max
 Willsey](https://mwillsey.com/) proof-read and helped sequence the
@@ -68,6 +70,20 @@ chapters. [Zach Tatlock](https://homes.cs.washington.edu/~ztatlock/)
 encouraged me to develop this into a course. I am thankful to all of
 them. I also thank the students of CS 6968 at the University of Utah,
 who found many errors and suggested important simplifications.
+
+#### Chris
+
+I am eternally grateful to my wife Sara, for patiently listening to my endless
+musings about the web, and encouraging me to turn my idea for a browser book
+into reality. (Turns out Pavel and I had the same idea!) I am also grateful to
+[Dan Gildea][dan-gildea] for providing feedback on my browser-book concept on
+multiple occassions. Finally, I'm grateful to Pavel for doing the hard work
+getting this project off the ground and allowing me to join the adventure.
+
+[dan-gildea]: https://www.cs.rochester.edu/u/gildea/
+
+A final note
+============
 
 This book is, and will remain, a work in progress. Please leave
 comments and mark typos; the book has built-in feedback tools, which
