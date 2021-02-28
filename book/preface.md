@@ -11,11 +11,11 @@ code. These courses transform Linux, Postgres, and LLVM into
 improvements, additions, and optimizations to an understandable core
 architecture. The lesson transcends the specific system studied: _all_
 computer systems, no matter how big and seemingly complex, can be
-studied and understood[^1].
+studied and understood[^other-reasons].
 
-[^1]: Others reasons for these classes: a focus on speed; learning
-    low-level APIs; practice with C; knowing the stack; using systems
-    better; and the importance of the system covered.
+[^other-reasons]: Others reasons for these classes: a focus on speed; learning
+low-level APIs; practice with C; knowing the stack; using systems better; and
+the importance of the system covered.
 
 But web browsers are still opaque, not just to students but to faculty
 and industry programmers. This book dissipates this mystery by
@@ -39,14 +39,14 @@ ensure that your language has libraries for encrypted connections
 (Python has one built in), simple graphics (the text uses Tk), and
 JavaScript evaluation (the text uses DukPy).
 
-Your web browser will "work" every step of the way, and every chapter
-will build upon the last.[^2] That way, you will also practice growing
-and improving complex software. The text tries to avoid unnecessary
-changes and refactorings. If you feel particularly interested in some
-component, you can flesh it out and add missing features without
-making later chapters more difficult.
+Your web browser will "work" every step of the way, and every chapter will build
+upon the last.[^jrwilcox-idea] That way, you will also practice growing and
+improving complex software. The text tries to avoid unnecessary changes and
+refactorings. If you feel particularly interested in some component, you can
+flesh it out and add missing features without making later chapters more
+difficult.
 
-[^2]: This idea is from [J.R. Wilcox][jrw], inspired in turn by
+[^jrwilcox-idea]: This idea is from [J.R. Wilcox][jrw], inspired in turn by
     [S. Zdancewic][sz]'s course on compilers.
     
 [jrw]: https://jamesrwilcox.com
