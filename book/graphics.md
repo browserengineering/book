@@ -263,7 +263,7 @@ for c in text:
         x = HSTEP
 ```
 
-The code wraps text by increasing *y* and reseting *x*[^13] once *x*
+The code wraps text by increasing *y* and resetting *x*[^13] once *x*
 goes past 787 pixels.[^14] Wrapping makes it possible to see a lot
 more text.
 
