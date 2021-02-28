@@ -42,7 +42,7 @@ JavaScript evaluation (the text uses DukPy).
 Your web browser will "work" every step of the way, and every chapter
 will build upon the last.[^2] That way, you will also practice growing
 and improving complex software. The text tries to avoid unnecessary
-changes and refactorings. If you feel particularly interested in some
+changes and refactors. If you feel particularly interested in some
 component, you can flesh it out and add missing features without
 making later chapters more difficult.
 
@@ -58,7 +58,7 @@ errors, and isn't resilient to malicious inputs. It is also quite
 slow. Despite that, its architecture matches that of real browsers,
 providing insight into those 10 million line of code behemoths.
 
-Acknowledgements
+Acknowledgments
 ================
 
 [James R. Wilcox](https://homes.cs.washington.edu/~jrw12/) and I
