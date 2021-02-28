@@ -73,7 +73,7 @@ who found many errors and suggested important simplifications.
 
 #### Chris
 
-I am eternally grateful to my wife Sara, for patiently listening to my endless
+I am eternally grateful to my wife Sara for patiently listening to my endless
 musings about the web, and encouraging me to turn my idea for a browser book
 into reality. (Turns out Pavel and I had the same idea!) I am also grateful to
 [Dan Gildea][dan-gildea] for providing feedback on my browser-book concept on
