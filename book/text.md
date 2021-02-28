@@ -309,7 +309,7 @@ Styling text
 ============
 
 Right now, all of the text on the page is drawn with one font. But web
-pages sometimes **bold** or *italicise* text using the `<b>` and `<i>`
+pages sometimes **bold** or *italicize* text using the `<b>` and `<i>`
 tags. It'd be nice to support that, but right now, the code resists
 the change: the `layout` function only receives the text of the page
 as input, and so has no idea where the bold and italics tags are.
