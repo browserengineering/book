@@ -531,7 +531,7 @@ Using the node tree
 ===================
 
 Right now, the `Layout` class works token-by-token; we now want it to
-go node-by-node instead. So let's sepate the old `token` method into
+go node-by-node instead. So let's separate the old `token` method into
 three parts: all the cases for open tags will go into a new `open`
 method; all the cases for close tags will to into a new `close`
 method; and instead of having a case for text tokens our browser can
