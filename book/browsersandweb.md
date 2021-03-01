@@ -372,7 +372,7 @@ long ago exceeded the capacity of a single mind, organization, library, country,
 culture, group or language. However, while we as humans cannot possibly know
 even a tiny fraction of what is possible to know, we can use technology to learn
 more efficiently than before, and most importantly, to quickly access
-information we need to learn or remember[^google-mission]. Computers, and the
+information we need to learn or remember.[^google-mission] Computers, and the
 Internet, allow us to _process and store_ as much information as we want. The
 _web_, on the other hand, plays the role of _organizing and finding_ that
 information and knowledge to make it useful.
@@ -393,8 +393,8 @@ similarities to the web as we know it today, even if the user interface and
 technology details differ.
 
 [^memex-essay]: This brief prehistory of the web is by no means exhaustive.
-Instead, you should view it as a brief view into a much larger - and quite
-interesting in its own right - subject.
+Instead, you should view it as a brief view into a much larger---and quite
+interesting in its own right---subject.
 
 The concept of networked links of information began to appear in about
 [1964-65](https://en.wikipedia.org/wiki/Hyperlink), when the term “link”
@@ -415,12 +415,12 @@ the long tradition of citation in academics and literary criticism.
 
 In 1983 the [HyperTIES](http://www.cs.umd.edu/hcil/hyperties/) system was
 developed around highlighted hyperlinks. This was used to develop the world’s
-first electronic journal, the 1988 issue of the [Communications of the
-ACM](https://cacm.acm.org/). Tim Berners-Lee cites this 1988 event as the source
-of the link concept in his World Wide Web concept[^world-wide-web-terminology],
-in which he proposed to join the link concept with the availability of the
-Internet, thus realizing many of the original goals of all the work from
-previous decades.[^realize-web-decades]
+first electronically published academic journal, the 1988 issue of the
+[Communications of the ACM](https://cacm.acm.org/). Tim Berners-Lee cites this
+1988 event as the source of the link concept in his World Wide Web
+concept,[^world-wide-web-terminology] in which he proposed to join the link
+concept with the availability of the Internet, thus realizing many of the
+original goals of all the work from previous decades.[^realize-web-decades]
 
 [^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
 web”, or “the web ecosystem”---ecosystem being another way to capture the same
@@ -433,9 +433,9 @@ the vision laid out by the web.
 
 In 1989-1990, the first browser (named “WorldWideWeb”) and web server (named
 “httpd”, for “HTTP Daemon” according to UNIX naming conventions) were born,
-again written in their first version by Berners-Lee. Interestingly, the
+again written in their first version by Berners-Lee. Interestingly, that
 browser’s capabilities were in some ways inferior to the browser you will
-implement in this book[^no-css], and in some ways go beyond the capabilities
+implement in this book,[^no-css] and in some ways go beyond the capabilities
 available even in modern browsers.[^more-less-powerful] On December 20, 1990 the
 [first web page](http://info.cern.ch/hypertext/WWW/TheProject.html) was created.
 The browser we will implement in this book is easily able to render this web
@@ -498,7 +498,7 @@ control or manipulation.
 The browser ecosystem
 =====================
 
-Browsers have a unique character in that they are _not proprietary_ - no company
+Browsers have a unique character in that they are _not proprietary_---no company
 controls the APIs of the web and there are multiple independent implementations.
 In addition, it turned out that over time almost all of the code became
 open-source and developed by a very wide array of people and entities. As a
@@ -519,7 +519,7 @@ turn the inspiration for [NCSA
 Mosaic](https://en.wikipedia.org/wiki/Mosaic_(web_browser)), which launched in
 1993. One of the two original authors of Mosaic went on to co-found
 [Netscape](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
-_commercial browser_[^commercial-browser], which launched in 1994. The era of
+_commercial browser_,[^commercial-browser] which launched in 1994. The era of
 the [”first browser
 war”](https://en.wikipedia.org/wiki/Browser_wars#First_Browser_War_(1995%E2%80%932001))
 ensued, in a competition between Netscape and Internet Explorer. In addition,
@@ -533,11 +533,11 @@ this codebase). Likewise, the
 [Gecko](https://en.wikipedia.org/wiki/Gecko_(software)) rendering engine was
 originally developed by Netscape starting in 1997; the
 [Firefox](https://en.wikipedia.org/wiki/Firefox) browser is descended from this
-codebase.
+codebase.  During the first browser war period, nearly all of the core features
+you will implement in your browser that goes along with this book were added,
+including CSS, DOM, and JavaScript.
 
- During this time, essentially all of the features you will implement in your
-browser were added, including CSS, DOM, and JavaScript. The second browser war, which
-according to Wikipedia was
+ The "second browser war", which according to Wikipedia was
 [2004-2017](https://en.wikipedia.org/wiki/Browser_wars#Second_Browser_War_(2004%E2%80%932017)),
 was between a variety of browsers - Internet Explorer, Firefox, Safari and
 Chrome in particular. Chrome split off its rendering engine subsystem into its
@@ -579,18 +579,21 @@ competition for market share was channeled into very fast innovation and an
 ever-expanding set of APIs and capabilities for the web, which we nowadays refer
 to as _the Web Platform,_ not just the “World Wide Web”. This recognizes the
 fact that the web is no longer a document viewing mechanism, but has evolved
-into a fully realized computing platform and ecosystem.[^web-os] Given these
-outcomes, in retrospect it is clear that it’s not so relevant to know which
-browser “won” or “lost” each of the browser “wars”. In both cases _the web won_
-and was preserved and enhanced for the benefit of the world. In economics terms,
-enforcing a standard set of APIs across browsers made the web platform a
-_commodity_; instead of competing based on lock-in, browsers compete on
-_performance_ and _quality_, and also _browser features_ that are not part of
+into a fully realized computing platform and ecosystem.[^web-os]
+
+Given these outcomes, in retrospect it is clear that it’s not so relevant to
+know which browser “won” or “lost” each of the browser “wars”. In both cases
+_the web won_ and was preserved and enhanced for the benefit of the world. In
+economics terms, enforcing a standard set of APIs across browsers made the web
+platform a _commodity_; instead of competing based on lock-in, browsers compete
+on _performance_ and _quality_, and also _browser features_ that are not part of
 the web platform---for example, tabbed UIs and search engine integration.
-Browser development is also primarily funded by revenue from search engine
-advertisements; a secondary typical funding motivation is to improve the
-competitive position of an operating system or device owned or controlled by the
-company building the browser.[^compare-redhat]
+[^monetization]
+
+[^monetization]: Browser development is also primarily funded by revenue from
+search engine advertisements; a secondary typical funding motivation is to
+improve the competitive position of an operating system or device owned or
+controlled by the company building the browser.[^compare-redhat]
 
 [^web-os]: There have even been operating systems built around the web! Examples
 include [webOS](https://en.wikipedia.org/wiki/WebOS), which powered some Palm
@@ -650,17 +653,14 @@ many other people, such as website developers, who contribute many good ideas
 and proposals that end up implemented in browsers.
 
 Due to the very high cost of building and maintaining an implementation of the
-web platform, and the fact of being community-driven (and therefore having no
-sustainable proprietary advantage over competitors), it makes sense that the
-engine source code itself be open-source as well. This allows sharing the burden
-(opportunity?) of maintenance and feature development across a larger community.
-Another consequence of being driven collectively by the community is that a
-browser often functions like an R&D project, where new ideas are constantly
-being proposed and tested out in discussions and implementations. Like any R&D
-project, this leads to the browser having an iterative and incremental planning
-and shipping process---at any given time it’s not easy to lay out the exact
-plans for the next year in great precision (let alone five years), because it’s
-always unknown how well current projects will work or what new ideas might surface.
+web platform, and because they are commodities, web rendering engines are today
+all open-source. This allows sharing the burden (opportunity?) of maintenance
+and feature development across a larger community. They evolve like giant R&D
+projects, where new ideas are constantly being proposed and tested out in
+discussions and implementations. Like any R&D project, these enginges have an
+iterative and incremental planning and shipping process. And just as you would
+expect, some features fail and some succeed. The ones that succeed end up in
+specifications and implemented by all browsers.
 
 Browsers and you
 ================
@@ -668,8 +668,8 @@ Browsers and you
 This book explains how to build a simple web rendering engine plus browser
 shell, as well as many details about advanced features and the architecture of
 a real browser’s rendering engine. From this you will learn what is easy and 
-what is hard in these engines: which algorithms are easy to understand, and
-which are tricky and subtle to get right; what makes a browser fast, and what
+what is hard in these engines: which algorithms are simple, and
+which are tricky; what makes a browser fast, and what
 makes it slow; and all the core concepts you need to understand to predict the
 behavior of a real-world browser. After reading all of it, you should be able
 to dig into the source code for a real browser’s rendering engine and
@@ -687,9 +687,9 @@ browser with a real one, or see how many websites you can successfully render.
 The browser is an essential part of computing, and this chapter gave evidence of
 that fact, along with a flavor of the depth and history of the web and browsers.
 However, I believe that only by really understanding how a browser works will
-you really appreciate and understand its beauty, complexity and power fully. I
-hope you come away from this book with a deeper sense of this beauty---how it
-works, its relationship to the culture and history of computing and information,
-what it’s like to be someone building a browser. But most of all, I hope you can
+you fully appreciate and understand its beauty, complexity and power. I hope you
+come away from this book with a deeper sense of this beauty---how it works, its
+relationship to the culture and history of computing and information, and what
+it’s like to be someone building a browser. But most of all, I hope you can
 connect all of that to you, your career in software and computers, and the
 future. After all, it’s up to you to invent and discover what comes next!
