@@ -264,23 +264,23 @@ The web in history
 ==================
 
 The public Internet and the Web co-evolved, and in fact many peoples’ first
-experiences of the Internet in the 1990s and onward were more or less
+experiences of the Internet from the 1990s onward were more or less
 experiences with the web. However, it’s important to distinguish between them,
 since the Internet and the web are in fact not synonymous.
 
-In the early days, the similarity between the _physical structure_ of the web---
-where the web servers were---and the _names_ of the websites was very strong.
-The Internet was a world wide network of computers, those computers had domain
-names, and many of them ran web servers. In this sense, the Internet and the web
-really were closely related at that time. However, there is of course nothing
-inherent about this: nothing forces you to host your own web server on your home
-computer and Internet connection[^self-hosted], and the same goes for a
-university or corporation. Likewise, there is nothing requiring everyone to have
-their own website rather than a social networking account. These days, almost
-everyone uses a virtual machine or service purchased from one kind of cloud
-computing service or another to run their websites, regardless of how small or
-large, and there are many products available that can easily publish your web
-content on your behalf on various social networking platforms.
+In the early days, the similarity between the _physical structure_ of the
+web---where the web servers were---and the _names_ of the websites was very
+strong. The Internet was a world wide network of computers, those computers had
+domain names, and many of them ran web servers. In this sense, the Internet and
+the web really were closely related at that time. However, there is of course
+nothing inherent about this: nothing forces you to host your own web server on
+your home computer and Internet connection[^self-hosted], and the same goes for
+a university or corporation. Likewise, there is nothing requiring everyone to
+have their own website rather than a social networking account. These days,
+almost everyone uses a virtual machine or service purchased from one kind of
+cloud computing service or another to run their websites, regardless of how
+small or large, and there are many products available that can easily publish
+your web content on your behalf on various social networking platforms.
 
 [^self-hosted]: People actually did this! And when their website became
 popular, it often ran out of bandwidth or computing power and became
@@ -297,21 +297,21 @@ dynamic---composed of data from news, blog posts, inbox contents,
 advertisements, and algorithms adjusting to your particular tastes.
 
 [^server-side-rendering]: "Server-side rendering" is the process of assembling
-HTML on the server when loading a web page. Server-side rendering is sometimes
-run in JavaScript, and sometimes even with a
-[headless](https://en.wikipedia.org/wiki/Headless_browser) browser.
+HTML on the server when loading a web page. Server-side rendering often uses web
+tech like JavaScript, and even a browser
+[browser](https://en.wikipedia.org/wiki/Headless_browser). Yet one more place
+browsers are taking over!
 
 There is also aforementioned _web app_, which is a computer application written
-entirely as a web page. These applications are widespread and are gradually
-expanding to include nearly all types of computer tasks as the capabilities of
-browsers to support those tasks expand. While these web apps  are part of the
-web (e.g. they are loadable via URL), thinking of them as web pages is sometimes
-confusing. To deal with this confusion, there is often a conceptual distinction
-made (even if it is blurry in practice) between an “informational” _web page_
-and a “task-based” _web app_, even though they use the same underlying
-technology. Related to the notion of a web app is a _PWA_[^pwa], which is often
-described as what may appear to the user as a regular “native” app, but is built
-entirely as a website under the hood.
+entirely as a web page. These applications are widespread, and they are
+gradually expanding to include nearly all types of computer tasks as the
+capabilities of browsers to support those tasks inprove. While these web apps 
+are part of the web (e.g. they are loadable via URL), thinking of them as web
+pages is sometimes confusing. To deal with this confusion, there is often a
+conceptual distinction made (even if it is blurry in practice) between an
+“informational” _web page_ and a “task-based” _web app_, even though they use
+the same underlying technology. Related to the notion of a web app is a
+_PWA_,[^pwa] which is a web app that progressively becomes indistinguishable from a native app.
 
 [^pwa]: PWA stands for Progressive Web App. In this case, progressive refers
 to progressive enhancement.
@@ -329,11 +329,11 @@ For these reasons, it’s sometimes confusing to know what we should think of as
     CSS, and JavaScript, that are needed for their functionality.
 *   Web pages _refer to each other_ other with hyperlinks.
 *   The user views and navigates web pages through a _browser_, which is also
-    sometimes called the _user agent_.
+    sometimes called the _User Agent_.
 *   All APIs on the web are open, standardized and free to use or re-use.
 
-[^key-web-properties]: It’s worth repeating here that this definition is not
-[accidental and is part of the original design of the web. The fact that the
+[^key-web-properties]: It’s worth noting here that this definition is not
+accidental and is part of the original design of the web. The fact that the
 web not only survived but thrived during the process of "virtualization" of
 hosting and content further demonstrates the elegance and effectiveness of
 its original design.
@@ -342,13 +342,14 @@ One might try to argue that HTTP, URLs and hyperlinking are the only truly
 essential parts of the Web, or  also argue that a browser is not strictly
 necessary, since conceptually websites exist independently of the browser for
 them, and could in principle self-render through dedicated
-applications[^dedicated-applications]. In other words, one could try to separate
-out the networking and rendering aspects of the web; likewise, one could
-abstract the concept of linking and networking from the particular choice of
-protocols and data formats. In theory it is indeed true that one or more of the
-implementation choices could be replaced, and perhaps that will happen over
-time. For example, JavaScript might eventually be replaced by another language
-or technology, HTTP by some other protocol, or HTML by its successor.
+applications.[^dedicated-applications] In other words, one could try to
+distinguish between the networking and rendering aspects of the web;
+likewise, one could abstract the concept of linking and networking from the
+particular choice of protocols and data formats. In theory it is indeed true
+that one or more of the implementation choices could be replaced, and perhaps
+that will happen over time. For example, JavaScript might eventually be replaced
+by another language or technology, HTTP by some other protocol, or HTML by its
+successor.
 
 [^dedicated-applications]: For example, if you're using an installed PWA, are
 you using a browser?
@@ -356,10 +357,10 @@ you using a browser?
 In practice, it is not really the case that networking and rendering are
 separated, and there are in fact important inter-dependencies---for example,
 HTML plays a critical role in both rendering and hyperlinks. It’s best to just
-consider browsers, HTML (and CSS and JavaScript) part of the core definition of
-the web. In any case, as with all technology, the web continues to evolve. The
-above definition may change over time, but for the purposes of this book, it’s a
-pretty good one.
+consider browsers and HTML (and CSS and JavaScript) part of the core definition
+of the web. In any case, as with all technology, the web continues to evolve.
+The above definition may change over time, but for the purposes of this book,
+it’s a pretty good one.
 
 Technological precursors
 ========================
