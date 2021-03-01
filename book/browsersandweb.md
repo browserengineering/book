@@ -5,11 +5,11 @@ next: http
 prev: preliminaries
 ...
 
-The web browser, and the web[^theweb] more broadly, is a marvel. Every
-year it expands its reach to more and more of what we do with
+The web browser (or just "browser"), and the web[^theweb] more broadly, is a
+marvel. Every year it expands its reach to more and more of what we do with
 computers. It now goes far beyond its original use for document-based
-information sharing; many people now spend their entire day in a
-browser, not using a single other application!
+information sharing; many people now spend their entire day in a browser, not
+using a single other application!
 
 [^theweb]: Broadly defined, the web is the interlinked network (“web”)
 of [web pages](https://en.wikipedia.org/wiki/Web_page) on the
@@ -21,48 +21,46 @@ you're familiar with the core technologies.
 [learn-web]: https://developer.mozilla.org/en-US/docs/Learn
 [learn-basics]: https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web
 
-Nowadays, desktop applications are often built and delivered as _web
-apps_: websites[^website] used in similar ways to installed
-applications. And on mobile devices even native apps often use _web
-views_ that embed a browser to render parts of the application UI[^hybrid].
-Perhaps in the future mobile devices will, like desktop computers,
-mostly be a container for web apps.
+Nowadays, desktop applications are often built and delivered as _web apps_:
+websites loaded by a browser and used in similar ways to installed applications.
+And on mobile devices even native apps often use _web views_ that embed a
+browser to render parts of the application UI[^hybrid]. Perhaps in the future
+mobile devices will, like desktop computers, mostly be a container for web apps.
+Browsers are simply a critical and indispensable part of computing.
 
-[^website]: You probably already know what a website is. This is one.
-    If not, [see here](https://en.wikipedia.org/wiki/Website).
-
-[^hybrid]: The fraction of these _hybrid apps_ that are web content is
+[^hybrid]: The fraction of these "hybrid" apps that are web content is
     also likely increasing over time.
 
-The basis of this critical piece of software is the web. And the web
-itself is built on a few simple, yet revolutionary, concepts; concepts
-that that together present a vision of the future of software and
-information. Among them are open, decentralized and safe computing; a
-declarative document model for describing UIs; hyperlinks; and the
-User Agent[^useragent]. Since the browser makes the web real,
-all these concepts form the core structure of the browser code itself.
+The basis of browsers is the web. And the web itself is built on a few simple,
+yet revolutionary, concepts; concepts that that together present a vision of the
+future of software and information. Among them are open, decentralized and safe
+computing; a declarative document model for describing UIs; hyperlinks; and the
+User Agent.[^useragent] 
 
 [^useragent]: The User Agent is a way to view the computer, or
     software within the computer, as a trusted assistant and advocate.
 
-This vision of the web is neither simple nor obvious; it is the result
-of experimentation and research reaching back to nearly the beginning
-of computing. And of course the web _also_ needs rich computer displays,
-powerful UI-building libraries, fast consumer networks, and sufficient
-CPU power and information storage capacity. As so often happens, the
-web has many predecessors but only took its modern form in the late
-1980s, once all those technologies were available.
+Looked at from the browser's point of view, the browser makes the web real. As a
+result, all these concepts _also_ form the core structure of the browser code
+itself. It is the User Agent, the _mediator_ of web interactions and _enforcer_
+of its rules. Not only that, the browser is the _implementer_ of all of the ways
+information is explored. The browser keeps web browsing safe; its algorithms
+implement the declarative UI; it navigates links and represents you to web
+pages. And of course, for websites to load fast and react smoothly, the browser
+must be hyper-efficient as well.
 
-The browser realizes the modern web. It is the User Agent, the
-_mediator_ of web interactions and _enforcer_ of its rules. Not only
-that, the browser is the _implementer_ of all of the ways information
-is explored. The browser keeps web browsing safe; its algorithms
-implement the declarative UI; it navigates links and represents you to
-web pages. And of course, for websites to load fast and react
-smoothly, the browser must be hyper-efficient as well.
+This web+browsers setup is neither simple nor obvious. In fact, it is the result
+of experimentation and research reaching back to nearly the beginning of
+computing. Of course, the web _also_ needs rich computer displays, powerful
+UI-building libraries, fast consumer networks, and sufficient CPU power and
+information storage capacity. The result was what so often happens with
+technology: the web has many similar-looking predecessors, but only took its
+modern form once all those technologies were available.
 
-Lofty goals! How does the browser deliver on them? It's a fascinating
-and fun journey. That's what this book is about.
+Such lofty goals! How does the browser deliver on them? It's a fascinating and
+fun journey. That's what this book is about. But first let's dig deeper into the
+thoughts raised here: how the web functions, where the web came from, and the
+role browsers play in the web and computing.
 
 Explaining the black box
 ========================
@@ -271,19 +269,19 @@ really were closely related at that time. However, there is of course nothing
 inherent about this: nothing forces you to host your own web server on your home
 computer and Internet connection[^self-hosted], and the same goes for a
 university or corporation. Likewise, there is nothing requiring everyone to have
-their own web site rather than a social networking account. These days, almost
+their own website rather than a social networking account. These days, almost
 everyone uses a virtual machine or service purchased from one kind of cloud
 computing service or another to run their websites, regardless of how small or
 large, and there are many products available that can easily publish your web
 content on your behalf on various social networking platforms.
 
-[^self-hosted]: People actually did this! And when their web site became
+[^self-hosted]: People actually did this! And when their website became
 popular, it often ran out of bandwidth or computing power and became
 inaccessible.
 
 This same *virtualization* concept also applies to the implementation of web
 pages themselves. While it’s still possible to write HTML by hand, few of the
-most popular web sites’ HTML payloads literally exist on a hard drive somewhere.
+most popular websites’ HTML payloads literally exist on a hard drive somewhere.
 Instead, their component pieces and dependent databases exist, and the final
 product is dynamically assembled on the fly by complex build and
 “rendering”[^server-side-rendering] systems and sent over the Internet on-demand
@@ -419,7 +417,7 @@ previous decades.[^realize-web-decades]
 [^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
 web”, or “the web ecosystem”---ecosystem being another way to capture the same
 concept as “World Wide”). The original wording lives on in the "www" in many
-web site domain names.
+website domain names.
 
 [^realize-web-decades]: The web itself is, therefore, an example of the
 realization of previous ambitions and dreams, just as today we strive to realize
@@ -445,7 +443,7 @@ meant for searching within a site (vestiges of which exist today in the
 editor (the “contenteditable” HTML attribute and “html()” method on DOM elements
 has similar semantic behavior, but built-in file saving is gone). Today, the
 index is replaced with a search engine, and web page editors as a concept are
-somewhat obsolete due to the highly dynamic nature of today’s web site
+somewhat obsolete due to the highly dynamic nature of today’s website
 rendering.
 
 [^original-aesthetics]: Also, as you can see clearly, that web page has not been
@@ -496,13 +494,13 @@ Browsers have a unique character in that they are _not proprietary_ - no company
 controls the APIs of the web and there are multiple independent implementations.
 In addition, it turned out that over time almost all of the code became
 open-source and developed by a very wide array of people and entities. As a
-corollary, the software platform for web sites is also not proprietary, and the
+corollary, the software platform for websites is also not proprietary, and the
 information and capabilities contained within them are easy to make accessible 
 to everyone[^unless-restricted].
 
-[^unless-restricted]: Unless, of course, the web site chooses to restrict
+[^unless-restricted]: Unless, of course, the website chooses to restrict
 availability for one reason or another. The point is that the _web platform_
-does not restrict availability, and therefore the web site has the freedom to
+does not restrict availability, and therefore the website has the freedom to
 choose.
 
 I'll now give a brief overview of the evolution of browser implementations. The
