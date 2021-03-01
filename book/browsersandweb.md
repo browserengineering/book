@@ -35,19 +35,19 @@ The basis of browsers is the web. And the web itself is built on a few simple,
 yet revolutionary, concepts; concepts that that together present a vision of the
 future of software and information. Among them are open, decentralized and safe
 computing; a declarative document model for describing UIs; hyperlinks; and the
-User Agent.[^useragent] Since the browser makes the web real, all these concepts
-form the core structure of the browser code itself.
+User Agent.[^useragent] 
 
 [^useragent]: The User Agent is a way to view the computer, or
     software within the computer, as a trusted assistant and advocate.
 
-Looked at from the other direction, the browser makes the web real. It is the
-User Agent, the _mediator_ of web interactions and _enforcer_ of its rules. Not
-only that, the browser is the _implementer_ of all of the ways information is
-explored. The browser keeps web browsing safe; its algorithms implement the
-declarative UI; it navigates links and represents you to web pages. And of
-course, for websites to load fast and react smoothly, the browser must be
-hyper-efficient as well.
+Looked at from the browser's point of view, the browser makes the web real. As a
+result, all these concepts _also_ form the core structure of the browser code
+itself. It is the User Agent, the _mediator_ of web interactions and _enforcer_
+of its rules. Not only that, the browser is the _implementer_ of all of the ways
+information is explored. The browser keeps web browsing safe; its algorithms
+implement the declarative UI; it navigates links and represents you to web
+pages. And of course, for websites to load fast and react smoothly, the browser
+must be hyper-efficient as well.
 
 This web+browsers setup is neither simple nor obvious. In fact, it is the result
 of experimentation and research reaching back to nearly the beginning of
@@ -55,12 +55,12 @@ computing. Of course, the web _also_ needs rich computer displays, powerful
 UI-building libraries, fast consumer networks, and sufficient CPU power and
 information storage capacity. The result was what so often happens with
 technology: the web has many similar-looking predecessors, but only took its
-modern form in the late 1980s, once all those technologies were available.
+modern form once all those technologies were available.
 
 Such lofty goals! How does the browser deliver on them? It's a fascinating and
 fun journey. That's what this book is about. But first let's dig deeper into the
-thoughts raised here: where the web came from, how it functions, and the role
-browsers play in the web and computing.
+thoughts raised here: how the web functions, where the web came from, and the
+role browsers play in the web and computing.
 
 Explaining the black box
 ========================
