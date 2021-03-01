@@ -59,7 +59,7 @@ modern form once all those technologies were available.
 
 Such lofty goals! How does the browser deliver on them? It's a fascinating and
 fun journey. That's what this book is about. But first let's dig deeper into the
-thoughts raised here: how the web functions, where the web came from, and the
+thoughts raised here: how the web works, where the web came from, and the
 role browsers play in the web and computing.
 
 Explaining the black box
@@ -84,13 +84,13 @@ opposed to _how_ to achieve it. The _browser itself_ is responsible for figuring
 out the _how_. Web developers don't, and mostly can't, draw their website’s
 pixels on their own.
 
-There are philosophical reasons for this unusual design. Yes, developers lose
-some control and agency---when those pixels are wrong, developers cannot fix
-them directly.[^loss-of-control] But they gain the ability to deploy content on
-the web without worrying about the details, to make that content instantly
-available on almost every computing device in existence, and to keep it
-accessible in the future, mostly avoiding the inevitable obsolescence of most
-software.
+There are philosophical and practical reasons for this unusual design. Yes,
+developers lose some control and agency---when those pixels are wrong,
+developers cannot fix them directly.[^loss-of-control] But they gain the ability
+to deploy content on the web without worrying about the details, to make that
+content instantly available on almost every computing device in existence, and
+to keep it accessible in the future, mostly avoiding the inevitable obsolescence
+of most software.
 
 [^loss-of-control]: Loss of control is not necessarily specific to the web---much
 of computing these days relies on mountains of other peoples’ code.
@@ -149,7 +149,7 @@ I[^chris] have known the web almost all of my adult life. Ever since I first
 encountered the web, and its predecessors,[^bbs] in the early 90s, I was fascinated
 by browsers and the concept of networked user interfaces. When I surfed the
 web, even in its earliest form, I felt I was seeing the future of computing.
-In some ways, the web and I grew together---for example, in 1995, the year the
+In some ways, the web and I grew together---for example, in 1994, the year the
 web went commercial, was the same year I started college; while there I spent
 a fair amount of time surfing it, and by the time I graduated in 1999, the
 browser had fueled the famous dot-com speculation gold rush. The company for
@@ -169,7 +169,7 @@ The presentation was of course aimed at selling RedHat Linux, probably calling
 it the "operating system of the future" and speculating about the "year of the
 Linux desktop". But when asked about challenges RedHat faced, the salesman
 mentioned not Linux but _the web_: he said that someone "needs to make a good
-browser for Linux".[^netscape-linux] Even back then, in the very first year or
+browser for Linux."[^netscape-linux] Even back then, in the very first year or
 so of the web, the browser was already a necessary component of every computer.
 He even threw out a challenge: "how hard could it be to build a better browser?"
 Indeed, how hard could it be? What makes it so hard? That question stuck with me
@@ -192,15 +192,20 @@ As you’ll see in this book, it’s surprisingly easy to write a very simple
 browser, one that can despite its simplicity display interesting-looking web
 pages, and support many interesting behaviors. This starting point---that it’s
 easy to write and support basic web pages---encapsulates the (intentionally!)
-easy-to-implement core of the web architecture.[^prog-enhance] Sometime during
+easy-to-implement core of the web architecture.[^prog-enhance]
+
+Even in real browsers, simplicity is easy to find. For example, sometime during
 my first few months of working on Chrome, I came across the code implementing
 the [`<br>`][br-tag] tag---look at that, the good-old `<br>` tag that I’ve used
 many times to insert newlines into web pages! And the implementation turns out
 to be barely any code at all, both in Chrome and in this book's simple browser.
 
 [^prog-enhance]: You might relate this to the history of the web and the idea of
-    [progressive enhancement][prog-enhance].
-[prog-enhance]: https://en.wikipedia.org/wiki/Progressive_enhancement
+[progressive enhancement][prog-enhance-def].
+
+[prog-enhance-def]:
+https://en.wikipedia.org/wiki/Progressive_enhancement
+
 [br-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/br
 
 On the other hand, a browser with all the features, performance, security, and
@@ -210,11 +215,13 @@ browser competitive is a lot of work as well: not only is there an inherent cost
 to maintaining large codebases, there is also constant pressure to do more---to
 add more features, improve performance, and keep up with the "web
 ecosystem"---the thousands of businesses, millions of developers, and billions
-of users that use the web. Every browser has thousands of unfixed bugs, from the
-smallest of mistakes to the myriad of ways to mix up and mismatch features.
-Every browser has a complicated set of optimizations to squeeze out that last
-bit of performance. And every browser has painstaking, but necessary, work to
-continuously refactor the code to reduce its complexity through the
+of users that use the web.
+
+Every browser has thousands of unfixed bugs, from the smallest of mistakes to
+the myriad of ways to mix up and mismatch features. And every browser has a
+complicated set of optimizations to squeeze out that last bit of performance.
+And every browser requires painstaking, but necessary, work to continuously
+refactor the code to reduce its complexity through the
 careful[^browsers-abstraction-hard] introduction of modularization and
 abstraction.
 
