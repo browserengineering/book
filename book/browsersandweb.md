@@ -49,14 +49,6 @@ declarative UI; it navigates links and represents you to web pages. And of
 course, for web pages to load fast and react smoothly, the browser must be
 hyper-efficient as well.
 
-This web+browsers setup is neither simple nor obvious. In fact, it is the result
-of experimentation and research reaching back to nearly the beginning of
-computing. Of course, the web _also_ needed rich computer displays, powerful
-UI-building libraries, fast networks, and sufficient CPU power and information
-storage capacity. The result was what so often happens with technology: the web
-has many similar-looking predecessors, but only took its modern form once all
-those technologies were available.
-
 Such lofty goals! How does the browser deliver on them? It's a fascinating and
 fun journey. That's what this book is about. But first let's dig deeper into the
 thoughts raised here: how the web works, where the web came from, and the
@@ -266,47 +258,43 @@ fascinating and symbiotic way with the huge number of web pages deployed today.
 The web in history
 ==================
 
-The public Internet and the Web co-evolved, and in fact many peoples’ first
-experiences of the Internet from the 1990s onward were more or less
-experiences with the web. However, it’s important to distinguish between them,
-since the Internet and the web are in fact not synonymous.
+It might seem natural to use a web browser to browser the Web over the Internet,
+and many peoples’ experience of the Internet from the 1990s onward is like this.
+This can make the Web seem already-built, with your place being to browse it.
+But the Web is neither simple nor obvious. It is the result of experiments and
+research reaching back to nearly the beginning of computing. And the web _also_
+needed rich computer displays, powerful UI-building libraries, fast networks,
+and sufficient CPU power and information storage capacity. As so often happens
+with technology, the web has many similar predecessors, but only took its modern
+form once all the pieces came together.
 
-In the early days, the similarity between the _physical structure_ of the
-web---where the web servers were---and the _names_ of the [websites][website]
-was very strong. The Internet was a world wide network of computers, those
-computers had domain names, many of them ran web servers, and those servers
-stored and provided web pages to browsers that asked for them. In this sense, the
-Internet and the web really were closely related at that time. However, there is
-of course nothing inherent about this: nothing forces you to host your own web
-server on your home computer and Internet connection,[^self-hosted] and the same
-goes for a university or corporation. Likewise, there is nothing requiring
-everyone to have their own website rather than a social networking account.
-These days, almost everyone uses a virtual machine or service purchased from one
-kind of cloud computing service or another to run their websites, regardless of
-how small or large, and there are many products available that can easily
-publish your web content on your behalf on various social networking platforms.
+In the early days, the Internet was a world wide network of computers, largely
+at universities, labs, and major corporations, linked by physical cables and
+communicating over bespoke, application-specific protocols. The early web built
+on this foundation. Web pages were files stored on specific computers, and web
+browsers used an application-specific protocol to request them. URLs for web
+pages named the computer and the file, and early servers did little besides read
+files from a disk. The logical structure of the web mirrored its physical
+structure.
 
-[website]: https://en.wikipedia.org/wiki/Website
-
-[^self-hosted]: People actually did this! And when their website became
-popular, it often ran out of bandwidth or computing power and became
-inaccessible.
-
-This same *virtualization* concept also applies to the implementation of web
-pages themselves. While it’s still possible to write HTML by hand, few of the
-most popular web pages' HTML payloads literally exist on a hard drive somewhere.
-Instead, their component pieces and dependent databases exist, and the final
-product is dynamically assembled on the fly by complex build and
-“rendering”[^server-side-rendering] systems and sent over the Internet on-demand
-to your browser. The reason for this is that their contents themselves are
-dynamic---composed of data from news, blog posts, inbox contents,
-advertisements, and algorithms adjusting to your particular tastes.
+A lot has changed. While you can still write HTML files on disk, HTML is now
+usually dynamically assembled on the fly[^server-side-rendering] and sent
+on-demand to your browser. The pieces being assembled are themselves filled with
+dynamic content---news, inbox contents, and advertisements adjusted to your
+particular tastes. Even URLs no longer identify a specific computer---content
+distribution networks route a URL to any of thousands of computers all around
+the world. At a higher level, most people have a web page not on their home
+computer[^self-hosted] but on a social media platform or cloud computing service.
 
 [^server-side-rendering]: "Server-side rendering" is the process of assembling
 HTML on the server when loading a web page. Server-side rendering often uses web
 tech like JavaScript, and even a [headless
 browser](https://en.wikipedia.org/wiki/Headless_browser). Yet one more place
 browsers are taking over!
+
+[^self-hosted]: People actually did this! And when their website became
+popular, it often ran out of bandwidth or computing power and became
+inaccessible.
 
 There is also aforementioned _web app_, which is a computer application written
 entirely as a web page. These applications are widespread, and they are
@@ -322,50 +310,44 @@ _PWA_,[^pwa] which is a web app that progressively becomes indistinguishable fro
 [^pwa]: PWA stands for Progressive Web App. In this case, progressive refers
 to progressive enhancement.
 
-For these reasons, it’s sometimes confusing to know what we should think of as
-“the web”. Here is one definition[^key-web-properties] that gets at the essence of its implementation building blocks:
+With all that's changed, some things have stayed the same: core building blocks
+and the essence of the web:
 
-*   The web is a _network of information_, built at its base on the _HTTP 
-    network protocol_, the _HTML information format_, and the concept of a _
-    hyperlink_.
-*   Its unit of information is a _web page_, which is identified uniquely by
-    its URL (_not_ by its content, which as mentioned above may be dynamic).
-*   Web pages are _documents_ written in HTML.
-*   Web pages can refer, via URL, to auxiliary assets such as images, video,
-    CSS, and JavaScript, that are needed for their functionality.
-*   Web pages _refer to each other_ other with hyperlinks.
-*   The user views and navigates web pages through a _browser_, which is also
-    sometimes called the _User Agent_.
-*   All APIs on the web are open, standardized and free to use or re-use.
+* The web is a _network of information_
+  linked by _hyperlinks_.
+* Information is contained in documents
+  requested with the _HTTP network protocol_
+  and structured with the _HTML information format_.
+* Documents are identified by URLs, _not_ by their content, and may be dynamic.
+* Web pages can link to auxiliary assets in different formats,
+  including images, videos, CSS, and JavaScript.
+* The user uses a _User Agent_, called a _browser_, to navigate the web.
+* All these building blocks are open, standardized, and free to use or re-use.
 
-[^key-web-properties]: It’s worth noting here that this definition is not
-accidental and is part of the original design of the web. The fact that the
-web not only survived but thrived during the process of "virtualization" of
-hosting and content further demonstrates the elegance and effectiveness of
-its original design.
-
-One might try to argue that HTTP, URLs and hyperlinking are the only truly
-essential parts of the Web, or  also argue that a browser is not strictly
-necessary, since conceptually web pages exist independently of the browser for
-them, and could in principle self-render through dedicated
-applications.[^dedicated-applications] In other words, one could try to
-distinguish between the networking and rendering aspects of the web; likewise,
-one could abstract the concept of linking and networking from the particular
-choice of protocols and data formats.
+As a philosophical matter, perhaps one or another of these principles is
+secondary. One could try to distinguish between the networking and rendering
+aspects of the web. One could abstract linking and networking from the
+particular choice of protocol and data format. One could ask whether the browser
+is necessary in theory, or argue that HTTP, URLs and hyperlinking are the only
+truly essential parts of the Web.
 
 [^dedicated-applications]: For example, if you're using an installed PWA, are
 you using a browser?
 
-It is indeed true that one or more of the implementation choices could be
-replaced, and perhaps that will happen over time. For example, JavaScript might
-eventually be replaced by another language or technology, HTTP by some other
-protocol, or HTML by its successor. In practice, it is not really the case that
-networking and rendering are separated, and there are in fact important
-inter-dependencies---for example, HTML plays a critical role in both rendering
-and hyperlinks. It’s best to just consider browsers and HTML (and CSS and
-JavaScript) part of the core definition of the web. In any case, as with all
-technology, the web continues to evolve. The above definition may change over
-time, but for the purposes of this book, it’s a pretty good one.
+Perhaps.[^perhaps] In practice, the web was born when these principles came
+together, not before. They are not accidental; they are the original design of
+the web. And all of them---HTTP, HTML, browsers, URLs---evolve and grow, and
+will continue to do so. The web not only survived but thrived during the
+virtualization of hosting and content, all thanks to the elegance and
+effectiveness of this original design. And [ongoing change](change.md) will lead
+to more changes and evolution in the future. Study the web, read this book,
+and be a part of that evolution.
+
+[^perhaps]: It is indeed true that one or more of the implementation choices
+could be replaced, and perhaps that will happen over time. For example,
+JavaScript might eventually be replaced by another language or technology, HTTP
+by some other protocol, or HTML by its successor. Certainly all of these
+technologies have been through many versions, but the Web has stayed the Web.
 
 Technological precursors
 ========================
