@@ -270,9 +270,9 @@ form once all the pieces came together.
 
 In the early days, the Internet was a world wide network of computers, largely
 at universities, labs, and major corporations, linked by physical cables and
-communicating over bespoke, application-specific protocols. The early web built
-on this foundation. Web pages were files stored on specific computers, and web
-browsers used an application-specific protocol to request them. URLs for web
+communicating over application-specific protocols. The early web built on this
+foundation. Web pages were files in a specific format stored on specific
+computers, and web browsers used a custom protocol to request them. URLs for web
 pages named the computer and the file, and early servers did little besides read
 files from a disk. The logical structure of the web mirrored its physical
 structure.
