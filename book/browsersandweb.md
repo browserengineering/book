@@ -21,8 +21,8 @@ you're familiar with the core technologies.
 [learn-web]: https://developer.mozilla.org/en-US/docs/Learn
 [learn-basics]: https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web
 
-Nowadays, desktop applications are often built and delivered as _web apps_:
-websites loaded by a browser and used in similar ways to installed applications.
+Nowadays, desktop applications are often built and delivered as _web apps_: web
+pages loaded by a browser and used in similar ways to installed applications.
 And on mobile devices even native apps often use _web views_ that embed a
 browser to render parts of the application UI[^hybrid]. Perhaps in the future
 mobile devices will, like desktop computers, mostly be a container for web apps.
@@ -46,7 +46,7 @@ itself. It is the User Agent, the _mediator_ of web interactions and _enforcer_
 of its rules. Not only that, the browser is the _implementer_ of all of the ways
 information is explored. The browser keeps web browsing safe; its algorithms
 implement the declarative UI; it navigates links and represents you to web
-pages. And of course, for websites to load fast and react smoothly, the browser
+pages. And of course, for web pages to load fast and react smoothly, the browser
 must be hyper-efficient as well.
 
 This web+browsers setup is neither simple nor obvious. In fact, it is the result
@@ -66,22 +66,23 @@ Explaining the black box
 ========================
 
 HTML, CSS, HTTP, hyperlinks, and JavaScript---the core of the web---are
-approachable enough, and if you've made a website before you've seen that
+approachable enough, and if you've made a web page before you've seen that
 programming ability is not required. But not many people---not even professional
 software developers[^software-developers]---know much about how a browser renders web
 pages!
 
 [^software-developers]: I usually prefer “engineer”---hence the title of this
 book---but “developer” or “web developer” is much more common on the web. One
-important reason is that anyone can build a website---not just trained software
+important reason is that anyone can build a web page---not just trained software
 engineers and computer scientists. “Web developer” also is more inclusive of
 additional, critical roles like designers, authors, editors, and photographers.
+A web developer is anyone who makes web pages, regardless of how.
 
 As a black box, the browser is either magical or frustrating (depending on
 whether it is working correctly or not!). And HTML & CSS are meant to be black
 boxes---declarative APIs---where one specifies _what_ outcome to achieve, as
 opposed to _how_ to achieve it. The _browser itself_ is responsible for figuring
-out the _how_. Web developers don't, and mostly can't, draw their website’s
+out the _how_. Web developers don't, and mostly can't, draw their web page's
 pixels on their own.
 
 There are philosophical and practical reasons for this unusual design. Yes,
@@ -116,7 +117,7 @@ the page has to be displayed to the user.[^style-calculation]
 [lazy]: https://en.wikipedia.org/wiki/Lazy_evaluation
 
 [^forms]: For example, in HTML there are many built-in [form control
-elements][forms] that take care of the various ways the user of a website can
+elements][forms] that take care of the various ways the user of a web page can
 provide input. The developer need only specify parameters such as button names,
 sizing, and look-and-feel, or JavaScript extension points to handle form
 submission to the server. The rest of the implementation is taken care of by the
@@ -258,7 +259,7 @@ more complex and powerful than any computer game; a full networking stack; many
 clever data structures and parallel programming techniques; a virtual machine,
 interpreted language and JIT; world-class security sandboxes; and uniquely
 dynamic systems for storing data. On top of this, the browser interacts in a
-fascinating and symbiotic way with the huge number of websites deployed today.
+fascinating and symbiotic way with the huge number of web pages deployed today.
 
 The web in history
 ==================
@@ -269,18 +270,19 @@ experiences with the web. However, it’s important to distinguish between them,
 since the Internet and the web are in fact not synonymous.
 
 In the early days, the similarity between the _physical structure_ of the
-web---where the web servers were---and the _names_ of the websites was very
-strong. The Internet was a world wide network of computers, those computers had
-domain names, and many of them ran web servers. In this sense, the Internet and
-the web really were closely related at that time. However, there is of course
-nothing inherent about this: nothing forces you to host your own web server on
-your home computer and Internet connection[^self-hosted], and the same goes for
-a university or corporation. Likewise, there is nothing requiring everyone to
-have their own website rather than a social networking account. These days,
-almost everyone uses a virtual machine or service purchased from one kind of
-cloud computing service or another to run their websites, regardless of how
-small or large, and there are many products available that can easily publish
-your web content on your behalf on various social networking platforms.
+web---where the web servers were---and the _names_ of the [websites][website] was very strong. The Internet was a world wide network of computers, those computers
+had domain names, and many of them ran web servers. In this sense, the Internet
+and the web really were closely related at that time. However, there is of
+course nothing inherent about this: nothing forces you to host your own web
+server on your home computer and Internet connection[^self-hosted], and the same
+goes for a university or corporation. Likewise, there is nothing requiring
+everyone to have their own website rather than a social networking account.
+These days, almost everyone uses a virtual machine or service purchased from one
+kind of cloud computing service or another to run their websites, regardless of
+how small or large, and there are many products available that can easily
+publish your web content on your behalf on various social networking platforms.
+
+[website]: https://en.wikipedia.org/wiki/Website
 
 [^self-hosted]: People actually did this! And when their website became
 popular, it often ran out of bandwidth or computing power and became
@@ -288,7 +290,7 @@ inaccessible.
 
 This same *virtualization* concept also applies to the implementation of web
 pages themselves. While it’s still possible to write HTML by hand, few of the
-most popular websites’ HTML payloads literally exist on a hard drive somewhere.
+most popular web pages' HTML payloads literally exist on a hard drive somewhere.
 Instead, their component pieces and dependent databases exist, and the final
 product is dynamically assembled on the fly by complex build and
 “rendering”[^server-side-rendering] systems and sent over the Internet on-demand
@@ -340,15 +342,15 @@ its original design.
 
 One might try to argue that HTTP, URLs and hyperlinking are the only truly
 essential parts of the Web, or  also argue that a browser is not strictly
-necessary, since conceptually websites exist independently of the browser for
+necessary, since conceptually web pages exist independently of the browser for
 them, and could in principle self-render through dedicated
 applications.[^dedicated-applications] In other words, one could try to
-distinguish between the networking and rendering aspects of the web;
-likewise, one could abstract the concept of linking and networking from the
-particular choice of protocols and data formats. In theory it is indeed true
-that one or more of the implementation choices could be replaced, and perhaps
-that will happen over time. For example, JavaScript might eventually be replaced
-by another language or technology, HTTP by some other protocol, or HTML by its
+distinguish between the networking and rendering aspects of the web; likewise,
+one could abstract the concept of linking and networking from the particular
+choice of protocols and data formats. In theory it is indeed true that one or
+more of the implementation choices could be replaced, and perhaps that will
+happen over time. For example, JavaScript might eventually be replaced by
+another language or technology, HTTP by some other protocol, or HTML by its
 successor.
 
 [^dedicated-applications]: For example, if you're using an installed PWA, are
@@ -451,7 +453,7 @@ meant for searching within a site (vestiges of which exist today in the
 editor (the “contenteditable” HTML attribute and “html()” method on DOM elements
 has similar semantic behavior, but built-in file saving is gone). Today, the
 index is replaced with a search engine, and web page editors as a concept are
-somewhat obsolete due to the highly dynamic nature of today’s website
+somewhat obsolete due to the highly dynamic nature of today’s web page
 rendering.
 
 [^original-aesthetics]: Also, as you can see clearly, that web page has not been
@@ -649,7 +651,7 @@ community and ecosystem-driven as they are self-driven. In other words, since
 the character of the web itself is highly decentralized, what use cases end up
 getting met by browsers is to a significant extent _not determined_ by the
 companies “owning” or “controlling” a particular browser. For example, there are
-many other people, such as website developers, who contribute many good ideas
+many other people, such as web developers, who contribute many good ideas
 and proposals that end up implemented in browsers.
 
 Due to the very high cost of building and maintaining an implementation of the
