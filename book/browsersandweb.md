@@ -24,9 +24,8 @@ you're familiar with the core technologies.
 Nowadays, desktop applications are often built and delivered as _web apps_: web
 pages loaded by a browser and used in similar ways to installed applications.
 And on mobile devices even native apps often use _web views_ that embed a
-browser to render parts of the application UI[^hybrid]. Perhaps in the future
-mobile devices will, like desktop computers, mostly be a container for web apps.
-Browsers are simply a critical and indispensable part of computing.
+browser to render parts of the application UI.[^hybrid] Perhaps in the future
+mobile devices will, like desktop computers, mostly be a container for web apps. Clearly, browsers are a critical and indispensable part of computing.
 
 [^hybrid]: The fraction of these "hybrid" apps that are web content is
     also likely increasing over time.
@@ -42,20 +41,21 @@ User Agent.[^useragent]
 
 Looked at from the browser's point of view, the browser makes the web real. As a
 result, all these concepts _also_ form the core structure of the browser code
-itself. It is the User Agent, the _mediator_ of web interactions and _enforcer_
-of its rules. Not only that, the browser is the _implementer_ of all of the ways
-information is explored. The browser keeps web browsing safe; its algorithms
-implement the declarative UI; it navigates links and represents you to web
-pages. And of course, for web pages to load fast and react smoothly, the browser
-must be hyper-efficient as well.
+itself. It is the User Agent, but also the _mediator_ of web interactions and
+_enforcer_ of the rules---this is its way of ensuring safety and fairness. Not
+only that, the browser is the _implementer_ of all of the ways information is
+explored. The browser keeps web browsing safe; its algorithms implement the
+declarative UI; it navigates links and represents you to web pages. And of
+course, for web pages to load fast and react smoothly, the browser must be
+hyper-efficient as well.
 
 This web+browsers setup is neither simple nor obvious. In fact, it is the result
 of experimentation and research reaching back to nearly the beginning of
-computing. Of course, the web _also_ needs rich computer displays, powerful
-UI-building libraries, fast consumer networks, and sufficient CPU power and
-information storage capacity. The result was what so often happens with
-technology: the web has many similar-looking predecessors, but only took its
-modern form once all those technologies were available.
+computing. Of course, the web _also_ needed rich computer displays, powerful
+UI-building libraries, fast networks, and sufficient CPU power and information
+storage capacity. The result was what so often happens with technology: the web
+has many similar-looking predecessors, but only took its modern form once all
+those technologies were available.
 
 Such lofty goals! How does the browser deliver on them? It's a fascinating and
 fun journey. That's what this book is about. But first let's dig deeper into the
@@ -96,7 +96,7 @@ of most software.
 [^loss-of-control]: Loss of control is not necessarily specific to the web---much
 of computing these days relies on mountains of other peoples’ code.
 
-Behind the philosophy lies a web browser's implementations of [inversion of
+Behind its philosophy lies a web browser's implementations of [inversion of
 control][inversion], [constraint programming][constraints], and [declarative
 programming][declarative]. The web _inverts control_, with an intermediary---the
 browser---handling most of the rendering, and the web developer specifying
@@ -146,17 +146,19 @@ pleasure of it---even leaving aside their importance!
 The browser and me
 ==================
 
-I[^chris] have known the web almost all of my adult life. Ever since I first
-encountered the web, and its predecessors,[^bbs] in the early 90s, I was fascinated
-by browsers and the concept of networked user interfaces. When I surfed the
-web, even in its earliest form, I felt I was seeing the future of computing.
-In some ways, the web and I grew together---for example, in 1994, the year the
-web went commercial, was the same year I started college; while there I spent
-a fair amount of time surfing it, and by the time I graduated in 1999, the
+I[^chris] have known the web for all of my adult life. Ever since I first
+encountered the web, and its predecessors,[^bbs] in the early 90s, I was
+fascinated by browsers and the concept of networked user interfaces. When I
+[surfed][websurfing] the web, even in its earliest form, I felt I was seeing the future of
+computing. In some ways, the web and I grew together---for example, in 1994, the
+year the web went commercial, was the same year I started college; while there I
+spent a fair amount of time surfing it, and by the time I graduated in 1999, the
 browser had fueled the famous dot-com speculation gold rush. The company for
 which I now work, Google, is a child of the web and was founded during that
 time. The web for me is something of a technological companion, and I’ve never
 been far from it in my studies or work.
+
+[websurfing]: https://www.pcmag.com/encyclopedia/term/web-surfing
 
 [^chris]: This is Chris speaking!
 
@@ -222,7 +224,7 @@ Every browser has thousands of unfixed bugs, from the smallest of mistakes to
 the myriad of ways to mix up and mismatch features. And every browser has a
 complicated set of optimizations to squeeze out that last bit of performance.
 And every browser requires painstaking, but necessary, work to continuously
-refactor the code to reduce its complexity through the
+refactor the code to reduce its complexity, often through the
 careful[^browsers-abstraction-hard] introduction of modularization and
 abstraction.
 
@@ -270,11 +272,13 @@ experiences with the web. However, it’s important to distinguish between them,
 since the Internet and the web are in fact not synonymous.
 
 In the early days, the similarity between the _physical structure_ of the
-web---where the web servers were---and the _names_ of the [websites][website] was very strong. The Internet was a world wide network of computers, those computers
-had domain names, and many of them ran web servers. In this sense, the Internet
-and the web really were closely related at that time. However, there is of
-course nothing inherent about this: nothing forces you to host your own web
-server on your home computer and Internet connection[^self-hosted], and the same
+web---where the web servers were---and the _names_ of the [websites][website]
+was very strong. The Internet was a world wide network of computers, those
+computers had domain names, many of them ran web servers, and those servers
+stored and provided web pages to browsers that asked for them. In this sense, the
+Internet and the web really were closely related at that time. However, there is
+of course nothing inherent about this: nothing forces you to host your own web
+server on your home computer and Internet connection,[^self-hosted] and the same
 goes for a university or corporation. Likewise, there is nothing requiring
 everyone to have their own website rather than a social networking account.
 These days, almost everyone uses a virtual machine or service purchased from one
@@ -300,8 +304,8 @@ advertisements, and algorithms adjusting to your particular tastes.
 
 [^server-side-rendering]: "Server-side rendering" is the process of assembling
 HTML on the server when loading a web page. Server-side rendering often uses web
-tech like JavaScript, and even a browser
-[browser](https://en.wikipedia.org/wiki/Headless_browser). Yet one more place
+tech like JavaScript, and even a [headless
+browser](https://en.wikipedia.org/wiki/Headless_browser). Yet one more place
 browsers are taking over!
 
 There is also aforementioned _web app_, which is a computer application written
@@ -319,13 +323,13 @@ _PWA_,[^pwa] which is a web app that progressively becomes indistinguishable fro
 to progressive enhancement.
 
 For these reasons, it’s sometimes confusing to know what we should think of as
-“the web”. Here is one definition[^key-web-properties] that gets at its essence:
+“the web”. Here is one definition[^key-web-properties] that gets at the essence of its implementation building blocks:
 
 *   The web is a _network of information_, built at its base on the _HTTP 
     network protocol_, the _HTML information format_, and the concept of a _
     hyperlink_.
 *   Its unit of information is a _web page_, which is identified uniquely by
-    its unique URL (_not_ by its content, which as mentioned above may be dynamic).
+    its URL (_not_ by its content, which as mentioned above may be dynamic).
 *   Web pages are _documents_ written in HTML.
 *   Web pages can refer, via URL, to auxiliary assets such as images, video,
     CSS, and JavaScript, that are needed for their functionality.
@@ -347,22 +351,21 @@ them, and could in principle self-render through dedicated
 applications.[^dedicated-applications] In other words, one could try to
 distinguish between the networking and rendering aspects of the web; likewise,
 one could abstract the concept of linking and networking from the particular
-choice of protocols and data formats. In theory it is indeed true that one or
-more of the implementation choices could be replaced, and perhaps that will
-happen over time. For example, JavaScript might eventually be replaced by
-another language or technology, HTTP by some other protocol, or HTML by its
-successor.
+choice of protocols and data formats.
 
 [^dedicated-applications]: For example, if you're using an installed PWA, are
 you using a browser?
 
-In practice, it is not really the case that networking and rendering are
-separated, and there are in fact important inter-dependencies---for example,
-HTML plays a critical role in both rendering and hyperlinks. It’s best to just
-consider browsers and HTML (and CSS and JavaScript) part of the core definition
-of the web. In any case, as with all technology, the web continues to evolve.
-The above definition may change over time, but for the purposes of this book,
-it’s a pretty good one.
+It is indeed true that one or more of the implementation choices could be
+replaced, and perhaps that will happen over time. For example, JavaScript might
+eventually be replaced by another language or technology, HTTP by some other
+protocol, or HTML by its successor. In practice, it is not really the case that
+networking and rendering are separated, and there are in fact important
+inter-dependencies---for example, HTML plays a critical role in both rendering
+and hyperlinks. It’s best to just consider browsers and HTML (and CSS and
+JavaScript) part of the core definition of the web. In any case, as with all
+technology, the web continues to evolve. The above definition may change over
+time, but for the purposes of this book, it’s a pretty good one.
 
 Technological precursors
 ========================
@@ -374,10 +377,10 @@ long ago exceeded the capacity of a single mind, organization, library, country,
 culture, group or language. However, while we as humans cannot possibly know
 even a tiny fraction of what is possible to know, we can use technology to learn
 more efficiently than before, and most importantly, to quickly access
-information we need to learn or remember.[^google-mission] Computers, and the
+information we need to learn or remember. Computers, and the
 Internet, allow us to _process and store_ as much information as we want. The
 _web_, on the other hand, plays the role of _organizing and finding_ that
-information and knowledge to make it useful.
+information and knowledge to make it useful.[^google-mission]
 
 [^google-mission]: The search engine Google’s [mission](https://about.google/)
 statement to “organize the world’s information and make it universally
@@ -400,9 +403,9 @@ interesting in its own right---subject.
 
 The concept of networked links of information began to appear in about
 [1964-65](https://en.wikipedia.org/wiki/Hyperlink), when the term “link”
-appeared (though connected to text rather than pages). Researchers then
-began to  advocate for building a network of computers to realize the
-concept.[^literary-criticism] Independently, the first hyperlink system appeared (though
+appeared (though connected to text rather than pages).[^literary-criticism]
+Researchers then began to advocate for building a network of computers to
+realize the concept. Independently, the first hyperlink system appeared (though
 apparently not using that word[^hyperlink-first]) for navigating within a single
 document; it was later generalized to linking between multiple documents. This
 work also formed one of the key parts of the [mother of all
@@ -431,7 +434,7 @@ website domain names.
 
 [^realize-web-decades]: The web itself is, therefore, an example of the
 realization of previous ambitions and dreams, just as today we strive to realize
-the vision laid out by the web.
+the vision laid out by the web. (No, it's not done yet!)
 
 In 1989-1990, the first browser (named “WorldWideWeb”) and web server (named
 “httpd”, for “HTTP Daemon” according to UNIX naming conventions) were born,
@@ -443,7 +446,7 @@ available even in modern browsers.[^more-less-powerful] On December 20, 1990 the
 The browser we will implement in this book is easily able to render this web
 page, even today.[^original-aesthetics] In 1991, Berners-Lee advertised his
 browser and the concept on the [alt.hypertext Usenet
-group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt). [^gopher]
+group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 
 [^no-css]: No CSS!
 
@@ -451,18 +454,13 @@ group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt). [^gopher]
 meant for searching within a site (vestiges of which exist today in the
 “index.html” convention when a URL path ends in /”), and had a WYSIWYG web page
 editor (the “contenteditable” HTML attribute and “html()” method on DOM elements
-has similar semantic behavior, but built-in file saving is gone). Today, the
+have similar semantic behavior, but built-in file saving is gone). Today, the
 index is replaced with a search engine, and web page editors as a concept are
 somewhat obsolete due to the highly dynamic nature of today’s web page
 rendering.
 
 [^original-aesthetics]: Also, as you can see clearly, that web page has not been
 updated in the meantime, and retains its original aesthetics!
-
-
-[^gopher]: Another system that allowed linking across sites on the internet was
-[Gopher](https://en.wikipedia.org/wiki/Gopher_(protocol)), which appeared around
-1991, but was quickly supplanted by the web.
 
 Berners-Lee has also written a [Brief History of the
 Web](https://www.w3.org/DesignIssues/TimBook-old/History.html) that  highlights
@@ -504,13 +502,13 @@ Browsers have a unique character in that they are _not proprietary_---no company
 controls the APIs of the web and there are multiple independent implementations.
 In addition, it turned out that over time almost all of the code became
 open-source and developed by a very wide array of people and entities. As a
-corollary, the software platform for websites is also not proprietary, and the
+corollary, the software platform for web pages is also not proprietary, and the
 information and capabilities contained within them are easy to make accessible 
-to everyone[^unless-restricted].
+to everyone.[^unless-restricted]
 
-[^unless-restricted]: Unless, of course, the website chooses to restrict
+[^unless-restricted]: Unless, of course, the web page owner chooses to restrict
 availability for one reason or another. The point is that the _web platform_
-does not restrict availability, and therefore the website has the freedom to
+does not restrict availability, and therefore the owner has the freedom to
 choose.
 
 I'll now give a brief overview of the evolution of browser implementations. The
@@ -551,14 +549,14 @@ Netscape's early versions were also not free software---you had to buy them from
 a store.
 
 In parallel with these developments was another, equally important, one---the
-standardization of Web APIs. In October 1994, the [World Wide Web
+standardization of web APIs. In October 1994, the [World Wide Web
 Consortium](https://www.w3.org/Consortium/facts) (W3C) was founded in order to
-provide oversight and standards for web features. For a time after this point,
-browsers would often introduce new HTML elements or APIs, and competing browsers
-would copy them. Those elements and APIs were subsequently agreed upon and
-documented in W3C specifications. (These days, an initial discussion,  design
-and specification precedes any new feature.) Later on, the HTML specification
-ended up moving to a different standards body called the
+provide oversight and standards for web features. After this point, browsers
+would often introduce new HTML elements or APIs, and competing browsers would
+copy them. Those elements and APIs were subsequently agreed upon and documented
+in W3C specifications. (These days, an initial discussion,  design and
+specification precedes any new feature.) Later on, the HTML specification ended
+up moving to a different standards body called the
 [WHATWG](https://whatwg.org/), but [CSS](https://drafts.csswg.org/) and other
 features are still standardized at the W3C. JavaScript is standardized at
 [TC39](https://tc39.es/) (“Technical Committee 39” at
@@ -571,31 +569,31 @@ standard and that one browser might not end up “winning” and becoming anothe
 proprietary software platform. There are multiple reasons this didn’t happen,
 among them the egalitarian ethos of the computing community and the presence and
 strength of the W3C.  Equally important was the networked nature of the web, and
-therefore the desire of websites to make sure their site worked correctly in
-most or all of the browsers (otherwise they would lose customers), leading them
-to avoid any proprietary extensions.
+therefore the desire of web developers to make sure their pages worked correctly
+in most or all of the browsers (otherwise they would lose customers), leading
+them to avoid any proprietary extensions.
 
 Despite fears that this might happen, there never really was a point where any
 browser openly attempted to break away from the standard. Instead, intense
 competition for market share was channeled into very fast innovation and an
 ever-expanding set of APIs and capabilities for the web, which we nowadays refer
-to as _the Web Platform,_ not just the “World Wide Web”. This recognizes the
+to as _the web platform,_ not just the “World Wide Web”. This recognizes the
 fact that the web is no longer a document viewing mechanism, but has evolved
 into a fully realized computing platform and ecosystem.[^web-os]
 
-Given these outcomes, in retrospect it is clear that it’s not so relevant to
+Given these outcomes, in retrospect it is clearly not so relevant to
 know which browser “won” or “lost” each of the browser “wars”. In both cases
 _the web won_ and was preserved and enhanced for the benefit of the world. In
 economics terms, enforcing a standard set of APIs across browsers made the web
 platform a _commodity_; instead of competing based on lock-in, browsers compete
 on _performance_ and _quality_, and also _browser features_ that are not part of
-the web platform---for example, tabbed UIs and search engine integration.
-[^monetization]
+the web platform---for example, tabbed UIs and search engine integration.[^monetization]
 
 [^monetization]: Browser development is also primarily funded by revenue from
 search engine advertisements; a secondary typical funding motivation is to
 improve the competitive position of an operating system or device owned or
-controlled by the company building the browser.[^compare-redhat]
+controlled by the company building the browser. (Compare this with the RedHat
+anecdote I related earlier!)
 
 [^web-os]: There have even been operating systems built around the web! Examples
 include [webOS](https://en.wikipedia.org/wiki/WebOS), which powered some Palm
@@ -606,12 +604,11 @@ operating system. All of these OSes are based on using the Web as the UI layer
 for all applications, with some JavaScript-exposed APIs on top for system
 integration.
 
-[^compare-redhat]: Compare this with the RedHat anecdote I related earlier!
 
 An important and interesting outcome of the _second_ browser war was that all
 mainstream browsers today (of which there are *many* more than
 three[^examples-of-browsers-today]) are based on _three open-source web
-rendering / JavaScript engines_: Chromium, Gecko and WebKit[^javascript-repo].
+rendering / JavaScript engines_: Chromium, Gecko and WebKit.[^javascript-repo]
 Since Chromium and WebKit have a common ancestral codebase, while Gecko is an
 open-source descendant of Netscape, all three date back to the 1990s---almost to
 the beginning of the web. That this occurred is not an accident, and in fact
@@ -639,19 +636,19 @@ How browsers evolve
 
 At the highest level, a browser has two major pieces of code: an implementation
 of the web platform APIs (sometimes called a _web rendering engine_), and a
-browsing UI and accompanying features, such as search engine integration,
+browsing UI and accompanying features, such as a search engine integration,
 bookmarks, navigation, tabs, translation, autofill, password managers, data sync
 and so on.
 
 Web rendering engines have a lot in common with any other very large software
 project---they have a _very high total cost of development_, and a _significant
 & increasing over time_ cost of maintenance (due to the ever-expanding feature
-set). However, they also have a unique character in that they are just as much
-community and ecosystem-driven as they are self-driven. In other words, since
-the character of the web itself is highly decentralized, what use cases end up
-getting met by browsers is to a significant extent _not determined_ by the
-companies “owning” or “controlling” a particular browser. For example, there are
-many other people, such as web developers, who contribute many good ideas
+set). However, they also have a unique character in that they are heavily
+influenced in thier priorities by the community and ecosystem. In other words,
+since the character of the web itself is highly decentralized, what use cases
+end up getting met by browsers is to a significant extent _not determined_ by
+the companies “owning” or “controlling” a particular browser. For example, there
+are many other people, such as web developers, who contribute many good ideas
 and proposals that end up implemented in browsers.
 
 Due to the very high cost of building and maintaining an implementation of the
@@ -659,7 +656,7 @@ web platform, and because they are commodities, web rendering engines are today
 all open-source. This allows sharing the burden (opportunity?) of maintenance
 and feature development across a larger community. They evolve like giant R&D
 projects, where new ideas are constantly being proposed and tested out in
-discussions and implementations. Like any R&D project, these enginges have an
+discussions and implementations. Like any R&D project, these engines have an
 iterative and incremental planning and shipping process. And just as you would
 expect, some features fail and some succeed. The ones that succeed end up in
 specifications and implemented by all browsers.
@@ -690,8 +687,9 @@ The browser is an essential part of computing, and this chapter gave evidence of
 that fact, along with a flavor of the depth and history of the web and browsers.
 However, I believe that only by really understanding how a browser works will
 you fully appreciate and understand its beauty, complexity and power. I hope you
-come away from this book with a deeper sense of this beauty---how it works, its
-relationship to the culture and history of computing and information, and what
-it’s like to be someone building a browser. But most of all, I hope you can
-connect all of that to you, your career in software and computers, and the
-future. After all, it’s up to you to invent and discover what comes next!
+come away from this book with a deeper sense of its beauty in particular---how
+it works, its relationship to the culture and history of computing and
+information, and what it’s like to be someone building a browser. But most of
+all, I hope you can connect all of that to you, your career in software and
+computers, and the future in general. After all, it’s up to you to invent and
+discover what comes next!
