@@ -11,6 +11,8 @@ jobs:
         with:
           python-version: 3.8
       - uses: r-lib/actions/setup-pandoc@v1
+        with:
+          pandoc-version: 2.11.4
       - run: make book
   compare:
     runs-on: ubuntu-latest
