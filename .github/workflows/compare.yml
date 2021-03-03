@@ -11,6 +11,15 @@ jobs:
         with:
           python-version: 3.8
       - uses: r-lib/actions/setup-pandoc@v1
+      - run: make book
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - uses: r-lib/actions/setup-pandoc@v1
       - run: python3 compare.py book/http.md src/lab1.py
       - run: python3 compare.py book/graphics.md src/lab2.py
       - run: python3 compare.py book/text.md src/lab3.py
