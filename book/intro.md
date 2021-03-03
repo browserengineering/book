@@ -21,7 +21,7 @@ companion, and I’ve never been far from it in my studies or work.
 
 [^theweb]: Broadly defined, the web is the interlinked network (“web”)
 of [web pages](https://en.wikipedia.org/wiki/Web_page) on the
-Internet. If you've never made a web page, I recommend MDN's [Learn
+internet. If you've never made a web page, I recommend MDN's [Learn
 Web Development][learn-web] series, especially the [Getting
 Started][learn-basics] guide. This book will be easier to read if
 you're familiar with the core technologies.
@@ -34,7 +34,7 @@ you're familiar with the core technologies.
 [^bbs]: For me, [BBS](https://en.wikipedia.org/wiki/Bulletin_board_system)
 systems over a dial-up modem connection. A BBS is not all that different from a
 browser if you think of it as a window into dynamic content created somewhere
-else on the Internet.
+else on the internet.
 
 The browser and me
 ==================
@@ -70,17 +70,17 @@ from, and the role browsers play.
 The web in history
 ==================
 
-It might seem natural to use a web browser to browse the Web over the Internet,
-and many people experienced the Internet of the 1990s onward like this. That can
-make the Web seem already-built, simple and obvious, with nothing left but to
-browse it. But the Web is neither simple nor obvious. It is the result of
+It might seem natural to use a web browser to browse the web over the internet,
+and many people experienced the internet of the 1990s onward like this. That can
+make the web seem already-built, simple and obvious, with nothing left but to
+browse it. But the web is neither simple nor obvious. It is the result of
 experiments and research reaching back to nearly the beginning of computing. And
 the web _also_ needed rich computer displays, powerful UI-building libraries,
 fast networks, and sufficient CPU power and information storage capacity. As so
 often happens with technology, the web has many similar predecessors, but only
 took its modern form once all the pieces came together.
 
-In the early days, the Internet was a world wide network of computers, largely
+In the early days, the internet was a world wide network of computers, largely
 at universities, labs, and major corporations, linked by physical cables and
 communicating over application-specific protocols. The early web built on this
 foundation. Web pages were files in a specific format stored on specific
@@ -128,7 +128,7 @@ secondary. One could try to distinguish between the networking and rendering
 aspects of the web. One could abstract linking and networking from the
 particular choice of protocol and data format. One could ask whether the browser
 is necessary in theory, or argue that HTTP, URLs and hyperlinking are the only
-truly essential parts of the Web.
+truly essential parts of the web.
 
 Perhaps.[^perhaps] In practice, the web was born when these principles came
 together, not before. They are not accidental; they are the original design of
@@ -142,7 +142,7 @@ to more changes and evolution in the future.
 could be replaced, and perhaps that will happen over time. For example,
 JavaScript might eventually be replaced by another language or technology, HTTP
 by some other protocol, or HTML by its successor. Certainly all of these
-technologies have been through many versions, but the Web has stayed the Web.
+technologies have been through many versions, but the web has stayed the web.
 
 How browsers evolve
 ===================
