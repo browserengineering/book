@@ -2,7 +2,7 @@
 title: History of the Web
 type: Background
 next: http
-prev: preliminaries
+prev: intro
 ...
 
 The web is at its core organized around _representing and displaying

@@ -2,7 +2,7 @@
 cur: preface
 title: Preface
 type: Preface
-next: preliminaries
+next: intro
 ...
 
 A computer science degree traditionally includes courses in operating

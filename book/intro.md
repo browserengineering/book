@@ -1,8 +1,9 @@
 ---
+cur: preface
 title: Browsers and the Web
 type: Introduction
-next: http
-prev: preliminaries
+next: history
+prev: preface
 ...
 
 I[^chris] have known the web[^theweb] for all of my adult life. Ever since I
