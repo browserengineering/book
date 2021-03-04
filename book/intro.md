@@ -6,6 +6,10 @@ next: history
 prev: preface
 ...
 
+
+The browser and me
+==================
+
 I[^chris] have known the web[^theweb] for all of my adult life. Ever since I
 first encountered the web, and its predecessors,[^bbs] in the early 90s, I was
 fascinated by browsers and the concept of networked user interfaces. When I
@@ -37,9 +41,6 @@ systems over a dial-up modem connection. A BBS is not all that different from a
 browser if you think of it as a window into dynamic content created somewhere
 else on the internet.
 
-The browser and me
-==================
-
 In my freshman year at college, I attended a presentation by a RedHat salesman.
 The presentation was of course aimed at selling RedHat Linux, probably calling
 it the "operating system of the future" and speculating about the "year of the
@@ -60,13 +61,13 @@ long time to appear....
 
 How hard indeed! After seven years in the trenches working on Chrome, I now know
 the answer to his question: building a browser is both easy and incredibly hard,
-both intentional and accidental, both planned and organic, both simple and
-unimaginably complex. And everywhere you look, you see the evolution and history of
-the web wrapped up in one codebase.
+both intentional and accidental. And everywhere you look, you see the evolution
+and history of the web wrapped up in one codebase. But most of all, it's
+fun and endlessly interesting.
 
-That's what this book is about. It's a fascinating and fun journey.
-But first let's dig deeper into how the web works, where the web came
-from, and the role browsers play.
+I've also learned to appreciate the elegance and importance of these systems we
+have built, and their place in history and the economy. Let's go into those
+now.
 
 The web in history
 ==================
@@ -145,8 +146,8 @@ JavaScript might eventually be replaced by another language or technology, HTTP
 by some other protocol, or HTML by its successor. Certainly all of these
 technologies have been through many versions, but the web has stayed the web.
 
-How browsers evolve
-===================
+Real browser codebases
+======================
 
 Some time during my first few months of working on Chrome, I came across the
 code implementing the [`<br>`][br-tag] tag---look at that, the good-old `<br>`
@@ -202,8 +203,8 @@ iterative and incremental planning and shipping process. And just as you would
 expect, some features fail and some succeed. The ones that succeed end up in
 specifications and are implemented by other browsers.
 
-Explaining the black box
-========================
+The software patterns
+=====================
 
 HTML, CSS, HTTP, hyperlinks, and JavaScript---the core of the web---are
 approachable enough, and if you've made a web page before you've seen that
@@ -287,7 +288,6 @@ engine more complex and powerful than any computer game; a full networking
 stack; clever data structures and parallel programming techniques; a virtual
 machine, an interpreted language, and a JIT; a world-class security sandbox; and
 a uniquely dynamic system for storing data.
-
 
 The role of the browser
 =======================
