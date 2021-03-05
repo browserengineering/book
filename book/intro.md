@@ -6,23 +6,27 @@ next: history
 prev: preface
 ...
 
+Why study web browsers? Why read this book? The way I think about it, browsers
+are fundamental to the web, to modern computing, and even the economy
+broadly---so it's worth knowing how they work. And in fact, inside a web browser
+cool algorithms, tricky data structures, and fundamental concepts come alive.
+This book walk you through building a browser, from scratch. I hope it'll help
+you fall in love with web browsers, just like I did.
 
 The browser and me
 ==================
 
-I[^chris] have known the web[^theweb] for all of my adult life. Ever since I
-first encountered the web, and its predecessors,[^bbs] in the early 90s, I was
-fascinated by browsers and the concept of networked user interfaces. When I
-[surfed][websurfing] the web, even in its earliest form, I felt I was seeing the
-future of computing. In some ways, the web and I grew together---for example, in
-1994, the year the web went commercial, was the same year I started college;
-while there I spent a fair amount of time surfing it, and by the time I
-graduated in 1999, the browser had fueled the famous dot-com speculation gold
-rush. The company for which I now work, Google, is a child of the web and was
-founded during that time. The web for me is something of a technological
-companion, and I’ve never been far from it in my studies or work.
-
-[^chris]: This is Chris speaking!
+I---this is Chris speaking---have known the web[^theweb] for all of my adult
+life. Since I first encountered the web and its predecessors,[^bbs] in the
+early 90s, I've been fascinated by browsers and the concept of networked user
+interfaces. When I [surfed][websurfing] the web, even in its earliest form, I
+felt I was seeing the future of computing. In some ways, the web and I grew
+together---for example, in 1994, the year the web went commercial, was the same
+year I started college; while there I spent a fair amount of time surfing it,
+and by the time I graduated in 1999, the browser had fueled the famous dot-com
+speculation gold rush. The company for which I now work, Google, is a child of
+the web and was founded during that time. The web for me is something of a
+technological companion, and I’ve never been far from it in my studies or work.
 
 [^theweb]: Broadly defined, the web is the interlinked network (“web”)
 of [web pages](https://en.wikipedia.org/wiki/Web_page) on the
@@ -65,9 +69,8 @@ both intentional and accidental. And everywhere you look, you see the evolution
 and history of the web wrapped up in one codebase. But most of all, it's
 fun and endlessly interesting.
 
-I've also learned to appreciate the elegance and importance of these systems we
-have built, and their place in history and the economy. Let's go into those
-now.
+So that's how I fell in love with web browsers---and I hope that after reading
+this book, you will too. XXX
 
 The web in history
 ==================
