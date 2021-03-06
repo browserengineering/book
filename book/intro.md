@@ -138,7 +138,7 @@ Perhaps.[^perhaps] The web is, after all, an experiment; the core technologies
 evolve and grow. But the web is not an accident; its original design reflects
 truths not just about computing, but about how human beings can connect and
 interact. The web not only survived but thrived during the virtualization of
-hosting and content specifically thanks to the elegance and effectiveness of
+hosting and content, specifically due to the elegance and effectiveness of
 this original design.
 
 [^perhaps]: It is indeed true that one or more of the implementation choices
