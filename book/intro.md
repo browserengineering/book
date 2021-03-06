@@ -9,7 +9,7 @@ prev: preface
 Why study web browsers? The way I see it, browsers are fundamental to the web,
 to modern computing, and even to the economy broadly---so it's worth knowing how
 they work. And in fact, cool algorithms, tricky data structures, and fundamental
-concepts come alive inside a web browser. This book walk you through building a
+concepts come alive inside a web browser. This book walks you through building a
 browser, from scratch. I hope, as you read it, that you fall in love with web
 browsers, just like I did.
 
@@ -206,11 +206,14 @@ significant extent _not determined_ by the companies “owning” or “controll
 particular browser. Other people---you---can contribute ideas and proposals and
 implementations.
 
-Every browser today is open-source, which opens its implementation up to the
-whole community of web developers. Browsers evolve like giant R&D projects,
-where new ideas are constantly being proposed and tested out. As you would
-expect, some features fail and some succeed. The ones that succeed end up in
-specifications and are implemented by other browsers.
+What's amazing is that, despite the scale and the pace and the complexity, there
+is still plenty of room to contribute. Every browser today is open-source, which
+opens up its implementation to the whole community of web developers. Browsers
+evolve like giant R&D projects, where new ideas are constantly being proposed
+and tested out. As you would expect, some features fail and some succeed. The
+ones that succeed end up in specifications and are implemented by other
+browsers. That means that every web browser is open to contributions---whether
+fixing bugs or proposing new features or implementing promising optimizations.
 
 And it's worth contributing, because working on web browsers is a lot of fun.
 
