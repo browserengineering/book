@@ -101,7 +101,7 @@ fly[^server-side-rendering] and sent on-demand to your browser. The pieces being
 assembled are themselves filled with dynamic content---news, inbox contents, and
 advertisements adjusted to your particular tastes. Even URLs no longer identify
 a specific computer---content distribution networks route a URL to any of
-thousands of computers all around the world. At a higher level, most web page
+thousands of computers all around the world. At a higher level, most web pages
 are served not from someone's home computer[^self-hosted] but from a social
 media platform or cloud computing service.
 
