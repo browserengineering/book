@@ -215,7 +215,7 @@ fixing bugs or proposing new features or implementing promising optimizations.
 
 And it's worth contributing, because working on web browsers is a lot of fun.
 
-The software patterns
+Browser code concepts
 =====================
 
 HTML, CSS, HTTP, hyperlinks, and JavaScript---the core of the web---are
