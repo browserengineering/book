@@ -205,7 +205,7 @@ end up implemented inside browsers. Browser engineers must therefore fix and
 improve rather than abandon and replace.
 
 What's amazing is that, despite the scale and the pace and the complexity, there
-is still room to contribute. Every browser today is open-source, which shares
+is still plenty of room to contribute. Every browser today is open-source, which shares
 the burden of maintenance and feature development across the whole community of
 web developers. Browsers evolve like giant R&D projects, where new ideas are
 constantly being proposed and tested out. As you would expect, some features
