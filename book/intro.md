@@ -6,23 +6,27 @@ next: history
 prev: preface
 ...
 
+Why study web browsers? The way I see it, browsers are fundamental to the web,
+to modern computing, and even to the economy broadly---so it's worth knowing how
+they work. And in fact, cool algorithms, tricky data structures, and fundamental
+concepts come alive inside a web browser. This book walks you through building a
+browser, from scratch. I hope, as you read it, that you fall in love with web
+browsers, just like I did.
 
 The browser and me
 ==================
 
-I[^chris] have known the web[^theweb] for all of my adult life. Ever since I
-first encountered the web, and its predecessors,[^bbs] in the early 90s, I was
-fascinated by browsers and the concept of networked user interfaces. When I
-[surfed][websurfing] the web, even in its earliest form, I felt I was seeing the
-future of computing. In some ways, the web and I grew together---for example, in
-1994, the year the web went commercial, was the same year I started college;
-while there I spent a fair amount of time surfing it, and by the time I
-graduated in 1999, the browser had fueled the famous dot-com speculation gold
-rush. The company for which I now work, Google, is a child of the web and was
-founded during that time. The web for me is something of a technological
-companion, and I’ve never been far from it in my studies or work.
-
-[^chris]: This is Chris speaking!
+I---this is Chris speaking---have known the web[^theweb] for all of my adult
+life. Since I first encountered the web and its predecessors,[^bbs] in the
+early 90s, I've been fascinated by browsers and the concept of networked user
+interfaces. When I [surfed][websurfing] the web, even in its earliest form, I
+felt I was seeing the future of computing. In some ways, the web and I grew
+together---for example, in 1994, the year the web went commercial, was the same
+year I started college; while there I spent a fair amount of time surfing it,
+and by the time I graduated in 1999, the browser had fueled the famous dot-com
+speculation gold rush. The company for which I now work, Google, is a child of
+the web and was founded during that time. The web for me is something of a
+technological companion, and I’ve never been far from it in my studies or work.
 
 [^theweb]: Broadly defined, the web is the interlinked network (“web”)
 of [web pages](https://en.wikipedia.org/wiki/Web_page) on the
@@ -65,22 +69,23 @@ both intentional and accidental. And everywhere you look, you see the evolution
 and history of the web wrapped up in one codebase. But most of all, it's
 fun and endlessly interesting.
 
-I've also learned to appreciate the elegance and importance of these systems we
-have built, and their place in history and the economy. Let's go into those
-now.
+So that's how I fell in love with web browsers. Now let me tell you why you
+will, too.
 
 The web in history
 ==================
 
-It might seem natural to use a web browser to browse the web over the internet,
-and many people experienced the internet of the 1990s onward like this. That can
-make the web seem already-built, simple and obvious, with nothing left but to
-browse it. But the web is neither simple nor obvious. It is the result of
-experiments and research reaching back to nearly the beginning of computing. And
-the web _also_ needed rich computer displays, powerful UI-building libraries,
-fast networks, and sufficient CPU power and information storage capacity. As so
-often happens with technology, the web has many similar predecessors, but only
-took its modern form once all the pieces came together.
+The web is a grand, crazy experiment. It seems natural, nowadays, to browse the web
+to watch videos, read news, and connect with friends. That can make the web seem
+simple and obvious, already-built, with nothing left but to use it. But the web
+is neither simple nor obvious. It is the result of experiments and research
+reaching back to nearly the beginning of computing[^precursors] about how to
+help people connect and learn from each other.
+
+[^precursors]: And the web _also_ needed rich computer displays, powerful
+UI-building libraries, fast networks, and sufficient CPU power and information
+storage capacity. As so often happens with technology, the web had many similar
+predecessors, but only took its modern form once all the pieces came together.
 
 In the early days, the internet was a world wide network of computers, largely
 at universities, labs, and major corporations, linked by physical cables and
@@ -146,6 +151,10 @@ JavaScript might eventually be replaced by another language or technology, HTTP
 by some other protocol, or HTML by its successor. Certainly all of these
 technologies have been through many versions, but the web has stayed the web.
 
+The key thing to understanding about this history is that it's not over. The
+grand experiment continues, and by studying web browsers you have the chance to
+contribute and to shape the future of the web.
+
 Real browser codebases
 ======================
 
@@ -159,9 +168,9 @@ this book's simple browser.
 
 But a browser with the features, speed, security, and reliability of today’s top
 browsers---_wow_. _Thousands_ of person-years of effort have gone into the
-browser you use today. And keeping a browser competitive is a lot of work as
-well. Not only is there an inherent cost to maintaining large codebases, there
-is also constant pressure to do more---to add more features, to improve
+browser you use today; keeping a browser competitive is a lot of work. Not only
+is there the inherent cost of maintaining a large and complex codebase; there is
+also the constant pressure to do more---to add more features, to improve
 performance, to keep up with the "web ecosystem"---for the thousands of
 businesses, millions of developers, and billions of users on the web.
 
@@ -172,10 +181,6 @@ requires painstaking work to continuously refactor the code to reduce its
 complexity, often through the careful[^browsers-abstraction-hard] introduction
 of modularization and abstraction.
 
-[^browsers-abstraction-hard]: Browsers are so performance-sensitive that, in
-many places, merely the introduction of an abstraction---the function call or
-branching overhead---has an unacceptable performance cost.
-
 Working on such a codebase is often daunting. For one thing, there is the
 weighty history of each browser. It’s not uncommon to find lines of code last
 touched 15 years ago by someone who you’ve never met; or even after years of
@@ -183,6 +188,10 @@ working discover files and code that you didn’t even know existed; or see line
 of code that don’t look necessary, yet seem to do something important. How do I
 learn what that 15-year-old code does? Does that code I just discovered matter
 at all? Can I delete those lines of code, or are they there for a reason?
+
+[^browsers-abstraction-hard]: Browsers are so performance-sensitive that, in
+many places, merely the introduction of an abstraction---the function call or
+branching overhead---has an unacceptable performance cost.
 
 These questions are common to all complex codebases. But what makes a browser
 different is that there is often an _urgency to fix_ them. Browsers are nearly
@@ -195,13 +204,17 @@ Other people, for example web developers, contribute ideas and proposals that
 end up implemented inside browsers. Browser engineers must therefore fix and
 improve rather than abandon and replace.
 
-Every rendering engine today is open-source, which share the burden of
-maintenance and feature development across that larger community of web
-developers. So browsers evolve like giant R&D projects, where new ideas are
-constantly being proposed and tested out. Like any R&D project, browsers have an
-iterative and incremental planning and shipping process. And just as you would
-expect, some features fail and some succeed. The ones that succeed end up in
-specifications and are implemented by other browsers.
+What's amazing is that, despite the scale and the pace and the complexity, there
+is still plenty of room to contribute. Every browser today is open-source, which shares
+the burden of maintenance and feature development across the whole community of
+web developers. Browsers evolve like giant R&D projects, where new ideas are
+constantly being proposed and tested out. As you would expect, some features
+fail and some succeed. The ones that succeed end up in specifications and are
+implemented by other browsers. That means that every web browser is open to
+contributions---whether fixing bugs or proposing new features or implementing
+promising optimizations.
+
+And it's worth taking this opportunity, because working on web browsers is fun.
 
 The software patterns
 =====================
@@ -289,13 +302,19 @@ stack; clever data structures and parallel programming techniques; a virtual
 machine, an interpreted language, and a JIT; a world-class security sandbox; and
 a uniquely dynamic system for storing data.
 
+This depth might make browsers seem intimidating. But the truth is---you use the
+browser all the time, including possibly to read this book! That makes these
+algorithms more approachable in a browser than almost anywhere else. Because, at
+the end of the day, the browser is a reflection of the web, and the web is
+already familiar.
+
 The role of the browser
 =======================
 
-The browser, and the web more broadly, is a marvel. It now goes far beyond its
-original use for document-based information sharing, and every year it expands
-its reach to more and more of what we do with computers. Many people now spend
-their entire day in a browser, not using a single other application!
+Every year the web expands its reach to more and more of what we do with
+computers. It now goes far beyond its original use for document-based
+information sharing: many people now spend their entire day in a browser, not
+using a single other application!
 
 Moreover, desktop applications are now often built and delivered as _web apps_:
 web pages loaded by a browser but used like installed applications.[^pwa] Even
@@ -312,23 +331,19 @@ enhancement][prog-enhance-def].
     likely increasing over time. In some markets like China, "super-apps" act
     like a mobile web browser for web-view-based games and widgets.
 
-The basis of browsers is the web. And the web itself is built on a few simple,
-yet revolutionary, concepts; concepts that that together present a vision of the
-future of software and information. Among them are open, decentralized and safe
-computing; a declarative document model for describing UIs; hyperlinks; and the
-User Agent.[^useragent] 
+The web is built on a few simple, yet revolutionary, concepts: open,
+decentralized and safe computing; a declarative document model for describing
+UIs; hyperlinks; and the User Agent.[^useragent] And the browser makes these
+concepts real. The browser is the User Agent, but also the _mediator_ of the
+web's interactions and the _enforcer_ of its rules. It ensures safety and
+fairness and represents you to web pages. Not only that, the browser is the
+_implementer_ of all of the ways information is explored. Its sandbox keeps web
+browsing safe; its algorithms implement the declarative UI; its UI navigates
+links. For web pages to load fast and react smoothly, the browser must be
+hyper-efficient.
 
 [^useragent]: The User Agent concept views a computer, or software within the
     computer, as a trusted assistant and advocate of the human user.
-
-From our point of view, the browser makes the web real. All these concepts and
-principles therefore form the core architecture of the browser itself. The
-browser is the User Agent, but also the _mediator_ of web interactions and
-_enforcer_ of the rules. It ensures safety and fairness and represents you to
-web pages. Not only that, the browser is the _implementer_ of all of the ways
-information is explored. Its sandbox keeps web browsing safe; its algorithms
-implement the declarative UI; its UI navigates links. For web pages to load fast
-and react smoothly, the browser must be hyper-efficient.
 
 Such lofty goals! How does the browser deliver on them? The best way to
 understand that question is to build a web browser.
