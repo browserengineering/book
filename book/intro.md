@@ -192,7 +192,7 @@ introduction of modularization and abstraction.
 
 [^browsers-abstraction-hard]: Browsers are so performance-sensitive that, in
 many places, merely the introduction of an abstraction---the function call or
-branching overhead---has an unacceptable performance cost.
+branching overhead---has an unacceptable performance cost!
 
 What makes a browser different from most massive code bases is their _urgency_.
 Browsers are nearly as old as any “legacy” codebase, but are _not_ legacy, not
