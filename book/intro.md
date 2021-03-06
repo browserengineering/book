@@ -119,9 +119,8 @@ blocks that are the essence of the web:
 
 * The web is a _network of information_
   linked by _hyperlinks_.
-* Information is contained in documents
-  requested with the _HTTP network protocol_
-  and structured with the _HTML information format_.
+* Information is requested with the _HTTP network protocol_
+  and structured with the _HTML document format_.
 * Documents are identified by URLs, _not_ by their content, and may be dynamic.
 * Web pages can link to auxiliary assets in different formats,
   including images, videos, CSS, and JavaScript.
@@ -132,15 +131,15 @@ As a philosophical matter, perhaps one or another of these principles is
 secondary. One could try to distinguish between the networking and rendering
 aspects of the web. One could abstract linking and networking from the
 particular choice of protocol and data format. One could ask whether the browser
-is necessary in theory, or argue that HTTP, URLs and hyperlinking are the only
+is necessary in theory, or argue that HTTP, URLs, and hyperlinking are the only
 truly essential parts of the web.
 
-Perhaps.[^perhaps] It is, after all, an experiment; the core technologies evolve
-and grow. But the web is not an accident; its original design reflects truths
-not just about computing, but about how human beings can connect and interact.
-The web not only survived but thrived during the virtualization of hosting and
-content specifically thanks to the elegance and effectiveness of this original
-design.
+Perhaps.[^perhaps] The web is, after all, an experiment; the core technologies
+evolve and grow. But the web is not an accident; its original design reflects
+truths not just about computing, but about how human beings can connect and
+interact. The web not only survived but thrived during the virtualization of
+hosting and content specifically thanks to the elegance and effectiveness of
+this original design.
 
 [^perhaps]: It is indeed true that one or more of the implementation choices
 could be replaced, and perhaps that will happen over time. For example,
@@ -176,21 +175,20 @@ and computer scientists. “Web developer” also is more inclusive of additiona
 critical roles like designers, authors, editors, and photographers. A web
 developer is anyone who makes web pages, regardless of how.
 
-Working on such a codebase can feel daunting. It’s not uncommon to find lines of
-code last touched 15 years ago by someone who you’ve never met; or even after
-years of working discover files and code that you didn’t even know existed; or
-see lines of code that don’t look necessary, yet seem to do something important.
-How do I learn what that 15-year-old code does? Does that code I just discovered
-matter at all? Can I delete those lines of code, or are they there for a reason?
+Working on such a codebase can feel daunting. I often find lines of code last
+touched 15 years ago by someone I've never met; or even now discover files and
+code that I never knew existed; or see lines of code that don’t look necessary,
+yet seem to be important. How do I understand 15-year-old code does? Or learn
+the purpose of these new files? Can I delete these lines of code, or are they
+there for a reason?
 
 What's amazing is that, despite the scale and the pace and the complexity, there
 is still room to contribute. Every browser has thousands of unfixed bugs, from
-the smallest of mistakes to myriad mix ups and mismatches. Every browser is
+the smallest of mistakes to myriad mix ups and mismatches. Every browser must be
 endlessly tuned and optimized to squeeze out that last bit of performance. Every
 browser requires painstaking work to continuously refactor the code to reduce
 its complexity, often through the careful[^browsers-abstraction-hard]
-introduction of modularization and abstraction. And all of that work continues
-today.
+introduction of modularization and abstraction.
 
 [^browsers-abstraction-hard]: Browsers are so performance-sensitive that, in
 many places, merely the introduction of an abstraction---the function call or
@@ -229,16 +227,15 @@ it. Web developers don't, and mostly can't, draw their web page's pixels on
 their own.
 
 As a black box, the browser is either magical or frustrating (depending on
-whether it is working correctly or not!). But it turns out that a browser is a
-pretty unusual piece of software, with unique challenges, interesting
-algorithms, and clever optimizations invented just for this domain. That makes
-browsers worth studying for the pure pleasure of it.
+whether it is working correctly or not!). But that also make a browser a pretty
+unusual piece of software, with unique challenges, interesting algorithms, and
+clever optimizations. Browsers are worth studying for the pure pleasure of it.
 
 [^loss-of-control]: Loss of control is not necessarily specific to the web---much
 of computing these days relies on mountains of other peoples’ code.
 
-There are practical reasons for the unusual design. Yes, developers lose some
-control and agency---when those pixels are wrong, developers cannot fix them
+There are practical reasons for the unusual design of a browser. Yes, developers
+lose some control and agency---when pixels are wrong, developers cannot fix them
 directly.[^loss-of-control] But they gain the ability to deploy content on the
 web without worrying about the details, to make that content instantly available
 on almost every computing device in existence, and to keep it accessible in the
@@ -319,15 +316,14 @@ enhancement][prog-enhance-def].
     like a mobile web browser for web-view-based games and widgets.
     
 So given this centrality, it's worth knowing how the web works. And in fact, the
-web is built on a simple concepts: open, decentralized, and safe computing; a
+web is built on simple concepts: open, decentralized, and safe computing; a
 declarative document model for describing UIs; hyperlinks; and the User Agent
 model.[^useragent] It's the browser that makes these concepts real. The browser
 is the User Agent, but also the _mediator_ of the web's interactions and the
-_enforcer_ of its rules. It ensures safety and fairness and represents you to
-web pages. Not only that, the browser is the _implementer_ of all of the ways
-information is explored. Its sandbox keeps web browsing safe; its algorithms
-implement the declarative document model; its UI navigates links. For web pages
-to load fast and react smoothly, the browser must be hyper-efficient.
+_enforcer_ of its rules. The browser is the _implementer_ of the web: Its
+sandbox keeps web browsing safe; its algorithms implement the declarative
+document model; its UI navigates links. Web pages load fast and react smoothly
+only when the browser is hyper-efficient.
 
 [^useragent]: The User Agent concept views a computer, or software within the
     computer, as a trusted assistant and advocate of the human user.
@@ -340,7 +336,7 @@ Browsers and you
 
 This book explains how to build a simple browser, one that can---despite its
 simplicity---display interesting-looking web pages and support many interesting
-behaviors.[^prog-enhance]. As you’ll see, it’s surprisingly easy, and it
+behaviors.[^prog-enhance] As you’ll see, it’s surprisingly easy, and it
 demonstrates all the core concepts you need to understand a real-world browser.
 You'll see what is easy and what is hard; which algorithms are simple, and which
 are tricky; what makes a browser fast, and what makes it slow.
@@ -366,5 +362,4 @@ I hope the book lets you appreciate a browser's depth, complexity, and power. I
 hope the book passes along its beauty---its clever algorithms and data
 structures, its co-evolution with the culture and history of computing, its
 centrality in our world. But most of all, I hope the book lets you see in
-yourself someone building the browser of the future. The future doesn't just
-arrive; it’s up to you to invent and discover and create it!
+yourself someone building the browser of the future.
