@@ -622,7 +622,7 @@ The new `line` field is essentially a buffer, where words are held
 temporarily before they can be placed. The second phase is that buffer
 being flushed when we're finished with a line:
 
-``` {.python}
+``` {.python indent=12}
 if self.col + w > WIDTH - HSTEP:
     self.flush()
 ```
