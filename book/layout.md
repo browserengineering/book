@@ -201,18 +201,16 @@ When creating child layout objects, the main question is whether each
 child should be a `BlockLayout` or an `InlineLayout`. Basically,
 elements that just contains text, or maybe formatted text, should have
 an `InlineLayout`, but containers like `<div>` or `<header>` should
-have a `BlockLayout`. But what happens if an element contains both
-text and something like a `<div>`?
+have a `BlockLayout`.
 
-In real browsers, a somewhat complicated mechanism known as [anonymous
-block boxes][anon-block] is used, but in our toy browser we'll
-implement something a little simpler.[^how-anon] We'll start by
-listing the elements used for formatting text:
-
-[^how-anon]: Anonymous block boxes handle cases like an element
-that contains text, formatted text, and also a container. You can
-think of this as a repair mechanism similar to the implicit tags in
-[Chapter 4][html.md].
+What happens if an element contains both text and something like a
+`<div>`? In some sense, this is an error on the part of the web
+developer. Just like with implicit tags in [Chapter 4][html.md],
+browsers use a repair mechanism to make sense of the situation. In
+real browsers, the mechanism is known as [anonymous block
+boxes][anon-block] is used, but in our toy browser we'll implement
+something a little simpler. We'll start by listing the elements used
+for formatting text:
 
 [anon-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Visual_formatting_model#anonymous_boxes
 
