@@ -125,53 +125,42 @@ def __init__(self, node, parent, previous):
     self.children = []
 ```
 
-The `InlineLayout` constructor also initializes `weight`, `style`, and
-`size`, as well as `x` and `y`, and it calls `recurse`. Let's move all
-that into a `layout` method.
+Besides the references to other related layout objects, each layout object also
+needs a size and position, which we'll store in the `w`, `h`, `x`, and
+`y` fields. Each layout object will have a `layout` method whose job
+is computing the values of those fields.
 
-``` {.python expected=False}
+Let's start with `InlineLayout`. Right now its constructor also
+initializes `weight`, `style`, and `size`, as well as `display_list`.
+Let's move all of those into a new `layout` method:
+
+``` {.python}
 def layout(self):
     self.display_list = []
-
-    self.x = HSTEP
-    self.y = VSTEP
     self.weight = "normal"
     self.style = "roman"
     self.size = 16
 
+    # ...
+```
+
+The constructor also initializes `row`, `col`, and `line`, and calls
+`recurse` and `flush`. Let's move that into `layout` as well:
+
+``` {.python}
+def layout(self):
+    # ...
+
+    self.row = self.y
+    self.col = self.x
     self.line = []
     self.recurse(self.node)
     self.flush()
 ```
 
-Besides the references to other related layout objects, each layout object also
-needs a size and position, which we'll store in the `w`, `h`, `x`, and
-`y` fields.
-
-Unfortunately, `InlineLayout` already uses the `x` and `y` fields for
-the location of the next word. To avoid a *very* annoying conflict,
-let's rename those fields to `cx` and `cy`. Instead of initializing
-them to `HSTEP` and `VSTEP`, let's initialize them to `self.x` and
-`self.y`, the position of the overall inline layout object:
-
-``` {.python}
-def layout(self):
-    # ...
-    self.cx = self.x
-    self.cy = self.y
-    # ...
-```
-
-**Make sure** to replace `x` and `y` with `cx` and `cy` throughout the
-class, lest you run into some difficult-to-diagnose bugs.
-
-::: {.todo}
-In retrospect, those should have been named something else from the
-beginning.
-:::
-
-The `InlineLayout` class can now serve as a model for our second type
-of layout object:
+Now, this `layout` method isn't done---we still need to compute `x`,
+`y`, `w`, and `h`! I'll return to that later. For now, let's turn to
+the other type of layout object: `BlockLayout`:
 
 ``` {.python}
 class BlockLayout:
@@ -179,13 +168,10 @@ class BlockLayout:
         self.node = node
         self.parent = parent
         self.children = []
-
-    def layout(self):
-        # ...
 ```
 
-With the two classes drafted, the next step is to build a whole tree
-of these layout objects.
+Because in fact, `InlineLayout` objects have to be created---by
+`BlockLayout`s---before their layout method can even be called.
 
 Creating the layout tree
 ========================
@@ -347,7 +333,7 @@ complicated to support more features and faster speed. [Chapter
 
 That settles `BlockLayout`; let's now work on `InlineLayout`. Its `x`,
 `w`, and `y` are set the same way as for a `BlockLayout`, but its
-height is computed based on its *y*-cursor `cy` instead of the height
+height is computed based on its *y*-cursor `row` instead of the height
 of its children.
 
 ``` {.python}
@@ -363,7 +349,7 @@ class InlineLayout:
 
         # ...
 
-        self.h = self.cy - self.y
+        self.h = self.row - self.y
 ```
 
 Finally even `DocumentLayout` needs some layout code, though since the
