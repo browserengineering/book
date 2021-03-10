@@ -483,17 +483,17 @@ contains *commands*, and we'll have two types of commands:
 ``` {.python}
 class DrawText:
     def __init__(self, x1, y1, text, font):
-        self.x1 = x1
-        self.y1 = y1
+        self.top = y1
+        self.left = x1
         self.text = text
         self.font = font
     
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
         self.color = color
 ```
 
@@ -535,7 +535,7 @@ canvas. Let's do this with an `execute` method for each command. On
 class DrawText:
     def execute(self, scroll, canvas):
         canvas.create_text(
-            self.x1, self.y1 - scroll,
+            self.left, self.top - scroll,
             text=self.text,
             font=self.font,
             anchor='nw',
@@ -554,21 +554,21 @@ sure to pass `width = 0`:
 class DrawRect:
     def execute(self, scroll, canvas):
         canvas.create_rectangle(
-            self.x1, self.y1 - scroll,
-            self.x2, self.y2 - scroll,
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
             width=0,
             fill=self.color,
         )
 ```
 
 We do still want to skip graphics commands that occur offscreen, and
-`DrawRect` already contains a `y2` field we can use, so let's add the
-same to `DrawText`:
+`DrawRect` already contains a `bottom` field we can use, so let's add
+the same to `DrawText`:
 
 ``` {.python}
 def __init__(self, x1, y1, text, font):
     # ...
-    self.y2 = y1 + font.metrics("linespace")
+    self.bottom = y1 + font.metrics("linespace")
 ```
 
 ::: {.quirks}
