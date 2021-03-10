@@ -14,8 +14,8 @@ where the tree of elements is transformed into a tree of *layout
 objects*, each of which draws a part of the page. In the process,
 we'll add support for backgrounds to make our web pages more colorful.
 
-Tree-based layout
-=================
+The Layout Tree
+===============
 
 The way our browser works now, laying out an element involves separate
 modifications to global state at the open tag, for each child, and
@@ -26,7 +26,7 @@ background, without knowing how wide and tall to draw it.
 
 So web browsers structure layout differently. In a browser, layout
 produces a *layout tree* of layout objects associated with the HTML
-elements[^no-box]. Each of those layout objects has a size and a
+elements.[^no-box] Each of those layout objects has a size and a
 position, and the layout process is thought of as generating the
 layout tree and then computing those sizes and positions.
 
@@ -34,125 +34,103 @@ layout tree and then computing those sizes and positions.
     objects, and some elements like `<li>` generate multiple (one for
     the bullet point!), but for most elements it's one element one
     layout object.
-    
-Before we jump to code, let's talk through some layout concepts.
 
-First: the layout modes. HTML elements come in two types. Some are
-meant to contain text, like `<p>`. Others are meant to organize
-things, like `<div>`. You can tell the two types apart by how they
-position their child elements: text inside a `<p>` is laid out in
-lines, left to right, while containers inside a `<div>` are laid out
-in a vertical column, top to bottom. In web lingo, the text inside a
-`<p>` is laid out with "inline layout", while the containers inside a
-`<div>` are laid out with "block layout".
+For example, consider a web page with a body that contains a heading
+and three paragraphs:
 
-This means your layout engine has different modes: the `<p>` will be
-laid out with an inline layout mode, while the `<div>` will be laid
-out with a block layout mode. What we've been implementing so far in
-this book is the inline layout mode, so in this chapter we'll
-implement block layout mode.
+    <body>
+        <h1>...</h1>
+        <p>...</p>
+        <p>...</p>
+        <p>...</p>
+    </body>
 
-Second: the layout tree. Layout modes can nest: a web page can have an
-`<html>` in block layout that contains a `<body>` in block layout that
-contains a `<p>` in inline layout. So tree-based layout starts by
-traversing the HTML tree to build a _layout tree_, where each layout
-object in the tree is associated with one of the layout modes.
+Its layout tree will have a layout object for the top-level `html`
+element, a layout object inside that for the body element, and then
+one layout object inside that for each heading and paragraph. Each
+layout object will store its size and position, so for example if the
+body element has a background the body element's size and position can
+be used to draw that background.
 
-Layout is very complex, so in this chapter the tree will have a very
-simple structure: it'll contain block layout objects at each branch,
-and inline layout objects at the leaves. For example, it might look
-like this:
-
-![A tree of layout objects. The root is a block for the `<html>`
-    element; it has one child, a block for the `<body>` element; it
-    has three children, each blocks as well (for the `<h1>` and two
-    `<p>` elements); and each of those have a single child, an
-    inline.](/im/layout-modes.png)
-
-Finally: the layout algorithm. Each layout object in the layout tree
-needs to be assigned a size and a position. The general rule is that a
-block, like a paragraph, should take up as much horizontal room as it
-can, and should be tall enough to contain everything inside it. That
-means that a layout objects's width is based on its *parent*'s width,
-while its *height* is based on its *children*'s height:
-
-![The flow of information through layout. Width information flows down
-    the tree, from parent to child, while height information flows up,
-    from child to parent.](/im/layout-order.png)
-
-This suggests a step-by-step approach to layout. First, an element
-computes its position and width, based on its parent. Then it lays out
-its children. Finally, with the children's heights computed, the
-element's height is calculated.
-
-Let's now turn these concepts into code.
-
-::: {.further}
-Formally, computations on a tree like this can be
-described by an [attribute grammar](wiki-atgram). Attribute grammar
-engines analyze dependencies between different attributes to determine
-the right order to calculate each attribute.
-:::
-
-[wiki-atgram]: https://en.wikipedia.org/wiki/Attribute_grammar
+The layout tree drives the rest of the layout process. The browser
+first traverses the HTML tree to create the layout tree. Then it
+computes the size, and position for each layout object. Finally, each
+layout object generates drawing commands which the browser executes
+the render the page.
 
 Layout modes
 ============
 
-Let's start with the scaffolding for layout modes. We'll have two,
-block and inline layout, and since what we've written now is basically
-inline layout let's rename `Layout` to `InlineLayout` and add a new
-`BlockLayout` class:
+Different layout object lay out their children differently. In the
+example above, the body element will stack its children---containers
+like headings and pragraphs---vertically, but a paragraph will stack
+its children---text---horizontally into lines. These two *layout
+modes*, for text and for containers, are the ones we'll be
+implementing in our browser, and are called inline and block layout.
+Both of them define how an element is laid out relative to its
+children.[^or-equivalently]
+
+[^or-equivalently]: Or, equivalently, how an element is laid out
+relative to its siblings and parent. CSS tends to this equivalent
+perspective, though in some cases (like the `inline-block` display
+mode) it also defines the relationship to children.
+
+So each layout object in the layout tree has an associated *layout
+mode*; the body element in the example above has a block layout mode,
+because its contents are containrs, while the heading and paragraphs
+have an inline layout mode, because their contents are text. In real
+browsers there are a lot of other layout modes too, but in this
+chapter we'll keep it simple.
+
+So let's have one class for each layout mode. Inline layout should be
+familiar: it's what we've been implementing up until this point and
+corresponds to how text inside a paragraph are laid out in lines, left
+to right.[^in-english] Block layout is new to this chapter: it
+corresponds to the way containers like paragraphs and headings are
+laid out one after another vertically top to bottom.
+
+[^in-english]: In European languages, at least!
+
+Since the existing `Layout` class is more or less inline layout, let's
+rename it to `InlineLayout` and rename its constructor to be a new
+`layout` method:
 
 ``` {.python}
 class InlineLayout:
-    # ...
-
-class BlockLayout:
-    # ...
+    def layout(self):
+        tree = self.node
+        # ...
 ```
 
-These layout objects will be the nodes of a *layout tree*. So we'll
-want layout objects to have references to their children, a parent, and an HTML element
-that they correspond to. Each layout object will also have a reference to
-its previous sibling in the tree.
+We'll then add a new constructor to `InlineLayout` to initialize this
+`node` field. Because these layout objects form a tree, we'll also
+want references to the parent node and also the previous sibling:
 
 ``` {.python}
-def __init__(self, node, parent, previous):
-    self.node = node
-    self.parent = parent
-    self.previous = previous
-    self.children = []
+class InlineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
 ```
 
-The `InlineLayout` constructor also initializes `weight`, `style`, and
-`size`, as well as `x` and `y`, and it calls `recurse`. Let's move all
-that into a `layout` method.
+Each layout object will also store its size and position, using new
+`x`, `y`, `w`, and `h` fields. Unfortunately, `InlineLayout` already
+uses the `x` and `y` fields for the location of the next word. To
+avoid a *very* annoying conflict, let's rename those fields to `cx`
+and `cy`. **Make sure** to replace `x` and `y` with `cx` and `cy`
+throughout the class, lest you run into some difficult-to-diagnose
+bugs, especially in the class's other methods like `flush` and `text`.
 
-``` {.python expected=False}
-def layout(self):
-    self.display_list = []
+::: {.todo}
+In retrospect, those should have been named something else from the
+beginning.
+:::
 
-    self.x = HSTEP
-    self.y = VSTEP
-    self.weight = "normal"
-    self.style = "roman"
-    self.size = 16
-
-    self.line = []
-    self.recurse(self.node)
-    self.flush()
-```
-
-Besides the references to other related layout objects, each layout object also
-needs a size and position, which we'll store in the `w`, `h`, `x`, and
-`y` fields.
-
-Unfortunately, `InlineLayout` already uses the `x` and `y` fields for
-the location of the next word. To avoid a *very* annoying conflict,
-let's rename those fields to `cx` and `cy`. Instead of initializing
-them to `HSTEP` and `VSTEP`, let's initialize them to `self.x` and
-`self.y`, the position of the overall inline layout object:
+Also, instead of initializing these `cx` and `cy` fields to `HSTEP`
+and `VSTEP`, let's initialize them to `self.x` and `self.y`, or in
+other words the top-left corner of the paragraph:
 
 ``` {.python}
 def layout(self):
@@ -162,43 +140,31 @@ def layout(self):
     # ...
 ```
 
-**Make sure** to replace `x` and `y` with `cx` and `cy` throughout the
-class, lest you run into some difficult-to-diagnose bugs.
+For now, we're not actually calculating the `x`, `y`, `w`, and `h`
+variables anywhere. We'll do that later this chapter. We're also not
+creating any children; that'll have to wait for [another
+chapter](chrome.md). For now, we need to focus on the other layout
+mode, block layout.
 
-::: {.todo}
-In retrospect, those should have been named something else from the
-beginning.
-:::
+Creating the layout tree
+========================
 
-The `InlineLayout` class can now serve as a model for our second type
-of layout object:
+Our second type of layout object will be called `BlockLayout`:
 
 ``` {.python}
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
+        self.previous = previous
         self.children = []
-
-    def layout(self):
-        # ...
 ```
 
-With the two classes drafted, the next step is to build a whole tree
-of these layout objects.
+Unlike with inline layout, the first job of the `BlockLayout` is
+creating layout objects for all the containters inside it.
 
-Creating the layout tree
-========================
-
-The first job of the `layout` method is to create child layout
-objects. Let's focus on `BlockLayout`, since `InlineLayout` won't have
-children for now.[^but-later]
-
-[^but-later]: Later, in [Chapter 7](chrome.md), we'll make inline
-    layouts contain lines, which will themselves contain words.
-
-When creating child layout objects, the main question is whether each
-child should be a `BlockLayout` or an `InlineLayout`. Basically,
+When creating child layout objects, the big question for each child is
+whether it should be a `BlockLayout` or an `InlineLayout`. Basically,
 elements that just contains text, or maybe formatted text, should have
 an `InlineLayout`, but containers like `<div>` or `<header>` should
 have a `BlockLayout`.
@@ -208,10 +174,29 @@ What happens if an element contains both text and something like a
 developer. And just like with implicit tags in [Chapter 4][html.md],
 browsers use a repair mechanism to make sense of the situation. In
 real browsers, "[anonymous block boxes][anon-block]" are used, but in
-our toy browser we'll implement something a little simpler. Let's
-start by listing the elements used for formatting text:
+our toy browser we'll implement something a little simpler. 
 
 [anon-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Visual_formatting_model#anonymous_boxes
+
+To determine whether an element has an `InlineLayout` or a
+`BlockLayout` we compare its children against that list. Let's add a
+`layout_mode` function that creates a `BlockLayout` for an element
+that has containers inside, and also for empty elements:
+
+``` {.python}
+def layout_mode(node):
+    has_text = False
+    has_containers = False
+    # ...
+    if has_containers or not has_text:
+        return "block"
+    else:
+        return "inline"
+```
+
+We'll set `has_text` and `has_containers` by just matching the
+element's children against a list of elements used for formatting
+text:
 
 ``` {.python}
 INLINE_ELEMENTS = [
@@ -222,16 +207,11 @@ INLINE_ELEMENTS = [
 ]
 ```
 
-To determine whether an element has an `InlineLayout` or a
-`BlockLayout` we compare its children against that list. Let's add a
-top-level `layout_mode` function that looks through the
-children of a node and categorizes them as either "text", including
-formatting tags, or containers:
+The loop looks like this:
 
 ``` {.python}
 def layout_mode(node):
-    has_text = False
-    has_containers = False
+    # ...
     for child in node.children:
         if isinstance(child, Text):
             has_text = True
@@ -239,37 +219,31 @@ def layout_mode(node):
             has_text = True
         else:
             has_containers = True
-```
-
-We'll say that a node should have a `BlockLayout` if it has containers
-inside, or if it's empty:
-
-``` {.python}
-def layout_mode(node):
     # ...
-    if has_containers or not has_text:
-        return "block"
-    else:
-        return "inline"
 ```
 
-Now when `BlockLayout` creates its child layout nodes it can call
-`layout_mode` to determine what type of children to create:
+`BlockLayout` can now call `layout_mode` as it creates child layout
+nodes to determine what type of layout object to create:
 
 ``` {.python indent=4}
-def layout(self):
-    previous = None
-    for child in self.node.children:
-        if layout_mode(child) == "inline":
-            previous = InlineLayout(child, self, previous)
-        else:
-            previous = BlockLayout(child, self, previous)
-        self.children.append(previous)
+class BlockLayout:
+    def layout(self):
+        previous = None
+        for child in self.node.children:
+            if layout_mode(child) == "inline":
+                previous = InlineLayout(child, self, previous)
+            else:
+                previous = BlockLayout(child, self, previous)
+            self.children.append(previous)
 ```
 
-Note that when each child is created, `self` is passed as the parent.
+Note that when each child is created, `self` is passed as the parent,
+and the previously-created child is kept around for the previous
+sibling.
+
 With the children created, their own `layout` method can be called
-recursively to build the tree:
+recursively to build the whole tree, with `InlineLayout` objects at
+the leaves:
 
 ``` {.python}
 def layout(self):
@@ -278,10 +252,11 @@ def layout(self):
         child.layout()
 ```
 
-What sits at the root of the layout tree? Inconveniently, both
-`BlockLayout` and `InlineLayout` require a parent node, so we need
-another kind of layout object at the root. I think of that root as the
-document itself, so let's call it `DocumentLayout`:
+What sits at the root of the layout tree and kicks off this whole
+process? Inconveniently, both `BlockLayout` and `InlineLayout` require
+a parent node, so we need another kind of layout object at the root. I
+think of that root as the document itself, so let's call it
+`DocumentLayout`:
 
 ``` {.python}
 class DocumentLayout:
@@ -298,22 +273,22 @@ class DocumentLayout:
 
 To summarize the rules of layout tree creation:
 
-+ The root of the layout tree is always a `DocumentLayout`, and its
-  only child is always a `BlockLayout`.
-+ A `BlockLayout`'s children are either `BlockLayout`s or `InlineLayout`s.
++ The root of the layout tree a `DocumentLayout`, and its only child
+  is a `BlockLayout`.
++ A `BlockLayout`'s children are either `BlockLayout`s or
+  `InlineLayout`s.
 + An `InlineLayout` doesn't have children.
+
+The whole layout tree is now being built. But so far, we haven't
+actually done _layout_---we haven't determined the size and position
+of each layout object in the tree. Let's turn to that next.
 
 Size and position
 =================
 
-The layout tree is now made, but the size and position of each layout
-object is still left unset. Let's fix that. The general strategy is
-clear: each layout object computes its width and position, then lays
-out its children, and then computes its height.
-
-Let's start in `BlockLayout`. For the width, block layout objects are
-greedy: paragraph and headings and other things take up all the
-horizontal space they can. So they use the parent's width:
+Let's start in `BlockLayout`. Block layout objects are greedy and take
+take up all the horizontal space they can. So their width is their
+parent's width:
 
 ``` {.python}
 self.w = self.parent.w
@@ -328,8 +303,8 @@ self.x = self.parent.x
 
 The vertical position of a block layout object depends on whether it
 is its parent's first child or not. First children start at the top of
-the parent, later children start where the previous layout object
-ended:
+the parent, but later children have to start where their previous
+sibling ended:
 
 ``` {.python}
 if self.previous:
@@ -338,33 +313,36 @@ else:
     self.y = self.parent.y
 ```
 
-After the width and position is computed, we can lay out all the
-children of a block layout:
+These three computations have to go before the loop that calls
+`layout` on each child. After all, a block layout object's width
+depends on the parent's width; so by symmetry the width must be
+computed before laying out the children. The position is the same: it
+depends on both the parent and previous sibling, so the parent has to
+compute it before recursing, and when recursing it has to lay out the
+children in order. Getting this dependency order right is crucial,
+because if you don't some layout object will try to read a value that
+hasn't been computed yet, and the browser will crash.
 
-``` {.python indent=8}
-for child in self.children:
-    child.layout()
-```
-
-Note that the call to the child's `layout` method not only asks it to
-compute its size, but also to its own children to the layout tree and
-recursively call `layout` on them.
-
-Finally, once all the children are laid out, a height of the layout
-object can be computed:
+Finally, we need to compute the block layout's height. A block layout
+object should be tall enough to contain all of its children, so its
+height should be the sum of its children's height:
 
 ``` {.python}
 self.h = sum([child.h for child in self.children])
 ```
 
-Note how important the order is here. A block layout object's width depends
-on the parent's width; so by symmetry the width must be computed
-before laying out the children. The position is the same: it has to be
-computed before recursing so it's already available when the children
-compute their own positions. But the height works the opposite way:
-the height of a block layout depends on the height of its children, so
-it must be computed after recursing, so that the heights of the
-children are available.
+But note that the height of a block layout depends on the height of
+its *children*. So, it must be computed after recursing, after the
+heights of its children are computed. In other words, the `layout`
+method must be ordered like so:
+
++ When `layout` is called, it first creates layout objects for each child.
++ It then computes the `w`, `x`, and `y` fields, reading from the
+  `parent` and `previous` layout objects.
++ The children are then be recursively laid out by calling their
+  `layout` methods.
++ Finally, the object's `h` field can be computed, reading from the
+  child layout objects.
 
 This *dependency ordering* plays a really important role in
 understanding how layout works, especially as layout gets more
@@ -392,7 +370,7 @@ class InlineLayout:
         self.h = self.cy - self.y
 ```
 
-Finally even `DocumentLayout` needs some layout code, though since the
+Finally, even `DocumentLayout` needs some layout code, though since the
 document always starts in the same place it's pretty simple:
 
 ``` {.python}
@@ -411,20 +389,20 @@ text---`HSTEP` on the left and right, and `VSTEP` above. That's so the
 text won't run into the very edge of the window, where a bit of it
 would get cut off.
 
-To summarize the rules of layout computation:
+::: {.further}
+Formally, computations on a tree like this can be described by an
+[attribute grammar](wiki-atgram). Attribute grammar engines analyze
+dependencies between different attributes to determine the right order
+to traverse the tree and calculate each attribute.
+:::
 
-+ When `layout` is called, it first creates layout objects for each child.
-+ It then computes the `w`, `x`, and `y` fields, reading from the
-  `parent` and `previous` layout objects.
-+ The children can then be recursively laid out by calling their
-  `layout` methods.
-4. Finally, `layout` must set the object's `h` field, reading from the
-   child layout objects.
+[wiki-atgram]: https://en.wikipedia.org/wiki/Attribute_grammar
 
 Using tree-based layout
 =======================
 
-With tree-based layout implemented, let's use it in the browser
+So we're now creating a layout tree and computing the size and
+position of everything in it. Let's now use all this in the browser
 itself, in the `load` method. First, we need to create the layout tree
 and lay it out:
 
