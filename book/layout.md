@@ -215,7 +215,7 @@ INLINE_ELEMENTS = [
 A block layout object looks at its children's tags to determine
 whether it should have block or inline contents:
 
-```
+``` {.python}
 def has_block_children(self):
     for child in self.node.children:
         if isinstance(child, TextNode):
