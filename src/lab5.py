@@ -282,6 +282,21 @@ INLINE_ELEMENTS = [
     "span", "br", "wbr", "big"
 ]
 
+def layout_mode(node):
+    has_text = False
+    has_containers = False
+    for child in node.children:
+        if isinstance(child, Text):
+            has_text = True
+        elif child.tag in INLINE_ELEMENTS:
+            has_text = True
+        else:
+            has_containers = True
+    if has_containers or not has_text:
+        return "block"
+    else:
+        return "inline"
+
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -289,22 +304,14 @@ class BlockLayout:
         self.previous = previous
         self.children = []
 
-    def has_block_children(self):
-        for child in self.node.children:
-            if isinstance(child, Text):
-                return False
-            elif child.tag in INLINE_ELEMENTS:
-                return False
-        return True
-
     def layout(self):
-        if self.has_block_children():
-            previous = None
-            for child in self.node.children:
+        previous = None
+        for child in self.node.children:
+            if layout_mode(child) == "inline":
+                previous = InlineLayout(child, self, previous)
+            else:
                 previous = BlockLayout(child, self, previous)
-                self.children.append(previous)
-        else:
-            self.children.append(InlineLayout(self.node, self, None))
+            self.children.append(previous)
 
         self.x = self.parent.x
         self.w = self.parent.w

@@ -38,28 +38,31 @@ layout tree and then computing those sizes and positions.
     
 Before we jump to code, let's talk through some layout concepts.
 
-First: layout modes. Web pages contain different kinds of things.
-We've already talked a lot about [text](text.md), which is laid out
-left-to-right in lines[^in-english]. But that text is organized in
-paragraphs, which are laid out top-to-bottom with gaps in between.
-Indeed, browsers have an "inline" layout mode for things like text and
-a "block" layout mode for things like paragraphs. Different layout
-modes compute sizes and positions differently.
+First: the layout modes. HTML elements come in two types. Some are
+meant to contain text, like `<p>`. Others are meant to organize
+things, like `<div>`. You can tell the two types apart by how they
+position their child elements: text inside a `<p>` is laid out in
+lines, left to right, while containers inside a `<div>` are laid out
+in a vertical column, top to bottom. In web lingo, the text inside a
+`<p>` is laid out with "inline layout", while the containers inside a
+`<div>` are laid out with "block layout".
 
-The inline layout mode is effectively what we implemented in [Chapter
-3](text.md), so this chapter will mostly be implementing block layout.
+This means your layout engine has different modes: the `<p>` will be
+laid out with an inline layout mode, while the `<div>` will be laid
+out with a block layout mode. What we've been implementing so far in
+this book is the inline layout mode, so in this chapter we'll
+implement block layout mode.
 
-Second: the layout tree. Tree-based layout starts by recursively
-traversing the HTML tree to build the layout tree. With two layout
-modes, the layout objects will have one of two types: inline and
-block.
+Second: the layout tree. Layout modes can nest: a web page can have an
+`<html>` in block layout that contains a `<body>` in block layout that
+contains a `<p>` in inline layout. So tree-based layout starts by
+traversing the HTML tree to build a _layout tree_, where each layout
+object in the tree is associated with one of the layout modes.
 
-We'll follow a simple rule, which is that a block layout either
-contains any number of blocks, or a single inline, while inline layout
-has no children. So for example, a document with a heading and two
-paragraphs would correspond to a tree like this:
-
-[^in-english]: In European languages. But not universally!
+Layout is very complex, so in this chapter the tree will have a very
+simple structure: it'll contain block layout objects at each branch,
+and inline layout objects at the leaves. For example, it might look
+like this:
 
 ![A tree of layout objects. The root is a block for the `<html>`
     element; it has one child, a block for the `<body>` element; it
@@ -67,23 +70,21 @@ paragraphs would correspond to a tree like this:
     `<p>` elements); and each of those have a single child, an
     inline.](/im/layout-modes.png)
 
-Finally: the layout algorithm. With the layout tree created, how do we
-compute the size and position of each layout object? The general rule
-is that a block, like a paragraph, should take up as much horizontal
-room as it can, and should be tall enough to contain everything inside
-it. That means that a layout objects's width is based on its
-*parent*'s width, while its *height* is based on its *children*'s
-height:
+Finally: the layout algorithm. Each layout object in the layout tree
+needs to be assigned a size and a position. The general rule is that a
+block, like a paragraph, should take up as much horizontal room as it
+can, and should be tall enough to contain everything inside it. That
+means that a layout objects's width is based on its *parent*'s width,
+while its *height* is based on its *children*'s height:
 
 ![The flow of information through layout. Width information flows down
     the tree, from parent to child, while height information flows up,
     from child to parent.](/im/layout-order.png)
 
 This suggests a step-by-step approach to layout. First, an element
-must compute its width, based on its parent's width. That makes it
-possible to lay out the children, which comes next. Finally, the
-children's heights are now available, so the element's height can be
-calculated.
+computes its position and width, based on its parent. Then it lays out
+its children. Finally, with the children's heights computed, the
+element's height is calculated.
 
 Let's now turn these concepts into code.
 
@@ -195,14 +196,23 @@ objects. Let's focus on `BlockLayout`, since `InlineLayout` won't have
 children for now.[^but-later]
 
 [^but-later]: Later, in [Chapter 7](chrome.md), we'll make inline
-    layouts contain lines, which themselves contain words.
+    layouts contain lines, which will themselves contain words.
 
-Usually, a block layout has one block child per child in the element
-tree. But when you get to something like a paragraph, the children are
-like text, so the child layout object is a single inline layout. We
-can tell the difference by examining the children of the node we are
-laying out: some elements are only used inside running text, other
-elements are only used as blocks:
+When creating child layout objects, the main question is whether each
+child should be a `BlockLayout` or an `InlineLayout`. Basically,
+elements that just contains text, or maybe formatted text, should have
+an `InlineLayout`, but containers like `<div>` or `<header>` should
+have a `BlockLayout`.
+
+What happens if an element contains both text and something like a
+`<div>`? In some sense, this is an error on the part of the web
+developer. And just like with implicit tags in [Chapter 4][html.md],
+browsers use a repair mechanism to make sense of the situation. In
+real browsers, "[anonymous block boxes][anon-block]" are used, but in
+our toy browser we'll implement something a little simpler. Let's
+start by listing the elements used for formatting text:
+
+[anon-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Visual_formatting_model#anonymous_boxes
 
 ``` {.python}
 INLINE_ELEMENTS = [
@@ -213,31 +223,49 @@ INLINE_ELEMENTS = [
 ]
 ```
 
-A block layout object looks at its children's tags to determine
-whether it should have block or inline contents:
+To determine whether an element has an `InlineLayout` or a
+`BlockLayout` we compare its children against that list. Let's add a
+top-level `layout_mode` function that looks through the
+children of a node and categorizes them as either "text", including
+formatting tags, or containers:
 
-```
-def has_block_children(self):
-    for child in self.node.children:
-        if isinstance(child, TextNode):
-            return False
+``` {.python}
+def layout_mode(node):
+    has_text = False
+    has_containers = False
+    for child in node.children:
+        if isinstance(child, Text):
+            has_text = True
         elif child.tag in INLINE_ELEMENTS:
-            return False
-    return True
+            has_text = True
+        else:
+            has_containers = True
 ```
 
-Then `layout` can call `has_block_children` to figure out how to
-create child layout objects:
+We'll say that a node should have a `BlockLayout` if it has containers
+inside, or if it's empty:
+
+``` {.python}
+def layout_mode(node):
+    # ...
+    if has_containers or not has_text:
+        return "block"
+    else:
+        return "inline"
+```
+
+Now when `BlockLayout` creates its child layout nodes it can call
+`layout_mode` to determine what type of children to create:
 
 ``` {.python indent=4}
 def layout(self):
-    if self.has_block_children():
-        previous = None
-        for child in self.node.children:
+    previous = None
+    for child in self.node.children:
+        if layout_mode(child) == "inline":
+            previous = InlineLayout(child, self, previous)
+        else:
             previous = BlockLayout(child, self, previous)
-            self.children.append(previous)
-    else:
-        self.children.append(InlineLayout(self.node, self, None))
+        self.children.append(previous)
 ```
 
 Note that when each child is created, `self` is passed as the parent.
@@ -252,9 +280,9 @@ def layout(self):
 ```
 
 What sits at the root of the layout tree? Inconveniently, both
-`BlockLayout` and `InlineLayout` require a parent node, we need
+`BlockLayout` and `InlineLayout` require a parent node, so we need
 another kind of layout object at the root. I think of that root as the
-document itself, let's call it `DocumentLayout`:
+document itself, so let's call it `DocumentLayout`:
 
 ``` {.python}
 class DocumentLayout:
@@ -662,3 +690,18 @@ document. Hide the scrollbar if the whole document fits onscreen.
 each chapter, enclosed in a `<nav id="toc">` tag, which contains a
 list of links. Add the text "Table of Contents", with a gray
 background, above that list. Don't modify the lexer or parser.
+
+*Anonymous block boxes*: Sometimes, an element has a mix of text-like
+and container-like children. For example, in this HTML,
+
+    <div><i>Hello, </i><b>world!</b><p>So it began...</p></div>
+
+the `<div>` element has three children: the `<i>`, `<b>`, and `<p>`
+elements. The first two are text-like; the last is container-like.
+This is supposed to look like two paragraphs, one for the `<i>` and
+`<b>` and the second for the `<p>`. Make your browser do that.
+Specifically, modify `InlineLayout` so it can be passed a sequence of
+sibling nodes, instead of a single node. Then, modify the algorithm
+that constructs the layout tree so that any sequence of text-like
+elements gets made into a single `InlineLayout`.
+
