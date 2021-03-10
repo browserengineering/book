@@ -324,7 +324,7 @@ class BlockLayout:
             x2, y2 = self.x + self.w, self.y + self.h
             display_list.append(DrawRect(self.x, self.y, x2, y2, "gray"))
         for child in self.children:
-            child.draw(to)
+            child.draw(display_list)
 
 class DocumentLayout:
     def __init__(self, node):
