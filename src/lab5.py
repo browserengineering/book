@@ -271,9 +271,9 @@ class InlineLayout:
         max_descent = max([metric["descent"] for metric in metrics])
         self.cy = baseline + 1.2 * max_descent
 
-    def draw(self, to):
+    def draw(self, display_list):
         for x, y, word, font in self.display_list:
-            to.append(DrawText(x, y, word, font))
+            display_list.append(DrawText(x, y, word, font))
 
 INLINE_ELEMENTS = [
     "a", "em", "strong", "small", "s", "cite", "q", "dfn", "abbr",
@@ -319,10 +319,10 @@ class BlockLayout:
 
         self.h = sum([child.h for child in self.children])
 
-    def draw(self, to):
+    def draw(self, display_list):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.w, self.y + self.h
-            to.append(DrawRect(self.x, self.y, x2, y2, "gray"))
+            display_list.append(DrawRect(self.x, self.y, x2, y2, "gray"))
         for child in self.children:
             child.draw(to)
 
@@ -343,8 +343,8 @@ class DocumentLayout:
         child.layout()
         self.h = child.h + 2*VSTEP
 
-    def draw(self, to):
-        self.children[0].draw(to)
+    def draw(self, display_list):
+        self.children[0].draw(display_list)
 
 class DrawText:
     def __init__(self, x1, y1, text, font):
@@ -355,7 +355,7 @@ class DrawText:
 
         self.y2 = y1 + font.metrics("linespace")
 
-    def draw(self, scroll, canvas):
+    def execute(self, scroll, canvas):
         canvas.create_text(
             self.x1, self.y1 - scroll,
             text=self.text,
@@ -371,7 +371,7 @@ class DrawRect:
         self.y2 = y2
         self.color = color
 
-    def draw(self, scroll, canvas):
+    def execute(self, scroll, canvas):
         canvas.create_rectangle(
             self.x1, self.y1 - scroll,
             self.x2, self.y2 - scroll,
@@ -408,7 +408,7 @@ class Browser:
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT: continue
             if cmd.y2 < self.scroll: continue
-            cmd.draw(self.scroll, self.canvas)
+            cmd.execute(self.scroll, self.canvas)
 
     def scrolldown(self, e):
         self.scroll = self.scroll + SCROLL_STEP
