@@ -38,28 +38,31 @@ layout tree and then computing those sizes and positions.
     
 Before we jump to code, let's talk through some layout concepts.
 
-First: layout modes. Web pages contain different kinds of things.
-We've already talked a lot about [text](text.md), which is laid out
-left-to-right in lines[^in-english]. But that text is organized in
-paragraphs, which are laid out top-to-bottom with gaps in between.
-Indeed, browsers have an "inline" layout mode for things like text and
-a "block" layout mode for things like paragraphs. Different layout
-modes compute sizes and positions differently.
+First: the layout modes. HTML elements come in two types. Some are
+meant to contain text, like `<p>`. Others are meant to organize
+things, like `<div>`. You can tell the two types apart by how they
+position their child elements: text inside a `<p>` is laid out in
+lines, left to right, while containers inside a `<div>` are laid out
+in a vertical column, top to bottom. In web lingo, the text inside a
+`<p>` is laid out with "inline layout", while the containers inside a
+`<div>` are laid out with "block layout".
 
-The inline layout mode is effectively what we implemented in [Chapter
-3](text.md), so this chapter will mostly be implementing block layout.
+This means your layout engine has different modes: the `<p>` will be
+laid out with an inline layout mode, while the `<div>` will be laid
+out with a block layout mode. What we've been implementing so far in
+this book is the inline layout mode, so in this chapter we'll
+implement block layout mode.
 
-Second: the layout tree. Tree-based layout starts by recursively
-traversing the HTML tree to build the layout tree. With two layout
-modes, the layout objects will have one of two types: inline and
-block.
+Second: the layout tree. Layout modes can nest: a web page can have an
+`<html>` in block layout that contains a `<body>` in block layout that
+contains a `<p>` in inline layout. So tree-based layout starts by
+traversing the HTML tree to build a _layout tree_, where each layout
+object in the tree is one of the layout modes.
 
-We'll follow a simple rule, which is that a block layout either
-contains any number of blocks, or a single inline, while inline layout
-has no children. So for example, a document with a heading and two
-paragraphs would correspond to a tree like this:
-
-[^in-english]: In European languages. But not universally!
+Layout is very complex, so in this chapter the tree will have a very
+simple structure: it'll contain block layout objects at each branch,
+and inline layout objects at the leaves. For example, it might look
+like this:
 
 ![A tree of layout objects. The root is a block for the `<html>`
     element; it has one child, a block for the `<body>` element; it
@@ -67,23 +70,21 @@ paragraphs would correspond to a tree like this:
     `<p>` elements); and each of those have a single child, an
     inline.](/im/layout-modes.png)
 
-Finally: the layout algorithm. With the layout tree created, how do we
-compute the size and position of each layout object? The general rule
-is that a block, like a paragraph, should take up as much horizontal
-room as it can, and should be tall enough to contain everything inside
-it. That means that a layout objects's width is based on its
-*parent*'s width, while its *height* is based on its *children*'s
-height:
+Finally: the layout algorithm. Each layout object in the layout tree
+needs to be assigned a size and a position. The general rule is that a
+block, like a paragraph, should take up as much horizontal room as it
+can, and should be tall enough to contain everything inside it. That
+means that a layout objects's width is based on its *parent*'s width,
+while its *height* is based on its *children*'s height:
 
 ![The flow of information through layout. Width information flows down
     the tree, from parent to child, while height information flows up,
     from child to parent.](/im/layout-order.png)
 
 This suggests a step-by-step approach to layout. First, an element
-must compute its width, based on its parent's width. That makes it
-possible to lay out the children, which comes next. Finally, the
-children's heights are now available, so the element's height can be
-calculated.
+compute its position and width, based on its parent. Then it lays out
+its children. Finally, with the children's heights computed, the
+element's height is calculated.
 
 Let's now turn these concepts into code.
 
