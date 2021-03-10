@@ -57,7 +57,7 @@ Second: the layout tree. Layout modes can nest: a web page can have an
 `<html>` in block layout that contains a `<body>` in block layout that
 contains a `<p>` in inline layout. So tree-based layout starts by
 traversing the HTML tree to build a _layout tree_, where each layout
-object in the tree is one of the layout modes.
+object in the tree is associated with one of the layout modes.
 
 Layout is very complex, so in this chapter the tree will have a very
 simple structure: it'll contain block layout objects at each branch,
@@ -82,7 +82,7 @@ while its *height* is based on its *children*'s height:
     from child to parent.](/im/layout-order.png)
 
 This suggests a step-by-step approach to layout. First, an element
-compute its position and width, based on its parent. Then it lays out
+computes its position and width, based on its parent. Then it lays out
 its children. Finally, with the children's heights computed, the
 element's height is calculated.
 
@@ -206,12 +206,11 @@ have a `BlockLayout`.
 
 What happens if an element contains both text and something like a
 `<div>`? In some sense, this is an error on the part of the web
-developer. Just like with implicit tags in [Chapter 4][html.md],
+developer. And just like with implicit tags in [Chapter 4][html.md],
 browsers use a repair mechanism to make sense of the situation. In
-real browsers, the mechanism is known as [anonymous block
-boxes][anon-block] is used, but in our toy browser we'll implement
-something a little simpler. We'll start by listing the elements used
-for formatting text:
+real browsers, "[anonymous block boxes][anon-block]" are used, but in
+our toy browser we'll implement something a little simpler. Let's
+start by listing the elements used for formatting text:
 
 [anon-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Visual_formatting_model#anonymous_boxes
 
