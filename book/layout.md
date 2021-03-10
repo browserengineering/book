@@ -8,7 +8,7 @@ next: styles
 
 So far, layout is a linear process, processing each open tag, text
 node, and close tag in order. But web pages are trees, and not just
-syntactically: elements with borders or backgrounds clearly nest
+syntactically: elements with borders or backgrounds visually nest
 inside one another. So this chapter switches to *tree-based layout*,
 where the tree of elements is transformed into a tree of *layout
 objects*, each of which draws a part of the page. In the process,
@@ -17,13 +17,12 @@ we'll add support for backgrounds to make our web pages more colorful.
 Tree-based layout
 =================
 
-The way our browser works now, every element is laid out by modifying
-global state for the open tag, for each child, and then once more for
-the close tag. Information about the element as a whole, like its
-width and height, isn't computed because the element's layout is split
-between its open and close tags. While things do get put in the right
-place, it's pretty hard to draw a background without knowing how wide
-and tall to draw it.
+The way our browser works now, laying out an element involves separate
+modifications to global state at the open tag, for each child, and
+then once more for the close tag. While this does put things in the
+right place, information about the element as a whole, like its width
+and height, isn't computed. That makes it pretty hard to draw a
+background, without knowing how wide and tall to draw it.
 
 So web browsers structure layout differently. In a browser, layout
 produces a *layout tree* of layout objects associated with the HTML
@@ -271,11 +270,10 @@ class DocumentLayout:
 
 To summarize the rules of layout tree creation:
 
-1. The root of the layout tree is always a `DocumentLayout`.
-2. Its only child is always a `BlockLayout`.
-3. Each `BlockLayout` either has multiple `BlockLayout` children, or a
-   single `InlineLayout` child.
-4. An `InlineLayout` doesn't have children.
++ The root of the layout tree is always a `DocumentLayout`, and its
+  only child is always a `BlockLayout`.
++ A `BlockLayout`'s children are either `BlockLayout`s or `InlineLayout`s.
++ An `InlineLayout` doesn't have children.
 
 Size and position
 =================
@@ -387,12 +385,13 @@ would get cut off.
 
 To summarize the rules of layout computation:
 
-1. Before `layout` is called, the layout object's parent must set its
-   `x` and `y` fields.
-2. When `layout` is called, it first computes the object's `w` field.
-3. Next, the object must lay out its children, which requires setting
-   their `x` and `y` fields and calling their `layout` methods.
-4. Finally, `layout` must set the object's `h` field.
++ When `layout` is called, it first creates layout objects for each child.
++ It then computes the `w`, `x`, and `y` fields, reading from the
+  `parent` and `previous` layout objects.
++ The children can then be recursively laid out by calling their
+  `layout` methods.
+4. Finally, `layout` must set the object's `h` field, reading from the
+   child layout objects.
 
 Using tree-based layout
 =======================
