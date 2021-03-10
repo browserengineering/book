@@ -158,6 +158,10 @@ def layout(self):
     self.flush()
 ```
 
+Note that I've changed `row` and `col` so they're initialized from `x`
+and `y` instead of `VSTEP` and `HSTEP`. Make sure to make the same
+change inside the `flush` method when `col` is reset.
+
 Now, this `layout` method isn't done---we still need to compute `x`,
 `y`, `w`, and `h`! I'll return to that later. For now, let's turn to
 the other type of layout object: `BlockLayout`:
