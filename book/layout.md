@@ -424,8 +424,8 @@ append to that list instead of returning anything. For
 
 ``` {.python}
 class DocumentLayout:
-    def draw(self, to):
-        self.children[0].draw(to)
+    def draw(self, display_list):
+        self.children[0].draw(display_list)
 ```
 
 For `BlockLayout`, which has multiple children, `draw` is called on
@@ -433,9 +433,9 @@ each child:
 
 ``` {.python}
 class BlockLayout:
-    def draw(self, to):
+    def draw(self, display_list):
         for child in self.children:
-            child.draw(to)
+            child.draw(display_list)
 ```
 
 Finally, `InlineLayout` is already storing things to draw in its
@@ -443,8 +443,8 @@ Finally, `InlineLayout` is already storing things to draw in its
 
 ``` {.python expected=False}
 class InlineLayout:
-    def draw(self, to):
-        to.extend(self.display_list)
+    def draw(self, display_list):
+        display_list.extend(self.display_list)
 ```
 
 Now the browser can use `draw` to collect its own `display_list`
@@ -483,17 +483,17 @@ contains *commands*, and we'll have two types of commands:
 ``` {.python}
 class DrawText:
     def __init__(self, x1, y1, text, font):
-        self.x1 = x1
-        self.y1 = y1
+        self.top = y1
+        self.left = x1
         self.text = text
         self.font = font
     
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
         self.color = color
 ```
 
@@ -506,9 +506,9 @@ list:[^why-not-change]
 
 ``` {.python}
 class InlineLayout:
-    def draw(self, to):
+    def draw(self, display_list):
         for x, y, word, font in self.display_list:
-            to.append(DrawText(x, y, word, font))
+            display_list.append(DrawText(x, y, word, font))
 ```
 
 Meanwhile `BlockLayout` can draw backgrounds with `DrawRect` commands.
@@ -516,10 +516,10 @@ Let's add a gray background to `pre` tags, which contain code:
 
 ``` {.python}
 class BlockLayout:
-    def draw(self, to):
+    def draw(self, display_list):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.w, self.y + self.h
-            to.append(DrawRect(self.x, self.y, x2, y2, "gray"))
+            display_list.append(DrawRect(self.x, self.y, x2, y2, "gray"))
         # ...
 ```
 
@@ -528,23 +528,22 @@ layout objects: the background has to be drawn *before* and therefore
 *below* the text inside the source block.
 
 The `render` method now needs to run graphics commands on our actual
-canvas. Let's do this with a `draw` method for each command. On
+canvas. Let's do this with an `execute` method for each command. On
 `DrawText` it calls to `create_text`:
 
 ``` {.python}
 class DrawText:
-    def draw(self, scroll, canvas):
+    def execute(self, scroll, canvas):
         canvas.create_text(
-            self.x1, self.y1 - scroll,
+            self.left, self.top - scroll,
             text=self.text,
             font=self.font,
             anchor='nw',
         )
 ```
 
-Note that the `draw` command accepts the scroll amount as a parameter;
-in effect, we're asking each graphics command to perform coordinate
-conversion.
+Note that `execute` takes the scroll amount as a parameter; in effect,
+we're asking each graphics command to perform coordinate conversion.
 
 `DrawRect` works the same way, except it calls `create_rectangle`. By
 default `create_rectangle` draws a one-pixel black border, so make
@@ -553,23 +552,23 @@ sure to pass `width = 0`:
 ``` {.python}
 
 class DrawRect:
-    def draw(self, scroll, canvas):
+    def execute(self, scroll, canvas):
         canvas.create_rectangle(
-            self.x1, self.y1 - scroll,
-            self.x2, self.y2 - scroll,
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
             width=0,
             fill=self.color,
         )
 ```
 
 We do still want to skip graphics commands that occur offscreen, and
-`DrawRect` already contains a `y2` field we can use, so let's add the
-same to `DrawText`:
+`DrawRect` already contains a `bottom` field we can use, so let's add
+the same to `DrawText`:
 
 ``` {.python}
 def __init__(self, x1, y1, text, font):
     # ...
-    self.y2 = y1 + font.metrics("linespace")
+    self.bottom = y1 + font.metrics("linespace")
 ```
 
 ::: {.quirks}
@@ -583,7 +582,7 @@ argument.
 
 With the drawing logic now inside the drawing commands themselves,
 the browser's `render` method just determines which commands
-to call `draw` for:
+to call `execute` for:
 
 ``` {.python}
 def render(self):
@@ -591,7 +590,7 @@ def render(self):
     for cmd in self.display_list:
         if cmd.y1 > self.scroll + HEIGHT: continue
         if cmd.y2 < self.scroll: continue
-        cmd.draw(self.scroll, self.canvas)
+        cmd.execute(self.scroll, self.canvas)
 ```
 
 We not only have access to the height of any element, but also of the
