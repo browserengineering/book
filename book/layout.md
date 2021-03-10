@@ -98,13 +98,14 @@ rename it to `InlineLayout` and rename its constructor to be a new
 ``` {.python}
 class InlineLayout:
     def layout(self):
-        tree = self.node
         # ...
 ```
 
-We'll then add a new constructor to `InlineLayout` to initialize this
-`node` field. Because these layout objects form a tree, we'll also
-want references to the parent node and also the previous sibling:
+Right now, the code in the `layout` method refers to a `tree`
+argument; replace those references with a new `node` field, and add a
+new constructor to `InlineLayout` to initialize it. Because layout
+objects form a tree, we'll also want references to the parent node and
+also the previous sibling:
 
 ``` {.python}
 class InlineLayout:
@@ -225,7 +226,7 @@ def layout_mode(node):
 `BlockLayout` can now call `layout_mode` as it creates child layout
 nodes to determine what type of layout object to create:
 
-``` {.python indent=4}
+``` {.python}
 class BlockLayout:
     def layout(self):
         previous = None
