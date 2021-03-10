@@ -271,9 +271,9 @@ class InlineLayout:
         max_descent = max([metric["descent"] for metric in metrics])
         self.cy = baseline + 1.2 * max_descent
 
-    def draw(self, to):
+    def draw(self, display_list):
         for x, y, word, font in self.display_list:
-            to.append(DrawText(x, y, word, font))
+            display_list.append(DrawText(x, y, word, font))
 
 INLINE_ELEMENTS = [
     "a", "em", "strong", "small", "s", "cite", "q", "dfn", "abbr",
@@ -282,6 +282,21 @@ INLINE_ELEMENTS = [
     "span", "br", "wbr", "big"
 ]
 
+def layout_mode(node):
+    has_text = False
+    has_containers = False
+    for child in node.children:
+        if isinstance(child, Text):
+            has_text = True
+        elif child.tag in INLINE_ELEMENTS:
+            has_text = True
+        else:
+            has_containers = True
+    if has_containers or not has_text:
+        return "block"
+    else:
+        return "inline"
+
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -289,22 +304,14 @@ class BlockLayout:
         self.previous = previous
         self.children = []
 
-    def has_block_children(self):
-        for child in self.node.children:
-            if isinstance(child, Text):
-                return False
-            elif child.tag in INLINE_ELEMENTS:
-                return False
-        return True
-
     def layout(self):
-        if self.has_block_children():
-            previous = None
-            for child in self.node.children:
+        previous = None
+        for child in self.node.children:
+            if layout_mode(child) == "inline":
+                previous = InlineLayout(child, self, previous)
+            else:
                 previous = BlockLayout(child, self, previous)
-                self.children.append(previous)
-        else:
-            self.children.append(InlineLayout(self.node, self, None))
+            self.children.append(previous)
 
         self.x = self.parent.x
         self.w = self.parent.w
@@ -319,12 +326,12 @@ class BlockLayout:
 
         self.h = sum([child.h for child in self.children])
 
-    def draw(self, to):
+    def draw(self, display_list):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.w, self.y + self.h
-            to.append(DrawRect(self.x, self.y, x2, y2, "gray"))
+            display_list.append(DrawRect(self.x, self.y, x2, y2, "gray"))
         for child in self.children:
-            child.draw(to)
+            child.draw(display_list)
 
 class DocumentLayout:
     def __init__(self, node):
@@ -343,21 +350,21 @@ class DocumentLayout:
         child.layout()
         self.h = child.h + 2*VSTEP
 
-    def draw(self, to):
-        self.children[0].draw(to)
+    def draw(self, display_list):
+        self.children[0].draw(display_list)
 
 class DrawText:
     def __init__(self, x1, y1, text, font):
-        self.x1 = x1
-        self.y1 = y1
+        self.top = y1
+        self.left = x1
         self.text = text
         self.font = font
 
-        self.y2 = y1 + font.metrics("linespace")
+        self.bottom = y1 + font.metrics("linespace")
 
-    def draw(self, scroll, canvas):
+    def execute(self, scroll, canvas):
         canvas.create_text(
-            self.x1, self.y1 - scroll,
+            self.left, self.top - scroll,
             text=self.text,
             font=self.font,
             anchor='nw',
@@ -365,16 +372,16 @@ class DrawText:
 
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
         self.color = color
 
-    def draw(self, scroll, canvas):
+    def execute(self, scroll, canvas):
         canvas.create_rectangle(
-            self.x1, self.y1 - scroll,
-            self.x2, self.y2 - scroll,
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
             width=0,
             fill=self.color,
         )
@@ -408,7 +415,7 @@ class Browser:
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT: continue
             if cmd.y2 < self.scroll: continue
-            cmd.draw(self.scroll, self.canvas)
+            cmd.execute(self.scroll, self.canvas)
 
     def scrolldown(self, e):
         self.scroll = self.scroll + SCROLL_STEP
