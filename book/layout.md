@@ -54,40 +54,39 @@ be used to draw that background.
 
 The layout tree drives the rest of the layout process. The browser
 first traverses the HTML tree to create the layout tree. Then it
-computes the size, and position for each layout object. Finally, each
+computes the size and position for each layout object. Finally, each
 layout object generates drawing commands which the browser executes
-the render the page.
+to render the page.
 
 Layout modes
 ============
 
-Different layout object lay out their children differently. In the
-example above, the body element will stack its children---containers
-like headings and pragraphs---vertically, but a paragraph will stack
-its children---text---horizontally into lines. These two *layout
-modes*, for text and for containers, are the ones we'll be
-implementing in our browser, and are called inline and block layout.
-Both of them define how an element is laid out relative to its
-children.[^or-equivalently]
+Different layout object lay out their children differently. Some
+elements contain text, like the paragraph above, and lay that text out
+horizontally in lines. But other elements contain those containers
+themselves. In the example bove, the body element contains a heading
+and some paragraphs, which are themselves containers for text. Those
+containers are stacked vertically, from top to bottom. Abstracting a
+bit, there are two *layout modes* here, two ways an element can be
+laid out relative to its children.[^or-equivalently] They're called
+block layout, for laying out containers, and inline layout, for laying
+out text, so we say the body element is in block layout mode (because
+its children are containers) while the paragraphs and heading are in
+inline layout mode (because their children are text). In real browsers
+there are a lot of other layout modes too, but in this chapter we'll
+keep it simple.
 
 [^or-equivalently]: Or, equivalently, how an element is laid out
 relative to its siblings and parent. CSS tends to this equivalent
 perspective, though in some cases (like the `inline-block` display
 mode) it also defines the relationship to children.
 
-So each layout object in the layout tree has an associated *layout
-mode*; the body element in the example above has a block layout mode,
-because its contents are containrs, while the heading and paragraphs
-have an inline layout mode, because their contents are text. In real
-browsers there are a lot of other layout modes too, but in this
-chapter we'll keep it simple.
-
-So let's have one class for each layout mode. Inline layout should be
+Let's have one class for each layout mode. Inline layout should be
 familiar: it's what we've been implementing up until this point and
 corresponds to how text inside a paragraph are laid out in lines, left
 to right.[^in-english] Block layout is new to this chapter: it
 corresponds to the way containers like paragraphs and headings are
-laid out one after another vertically top to bottom.
+laid out one after another vertically from top to bottom.
 
 [^in-english]: In European languages, at least!
 
@@ -131,7 +130,10 @@ beginning.
 
 Also, instead of initializing these `cx` and `cy` fields to `HSTEP`
 and `VSTEP`, let's initialize them to `self.x` and `self.y`, or in
-other words the top-left corner of the paragraph:
+other words the top-left corner of the paragraph. This is because now
+we will have a different inline layout object for each paragraph,
+rather than a single layout object for the entire page. Each of these
+inline layouts must start at the top-left of its container.
 
 ``` {.python}
 def layout(self):
@@ -161,8 +163,8 @@ class BlockLayout:
         self.children = []
 ```
 
-Unlike with inline layout, the first job of the `BlockLayout` is
-creating layout objects for all the containters inside it.
+Unlike with inline layout, the first job of `BlockLayout` is creating
+layout objects for all the containters inside it.
 
 When creating child layout objects, the big question for each child is
 whether it should be a `BlockLayout` or an `InlineLayout`. Basically,
@@ -316,13 +318,13 @@ else:
 
 These three computations have to go before the loop that calls
 `layout` on each child. After all, a block layout object's width
-depends on the parent's width; so by symmetry the width must be
-computed before laying out the children. The position is the same: it
-depends on both the parent and previous sibling, so the parent has to
-compute it before recursing, and when recursing it has to lay out the
-children in order. Getting this dependency order right is crucial,
-because if you don't some layout object will try to read a value that
-hasn't been computed yet, and the browser will crash.
+depends on the parent's width; so the width must be computed before
+laying out the children. The position is the same: it depends on both
+the parent and previous sibling, so the parent has to compute it
+before recursing, and when recursing it has to lay out the children in
+order. Getting this dependency order right is crucial, because if you
+don't some layout object will try to read a value that hasn't been
+computed yet, and the browser will crash.
 
 Finally, we need to compute the block layout's height. A block layout
 object should be tall enough to contain all of its children, so its
