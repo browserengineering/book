@@ -61,30 +61,34 @@ to render the page.
 Layout modes
 ============
 
-Different layout object lay out their children differently. Some
-elements contain text, like the paragraph above, and lay that text out
-horizontally in lines. But other elements contain those containers
-themselves. In the example bove, the body element contains a heading
-and some paragraphs, which are themselves containers for text. Those
-containers are stacked vertically, from top to bottom. Abstracting a
-bit, there are two *layout modes* here, two ways an element can be
-laid out relative to its children.[^or-equivalently] They're called
-block layout, for laying out containers, and inline layout, for laying
-out text, so we say the body element is in block layout mode (because
+Different layout objects lay out their children differently. Some
+*container* elements contain text, like the paragraph above, and lay
+that text out horizontally in lines. But other elements contain those
+containers themselves. In the example above, the body element contains
+a heading and some paragraphs, which are themselves containers for
+text. Those containers are stacked vertically, from top to bottom.
+Abstracting a bit, there are two *layout modes* here, two ways an
+element can be laid out relative to its children.[^or-equivalently]
+They're called block layout, for laying out containers, and inline
+layout, for laying out text.
+
+In the example above the body element is in block layout mode (because
 its children are containers) while the paragraphs and heading are in
 inline layout mode (because their children are text). In real browsers
 there are a lot of other layout modes too, but in this chapter we'll
 keep it simple.
 
 [^or-equivalently]: Or, equivalently, how an element is laid out
-relative to its siblings and parent. CSS tends to this equivalent
-perspective, though in some cases (like the `inline-block` display
-mode) it also defines the relationship to children.
+relative to its siblings and parent. The oldest CSS properties, like
+the `inline` and `block` values for `display`, are set on children,
+but newer ones like `inline-block`, `flex`, and `grid` are set on the
+parent. This chapter takes its nomenclature from this newer
+convention, even though it's actually implement inline and block layout.
 
-Let's have one class for each layout mode. Inline layout should be
+Let's have one class for each layout mode. `InlineLayout` should be
 familiar: it's what we've been implementing up until this point and
 corresponds to how text inside a paragraph are laid out in lines, left
-to right.[^in-english] Block layout is new to this chapter: it
+to right.[^in-english] `BlockLayout` is new to this chapter: it
 corresponds to the way containers like paragraphs and headings are
 laid out one after another vertically from top to bottom.
 
