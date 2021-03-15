@@ -38,10 +38,15 @@ layout tree and then computing those sizes and positions.
 For example, consider a web page with a body that contains a heading
 and three paragraphs:
 
-<div> <iframe src="layout-example.html" style="width: 100%; height: 710px;
-border: 2px solid gray;"></iframe> <span style="font-size: 16px">This is a real
-example! Play with it in <a href="layout-example.html" target=_blank>another
-browser tab</a> to see how it behaves.</span>
+<div>
+  <iframe src="layout-example.html"
+          style="width: 100%; height: 710px; border: 2px solid gray;"></iframe>
+  <span style="font-size: 16px">
+    This is a real example. Play with it in
+    <a href="layout-example.html" target=_blank>another browser tab</a> to see
+    how it behaves!
+  </span>
+</div>
 
 Its layout tree will have a layout object for the top-level `html`
 element, a layout object inside that for the body element, and then
