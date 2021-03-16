@@ -8,9 +8,8 @@ prev: intro
 If you've read this far, hopefully you're convinced that browsers are
 interesting and important to study. Now we'll dig a bit into the web itself,
 where it came from, and how the web and browsers have evolved to date. This
-brief history is by no means exhaustive.[^sgml] Instead, you should view it
-as a brief view into a much larger---and quite interesting in its own
-right---subject.
+history is by no means exhaustive.[^sgml] Instead, you should view it as a brief
+view into a much larger---and quite interesting in its own right---subject.
 
 [^sgml]: For example, nothing much about
 [SGML](https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language) or
@@ -190,7 +189,7 @@ own code base called
 Netscape's early versions were also not free software---you had to buy them from
 a store.
 
-Web Standards
+Web standards
 =============
 
 In parallel with these developments was another, equally important, one---the
@@ -271,4 +270,4 @@ interesting about the most cost-effective way to implement a rendering engine
 based on a commodity set of platform APIs. For example, it's common for a wide
 variety of independent developers (ones not paid by the company nominally
 controlling the browser) to contribute code and features. There are even
-companies and individuals that specialize in implementing these features.
+companies and individuals that specialize in implementing these features!
