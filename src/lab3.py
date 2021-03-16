@@ -90,8 +90,8 @@ class Layout:
         self.tokens = tokens
         self.display_list = []
 
-        self.row = VSTEP
-        self.col = HSTEP
+        self.cursor_x = HSTEP
+        self.cursor_y = VSTEP
         self.weight = "normal"
         self.style = "roman"
         self.size = 16
@@ -124,7 +124,7 @@ class Layout:
             self.flush()
         elif tok.tag == "/p":
             self.flush()
-            self.row += VSTEP
+            self.cursor_y += VSTEP
         
     def text(self, text):
         font = tkinter.font.Font(
@@ -134,23 +134,23 @@ class Layout:
         )
         for word in text.split():
             w = font.measure(word)
-            if self.col + w > WIDTH - HSTEP:
+            if self.cursor_x + w > WIDTH - HSTEP:
                 self.flush()
-            self.line.append((self.col, word, font))
-            self.col += w + font.measure(" ")
+            self.line.append((self.cursor_x, word, font))
+            self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
         metrics = [font.metrics() for x, word, font in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
-        baseline = self.row + 1.2 * max_ascent
+        baseline = self.cursor_y + 1.2 * max_ascent
         for x, word, font in self.line:
             y = baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font))
-        self.col = HSTEP
+        self.cursor_x = HSTEP
         self.line = []
         max_descent = max([metric["descent"] for metric in metrics])
-        self.row = baseline + 1.2 * max_descent
+        self.cursor_y = baseline + 1.2 * max_descent
 
 class Browser:
     def __init__(self):

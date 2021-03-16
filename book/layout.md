@@ -144,23 +144,24 @@ def layout(self):
     # ...
 ```
 
-The constructor also initializes `row`, `col`, and `line`, and calls
-`recurse` and `flush`. Let's move that into `layout` as well:
+The constructor also initializes `cursor_x`, `cursor_y`, and `line`,
+and calls `recurse` and `flush`. Let's move that into `layout` as
+well:
 
 ``` {.python}
 def layout(self):
     # ...
 
-    self.row = self.y
-    self.col = self.x
+    self.cursor_x = self.x
+    self.cursor_y = self.y
     self.line = []
     self.recurse(self.node)
     self.flush()
 ```
 
-Note that I've changed `row` and `col` so they're initialized from `x`
-and `y` instead of `VSTEP` and `HSTEP`. Make sure to make the same
-change inside the `flush` method when `col` is reset.
+Note that I've changed the code to initialize `cursor_x` and
+`cursor_y` from `x` and `y` instead of `HSTEP` and `XSTEP`. Make sure
+to make that change inside the `flush` method also.
 
 Now, this `layout` method isn't done---we still need to compute `x`,
 `y`, `w`, and `h`! I'll return to that later. For now, let's turn to
@@ -337,8 +338,8 @@ complicated to support more features and faster speed. [Chapter
 
 That settles `BlockLayout`; let's now work on `InlineLayout`. Its `x`,
 `w`, and `y` are set the same way as for a `BlockLayout`, but its
-height is computed based on its *y*-cursor `row` instead of the height
-of its children.
+height is computed based on its *y*-cursor instead of the height of
+its children.
 
 ``` {.python}
 class InlineLayout:
@@ -353,7 +354,7 @@ class InlineLayout:
 
         # ...
 
-        self.h = self.row - self.y
+        self.h = self.cursor_y - self.y
 ```
 
 Finally even `DocumentLayout` needs some layout code, though since the

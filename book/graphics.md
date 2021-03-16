@@ -240,21 +240,18 @@ every letter in the same place, so they all overlap! Let's fix that:
 
 ``` {.python expected=False}
 HSTEP, VSTEP = 13, 18
-row, col = VSTEP, HSTEP
+cursor_x, cursor_y = HSTEP, VSTEP
 for c in text:
-    self.canvas.create_text(col, row, text=c)
-    col += HSTEP
+    self.canvas.create_text(cursor_x, cursor_y, text=c)
+    cursor_x += HSTEP
 ```
 
-The variables[^the-grid] `row` and `col` point to where the next
-character will go, and I picked the magic numbers—13 and 18—by trying
-a few different values and picking one that looked most readable. In
-the [next chapter](text.md), we'll replace magic numbers with font
+The variables `cursor_x` and `cursor_y` point to where the next
+character will go, as if you were typing the text with in a word
+processor. I picked the magic numbers—13 and 18—by trying a few
+different values and picking one that looked most readable. In the
+[next chapter](text.md), we'll replace magic numbers with font
 metrics.
-
-[^the-grid]: Later, when we [add font metrics](text.md), `row` and
-    `col` will be less appropriate, since text will stop being a grid.
-    But I want to use `x` and `y` [later in the book](layout.md).
 
 The text now forms a line from left to right. But with an 800 pixel
 wide canvas and 13 pixels per character, one line only fits about 60
@@ -264,14 +261,14 @@ to *wrap* the text once we reach the edge of the screen:
 ``` {.python indent=8}
 for c in text:
     # ...
-    if col >= WIDTH - HSTEP:
-        row += VSTEP
-        col = HSTEP
+    if cursor_x >= WIDTH - HSTEP:
+        cursor_y += VSTEP
+        cursor_x = HSTEP
 ```
 
-The code wraps text by increasing `row` and resetting `col`[^crlf]
-once `col` goes past 787 pixels.[^not-800] Wrapping makes it possible
-to see a lot more text.
+The code increases `cursor_y` and resets `cursor_x`[^crlf] once
+`cursor_x` goes past 787 pixels.[^not-800] Wrapping the text this way
+makes it possible to read more than a single line.
 
 [^crlf]: In the olden days of type writers, increasing *y* meant
     *feed*ing in a new *line*, and resetting *x* meant *return*ing the
@@ -335,9 +332,9 @@ a standalone function:
 ``` {.python}
 def layout(self, text):
     display_list = []
-    row, col = VSTEP, HSTEP
+    cursor_x, cursor_y = HSTEP, VSTEP
     for c in text:
-        display_list.append((col, row, c))
+        display_list.append((cursor_x, cursor_y, c))
         # ...
     return display_list
 ```
