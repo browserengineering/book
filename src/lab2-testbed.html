@@ -1,0 +1,38 @@
+<!doctype HTML>
+<style>
+  #logElement, #rawContents {
+  	border: 1px solid black;
+  	overflow:scroll;
+  }
+  #logElement, #rawContents {
+  	width: 300px;
+   	height: 100px;
+  }
+  canvas {
+  	width: 800px;
+  	height: 600px;
+  	border: 1px solid black;
+  }
+</style>
+<script src="lab2.js"></script>
+<script src="testbed.js"></script>
+
+<script>
+	onload = register;
+	let browser
+	function process(text) {
+		browser = new Browser(canvasEl)
+		browser.load(text)
+	}
+</script>
+<div id=query>
+</div>
+Canvas<br>
+<canvas id=canvasEl width=800 height=600>
+</canvas>
+<br>Raw result<br>
+<div id=rawContents>
+</div>
+Log console<br>
+<pre id=logElement>
+</pre>

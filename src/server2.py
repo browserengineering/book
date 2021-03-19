@@ -32,6 +32,7 @@ def handle_connection(conx):
     body = handle_request(method, url, headers, body)
     response = "HTTP/1.0 200 OK\r\n"
     response += "Content-Length: {}\r\n".format(len(body.encode("utf8")))
+    response += "Access-Control-Allow-Origin: *\r\n"
     response += "\r\n" + body
     conx.send(response.encode('utf8'))
     conx.close()
@@ -48,10 +49,11 @@ def handle_request(method, url, headers, body):
     if (not parsed_url.query):
         return ''
 
-    if (path != 'proxy')
+    if (parsed_url.path != '/proxy'):
         return ''
 
     headers, body = lab1.request(parsed_url.query)
+    print(body)
     return body
 
 while True:
