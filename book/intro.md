@@ -178,8 +178,8 @@ developer is anyone who makes web pages, regardless of how.
 Working on such a codebase can feel daunting. I often find lines of code last
 touched 15 years ago by someone I've never met; or even now discover files and
 code that I never knew existed; or see lines of code that don’t look necessary,
-yet seem to be important. How do I understand 15-year-old code does? Or learn
-the purpose of these new files? Can I delete these lines of code, or are they
+yet seem to be important. How do I understand that 15-year-old code? Or learn
+the purpose of these new files? Can I delete those lines of code, or are they
 there for a reason?
 
 What's amazing is that, despite the scale and the pace and the complexity, there
