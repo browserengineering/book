@@ -4,9 +4,11 @@ ORDERED_PAGES=preface intro history http graphics text html layout styles chrome
 
 PANDOC_COMMON_ARGS=--from markdown --to html --lua-filter=book/filter.lua --fail-if-warnings
 
-book: $(patsubst book/%.md,www/%.html,$(wildcard book/*.md)) www/draft/onepage.html www/layout-example.html
+HTML_EXAMPLES=www/layout-example.html www/layout-container-example.html
+
+book: $(patsubst book/%.md,www/%.html,$(wildcard book/*.md)) www/draft/onepage.html $(patsubst book/%-example.html,www/draft/%-example.html,$(wildcard book/*-example.html))
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md))
-draft: $(patsubst book/%.md,www/draft/%.html,$(wildcard book/*.md)) www/draft/layout-example.html
+draft: $(patsubst book/%.md,www/draft/%.html,$(wildcard book/*.md)) $(patsubst book/%-example.html,www/draft/%-example.html,$(wildcard book/*-example.html))
 
 onepage/%.html: book/%.md book/template-onepage.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)
@@ -35,11 +37,11 @@ www/draft/%.html: book/%.md book/template.html book/signup.html book/filter.lua
                -c ../book.css $(PANDOC_COMMON_ARGS) \
                $< -o $@
 
-www/layout-example.html: book/layout-example.html
-	cp book/layout-example.html www/
+www/%-example.html: book/%-example.html
+	cp $< www/
 
-www/draft/layout-example.html: book/layout-example.html
-	cp book/layout-example.html www/draft/
+www/draft/%-example.html: book/%-example.html
+	cp $< www/draft/
 
 publish:
 	rsync -rtu --exclude=*.pickle --exclude=*.hash www/ server:/home/www/browseng/

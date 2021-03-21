@@ -8,7 +8,10 @@
 	font-size: 24px;
 	display: block;
   }
-  div {
+  html {
+    background: lightgreen;
+  }
+  div,body {
 	border: 3px solid green;
 	background: lightgreen;
   }
@@ -23,33 +26,10 @@
   h1 {
 	font-size: 30px;
   }
-  .green {
-	background: lightgreen;
-  }
-  .blue {
-	background: lightblue;
-  }
 </style>
-<pre>
-&lt;html&gt; &lt;!-- BlockLayout --&gt;
-  &lt;body&gt; &lt;!-- BlockLayout --&gt;
-    &lt;div&gt; &lt;!-- BlockLayout -->
-      &lt;h1&gt;Header text&lt/h1&gt; &lt;!-- InlineLayout --&gt;
-      &lt;p&gt;Paragraph 1&lt;/p&gt; &lt;!-- InlineLayout --&gt;
-      &lt;p&gt;Paragraph 2&lt;/p&gt; &lt;!-- InlineLayout --&gt;
-      &lt;p&gt;Paragraph 3&lt;/p&gt; &lt;!-- InlineLayout --&gt;
-    &lt;/div&gt;
-  &lt;/body&gt;
-&lt;/html&gt;
-</pre>
-Elements with BlockLayout are <span class=green>green</span>
-<br>
-Elements with InlineLayout are <span class=blue>blue</span>
 <body> <!-- BlockLayout -->
-  <div> <!-- BlockLayout -->
-    <h1>Header text</h1> <!-- BlockLayout -->
-    <p>Paragraph 1</p> <!-- BlockLayout -->
-    <p>Paragraph 2</p> <!-- BlockLayout -->
-    <p>Paragraph 3</p> <!-- BlockLayout -->
-  </div>
+  <h1>Header text</h1> <!-- BlockLayout -->
+  <p>Paragraph 1</p> <!-- BlockLayout -->
+  <p>Paragraph 2</p> <!-- BlockLayout -->
+  <p>Paragraph 3</p> <!-- BlockLayout -->
 </body>
