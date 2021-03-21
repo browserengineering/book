@@ -119,33 +119,43 @@ class InlineLayout:
         self.children = []
 ```
 
-Each layout object will also store its size and position, using new
-`x`, `y`, `w`, and `h` fields. Unfortunately, `InlineLayout` already
-uses the `x` and `y` fields for the location of the next word. To
-avoid a *very* annoying conflict, let's rename those fields to `cx`
-and `cy`. **Make sure** to replace `x` and `y` with `cx` and `cy`
-throughout the class, lest you run into some difficult-to-diagnose
-bugs, especially in the class's other methods like `flush` and `text`.
+Besides the references to other related layout objects, each layout object also
+needs a size and position, which we'll store in the `w`, `h`, `x`, and
+`y` fields. Each layout object will have a `layout` method whose job
+is computing the values of those fields.
 
-::: {.todo}
-In retrospect, those should have been named something else from the
-beginning.
-:::
+Let's start with `InlineLayout`. Right now its constructor also
+initializes `weight`, `style`, and `size`, as well as `display_list`.
+Let's move all of those into a new `layout` method:
 
-Also, instead of initializing these `cx` and `cy` fields to `HSTEP`
-and `VSTEP`, let's initialize them to `self.x` and `self.y`, or in
-other words the top-left corner of the paragraph. This is because now
-we will have a different inline layout object for each paragraph,
-rather than a single layout object for the entire page. Each of these
-inline layouts must start at the top-left of its container.
+``` {.python}
+def layout(self):
+    self.display_list = []
+    self.weight = "normal"
+    self.style = "roman"
+    self.size = 16
+
+    # ...
+```
+
+The constructor also initializes `cursor_x`, `cursor_y`, and `line`,
+and calls `recurse` and `flush`. Let's move that into `layout` as
+well:
 
 ``` {.python}
 def layout(self):
     # ...
-    self.cx = self.x
-    self.cy = self.y
-    # ...
+
+    self.cursor_x = self.x
+    self.cursor_y = self.y
+    self.line = []
+    self.recurse(self.node)
+    self.flush()
 ```
+
+Note that I've changed the code to initialize `cursor_x` and
+`cursor_y` from `x` and `y` instead of `HSTEP` and `XSTEP`. Make sure
+to make that change inside the `flush` method also.
 
 For now, we're not actually calculating the `x`, `y`, `w`, and `h`
 variables anywhere. We'll do that later this chapter. We're also not
@@ -358,8 +368,8 @@ complicated to support more features and faster speed. [Chapter
 
 That settles `BlockLayout`; let's now work on `InlineLayout`. Its `x`,
 `w`, and `y` are set the same way as for a `BlockLayout`, but its
-height is computed based on its *y*-cursor `cy` instead of the height
-of its children.
+height is computed based on its *y*-cursor instead of the height of
+its children.
 
 ``` {.python}
 class InlineLayout:
@@ -374,7 +384,7 @@ class InlineLayout:
 
         # ...
 
-        self.height = self.cy - self.y
+        self.height = self.cursor_y - self.y
 ```
 
 Finally, even `DocumentLayout` needs some layout code, though since the
