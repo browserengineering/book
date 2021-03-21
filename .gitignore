@@ -9,3 +9,4 @@ www/db.pickle
 www/pw.hash
 onepage/
 node_modules/
+src/__pycache__/
