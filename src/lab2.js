@@ -1,4 +1,4 @@
-function lex(body) {
+async function lex(body) {
     let text = ""
     let in_angle = false
     for (let c of body) {
@@ -8,6 +8,7 @@ function lex(body) {
             in_angle = false
         else if (!in_angle)
             text += c
+        await potentialBreakpointLex(text);
     }
     return text
 }
@@ -17,7 +18,7 @@ let [HSTEP, VSTEP] = [6, 18]
 
 let SCROLL_STEP = 100
 
-function layout(text) {
+async function layout(text) {
     let display_list = []
     let [x, y] = [HSTEP, VSTEP]
     for (let c of text) {
@@ -27,6 +28,7 @@ function layout(text) {
             y += VSTEP
             x = HSTEP
         }
+        await potentialBreakpointLayout(display_list)
     }
     return display_list
 }
@@ -39,13 +41,14 @@ class Browser {
     this.scroll = 0
   }
 
-  load(body) {
-    let text = lex(body);
-    this.display_list = layout(text);
+  async load(body) {
+    let text = await lex(body);
+    this.display_list = await layout(text);
     this.render();
   }
 
-  render() {
+  async render() {
+    let count = 0;
     this.canvasContext.clearRect(0, 0, this.canvasElement.width,
        this.canvasElement.height);
     this.canvasContext.font = '12px serif';
@@ -56,6 +59,7 @@ class Browser {
       if (y + VSTEP < this.scroll)
         continue;
       this.canvasContext.fillText(c, x, y - this.scroll);
+      await potentialBreakpointRender(count++);
     }
   }
 
