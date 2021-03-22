@@ -274,11 +274,12 @@ class InlineLayout:
         for x, y, word, font in self.display_list:
             display_list.append(DrawText(x, y, word, font))
 
-INLINE_ELEMENTS = [
-    "a", "em", "strong", "small", "s", "cite", "q", "dfn", "abbr",
-    "ruby", "rt", "rp", "data", "time", "code", "var", "samp",
-    "kbd", "sub", "sup", "i", "b", "u", "mark", "bdi", "bdo",
-    "span", "br", "wbr", "big"
+BLOCK_ELEMENTS = [
+    "html", "body", "article", "section", "nav", "aside",
+    "h1", "h2", "h3", "h4", "h5", "h6", "hgroup", "header",
+    "footer", "address", "p", "hr", "ol", "ul", "menu", "li",
+    "dl", "dt", "dd", "figure", "figcaption", "main", "div",
+    "table", "form", "fieldset", "legend", "details", "summary",
 ]
 
 def layout_mode(node):
@@ -287,10 +288,10 @@ def layout_mode(node):
     for child in node.children:
         if isinstance(child, Text):
             has_text = True
-        elif child.tag in INLINE_ELEMENTS:
-            has_text = True
-        else:
+        elif child.tag in BLOCK_ELEMENTS:
             has_containers = True
+        else:
+            has_text = True
     if has_containers or not has_text:
         return "block"
     else:
@@ -328,7 +329,8 @@ class BlockLayout:
     def draw(self, display_list):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.w, self.y + self.h
-            display_list.append(DrawRect(self.x, self.y, x2, y2, "gray"))
+            rect = DrawRect(self.x, self.y, x2, y2, "gray")
+            display_list.append(rect)
         for child in self.children:
             child.draw(display_list)
 
@@ -402,12 +404,12 @@ class Browser:
     def load(self, url):
         headers, body = request(url)
         tree = HTMLParser(body).parse()
-        document = DocumentLayout(tree)
-        document.layout()
+        self.document = DocumentLayout(tree)
+        self.document.layout()
         self.display_list = []
-        document.draw(self.display_list)
+        self.document.draw(self.display_list)
         self.render()
-        self.max_y = document.h - HEIGHT
+        self.max_y = self.document.h - HEIGHT
 
     def render(self):
         self.canvas.delete("all")
