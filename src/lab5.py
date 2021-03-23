@@ -190,10 +190,10 @@ class InlineLayout:
 
     def layout(self):
         self.x = self.parent.x
-        self.w = self.parent.w
+        self.width = self.parent.width
 
         if self.previous:
-            self.y = self.previous.y + self.previous.h
+            self.y = self.previous.y + self.previous.height
         else:
             self.y = self.parent.y
 
@@ -208,7 +208,7 @@ class InlineLayout:
         self.recurse(self.node)
         self.flush()
 
-        self.h = self.cursor_y - self.y
+        self.height = self.cursor_y - self.y
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -314,21 +314,21 @@ class BlockLayout:
             self.children.append(previous)
 
         self.x = self.parent.x
-        self.w = self.parent.w
+        self.width = self.parent.width
 
         if self.previous:
-            self.y = self.previous.y + self.previous.h
+            self.y = self.previous.y + self.previous.height
         else:
             self.y = self.parent.y
 
         for child in self.children:
             child.layout()
 
-        self.h = sum([child.h for child in self.children])
+        self.height = sum([child.height for child in self.children])
 
     def draw(self, display_list):
         if self.node.tag == "pre":
-            x2, y2 = self.x + self.w, self.y + self.h
+            x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
             display_list.append(rect)
         for child in self.children:
@@ -345,11 +345,11 @@ class DocumentLayout:
         child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
-        self.w = WIDTH - 2*HSTEP
+        self.width = WIDTH - 2*HSTEP
         self.x = HSTEP
         self.y = VSTEP
         child.layout()
-        self.h = child.h + 2*VSTEP
+        self.height = child.height + 2*VSTEP
 
     def draw(self, display_list):
         self.children[0].draw(display_list)
@@ -409,13 +409,13 @@ class Browser:
         self.display_list = []
         self.document.draw(self.display_list)
         self.render()
-        self.max_y = self.document.h - HEIGHT
+        self.max_y = self.document.height - HEIGHT
 
     def render(self):
         self.canvas.delete("all")
         for cmd in self.display_list:
-            if cmd.y1 > self.scroll + HEIGHT: continue
-            if cmd.y2 < self.scroll: continue
+            if cmd.top > self.scroll + HEIGHT: continue
+            if cmd.bottom < self.scroll: continue
             cmd.execute(self.scroll, self.canvas)
 
     def scrolldown(self, e):
