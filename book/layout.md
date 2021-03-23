@@ -147,11 +147,11 @@ class InlineLayout:
 ```
 
 Each layout object also needs a size and position, which we'll store
-in the `w`, `h`, `x`, and `y` fields. That'll happen in the `layout`
-method, but let's leave actually calculating the `x`, `y`, `w`, and
-`h` variables for later this chapter. We're also not creating any
-children; that'll have to wait for [another chapter](chrome.md). For
-now, we need to focus on the other layout mode, block layout.
+in the `width`, `height`, `x`, and `y` fields. That'll happen in the
+`layout` method, but let's leave actually calculating the these fields
+for later this chapter. We're also not creating any children; that'll
+have to wait for [another chapter](chrome.md). For now, we need to
+focus on the other layout mode, block layout.
 
 Creating the layout tree
 ========================
@@ -358,9 +358,9 @@ class InlineLayout:
         self.height = self.cursor_y - self.y
 ```
 
-Again, the computations for `x`, `w`, and `y` have to come before the
-text inside the layout object is laid out, but the `h` computation has
-to come after.
+Again, `x`, `width`, and `y` have to be computed before the text
+inside the layout object is laid out, but `height` has to be computed
+after.
 
 Finally, even `DocumentLayout` needs some layout code, though since the
 document always starts in the same place it's pretty simple:
@@ -385,11 +385,11 @@ For each type of layout object, the `layout` method is ordered in the
 same way:
 
 + When `layout` is called, it first creates layout objects for each child.
-+ It then computes the `w`, `x`, and `y` fields, reading from the
++ It then computes the `x`, `width`, and `y` fields, reading from the
   `parent` and `previous` layout objects.
 + The children are then be recursively laid out by calling their
   `layout` methods.
-+ Finally, the object's `h` field can be computed, reading from the
++ Finally, the object's `height` field can be computed, reading from the
   child layout objects.
 
 This *dependency ordering* plays a really important role in
