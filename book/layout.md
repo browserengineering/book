@@ -308,7 +308,7 @@ take up all the horizontal space they can. So their width is their
 parent's width:
 
 ``` {.python}
-self.w = self.parent.w
+self.width = self.parent.width
 ```
 
 This also means that a block layout object's horizontal position is
@@ -325,7 +325,7 @@ sibling ended:
 
 ``` {.python}
 if self.previous:
-    self.y = self.previous.y + self.previous.h
+    self.y = self.previous.y + self.previous.height
 else:
     self.y = self.parent.y
 ```
@@ -345,7 +345,7 @@ object should be tall enough to contain all of its children, so its
 height should be the sum of its children's height:
 
 ``` {.python}
-self.h = sum([child.h for child in self.children])
+self.height = sum([child.height for child in self.children])
 ```
 
 But note that the height of a block layout depends on the height of
@@ -375,16 +375,16 @@ its children.
 class InlineLayout:
     def layout(self):
         self.x = self.parent.x
-        self.w = self.parent.w
+        self.width = self.parent.width
 
         if self.previous:
-            self.y = self.previous.y + self.previous.h
+            self.y = self.previous.y + self.previous.height
         else:
             self.y = self.parent.y
 
         # ...
 
-        self.h = self.cursor_y - self.y
+        self.height = self.cursor_y - self.y
 ```
 
 Finally, even `DocumentLayout` needs some layout code, though since the
@@ -394,11 +394,11 @@ document always starts in the same place it's pretty simple:
 class DocumentLayout:
     def layout(self):
         # ...
-        self.w = WIDTH - 2*HSTEP
+        self.width = WIDTH - 2*HSTEP
         self.x = HSTEP
         self.y = VSTEP
         child.layout()
-        self.h = child.h + 2*VSTEP
+        self.height = child.height + 2*VSTEP
 ```
 
 Note that I'm adding a little bit of padding around the main
@@ -540,7 +540,7 @@ Let's add a gray background to `pre` tags, which contain code:
 class BlockLayout:
     def draw(self, display_list):
         if self.node.tag == "pre":
-            x2, y2 = self.x + self.w, self.y + self.h
+            x2, y2 = self.x + self.width, self.y + self.height
             display_list.append(DrawRect(self.x, self.y, x2, y2, "gray"))
         # ...
 ```
@@ -610,8 +610,8 @@ to call `execute` for:
 def render(self):
     self.canvas.delete("all")
     for cmd in self.display_list:
-        if cmd.y1 > self.scroll + HEIGHT: continue
-        if cmd.y2 < self.scroll: continue
+        if cmd.top > self.scroll + HEIGHT: continue
+        if cmd.bottom < self.scroll: continue
         cmd.execute(self.scroll, self.canvas)
 ```
 
@@ -624,7 +624,7 @@ past the bottom of the page. In `load`, store the height in a
 class Browser:
     def load(self, url):
         # ...
-        self.max_y = document.h - HEIGHT
+        self.max_y = document.height - HEIGHT
 ```
 
 Then, when the user scrolls down, don't let them scroll past the
