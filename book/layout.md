@@ -114,7 +114,7 @@ So we're now building a layout tree with one layout object per HTML
 node, with an extra layout object at the root. But before we move on
 to computing sizes and positions, we have to face an important truth:
 different HTML elements are laid out differently. They need different
-kinds of layout objects.
+kinds of layout objects!
 
 Layout modes
 ============
@@ -168,8 +168,8 @@ class InlineLayout:
 ```
 
 I've also initialized `cursor_x` and `cursor_y` from `x` and `y`
-instead of `HSTEP` and `XSTEP`. Make that changes, and make a similar
-change inside the `flush` method too:
+instead of `HSTEP` and `XSTEP`. Make those changes, and similar
+changes inside the `flush` method too:
 
 ``` {.python}
 class InlineLayout:
@@ -179,9 +179,9 @@ class InlineLayout:
         # ...
 ```
 
-Inline layout object aren't going to have any children [for
+Inline layout objects aren't going to have any children [for
 now](chrome.md), so we don't need any code for that in `layout`. And
-let's again leave actually computing `x` and `y` and `width` and
+just as with block layout, let's leave actually computing `x` and `y` and `width` and
 `height` to later. So the new `InlineLayout` now matches
 `BlockLayout`'s methods.
 
@@ -305,7 +305,7 @@ self.height = sum([child.height for child in self.children])
 But note that the height of a block layout depends on the height of
 its *children*. So, it must be computed after recursing, after the
 heights of its children are computed. Getting this dependency order
-right is crucial: get it wrong, some layout object will try to read a
+right is crucial: get it wrong, and some layout object will try to read a
 value that hasn't been computed yet, and the browser will crash.
 
 An `InlineLayout` computes `width`, `x`, and `y` the same way, but
@@ -527,7 +527,7 @@ class DrawRect:
         )
 ```
 
-By default `create_rectangle` draws a one-pixel black border, which
+By default, `create_rectangle` draws a one-pixel black border, which
 for backgrounds we don't want, so make sure to pass `width = 0`:
 
 To skip offscreen graphics commands, so let's add a `bottom` field to
