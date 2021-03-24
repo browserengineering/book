@@ -68,6 +68,11 @@ RENAME_METHODS = {
     "startswith": "startsWith",
 }
 
+RENAME_FNS = {
+    "int": "Math.parseInt",
+    "print": "console.log",
+}
+
 LIBRARY_METHODS = [
     # socket
     "connect",
@@ -97,8 +102,25 @@ OUR_METHODS = [
     "execute",
 ]
 
-assert not (set(LIBRARY_METHODS) | set(RENAME_METHODS)) & set(OUR_METHODS)
+assert not (set(LIBRARY_METHODS) | set(RENAME_METHODS) | set(RENAME_FNS)) & set(OUR_METHODS)
 
+class CantCompile(Exception):
+    def __init__(self, tree):
+        super().__init__(f"Could not compile `{ast.unparse(tree)}`")
+        self.tree = tree
+
+ISSUES = []
+
+def catch_issues(f):
+    def wrapped(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except CantCompile as e:
+            ISSUES.append(e)
+            return "/* " + ast.unparse(e.tree) + " */"
+    return wrapped
+
+@catch_issues
 def compile_func(call, args):
     if isinstance(call.func, ast.Attribute) and \
        call.func.attr == "format" and \
@@ -154,19 +176,37 @@ def compile_func(call, args):
             return "/* " + base + "." + call.func.attr + "(" + ", ".join(args) + ") */"
         if fn not in ["socket.socket", "s.makefile", "tkinter.Canvas"]:
             assert not tree.keywords, fn
-    elif isinstance(call.func, ast.Name) and call.func.id == "len":
-        assert len(args) == 1
-        return args[0] + ".length"
-    elif isinstance(call.func, ast.Name) and call.func.id == "isinstance":
-        assert len(args) == 2
-        return args[0] + " instanceof " + args[1]
-    elif isinstance(call.func, ast.Name) and call.func.id == "sum":
-        assert len(args) == 1
-        return args[0] + ".reduce((a, v) => a + v, 0)"
     elif isinstance(call.func, ast.Name):
-        return compile(call.func, ctx="fn") + "(" + ", ".join(args) + ")"
+        if call.func.id in RENAME_FNS:
+            return RENAME_FNS[call.func.id] + "(" + ", ".join(args) + ")"
+        elif call.func.id == "len":
+            assert len(args) == 1
+            return args[0] + ".length"
+        elif call.func.id == "isinstance":
+            assert len(args) == 2
+            return args[0] + " instanceof " + args[1]
+        elif call.func.id == "sum":
+            assert len(args) == 1
+            return args[0] + ".reduce((a, v) => a + v, 0)"
+        elif call.func.id == "max":
+            if len(args) == 1:
+                return args[0] + ".reduce((a, v) => Math.max(a, v))"
+            else:
+                assert len(args) == 2
+                return "Math.max(" + args[0] + ", " + args[1] + ")"
+        elif call.func.id == "min":
+            if len(args) == 1:
+                return args[0] + ".reduce((a, v) => Math.min(a, v))"
+            else:
+                assert len(args) == 2
+                return "Math.min(" + args[0] + ", " + args[1] + ")"
+        elif call.func.id == "repr":
+            assert len(args) == 1
+            return args[0] + ".toString()"
+        else:
+            raise CantCompile(call)
     else:
-        raise ValueError(ast.dump(call))
+        raise CantCompile(call)
 
 def op2str(op):
     if isinstance(op, ast.Add): return "+"
@@ -184,8 +224,9 @@ def op2str(op):
     elif isinstance(op, ast.And): return " && "
     elif isinstance(op, ast.Or): return " || "
     else:
-        raise ValueError(ast.dump(op))
+        raise CantCompile(op)
 
+@catch_issues
 def compile(tree, indent=0, ctx=None):
     if isinstance(tree, ast.Module):
         assert not tree.type_ignores
@@ -402,11 +443,9 @@ def compile(tree, indent=0, ctx=None):
         elif tree.value == None:
             return "null"
         else:
-            return "/* " + ast.dump(tree) + " */"
-            raise ValueError(ast.dump(tree))
+            raise CantCompile(tree)
     else:
-        return " " * indent + "/* " + ast.dump(tree) + " */"
-        raise ValueError(ast.dump(tree))
+        raise CantCompile(tree)
 
 if __name__ == "__main__":
     import sys
@@ -424,17 +463,18 @@ if __name__ == "__main__":
     args.javascript.write(js)
 
     issues = 0
+    for h in HINTS:
+        if h["used"]: continue
+        print(f"Unused hints: {unused}", file=sys.stderr)
+        issues += 1
 
-    if not all(h["used"] for h in HINTS):
-        unused = [h for h in HINTS if not h["used"]]
-        print(f"Unused hints: {unused}")
-        issues = 1
+    for i in ISSUES:
+        print(str(i), file=sys.stderr)
+        issues += 1
 
-    if "/*" in js:
-        print("Compilation failed: Could not compile some expressions", file=sys.stderr)
-        for hint in MISSING_HINTS:
-            print("Consider hint:", json.dumps(hint))
-        issues = 1
+    for hint in MISSING_HINTS:
+        print("Consider hint:", json.dumps(hint), file=sys.stderr)
+        issues += 1
 
     sys.exit(issues)
 

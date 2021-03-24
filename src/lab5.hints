@@ -4,5 +4,5 @@
 {"line": 140, "code": "tag in self.SELF_CLOSING_TAGS", "type": "list"},
 {"line": 161, "code": "tag in self.HEAD_TAGS", "type": "list"},
 {"line": 166, "code": "tag not in ['/head'] + self.HEAD_TAGS", "type": "list"},
-{"line": 291, "code": "child.tag in INLINE_ELEMENTS", "type": "list"}
+{"line": 290, "code": "child.tag in INLINE_ELEMENTS", "type": "list"}
 ]
