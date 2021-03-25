@@ -169,11 +169,11 @@ class HTMLParser:
                 break
 
     def finish(self):
-        while self.unfinished:
+        while len(self.unfinished) > 1:
             node = self.unfinished.pop()
-            if not self.unfinished: return node
             parent = self.unfinished[-1]
             parent.children.append(node)
+        return self.unfinished.pop()
             
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
