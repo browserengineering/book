@@ -85,6 +85,7 @@ RENAME_METHODS = {
 
 RENAME_FNS = {
     "int": "Math.parseInt",
+    "float": "Math.parseFloat",
     "print": "console.log",
 }
 
@@ -255,6 +256,12 @@ def op2str(op):
     elif isinstance(op, ast.Or): return " || "
     else:
         raise CantCompile(op)
+
+def deparen(s):
+    if s[0] == "(" and s[-1] == ")":
+        return s[1:-1]
+    else:
+        return s
     
 def compile_lhs(tree):
     return compile_expr(tree)
@@ -347,19 +354,17 @@ def compile_expr(tree):
     elif isinstance(tree, ast.Tuple) or isinstance(tree, ast.List):
         return "[" + ", ".join([compile_expr(a) for a in tree.elts]) + "]"
     elif isinstance(tree, ast.Name):
-        return {
-            "self": "this",
-            "False": "false",
-            "True": "true",
-        }.get(tree.id, tree.id)
+        return "this" if tree.id == "self" else tree.id
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
             return repr(tree.value)
+        elif isinstance(tree.value, bool):
+            return "true" if tree.value else "false"
         elif isinstance(tree.value, int):
             return repr(tree.value)
         elif isinstance(tree.value, float):
             return repr(tree.value)
-        elif tree.value == None:
+        elif tree.value is None:
             return "null"
         else:
             raise CantCompile(tree)
@@ -405,7 +410,7 @@ def compile(tree, indent=0, ctx=None):
         assert not tree.type_comment
         assert len(tree.targets) == 1
         lhs = compile_lhs(tree.targets[0])
-        rhs = compile_expr(tree.value)
+        rhs = deparen(compile_expr(tree.value))
         if ctx == "class": kw = ""
         elif isinstance(tree.targets[0], ast.Name): kw = "let "
         elif isinstance(tree.targets[0], ast.Tuple): kw = "let "
@@ -413,7 +418,7 @@ def compile(tree, indent=0, ctx=None):
         return " " * indent + kw + lhs + " = " + rhs + ";"
     elif isinstance(tree, ast.AugAssign):
         lhs = compile_lhs(tree.target)
-        rhs = compile_expr(tree.value)
+        rhs = deparen(compile_expr(tree.value))
         return " " * indent + lhs + " " + op2str(tree.op) + "= " + rhs + ";"
     elif isinstance(tree, ast.Assert):
         test = compile_expr(tree.test)
@@ -424,7 +429,7 @@ def compile(tree, indent=0, ctx=None):
         return " " * indent + "return" + (" " + ret if ret else "") + ";"
     elif isinstance(tree, ast.While):
         assert not tree.orelse
-        test = compile_expr(tree.test)
+        test = deparen(compile_expr(tree.test))
         out = " " * indent + "while (" + test + ") {\n"
         out += "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.body])
         out += "\n" + " " * indent + "}"
@@ -449,11 +454,10 @@ def compile(tree, indent=0, ctx=None):
         assert isinstance(test.ops[0], ast.Eq)
         return " " * indent + "// Requires a test harness\n"
     elif isinstance(tree, ast.If):
-        test = compile_expr(tree.test)
-        if test[0] != "(" or test[-1] != ")": test = "(" + test + ")"
-        out = " " * indent + "if " + test + " {\n"
+        test = deparen(compile_expr(tree.test))
+        out = " " * indent + "if (" + test + ") {\n"
         ift = "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.body])
-        if "\n" not in ift and not tree.orelse:
+        if "\n" not in ift and not tree.orelse and tree.test.lineno == tree.body[0].lineno:
             return out[:-2] + ift.strip()
         else:
             out += ift
