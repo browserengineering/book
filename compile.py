@@ -2,6 +2,7 @@
 
 import ast
 import json
+import warnings
 
 class CantCompile(Exception):
     def __init__(self, tree, hint=None):
@@ -65,11 +66,11 @@ def check_args(args, ctx):
     for i, (arg, default) in enumerate(zip(args.args, defaults)):
         assert not arg.annotation
         assert not arg.type_comment
-        if ctx == "class" and i == 0:
+        if ctx.type == "class" and i == 0:
             assert arg.arg == "self"
         else:
             if default:
-                out.append(arg.arg + " = " + compile_expr(default))
+                out.append(arg.arg + " = " + compile_expr(default, ctx))
             else:
                 out.append(arg.arg)
     return out
@@ -143,7 +144,7 @@ assert not set(OUR_FNS) & set(OUR_CLASSES)
 assert not THEIR_STUFF & (set(OUR_FNS) | set(OUR_METHODS))
 
 @catch_issues
-def compile_func(call, args):
+def compile_func(call, args, ctx):
     if isinstance(call.func, ast.Attribute) and \
        call.func.attr == "format" and \
        isinstance(call.func.value, ast.Constant):
@@ -158,28 +159,28 @@ def compile_func(call, args):
         return "(" + out[3:] + ")"
     elif isinstance(call.func, ast.Attribute) and call.func.attr == "encode":
         assert args == ["'utf8'"]
-        base = compile_expr(call.func.value)
+        base = compile_expr(call.func.value, ctx)
         return base
     elif isinstance(call.func, ast.Attribute) and call.func.attr == "join":
         assert len(args) == 1
-        base = compile_expr(call.func.value)
+        base = compile_expr(call.func.value, ctx)
         return args[0] + ".join(" + base + ")"
     elif isinstance(call.func, ast.Attribute) and call.func.attr == "isspace":
         assert len(args) == 0
-        base = compile_expr(call.func.value)
+        base = compile_expr(call.func.value, ctx)
         return base + ".match(/^\s*$/)"
     elif isinstance(call.func, ast.Attribute) and \
          call.func.attr in LIBRARY_METHODS:
-        base = compile_expr(call.func.value)
+        base = compile_expr(call.func.value, ctx)
         return base + "." + call.func.attr + "(" + ", ".join(args) + ")"
     elif isinstance(call.func, ast.Attribute) and \
          call.func.attr in OUR_METHODS:
-        base = compile_expr(call.func.value)
+        base = compile_expr(call.func.value, ctx)
         return base + "." + call.func.attr + "(" + ", ".join(args) + ")"
     elif isinstance(call.func, ast.Attribute) and \
          call.func.attr == "split":
         assert 0 <= len(args) <= 2
-        base = compile_expr(call.func.value)
+        base = compile_expr(call.func.value, ctx)
         if len(args) == 0:
             return base + ".split(/\s+/)"
         elif len(args) == 1:
@@ -190,7 +191,7 @@ def compile_func(call, args):
         else:
             raise CantCompile(call)
     elif isinstance(call.func, ast.Attribute):
-        base = compile_expr(call.func.value)
+        base = compile_expr(call.func.value, ctx)
         if base == "this" or base in IMPORTS:
             return base + "." + call.func.attr + "(" + ", ".join(args) + ")"
         elif call.func.attr == "items":
@@ -263,17 +264,47 @@ def deparen(s):
     else:
         return s
     
-def compile_lhs(tree):
-    return compile_expr(tree)
+def lhs_targets(tree):
+    if isinstance(tree, ast.Name):
+        return set([tree.id])
+    elif isinstance(tree, ast.Tuple):
+        return set().union(*[lhs_targets(t) for t in tree.elts])
+    elif isinstance(tree, ast.Attribute):
+        return set()
+    elif isinstance(tree, ast.Subscript):
+        return set()
+    else:
+        raise CantCompile(tree)
+    
+def compile_lhs(tree, ctx):
+    targets = lhs_targets(tree)
+    for target in targets:
+        ctx[target] = True
+    return compile_expr(tree, ctx)
+
+class Context(dict):
+    def __init__(self, type, parent):
+        super().__init__(self)
+        self.type = type
+        self.parent = parent
+
+    def __contains__(self, i):
+        return (super().__contains__(i)) or (i in self.parent)
+
+    def __getitem__(self, i):
+        if super().__contains__(self, i):
+            return super().__getitem__(i)
+        else:
+            return self.parent[i]
     
 @catch_issues
-def compile_expr(tree):
+def compile_expr(tree, ctx):
     if isinstance(tree, ast.Subscript):
-        lhs = compile_expr(tree.value)
+        lhs = compile_expr(tree.value, ctx)
         if isinstance(tree.slice, ast.Slice):
             assert not tree.slice.step
-            lower = tree.slice.lower and compile_expr(tree.slice.lower)
-            upper = tree.slice.upper and compile_expr(tree.slice.upper)
+            lower = tree.slice.lower and compile_expr(tree.slice.lower, ctx)
+            upper = tree.slice.upper and compile_expr(tree.slice.upper, ctx)
             if lower and upper:
                 return lhs + ".slice(" + lower + ", " + upper + ")"
             elif upper:
@@ -283,27 +314,29 @@ def compile_expr(tree):
             else:
                 return lhs + ".slice()"
         else:
-            rhs = compile_expr(tree.slice)
+            rhs = compile_expr(tree.slice, ctx)
             if rhs == "(-1)":
                 return lhs + "[" + lhs + ".length - 1]"
             else:
                 return lhs + "[" + rhs + "]"
     elif isinstance(tree, ast.Call):
-        args = [compile_expr(a) for a in tree.args]
-        return compile_func(tree, args)
+        args = [compile_expr(a, ctx) for a in tree.args]
+        return compile_func(tree, args, ctx)
     elif isinstance(tree, ast.UnaryOp):
-        rhs = compile_expr(tree.operand)
+        rhs = compile_expr(tree.operand, ctx)
         return "(" + op2str(tree.op) + rhs + ")"
     elif isinstance(tree, ast.BinOp):
-        lhs = compile_expr(tree.left)
-        rhs = compile_expr(tree.right)
+        lhs = compile_expr(tree.left, ctx)
+        rhs = compile_expr(tree.right, ctx)
         return "(" + lhs + " " + op2str(tree.op) + " " + rhs + ")"
     elif isinstance(tree, ast.BoolOp):
-        parts = [compile_expr(val) for val in tree.values]
+        parts = [compile_expr(val, ctx) for val in tree.values]
         return "(" + (" " + op2str(tree.op) + " ").join(parts) + ")"
     elif isinstance(tree, ast.Compare):
         assert len(tree.ops) == 1
         assert len(tree.comparators) == 1
+        lhs = compile_expr(tree.left, ctx)
+        rhs = compile_expr(tree.comparators[0], ctx)
         if (isinstance(tree.ops[0], ast.In) or isinstance(tree.ops[0], ast.NotIn)) and \
            isinstance(tree.comparators[0], ast.List):
             negate = isinstance(tree.ops[0], ast.NotIn)
@@ -312,48 +345,49 @@ def compile_expr(tree):
                 (isinstance(tree.left, ast.Subscript) and isinstance(tree.left.value, ast.Name)), \
                 ast.dump(tree)
             op = " !== " if negate else " === "
-            lhs = compile_expr(tree.left)
-            parts = [lhs + op + compile_expr(v) for v in tree.comparators[0].elts]
+            parts = [lhs + op + compile_expr(v, ctx) for v in tree.comparators[0].elts]
             return "(" + (" && " if negate else " || ").join(parts) + ")"
-        if isinstance(tree.ops[0], ast.In) or isinstance(tree.ops[0], ast.NotIn):
+        elif isinstance(tree.ops[0], ast.In) or isinstance(tree.ops[0], ast.NotIn):
             t = find_hint(tree, "type")
             negate = isinstance(tree.ops[0], ast.NotIn)
             assert t in ["str", "dict", "list"]
-            lhs = compile_expr(tree.left)
-            rhs = compile_expr(tree.comparators[0])
 
             cmp = "===" if negate else "!=="
             if t in ["str", "list"]:
                 return "(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)"
             elif t == "dict":
                 return "(" + rhs + "[" + lhs + "] " + cmp + " \"undefined\")"
+        elif isinstance(tree.ops[0], ast.Eq) and \
+             (isinstance(tree.comparators[0], ast.List) or isinstance(tree.left, ast.List)):
+            return "(JSON.stringify(" + lhs + ") === JSON.stringify(" + rhs + "))"
         else:
-            lhs = compile_expr(tree.left)
-            rhs = compile_expr(tree.comparators[0])
             return "(" + lhs + " " + op2str(tree.ops[0]) + " " + rhs + ")"
     elif isinstance(tree, ast.IfExp):
-        test = compile_expr(tree.test)
-        ift = compile_expr(tree.body)
-        iff = compile_expr(tree.orelse)
+        test = compile_expr(tree.test, ctx)
+        ift = compile_expr(tree.body, ctx)
+        iff = compile_expr(tree.orelse, ctx)
         return "(" + test + " ? " + ift + " : " + iff + ")"
     elif isinstance(tree, ast.ListComp):
         assert len(tree.generators) == 1
-        e = compile_expr(tree.elt)
         gen = tree.generators[0]
+        iterator = compile_expr(gen.iter, ctx)
+        ctx2 = Context("expr", ctx)
+        arg = compile_lhs(gen.target, ctx2)
         assert not gen.is_async
         assert not gen.ifs
-        iterator = compile_expr(gen.iter)
-        arg = compile_lhs(gen.target)
+        e = compile_expr(tree.elt, ctx2)
         return iterator + ".map((" + arg + ") => " + e + ")"
     elif isinstance(tree, ast.Attribute):
-        base = compile_expr(tree.value)
+        base = compile_expr(tree.value, ctx)
         return base + "." + tree.attr
     elif isinstance(tree, ast.Dict):
-        pairs = [compile_expr(k) + ": " + compile_expr(v) for k, v in zip(tree.keys, tree.values)]
+        pairs = [compile_expr(k, ctx) + ": " + compile_expr(v, ctx) for k, v in zip(tree.keys, tree.values)]
         return "{" + ", ".join(pairs) + "}"
     elif isinstance(tree, ast.Tuple) or isinstance(tree, ast.List):
-        return "[" + ", ".join([compile_expr(a) for a in tree.elts]) + "]"
+        return "[" + ", ".join([compile_expr(a, ctx) for a in tree.elts]) + "]"
     elif isinstance(tree, ast.Name):
+        if tree.id not in ctx:
+            warnings.warn(f"{tree.id} not found in {ctx}")
         return "this" if tree.id == "self" else tree.id
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
@@ -372,21 +406,24 @@ def compile_expr(tree):
         raise CantCompile(call)
 
 @catch_issues
-def compile(tree, indent=0, ctx=None):
+def compile(tree, ctx, indent=0):
     if isinstance(tree, ast.Module):
         assert not tree.type_ignores
-        items = [compile(item, indent=0, ctx="module") for item in tree.body]
+        items = [compile(item, indent=0, ctx=ctx) for item in tree.body]
         return "\n\n".join(items)
     elif isinstance(tree, ast.Import):
         assert len(tree.names) == 1
         assert not tree.names[0].asname
+        ctx[tree.names[0].name] = True
         IMPORTS.append(tree.names[0].name)
         return " " * indent + "// " + "Requires access to `" + tree.names[0].name + "` API"
     elif isinstance(tree, ast.ClassDef):
         assert not tree.bases
         assert not tree.keywords
         assert not tree.decorator_list
-        parts = [compile(part, indent=indent + 2, ctx="class") for part in tree.body]
+        ctx[tree.name] = True
+        ctx2 = Context("class", ctx)
+        parts = [compile(part, indent=indent + 2, ctx=ctx2) for part in tree.body]
         return " " * indent + "class " + tree.name + "{\n" + "\n\n".join(parts) + "\n}"
     elif isinstance(tree, ast.FunctionDef):
         assert not tree.decorator_list
@@ -397,52 +434,64 @@ def compile(tree, indent=0, ctx=None):
             "__init__": "constructor",
             "__repr__": "toString",
         }.get(tree.name, tree.name)
-        def_line = ("" if ctx == "class" else "function ") + name + "(" + ", ".join(args) + ")"
-        body = "\n".join([compile(line, indent=indent + 2, ctx="function") for line in tree.body])
+        def_line = ("" if ctx.type == "class" else "function ") + name + "(" + ", ".join(args) + ")"
+        ctx2 = Context("function", ctx)
+        for arg in tree.args.args:
+            ctx2[arg.arg] = True
+        body = "\n".join([compile(line, indent=indent + 2, ctx=ctx2) for line in tree.body])
         return " " * indent + def_line + " {\n" + body + "\n" + " " * indent + "}"
-    elif isinstance(tree, ast.Expr) and ctx == "module" and \
+    elif isinstance(tree, ast.Expr) and ctx.type == "module" and \
          isinstance(tree.value, ast.Constant) and isinstance(tree.value.value, str):
         cmt = " " * indent + "// "
         return cmt + tree.value.value.strip("\n").replace("\n", "\n" + cmt)
     elif isinstance(tree, ast.Expr):
-        return " " * indent + compile_expr(tree.value) + ";"
+        return " " * indent + compile_expr(tree.value, ctx) + ";"
     elif isinstance(tree, ast.Assign):
         assert not tree.type_comment
         assert len(tree.targets) == 1
-        lhs = compile_lhs(tree.targets[0])
-        rhs = deparen(compile_expr(tree.value))
-        if ctx == "class": kw = ""
-        elif isinstance(tree.targets[0], ast.Name): kw = "let "
-        elif isinstance(tree.targets[0], ast.Tuple): kw = "let "
+
+        targets = lhs_targets(tree.targets[0])
+        ins = set([target in ctx for target in targets])
+        if True in ins and False in ins:
+            kw = "let " + ", ".join([target for target in targets if target not in ctx]) + "; "
+        elif ctx.type in ["class"]: kw = ""
+        elif False in ins: kw = "let "
         else: kw = ""
+
+        lhs = compile_lhs(tree.targets[0], ctx)
+        rhs = deparen(compile_expr(tree.value, ctx))
         return " " * indent + kw + lhs + " = " + rhs + ";"
     elif isinstance(tree, ast.AugAssign):
-        lhs = compile_lhs(tree.target)
-        rhs = deparen(compile_expr(tree.value))
+        targets = lhs_targets(tree.target)
+        for target in targets:
+            assert target in ctx
+        lhs = compile_lhs(tree.target, ctx)
+        rhs = deparen(compile_expr(tree.value, ctx))
         return " " * indent + lhs + " " + op2str(tree.op) + "= " + rhs + ";"
     elif isinstance(tree, ast.Assert):
-        test = compile_expr(tree.test)
-        msg = compile_expr(tree.msg) if tree.msg else None
+        test = compile_expr(tree.test, ctx)
+        msg = compile_expr(tree.msg, ctx) if tree.msg else None
         return " " * indent + "console.assert(" + test + (", " + msg if msg else "") + ");"
     elif isinstance(tree, ast.Return):
-        ret = compile_expr(tree.value) if tree.value else None
+        ret = compile_expr(tree.value, ctx) if tree.value else None
         return " " * indent + "return" + (" " + ret if ret else "") + ";"
     elif isinstance(tree, ast.While):
         assert not tree.orelse
-        test = deparen(compile_expr(tree.test))
+        test = deparen(compile_expr(tree.test, ctx))
         out = " " * indent + "while (" + test + ") {\n"
-        out += "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.body])
+        out += "\n".join([compile(line, indent=indent + 2, ctx=ctx) for line in tree.body])
         out += "\n" + " " * indent + "}"
         return out
     elif isinstance(tree, ast.For):
         assert not tree.orelse
         assert not tree.type_comment
-        lhs = compile_lhs(tree.target)
-        rhs = compile_expr(tree.iter)
-        body = "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.body])
+        ctx2 = Context(ctx.type, ctx)
+        lhs = compile_lhs(tree.target, ctx2)
+        rhs = compile_expr(tree.iter, ctx)
+        body = "\n".join([compile(line, indent=indent + 2, ctx=ctx2) for line in tree.body])
         fstline = " " * indent + "for (let " + lhs + " of " + rhs + ") {\n"
         return fstline + body + "\n" + " " * indent + "}"
-    elif isinstance(tree, ast.If) and ctx == "module":
+    elif isinstance(tree, ast.If) and ctx.type == "module":
         test = tree.test
         assert isinstance(test, ast.Compare)
         assert isinstance(test.left, ast.Name)
@@ -454,21 +503,24 @@ def compile(tree, indent=0, ctx=None):
         assert isinstance(test.ops[0], ast.Eq)
         return " " * indent + "// Requires a test harness\n"
     elif isinstance(tree, ast.If):
-        test = deparen(compile_expr(tree.test))
+        test = deparen(compile_expr(tree.test, ctx))
         out = " " * indent + "if (" + test + ") {\n"
-        ift = "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.body])
+        ctx2 = Context(ctx.type, ctx)
+        ift = "\n".join([compile(line, indent=indent + 2, ctx=ctx2) for line in tree.body])
         if "\n" not in ift and not tree.orelse and tree.test.lineno == tree.body[0].lineno:
             return out[:-2] + ift.strip()
         else:
             out += ift
             while len(tree.orelse) == 1 and isinstance(tree.orelse[0], ast.If):
+                ctx2 = Context(ctx.type, ctx)
                 tree = tree.orelse[0]
-                test = compile_expr(tree.test)
+                test = compile_expr(tree.test, ctx)
                 out += "\n" + " " * indent + "} else if (" + test + ") {\n"
-                out += "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.body])
+                out += "\n".join([compile(line, indent=indent + 2, ctx=ctx2) for line in tree.body])
             if tree.orelse:
+                ctx2 = Context(ctx.type, ctx)
                 out += "\n" + " " * indent + "} else {\n"
-                out += "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.orelse])
+                out += "\n".join([compile(line, indent=indent + 2, ctx=ctx2) for line in tree.orelse])
             out += "\n" + " " * indent + "}"
             return out
     elif isinstance(tree, ast.Continue):
@@ -490,7 +542,7 @@ if __name__ == "__main__":
 
     if args.hints: read_hints(args.hints)
     tree = ast.parse(args.python.read(), args.python.name)
-    js = compile(tree)
+    js = compile(tree, ctx=Context("module", {}))
     args.javascript.write(js)
 
     issues = 0
