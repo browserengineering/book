@@ -1,13 +1,31 @@
 #!/usr/bin/env python3
 
-# Issues:
-#   Let or not
-
 import ast
 import json
 
+class CantCompile(Exception):
+    def __init__(self, tree, hint=None):
+        super().__init__(f"Could not compile `{ast.unparse(tree)}`")
+        self.tree = tree
+        self.hint = hint
+
+ISSUES = []
+
+def catch_issues(f):
+    def wrapped(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except CantCompile as e:
+            if not e.hint:
+                try:
+                    return find_hint(e.tree, "replace")
+                except CantCompile as e2:
+                    e = e2
+            ISSUES.append(e)
+            return "/* " + ast.unparse(e.tree) + " */"
+    return wrapped
+
 HINTS = []
-IMPORTS = []
 
 def read_hints(f):
     global HINTS
@@ -24,19 +42,17 @@ def read_hints(f):
         h["used"] = False
     HINTS = hints
     
-MISSING_HINTS = []
-    
-def find_hint(t):
+def find_hint(t, key):
     for h in HINTS:
         if h["line"] != t.lineno: continue
         if ast.dump(h["ast"]) != ast.dump(t): continue
+        if key not in h: continue
         break
     else:
-        MISSING_HINTS.append({"line": t.lineno, "code": ast.unparse(t)})
-        return None
+        raise CantCompile(t, hint={"line": t.lineno, "code": ast.unparse(t), key: "???"})
     assert not h["used"]
     h["used"] = True
-    return h
+    return h[key]
 
 def check_args(args, ctx):
     assert not args.posonlyargs, ast.dump(args)
@@ -71,6 +87,8 @@ RENAME_FNS = {
     "int": "Math.parseInt",
     "print": "console.log",
 }
+
+IMPORTS = []
 
 LIBRARY_METHODS = [
     # socket
@@ -118,25 +136,10 @@ OUR_METHODS = [
     "execute",
 ]
 
-THEIR_STUFF = (set(LIBRARY_METHODS) | set(RENAME_METHODS) | set(RENAME_FNS))
-assert not set(OUR_FNS) & set(OUR_METHODS)
+THEIR_STUFF = set(LIBRARY_METHODS) | set(RENAME_METHODS) | set(RENAME_FNS)
+OUR_STUFF = set(OUR_FNS) | set(OUR_METHODS) | set(OUR_CLASSES)
+assert not set(OUR_FNS) & set(OUR_CLASSES)
 assert not THEIR_STUFF & (set(OUR_FNS) | set(OUR_METHODS))
-
-class CantCompile(Exception):
-    def __init__(self, tree):
-        super().__init__(f"Could not compile `{ast.unparse(tree)}`")
-        self.tree = tree
-
-ISSUES = []
-
-def catch_issues(f):
-    def wrapped(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except CantCompile as e:
-            ISSUES.append(e)
-            return "/* " + ast.unparse(e.tree) + " */"
-    return wrapped
 
 @catch_issues
 def compile_func(call, args):
@@ -183,15 +186,20 @@ def compile_func(call, args):
         elif len(args) == 2:
             assert args[1].isdigit()
             return base + ".split(" + args[0] + ", " + str(int(args[1]) + 1) + ")"
+        else:
+            raise CantCompile(call)
     elif isinstance(call.func, ast.Attribute):
         base = compile_expr(call.func.value)
         if base == "this" or base in IMPORTS:
             return base + "." + call.func.attr + "(" + ", ".join(args) + ")"
+        elif call.func.attr == "items":
+            assert len(args) == 0
+            return "Object.entries(" + base + ")"
         elif call.func.attr in RENAME_METHODS:
             fn = RENAME_METHODS[call.func.attr]
             return base + "." + fn + "(" + ", ".join(args) + ")"
         else:
-            return "/* " + base + "." + call.func.attr + "(" + ", ".join(args) + ") */"
+            raise CantCompile(call)
         if fn not in ["socket.socket", "s.makefile", "tkinter.Canvas"]:
             assert not tree.keywords, fn
     elif isinstance(call.func, ast.Name):
@@ -301,23 +309,17 @@ def compile_expr(tree):
             parts = [lhs + op + compile_expr(v) for v in tree.comparators[0].elts]
             return "(" + (" && " if negate else " || ").join(parts) + ")"
         if isinstance(tree.ops[0], ast.In) or isinstance(tree.ops[0], ast.NotIn):
-            h = find_hint(tree)
+            t = find_hint(tree, "type")
             negate = isinstance(tree.ops[0], ast.NotIn)
-            if not h:
-                return "/* " + ast.dump(tree) + " */"
-            elif "type" in h:
-                t = h["type"]
-                assert t in ["str", "dict", "list"]
-                lhs = compile_expr(tree.left)
-                rhs = compile_expr(tree.comparators[0])
+            assert t in ["str", "dict", "list"]
+            lhs = compile_expr(tree.left)
+            rhs = compile_expr(tree.comparators[0])
 
-                cmp = "===" if negate else "!=="
-                if t in ["str", "list"]:
-                    return "(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)"
-                elif t == "dict":
-                    return "(" + rhs + "[" + lhs + "] " + cmp + " \"undefined\")"
-            else:
-                raise ValueError("Bad hint", h)
+            cmp = "===" if negate else "!=="
+            if t in ["str", "list"]:
+                return "(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)"
+            elif t == "dict":
+                return "(" + rhs + "[" + lhs + "] " + cmp + " \"undefined\")"
         else:
             lhs = compile_expr(tree.left)
             rhs = compile_expr(tree.comparators[0])
@@ -447,20 +449,24 @@ def compile(tree, indent=0, ctx=None):
         assert isinstance(test.ops[0], ast.Eq)
         return " " * indent + "// Requires a test harness\n"
     elif isinstance(tree, ast.If):
-        out = ""
         test = compile_expr(tree.test)
-        out += " " * indent + "if (" + test + ") {\n"
-        out += "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.body])
-        while len(tree.orelse) == 1 and isinstance(tree.orelse[0], ast.If):
-            tree = tree.orelse[0]
-            test = compile_expr(tree.test)
-            out += "\n" + " " * indent + "} else if (" + test + ") {\n"
-            out += "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.body])
-        if tree.orelse:
-            out += "\n" + " " * indent + "} else {\n"
-            out += "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.orelse])
-        out += "\n" + " " * indent + "}"
-        return out
+        if test[0] != "(" or test[-1] != ")": test = "(" + test + ")"
+        out = " " * indent + "if " + test + " {\n"
+        ift = "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.body])
+        if "\n" not in ift and not tree.orelse:
+            return out[:-2] + ift.strip()
+        else:
+            out += ift
+            while len(tree.orelse) == 1 and isinstance(tree.orelse[0], ast.If):
+                tree = tree.orelse[0]
+                test = compile_expr(tree.test)
+                out += "\n" + " " * indent + "} else if (" + test + ") {\n"
+                out += "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.body])
+            if tree.orelse:
+                out += "\n" + " " * indent + "} else {\n"
+                out += "\n".join([compile(line, indent=indent + 2, ctx="stmt") for line in tree.orelse])
+            out += "\n" + " " * indent + "}"
+            return out
     elif isinstance(tree, ast.Continue):
         return " " * indent + "continue;"
     elif isinstance(tree, ast.Break):
@@ -491,10 +497,8 @@ if __name__ == "__main__":
 
     for i in ISSUES:
         print(str(i), file=sys.stderr)
-        issues += 1
-
-    for hint in MISSING_HINTS:
-        print("Consider hint:", json.dumps(hint), file=sys.stderr)
+        if i.hint:
+            print("Consider hint:", json.dumps(i.hint), file=sys.stderr)
         issues += 1
 
     sys.exit(issues)
