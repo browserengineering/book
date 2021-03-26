@@ -120,6 +120,14 @@ to computing sizes and positions, we have to face an important truth:
 different HTML elements are laid out differently. They need different
 kinds of layout objects!
 
+Here is an example of block layout. In this example there are two
+`BlockLayout` objects, and one `DocumentLayout` at the root.
+
+<div> <iframe src="layout-block-container-example.html" style="width: 100%; height: 500px;
+border: 2px solid gray;"></iframe> <span style="font-size: 16px">This is a real
+example! Play with it in <a href="layout-block-container-example.html" target=_blank>another
+browser tab</a> to see how it behaves.</span>
+
 Layout modes
 ============
 
@@ -260,6 +268,16 @@ and position of each layout object in the tree.
 
 [^or-empty]: Or, the leaf nodes could be `BlockLayout`s for empty
 elements.
+
+Here is an example of inline and block layout together. This example
+extends the previous one by adding three `InlineLayout` objects at the leaves.
+Your code should be able to easily handle this example!
+
+<div>
+  <iframe src="layout-container-example.html" style="width: 100%; height: 600px;
+border: 2px solid gray;"></iframe> <span style="font-size: 16px"><a href="layout-container-example.html" target=_blank>Click to open in a new
+browser tab</a>.</span>
+
 
 Size and position
 =================
