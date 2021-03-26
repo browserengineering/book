@@ -5,28 +5,21 @@ next: http
 prev: intro
 ...
 
-The web is at its core organized around _representing and displaying
-information_, and how to provide a way for humans to effectively learn and
-explore that information. The collective knowledge and wisdom of the species
-long ago exceeded the capacity of a single mind, organization, library, country,
-culture, group or language. However, while we as humans cannot possibly know
-even a tiny fraction of what is possible to know, we can use technology to learn
-more efficiently than before, and most importantly, to quickly access
-information we need to learn or remember. Computers, and the
-Internet, allow us to _process and store_ as much information as we want. The
-_web_, on the other hand, plays the role of _organizing and finding_ that
-information and knowledge to make it useful.[^google-mission]
+If you've read this far, hopefully you're convinced that browsers are
+interesting and important to study. Now we'll dig a bit into the web itself,
+where it came from, and how the web and browsers have evolved to date. This
+history is by no means exhaustive.[^sgml] Instead, you should view it as a brief
+view into a much larger---and quite interesting in its own right---subject.
 
-[^google-mission]: The search engine Google’s [mission](https://about.google/)
-statement to “organize the world’s information and make it universally
-accessible and useful” is almost exactly the same as this. This is not a
-coincidence - the search engine concept is inherently connected to the web.
+[^sgml]: For example, nothing much about
+[SGML](https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language) or
+other predecessors to HTML. (Except in this footnote!)
 
-Technological precursors
-========================
+The Memex concept
+=================
 
 The earliest exploration of how computers might revolutionize information is a
-1945 essay[^memex-essay] entitled [As We May
+1945 essay entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
 machine called a [Memex](https://en.wikipedia.org/wiki/Memex). The Memex was an
 imagined machine that helps (think: User Agent) an individual human to see and
@@ -35,11 +28,27 @@ screen technology of the time, but its purpose and concept has some clear
 similarities to the web as we know it today, even if the user interface and
 technology details differ.
 
-[^memex-essay]: This brief prehistory of the web is by no means exhaustive.
-Instead, you should view it as a brief view into a much larger---and quite
-interesting in its own right---subject.
+The web is at its core organized around the Memex-like goal of _representing and
+displaying information_, and how to provide a way for humans to effectively
+learn and explore that information. The collective knowledge and wisdom of the
+species long ago exceeded the capacity of a single mind, organization, library,
+country, culture, group or language. However, while we as humans cannot possibly
+know even a tiny fraction of what is possible to know, we can use technology to
+learn more efficiently than before, and most importantly, to quickly access
+information we need to learn or remember. Computers, and the Internet, allow us
+to _process and store_ as much information as we want. The _web_, on the other
+hand, plays the role of _organizing and finding_ that information and knowledge
+to make it useful.[^google-mission]
 
-The concept of networked links of information began to appear in about
+[^google-mission]: The search engine Google’s [mission](https://about.google/)
+statement to “organize the world’s information and make it universally
+accessible and useful” is almost exactly the same as this. This is not a
+coincidence - the search engine concept is inherently connected to the web.
+
+Documents and hyperlinks
+========================
+
+The concept of interlinked documents began to appear in about
 [1964-65](https://en.wikipedia.org/wiki/Hyperlink), when the term “link”
 appeared (though connected to text rather than pages).[^literary-criticism]
 Researchers then began to advocate for building a network of computers to
@@ -55,6 +64,13 @@ connection with the HyperCard system on the Macintosh.)
 
 [^literary-criticism]: These concepts are also the computer-based evolution of
 the long tradition of citation in academics and literary criticism.
+
+There is of course a very direct connection between this research and the
+document+URL+hyperlink setup of the web, which built this idea and applied it
+in practice.
+
+The web emerges
+===============
 
 In 1983 the [HyperTIES](http://www.cs.umd.edu/hcil/hyperties/) system was
 developed around highlighted hyperlinks. This was used to develop the world’s
@@ -133,21 +149,8 @@ _from the outside_, via email, social networking, and search engines.
 standards organizations - and therefore not subject to problems of monopoly
 control or manipulation.
 
-The browser ecosystem
-=====================
-
-Browsers have a unique character in that they are _not proprietary_---no company
-controls the APIs of the web and there are multiple independent implementations.
-In addition, it turned out that over time almost all of the code became
-open-source and developed by a very wide array of people and entities. As a
-corollary, the software platform for web pages is also not proprietary, and the
-information and capabilities contained within them are easy to make accessible 
-to everyone.[^unless-restricted]
-
-[^unless-restricted]: Unless, of course, the web page owner chooses to restrict
-availability for one reason or another. The point is that the _web platform_
-does not restrict availability, and therefore the owner has the freedom to
-choose.
+History of browsers
+===================
 
 I'll now give a brief overview of the evolution of browser implementations. The
 first _widely distributed_ browser may have been
@@ -186,6 +189,9 @@ own code base called
 Netscape's early versions were also not free software---you had to buy them from
 a store.
 
+Web standards
+=============
+
 In parallel with these developments was another, equally important, one---the
 standardization of web APIs. In October 1994, the [World Wide Web
 Consortium](https://www.w3.org/Consortium/facts) (W3C) was founded in order to
@@ -219,20 +225,6 @@ to as _the web platform,_ not just the “World Wide Web”. This recognizes the
 fact that the web is no longer a document viewing mechanism, but has evolved
 into a fully realized computing platform and ecosystem.[^web-os]
 
-Given these outcomes, in retrospect it is clearly not so relevant to
-know which browser “won” or “lost” each of the browser “wars”. In both cases
-_the web won_ and was preserved and enhanced for the benefit of the world. In
-economics terms, enforcing a standard set of APIs across browsers made the web
-platform a _commodity_; instead of competing based on lock-in, browsers compete
-on _performance_ and _quality_, and also _browser features_ that are not part of
-the web platform---for example, tabbed UIs and search engine integration.[^monetization]
-
-[^monetization]: Browser development is also primarily funded by revenue from
-search engine advertisements; a secondary typical funding motivation is to
-improve the competitive position of an operating system or device owned or
-controlled by the company building the browser. (Compare this with the RedHat
-anecdote I related earlier!)
-
 [^web-os]: There have even been operating systems built around the web! Examples
 include [webOS](https://en.wikipedia.org/wiki/WebOS), which powered some Palm
 smartphones, [Firefox OS](https://en.wikipedia.org/wiki/Firefox_OS) (that today
@@ -242,17 +234,21 @@ operating system. All of these OSes are based on using the Web as the UI layer
 for all applications, with some JavaScript-exposed APIs on top for system
 integration.
 
+Given these outcomes---multiple competing browsers and well-developed
+standards---in retrospect it is clearly not so relevant to know which browser
+“won” or “lost” each of the browser “wars”. In both cases _the web won_ and was
+preserved and enhanced for the future.
 
-An important and interesting outcome of the _second_ browser war was that all
-mainstream browsers today (of which there are *many* more than
+Open source
+===========
+
+Another important and interesting outcome of the _second_ browser war was that
+all mainstream browsers today (of which there are *many* more than
 three[^examples-of-browsers-today]) are based on _three open-source web
 rendering / JavaScript engines_: Chromium, Gecko and WebKit.[^javascript-repo]
 Since Chromium and WebKit have a common ancestral codebase, while Gecko is an
 open-source descendant of Netscape, all three date back to the 1990s---almost to
-the beginning of the web. That this occurred is not an accident, and in fact
-tells us something quite interesting about the most cost-effective way to
-implement a rendering engine based on a commodity set of platform APIs.
-
+the beginning of the web.
 [^examples-of-browsers-today]: Examples of Chromium-based browsers include
 Chrome, Edge, Opera (which switched to Chromium from the
 [Presto](https://en.wikipedia.org/wiki/Presto_(browser_engine)) engine in 2013),
@@ -268,3 +264,10 @@ important such application is the use of
 [node.js](https://en.wikipedia.org/wiki/Node.js). However, each of the three
 rendering engines does have its own JavaScript implementation, so conflating the
 two is reasonable.
+
+That this occurred is not an accident, and in fact tells us something quite
+interesting about the most cost-effective way to implement a rendering engine
+based on a commodity set of platform APIs. For example, it's common for a wide
+variety of independent developers (ones not paid by the company nominally
+controlling the browser) to contribute code and features. There are even
+companies and individuals that specialize in implementing these features!
