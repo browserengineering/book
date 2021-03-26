@@ -70,11 +70,15 @@ class BlockLayout:
             previous = next
 ```
 
-The difference between _nodes_ and _layout objects_ can get confusing
-here. Each `child` comes from `node.children`, so it is a HTML node.
-But `self`, `previous`, and `next` are all layout objects: they are
-all part of the layout tree! Also note the tricky logic with updating
-the `previous` sibling as we go though the loop.
+This code is tricky because it involves two trees: `node` is part of
+the HTML tree, as is `child`. But `self`, `previous`, and `next` are
+all part of the layout tree. The two trees have similar structure, so
+it's easy to get confused. But remember that this code constructs the
+layout tree from the HTML tree. So it reads from `node.children` (in
+the HTML tree) and writes to `self.children` (in the layout tree).
+
+Also, note the tricky logic with updating the `previous` sibling as we
+go though the loop.
 
 So this creates layout objects for the direct children of the node in
 question. Now those children's own `layout` methods can be called to
@@ -223,6 +227,7 @@ def layout_mode(node):
         return "inline"
     elif node.children:
         for child in node.children:
+            if isinstance(child, Text): continue
             if child.tag in BLOCK_ELEMENTS:
                 return "block"
         return "inline"
@@ -437,8 +442,8 @@ for comfortable houses.
 Backgrounds
 ===========
 
-The layout tree is the central[^for-what] but one simple and visually
-compelling use is drawing background.
+The layout tree is used for a lot of stuff in the browser,[^for-what]
+but one simple and visually compelling use case is drawing backgrounds.
 
 [^for-what]: For example, in [Chapter 7](chrome.md), we'll use the
 size and position of each link to figure out which one the user
@@ -564,9 +569,10 @@ careful you can pass the results of that call to `DrawText` as an
 argument.
 :::
 
-A side-effect of tree-based layout is that we now record the height of
-the whole page. The browser can use that to avoid scrolling past the
-bottom of the page. In `load`, store the height in a `max_y` field:
+Here's one more cute benefit of tree-based layout. Thanks to
+tree-based layout we now record the height of the whole page. The
+browser can use that to avoid scrolling past the bottom of the page.
+In `load`, store the height in a `max_y` field:
 
 ``` {.python}
 class Browser:
@@ -584,7 +590,7 @@ def scrolldown(self, e):
     self.render()
 ```
 
-Thank you tree-based layout! In fact, as we'll see in the next two
+Well, that's tree-based layout! In fact, as we'll see in the next two
 chapters, the layout tree plays a big role in many of the browser
 internals.
 
