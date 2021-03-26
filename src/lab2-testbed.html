@@ -1,0 +1,97 @@
+<!doctype HTML>
+<style>
+  .log {
+  	border: 1px solid black;
+  	overflow:scroll;
+  	width: 500px;
+   	height: 100px;
+  }
+  canvas {
+  	width: 800px;
+  	height: 600px;
+  	border: 1px solid black;
+  }
+  textarea {
+    width: 600px;
+    height: 100px;
+  }
+</style>
+<script src="lab2.js"></script>
+
+<script>
+	onload = () => {
+    htmlSourceForm.addEventListener('submit', () => {
+      console.log('submit');
+      event.preventDefault();
+      lexTitle.innerText = '';
+      lexLog.innerText = '';
+      layoutTitle.innerText = '';
+      layoutLog.innerText = '';
+      process(htmlSource.value);
+    });
+  };
+
+	let browser;
+	function process(text) {
+		if (!browser)
+      browser = new Browser(canvasEl)
+		browser.load(text)
+	}
+  function continuePromise(msToWait) {
+    let promise = new Promise((resolve, reject) => {
+      setTimeout(() => resolve(), msToWait);
+    });
+    return promise;
+  }
+  async function potentialBreakpointLex(text_so_far) {
+    let now = Date.now();
+    lexTitle.innerText = `Lex output (${text_so_far.length} chars processed):`
+    lexLog.innerText = text_so_far;
+    lexLog.scrollTop = lexLog.scrollHeight;
+    await continuePromise(50);
+  }
+
+  function prettyPrintDisplayList(display_list) {
+    let output = '';
+    for (let entry of display_list) {
+      output += `[x=${entry[0]} y=${entry[1]} c=${entry[2]}]\n`;
+    }
+    return output;
+  }
+
+  async function potentialBreakpointLayout(display_list_so_far) {
+    let now = Date.now();
+    console.log('hmm');
+    layoutTitle.innerText = `Layout output (${display_list_so_far.length} chars processed):`
+    layoutLog.innerText = prettyPrintDisplayList(display_list_so_far);
+    layoutLog.scrollTop = layoutLog.scrollHeight;
+    await continuePromise(50);
+  }
+
+  async function potentialBreakpointRender(count) {
+    renderTitle.innerText = `Render step ${count}:`;
+    await continuePromise(50);
+  }
+
+</script>
+<wrapper>
+  <form id=htmlSourceForm>
+  <textarea id=htmlSource>
+    <html>
+      <body>
+        Hello world
+      </body>
+    </html>
+  </textarea>
+  <br>
+  <input type=submit value="Render">
+</form>
+<span id='lexTitle'></span><br>
+<pre id=lexLog class=log>
+</pre>
+<span id='layoutTitle'></span><br>
+<pre id=layoutLog class=log>
+</pre>
+<span id='renderTitle'></span><br>
+<canvas id=canvasEl width=800 height=600>
+</canvas>
