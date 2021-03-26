@@ -194,6 +194,7 @@ def layout_mode(node):
         return "inline"
     elif node.children:
         for child in node.children:
+            if isinstance(child, Text): continue
             if child.tag in BLOCK_ELEMENTS:
                 return "block"
         return "inline"
