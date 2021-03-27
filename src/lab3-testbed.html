@@ -3,7 +3,6 @@
   .log {
   	border: 1px solid black;
   	overflow:scroll;
-  	width: 500px;
    	height: 100px;
   }
   canvas {
@@ -12,7 +11,7 @@
   	border: 1px solid black;
   }
   textarea {
-    width: 600px;
+    width: 100%;
     height: 100px;
   }
 </style>
@@ -55,7 +54,6 @@
   }
 
   async function potentialBreakpointLex(tokens_so_far) {
-    let now = Date.now();
     lexTitle.innerText = `Lex output (${tokens_so_far.length} tokens created):`
     lexLog.innerText = prettyPrintLex(tokens_so_far);
     lexLog.scrollTop = lexLog.scrollHeight;
@@ -80,14 +78,17 @@
   }
 
   async function potentialBreakpointLayout(line_so_far, display_list_so_far) {
-    let now = Date.now();
     layoutTitle.innerText = `Layout progress: line length=${line_so_far.length} display list length=${display_list_so_far.length}`;
     let line_so_far_str = ''
     if (line_so_far.length > 0)
       line_so_far_str = prettyPrintLine(line_so_far);
     let display_list_str = prettyPrintDisplayList(display_list_so_far); 
-    layoutLog.innerText = `Line so far: ${line_so_far_str}\n
-    Display list so far: ${display_list_str}\n`;
+    layoutLog.innerText = `Line so far:
+${line_so_far_str}
+
+Display list so far:
+${display_list_str}
+`;
     layoutLog.scrollTop = layoutLog.scrollHeight;
     await continuePromise(50);
   }
@@ -100,9 +101,15 @@
 </script>
 <wrapper>
   <form id=htmlSourceForm>
-  <textarea id=htmlSource><p>test1</p> <p>test2</p> <p>test3</p></textarea>
+  Source:
+  <textarea id=htmlSource><p>Normal<i>Italics</i><b>Bold</b></p>
+<p><big>Big<big>Really Big<b>Really Big Bold</b></big></big></p>
+<p><small>Small<small>Tiny<i>Tiny Italics</i></small></small></p>
+  </textarea>
   <br>
-  <input type=submit value="Render">
+  <div style="text-align: center">
+    <input type=submit value="Render">
+  </div>
 </form>
 <span id='lexTitle'></span><br>
 <pre id=lexLog class=log>

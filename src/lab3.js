@@ -44,14 +44,14 @@ let [HSTEP, VSTEP] = [6, 18]
 let SCROLL_STEP = 100
 
 class Font {
-  constructor(size, weight, font) {
+  constructor(size, weight, style) {
   	this.size = size;
-  	this.weight = weight;
-  	this.font = font;
+    this.weight = weight;
+  	this.style = style;
   }
 
   toString() {
-    return `${this.size}px ${this.weight} ${this.font}`
+    return `${this.style} ${this.weight} ${this.size}px sans-serif`
   }
 
   textMetrics(text) {
@@ -59,6 +59,7 @@ class Font {
   	document.body.appendChild(canvasElement);
     let canvasContext = canvasElement.getContext('2d');
     canvasContext.font = this.toString();
+    document.body.removeChild(canvasElement);
     return canvasContext.measureText(text);
   }
 
@@ -82,7 +83,7 @@ class Layout {
   	this.cursor_x = HSTEP
   	this.cursor_y = VSTEP
   	this.weight = "normal"
-  	this.style = "times new roman"
+  	this.style = "normal"
   	this.size = 16
     this.line = []
   }
@@ -100,21 +101,21 @@ class Layout {
     if (tok instanceof Text)
       this.text(tok.text)
     else if (tok.tag == "i")
-      tok.style = "italic"
+      this.style = "italic"
     else if (tok.tag == "/i")
-      tok.style = "roman"
+      this.style = "normal"
     else if (tok.tag == "b")
-      tok.weight = "bold"
+      this.weight = "bold"
     else if (tok.tag == "/b")
-      tok.weight = "normal"
+      this.weight = "normal"
     else if (tok.tag == "small")
-      tok.size -= 2
+      this.size -= 2
     else if (tok.tag == "/small")
-      tok.size += 2
+      this.size += 2
     else if (tok.tag == "big")
-      tok.size += 4
+      this.size += 4
     else if (tok.tag == "/big")
-      tok.size -= 4
+      this.size -= 4
     else if (tok.tag == "br")
       this.flush()
     else if (tok.tag == "/p") {
@@ -160,7 +161,15 @@ class Layout {
   	let baseline = this.cursor_y + 1.2 * max_ascent
 
   	for (let entry of this.line) {
-  	  let y = baseline - entry.font.metrics().ascent;
+      // By default a CanvasRenderingContext2D draws relative to the
+      // alphabetic baseline, so we don't need to adjust y. This is
+      // different than the tkinter mode, which draws at top.
+      /// CanvasRenderingContext2D can be switched modes via the 
+      // textBaseline feature of CanvasRenderingContext2D, but the other
+      // modes only make sense in languages that don't have a baseline
+      // concept, such as CJK or Tibetan/Indic.
+      // https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/textBaseline
+  	  let y = baseline;
       let display_item = {
         x: entry.x,
         y: y,
@@ -171,7 +180,6 @@ class Layout {
   	}
   	this.cursor_x = HSTEP
   	this.line = []
-
 
     let max_descent = 0
     for (let metric of metrics) {
@@ -189,21 +197,24 @@ class Browser {
     canvasElement.width = rectangle.width * devicePixelRatio;
     canvasElement.height = rectangle.height * devicePixelRatio;
     this.canvasContext = canvasElement.getContext('2d');
-
     this.scroll = 0
   }
 
   async load(body) {
+    this.clearCanvas();
     let tokens = await lex(body);
     let layout = new Layout(tokens);
     this.display_list = await layout.layout();
     await this.render();
   }
 
+  clearCanvas() {
+    this.canvasContext.clearRect(0, 0, this.canvasElement.width,
+        this.canvasElement.height);
+  }
+
   async render() {
     let count = 0;
-    this.canvasContext.clearRect(0, 0, this.canvasElement.width,
-       this.canvasElement.height);
     for (let entry of this.display_list) {
       let {x, y, word, font} = entry;
       if (y > this.scroll + HEIGHT)
@@ -214,6 +225,7 @@ class Browser {
         continue;
 
       this.canvasContext.font = entry.font.toString();
+      console.log('font: ' + entry.font.toString());
       this.canvasContext.fillText(word, x, y - this.scroll);
       await potentialBreakpointRender(count++);
     }
