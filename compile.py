@@ -9,17 +9,25 @@ class CantCompile(Exception):
         super().__init__(f"Could not compile `{ast.unparse(tree)}`")
         self.tree = tree
         self.hint = hint
+        self.msg = None
 
 ISSUES = []
 
 def catch_issues(f):
-    def wrapped(*args, **kwargs):
+    def wrapped(tree, *args, **kwargs):
         try:
-            return f(*args, **kwargs)
+            return f(tree, *args, **kwargs)
+        except AssertionError as e2:
+            try:
+                return find_hint(tree, "js")
+            except CantCompile as e:
+                e.msg = str(e2)
+                ISSUES.append(e)
+                return "/* " + ast.unparse(tree) + " */"
         except CantCompile as e:
             if not e.hint:
                 try:
-                    return find_hint(e.tree, "replace")
+                    return find_hint(tree, "js")
                 except CantCompile as e2:
                     e = e2
             ISSUES.append(e)
@@ -386,8 +394,7 @@ def compile_expr(tree, ctx):
     elif isinstance(tree, ast.Tuple) or isinstance(tree, ast.List):
         return "[" + ", ".join([compile_expr(a, ctx) for a in tree.elts]) + "]"
     elif isinstance(tree, ast.Name):
-        if tree.id not in ctx:
-            warnings.warn(f"{tree.id} not found in {ctx}")
+        assert tree.id in ctx, "Could not find variable {tree.id}"
         return "this" if tree.id == "self" else tree.id
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
@@ -403,7 +410,7 @@ def compile_expr(tree, ctx):
         else:
             raise CantCompile(tree)
     else:
-        raise CantCompile(call)
+        raise CantCompile(tree)
 
 @catch_issues
 def compile(tree, ctx, indent=0):
@@ -546,15 +553,19 @@ if __name__ == "__main__":
     args.javascript.write(js)
 
     issues = 0
-    for h in HINTS:
-        if h["used"]: continue
-        print(f"Unused hints: {unused}", file=sys.stderr)
-        issues += 1
-
     for i in ISSUES:
         print(str(i), file=sys.stderr)
         if i.hint:
-            print("Consider hint:", json.dumps(i.hint), file=sys.stderr)
+            if i.msg: print("  Issue: " + i.msg)
+            print("  Hint:", json.dumps(i.hint), file=sys.stderr)
+        issues += 1
+
+    for h in HINTS:
+        if h["used"]: continue
+        h2 = h.copy()
+        del h2["used"]
+        del h2["ast"]
+        print(f"Unused hint: {json.dumps(h2)}", file=sys.stderr)
         issues += 1
 
     sys.exit(issues)
