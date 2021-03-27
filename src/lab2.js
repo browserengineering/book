@@ -36,6 +36,9 @@ async function layout(text) {
 class Browser {
   constructor(canvasElement) {
     this.canvasElement = canvasElement;
+    const rectangle = canvasElement.getBoundingClientRect();
+    canvasElement.width = rectangle.width * devicePixelRatio;
+    canvasElement.height = rectangle.height * devicePixelRatio;
     this.canvasContext = canvasElement.getContext('2d');
 
     this.scroll = 0
