@@ -11,18 +11,31 @@ class Tag {
 }
 
 async function lex(body) {
-    let text = ""
-    let in_angle = false
-    for (let c of body) {
-        if (c == "<")
-            in_angle = true
-        else if (c == ">")
-            in_angle = false
-        else if (!in_angle)
-            text += c
-        await potentialBreakpointLex(text);
+  let out = [];
+  let text = "";
+  let in_tag = false;
+  let prev_length = 0
+  for (let c of body) {
+    if (c == "<") {
+      in_tag = true;
+      if (text)
+        out.push(new Text(text));
+      text = "";
+    } else if (c == ">") {
+      in_tag = false;
+      out.push(new Tag(text));
+      text = "";
+    } else {
+      text += c;
     }
-    return text
+    if (out.length != prev_length) {
+      await potentialBreakpointLex(out)
+      prev_length = out.length
+    }
+  }
+  if (!in_tag && text)
+    out.push(new Text(text));
+  return out;
 }
 
 let [WIDTH, HEIGHT] = [800, 600]
@@ -37,18 +50,28 @@ class Font {
   	this.font = font;
   }
 
-  measure() {
-  	let span = document.createElement();
-  	document.body.appendChild(span);
-  	span.style.font = style;
-  	span.style.fontSize = this.size;
-  	span.style.height = 'auto';
-  	span.style.width = 'auto';
-  	span.style.position = 'absolute';
-  	span.style.whiteSpace = 'no-wrap';
-  	let width = Math.ceil(text.clientWidth);
-  	document.body.removeChild(span);
-  	return width;
+  toString() {
+    return `${this.size}px ${this.weight} ${this.font}`
+  }
+
+  textMetrics(text) {
+  	let canvasElement = document.createElement('canvas');
+  	document.body.appendChild(canvasElement);
+    let canvasContext = canvasElement.getContext('2d');
+    canvasContext.font = this.toString();
+    return canvasContext.measureText(text);
+  }
+
+  measure(text) {
+    return this.textMetrics(text).width;
+  }
+
+  metrics() {
+    let metrics = this.textMetrics(' ');
+    return {
+      ascent: metrics.fontBoundingBoxAscent,
+      descent: metrics.fontBoundingBoxDescent
+    };
   }
 }
 
@@ -62,35 +85,41 @@ class Layout {
   	this.style = "times new roman"
   	this.size = 16
     this.line = []
-    for (let tok of tokens)
+  }
+
+  async layout() {
+    for (let tok of this.tokens) {
       this.token(tok)
-    this.flush
+      await potentialBreakpointLayout(this.line, this.display_list);
+    }
+    this.flush();
+    return this.display_list;
   }
 
   token(tok) {
     if (tok instanceof Text)
-      text(tok.text)
+      this.text(tok.text)
     else if (tok.tag == "i")
-      this.style = "italic"
+      tok.style = "italic"
     else if (tok.tag == "/i")
-      this.style = "roman"
+      tok.style = "roman"
     else if (tok.tag == "b")
-      this.weight = "bold"
+      tok.weight = "bold"
     else if (tok.tag == "/b")
-      this.weight = "normal"
+      tok.weight = "normal"
     else if (tok.tag == "small")
-      this.size -= 2
+      tok.size -= 2
     else if (tok.tag == "/small")
-      this.size += 2
+      tok.size += 2
     else if (tok.tag == "big")
-      this.size += 4
+      tok.size += 4
     else if (tok.tag == "/big")
-      this.size -= 4
+      tok.size -= 4
     else if (tok.tag == "br")
       this.flush()
     else if (tok.tag == "/p") {
       this.flush()
-      this.cursor_y += VSTEP
+      tok.cursor_y += VSTEP
     }
   }
 
@@ -100,30 +129,55 @@ class Layout {
   		this.weight,
   		this.style);
   	for (let word of text.split()) {
-  	  let w = font.measure();
+  	  let w = font.measure(word);
   	  if (this.cursor_x + w > WIDTH - HSTEP)
-  		this.flush();
+  		  this.flush();
   	  let cursor_x = this.cursor_x
-      this.line.push({cursor_x, word, font});
-  	  this.cursor_x += w + font.measure(" ")
+      let entry = {
+        x: cursor_x,
+        word: word,
+        font: font
+      }
+      this.line.push(entry);
+  	  this.cursor_x += w + font.measure(' ')
   	}
   }
 
   flush() {
   	if (!this.line)
   	  return;
-  	// There is no JS API (yet) for font metrics
-  	let ascent = 10
-  	let max_ascent = 10
+    let metrics = [];
+    for (let entry of this.line) {
+      metrics.push(entry.font.metrics())
+    }
+
+    let max_ascent = 0
+    for (let metric of metrics) {
+      if (metric.ascent > max_ascent)
+        max_ascent = metric.ascent;
+    }
+
   	let baseline = this.cursor_y + 1.2 * max_ascent
-  	for (let {x, word, font} of this.line) {
-  	  let y = baseline - ascent;
-  	  this.display_list.push({x, y, word, font})
+
+  	for (let entry of this.line) {
+  	  let y = baseline - entry.font.metrics().ascent;
+      let display_item = {
+        x: entry.x,
+        y: y,
+        word: entry.word,
+        font: entry.font
+      };
+  	  this.display_list.push(display_item)
   	}
   	this.cursor_x = HSTEP
   	this.line = []
-  	// See comment above
-  	let max_descent = 6
+
+
+    let max_descent = 0
+    for (let metric of metrics) {
+      if (metric.descent > max_descent)
+        max_descent = metric.descent;
+    }
   	this.cursor_y = baseline + 1.2 * max_descent
   }
 }
@@ -131,6 +185,9 @@ class Layout {
 class Browser {
   constructor(canvasElement) {
     this.canvasElement = canvasElement;
+    const rectangle = canvasElement.getBoundingClientRect();
+    canvasElement.width = rectangle.width * devicePixelRatio;
+    canvasElement.height = rectangle.height * devicePixelRatio;
     this.canvasContext = canvasElement.getContext('2d');
 
     this.scroll = 0
@@ -138,7 +195,8 @@ class Browser {
 
   async load(body) {
     let tokens = await lex(body);
-    this.display_list = new Layout(tokens).display_list;
+    let layout = new Layout(tokens);
+    this.display_list = await layout.layout();
     await this.render();
   }
 
@@ -146,14 +204,17 @@ class Browser {
     let count = 0;
     this.canvasContext.clearRect(0, 0, this.canvasElement.width,
        this.canvasElement.height);
-    this.canvasContext.font = '16px serif';
     for (let entry of this.display_list) {
       let {x, y, word, font} = entry;
       if (y > this.scroll + HEIGHT)
         continue;
-      if (y + VSTEP < this.scroll)
+      let metrics = font.metrics()
+      let line_height = metrics.ascent + metrics.descent
+      if (y + line_height < this.scroll)
         continue;
-      this.canvasContext.fillText(c, x, y - this.scroll);
+
+      this.canvasContext.font = entry.font.toString();
+      this.canvasContext.fillText(word, x, y - this.scroll);
       await potentialBreakpointRender(count++);
     }
   }

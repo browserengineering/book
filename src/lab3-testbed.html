@@ -21,7 +21,6 @@
 <script>
 	onload = () => {
     htmlSourceForm.addEventListener('submit', () => {
-      console.log('submit');
       event.preventDefault();
       lexTitle.innerText = '';
       lexLog.innerText = '';
@@ -43,10 +42,22 @@
     });
     return promise;
   }
-  async function potentialBreakpointLex(text_so_far) {
+
+  function prettyPrintLex(tokens_so_far) {
+    let output = ''
+    for (let token of tokens_so_far) {
+      if (token instanceof Tag)
+        output += ` Tag: ${token.tag}\n`;
+      else
+        output += ` Text: ${token.text}\n`;
+    }
+    return output;
+  }
+
+  async function potentialBreakpointLex(tokens_so_far) {
     let now = Date.now();
-    lexTitle.innerText = `Lex output (${text_so_far.length} chars processed):`
-    lexLog.innerText = text_so_far;
+    lexTitle.innerText = `Lex output (${tokens_so_far.length} tokens created):`
+    lexLog.innerText = prettyPrintLex(tokens_so_far);
     lexLog.scrollTop = lexLog.scrollHeight;
     await continuePromise(50);
   }
@@ -54,31 +65,42 @@
   function prettyPrintDisplayList(display_list) {
     let output = '';
     for (let entry of display_list) {
-      output += `[x=${entry[0]} y=${entry[1]} c=${entry[2]}]\n`;
+      output +=
+        `[x=${entry.x} y=${entry.y} word=${entry.word} font=${entry.font.toString()}]\n`;
     }
     return output;
   }
 
-  async function potentialBreakpointLayout(display_list_so_far) {
+  function prettyPrintLine(line) {
+    let output = '';
+    for (let word of line) {
+      output += `[x=${word.x} word=${word.word} font=${word.font}] `
+    }
+    return output;
+  }
+
+  async function potentialBreakpointLayout(line_so_far, display_list_so_far) {
     let now = Date.now();
-    console.log('hmm');
-    layoutTitle.innerText = `Layout output (${display_list_so_far.length} chars processed):`
-    layoutLog.innerText = prettyPrintDisplayList(display_list_so_far);
+    layoutTitle.innerText = `Layout progress: line length=${line_so_far.length} display list length=${display_list_so_far.length}`;
+    let line_so_far_str = ''
+    if (line_so_far.length > 0)
+      line_so_far_str = prettyPrintLine(line_so_far);
+    let display_list_str = prettyPrintDisplayList(display_list_so_far); 
+    layoutLog.innerText = `Line so far: ${line_so_far_str}\n
+    Display list so far: ${display_list_str}\n`;
     layoutLog.scrollTop = layoutLog.scrollHeight;
     await continuePromise(50);
   }
 
   async function potentialBreakpointRender(count) {
     renderTitle.innerText = `Render step ${count}:`;
-    await continuePromise(50);
+    await continuePromise(400);
   }
 
 </script>
 <wrapper>
   <form id=htmlSourceForm>
-  <textarea id=htmlSource>
-    test1 test2 test3
-  </textarea>
+  <textarea id=htmlSource><p>test1</p> <p>test2</p> <p>test3</p></textarea>
   <br>
   <input type=submit value="Render">
 </form>
