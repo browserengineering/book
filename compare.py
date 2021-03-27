@@ -69,7 +69,9 @@ def tangle(file):
     return list(get_blocks(out.stdout.decode("utf8").split("\n")))
 
 def find_block(block, text):
-    differ = difflib.Differ(charjunk=lambda c: c == " ", linejunk=lambda s: s.strip().startswith("#"))
+    differ = difflib.Differ(
+        charjunk=lambda c: c == " ",
+        linejunk=lambda s: s.strip().startswith("#") or s.strip().startswith("breakpoint"))
     d = differ.compare(block.splitlines(keepends=True), text.splitlines(keepends=True))
     same = []
     last_type = None

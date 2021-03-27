@@ -3,6 +3,7 @@
 import ast
 import json
 import warnings
+import outlines
 
 class CantCompile(Exception):
     def __init__(self, tree, hint=None):
@@ -108,7 +109,7 @@ LIBRARY_METHODS = [
     "makefile",
     "readline",
     "read",
-    "close",
+    #"close", # Shadows our code
 
     # tkinter
     "pack",
@@ -122,35 +123,36 @@ LIBRARY_METHODS = [
     "measure",
 ]
 
-OUR_FNS = [
-    "print_tree",
-    "request",
-    "layout_mode",
-]
+OUR_FNS = []
+OUR_CLASSES = []
+OUR_METHODS = []
 
-OUR_CLASSES = [
-    "Text",
-    "Element",
-    "HTMLParser",
-    "InlineLayout",
-    "BlockLayout",
-    "DocumentLayout",
-    "DrawText",
-    "DrawRect",
-]
+def load_outline(ol):
+    for item in ol:
+        if isinstance(item, outlines.IfMain): continue
+        elif isinstance(item, outlines.Const): continue
+        elif isinstance(item, outlines.Function):
+            OUR_FNS.append(item.name)
+        elif isinstance(item, outlines.Class):
+            OUR_CLASSES.append(item.name)
+            for subitem in item.fns:
+                if isinstance(subitem, outlines.Const): continue
+                elif isinstance(subitem, outlines.Function):
+                    OUR_METHODS.append(subitem.name)
+                else:
+                    raise ValueError(subitem)
+        else:
+            raise ValueError(item)
+    THEIR_STUFF = set(LIBRARY_METHODS) | set(RENAME_METHODS) | set(RENAME_FNS)
+    OUR_STUFF = set(OUR_FNS) | set(OUR_METHODS) | set(OUR_CLASSES)
 
-OUR_METHODS = [
-    "parse",
-    "layout",
-    "draw",
-    "execute",
-]
-
-THEIR_STUFF = set(LIBRARY_METHODS) | set(RENAME_METHODS) | set(RENAME_FNS)
-OUR_STUFF = set(OUR_FNS) | set(OUR_METHODS) | set(OUR_CLASSES)
-assert not set(OUR_FNS) & set(OUR_CLASSES)
-assert not THEIR_STUFF & (set(OUR_FNS) | set(OUR_METHODS))
-
+    mixed_types = set(OUR_FNS) & set(OUR_CLASSES)
+    assert not mixed_types, f"Names defined as both class and function: {mixed_types}"
+    our_their = (set(LIBRARY_METHODS) | set(RENAME_METHODS)) & set(OUR_METHODS)
+    assert not our_their, f"Methods defined by both our code and libraries: {our_their}"
+    our_their = set(RENAME_FNS) & set(OUR_FNS)
+    assert not our_their, f"Functions defined by our code shadow builtins: {our_their}"
+            
 @catch_issues
 def compile_func(call, args, ctx):
     if isinstance(call.func, ast.Attribute) and \
@@ -184,7 +186,7 @@ def compile_func(call, args, ctx):
     elif isinstance(call.func, ast.Attribute) and \
          call.func.attr in OUR_METHODS:
         base = compile_expr(call.func.value, ctx)
-        return base + "." + call.func.attr + "(" + ", ".join(args) + ")"
+        return "await " + base + "." + call.func.attr + "(" + ", ".join(args) + ")"
     elif isinstance(call.func, ast.Attribute) and \
          call.func.attr == "split":
         assert 0 <= len(args) <= 2
@@ -216,7 +218,7 @@ def compile_func(call, args, ctx):
         if call.func.id in RENAME_FNS:
             return RENAME_FNS[call.func.id] + "(" + ", ".join(args) + ")"
         elif call.func.id in OUR_FNS:
-            return call.func.id + "(" + ", ".join(args) + ")"
+            return "await " + call.func.id + "(" + ", ".join(args) + ")"
         elif call.func.id in OUR_CLASSES:
             return "new " + call.func.id + "(" + ", ".join(args) + ")"
         elif call.func.id == "len":
@@ -234,6 +236,11 @@ def compile_func(call, args, ctx):
             else:
                 assert len(args) == 2
                 return "Math.max(" + args[0] + ", " + args[1] + ")"
+        elif call.func.id == "breakpoint":
+            assert isinstance(call.args[0], ast.Constant)
+            assert isinstance(call.args[0].value, str)
+            name = "potentialBreakpoint" + call.args[0].value.title()
+            return "await " + name + "(" + ", ".join(args[1:]) + ")"
         elif call.func.id == "min":
             if len(args) == 1:
                 return args[0] + ".reduce((a, v) => Math.min(a, v))"
@@ -441,7 +448,8 @@ def compile(tree, ctx, indent=0):
             "__init__": "constructor",
             "__repr__": "toString",
         }.get(tree.name, tree.name)
-        def_line = ("" if ctx.type == "class" else "function ") + name + "(" + ", ".join(args) + ")"
+        kw = "" if ctx.type == "class" else "function "
+        def_line = "async " + kw + name + "(" + ", ".join(args) + ")"
         ctx2 = Context("function", ctx)
         for arg in tree.args.args:
             ctx2[arg.arg] = True
@@ -549,6 +557,7 @@ if __name__ == "__main__":
 
     if args.hints: read_hints(args.hints)
     tree = ast.parse(args.python.read(), args.python.name)
+    load_outline(outlines.outline(tree))
     js = compile(tree, ctx=Context("module", {}))
     args.javascript.write(js)
 
