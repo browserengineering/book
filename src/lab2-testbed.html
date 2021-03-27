@@ -3,7 +3,6 @@
   .log {
   	border: 1px solid black;
   	overflow:scroll;
-  	width: 500px;
    	height: 100px;
   }
   canvas {
@@ -21,7 +20,6 @@
 <script>
 	onload = () => {
     htmlSourceForm.addEventListener('submit', () => {
-      console.log('submit');
       event.preventDefault();
       lexTitle.innerText = '';
       lexLog.innerText = '';
@@ -37,18 +35,19 @@
       browser = new Browser(canvasEl)
 		browser.load(text)
 	}
+
   function continuePromise(msToWait) {
     let promise = new Promise((resolve, reject) => {
       setTimeout(() => resolve(), msToWait);
     });
     return promise;
   }
+
   async function potentialBreakpointLex(text_so_far) {
-    let now = Date.now();
     lexTitle.innerText = `Lex output (${text_so_far.length} chars processed):`
     lexLog.innerText = text_so_far;
     lexLog.scrollTop = lexLog.scrollHeight;
-    await continuePromise(50);
+    await continuePromise(10);
   }
 
   function prettyPrintDisplayList(display_list) {
@@ -60,31 +59,31 @@
   }
 
   async function potentialBreakpointLayout(display_list_so_far) {
-    let now = Date.now();
-    console.log('hmm');
     layoutTitle.innerText = `Layout output (${display_list_so_far.length} chars processed):`
     layoutLog.innerText = prettyPrintDisplayList(display_list_so_far);
     layoutLog.scrollTop = layoutLog.scrollHeight;
-    await continuePromise(50);
+    await continuePromise(10);
   }
 
   async function potentialBreakpointRender(count) {
     renderTitle.innerText = `Render step ${count}:`;
-    await continuePromise(50);
+    await continuePromise(10);
   }
 
 </script>
 <wrapper>
   <form id=htmlSourceForm>
+  Source:
   <textarea id=htmlSource>
     <html>
       <body>
-        Hello world
+        Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world Hello world 
       </body>
     </html>
   </textarea>
   <br>
-  <div style="text-align: center"><input id=submitButton type=submit value="Render"></div>
+  <div style="text-align: center">
+    <input id=submitButton type=submit value="Render"></div>
 </form>
 <span id='lexTitle'></span><br>
 <pre id=lexLog class=log>

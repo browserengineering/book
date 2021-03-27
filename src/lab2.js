@@ -14,7 +14,7 @@ async function lex(body) {
 }
 
 let [WIDTH, HEIGHT] = [800, 600]
-let [HSTEP, VSTEP] = [6, 18]
+let [HSTEP, VSTEP] = [10, 18]
 
 let SCROLL_STEP = 100
 
@@ -40,21 +40,25 @@ class Browser {
     canvasElement.width = rectangle.width * devicePixelRatio;
     canvasElement.height = rectangle.height * devicePixelRatio;
     this.canvasContext = canvasElement.getContext('2d');
-
-    this.scroll = 0
+    this.scroll = 0;
   }
 
   async load(body) {
+    this.clearCanvas();
     let text = await lex(body);
     this.display_list = await layout(text);
-    this.render();
+    await this.render();
+  }
+
+  clearCanvas() {
+    this.canvasContext.clearRect(0, 0, this.canvasElement.width,
+        this.canvasElement.height);
   }
 
   async render() {
     let count = 0;
-    this.canvasContext.clearRect(0, 0, this.canvasElement.width,
-       this.canvasElement.height);
-    this.canvasContext.font = '12px serif';
+    this.canvasContext.font = "normal normal 16px sans-serif";
+    console.log(this.canvasContext.font)
     for (let entry of this.display_list) {
       let [x, y, c] = entry;
       if (y > this.scroll + HEIGHT)
