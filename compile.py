@@ -214,8 +214,6 @@ def compile_func(call, args, ctx):
             return base + "." + fn + "(" + ", ".join(args) + ")"
         else:
             raise CantCompile(call)
-        if fn not in ["socket.socket", "s.makefile", "tkinter.Canvas"]:
-            assert not tree.keywords, fn
     elif isinstance(call.func, ast.Name):
         if call.func.id in RENAME_FNS:
             return RENAME_FNS[call.func.id] + "(" + ", ".join(args) + ")"
@@ -241,8 +239,7 @@ def compile_func(call, args, ctx):
         elif call.func.id == "breakpoint":
             assert isinstance(call.args[0], ast.Constant)
             assert isinstance(call.args[0].value, str)
-            name = "potentialBreakpoint" + call.args[0].value.title()
-            return "await " + name + "(" + ", ".join(args[1:]) + ")"
+            return "await breakpoint.event(" + ", ".join(args) + ")"
         elif call.func.id == "min":
             if len(args) == 1:
                 return args[0] + ".reduce((a, v) => Math.min(a, v))"
@@ -338,6 +335,7 @@ def compile_expr(tree, ctx):
                 return lhs + "[" + rhs + "]"
     elif isinstance(tree, ast.Call):
         args = [compile_expr(a, ctx) for a in tree.args]
+        args += [compile_expr(kv.value, ctx) for kv in tree.keywords]
         return compile_func(tree, args, ctx)
     elif isinstance(tree, ast.UnaryOp):
         rhs = compile_expr(tree.operand, ctx)
@@ -443,7 +441,7 @@ def compile(tree, ctx, indent=0):
         ctx[tree.name] = True
         ctx2 = Context("class", ctx)
         parts = [compile(part, indent=indent + INDENT, ctx=ctx2) for part in tree.body]
-        return " " * indent + "class " + tree.name + "{\n" + "\n\n".join(parts) + "\n}"
+        return " " * indent + "class " + tree.name + " {\n" + "\n\n".join(parts) + "\n}"
     elif isinstance(tree, ast.FunctionDef):
         assert not tree.decorator_list
         assert not tree.returns
@@ -454,7 +452,9 @@ def compile(tree, ctx, indent=0):
             "__repr__": "toString",
         }.get(tree.name, tree.name)
         kw = "" if ctx.type == "class" else "function "
-        def_line = "async " + kw + name + "(" + ", ".join(args) + ")"
+        def_line = kw + name + "(" + ", ".join(args) + ")"
+        if not tree.name.startswith("__"):
+            def_line = "async " + def_line
         ctx2 = Context("function", ctx)
         for arg in tree.args.args:
             ctx2[arg.arg] = True
