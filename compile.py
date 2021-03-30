@@ -5,6 +5,8 @@ import json
 import warnings
 import outlines
 
+INDENT = 2
+
 class CantCompile(Exception):
     def __init__(self, tree, hint=None):
         super().__init__(f"Could not compile `{ast.unparse(tree)}`")
@@ -437,7 +439,7 @@ def compile(tree, ctx, indent=0):
         assert not tree.decorator_list
         ctx[tree.name] = True
         ctx2 = Context("class", ctx)
-        parts = [compile(part, indent=indent + 2, ctx=ctx2) for part in tree.body]
+        parts = [compile(part, indent=indent + INDENT, ctx=ctx2) for part in tree.body]
         return " " * indent + "class " + tree.name + "{\n" + "\n\n".join(parts) + "\n}"
     elif isinstance(tree, ast.FunctionDef):
         assert not tree.decorator_list
@@ -453,7 +455,7 @@ def compile(tree, ctx, indent=0):
         ctx2 = Context("function", ctx)
         for arg in tree.args.args:
             ctx2[arg.arg] = True
-        body = "\n".join([compile(line, indent=indent + 2, ctx=ctx2) for line in tree.body])
+        body = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         return " " * indent + def_line + " {\n" + body + "\n" + " " * indent + "}"
     elif isinstance(tree, ast.Expr) and ctx.type == "module" and \
          isinstance(tree.value, ast.Constant) and isinstance(tree.value.value, str):
@@ -494,7 +496,7 @@ def compile(tree, ctx, indent=0):
         assert not tree.orelse
         test = deparen(compile_expr(tree.test, ctx))
         out = " " * indent + "while (" + test + ") {\n"
-        out += "\n".join([compile(line, indent=indent + 2, ctx=ctx) for line in tree.body])
+        out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx) for line in tree.body])
         out += "\n" + " " * indent + "}"
         return out
     elif isinstance(tree, ast.For):
@@ -503,7 +505,7 @@ def compile(tree, ctx, indent=0):
         ctx2 = Context(ctx.type, ctx)
         lhs = compile_lhs(tree.target, ctx2)
         rhs = compile_expr(tree.iter, ctx)
-        body = "\n".join([compile(line, indent=indent + 2, ctx=ctx2) for line in tree.body])
+        body = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         fstline = " " * indent + "for (let " + lhs + " of " + rhs + ") {\n"
         return fstline + body + "\n" + " " * indent + "}"
     elif isinstance(tree, ast.If) and ctx.type == "module":
@@ -521,7 +523,7 @@ def compile(tree, ctx, indent=0):
         test = deparen(compile_expr(tree.test, ctx))
         out = " " * indent + "if (" + test + ") {\n"
         ctx2 = Context(ctx.type, ctx)
-        ift = "\n".join([compile(line, indent=indent + 2, ctx=ctx2) for line in tree.body])
+        ift = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         if "\n" not in ift and not tree.orelse and tree.test.lineno == tree.body[0].lineno:
             return out[:-2] + ift.strip()
         else:
@@ -531,11 +533,11 @@ def compile(tree, ctx, indent=0):
                 tree = tree.orelse[0]
                 test = compile_expr(tree.test, ctx)
                 out += "\n" + " " * indent + "} else if (" + test + ") {\n"
-                out += "\n".join([compile(line, indent=indent + 2, ctx=ctx2) for line in tree.body])
+                out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
             if tree.orelse:
                 ctx2 = Context(ctx.type, ctx)
                 out += "\n" + " " * indent + "} else {\n"
-                out += "\n".join([compile(line, indent=indent + 2, ctx=ctx2) for line in tree.orelse])
+                out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.orelse])
             out += "\n" + " " * indent + "}"
             return out
     elif isinstance(tree, ast.Continue):
@@ -551,11 +553,13 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Compiles each chapter's Python code to JavaScript")
     parser.add_argument("--hints", default=None, type=argparse.FileType())
+    parser.add_argument("--indent", default=2, type=int)
     parser.add_argument("python", type=argparse.FileType())
     parser.add_argument("javascript", type=argparse.FileType("w"))
     args = parser.parse_args()
 
     if args.hints: read_hints(args.hints)
+    INDENT = args.indent
     tree = ast.parse(args.python.read(), args.python.name)
     load_outline(outlines.outline(tree))
     js = compile(tree, ctx=Context("module", {}))
