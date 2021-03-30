@@ -1,0 +1,122 @@
+<!doctype HTML>
+<style>
+  .log {
+  	border: 1px solid black;
+  	overflow:scroll;
+   	height: 100px;
+  }
+  canvas {
+  	width: 800px;
+  	height: 600px;
+  	border: 1px solid black;
+  }
+  textarea {
+    width: 100%;
+    height: 100px;
+  }
+</style>
+<script src="lab3.js"></script>
+
+<script>
+	onload = () => {
+    htmlSourceForm.addEventListener('submit', () => {
+      event.preventDefault();
+      lexTitle.innerText = '';
+      lexLog.innerText = '';
+      layoutTitle.innerText = '';
+      layoutLog.innerText = '';
+      process(htmlSource.value);
+    });
+  };
+
+	let browser;
+	function process(text) {
+		if (!browser)
+      browser = new Browser(canvasEl)
+		browser.load(text)
+	}
+  function continuePromise(msToWait) {
+    let promise = new Promise((resolve, reject) => {
+      setTimeout(() => resolve(), msToWait);
+    });
+    return promise;
+  }
+
+  function prettyPrintLex(tokens_so_far) {
+    let output = ''
+    for (let token of tokens_so_far) {
+      if (token instanceof Tag)
+        output += ` Tag: ${token.tag}\n`;
+      else
+        output += ` Text: ${token.text}\n`;
+    }
+    return output;
+  }
+
+  async function potentialBreakpointLex(tokens_so_far) {
+    lexTitle.innerText = `Lex output (${tokens_so_far.length} tokens created):`
+    lexLog.innerText = prettyPrintLex(tokens_so_far);
+    lexLog.scrollTop = lexLog.scrollHeight;
+    await continuePromise(50);
+  }
+
+  function prettyPrintDisplayList(display_list) {
+    let output = '';
+    for (let entry of display_list) {
+      output +=
+        `[x=${entry.x} y=${entry.y} word=${entry.word} font=${entry.font.toString()}]\n`;
+    }
+    return output;
+  }
+
+  function prettyPrintLine(line) {
+    let output = '';
+    for (let word of line) {
+      output += `[x=${word.x} word=${word.word} font=${word.font}] `
+    }
+    return output;
+  }
+
+  async function potentialBreakpointLayout(line_so_far, display_list_so_far) {
+    layoutTitle.innerText = `Layout progress: line length=${line_so_far.length} display list length=${display_list_so_far.length}`;
+    let line_so_far_str = ''
+    if (line_so_far.length > 0)
+      line_so_far_str = prettyPrintLine(line_so_far);
+    let display_list_str = prettyPrintDisplayList(display_list_so_far); 
+    layoutLog.innerText = `Line so far:
+${line_so_far_str}
+
+Display list so far:
+${display_list_str}
+`;
+    layoutLog.scrollTop = layoutLog.scrollHeight;
+    await continuePromise(50);
+  }
+
+  async function potentialBreakpointRender(count) {
+    renderTitle.innerText = `Render step ${count}:`;
+    await continuePromise(400);
+  }
+
+</script>
+<wrapper>
+  <form id=htmlSourceForm>
+  Source:
+  <textarea id=htmlSource><p>Normal<i>Italics</i><b>Bold</b></p>
+<p><big>Big<big>Really Big<b>Really Big Bold</b></big></big></p>
+<p><small>Small<small>Tiny<i>Tiny Italics</i></small></small></p>
+  </textarea>
+  <br>
+  <div style="text-align: center">
+    <input type=submit value="Render">
+  </div>
+</form>
+<span id='lexTitle'></span><br>
+<pre id=lexLog class=log>
+</pre>
+<span id='layoutTitle'></span><br>
+<pre id=layoutLog class=log>
+</pre>
+<span id='renderTitle'></span><br>
+<canvas id=canvasEl width=800 height=600>
+</canvas>

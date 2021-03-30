@@ -181,6 +181,64 @@ HSTEP, VSTEP = 13, 18
 
 SCROLL_STEP = 100
 
+BLOCK_ELEMENTS = [
+    "html", "body", "article", "section", "nav", "aside",
+    "h1", "h2", "h3", "h4", "h5", "h6", "hgroup", "header",
+    "footer", "address", "p", "hr", "ol", "ul", "menu", "li",
+    "dl", "dt", "dd", "figure", "figcaption", "main", "div",
+    "table", "form", "fieldset", "legend", "details", "summary",
+]
+
+def layout_mode(node):
+    if isinstance(node, Text):
+        return "inline"
+    elif node.children:
+        for child in node.children:
+            if isinstance(child, Text): continue
+            if child.tag in BLOCK_ELEMENTS:
+                return "block"
+        return "inline"
+    else:
+        return "block"
+
+class BlockLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+
+    def layout(self):
+        previous = None
+        for child in self.node.children:
+            if layout_mode(child) == "inline":
+                next = InlineLayout(child, self, previous)
+            else:
+                next = BlockLayout(child, self, previous)
+            self.children.append(next)
+            previous = next
+
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for child in self.children:
+            child.layout()
+
+        self.height = sum([child.height for child in self.children])
+
+    def draw(self, display_list):
+        if self.node.tag == "pre":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, "gray")
+            display_list.append(rect)
+        for child in self.children:
+            child.draw(display_list)
+
 class InlineLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -189,8 +247,8 @@ class InlineLayout:
         self.children = []
 
     def layout(self):
-        self.x = self.parent.x
         self.width = self.parent.width
+        self.x = self.parent.x
 
         if self.previous:
             self.y = self.previous.y + self.previous.height
@@ -274,64 +332,6 @@ class InlineLayout:
         for x, y, word, font in self.display_list:
             display_list.append(DrawText(x, y, word, font))
 
-INLINE_ELEMENTS = [
-    "a", "em", "strong", "small", "s", "cite", "q", "dfn", "abbr",
-    "ruby", "rt", "rp", "data", "time", "code", "var", "samp",
-    "kbd", "sub", "sup", "i", "b", "u", "mark", "bdi", "bdo",
-    "span", "br", "wbr", "big"
-]
-
-def layout_mode(node):
-    has_text = False
-    has_containers = False
-    for child in node.children:
-        if isinstance(child, Text):
-            has_text = True
-        elif child.tag in INLINE_ELEMENTS:
-            has_text = True
-        else:
-            has_containers = True
-    if has_containers or not has_text:
-        return "block"
-    else:
-        return "inline"
-
-class BlockLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-
-    def layout(self):
-        previous = None
-        for child in self.node.children:
-            if layout_mode(child) == "inline":
-                previous = InlineLayout(child, self, previous)
-            else:
-                previous = BlockLayout(child, self, previous)
-            self.children.append(previous)
-
-        self.x = self.parent.x
-        self.width = self.parent.width
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        for child in self.children:
-            child.layout()
-
-        self.height = sum([child.height for child in self.children])
-
-    def draw(self, display_list):
-        if self.node.tag == "pre":
-            x2, y2 = self.x + self.width, self.y + self.height
-            display_list.append(DrawRect(self.x, self.y, x2, y2, "gray"))
-        for child in self.children:
-            child.draw(display_list)
-
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
@@ -401,13 +401,13 @@ class Browser:
 
     def load(self, url):
         headers, body = request(url)
-        tree = HTMLParser(body).parse()
-        document = DocumentLayout(tree)
-        document.layout()
+        nodes = HTMLParser(body).parse()
+        self.document = DocumentLayout(nodes)
+        self.document.layout()
         self.display_list = []
-        document.draw(self.display_list)
+        self.document.draw(self.display_list)
         self.render()
-        self.max_y = document.height - HEIGHT
+        self.max_y = self.document.height - HEIGHT
 
     def render(self):
         self.canvas.delete("all")
@@ -417,9 +417,7 @@ class Browser:
             cmd.execute(self.scroll, self.canvas)
 
     def scrolldown(self, e):
-        self.scroll = self.scroll + SCROLL_STEP
-        self.scroll = min(self.scroll, self.max_y)
-        self.scroll = max(0, self.scroll)
+        self.scroll = min(self.scroll + SCROLL_STEP, self.max_y)
         self.render()
 
 if __name__ == "__main__":
