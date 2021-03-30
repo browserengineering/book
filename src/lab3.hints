@@ -1,1 +1,2 @@
-[{"line": 21, "code": "':' in host", "type": "str"}]
+[{"line": 21, "code": "':' in host", "type": "str"},
+ {"line": 52, "code": "s.close()", "js": "s.close()"}]
