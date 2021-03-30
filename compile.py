@@ -167,10 +167,10 @@ def compile_func(call, args, ctx):
         for part, arg in zip(parts, [None] + args):
             assert "{" not in part
             if arg: out += " + " + arg
-            if part: out += " + " + repr(part)
+            if part: out += " + " + compile_expr(ast.Constant(part), ctx)
         return "(" + out[3:] + ")"
     elif isinstance(call.func, ast.Attribute) and call.func.attr == "encode":
-        assert args == ["'utf8'"]
+        assert args == [compile_expr(ast.Constant('utf8'), ctx)]
         base = compile_expr(call.func.value, ctx)
         return base
     elif isinstance(call.func, ast.Attribute) and call.func.attr == "join":
@@ -407,7 +407,10 @@ def compile_expr(tree, ctx):
         return "this" if tree.id == "self" else tree.id
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
-            return repr(tree.value)
+            out = repr(tree.value)
+            if out[0] == out[-1] == "'" and '"' not in out:
+                out = '"' + out[1:-1] + '"'
+            return out
         elif isinstance(tree.value, bool):
             return "true" if tree.value else "false"
         elif isinstance(tree.value, int):
@@ -531,7 +534,7 @@ def compile(tree, ctx, indent=0):
             while len(tree.orelse) == 1 and isinstance(tree.orelse[0], ast.If):
                 ctx2 = Context(ctx.type, ctx)
                 tree = tree.orelse[0]
-                test = compile_expr(tree.test, ctx)
+                test = deparen(compile_expr(tree.test, ctx))
                 out += "\n" + " " * indent + "} else if (" + test + ") {\n"
                 out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
             if tree.orelse:
