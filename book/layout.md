@@ -123,10 +123,8 @@ kinds of layout objects!
 Here is an example of block layout. In this example there are two
 `BlockLayout` objects, and one `DocumentLayout` at the root.
 
-<div> <iframe src="layout-block-container-example.html" style="width: 100%; height: 500px;
-border: 2px solid gray;"></iframe> <span style="font-size: 16px">This is a real
-example! Play with it in <a href="layout-block-container-example.html" target=_blank>another
-browser tab</a> to see how it behaves.</span>
+<div> <iframe src="layout-block-container-example.html?embed=true" style="width: 100%; height: 500px;
+border: 2px solid gray;"></iframe>
 
 Layout modes
 ============
