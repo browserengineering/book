@@ -123,8 +123,19 @@ kinds of layout objects!
 Here is an example of block layout. In this example there are two
 `BlockLayout` objects, and one `DocumentLayout` at the root.
 
-<div> <iframe src="layout-block-container-example.html?embed=true" style="width: 100%; height: 500px;
-border: 2px solid gray;"></iframe>
+<style>
+iframe {
+    height: 460px;
+    width: 100%;
+    border: 2px solid gray;
+}
+@media (max-width: 800px) {
+    iframe {
+        height: 850px;
+    }
+}
+</style>
+<iframe src="layout-block-container-example.html?embed=true"></iframe>
 
 Layout modes
 ============
@@ -271,11 +282,7 @@ Here is an example of inline and block layout together. This example
 extends the previous one by adding three `InlineLayout` objects at the leaves.
 Your code should be able to easily handle this example!
 
-<div>
-  <iframe src="layout-container-example.html" style="width: 100%; height: 600px;
-border: 2px solid gray;"></iframe> <span style="font-size: 16px"><a href="layout-container-example.html" target=_blank>Click to open in a new
-browser tab</a>.</span>
-
+<iframe src="layout-container-example.html?embed=true"></iframe>
 
 Size and position
 =================

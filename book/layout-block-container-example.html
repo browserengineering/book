@@ -36,69 +36,29 @@
 Elements with BlockLayout are <span class=green>green</span>
 </p>
 <container>
-<flex-item>
-	Source:
-	<form id=editExample>
-    <textarea id=htmlSource>
+  <flex-item>
+	  Source:
+	  <form id=editExample>
+      <textarea id=htmlSource>
 <html>
   <body>
   </body>
 </html>
-    </textarea>
-    <div style="text-align: center">
-      <input type=submit value="Update rendering">
-    </div>
-  </form>
-</flex-item>
-<flex-item>
-	Rendered output:<br>
-  <iframe id=targetIframe style="border: 3px solid green;"
-        srcdoc=""></iframe>
-</flex-item>
+      </textarea>
+      <div style="text-align: center">
+        <input type=submit value="Update rendering">
+      </div>
+    </form>
+  </flex-item>
+  <flex-item>
+	  Rendered output:<br>
+    <iframe id=targetIframe style="border: 3px solid green;"
+          srcdoc=""></iframe>
+  </flex-item>
 </container>
 <caption-container id=caption>This is a real
 example! Play with it here or in
 <a id=link href="layout-block-container-example.html" target=_blank>
 another browser tab</a> to see how it behaves.
 </caption-container>
-<script>
-	let preamble = `
-	<style>
-  * {
-	box-sizing: border-box;
-  }
-  body {
-  	font-family: 'Lora', 'Times', sans-serif;
-	  font-size: 24px;
-	  display: block;
-    border: 3px solid green;
-    background: lightgreen;
-    height: 230px;
-  }
-  html {
-    background: lightgreen;
-  }
-</style>
-`;
-4
-  function updateState() {
-  	targetIframe.srcdoc = `${preamble}${htmlSource.value}`;
-  	link.href =
-  	`layout-block-container-example.html?htmlSource=${
-  		  encodeURIComponent(htmlSource.value)}`;
-  }
-	onload = () => {
-		let url = new URL(window.location);
-		let source = url.searchParams.get("htmlSource");
-		if (source)
-			htmlSource.value = decodeURIComponent(source);
-		if (!url.searchParams.get("embed"))
-			caption.style.display = 'none';
-		updateState();
-    editExample.addEventListener('submit', () => {
-      event.preventDefault();
-      updateState();
-    });
-  };
-</script>
-
+<script src="layout-example.js"></script>

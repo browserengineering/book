@@ -6,13 +6,68 @@
   .blue {
 	background: lightblue;
   }
+  textarea {
+  	width: 300px;
+  	height: 250px;
+  }
+  iframe {
+  	width: 300px;
+  	vertical-align: top;
+  	height: 250px;
+  }
+  container {
+  	display:flex;
+  }
+  @media (max-width: 700px) {
+  	container {
+  		flex-direction: column;
+  	}
+  }
+  flex-item {
+  	padding: 20px;
+  }
+  caption-container {
+  	 font-size: 16px;
+  	 padding: 20px;
+  	 display: inline-block;
+  }
 </style>
-<iframe style="width: 100%; height: 160px; border: 0"
-        src="layout-pre-example.html"></iframe>
 <p>
-Elements with BlockLayout are <span class=green>green</span>
+Elements with BlockLayout (html, body) are <span class=green>green</span>
 <br>
-Elements with InlineLayout are <span class=blue>blue</span>
+Elements with InlineLayout (h1 and p tags) are <span class=blue>blue</span>
 </p>
-<iframe style="width: 100%; height: 320px; border: 3px solid green;"
-        src="layout-example.html"></iframe>
+
+<container>
+  <flex-item>
+	  Source:
+	  <form id=editExample>
+      <textarea id=htmlSource>
+<html>
+  <body>
+    <h1>Header text</h1>
+    <p>Paragraph 1</p>
+    <p>Paragraph 2</p>
+    <p>Paragraph 3</p>
+  </body>
+</html>
+      </textarea>
+      <div style="text-align: center">
+        <input type=submit value="Update rendering">
+      </div>
+    </form>
+  </flex-item>
+  <flex-item>
+	  Rendered output:<br>
+    <iframe id=targetIframe style="border: 3px solid green;"
+          srcdoc=""></iframe>
+  </flex-item>
+</container>
+<caption-container id=caption>This is a real
+example! Play with it here or in
+<a id=link href="layout-block-container-example.html" target=_blank>
+another browser tab</a> to see how it behaves.
+</caption-container>
+<script src="layout-example.js"></script>
+
+

@@ -4,11 +4,9 @@ ORDERED_PAGES=preface intro history http graphics text html layout styles chrome
 
 PANDOC_COMMON_ARGS=--from markdown --to html --lua-filter=book/filter.lua --fail-if-warnings
 
-HTML_EXAMPLES=www/layout-example.html www/layout-container-example.html
-
-book: $(patsubst book/%.md,www/%.html,$(wildcard book/*.md)) www/draft/onepage.html $(patsubst book/%-example.html,www/draft/%-example.html,$(wildcard book/*-example.html))
+book: $(patsubst book/%.md,www/%.html,$(wildcard book/*.md)) www/draft/onepage.html $(patsubst book/%-example.html,www/draft/%-example.html,$(wildcard book/*-example.html)) $(patsubst book/%-example.js,www/draft/%-example.js,$(wildcard book/*-example.js))
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md))
-draft: $(patsubst book/%.md,www/draft/%.html,$(wildcard book/*.md)) $(patsubst book/%-example.html,www/draft/%-example.html,$(wildcard book/*-example.html))
+draft: $(patsubst book/%.md,www/draft/%.html,$(wildcard book/*.md)) $(patsubst book/%-example.html,www/draft/%-example.html,$(wildcard book/*-example.html))  $(patsubst book/%-example.js,www/draft/%-example.js,$(wildcard book/*-example.js))
 
 onepage/%.html: book/%.md book/template-onepage.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)
@@ -41,6 +39,9 @@ www/%-example.html: book/%-example.html
 	cp $< www/
 
 www/draft/%-example.html: book/%-example.html
+	cp $< www/draft/
+
+www/draft/%-example.js: book/%-example.js
 	cp $< www/draft/
 
 publish:
