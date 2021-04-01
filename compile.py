@@ -127,12 +127,14 @@ LIBRARY_METHODS = [
 
 OUR_FNS = []
 OUR_CLASSES = []
+OUR_CONSTANTS = []
 OUR_METHODS = []
 
 def load_outline(ol):
     for item in ol:
         if isinstance(item, outlines.IfMain): continue
-        elif isinstance(item, outlines.Const): continue
+        elif isinstance(item, outlines.Const):
+            OUR_CONSTANTS.extend(item.names)
         elif isinstance(item, outlines.Function):
             OUR_FNS.append(item.name)
         elif isinstance(item, outlines.Class):
@@ -146,7 +148,7 @@ def load_outline(ol):
         else:
             raise ValueError(item)
     THEIR_STUFF = set(LIBRARY_METHODS) | set(RENAME_METHODS) | set(RENAME_FNS)
-    OUR_STUFF = set(OUR_FNS) | set(OUR_METHODS) | set(OUR_CLASSES)
+    OUR_STUFF = set(OUR_FNS) | set(OUR_METHODS) | set(OUR_CLASSES) | set(OUR_CONSTANTS)
 
     mixed_types = set(OUR_FNS) & set(OUR_CLASSES)
     assert not mixed_types, f"Names defined as both class and function: {mixed_types}"
@@ -424,16 +426,15 @@ def compile_expr(tree, ctx):
 
 @catch_issues
 def compile(tree, ctx, indent=0):
-    if isinstance(tree, ast.Module):
-        assert not tree.type_ignores
-        items = [compile(item, indent=0, ctx=ctx) for item in tree.body]
-        return "\n\n".join(items)
-    elif isinstance(tree, ast.Import):
+    if isinstance(tree, ast.Import):
         assert len(tree.names) == 1
         assert not tree.names[0].asname
-        ctx[tree.names[0].name] = True
-        IMPORTS.append(tree.names[0].name)
-        return " " * indent + "// " + "Requires access to `" + tree.names[0].name + "` API"
+        name = tree.names[0].name
+        ctx[name] = True
+        IMPORTS.append(name)
+
+        return " " * INDENT + "console.assert(imports.hasOwnProperty(\"" + name + "\"));\n" + \
+            " " * INDENT + "let " + name + " = imports." + name + ";"
     elif isinstance(tree, ast.ClassDef):
         assert not tree.bases
         assert not tree.keywords
@@ -549,9 +550,21 @@ def compile(tree, ctx, indent=0):
         return " " * indent + "break;"
     else:
         raise CantCompile(tree)
+    
+def compile_module(tree, name):
+    assert isinstance(tree, ast.Module)
+    assert not tree.type_ignores
+    ctx = Context("module", {})
+
+    defline = "function " + name + "(imports) {\n"
+    items = [compile(item, indent=INDENT, ctx=ctx) for item in tree.body]
+    names = OUR_FNS + OUR_CLASSES + OUR_CONSTANTS
+    retline = " " * INDENT + "return { " + ", ".join([name + ": " + name for name in names]) + " };\n"
+    
+    return defline  + "\n\n".join(items) + "\n\n" + retline + "}\n"
 
 if __name__ == "__main__":
-    import sys
+    import sys, os
     import argparse
 
     parser = argparse.ArgumentParser(description="Compiles each chapter's Python code to JavaScript")
@@ -561,11 +574,13 @@ if __name__ == "__main__":
     parser.add_argument("javascript", type=argparse.FileType("w"))
     args = parser.parse_args()
 
+    name = os.path.basename(args.python.name)
+    assert name.endswith(".py")
     if args.hints: read_hints(args.hints)
     INDENT = args.indent
     tree = ast.parse(args.python.read(), args.python.name)
     load_outline(outlines.outline(tree))
-    js = compile(tree, ctx=Context("module", {}))
+    js = compile_module(tree, name[:-len(".py")])
     args.javascript.write(js)
 
     issues = 0
