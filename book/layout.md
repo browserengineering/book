@@ -33,8 +33,8 @@ screen.
 
 [^no-box]: Elements like `<script>` don't generate layout objects, and
     some elements generate multiple (`<li>` elements have a layout
-    object for the bullet point!), but for most elements it's one
-    element one layout object.
+    object for the bullet point!), but mostly it's one layout object
+    each.
 
 Let's start a new class called `BlockLayout`, which will represent a
 node in the layout tree. Like our `Element` class, layout objects form
@@ -90,11 +90,11 @@ def layout(self):
         child.layout()
 ```
 
-We'll discuss the base case of the recursioin just a moment, but let's
-first ask how it starts. Inconveniently, the `BlockLayout` constructor
-requires a parent node, so we need another kind of layout object at
-the root.[^or-none] I think of that root as the document itself, so
-let's call it `DocumentLayout`:
+We'll discuss the base case of the recursion in just a moment, but
+first let's ask how it starts. Inconveniently, the `BlockLayout`
+constructor requires a parent node, so we need another kind of layout
+object at the root.[^or-none] I think of that root as the document
+itself, so let's call it `DocumentLayout`:
 
 [^or-none]: You couldn't just use `None` for the parent, because the
 root layout object also computes its size and position differently, as
@@ -380,7 +380,7 @@ to traverse the tree and calculate each attribute.
 Using tree-based layout
 =======================
 
-Now that our layout objects have size and position information, or
+Now that our layout objects have size and position information, our
 browser should use that information to render the page itself. First,
 we need to run layout in the browser's `load` method:
 
@@ -449,7 +449,7 @@ for comfortable houses.
 Backgrounds
 ===========
 
-The browsers uses the layout tree a lot,[^for-what] and one simple and
+Browsers use the layout tree a lot,[^for-what] and one simple and
 visually compelling use case is drawing backgrounds.
 
 [^for-what]: For example, in [Chapter 7](chrome.md), we'll use the
@@ -587,9 +587,9 @@ def scrolldown(self, e):
 ```
 
 So that's the basics of tree-based layout! In fact, as we'll see in
-the next two chapters, the layout tree plays a big role in many of the
-browser internals. But before we get to that, we need about making web
-pages even more visually compelling.
+the next two chapters, this is just part of the layout tree's role in
+the browser. But before we get to that, we need about making web pages
+even more visually compelling.
 
 Summary
 =======
