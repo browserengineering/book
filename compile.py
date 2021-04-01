@@ -241,7 +241,7 @@ def compile_func(call, args, ctx):
         elif call.func.id == "breakpoint":
             assert isinstance(call.args[0], ast.Constant)
             assert isinstance(call.args[0].value, str)
-            return "await breakpoint.event(" + ", ".join(args) + ")"
+            return "await imports.breakpoint.event(" + ", ".join(args) + ")"
         elif call.func.id == "min":
             if len(args) == 1:
                 return args[0] + ".reduce((a, v) => Math.min(a, v))"
@@ -558,8 +558,13 @@ def compile_module(tree, name):
 
     defline = "function " + name + "(imports) {\n"
     items = [compile(item, indent=INDENT, ctx=ctx) for item in tree.body]
-    names = OUR_FNS + OUR_CLASSES + OUR_CONSTANTS
-    retline = " " * INDENT + "return { " + ", ".join([name + ": " + name for name in names]) + " };\n"
+    bindings = []
+    for name in OUR_FNS + OUR_CLASSES:
+        bindings.append(name + ": " + name)
+    for name in OUR_CONSTANTS: # Wrap in a getter/setter
+        bindings.append("get " + name + "() { return " + name + "; }");
+        bindings.append("set " + name + "(x) { return " + name + " = x; }");
+    retline = " " * INDENT + "return { " + ", ".join(bindings) + " };\n"
     
     return defline  + "\n\n".join(items) + "\n\n" + retline + "}\n"
 
