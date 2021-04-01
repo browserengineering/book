@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="widget.css" />
 
 <figure id="widget">
-  <canvas id="canvas" width="320" height="160"></canvas>
+  <canvas id="canvas" width="352" height="160"></canvas>
   <div id="controls">
   <div id="step-controls">
     <button class="reset" disabled>Restart</button>
@@ -11,11 +11,11 @@
     <button class="stepf">Next</button>
     <button class="play">Animate</button>
   </div>
-  <textarea id="input" rows=4>Laozi says, &lt;q&gt;千里之行，始於足下&lt;/q&gt;</textarea>
+  <textarea id="input" rows="4">第一回 灵根育孕源流出 心性修持大道生</textarea>
   </div>
 </figure>
 
-<script src="lab2b.js"></script>
+<script src="lab2.js"></script>
 <script src="rt.js"></script>
 <script>
   
@@ -25,7 +25,7 @@ widget.import("ssl");
 widget.import("tkinter", document.querySelector("#canvas"), { zoom: 2.0 })
 
 widget.run(async function(module) {
-    module.WIDTH = 16 * 10;
+    module.WIDTH = 16 * 11;
     module.HEIGHT = 20 * 4;
     module.HSTEP = 16;
     module.VSTEP = 20;
