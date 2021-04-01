@@ -1,0 +1,19 @@
+html, body, figure { margin: 0; padding: 0; height: 100%; }
+figure { width: 100%; display: flex; align-items: top; }
+@media (max-width: 600px) { figure { flex-direction: column; align-items: center; }}
+#controls { margin: 0; background: gray; padding: .5em; flex-grow: 1; align-self: stretch; }
+#step-controls { margin-bottom: 1em; text-align: center; }
+#step-controls button {
+    min-width: 2em; height: 2em; background: lightgray; border: 0; border-radius: 1em;
+}
+#step-controls button[disabled] { background: darkgray; }
+textarea {
+    box-model: border-box;
+    border: 0;
+    width: 100%;
+    display: block;
+    font-size: 120%;
+}
+textarea[disabled] {
+    background: darkgray;
+}

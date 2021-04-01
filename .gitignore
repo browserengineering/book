@@ -1,6 +1,7 @@
 www/*.html
 www/draft/*.html
 www/blog/*.html
+www/widgets/lab*.js
 .DS_Store
 slides
 class/
