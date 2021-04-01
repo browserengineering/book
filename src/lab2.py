@@ -104,10 +104,10 @@ class Browser:
     def render(self):
         self.canvas.delete("all")
         for x, y, c in self.display_list:
+            breakpoint("render")
             if y > self.scroll + HEIGHT: continue
             if y + VSTEP < self.scroll: continue
             self.canvas.create_text(x, y - self.scroll, text=c)
-            breakpoint("render")
 
     def scrolldown(self, e):
         self.scroll += SCROLL_STEP
