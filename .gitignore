@@ -1,5 +1,5 @@
 www/*.html
-www/*.js
+www/*example.js
 www/draft/*.html
 www/draft/*.js
 www/blog/*.html

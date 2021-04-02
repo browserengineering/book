@@ -90,9 +90,10 @@ nav#toc { display: none; }
 .main nav#toc { display: none; }
 
 body { counter-reset: fn; }
-.note-container { counter-increment: fn; white-space: pre; }
+.note-container { counter-increment: fn; white-space: pre; cursor: pointer; }
 .note-container:after { content: "]"; color: #a86; }
-.note-container:before { content: " ["; color: #a86; }
+.note-container:before { content: " [" counter(fn); color: #a86; }
+.note-container.open:before { content: " ["; color: #a86; }
 .note { font-style: italic; white-space: normal; color: #a86; }
 @media only screen and (min-width: 1150px) {
     body { width: 65ex; padding: 0 17ex 0 0; }
@@ -102,12 +103,20 @@ body { counter-reset: fn; }
         font-size: 110%; vertical-align: reset; text-align: left; color: currentColor;
     }
     div .note { margin-right: calc(-28ex - 1rem - 2px); }
-    .note-container { font-size: 60%; vertical-align: super; }
-    .note-container:before { content: "[" counter(fn); }
+    .note-container { font-size: 60%; vertical-align: super; cursor: auto; }
+    .note-container.open:before { content: " [" counter(fn); color: #a86; }
     .note:before { content: counter(fn) ". "; }
 }
 @media only screen and (min-width: 1350px) {
     body { padding: 0 17ex; }
+}
+@media only screen and (max-width: 1149px) {
+  .note {
+    display: none;
+  }
+  .open .note {
+    display: inline; 
+  }
 }
 
 .todo, .quirk, .warning, .installation, .further { padding: 1em 1em 0; margin: 1em 0; }
