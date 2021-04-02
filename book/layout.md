@@ -120,6 +120,23 @@ positions for each layout object. But before we write that code, we
 have to face an important truth: different HTML elements are laid out
 differently. They need different kinds of layout objects!
 
+Here is an example of block layout. In this example there are two
+`BlockLayout` objects, and one `DocumentLayout` at the root.
+
+<style>
+iframe {
+    height: 460px;
+    width: 100%;
+    border: 2px solid gray;
+}
+@media (max-width: 800px) {
+    iframe {
+        height: 850px;
+    }
+}
+</style>
+<iframe src="layout-block-container-example.html?embed=true"></iframe>
+
 Layout modes
 ============
 
@@ -264,6 +281,12 @@ and positions for the layout objects in the tree.
 
 [^or-empty]: Or, the leaf nodes could be `BlockLayout`s for empty
 elements.
+
+Here is an example of inline and block layout together. This example
+extends the previous one by adding three `InlineLayout` objects at the leaves.
+Your code should be able to easily handle this example!
+
+<iframe src="layout-container-example.html?embed=true"></iframe>
 
 Size and position
 =================
