@@ -269,7 +269,9 @@ for c in text:
 
 The code increases `cursor_y` and resets `cursor_x`[^crlf] once
 `cursor_x` goes past 787 pixels.[^not-800] Wrapping the text this way
-makes it possible to read more than a single line.
+makes it possible to read more than a single line:
+
+<iframe class="widget" src="widgets/lab2-render.html" height=160></iframe>
 
 [^crlf]: In the olden days of type writers, increasing *y* meant
     *feed*ing in a new *line*, and resetting *x* meant *return*ing the
@@ -282,6 +284,10 @@ makes it possible to read more than a single line.
 
 [^not-800]: Not 800, because we started at pixel 13 and I want to leave an
     even gap on both sides.
+
+Now we can read a lot of text, still not all of it: if there's enough
+text, all of the lines of text don't fit on the screen. We want users
+to *scroll* the page to look at different parts of it.
 
 ::: {.further}
 Chinese characters are usually, but not always, independent: <span
@@ -299,10 +305,6 @@ based on a [word frequency table][cjdict].
 
 Scrolling text
 ==============
-
-Now we can read a lot of text, still not all of it: if there's enough
-text, all of the lines of text don't fit on the screen. We want users
-to *scroll* the page to look at different parts of it.
 
 Scrolling introduces a layer of indirection between page coordinates
 (this text is 132 pixels from the top of the *page*) and screen
