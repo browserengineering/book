@@ -1,0 +1,64 @@
+<!doctype HTML>
+<style>
+  .green {
+	background: lightgreen;
+  }
+  .blue {
+	background: lightblue;
+  }
+  textarea {
+  	width: 300px;
+  	height: 250px;
+  }
+  iframe {
+  	width: 300px;
+  	vertical-align: top;
+  	height: 250px;
+  }
+  container {
+  	display:flex;
+  }
+  @media (max-width: 700px) {
+  	container {
+  		flex-direction: column;
+  	}
+  }
+  flex-item {
+  	padding: 20px;
+  }
+  caption-container {
+  	 font-size: 16px;
+  	 padding: 20px;
+  	 display: inline-block;
+  }
+</style>
+<p>
+Elements with BlockLayout are <span class=green>green</span>
+</p>
+<container>
+  <flex-item>
+	  Source:
+	  <form id=editExample>
+      <textarea id=htmlSource>
+<html>
+  <body>
+  </body>
+</html>
+      </textarea>
+      <div style="text-align: center">
+        <input type=submit value="Update rendering">
+      </div>
+    </form>
+  </flex-item>
+  <flex-item>
+	  Rendered output:<br>
+    <iframe id=targetIframe style="border: 3px solid green;"
+          srcdoc=""></iframe>
+  </flex-item>
+</container>
+<caption-container id=caption>This is a real
+example! Play with it here or in
+<a id=link href="layout-block-container-example.html" target=_blank>
+another browser tab</a> to see how it behaves.
+</caption-container>
+<script src="layout-example.js"></script>

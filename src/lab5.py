@@ -407,7 +407,6 @@ class Browser:
         self.display_list = []
         self.document.draw(self.display_list)
         self.render()
-        self.max_y = self.document.height - HEIGHT
 
     def render(self):
         self.canvas.delete("all")
@@ -417,7 +416,8 @@ class Browser:
             cmd.execute(self.scroll, self.canvas)
 
     def scrolldown(self, e):
-        self.scroll = min(self.scroll + SCROLL_STEP, self.max_y)
+        max_y = self.document.height - HEIGHT
+        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
         self.render()
 
 if __name__ == "__main__":
