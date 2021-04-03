@@ -16,10 +16,14 @@ parser and converts the layout engine to use it.
 A tree of nodes
 ===============
 
-The HTML tree has one node for each open and close tag pair and for
+The HTML tree[^dom] has one node for each open and close tag pair and for
 each span of text.[^1] So for our browser to be a tree, tokens need to
 evolve into nodes. That means adding a list of children and a parent
 pointer to each one. Here's the new `Text` class:
+
+[^dom]: This is the tree that is usually called the DOM tree, for [Document
+Object Model](https://en.wikipedia.org/wiki/Document_Object_Model). We'll
+keep calling it the HTML tree for now.
 
 [^1]: In reality there are other types of nodes too, like comments,
     doctypes, and `CDATA` sections, and processing instructions. There
