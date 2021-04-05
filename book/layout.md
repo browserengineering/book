@@ -336,7 +336,7 @@ self.height = sum([child.height for child in self.children])
 ```
 
 Since a `BlockLayout`'s height depends on the height of its children, its height
-we must be computed after recursing to compute the heights of its children.
+must be computed after recursing to compute the heights of its children.
 Getting this dependency order right is crucial: get it wrong, and some layout
 object will try to read a value that hasn't been computed yet, and the browser
 will have a bug.
