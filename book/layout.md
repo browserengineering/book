@@ -115,15 +115,28 @@ class DocumentLayout:
 
 So we're building a layout tree with one layout object per HTML node,
 plus an extra layout object at the root, by recursively calling
-`layout`. The browser must now move on to computing sizes and
+`layout`. It looks like this:
+
+<iframe class="widget" src="layout-block-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
+
+In this example there are four `BlockLayout` objects, in green, one
+per element. There's also a `DocumentLayout` at the root.
+
+The browser must now move on to computing sizes and
 positions for each layout object. But before we write that code, we
 have to face an important truth: different HTML elements are laid out
 differently. They need different kinds of layout objects!
 
-Here is an example of block layout. In this example there are two
-`BlockLayout` objects, and one `DocumentLayout` at the root.
+::: {.further}
+The layout tree isn't accessible to web developers, so it hasn't been
+standardized, and its structure differs between browsers. Even the
+names don't match! Chrome calls it a [layout tree][blink-tree],
+Safari a [render tree][webkit-tree], and Firefox a [frame tree][gecko-tree].
+:::
 
-<iframe class="widget" src="layout-block-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
+[blink-tree]: https://developers.google.com/web/updates/2018/09/inside-browser-part3
+[webkit-tree]: https://webkit.org/blog/114/webcore-rendering-i-the-basics/
+[gecko-tree]: https://wiki.mozilla.org/Gecko:Key_Gecko_Structures_And_Invariants
 
 Layout modes
 ============
@@ -132,18 +145,9 @@ Elements like `<body>` and `<header>` contain blocks stacked
 vertically. But elements like `<p>` and `<h1>` contain text and lay
 that text out horizontally in lines.[^in-english] Abstracting a bit,
 there are two *layout modes*, two ways an element can be laid out
-relative to its children:[^or-equivalently] block layout and inline
-layout.
+relative to its children: block layout and inline layout.
 
 [^in-english]: In European languages, at least!
-
-[^or-equivalently]: In CSS, the layout mode is set by the `display`
-property. The oldest CSS layout modes, like `inline` and `block`, are
-set on the children instead of the parent, which leads to hiccups like
-anonymous block boxes. Newer properties like `inline-block`, `flex`,
-and `grid` are set on the parent. This chapter uses the newer, less
-confusing convention, even though it's actually implementing inline
-and block layout.
 
 We've already got `BlockLayout` for block layout. And actually, we've
 already got inline layout too: it's just the text layout we've been
@@ -263,18 +267,27 @@ class BlockLayout:
 ```
 
 Our layout tree now has a `DocumentLayout` at the root, `BlockLayout`s
-at interior nodes, and `InlineLayout`s at the leaves.[^or-empty] With
-the layout tree built, we can finally move on to computing the sizes
-and positions for the layout objects in the tree.
+at interior nodes, and `InlineLayout`s at the leaves:[^or-empty]
 
 [^or-empty]: Or, the leaf nodes could be `BlockLayout`s for empty
 elements.
 
-Here is an example of inline and block layout together. This example
-extends the previous one by adding three `InlineLayout` objects at the leaves.
-Your code should be able to easily handle this example!
-
 <iframe class="widget" src="layout-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
+
+With the layout tree built, we can finally move on to computing the
+sizes and positions for the layout objects in the tree.
+
+::: {.further}
+In CSS, the layout mode is set by the [`display`
+property][mdn-display]. The oldest CSS layout modes, like `inline` and
+`block`, are set on the children instead of the parent, which leads to
+hiccups like [anonymous block boxes][anon-block]. Newer properties
+like `inline-block`, `flex`, and `grid` are set on the parent. This
+chapter uses the newer, less confusing convention, even though it's
+actually implementing inline and block layout.
+:::
+
+[mdn-display]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
 
 Size and position
 =================
@@ -457,6 +470,17 @@ recommend pausing to test and debug. Tree-based layout is powerful but
 complex, and we're about to add more features. Stable foundations make
 for comfortable houses.
 
+::: {.further}
+Layout trees are common [in GUI frameworks][widget-tree], but there
+are other ways to structure layout, such as constraint-based layout.
+TeX's [boxes and glue][boxes-glue] and iOS [auto-layout][auto-layout]
+are two examples of this alternative paradigm.
+:::
+
+[widget-tree]: https://book.huihoo.com/debian-gnu-linux-desktop-survival-guide/Widget_Tree.html
+[boxes-glue]: https://www.overleaf.com/learn/latex/Articles/Boxes_and_Glue:_A_Brief,_but_Visual,_Introduction_Using_LuaTeX
+[auto-layout]: https://developer.apple.com/library/archive/documentation/UserExperience/Conceptual/AutolayoutPG/index.html
+
 Backgrounds
 ===========
 
@@ -601,6 +625,15 @@ So that's the basics of tree-based layout! In fact, as we'll see in
 the next two chapters, this is just part of the layout tree's role in
 the browser. But before we get to that, we need about making web pages
 even more visually compelling.
+
+::: {.further}
+The draft CSS [Painting API][mdn-houdini] allows pages to extend the
+display list with new types of commands, implemented in JavaScript.
+This makes it possible to use CSS for styling with visually-complex
+styling provided by a library.
+:::
+
+[mdn-houdini]: https://developer.mozilla.org/en-US/docs/Web/API/CSS_Painting_API/Guide
 
 Summary
 =======
