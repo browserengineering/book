@@ -123,19 +123,7 @@ differently. They need different kinds of layout objects!
 Here is an example of block layout. In this example there are two
 `BlockLayout` objects, and one `DocumentLayout` at the root.
 
-<style>
-iframe {
-    height: 460px;
-    width: 100%;
-    border: 2px solid gray;
-}
-@media (max-width: 800px) {
-    iframe {
-        height: 850px;
-    }
-}
-</style>
-<iframe src="layout-block-container-example.html?embed=true"></iframe>
+<iframe class="widget" src="layout-block-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
 
 Layout modes
 ============
@@ -286,7 +274,7 @@ Here is an example of inline and block layout together. This example
 extends the previous one by adding three `InlineLayout` objects at the leaves.
 Your code should be able to easily handle this example!
 
-<iframe src="layout-container-example.html?embed=true"></iframe>
+<iframe class="widget" src="layout-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
 
 Size and position
 =================
