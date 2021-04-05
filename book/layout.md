@@ -6,7 +6,7 @@ prev: html
 next: styles
 ...
 
-So far, layout has been a linear process that processes open tags and
+So far, layout has been a linear process that handles open tags and
 and close tags independently. But web pages are trees, and look like
 them: borders and backgrounds visually nest inside one another. To
 support that, this chapter switches to *tree-based layout*, where the
@@ -21,8 +21,8 @@ Right now, our browser lays out an element's open and close tags
 separately. Both tags modify global state, like the `cursor_x` and
 `cursor_y` variables, but they aren't otherwise connected, and
 information about the element as a whole, like its width and height,
-is never computed. That makes it pretty hard to draw a background. So
-web browsers structure layout differently.
+is never computed. That makes it pretty hard to draw a background color
+behind text. So web browsers structure layout differently.
 
 In a browser, layout is about producing a *layout tree*, whose nodes
 are *layout objects*, each associated with an HTML element,[^no-box]
@@ -114,7 +114,7 @@ class DocumentLayout:
 ```
 
 So we're building a layout tree with one layout object per HTML node,
-with an extra layout object at the root, by recursively calling
+plus an extra layout object at the root, by recursively calling
 `layout`. The browser must now move on to computing sizes and
 positions for each layout object. But before we write that code, we
 have to face an important truth: different HTML elements are laid out
@@ -153,7 +153,7 @@ layout.
 property. The oldest CSS layout modes, like `inline` and `block`, are
 set on the children instead of the parent, which leads to hiccups like
 anonymous block boxes. Newer properties like `inline-block`, `flex`,
-and `grid` are set on the parent. This chapter uses this newer, less
+and `grid` are set on the parent. This chapter uses the newer, less
 confusing convention, even though it's actually implementing inline
 and block layout.
 
@@ -329,17 +329,17 @@ order.
 
 Height is the opposite. A `BlockLayout` should be tall enough to
 contain all of its children, so its height should be the sum of its
-children's height:
+children's heights:
 
 ``` {.python}
 self.height = sum([child.height for child in self.children])
 ```
 
-But note that the height of a block layout depends on the height of
-its *children*. So, it must be computed after recursing, after the
-heights of its children are computed. Getting this dependency order
-right is crucial: get it wrong, and some layout object will try to read a
-value that hasn't been computed yet, and the browser will crash.
+Since a `BlockLayout`'s height depends on the height of its children, its height
+must be computed after recursing to compute the heights of its children.
+Getting this dependency order right is crucial: get it wrong, and some layout
+object will try to read a value that hasn't been computed yet, and the browser
+will have a bug.
 
 An `InlineLayout` computes `width`, `x`, and `y` the same way, but
 `height` is a little different: an `InlineLayout` has to contain all
