@@ -148,7 +148,7 @@ by some other protocol, or HTML by its successor. Certainly all of these
 technologies have been through many versions, but the web has stayed the web.
 
 The key thing to understand is this grand experiment is [not over](change.md).
-The essense of the web will stay, but by studying web browsers you have the
+The essence of the web will stay, but by studying web browsers you have the
 chance to contribute and to shape the its future.
 
 Real browser codebases
