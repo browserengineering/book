@@ -15,16 +15,20 @@ function updateState() {
 }
 
 onload = () => {
-	console.log('load');
-	let url = new URL(window.location);
-	let source = url.searchParams.get("htmlSource");
-	if (source)
-		htmlSource.value = decodeURIComponent(source);
-	if (!url.searchParams.get("embed"))
-		caption.style.display = 'none';
-	updateState();
-  editExample.addEventListener('submit', () => {
-    event.preventDefault();
+    console.log('load');
+    let url = new URL(window.location);
+
+    let source = url.searchParams.get("htmlSource");
+    if (source) htmlSource.value = decodeURIComponent(source);
+
+    if (!url.searchParams.get("embed")) caption.style.display = 'none';
+
     updateState();
-  });
+    editExample.addEventListener('submit', () => {
+        event.preventDefault();
+        updateState();
+    });
+    editExample.addEventListener('reset', () => {
+        setTimeout(updateState, 1);
+    });
 };
