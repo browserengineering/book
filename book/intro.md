@@ -97,7 +97,7 @@ files from a disk. The logical structure of the web mirrored its physical
 structure.
 
 A lot has changed. HTML is now usually dynamically assembled on the
-fly[^server-side-rendering] and sent on-demand to your browser. The pieces being
+fly[^server-side-rendering] and sent on demand to your browser. The pieces being
 assembled are themselves filled with dynamic content---news, inbox contents, and
 advertisements adjusted to your particular tastes. Even URLs no longer identify
 a specific computer---content distribution networks route a URL to any of
@@ -148,8 +148,8 @@ by some other protocol, or HTML by its successor. Certainly all of these
 technologies have been through many versions, but the web has stayed the web.
 
 The key thing to understand is this grand experiment is [not over](change.md).
-The essense of the web will stay, but by studying web browsers you have the
-chance to contribute and to shape the its future.
+The essence of the web will stay, but by studying web browsers you have the
+chance to contribute and to shape its future.
 
 Real browser codebases
 ======================
@@ -227,7 +227,7 @@ it. Web developers don't, and mostly can't, draw their web page's pixels on
 their own.
 
 As a black box, the browser is either magical or frustrating (depending on
-whether it is working correctly or not!). But that also make a browser a pretty
+whether it is working correctly or not!). But that also makes a browser a pretty
 unusual piece of software, with unique challenges, interesting algorithms, and
 clever optimizations. Browsers are worth studying for the pure pleasure of it.
 

@@ -228,7 +228,7 @@ def load(self, url):
 ```
 
 Let's test this code on a real webpage. For reasons that might seem
-inscrutible[^10], let's test it on the [first chapter of <span
+inscrutable[^10], let's test it on the [first chapter of <span
 lang="zh">西游记</span> or "Journey to the
 West"](http://www.zggdwx.com/xiyou/1.html), a classic Chinese novel
 about a monkey. Run this URL[^11] through `request`, `lex`, and

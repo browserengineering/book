@@ -7,12 +7,12 @@ next: styles
 ...
 
 So far, layout has been a linear process that handles open tags and
-and close tags independently. But web pages are trees, and look like
-them: borders and backgrounds visually nest inside one another. To
-support that, this chapter switches to *tree-based layout*, where the
-tree of elements is transformed into a tree of *layout objects* for
-the visual elements of the page. In the process, we'll make our web
-pages more colorful with backgrounds.
+close tags independently. But web pages are trees, and look like them:
+borders and backgrounds visually nest inside one another. To support
+that, this chapter switches to *tree-based layout*, where the tree of
+elements is transformed into a tree of *layout objects* for the visual
+elements of the page. In the process, we'll make our web pages more
+colorful with backgrounds.
 
 The layout tree
 ===============
@@ -76,12 +76,12 @@ This code is tricky because it involves two trees. The `node` and
 `child` are part of the HTML tree; but `self`, `previous`, and `next`
 are part of the layout tree. The two trees have similar structure, so
 it's easy to get confused. But remember that this code constructs the
-layout tree from the HTML tree. So it reads from `node.children` (in
+layout tree from the HTML tree, so it reads from `node.children` (in
 the HTML tree) and writes to `self.children` (in the layout tree).
 
-So this creates layout objects for the direct children of the node in
-question. Now those children's own `layout` methods can be called to
-build the whole tree recursively:
+Anyway, this code creates layout objects for the direct children of
+the node in question. Now those children's own `layout` methods can be
+called to build the whole tree recursively:
 
 ``` {.python}
 def layout(self):
@@ -599,8 +599,8 @@ def scrolldown(self, e):
 
 So that's the basics of tree-based layout! In fact, as we'll see in
 the next two chapters, this is just part of the layout tree's role in
-the browser. But before we get to that, we need about making web pages
-even more visually compelling.
+the browser. But before we get to that, we need to add some styling
+capabilities to our browser.
 
 Summary
 =======
@@ -669,5 +669,6 @@ case for `<h6>` elements.
 
 [^like-these]: The exercise names in this section could be considered
 run-in headings. But since browser support for the `display: run-in`
-property [is poor](https://caniuse.com/run-in), this book actually use
-it; the headings are actually embedded in the next paragraph.
+property [is poor](https://caniuse.com/run-in), this book actually
+doesn't use it; the headings are actually embedded in the next
+paragraph.

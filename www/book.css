@@ -104,7 +104,7 @@ body { counter-reset: fn; }
     }
     div .note { margin-right: calc(-28ex - 1rem - 2px); }
     .note-container { font-size: 60%; vertical-align: super; cursor: auto; }
-    .note-container.open:before { content: " [" counter(fn); color: #a86; }
+    .note-container.open:before { content: " [" counter(fn); color: #a86; }
     .note:before { content: counter(fn) ". "; }
 }
 @media only screen and (min-width: 1350px) {
