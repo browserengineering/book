@@ -1,0 +1,28 @@
+{
+    "disabled_files": {
+        "preface.md": false,
+        "intro.md": false,
+        "history.md": true,
+        "preliminaries.md": true,
+
+        "http.md": false,
+        "graphics.md": false,
+        "text.md": false,
+
+        "html.md": false,
+        "layout.md": true,
+        "styles.md": true,
+        "chrome.md": true,
+
+        "forms.md": true,
+        "scripts.md": true,
+        "reflow.md": true,
+        "security.md": true,
+
+        "visual-effects.md": true,
+
+        "skipped.md": true,
+        "change.md": true,
+        "todo.md": false
+    }
+}

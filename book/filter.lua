@@ -10,11 +10,7 @@ function Meta (meta)
   if meta.mode == "draft" then
     draft = true
   else
-    for line in io.lines("disabled.conf") do
-      if string.len(line) > 1 and string.sub(line, 1, 2) ~= "#" then
-        disabled[line] = true
-      end
-    end
+    disabled = meta.disabled_files
   end
   if meta.main then
     main = true
