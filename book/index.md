@@ -14,6 +14,8 @@ This book is a [work in progress](todo.md). Use at your own risk.
 
 Follow this book's [blog](blog/) or
 [Twitter](https://twitter.com/browserbook) for updates.
+Reach on [GitHub](https://github.com/pavpanchekha/emberfox)
+to report issues or make suggestions.
 
 Introduction
 ============
