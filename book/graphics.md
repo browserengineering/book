@@ -184,7 +184,7 @@ refers to.[^tkdocs]
 
 [^tkdocs]: The answers are in the [online documentation][tkdocs].
 
-[tkdocs]: http://infohost.nmt.edu/tcc/help/pubs/tkinter/web/canvas.html
+[tkdocs]: https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/canvas.html
 
 ::: {.further}
 The Tk canvas widget is quite a bit more powerful than what we're
