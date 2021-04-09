@@ -104,7 +104,7 @@ body { counter-reset: fn; }
     }
     div .note { margin-right: calc(-28ex - 1rem - 2px); }
     .note-container { font-size: 60%; vertical-align: super; cursor: auto; }
-    .note-container.open:before { content: " [" counter(fn); color: #a86; }
+    .note-container.open:before { content: " [" counter(fn); color: #a86; }
     .note:before { content: counter(fn) ". "; }
 }
 @media only screen and (min-width: 1350px) {
@@ -137,6 +137,8 @@ figure img { width: 100%; }
 .installation:before { content: "Installation"; color: blue; }
 .further { border: 2px solid green; padding-top: 0; }
 .further > :first-child:before { content: "Go further: "; font-weight: bold; color: green; }
+.widget[data-big-height="490px"] { height: 490px; width: 100%; border: 2px solid gray; }
+@media (max-width: 800px) { .widget[data-small-height="860px"] { height: 860px !important; } }
 
 code .st { color: #666; }
 code .cf, code .kw, code .im { color: #606; }

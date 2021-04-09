@@ -6,13 +6,13 @@ prev: html
 next: styles
 ...
 
-So far, layout has been a linear process that processes open tags and
-and close tags independently. But web pages are trees, and look like
-them: borders and backgrounds visually nest inside one another. To
-support that, this chapter switches to *tree-based layout*, where the
-tree of elements is transformed into a tree of *layout objects* for
-the visual elements of the page. In the process, we'll make our web
-pages more colorful with backgrounds.
+So far, layout has been a linear process that handles open tags and
+close tags independently. But web pages are trees, and look like them:
+borders and backgrounds visually nest inside one another. To support
+that, this chapter switches to *tree-based layout*, where the tree of
+elements is transformed into a tree of *layout objects* for the visual
+elements of the page. In the process, we'll make our web pages more
+colorful with backgrounds.
 
 The layout tree
 ===============
@@ -21,8 +21,8 @@ Right now, our browser lays out an element's open and close tags
 separately. Both tags modify global state, like the `cursor_x` and
 `cursor_y` variables, but they aren't otherwise connected, and
 information about the element as a whole, like its width and height,
-is never computed. That makes it pretty hard to draw a background. So
-web browsers structure layout differently.
+is never computed. That makes it pretty hard to draw a background color
+behind text. So web browsers structure layout differently.
 
 In a browser, layout is about producing a *layout tree*, whose nodes
 are *layout objects*, each associated with an HTML element,[^no-box]
@@ -76,12 +76,12 @@ This code is tricky because it involves two trees. The `node` and
 `child` are part of the HTML tree; but `self`, `previous`, and `next`
 are part of the layout tree. The two trees have similar structure, so
 it's easy to get confused. But remember that this code constructs the
-layout tree from the HTML tree. So it reads from `node.children` (in
+layout tree from the HTML tree, so it reads from `node.children` (in
 the HTML tree) and writes to `self.children` (in the layout tree).
 
-So this creates layout objects for the direct children of the node in
-question. Now those children's own `layout` methods can be called to
-build the whole tree recursively:
+Anyway, this code creates layout objects for the direct children of
+the node in question. Now those children's own `layout` methods can be
+called to build the whole tree recursively:
 
 ``` {.python}
 def layout(self):
@@ -114,28 +114,29 @@ class DocumentLayout:
 ```
 
 So we're building a layout tree with one layout object per HTML node,
-with an extra layout object at the root, by recursively calling
-`layout`. The browser must now move on to computing sizes and
+plus an extra layout object at the root, by recursively calling
+`layout`. It looks like this:
+
+<iframe class="widget" src="layout-block-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
+
+In this example there are four `BlockLayout` objects, in green, one
+per element. There's also a `DocumentLayout` at the root.
+
+The browser must now move on to computing sizes and
 positions for each layout object. But before we write that code, we
 have to face an important truth: different HTML elements are laid out
 differently. They need different kinds of layout objects!
 
-Here is an example of block layout. In this example there are two
-`BlockLayout` objects, and one `DocumentLayout` at the root.
+::: {.further}
+The layout tree isn't accessible to web developers, so it hasn't been
+standardized, and its structure differs between browsers. Even the
+names don't match! Chrome calls it a [layout tree][blink-tree],
+Safari a [render tree][webkit-tree], and Firefox a [frame tree][gecko-tree].
+:::
 
-<style>
-iframe {
-    height: 460px;
-    width: 100%;
-    border: 2px solid gray;
-}
-@media (max-width: 800px) {
-    iframe {
-        height: 850px;
-    }
-}
-</style>
-<iframe src="layout-block-container-example.html?embed=true"></iframe>
+[blink-tree]: https://developers.google.com/web/updates/2018/09/inside-browser-part3
+[webkit-tree]: https://webkit.org/blog/114/webcore-rendering-i-the-basics/
+[gecko-tree]: https://wiki.mozilla.org/Gecko:Key_Gecko_Structures_And_Invariants
 
 Layout modes
 ============
@@ -144,18 +145,9 @@ Elements like `<body>` and `<header>` contain blocks stacked
 vertically. But elements like `<p>` and `<h1>` contain text and lay
 that text out horizontally in lines.[^in-english] Abstracting a bit,
 there are two *layout modes*, two ways an element can be laid out
-relative to its children:[^or-equivalently] block layout and inline
-layout.
+relative to its children: block layout and inline layout.
 
 [^in-english]: In European languages, at least!
-
-[^or-equivalently]: In CSS, the layout mode is set by the `display`
-property. The oldest CSS layout modes, like `inline` and `block`, are
-set on the children instead of the parent, which leads to hiccups like
-anonymous block boxes. Newer properties like `inline-block`, `flex`,
-and `grid` are set on the parent. This chapter uses this newer, less
-confusing convention, even though it's actually implementing inline
-and block layout.
 
 We've already got `BlockLayout` for block layout. And actually, we've
 already got inline layout too: it's just the text layout we've been
@@ -275,18 +267,27 @@ class BlockLayout:
 ```
 
 Our layout tree now has a `DocumentLayout` at the root, `BlockLayout`s
-at interior nodes, and `InlineLayout`s at the leaves.[^or-empty] With
-the layout tree built, we can finally move on to computing the sizes
-and positions for the layout objects in the tree.
+at interior nodes, and `InlineLayout`s at the leaves:[^or-empty]
 
 [^or-empty]: Or, the leaf nodes could be `BlockLayout`s for empty
 elements.
 
-Here is an example of inline and block layout together. This example
-extends the previous one by adding three `InlineLayout` objects at the leaves.
-Your code should be able to easily handle this example!
+<iframe class="widget" src="layout-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
 
-<iframe src="layout-container-example.html?embed=true"></iframe>
+With the layout tree built, we can finally move on to computing the
+sizes and positions for the layout objects in the tree.
+
+::: {.further}
+In CSS, the layout mode is set by the [`display`
+property][mdn-display]. The oldest CSS layout modes, like `inline` and
+`block`, are set on the children instead of the parent, which leads to
+hiccups like [anonymous block boxes][anon-block]. Newer properties
+like `inline-block`, `flex`, and `grid` are set on the parent. This
+chapter uses the newer, less confusing convention, even though it's
+actually implementing inline and block layout.
+:::
+
+[mdn-display]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
 
 Size and position
 =================
@@ -329,17 +330,17 @@ order.
 
 Height is the opposite. A `BlockLayout` should be tall enough to
 contain all of its children, so its height should be the sum of its
-children's height:
+children's heights:
 
 ``` {.python}
 self.height = sum([child.height for child in self.children])
 ```
 
-But note that the height of a block layout depends on the height of
-its *children*. So, it must be computed after recursing, after the
-heights of its children are computed. Getting this dependency order
-right is crucial: get it wrong, and some layout object will try to read a
-value that hasn't been computed yet, and the browser will crash.
+Since a `BlockLayout`'s height depends on the height of its children, its height
+must be computed after recursing to compute the heights of its children.
+Getting this dependency order right is crucial: get it wrong, and some layout
+object will try to read a value that hasn't been computed yet, and the browser
+will have a bug.
 
 An `InlineLayout` computes `width`, `x`, and `y` the same way, but
 `height` is a little different: an `InlineLayout` has to contain all
@@ -468,6 +469,17 @@ Check it out: your browser is now using fancy tree-based layout! I
 recommend pausing to test and debug. Tree-based layout is powerful but
 complex, and we're about to add more features. Stable foundations make
 for comfortable houses.
+
+::: {.further}
+Layout trees are common [in GUI frameworks][widget-tree], but there
+are other ways to structure layout, such as constraint-based layout.
+TeX's [boxes and glue][boxes-glue] and iOS [auto-layout][auto-layout]
+are two examples of this alternative paradigm.
+:::
+
+[widget-tree]: https://book.huihoo.com/debian-gnu-linux-desktop-survival-guide/Widget_Tree.html
+[boxes-glue]: https://www.overleaf.com/learn/latex/Articles/Boxes_and_Glue:_A_Brief,_but_Visual,_Introduction_Using_LuaTeX
+[auto-layout]: https://developer.apple.com/library/archive/documentation/UserExperience/Conceptual/AutolayoutPG/index.html
 
 Backgrounds
 ===========
@@ -611,8 +623,17 @@ def scrolldown(self, e):
 
 So that's the basics of tree-based layout! In fact, as we'll see in
 the next two chapters, this is just part of the layout tree's role in
-the browser. But before we get to that, we need about making web pages
-even more visually compelling.
+the browser. But before we get to that, we need to add some styling
+capabilities to our browser.
+
+::: {.further}
+The draft CSS [Painting API][mdn-houdini] allows pages to extend the
+display list with new types of commands, implemented in JavaScript.
+This makes it possible to use CSS for styling with visually-complex
+styling provided by a library.
+:::
+
+[mdn-houdini]: https://developer.mozilla.org/en-US/docs/Web/API/CSS_Painting_API/Guide
 
 Summary
 =======
@@ -681,5 +702,6 @@ case for `<h6>` elements.
 
 [^like-these]: The exercise names in this section could be considered
 run-in headings. But since browser support for the `display: run-in`
-property [is poor](https://caniuse.com/run-in), this book actually use
-it; the headings are actually embedded in the next paragraph.
+property [is poor](https://caniuse.com/run-in), this book actually
+doesn't use it; the headings are actually embedded in the next
+paragraph.

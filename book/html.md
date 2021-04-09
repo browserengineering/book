@@ -16,10 +16,14 @@ parser and converts the layout engine to use it.
 A tree of nodes
 ===============
 
-The HTML tree has one node for each open and close tag pair and for
+The HTML tree[^dom] has one node for each open and close tag pair and for
 each span of text.[^1] So for our browser to be a tree, tokens need to
 evolve into nodes. That means adding a list of children and a parent
 pointer to each one. Here's the new `Text` class:
+
+[^dom]: This is the tree that is usually called the DOM tree, for [Document
+Object Model](https://en.wikipedia.org/wiki/Document_Object_Model). We'll
+keep calling it the HTML tree for now.
 
 [^1]: In reality there are other types of nodes too, like comments,
     doctypes, and `CDATA` sections, and processing instructions. There
@@ -225,7 +229,7 @@ def add_tag(self, tag):
         # ...
 ```
 
-Ok, that's all done. Let's test out parser out and see how well it
+Ok, that's all done. Let's test our parser out and see how well it
 works!
 
 ::: {.further}
@@ -353,7 +357,7 @@ ever closed?
 
 ::: {.further}
 In SGML, document type declarations had a URL to define the valid
-tags. Browsers use the absense of a document type declaration to
+tags. Browsers use the absence of a document type declaration to
 [identify][quirks-mode] very old, pre-SGML versions of
 HTML,[^almost-standards-mode] but don't use the URL, so `<!doctype
 html>` is the best document type declaration for HTML.
@@ -533,7 +537,7 @@ Using the node tree
 Right now, the `Layout` class works token-by-token; we now want it to
 go node-by-node instead. So let's separate the old `token` method into
 three parts: all the cases for open tags will go into a new `open`
-method; all the cases for close tags will to into a new `close`
+method; all the cases for close tags will go into a new `close`
 method; and instead of having a case for text tokens our browser can
 just call the existing `text` method directly:
 
@@ -681,7 +685,7 @@ while True:
             self.add_tag("body")
 ```
 
-Here, `HEAD_TAGS` list the tags that you're supposed to put into the
+Here, `HEAD_TAGS` lists the tags that you're supposed to put into the
 `<head>` element:[^where-script]
 
 [^where-script]: The `<script>` tag can go in either the head or the

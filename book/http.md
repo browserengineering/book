@@ -17,16 +17,17 @@ To display a web page, the browser first needs to get a copy of it.
 So, it asks the OS to put it in touch with a *server* somewhere on the
 internet; the first part of the web page's URL (before the first `/`)
 tells it the server's *host name*. The OS then talks to a *DNS server*
-which converts[^5] a host name like `example.org` into an *IP address*
-like `93.184.216.34`.[^6] Then the OS decides which hardware is best
-for communicating with that IP address (say, wireless or wired) using
-what is called a *routing table*, and then uses device drivers to
-send signals over a wire or over the air.[^7] Those signals are
-picked up and transmitted by a series of *routers*[^8] which each
-choose the best direction to send your message so that it eventually
-gets to that IP address.[^9] When the message reaches the server, a
-connection is created. Anyway, the point of this is that the browser
-tells the OS, “Hey, put me in touch with `example.org`”, and it does.
+which converts[^5] a host name like `example.org` into a *destination
+IP address* like `93.184.216.34`.[^6] Then the OS decides which
+hardware is best for communicating with that destination IP address
+(say, wireless or wired) using what is called a *routing table*, and
+then uses device drivers to send signals over a wire or over the
+air.[^7] Those signals are picked up and transmitted by a series of
+*routers*[^8] which each choose the best direction to send your
+message so that it eventually gets to the destination.[^9] When the
+message reaches the server, a connection is created. Anyway, the point
+of this is that the browser tells the OS, “Hey, put me in touch with
+`example.org`”, and it does.
 
 On many systems, you can set up this kind of connection using the
 `telnet` program, like this:^[The "80" is the port, discussed below.]
@@ -67,13 +68,20 @@ now talk to `example.org`.
 [^10]: The line about escape characters is just instructions on using
     obscure `telnet` features.
 
+::: {.further}
+The syntax of URLs is defined in [RFC
+3987](https://tools.ietf.org/html/rfc3986), which is pretty readable.
+Try to implement the full URL standard, including encodings for reserved
+characters.
+:::
+
 Requesting information
 ======================
 
 Once it's connected, the browser requests information from the server
-by name. The name is the part of a URL that comes after the host name,
-like `/index.html`, called the *path*. The request looks like this;
-you should type it into `telnet`:
+by giving its path, the path being the part of a URL that comes after
+the host name, like `/index.html`. The request looks like this; you
+should type it into `telnet`:
 
 ``` {.example}
 GET /index.html HTTP/1.0
@@ -93,9 +101,9 @@ applications, which our browser can't run anyway.
 
 After the first line, each line contains a *header*, which has a name
 (like `Host`) and a value (like `example.org`). Different headers mean
-different things; the `Host` header, for example, tells the host who you
-think it is.[^13] There are lots of other headers one could send, but
-let's stick to just `Host` for now.[^14]
+different things; the `Host` header, for example, tells the server who
+you think it is.[^13] There are lots of other headers one could send,
+but let's stick to just `Host` for now.
 
 Finally, after the headers comes a single blank line; that tells the
 host that you are done with headers. So type a blank line into
@@ -110,11 +118,11 @@ and you should get a response from `example.org`.
     avoids this complexity.
 
 [^13]: This is useful when the same IP address corresponds to multiple
-    host names (for example, `example.com` and `example.org`).
-
-[^14]: Many websites, including `example.org`, basically require the
-    `Host` header to function properly, since hosting multiple domains
-    on a single computer is very common.
+    host names and hosts multiple websites (for example, `example.com`
+    and `example.org`). The `Host` header tells the server which of
+    multiple websites you want. These websites basically require the
+    `Host` header to function properly. Hosting multiple domains on a
+    single computer is very common.
 
 
 ::: {.further}
@@ -281,17 +289,20 @@ on the type of server you're connecting to; for now it should be 80.
 s.connect(("example.org", 80))
 ```
 
+This talks to `example.org` do set up the connection and ready both
+computers to exchange data.
+
+::: {.quirk}
+Naturally this won't work if you're offline. It also might not work if
+you're behind a proxy, or in a variety of more complex networking
+environments. The workaround will depend on your setup---it might be
+as simple as disabling your proxy, or it could be much more complex.
+:::
+
 Note that there are two parentheses in the `connect` call: `connect`
 takes a single argument, and that argument is a pair of a host and a
 port. This is because different address families have different
 numbers of arguments.
-
-::: {.further}
-The syntax of URLs is defined in [RFC
-3987](https://tools.ietf.org/html/rfc3986), which is pretty readable.
-Try to implement the full URL standard, including encodings for reserved
-characters.
-:::
 
 ::: {.further}
 You can find out more about the "sockets" API on
@@ -453,7 +464,7 @@ aforementioned title, information about how the page should look
 (`<style>` and `</style>`), and metadata (the aforementioned `<meta>`
 tag).
 
-So, to create our very very simple web browser, let's take the page
+So, to create our very, very simple web browser, let's take the page
 HTML and print all the text, but not the tags, in it:[^23]
 
 ``` {.python}
@@ -470,8 +481,8 @@ for c in body:
 This code is pretty complex. It goes through the request body character
 by character, and it has two states: `in_angle`, when it is currently
 between a pair of angle brackets, and `not in_angle`. When the current
-character is an angle bracket, changes between those states; when it is
-not, and it is not inside a tag, it prints the current character.[^24]
+character is an angle bracket, it changes between those states; 
+normal characters not inside a tag, are printed.[^24]
 
 Let's put this code into a new function, `show`:
 
@@ -676,20 +687,21 @@ method of your browser should print `<div>abc</div>` (and *not* just `abc`).
 Entities allow web pages to include these special characters without the browser
 interpreting them as tags.
 
-*view-source:* In addition to HTTP and HTTP, there are other schemes, such as
-*view-source*;
-navigating in a real browser to `view-source:browser.engineering/http.html`
-shows the HTML source of this chapter rather than its rendered output.
-Add support for the view-source scheme. Your browser should print the entire
-HTML file as if it was text. *Hint*: To do so, you can utilize the entities from
-the previous exercise, and add an extra `transform()` method that adjusts the
-input to `show()` when in view-source mode, like this: `show(transform(body))`.
+*view-source:* In addition to HTTP and HTTPS, there are other schemes,
+such as *view-source*; navigating in a real browser to
+`view-source:browser.engineering/http.html` shows the HTML source of
+this chapter rather than its rendered output. Add support for the
+view-source scheme. Your browser should print the entire HTML file as if
+it was text. *Hint*: To do so, you can utilize the entities from the
+previous exercise, and add an extra `transform()` method that adjusts
+the input to `show()` when in view-source mode, like this:
+`show(transform(body))`.
 
 *data:* Yet another scheme is *data*, which
 allow inlining HTML content into the URL itself. Try navigating to
 `data:text/html,Hello world!` in a real browser to see what happens. Add support
 for this scheme to your browser. The *data* scheme is especially
-convenient for making testcases without having to put them in separate files.
+convenient for making tests without having to put them in separate files.
 
 
 [^5]: On some systems, you can run `dig +short example.org` to do this
