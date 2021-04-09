@@ -69,7 +69,10 @@ SignupForm.prototype.close = function(evt) {
 
 SignupForm.prototype.handle_response = function(arg) {
     if (!arg.result) arg.result = "error";
-    if (!arg.msg) arg.msg = "Error: " + JSON.stringify(arg);
+    if (!arg.msg) {
+        let url = "http://eepurl.com/g_eloH";
+        arg.msg = "Error. Please sign up <a href='" + url + "'>through Mailchimp</a>.";
+    }
 
     if (arg.result === "error") {
         this.change_state("s-error");
