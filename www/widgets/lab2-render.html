@@ -18,23 +18,20 @@
 <script src="lab2.js"></script>
 <script src="rt.js"></script>
 <script>
-  
-let widget = new Widget(lab2, document.querySelector("#widget"));
-widget.import("socket", { "http://test/user": http_textarea(document.querySelector("#input")) });
-widget.import("ssl");
-widget.import("tkinter", document.querySelector("#canvas"), { zoom: 2.0 })
-
-widget.run(async function(module) {
-    module.WIDTH = 16 * 11;
-    module.HEIGHT = 20 * 4;
-    module.HSTEP = 16;
-    module.VSTEP = 20;
-
-    let b = new module.Browser();
-    await b.load("http://test/user")
-})
+const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
+const ssl = lib.ssl();
+const tkinter = lib.tkinter(document.querySelector("#canvas"), { zoom: 2.0 });
+let widget = new Widget(document.querySelector("#widget"))
 
 widget.pause("render");
 
-widget.ready();
+widget.run(async function() {
+    WIDTH = 16 * 11;
+    HEIGHT = 20 * 4;
+    HSTEP = 16;
+    VSTEP = 20;
+
+    let b = new Browser();
+    await b.load("http://input/")
+});
 </script>

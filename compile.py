@@ -239,7 +239,7 @@ def compile_func(call, args, ctx):
         elif call.func.id == "breakpoint":
             assert isinstance(call.args[0], ast.Constant)
             assert isinstance(call.args[0].value, str)
-            return "await imports.breakpoint.event(" + ", ".join(args) + ")"
+            return "await breakpoint.event(" + ", ".join(args) + ")"
         elif call.func.id == "min":
             if len(args) == 1:
                 return args[0] + ".reduce((a, v) => Math.min(a, v))"
@@ -445,8 +445,7 @@ def compile(tree, ctx, indent=0):
         ctx[name] = True
         IMPORTS.append(name)
 
-        return " " * INDENT + "console.assert(imports.hasOwnProperty(\"" + name + "\"));\n" + \
-            " " * INDENT + "let " + name + " = imports." + name + ";"
+        return " " * indent + "// Please configure the '" + name + "' module"
     elif isinstance(tree, ast.ClassDef):
         assert not tree.bases
         assert not tree.keywords
@@ -564,17 +563,8 @@ def compile_module(tree, name):
     assert isinstance(tree, ast.Module)
     ctx = Context("module", {})
 
-    defline = "function " + name + "(imports) {\n"
-    items = [compile(item, indent=INDENT, ctx=ctx) for item in tree.body]
-    bindings = []
-    for name in OUR_FNS + OUR_CLASSES:
-        bindings.append(name + ": " + name)
-    for name in OUR_CONSTANTS: # Wrap in a getter/setter
-        bindings.append("get " + name + "() { return " + name + "; }");
-        bindings.append("set " + name + "(x) { return " + name + " = x; }");
-    retline = " " * INDENT + "return { " + ", ".join(bindings) + " };\n"
-    
-    return defline  + "\n\n".join(items) + "\n\n" + retline + "}\n"
+    items = [compile(item, indent=0, ctx=ctx) for item in tree.body]
+    return "\n\n".join(items)
 
 if __name__ == "__main__":
     import sys, os

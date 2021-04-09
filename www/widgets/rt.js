@@ -22,7 +22,9 @@ function http_textarea(elt) {
     }
 }
 
-function mk_socket(URLS) {
+class lib {
+
+static socket(URLS) {
     class socket {
         constructor(af, sock, proto) {
             console.assert(af == "inet" && sock == "stream" && proto == "tcp", "Unknown socket triple");
@@ -77,7 +79,7 @@ function mk_socket(URLS) {
     return {socket: wrap_class(socket), AF_INET: "inet", SOCK_STREAM: "stream", IPPROTO_TCP: "tcp"}
 }
 
-function mk_ssl() {
+static ssl() {
     class context {
         wrap_socket(s, host) {
             console.assert(s.host == host, "Invalid SSL server name, does not match socket host");
@@ -87,7 +89,7 @@ function mk_ssl() {
     return { create_default_context: wrap_class(context) };
 }
 
-function mk_tkinter(TKELEMENT, options) {
+static tkinter(TKELEMENT, options) {
     let ZOOM = options?.zoom ?? 1.0;
 
     class Tk {
@@ -158,6 +160,8 @@ function mk_tkinter(TKELEMENT, options) {
     return {Tk: wrap_class(Tk), Canvas: wrap_class(Canvas)}
 }
 
+}
+
 class Breakpoint {
     constructor() {
         this.handlers = {};
@@ -175,8 +179,10 @@ class Breakpoint {
     }
 }
 
+const breakpoint = new Breakpoint();
+
 class Widget {
-    constructor(fn, elt) {
+    constructor(elt) {
         this.elt = elt;
         this.controls = {
             reset: elt.querySelector(".reset"),
@@ -196,27 +202,11 @@ class Widget {
         this.k = null;
         this.runner = null;
         this.timer = null;
-
-        this.breakpoint = new Breakpoint();
-
-        this.fn = fn;
-        this.imports = { breakpoint: this.breakpoint };
-    }
-
-    import(modname, ...options) {
-        const constructors = {
-            socket: mk_socket,
-            ssl: mk_ssl,
-            tkinter: mk_tkinter,
-        }
-        let module = constructors[modname](...options);
-        this.imports[modname] = module;
-        return this;
     }
 
     pause(evt, cb) {
         let that = this;
-        this.breakpoint.capture(evt, function(...args) {
+        breakpoint.capture(evt, function(...args) {
             return new Promise(function (resolve) {
                 that.step += 1;
                 if (cb) cb(...args);
@@ -228,23 +218,17 @@ class Widget {
                 }
             });
         });
+        return this;
     }
 
     listen(evt, cb) {
         console.assert(cb, "Widget.listen() requires a callback");
-        this.breakpoint.capture(evt, function(...args) {
+        breakpoint.capture(evt, function(...args) {
             return new Promise(function (resolve) {
                 if (cb) cb(...args); resolve();
             });
         });
-    }
-    
-    run(k) {
-        let that = this;
-        this.runner = async function() {
-            await k(that.fn(that.imports))
-            that.end();
-        }
+        return this;
     }
 
     reset() {
@@ -287,6 +271,14 @@ class Widget {
         this.controls.animate.disabled = true;
     }
 
-    ready() { this.reset(); }
+    run(k) {
+        let that = this;
+        this.runner = async function() {
+            await k();
+            that.end();
+        }
+        this.reset();
+        return this;
+    }
 }
 
