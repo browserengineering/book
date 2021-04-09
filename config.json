@@ -10,7 +10,7 @@
         "text.md": false,
 
         "html.md": false,
-        "layout.md": true,
+        "layout.md": false,
         "styles.md": true,
         "chrome.md": true,
 
