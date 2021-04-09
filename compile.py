@@ -67,7 +67,6 @@ def find_hint(t, key):
     return h[key]
 
 def check_args(args, ctx):
-    assert not args.posonlyargs, ast.dump(args)
     assert not args.vararg, ast.dump(args)
     assert not args.kwonlyargs, ast.dump(args)
     assert not args.kw_defaults, ast.dump(args)
@@ -76,7 +75,6 @@ def check_args(args, ctx):
     defaults = ([None] * len(args.args) + args.defaults)[-len(args.args):]
     for i, (arg, default) in enumerate(zip(args.args, defaults)):
         assert not arg.annotation
-        assert not arg.type_comment
         if ctx.type == "class" and i == 0:
             assert arg.arg == "self"
         else:
@@ -407,10 +405,7 @@ def compile_expr(tree, ctx):
         return "this" if tree.id == "self" else tree.id
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
-            out = repr(tree.value)
-            if out[0] == out[-1] == "'" and '"' not in out:
-                out = '"' + out[1:-1] + '"'
-            return out
+            return compile_str(tree.value)
         elif isinstance(tree.value, bool):
             return "true" if tree.value else "false"
         elif isinstance(tree.value, int):
@@ -421,8 +416,25 @@ def compile_expr(tree, ctx):
             return "null"
         else:
             raise CantCompile(tree)
+    elif hasattr(ast, "Num") and isinstance(tree, ast.Num):
+        return repr(tree.n)
+    elif hasattr(ast, "Str") and isinstance(tree, ast.Str):
+        return compile_str(tree.s)
+    elif hasattr(ast, "NameConstant") and isinstance(tree, ast.NameConstant):
+        if tree.value is None:
+            return "null"
+        elif tree.value:
+            return "true"
+        else:
+            return "false"
     else:
         raise CantCompile(tree)
+
+def compile_str(s):
+    out = repr(s)
+    if out[0] == out[-1] == "'" and '"' not in out:
+        out = '"' + out[1:-1] + '"'
+    return out
 
 @catch_issues
 def compile(tree, ctx, indent=0):
@@ -446,7 +458,6 @@ def compile(tree, ctx, indent=0):
     elif isinstance(tree, ast.FunctionDef):
         assert not tree.decorator_list
         assert not tree.returns
-        assert not tree.type_comment
         args = check_args(tree.args, ctx)
         name = {
             "__init__": "constructor",
@@ -468,7 +479,6 @@ def compile(tree, ctx, indent=0):
     elif isinstance(tree, ast.Expr):
         return " " * indent + compile_expr(tree.value, ctx) + ";"
     elif isinstance(tree, ast.Assign):
-        assert not tree.type_comment
         assert len(tree.targets) == 1
 
         targets = lhs_targets(tree.targets[0])
@@ -505,7 +515,6 @@ def compile(tree, ctx, indent=0):
         return out
     elif isinstance(tree, ast.For):
         assert not tree.orelse
-        assert not tree.type_comment
         ctx2 = Context(ctx.type, ctx)
         lhs = compile_lhs(tree.target, ctx2)
         rhs = compile_expr(tree.iter, ctx)
@@ -553,7 +562,6 @@ def compile(tree, ctx, indent=0):
     
 def compile_module(tree, name):
     assert isinstance(tree, ast.Module)
-    assert not tree.type_ignores
     ctx = Context("module", {})
 
     defline = "function " + name + "(imports) {\n"
