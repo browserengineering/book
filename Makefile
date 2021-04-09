@@ -5,9 +5,9 @@ ORDERED_PAGES=preface intro history http graphics text html layout styles chrome
 
 PANDOC_COMMON_ARGS=$(FLAGS) --from markdown --to html --lua-filter=book/filter.lua --fail-if-warnings --metadata-file=config.json
 
-book: $(patsubst book/%.md,www/%.html,$(wildcard book/*.md)) www/draft/onepage.html $(patsubst book/%-example.html,www/%-example.html,$(wildcard book/*-example.html)) $(patsubst book/%-example.js,www/%-example.js,$(wildcard book/*-example.js))
-blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md))
-draft: $(patsubst book/%.md,www/draft/%.html,$(wildcard book/*.md)) $(patsubst book/%-example.html,www/draft/%-example.html,$(wildcard book/*-example.html))  $(patsubst book/%-example.js,www/draft/%-example.js,$(wildcard book/*-example.js))
+book: $(patsubst book/%.md,www/%.html,$(wildcard book/*.md)) www/draft/onepage.html $(patsubst book/%-example.html,www/%-example.html,$(wildcard book/*-example.html)) $(patsubst book/%-example.js,www/%-example.js,$(wildcard book/*-example.js)) www/rss.xml
+blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
+draft: $(patsubst book/%.md,www/draft/%.html,$(wildcard book/*.md)) $(patsubst book/%-example.html,www/draft/%-example.html,$(wildcard book/*-example.html))  $(patsubst book/%-example.js,www/draft/%-example.js,$(wildcard book/*-example.js)) www/rss.xml
 
 onepage/%.html: book/%.md book/template-onepage.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)
@@ -24,6 +24,9 @@ www/draft/onepage.html: $(patsubst book/%.md,onepage/%.html,$(wildcard book/*.md
 www/%.html: book/%.md book/template.html book/signup.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)
 	pandoc --toc --template book/template.html -c book.css ${SCRIPTS} $(PANDOC_COMMON_ARGS) $< -o $@
+
+www/rss.xml: book/news.yaml book/rss-template.xml
+	pandoc --template book/rss-template.xml  -f markdown -t html $< -o $@
 
 www/blog/%.html: blog/%.md book/template.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)

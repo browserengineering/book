@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+
+<title>$title$</title>
+<atom:link href="$link$/rss.xml" rel="self" type="application/rss+xml" />
+<link>$link$</link>
+<description>$description$</description>
+<language>en</language>
+$if(pubDate)$<pubDate>$pubDate$</pubDate>$endif$
+$if(lastBuildDate)$<lastBuildDate>$lastBuildDate$</lastBuildDate>$endif$
+$if(webMaster)$<webMaster>$webMaster$</webMaster>$endif$
+
+$for(item)$
+<item>
+$if(item.title)$<title>$item.title$</title>$endif$
+$if(item.link)$<link>$item.link$</link>$endif$
+$if(item.author)$<author>$item.author$</author>$endif$
+$if(item.pubDate)$<pubDate>$item.pubDate$</pubDate>$endif$
+
+$if(item.description)$<description>$item.description$</description>$endif$
+</item>
+$endfor$
+</channel>
+</rss>
