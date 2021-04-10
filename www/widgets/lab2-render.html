@@ -20,11 +20,10 @@
 <script>
 const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
 const ssl = lib.ssl();
-const tkinter = lib.tkinter(document.querySelector("#canvas"), { zoom: 2.0 });
-let widget = new Widget(document.querySelector("#widget"))
+const tkinter = lib.tkinter({ canvas: document.querySelector("#canvas"), zoom: 2.0 });
 
+let widget = new Widget(document.querySelector("#widget"));
 widget.pause("render");
-
 widget.run(async function() {
     WIDTH = 16 * 11;
     HEIGHT = 20 * 4;

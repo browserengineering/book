@@ -89,7 +89,8 @@ static ssl() {
     return { create_default_context: wrap_class(context) };
 }
 
-static tkinter(TKELEMENT, options) {
+static tkinter(options) {
+    let TKELEMENT = options?.canvas ?? document.createElement("canvas");
     let ZOOM = options?.zoom ?? 1.0;
 
     class Tk {
