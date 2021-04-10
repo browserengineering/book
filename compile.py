@@ -401,7 +401,7 @@ def compile_expr(tree, ctx):
     elif isinstance(tree, ast.Tuple) or isinstance(tree, ast.List):
         return "[" + ", ".join([compile_expr(a, ctx) for a in tree.elts]) + "]"
     elif isinstance(tree, ast.Name):
-        assert tree.id in ctx, "Could not find variable {tree.id}"
+        assert tree.id in ctx, f"Could not find variable {tree.id}"
         return "this" if tree.id == "self" else tree.id
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
@@ -539,18 +539,25 @@ def compile(tree, ctx, indent=0):
         if "\n" not in ift and not tree.orelse and tree.test.lineno == tree.body[0].lineno:
             return out[:-2] + ift.strip()
         else:
+            ctxs = [ctx2]
             out += ift
             while len(tree.orelse) == 1 and isinstance(tree.orelse[0], ast.If):
                 ctx2 = Context(ctx.type, ctx)
+                ctxs.append(ctx2)
                 tree = tree.orelse[0]
                 test = deparen(compile_expr(tree.test, ctx))
                 out += "\n" + " " * indent + "} else if (" + test + ") {\n"
                 out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
             if tree.orelse:
                 ctx2 = Context(ctx.type, ctx)
+                ctxs.append(ctx2)
                 out += "\n" + " " * indent + "} else {\n"
                 out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.orelse])
             out += "\n" + " " * indent + "}"
+
+            for name in set.intersection(*[set(ctx2) for ctx2 in ctxs]) - set(ctx):
+                ctx[name] = True
+
             return out
     elif isinstance(tree, ast.Continue):
         return " " * indent + "continue;"
