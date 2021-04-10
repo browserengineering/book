@@ -12,5 +12,6 @@ www/db.pickle
 www/pw.hash
 onepage/
 node_modules/
+package-lock.json
 src/__pycache__/
 __pycache__/
