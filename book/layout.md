@@ -117,7 +117,7 @@ So we're building a layout tree with one layout object per HTML node,
 plus an extra layout object at the root, by recursively calling
 `layout`. It looks like this:
 
-<iframe class="widget" src="layout-block-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
+<iframe class="widget" src="widgets/layout-block-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
 
 In this example there are four `BlockLayout` objects, in green, one
 per element. There's also a `DocumentLayout` at the root.
@@ -272,7 +272,7 @@ at interior nodes, and `InlineLayout`s at the leaves:[^or-empty]
 [^or-empty]: Or, the leaf nodes could be `BlockLayout`s for empty
 elements.
 
-<iframe class="widget" src="layout-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
+<iframe class="widget" src="widgets/layout-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
 
 With the layout tree built, we can finally move on to computing the
 sizes and positions for the layout objects in the tree.
