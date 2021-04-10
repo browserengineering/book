@@ -12,10 +12,10 @@ function addEventListeners() {
 		});
 	}
 
-	for (let header of document.querySelectorAll("h1")) {
+ 	for (let header of document.querySelectorAll("h1")) {
 		header.addEventListener("click", (event) => {
-			if (header.id)
-  		  window.location.href = `#${header.id}`;
+ 			if (header.id)
+				window.location.href = `#${header.id}`;
 			event.preventDefault();
 		});
 	}
