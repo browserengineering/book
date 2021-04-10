@@ -185,7 +185,7 @@ refers to.[^tkdocs]
 
 [^tkdocs]: The answers are in the [online documentation][tkdocs].
 
-[tkdocs]: http://infohost.nmt.edu/tcc/help/pubs/tkinter/web/canvas.html
+[tkdocs]: https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/canvas.html
 
 ::: {.further}
 The Tk canvas widget is quite a bit more powerful than what we're
@@ -229,7 +229,7 @@ def load(self, url):
 ```
 
 Let's test this code on a real webpage. For reasons that might seem
-inscrutible[^10], let's test it on the [first chapter of <span
+inscrutable[^10], let's test it on the [first chapter of <span
 lang="zh">西游记</span> or "Journey to the
 West"](http://www.zggdwx.com/xiyou/1.html), a classic Chinese novel
 about a monkey. Run this URL[^11] through `request`, `lex`, and

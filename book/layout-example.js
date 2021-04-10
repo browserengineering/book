@@ -1,22 +1,9 @@
 let preamble = `
 	<style>
-  * {
-	box-sizing: border-box;
-  }
-  body {
-  	font-family: 'Lora', 'Times', sans-serif;
-	  font-size: 16px;
-	  display: block;
-    border: 3px solid green;
-    background: lightgreen;
-    height: 230px;
-  }
-  html {
-    background: lightgreen;
-  }
-  h1, p {
-  	background: lightblue;
-  }
+  * { box-sizing: border-box; margin: 8px; min-height: 16px; }
+  html, body, div { border: 3px solid green; background: lightgreen; }
+  html { border: none; margin: 0; }
+  h1, p { border: 3px solid darkblue; background: lightblue; padding: 8px; min-height: 0; }
 </style>
 `;
  

@@ -1,5 +1,7 @@
 www/*.html
+www/*example.js
 www/draft/*.html
+www/draft/*.js
 www/blog/*.html
 www/widgets/lab*.js
 .DS_Store
