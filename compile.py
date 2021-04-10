@@ -62,7 +62,6 @@ def find_hint(t, key):
         break
     else:
         raise CantCompile(t, hint={"line": t.lineno, "code": ast.unparse(t), key: "???"})
-    assert not h["used"]
     h["used"] = True
     return h[key]
 
@@ -436,6 +435,15 @@ def compile_str(s):
         out = '"' + out[1:-1] + '"'
     return out
 
+def flatten_ifs(tree):
+    parts = [(tree.test, tree.body)]
+    while len(tree.orelse) == 1 and isinstance(tree.orelse[0], ast.If):
+        tree = tree.orelse[0]
+        parts.append((tree.test, tree.body))
+    if tree.orelse:
+        parts.append((None, tree.orelse))
+    return parts
+
 @catch_issues
 def compile(tree, ctx, indent=0):
     if isinstance(tree, ast.Import):
@@ -532,31 +540,40 @@ def compile(tree, ctx, indent=0):
         assert isinstance(test.ops[0], ast.Eq)
         return " " * indent + "// Requires a test harness\n"
     elif isinstance(tree, ast.If):
-        test = deparen(compile_expr(tree.test, ctx))
-        out = " " * indent + "if (" + test + ") {\n"
-        ctx2 = Context(ctx.type, ctx)
-        ift = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
-        if "\n" not in ift and not tree.orelse and tree.test.lineno == tree.body[0].lineno:
-            return out[:-2] + ift.strip()
+        if not tree.orelse and tree.test.lineno == tree.body[0].lineno:
+            assert len(tree.body) == 1
+            ctx2 = Context(ctx.type, ctx)
+            test = deparen(compile_expr(tree.test, ctx))
+            body = compile(tree.body[0], indent=indent, ctx=ctx2)
+            return " " * indent + "if (" + test + ") " + body
         else:
-            ctxs = [ctx2]
-            out += ift
-            while len(tree.orelse) == 1 and isinstance(tree.orelse[0], ast.If):
-                ctx2 = Context(ctx.type, ctx)
-                ctxs.append(ctx2)
-                tree = tree.orelse[0]
-                test = deparen(compile_expr(tree.test, ctx))
-                out += "\n" + " " * indent + "} else if (" + test + ") {\n"
-                out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
-            if tree.orelse:
-                ctx2 = Context(ctx.type, ctx)
-                ctxs.append(ctx2)
-                out += "\n" + " " * indent + "} else {\n"
-                out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.orelse])
-            out += "\n" + " " * indent + "}"
+            parts = flatten_ifs(tree)
+            out = " " * indent
 
-            for name in set.intersection(*[set(ctx2) for ctx2 in ctxs]) - set(ctx):
-                ctx[name] = True
+            # This block handles variables defined in all branches of an if statement
+            ctxs = []
+            for test, body in parts:
+                ctx2 = Context(ctx.type, ctx)
+                ctxs.append(ctx2)
+                for line in body: compile(line, ctx=ctx2)
+            intros = set.intersection(*[set(ctx2) for ctx2 in ctxs]) - set(ctx)
+            if intros:
+                for name in intros: ctx[name] = True
+                out += "let " + ",".join(intros) + ";\n" + " " * indent
+
+            for i, (test, body) in enumerate(parts):
+                ctx2 = Context(ctx.type, ctx)
+                body_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in body])
+                if not i and test:
+                    test_js = deparen(compile_expr(test, ctx))
+                    out += "if (" + test_js + ") {\n"
+                elif i and test:
+                    test_js = deparen(compile_expr(test, ctx))
+                    out += " elif (" + test_js + ") {\n"
+                elif not test:
+                    out += " else {\n"
+                out += body_js + "\n"
+                out += " " * indent + "}"
 
             return out
     elif isinstance(tree, ast.Continue):
