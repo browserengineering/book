@@ -569,7 +569,7 @@ def compile(tree, ctx, indent=0):
                     out += "if (" + test_js + ") {\n"
                 elif i and test:
                     test_js = deparen(compile_expr(test, ctx))
-                    out += " elif (" + test_js + ") {\n"
+                    out += " else if (" + test_js + ") {\n"
                 elif not test:
                     out += " else {\n"
                 out += body_js + "\n"
