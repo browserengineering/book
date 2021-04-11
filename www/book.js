@@ -3,6 +3,10 @@
 function addEventListeners() {
 	for (let note_container of document.querySelectorAll(".note-container")) {
 		note_container.addEventListener("click", (event) => {
+			console.log(event.target);
+			if (event.target != note_container &&
+				  event.target != note_container.firstElementChild)
+				return;
 			let classes = note_container.classList;
 			if (!classes.contains("open"))
 				classes.add("open");
