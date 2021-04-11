@@ -15,7 +15,6 @@ function updateState() {
 }
 
 onload = () => {
-    console.log('load');
     let url = new URL(window.location);
 
     let source = url.searchParams.get("htmlSource");
