@@ -1,0 +1,75 @@
+---
+title: Web Browser Engineering
+link: https://browser.engineering/
+description: News, new chapters and blog posts
+webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
+item:
+  - title: Laying Out Pages
+    link: https://browser.engineering/layout.html
+    description:
+      We’re releasing Chapter 5. It introduces layout trees, the data
+      structure at the center of layout. Building, laying out, and
+      rendering layout trees is how every web page you view is
+      rendered!
+  - title: Browsers and the Web
+    link: https://browser.engineering/intro.html
+    description:
+      The intro chapter is here! Now you get to find out why this book
+      was worth writing, mostly in Chris’s words. Plus you’ll learn a
+      few things about where the web came from and how the sausage is
+      made.
+  - title: Constructing the Document Tree
+    link: https://browser.engineering/html.html
+    description:
+      Chapter 4 is out! It’s decked out with HTML parsing and error
+      handling, and starts building out the core data structures of
+      the browser. Plus, it has tips for leveraging implicit tags to
+      make your HTML cleaner and simpler!
+  - title: Code Outlines (blog post)
+    link: https://browser.engineering/blog/outlines.html
+    description:
+      I've added a code outline tool to help you see the
+      intermediate-level structure of a web browser. As Chris and I
+      write more chapters, it'll become more and more useful.
+  - title: Formatting Text
+    link: https://browser.engineering/text.html
+    description:
+      Chapter 3 is ready. Read about typography, baselines, and tags!
+      Our browser lines up text with style! My favorite aside is the
+      Michigan Supreme Court case on font sizes.
+  - title: Why Python? (blog post)
+    link: https://browser.engineering/blog/why-python.html
+    description:
+      Why is Web Browser Engineering in Python? In short, Python is
+      popular, readable, and has access to standard system APIs.
+  - title: Introducing Chris Harrelson
+    link: https://browser.engineering
+    description:
+      Have you noticed that the byline on https://browser.engineering
+      has changed? Chris Harrelson will be joining Web Browser
+      Engineering as a co-author. He's already working to make WBE
+      deeper and more realistic based on his experience on the Chrome
+      team.
+  - title: Drawing to the Screen
+    link: https://browser.engineering/graphics.html
+    description:
+      Chapter 2 is ready. Read about window handles, display lists,
+      and events. Our browser creates a window, draws text to it, and
+      tells a story about a monkey. (My favorite part is the aside on
+      Chinese line layout.)
+  - title: Typos and Comments (blog post)
+    link: https://browser.engineering/blog/feedback.html
+    description:
+      I've written some code to crowdsource typo corrections and
+      comments from readers. Looking forward to seeing your feedback!
+  - title: The Beginning (blog post)
+    link: https://browser.engineering/blog/beginning.html
+    description:
+      A quick backstory behind the book, and my plan for writing it.
+  - title: Downloading Web Pages
+    link: https://browser.engineering/http.html
+    description:
+      Chapter 1 is about URLs, sockets, and HTTP requests. Read about
+      how a browser creates a network connection, what the OS does to
+      help, and how it requests specific web pages.
+...

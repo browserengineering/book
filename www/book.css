@@ -1,4 +1,4 @@
-html { font-size: 24px; line-height: 1.3; padding: 1ex; }
+html { font-size: 24px; line-height: 1.3; padding: 0.5ex; }
 body {
     max-width: 65ex; margin: 0 auto; font-family: 'Lora', 'Times', sans-serif;
     color: #333; text-align: justify; hyphens: auto; -webkit-hyphens: auto;
@@ -185,7 +185,7 @@ form h1 { margin-bottom: 1em; margin-top: 0; }
 a.checkoff { font-size: 24px; }
 form .checkoff, form button[type=submit] { margin-top: 1em; }
 
-#signup { border: 2px solid gold; padding: 1em; margin: 1em 0; background: #fffbe5; }
+#signup { border: 2px solid gold; padding: 1em; margin: 1em 0; background: #fffbe5; position: relative; }
 #signup input { border: 2px none gold; border-bottom-style: solid; background: transparent; }
 #signup button { border: 2px solid gold; background: #fff7cc; }
 #signup button:hover { background: #fff099; cursor: pointer; }
@@ -202,6 +202,15 @@ form.states.s-error > div { display: none}
 form.states.s-error > div.s-error { display: block}
 form > div.status { text-align: center; font-size: 120%; }
 form > div.s-error { color: red; }
+form.states #signup-close { display: none; }
+form.states.s-success #signup-close { display: block; }
+#signup-close {
+    position: absolute; top: 0; right: 8px;
+    font-size: 0; text-decoration: none; color: #333;
+}
+#signup-close:hover { color: #f64; }
+#signup-close:active { color: red; }
+#signup-close::before { font-size: 24px; content: "❌︎"; }
 
 .outline { font-size: 60%; font-family: monospace; column-width: 30ch; }
 .outline code { break-inside: avoid; display: block; }

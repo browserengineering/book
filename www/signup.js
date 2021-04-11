@@ -1,9 +1,12 @@
 function SignupForm(elt) {
+    if (window.localStorage["signup"] === "close") return elt.remove();
+
     this.form = elt;
     this.$initial = elt.querySelector(".s-initial");
     this.$progress = elt.querySelector(".s-progress");
     this.$success = elt.querySelector(".s-success");
     this.$error = elt.querySelector(".s-error");
+    this.$close = elt.querySelector("#signup-close");
     this.initial_class = this.form.className;
 
     this.state = "s-initial";
@@ -12,6 +15,7 @@ function SignupForm(elt) {
     var that = this;
     this.form.addEventListener("submit", function(evt) { that.submit(evt); });
     this.form.addEventListener("reset", function(evt) { that.reset(evt); });
+    this.$close.addEventListener("click", function(evt) { that.close(evt); });
 
     if (window.localStorage["signup"] === "done") {
         this.handle_response({
@@ -58,9 +62,17 @@ SignupForm.prototype.reset = function(evt) {
     this.change_state("s-initial");
 }
 
+SignupForm.prototype.close = function(evt) {
+    window.localStorage["signup"] = "close";
+    this.form.remove();
+}
+
 SignupForm.prototype.handle_response = function(arg) {
     if (!arg.result) arg.result = "error";
-    if (!arg.msg) arg.msg = "Error: " + JSON.stringify(arg);
+    if (!arg.msg) {
+        let url = "http://eepurl.com/g_eloH";
+        arg.msg = "Error. Please sign up <a href='" + url + "'>through Mailchimp</a>.";
+    }
 
     if (arg.result === "error") {
         this.change_state("s-error");
@@ -78,7 +90,5 @@ SignupForm.prototype.handle_response = function(arg) {
     }
 }
 
-window.addEventListener("load", function() {
-    var form = document.getElementById("signup");
-    new SignupForm(form);
-})
+var form = document.getElementById("signup");
+new SignupForm(form);
