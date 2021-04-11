@@ -152,8 +152,8 @@ engines.
 standards organizations - and therefore not subject to problems of monopoly
 control or manipulation.
 
-History of browsers
-===================
+Browsers
+========
 
 I'll now give a brief overview of the evolution of browser implementations. The
 first _widely distributed_ browser may have been
