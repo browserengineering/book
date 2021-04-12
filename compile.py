@@ -22,7 +22,8 @@ class AST39(ast.NodeTransformer):
         return node.value
 
     @classmethod
-    def fixup(cls, tree):
+    def parse(cls, str, name='<unknown>'):
+        tree = ast.parse(str, name)
         if hasattr(ast, "NameConstant"):
             return ast.fix_missing_locations(cls().visit(tree))
         else:
@@ -76,7 +77,7 @@ def read_hints(f):
         assert "line" in h
         assert isinstance(h["line"], int)
         assert "code" in h
-        s = ast.parse(h["code"])
+        s = AST39.parse(h["code"])
         assert isinstance(s, ast.Module)
         assert len(s.body) == 1
         assert isinstance(s.body[0], ast.Expr)
@@ -630,7 +631,7 @@ if __name__ == "__main__":
     assert name.endswith(".py")
     if args.hints: read_hints(args.hints)
     INDENT = args.indent
-    tree = AST39.fixup(ast.parse(args.python.read(), args.python.name))
+    tree = AST39.parse(args.python.read(), args.python.name)
     load_outline(outlines.outline(tree))
     js = compile_module(tree, name[:-len(".py")])
     args.javascript.write(js)
