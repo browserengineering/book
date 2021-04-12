@@ -271,3 +271,42 @@ based on a commodity set of platform APIs. For example, it's common for a wide
 variety of independent developers (ones not paid by the company nominally
 controlling the browser) to contribute code and features. There are even
 companies and individuals that specialize in implementing these features!
+
+Putting it all together
+=======================
+
+In summary, the history went like this:
+
+1. Basic research was performed into the ways to represent and explore
+information.
+
+2. Once the technology became mature enough, the web proper was proposed and
+implemented.
+
+3. The web became popular quite quickly, and many browsers appeared in order
+to capitalize on the web's opportunity.
+
+4. Standards organizations were introduced in order to negotiate between the
+browsers and avoid proprietary control.
+
+5. Browsers continued to compete and evolve at a rapid pace; that pace has
+overall not slowed in the years since.
+
+6. The web continued to grow in power and complexity, even growing beyond the
+original conception of a web browser.
+
+6. Eventually, all web rendering engines became open source, as a recognition of
+their being a shared effort larger than any single entity.
+
+The web has come a long way! It'll be interesting to see where it goes in the
+future.
+
+But one thing seems clear: it isn't done yet.
+
+Exercises
+=========
+
+*What comes next*: Based on what you learned about how the web came about and
+took its current form, what trends do you predict for its future evolution?
+For example, do you think it'll compete effectively against other non-web
+technologies and platforms?
