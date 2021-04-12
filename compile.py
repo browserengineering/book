@@ -7,6 +7,23 @@ import outlines
 
 INDENT = 2
 
+class AST39(ast.NodeTransformer):
+    def visit_Num(self, node):
+        return ast.Constant(node.n)
+    def visit_Str(self, node):
+        return ast.Constant(node.s)
+    def visit_NameConstant(self, node):
+        return ast.Constant(node.value)
+    def visit_Ellipsis(self, node):
+        return ast.Constant(node)
+
+    @classmethod
+    def fixup(cls, tree):
+        if hasattr(ast, "NameConstant"):
+            return ast.fix_missing_locations(cls().visit(tree))
+        else:
+            return tree
+
 class CantCompile(Exception):
     def __init__(self, tree, hint=None):
         super().__init__(f"Could not compile `{ast.unparse(tree)}`")
@@ -415,17 +432,6 @@ def compile_expr(tree, ctx):
             return "null"
         else:
             raise CantCompile(tree)
-    elif hasattr(ast, "Num") and isinstance(tree, ast.Num):
-        return repr(tree.n)
-    elif hasattr(ast, "Str") and isinstance(tree, ast.Str):
-        return compile_str(tree.s)
-    elif hasattr(ast, "NameConstant") and isinstance(tree, ast.NameConstant):
-        if tree.value is None:
-            return "null"
-        elif tree.value:
-            return "true"
-        else:
-            return "false"
     else:
         raise CantCompile(tree)
 
@@ -605,7 +611,7 @@ if __name__ == "__main__":
     assert name.endswith(".py")
     if args.hints: read_hints(args.hints)
     INDENT = args.indent
-    tree = ast.parse(args.python.read(), args.python.name)
+    tree = AST39.fixup(ast.parse(args.python.read(), args.python.name))
     load_outline(outlines.outline(tree))
     js = compile_module(tree, name[:-len(".py")])
     args.javascript.write(js)
