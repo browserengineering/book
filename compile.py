@@ -16,6 +16,10 @@ class AST39(ast.NodeTransformer):
         return ast.Constant(node.value)
     def visit_Ellipsis(self, node):
         return ast.Constant(node)
+    def visit_ExtSlice(self, node):
+        return ast.Tuple([self.generic_visit(d) for d in node.dims])
+    def visit_Index(self, node):
+        return node.value
 
     @classmethod
     def fixup(cls, tree):
