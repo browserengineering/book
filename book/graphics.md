@@ -330,7 +330,7 @@ Since `layout` doesn't need to access anything in `Browser`, it can be
 a standalone function:
 
 ``` {.python}
-def layout(self, text):
+def layout(text):
     display_list = []
     cursor_x, cursor_y = HSTEP, VSTEP
     for c in text:

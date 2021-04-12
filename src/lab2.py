@@ -69,7 +69,7 @@ HSTEP, VSTEP = 13, 18
 
 SCROLL_STEP = 100
 
-def layout(self, text):
+def layout(text):
     display_list = []
     cursor_x, cursor_y = HSTEP, VSTEP
     for c in text:
