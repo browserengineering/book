@@ -59,7 +59,7 @@ that word[^hyperlink-first]) for navigating within a single document; it was
 later generalized to linking between multiple documents. This work also formed
 one of the key parts of the [mother of all
 demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos), perhaps the most
-famous technology demonstration in the history of computing.
+influential technology demonstration in the history of computing.
 
 [^hyperlink-first]: The word "hyperlink" may have first appeared in 1987, in
 connection with the HyperCard system on the Macintosh.)
