@@ -24,9 +24,18 @@ class AST39(ast.NodeTransformer):
         else:
             return tree
 
+    @staticmethod
+    def unparse(tree, explain=False):
+        if hasattr(ast, "unparse"):
+            return ast.unparse(tree)
+        elif explain:
+            return "/* Please convert to Python: " + ast.dump(tree) + " */"
+        else:
+            return ast.dump(tree)
+
 class CantCompile(Exception):
     def __init__(self, tree, hint=None):
-        super().__init__(f"Could not compile `{ast.unparse(tree)}`")
+        super().__init__(f"Could not compile `{AST39.unparse(tree)}`")
         self.tree = tree
         self.hint = hint
         self.msg = None
@@ -43,7 +52,7 @@ def catch_issues(f):
             except CantCompile as e:
                 e.msg = str(e2)
                 ISSUES.append(e)
-                return "/* " + ast.unparse(tree) + " */"
+                return "/* " + AST39.unparse(tree) + " */"
         except CantCompile as e:
             if not e.hint:
                 try:
@@ -51,7 +60,7 @@ def catch_issues(f):
                 except CantCompile as e2:
                     e = e2
             ISSUES.append(e)
-            return "/* " + ast.unparse(e.tree) + " */"
+            return "/* " + AST39.unparse(e.tree) + " */"
     return wrapped
 
 HINTS = []
@@ -78,7 +87,8 @@ def find_hint(t, key):
         if key not in h: continue
         break
     else:
-        raise CantCompile(t, hint={"line": t.lineno, "code": ast.unparse(t), key: "???"})
+        hint = {"line": t.lineno, "code": AST39.unparse(t, explain=True), key: "???"}
+        raise CantCompile(t, hint=hint)
     h["used"] = True
     return h[key]
 
