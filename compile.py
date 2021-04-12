@@ -554,7 +554,7 @@ def compile(tree, ctx, indent=0):
         assert isinstance(test.left, ast.Name)
         assert test.left.id == "__name__"
         assert len(test.comparators) == 1
-        assert isinstance(test.comparators[0], ast.Str)
+        assert isinstance(test.comparators[0], ast.Str) or isinstance(test.comparators[0], ast.Constant) and isinstance(test.comparators[0].value, str)
         assert test.comparators[0].s == "__main__"
         assert len(test.ops) == 1
         assert isinstance(test.ops[0], ast.Eq)
