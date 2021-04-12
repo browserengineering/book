@@ -545,7 +545,7 @@ def compile(tree, ctx, indent=0):
             ctx2 = Context(ctx.type, ctx)
             test = deparen(compile_expr(tree.test, ctx))
             body = compile(tree.body[0], indent=indent, ctx=ctx2)
-            return " " * indent + "if (" + test + ") " + body
+            return " " * indent + "if (" + test + ") " + body.strip()
         else:
             parts = flatten_ifs(tree)
             out = " " * indent
