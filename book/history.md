@@ -56,8 +56,8 @@ knowledge to make it useful.[^google-mission]
 
 [^google-mission]: The Google search engine's well-known
 [mission](https://about.google/) statement to “organize the world’s information
-and make it universally accessible and useful” is almost exactly the same as
-this. This is not a coincidence---the search engine concept is inherently
+and make it universally accessible and useful” is almost exactly the same.
+This is not a coincidence---the search engine concept is inherently
 connected to the web, and was inspired by the web's design and antecedents.
 
 Documents and hyperlinks
