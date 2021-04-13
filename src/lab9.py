@@ -784,8 +784,7 @@ class Browser:
 
         self.setup_js()
         for script in find_scripts(self.nodes, []):
-            url = relative_url(script, self.history[-1])
-            header, body = request(url)
+            header, body = request(relative_url(script, self.history[-1]))
             try:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
