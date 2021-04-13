@@ -777,7 +777,7 @@ class Browser:
 
         for link in find_links(self.nodes, []):
             header, body = request(relative_url(link, url))
-            self.rules.extend(CSSParser(body).parse())
+            self4.rules.extend(CSSParser(body).parse())
 
         self.rules.sort(key=lambda x: x[0].priority())
         self.rules.reverse()
@@ -812,9 +812,7 @@ class Browser:
         return elt.attributes.get(attr, None)
 
     def js_innerHTML(self, handle, s):
-        whole_str = "<html><body>" + s + "</body></html>"
-        lexed = lex(whole_str)
-        doc = parse(lexed)
+        doc = parse(lex("<html><body>" + s + "</body></html>"))
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
         elt.children = new_nodes
