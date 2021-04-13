@@ -18,10 +18,8 @@ def request(url):
     path = ""
     if (url.find("/") >= 0):
         host, path = url.split("/", 1)
-        print(host)
     else:
         host = url
-        print(host)
 
 
     path = "/" + path
