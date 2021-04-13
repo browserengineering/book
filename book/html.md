@@ -211,7 +211,7 @@ This is *almost* a complete parser, but it doesn't quite work at the
 beginning and end of the document. The very first open tag is an edge
 case without a parent:
 
-``` {.python}
+``` {.python indent=4}
 def add_tag(self, tag):
     # ...
     else:
@@ -557,7 +557,7 @@ class Layout:
 Now we need the `Layout` object to walk the node tree, calling `open`,
 `close`, and `text` in the right order:
 
-``` {.python}
+``` {.python indent=4}
 def recurse(self, tree):
     if isinstance(tree, Text):
         self.text(tree.text)
