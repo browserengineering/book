@@ -58,7 +58,8 @@ def show_comments():
     out += "</form>"
     for entry in ENTRIES:
         out += "<p>" + entry + "</p>"
-    out += "<script src=/comment.js></script>"
+    out += "<div id=errors></div>"
+    out += "<script src=/comment9.js></script>"
     return out
 
 def add_entry(params):
