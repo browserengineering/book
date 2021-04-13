@@ -36,7 +36,7 @@ program is responsible for drawing its contents. Applications have to redraw
 these contents quickly for interactions to feel fluid,[^3] and must respond
 quickly to clicks and key presses so the user doesn't get frustrated.
 
-<a name="framebudget">
+<a name="framebudget"></a>
 "Feel fluid" can be made more precise. Graphical applications such as browsers
 typically aim to redraw at a speed equal to the refresh rate, or *frame rate*,
 of the screen, and/or a fixed 60Hz[^sixty-hertz]. This means that the browser
@@ -83,7 +83,7 @@ the desktop environment to create the window and returns its
 identifier, while `tkinter.mainloop()` enters a loop that looks
 similar to this [^5]:
 
-<a name="eventloop">
+<a name="eventloop"></a>
 
 ``` {.python expected=False}
 while True:
@@ -298,7 +298,8 @@ based on a [word frequency table][cjdict].
 [icu-wb]: http://userguide.icu-project.org/boundaryanalysis/break-rules
 [cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
 
-<a name="graphics-scrolling">
+<a name="graphics-scrolling"></a>
+
 Scrolling text
 ==============
 
@@ -447,7 +448,8 @@ def render(self):
 
 Scrolling should now work!
 
-<a name="faster-rendering">
+<a name="faster-rendering"></a>
+
 Faster Rendering
 ================
 

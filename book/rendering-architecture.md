@@ -10,13 +10,14 @@ The Rendering Event Loop and Pipeline
 =====================================
 
 In previous chapters, you learned about how to load a web page with HTTP, parse
-HTML into DOM, compute styles for the DOM, construct the layout tree, layout its
-contents, and paint the result to the screen. These steps are the basics of the
-[*rendering pipeline*](https://en.wikipedia.org/wiki/Graphics_pipeline)of the
-browser. 
+HTML into an HTML tree, compute styles on that tree, construct the layout tree,
+layout its contents, and paint the result to the screen. These steps are the
+basics of the [*rendering
+pipeline*](https://en.wikipedia.org/wiki/Graphics_pipeline) of the browser. 
 
 Chapter 2 also introduced the notion of an [event loop](graphics.md#eventloop),
-which is a how a browser iteratively finds out about inputs that affect
+which is a how a browser iteratively finds out about inputs---or other changes
+of state---that affect
 rendering, then re-runs the rendering pipeline, leading to an update on the
 screen. In terms of our new terminology, the code is:
 
@@ -30,21 +31,24 @@ while True:
 Now that same chapter *also* says that there is a [frame
 budget](graphics.md#framebudget), which is the amount of time allocated to
 re-draw the screen after an input update. The frame budget is typically about
-16ms, in order to draw at 60Hz (`60 * 16.66ms ~= 1s`). This means that each time
-through the `while` loop must run in at most 16ms. To ensure this, there are two
-things the browser can do:
+16ms, in order to draw at 60Hz (`60 * 16.66ms ~= 1s`). This means that each
+iteration through the `while` loop should ideally complete in at most 16ms. To
+ensure this, there are two things browser developers can do:
 
-1. Make `runRenderingPipeline() ` as fast as possible
-2. Avoid using up the frame budget calling `handleEvent()`
+1. Optimize `runRenderingPipeline()` and `handleEvent()` to run as fast as
+possible.
+2. Avoid using up the frame budget calling `handleEvent()` too many times.
 
 You've already seen several ways to optimize `runRenderingPipeline()`, such as
-not painting content that is offscreen, and optimizing partial layouts. Real
-browsers implement many more such optimizations, and some of those will be
-described in detail in later chapters. What about `handleEvent()` though? While
-the browser might be fast to handle keyboard input in a form control or scroll,
-input events can also be handled by JavaScript. The browser can optimize scripts
-to run faster, but of course has no idea how long a website-providee JavaScript
-function will take to run.
+[not painting](graphics.md#faster-rendering)  content that is offscreen and
+[optimizing](reflow.md) partial layouts. Real browsers implement many more such
+optimizations, and some of those will be described in detail in later chapters.
+What about `handleEvent()` though? While a browser might be fast to handle
+keyboard input in a form control or when scrolling, input events can also be
+handled by JavaScript. Browser developers can---and do---optimize JavaScript
+runtimes to be faster and faster over time. But even so, it's always possible
+that the JavaScript on the website is unavoidably slow; in addition it's
+in general impossible for the browser to guess how fast it will run.
 
 Anther complication is that the "event loop" is not just for handling input
 events. It is also where javascript tasks of all kinds run [^except-webworkers].
