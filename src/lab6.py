@@ -150,7 +150,7 @@ def parse(tokens):
             if not currently_open: return node
             currently_open[-1].children.append(node)
         elif tok.tag in SELF_CLOSING_TAGS:
-            node = ElementNode(tok.tag, tok.attributes, parent)
+            node = ElementNode(tok.tag, parent, tok.attributes)
             parent.children.append(node)
         elif tok.tag.startswith("!"):
             continue
