@@ -190,7 +190,7 @@ this codebase). Likewise, the
 originally developed by Netscape starting in 1997; the
 [Firefox](https://en.wikipedia.org/wiki/Firefox) browser is descended from this
 codebase.  During the first browser war period, nearly all of the core features
-of the simple browser that goes along with this book were added,
+of this book's simple browser were added,
 including CSS, DOM, and JavaScript.
 
  The "second browser war", which according to Wikipedia was
