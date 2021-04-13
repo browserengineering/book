@@ -14,7 +14,15 @@ def request(url):
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
 
-    host, path = url.split("/", 1)
+    host = ""
+    path = ""
+    if (url.find("/") >= 0):
+        host, path = url.split("/", 1)
+        print(host)
+    else:
+        host = url
+        print(host)
+
     path = "/" + path
     port = 80 if scheme == "http" else 443
 

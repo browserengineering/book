@@ -15,7 +15,15 @@ def request(url, payload=None):
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
 
-    host, path = url.split("/", 1)
+    host = ""
+    path = ""
+    if (url.find("/") >= 0):
+        host, path = url.split("/", 1)
+        print(host)
+    else:
+        host = url
+        print(host)
+
     path = "/" + path
     port = 80 if scheme == "http" else 443
 
@@ -153,7 +161,10 @@ def parse(tokens):
             continue
         else:
             node = ElementNode(tok.tag, tok.attributes)
-            node.parent = currently_open[-1]
+            if len(currently_open) > 0:
+                node.parent = currently_open[-1]
+            else:
+                node.parent = None
             currently_open.append(node)
     while currently_open:
         node = currently_open.pop()
@@ -773,7 +784,8 @@ class Browser:
 
         self.setup_js()
         for script in find_scripts(self.nodes, []):
-            header, body = request(relative_url(script, self.history[-1]))
+            url = relative_url(script, self.history[-1])
+            header, body = request(url)
             try:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
@@ -801,7 +813,9 @@ class Browser:
         return elt.attributes.get(attr, None)
 
     def js_innerHTML(self, handle, s):
-        doc = parse(lex("<html><body>" + s + "</body></html>"))
+        whole_str = "<html><body>" + s + "</body></html>"
+        lexed = lex(whole_str)
+        doc = parse(lexed)
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
         elt.children = new_nodes
