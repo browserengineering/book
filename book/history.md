@@ -21,7 +21,7 @@ The Memex concept
 =================
 
 The earliest exploration of how computers might revolutionize information is a
-1945 essay by entitled [As We May
+1945 essay by Vannevar Bush entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
 machine called a [Memex](https://en.wikipedia.org/wiki/Memex). The Memex was an
 imagined machine that helps (think: User Agent) an individual human to see and
