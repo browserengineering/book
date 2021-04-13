@@ -157,7 +157,7 @@ simple web page and publish it.
 effects](https://en.wikipedia.org/wiki/Network_effect) made possible by
 compatibility between sites and the power of the hyperlink to reinforce this
 compatibility. Hyperlinks drive traffic between sites, but also into the web
-_from the outside_, via sources such as email, social networking, and search
+_from the outside_, from sources such as email, social networking, and search
 engines.
 
 *   It is outside the control of any one entity - and kept that way via
