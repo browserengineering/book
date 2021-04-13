@@ -3,7 +3,7 @@ title: Adding Visual Effects
 chapter: 12
 cur: visual-effects
 prev: security
-next: skipped
+next: rendering-architecture
 ...
 
 In [Chapter 2](graphics.md), you learned how to draw text to the

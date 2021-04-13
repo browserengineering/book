@@ -1,6 +1,8 @@
 ---
 title: Browser Rendering Architecture Concepts
-cur: event-loop-rendering-pipeline
+cur: rendering-architecture
+prev: visual-effects
+next: skipped
 ...
 
 The Rendering Event Loop and Pipeline

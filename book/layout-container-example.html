@@ -1,0 +1,62 @@
+<!doctype HTML>
+<meta charset="utf8" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn%7CLora&display=swap" />
+<style>
+  * {
+      font-size: 24px; line-height: 1.3;
+      margin: 0 auto; font-family: 'Lora', 'Times', sans-serif;
+      color: #333; text-align: justify; hyphens: auto; -webkit-hyphens: auto;
+  }
+  html { padding: 1em; }
+
+  .green { background: lightgreen; border: 3px solid green; padding: 0 2px; }
+  .blue { background: lightblue; border: 3px solid darkblue; padding: 0 2px; }
+  
+  label { display: block; margin-bottom: 0.5ex; }
+  textarea { width: 300px; height: 250px; font-family: monospace; }
+  iframe { width: 300px; height: 250px; }
+  
+  container { display:flex; }
+  @media (max-width: 700px) { container { flex-direction: column; } }
+  flex-item { padding: 20px; }
+</style>
+<p>
+<code>BlockLayout</code>s are <span class=green>green</span>;
+<code>InlineLayout</code>s are <span class=blue>blue</span>.
+
+<caption-container id=caption>This is a live
+example! Play with it here or in
+<a id=link href="layout-block-container-example.html" target=_blank>
+another browser tab</a>.
+</caption-container>
+</p>
+
+<container>
+  <flex-item>
+	  <label>Source:</label>
+	  <form id=editExample>
+      <textarea id=htmlSource>
+<html>
+  <body>
+    <h1>Header</h1>
+    <p>Text 1</p>
+    <p>Text 2</p>
+    <p>Text 3</p>
+  </body>
+</html>
+      </textarea>
+      <div style="text-align: center">
+        <input type=reset value="Reset example">
+        <input type=submit value="Update rendering">
+      </div>
+    </form>
+  </flex-item>
+  <flex-item>
+	  <label>Rendered output:</label>
+    <iframe id=targetIframe style="border: 3px solid green;"
+          srcdoc=""></iframe>
+  </flex-item>
+</container>
+<script src="layout-example.js"></script>
+
+

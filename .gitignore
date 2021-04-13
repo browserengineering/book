@@ -1,6 +1,9 @@
 www/*.html
+www/*example.js
 www/draft/*.html
+www/draft/*.js
 www/blog/*.html
+www/rss.xml
 .DS_Store
 slides
 class/
@@ -9,3 +12,6 @@ www/db.pickle
 www/pw.hash
 onepage/
 node_modules/
+package-lock.json
+src/__pycache__/
+__pycache__/

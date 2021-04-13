@@ -184,8 +184,8 @@ class Layout:
     def __init__(self, tree):
         self.display_list = []
 
-        self.x = HSTEP
-        self.y = VSTEP
+        self.cursor_x = HSTEP
+        self.cursor_y = VSTEP
         self.weight = "normal"
         self.style = "roman"
         self.size = 16
@@ -225,7 +225,7 @@ class Layout:
             self.size -= 4
         elif tag == "p":
             self.flush()
-            self.y += VSTEP
+            self.cursor_y += VSTEP
         
     def text(self, text):
         font = tkinter.font.Font(
@@ -235,23 +235,23 @@ class Layout:
         )
         for word in text.split():
             w = font.measure(word)
-            if self.x + w > WIDTH - HSTEP:
+            if self.cursor_x + w > WIDTH - HSTEP:
                 self.flush()
-            self.line.append((self.x, word, font))
-            self.x += w + font.measure(" ")
+            self.line.append((self.cursor_x, word, font))
+            self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
         metrics = [font.metrics() for x, word, font in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
-        baseline = self.y + 1.2 * max_ascent
+        baseline = self.cursor_y + 1.2 * max_ascent
         for x, word, font in self.line:
             y = baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font))
-        self.x = HSTEP
+        self.cursor_x = HSTEP
         self.line = []
         max_descent = max([metric["descent"] for metric in metrics])
-        self.y = baseline + 1.2 * max_descent
+        self.cursor_y = baseline + 1.2 * max_descent
 
 class Browser:
     def __init__(self):
@@ -267,7 +267,8 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
         self.display_list = []
 
-    def layout(self, body):
+    def load(self, url):
+        headers, body = request(url)
         tree = HTMLParser(body).parse()
         self.display_list = Layout(tree).display_list
         self.render()
@@ -285,7 +286,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    headers, body = request(sys.argv[1])
-    browser = Browser()
-    browser.layout(body)
+    Browser().load(sys.argv[1])
     tkinter.mainloop()

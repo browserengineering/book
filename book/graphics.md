@@ -52,7 +52,7 @@ threshold, most humans are not sensitive to discrete action speed. This is very
 different than interactions such as scroll, where speed less than 60Hz or so is
 quite noticeable. The difference between the two has to do with the way the
 human mind processes movement (animation) versus discrete action, and the time
-it takes for the brain to decide upon such an action, exceute it, and understand
+it takes for the brain to decide upon such an action, execute it, and understand
 its result.
 :::
 
@@ -60,7 +60,7 @@ its result.
 is generally considered fast enough to look smooth. However, new hardware
 is increasingly appearing with higher refresh rates, such as 120Hz. Sometimes
 rendering engines, games in particular, refresh at lower rates on purpose if
-they know the rendering speed cann keep up.
+they know the rendering speed can't keep up.
 
 Doing all of this by hand is a bit of a drag, so programs usually use a
 *graphical toolkit* to simplify these steps. These toolkits allow you to
@@ -152,23 +152,25 @@ class Browser:
 ```
 
 Once you've made a canvas, you can call methods that draw shapes on
-the canvas:
+the canvas. Let's do that inside `load`, which we'll move into the new
+`Browser` class:
 
 ``` {.python expected=False}
-def layout(self):
-    self.canvas.create_rectangle(10, 20, 400, 300)
-    self.canvas.create_oval(100, 100, 150, 150)
-    self.canvas.create_text(200, 150, text="Hi!")
+class Browser:
+    def load(self, url):
+        # ...
+        self.canvas.create_rectangle(10, 20, 400, 300)
+        self.canvas.create_oval(100, 100, 150, 150)
+        self.canvas.create_text(200, 150, text="Hi!")
 ```
 
 To run this code, create a `Browser`, call `layout`, and then start
 the Tk `mainloop`:
 
-``` {.python expected=False}
+``` {.python}
 if __name__ == "__main__":
-    # ...
-    browser = Browser()
-    browser.layout()
+    import sys
+    Browser().load(sys.argv[1])
     tkinter.mainloop()
 ```
 
@@ -184,7 +186,7 @@ refers to.[^tkdocs]
 
 [^tkdocs]: The answers are in the [online documentation][tkdocs].
 
-[tkdocs]: http://infohost.nmt.edu/tcc/help/pubs/tkinter/web/canvas.html
+[tkdocs]: https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/canvas.html
 
 ::: {.further}
 The Tk canvas widget is quite a bit more powerful than what we're
@@ -218,16 +220,17 @@ def lex(body):
     return text
 ```
 
-Then, `layout` will draw that text, character by character:
+Then, `load` will draw that text, character by character:
 
 ``` {.python expected=False}
-def layout(self, text):
+def load(self, url):
+    # ...
     for c in text:
         self.canvas.create_text(100, 100, text=c)
 ```
 
 Let's test this code on a real webpage. For reasons that might seem
-inscrutible[^10], let's test it on the [first chapter of <span
+inscrutable[^10], let's test it on the [first chapter of <span
 lang="zh">西游记</span> or "Journey to the
 West"](http://www.zggdwx.com/xiyou/1.html), a classic Chinese novel
 about a monkey. Run this URL[^11] through `request`, `lex`, and
@@ -239,15 +242,18 @@ every letter in the same place, so they all overlap! Let's fix that:
 
 ``` {.python expected=False}
 HSTEP, VSTEP = 13, 18
-x, y = HSTEP, VSTEP
+cursor_x, cursor_y = HSTEP, VSTEP
 for c in text:
-    self.canvas.create_text(x, y, text=c)
-    x += HSTEP
+    self.canvas.create_text(cursor_x, cursor_y, text=c)
+    cursor_x += HSTEP
 ```
 
-I picked the magic numbers—13 and 18—by trying a few different values
-and picking one that looked most readable. In the [next
-chapter](text.md), we'll replace magic numbers with font metrics.
+The variables `cursor_x` and `cursor_y` point to where the next
+character will go, as if you were typing the text with in a word
+processor. I picked the magic numbers—13 and 18—by trying a few
+different values and picking one that looked most readable. In the
+[next chapter](text.md), we'll replace magic numbers with font
+metrics.
 
 The text now forms a line from left to right. But with an 800 pixel
 wide canvas and 13 pixels per character, one line only fits about 60
@@ -257,14 +263,26 @@ to *wrap* the text once we reach the edge of the screen:
 ``` {.python indent=8}
 for c in text:
     # ...
-    if x >= WIDTH - HSTEP:
-        y += VSTEP
-        x = HSTEP
+    if cursor_x >= WIDTH - HSTEP:
+        cursor_y += VSTEP
+        cursor_x = HSTEP
 ```
 
-The code wraps text by increasing *y* and reseting *x*[^13] once *x*
-goes past 787 pixels.[^14] Wrapping makes it possible to see a lot
-more text.
+The code increases `cursor_y` and resets `cursor_x`[^crlf] once
+`cursor_x` goes past 787 pixels.[^not-800] Wrapping the text this way
+makes it possible to read more than a single line.
+
+[^crlf]: In the olden days of type writers, increasing *y* meant
+    *feed*ing in a new *line*, and resetting *x* meant *return*ing the
+    *carriage* that printed letters to the left edge of the page. So
+    ASCII standardizes two separate characters—"carriage return" and
+    "line feed"—for these operations, so that ASCII could be directly
+    executed by teletypewriters. That's why headers in HTTP are
+    separated by `\r\n`, even though modern computers have no
+    mechanical carriage.
+
+[^not-800]: Not 800, because we started at pixel 13 and I want to leave an
+    even gap on both sides.
 
 ::: {.further}
 Chinese characters are usually, but not always, independent: <span
@@ -301,22 +319,27 @@ first drawn into a bitmap or GPU texture, then that bitmap/texture is shifted
 according to the scroll, and the result is rendered to the screen. [Chapter 12](visual-effects.md)
 will have more on this topic.
 
-Our browser will have the same split. Right now `layout` both computes
+Our browser will have the same split. Right now `load` both computes
 the position of each character and draws it: layout and rendering.
-Let's have `layout` just compute and store the position of each
-character. A separate `render` function will then draw each character
-based on the stored position. This way, `layout` can operate with page
-coordinates and only `render` needs to think about screen coordinates.
+Let's have a `layout` function to compute and store the position of
+each character, and a separate `render` function to then draw each
+character based on the stored position. This way, `layout` can operate
+with page coordinates and only `render` needs to think about screen
+coordinates.
 
 Let's start with `layout`. Instead of calling `canvas.create_text` on
-each character let's add it to a list, together with its position:
+each character let's add it to a list, together with its position.
+Since `layout` doesn't need to access anything in `Browser`, it can be
+a standalone function:
 
 ``` {.python}
-self.display_list = []
-for c in text:
-    self.display_list.append((x, y, c))
-    # ...
-self.render()
+def layout(text):
+    display_list = []
+    cursor_x, cursor_y = HSTEP, VSTEP
+    for c in text:
+        display_list.append((cursor_x, cursor_y, c))
+        # ...
+    return display_list
 ```
 
 The resulting list is called a *display list*: it is a list of things
@@ -328,18 +351,33 @@ Once the display list is computed, `render` needs to loop through
 the display list and draw each character:
 
 ``` {.python expected=False}
-def render(self):
-    for x, y, c in self.display_list:
-      self.canvas.create_text(x, y, text=c)
+class Browser:
+    def render(self):
+        for x, y, c in self.display_list:
+          self.canvas.create_text(x, y, text=c)
+```
+
+Since `render` does need access to the canvas, we keep it a method on
+`Browser`. Now the `load` just needs to call `layout` followed by
+`render`:
+
+```
+class Browser:
+    def load(self, url):
+        headers, body = request(url)
+        text = lex(body)
+        self.display_list = layout(text)
+        self.render()
 ```
 
 Now we can add scrolling. Let's have a variable for how far you've
 scrolled:
 
 ``` {.python}
-def __init__(self):
-    # ...
-    self.scroll = 0
+class Browser:
+    def __init__(self):
+        # ...
+        self.scroll = 0
 ```
 
 The page coordinate `y` then has screen coordinate `y - self.scroll`:
@@ -584,16 +622,3 @@ sleeps unless it has inputs that wake it up from another thread or process.
 
 [^12]: If you're not in Asia, you'll probably see this phase take a
     while: China is far away!
-
-[^13]: In the olden days of type writers, a new line was two
-    operations: you would *feed* in a new *line* to move down the
-    page, and then *return* the *carriage* that printed letters to its
-    left edge. You can see these same operations in the code. When
-    ASCII was standardized, they added two separate
-    characters—"carriage return" and "line feed"—for these operations,
-    so that ASCII characters could be directly executed by
-    teletypewriters. That's why headers in HTTP are separated by
-    `\r\n`, even though modern computers have no mechanical carriage.
-
-[^14]: Not 800, because we started at pixel 13 and I want to leave an
-    even gap on both sides.

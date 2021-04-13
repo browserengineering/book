@@ -258,23 +258,23 @@ a time:[^10]
 ``` {.python expected=False}
 for word in text.split():
     w = font.measure(word)
-    if x + w >= WIDTH - HSTEP:
-        y += font.metrics("linespace") * 1.2
-        x = HSTEP
-    self.display_list.append((x, y, word))
-    x += w + font.measure(" ")
+    if cursor_x + w >= WIDTH - HSTEP:
+        cursor_y += font.metrics("linespace") * 1.2
+        cursor_x = HSTEP
+    self.display_list.append((cursor_x, cursor_y, word))
+    cursor_x += w + font.measure(" ")
 ```
 
-There's a lot of moving parts to this code. First, we measure the width
-of the text, and store it in `w`. We'd normally draw the text at `x`,
-so its right end would be at `x + w`, so we check if that's past the
-edge of the page. Now we have the location to *start* drawing the word,
-so we add to the display list; and finally we update `x` to point to the
-end of the word.
+There's a lot of moving parts to this code. First, we measure the
+width of the text, and store it in `w`. We'd normally draw the text at
+`cursor_x`, so its right end would be at `cursor_x + w`, so we check
+if that's past the edge of the page. Now we have the location to
+*start* drawing the word, so we add to the display list; and finally
+we update `cursor_x` to point to the end of the word.
 
 There are a few surprises in this code. One is that I call `metrics`
 with an argument; that just returns the named metric directly. Also, I
-increment `x` by `w + font.measure(" ")` instead of `w`. That's
+increment `cursor_x` by `w + font.measure(" ")` instead of `w`. That's
 because I want to have spaces between the words: the call to `split()`
 removed all of the whitespace, and this adds it back. I don't add the
 space to `w` on the second line, though, because you don't need a
@@ -309,7 +309,7 @@ Styling text
 ============
 
 Right now, all of the text on the page is drawn with one font. But web
-pages sometimes **bold** or *italicise* text using the `<b>` and `<i>`
+pages sometimes **bold** or *italicize* text using the `<b>` and `<i>`
 tags. It'd be nice to support that, but right now, the code resists
 the change: the `layout` function only receives the text of the page
 as input, and so has no idea where the bold and italics tags are.
@@ -375,15 +375,18 @@ Note that `Text` and `Tag` are asymmetric: `lex` avoids empty
 `Tag` object represents the HTML code `<>`, while an empty `Text`
 object with empty text represents no content at all.
 
-Now `layout` has access not just to the text of the page, but also the
-tags in it. So `layout` must loop over tokens, not text:
+Since we've modified `lex` we are now passing `layout` not just the
+text of the page, but also the tags in it. So `layout` must loop over
+tokens, not text:
 
 ``` {.python expected=False}
 def layout(tokens):
+    # ...
     for tok in tokens:
         if isinstance(tok, Text):
             for word in tok.text.split():
                 # ...
+    # ...
 ```
 
 `layout` can also examine tag tokens to change font when directed by
@@ -433,7 +436,7 @@ if instance(tok, Text):
     )
     for word in tok.text.split():
         # ...
-        display_list.append((x, y, word, font))
+        display_list.append((cursor_x, cursor_y, word, font))
 ```
 
 Make sure to update `render` to expect and use this extra font field
@@ -466,8 +469,8 @@ class Layout:
 Every local variable in `layout` then becomes a field of `Layout`:
 
 ``` {.python}
-self.x = HSTEP
-self.y = VSTEP
+self.cursor_x = HSTEP
+self.cursor_y = VSTEP
 self.weight = "normal"
 self.style = "roman"
 self.size = 16
@@ -504,13 +507,16 @@ def text(self, text):
         # ...
 ```
 
-Now that everything has moved out of `Browser`'s old `layout`
+Now that everything has moved out of `Browser`'s old `load`
 function, it can be replaced with calls into `Layout`:
 
 ``` {.python}
-def layout(self, tokens):
-    self.display_list = Layout(tokens).display_list
-    self.render()
+class Browser:
+    def load(self, url):
+        headers, body = request(url)
+        tokens = lex(body)
+        self.display_list = Layout(tokens).display_list
+        self.render()
 ```
 
 When you do big refactors like this, it's important to work
@@ -589,14 +595,14 @@ moved down. That means its vertical position has to be computed later,
 *after* the big text passes through `token`. But since the small text
 comes through the loop first, we need a *two-pass* algorithm for lines
 of text: the first pass identifies what words go in the line and
-computes their `x` positions, while the second pass vertically aligns
-the words and computes their `y` positions.
+computes their *x* positions, while the second pass vertically aligns
+the words and computes their *y* positions.
 
 Let's start with phase one. Since one line contains text from many
-tags, we need a a field on `Layout` to store the line-to-be. That
+tags, we need a field on `Layout` to store the line-to-be. That
 field, `line`, will be a list, and `text` will add words to it instead
-of the display list. Entries in `line` will have `x` but not `y`
-positions, since `y` positions aren't computed in the first phase:
+of the display list. Entries in `line` will have *x* but not *y*
+positions, since *y* positions aren't computed in the first phase:
 
 
 ``` {.python}
@@ -609,7 +615,7 @@ def text(self, text):
     # ...
     for word in text.split():
         # ...
-        self.line.append((self.x, word, font))
+        self.line.append((self.cursor_x, word, font))
 ```
 
 The new `line` field is essentially a buffer, where words are held
@@ -617,7 +623,7 @@ temporarily before they can be placed. The second phase is that buffer
 being flushed when we're finished with a line:
 
 ``` {.python indent=12}
-if self.x + w > WIDTH - HSTEP:
+if self.cursor_x + w > WIDTH - HSTEP:
     self.flush()
 ```
 
@@ -635,7 +641,7 @@ This new `flush` function has three responsibilities:
 
 1. It must align the words along the line;
 2. It must add all those words to the display list; and
-3. It must update the `x` and `y` fields
+3. It must update the `cursor_x` and `cursor_y` fields
 
 Since we want words to line up "on the line", let's start by computing
 where that line should be. That depends on the metrics for all the
@@ -665,7 +671,7 @@ to account for the leading:[^leading-half]
 [line-height-def]: https://www.w3.org/TR/CSS2/visudet.html#leading
     
 ``` {.python}
-baseline = self.y + 1.2 * max_ascent
+baseline = self.cursor_y + 1.2 * max_ascent
 ```
 
 Now that we know where the line is, we can place each word relative to
@@ -684,7 +690,7 @@ Finally, `flush` must update the `Layout`'s `x`, `y`, and `line`
 fields. `x` and `line` are easy:
 
 ``` {.python}
-self.x = HSTEP
+self.cursor_x = HSTEP
 self.line = []
 ```
 
@@ -693,7 +699,7 @@ deepest descender:
 
 ``` {.python}
 max_descent = max([metric["descent"] for metric in metrics])
-self.y = baseline + 1.2 * max_descent
+self.cursor_y = baseline + 1.2 * max_descent
 ```
 
 Now all the text is aligned along the line, even when text sizes are
@@ -721,10 +727,10 @@ def token(self, tok):
     # ...
     elif tok.tag == "/p":
         self.flush()
-        self.y += VSTEP
+        self.cursor_y += VSTEP
 ```
 
-I add a bit extra to `y` here to create a little gap between
+I add a bit extra to `cursor_y` here to create a little gap between
 paragraphs.
 
 ::: {.further}
