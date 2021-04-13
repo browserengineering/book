@@ -48,7 +48,7 @@ learn and explore that information. The collective knowledge and wisdom of the
 species long ago exceeded the capacity of a single mind, organization, library,
 country, culture, group or language. However, while we as humans cannot possibly
 know even a tiny fraction of what is possible to know, we can use technology to
-learn more efficiently than before, and *in particular*, to quickly access
+learn more efficiently than before, and, *in particular*, to quickly access
 information we need to learn, remember or recall. Computers, and the internet,
 allow us to _process and store_ as much information as we want. The _web_, on
 the other hand, plays the role of _organizing and finding_ that information and
