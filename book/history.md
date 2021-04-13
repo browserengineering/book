@@ -10,7 +10,7 @@ interesting and important to study. Now we'll dig a bit into the web itself,
 where it came from, and how the web and browsers have evolved to date. This
 history is by no means exhaustive.[^sgml] Instead, you should view it as a brief
 foray into a much larger---and quite interesting in its own right---subject.
-Despite that brevity, you'll learn about some many of the key efforts,
+Despite that brevity, it covers some of the key efforts,
 designs and events that led to the web we know today, and how they came to be.
 
 [^sgml]: For example, there is nothing much about
