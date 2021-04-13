@@ -21,7 +21,7 @@ The Memex concept
 =================
 
 The earliest exploration of how computers might revolutionize information is a
-1945 essay entitled [As We May
+1945 essay by entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
 machine called a [Memex](https://en.wikipedia.org/wiki/Memex). The Memex was an
 imagined machine that helps (think: User Agent) an individual human to see and
@@ -29,6 +29,18 @@ explore all the information in the world. It was described in terms of microfilm
 screen technology of the time, but its purpose and concept has some clear
 similarities to the web as we know it today, even if the user interface and
 technology details differ.
+
+Two features of the Memex were highlighted in the essay: information record
+lookup, and associations between related records. In fact, the essay emphasizes
+the importance of the latter---we learn and improve not just by learning what is
+known, but by making previously-unknown connections *between known things*:
+
+> The human mind does not work that way. It operates by association.
+
+By association, meaning a train or trail of thought, leading from one record
+(document!) to the next via a human-curated link. We need not just a universal
+library, but a universal way to record the results of what we learn. That is
+what the web can do.
 
 The web is at its core organized around the Memex-like goal of _representing and
 displaying information_, and how to provide a way for humans to effectively
