@@ -9,9 +9,11 @@ If you've read this far, hopefully you're convinced that browsers are
 interesting and important to study. Now we'll dig a bit into the web itself,
 where it came from, and how the web and browsers have evolved to date. This
 history is by no means exhaustive.[^sgml] Instead, you should view it as a brief
-view into a much larger---and quite interesting in its own right---subject.
+foray into a much larger---and quite interesting in its own right---subject.
+Despite that brevity, it covers some of the key efforts,
+designs and events that led to the web we know today, and how they came to be.
 
-[^sgml]: For example, nothing much about
+[^sgml]: For example, there is nothing much about
 [SGML](https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language) or
 other predecessors to HTML. (Except in this footnote!)
 
@@ -19,7 +21,7 @@ The Memex concept
 =================
 
 The earliest exploration of how computers might revolutionize information is a
-1945 essay entitled [As We May
+1945 essay by Vannevar Bush entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
 machine called a [Memex](https://en.wikipedia.org/wiki/Memex). The Memex was an
 imagined machine that helps (think: User Agent) an individual human to see and
@@ -28,22 +30,35 @@ screen technology of the time, but its purpose and concept has some clear
 similarities to the web as we know it today, even if the user interface and
 technology details differ.
 
+Two features of the Memex were highlighted in the essay: information record
+lookup, and associations between related records. In fact, the essay emphasizes
+the importance of the latter---we learn and improve not just by learning what is
+known, but by making previously-unknown connections *between known things*:
+
+> The human mind does not work that way. It operates by association.
+
+By "association", Bush meant a trail of thought leading from one record
+to the next via a human-curated link. He imagined not just a universal
+library, but a universal way to record the results of what we learn. That is
+what the web can do.
+
 The web is at its core organized around the Memex-like goal of _representing and
 displaying information_, and how to provide a way for humans to effectively
 learn and explore that information. The collective knowledge and wisdom of the
 species long ago exceeded the capacity of a single mind, organization, library,
 country, culture, group or language. However, while we as humans cannot possibly
 know even a tiny fraction of what is possible to know, we can use technology to
-learn more efficiently than before, and most importantly, to quickly access
-information we need to learn or remember. Computers, and the Internet, allow us
-to _process and store_ as much information as we want. The _web_, on the other
-hand, plays the role of _organizing and finding_ that information and knowledge
-to make it useful.[^google-mission]
+learn more efficiently than before, and, *in particular*, to quickly access
+information we need to learn, remember or recall. Computers, and the internet,
+allow us to _process and store_ as much information as we want. The _web_, on
+the other hand, plays the role of _organizing and finding_ that information and
+knowledge to make it useful.[^google-mission]
 
-[^google-mission]: The search engine Google’s [mission](https://about.google/)
-statement to “organize the world’s information and make it universally
-accessible and useful” is almost exactly the same as this. This is not a
-coincidence - the search engine concept is inherently connected to the web.
+[^google-mission]: The Google search engine's well-known
+[mission](https://about.google/) statement to “organize the world’s information
+and make it universally accessible and useful” is almost exactly the same.
+This is not a coincidence---the search engine concept is inherently
+connected to the web, and was inspired by the web's design and antecedents.
 
 Documents and hyperlinks
 ========================
@@ -51,13 +66,12 @@ Documents and hyperlinks
 The concept of interlinked documents began to appear in about
 [1964-65](https://en.wikipedia.org/wiki/Hyperlink), when the term “link”
 appeared (though connected to text rather than pages).[^literary-criticism]
-Researchers then began to advocate for building a network of computers to
-realize the concept. Independently, the first hyperlink system appeared (though
-apparently not using that word[^hyperlink-first]) for navigating within a single
-document; it was later generalized to linking between multiple documents. This
-work also formed one of the key parts of the [mother of all
-demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos), the most famous
-technology demonstration in the history of computing.
+Independently, the first hyperlink system appeared (though apparently not using
+that word[^hyperlink-first]) for navigating within a single document; it was
+later generalized to linking between multiple documents. This work also formed
+one of the key parts of the [mother of all
+demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos), perhaps the most
+influential technology demonstration in the history of computing.
 
 [^hyperlink-first]: The word "hyperlink" may have first appeared in 1987, in
 connection with the HyperCard system on the Macintosh.)
@@ -66,7 +80,7 @@ connection with the HyperCard system on the Macintosh.)
 the long tradition of citation in academics and literary criticism.
 
 There is of course a very direct connection between this research and the
-document+URL+hyperlink setup of the web, which built this idea and applied it
+document+URL+hyperlink setup of the web, which built on this idea and applied it
 in practice.
 
 The web emerges
@@ -78,12 +92,12 @@ first electronically published academic journal, the 1988 issue of the
 [Communications of the ACM](https://cacm.acm.org/). Tim Berners-Lee cites this
 1988 event as the source of the link concept in his World Wide Web
 concept,[^world-wide-web-terminology] in which he proposed to join the link
-concept with the availability of the Internet, thus realizing many of the
+concept with the availability of the internet, thus realizing many of the
 original goals of all the work from previous decades.[^realize-web-decades]
 
 [^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
 web”, or “the web ecosystem”---ecosystem being another way to capture the same
-concept as “World Wide”). The original wording lives on in the "www" in many
+concept as “World Wide”. The original wording lives on in the "www" in many
 website domain names.
 
 [^realize-web-decades]: The web itself is, therefore, an example of the
@@ -120,10 +134,10 @@ Berners-Lee has also written a [Brief History of the
 Web](https://www.w3.org/DesignIssues/TimBook-old/History.html) that  highlights
 a number of other interesting factors leading to the establishment of the web as
 we know it. One key factor was its decentralized nature, which he describes as
-arising from the culture of CERN, where he worked. The decentralized nature of
-the web is a key feature that distinguishes it from many systems that came
-before or after, and his explanation of it is worth quoting here (highlight is
-mine):
+arising from the culture of [CERN](https://home.cern/), where he worked. The
+decentralized nature of the web is a key feature that distinguishes it from many
+systems that came before or after, and his explanation of it is worth quoting
+here (highlight is mine):
 
 > There was clearly a need for something like Enquire [ed: a predecessor
 > software system] but accessible to everyone. I wanted it to scale so that if
@@ -143,14 +157,15 @@ simple web page and publish it.
 effects](https://en.wikipedia.org/wiki/Network_effect) made possible by
 compatibility between sites and the power of the hyperlink to reinforce this
 compatibility. Hyperlinks drive traffic between sites, but also into the web
-_from the outside_, via email, social networking, and search engines.
+_from the outside_, from sources such as email, social networking, and search
+engines.
 
 *   It is outside the control of any one entity - and kept that way via
 standards organizations - and therefore not subject to problems of monopoly
 control or manipulation.
 
-History of browsers
-===================
+Browsers
+========
 
 I'll now give a brief overview of the evolution of browser implementations. The
 first _widely distributed_ browser may have been
@@ -175,7 +190,7 @@ this codebase). Likewise, the
 originally developed by Netscape starting in 1997; the
 [Firefox](https://en.wikipedia.org/wiki/Firefox) browser is descended from this
 codebase.  During the first browser war period, nearly all of the core features
-you will implement in your browser that goes along with this book were added,
+of this book's simple browser were added,
 including CSS, DOM, and JavaScript.
 
  The "second browser war", which according to Wikipedia was
@@ -249,6 +264,7 @@ rendering / JavaScript engines_: Chromium, Gecko and WebKit.[^javascript-repo]
 Since Chromium and WebKit have a common ancestral codebase, while Gecko is an
 open-source descendant of Netscape, all three date back to the 1990s---almost to
 the beginning of the web.
+
 [^examples-of-browsers-today]: Examples of Chromium-based browsers include
 Chrome, Edge, Opera (which switched to Chromium from the
 [Presto](https://en.wikipedia.org/wiki/Presto_(browser_engine)) engine in 2013),
