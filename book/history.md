@@ -37,8 +37,8 @@ known, but by making previously-unknown connections *between known things*:
 
 > The human mind does not work that way. It operates by association.
 
-By association, meaning a train or trail of thought, leading from one record
-(document!) to the next via a human-curated link. We need not just a universal
+By "association", Bush meant a trail of thought leading from one record
+to the next via a human-curated link. He imagined not just a universal
 library, but a universal way to record the results of what we learn. That is
 what the web can do.
 
