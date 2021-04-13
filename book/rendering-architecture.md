@@ -1,5 +1,6 @@
 ---
 title: Browser Rendering Architecture Concepts
+chapter: 13
 cur: rendering-architecture
 prev: visual-effects
 next: skipped
