@@ -14,7 +14,11 @@ def request(url, payload=None):
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
 
-    host, path = url.split("/", 1)
+    if (url.find("/") >= 0):
+        host, path = url.split("/", 1)
+    else:
+        host, path = url, ""
+
     path = "/" + path
     port = 80 if scheme == "http" else 443
 
@@ -152,7 +156,10 @@ def parse(tokens):
             continue
         else:
             node = ElementNode(tok.tag, tok.attributes)
-            node.parent = currently_open[-1]
+            if len(currently_open) > 0:
+                node.parent = currently_open[-1]
+            else:
+                node.parent = None
             currently_open.append(node)
     while currently_open:
         node = currently_open.pop()

@@ -21,7 +21,7 @@ Introduction
 ::: {.intro}
 1. [Preface](preface.md)
 2. [Browsers and the Web](intro.md)
-3. [The History of the Web](history.md)
+3. [History of the Web](history.md)
 :::
 
 Part 1: Drawing Graphics
