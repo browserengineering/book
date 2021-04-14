@@ -6,6 +6,7 @@ without exercises.
 
 import socket
 import ssl
+import time
 import tkinter
 import tkinter.font
 import dukpy
@@ -673,6 +674,8 @@ def is_link(node):
     return isinstance(node, ElementNode) \
         and node.tag == "a" and "href" in node.attributes
 
+REFRESH_RATE = 16
+
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -693,6 +696,8 @@ class Browser:
         self.window.bind("<Key>", self.keypress)
         self.window.bind("<Return>", self.pressenter)
         self.display_list = []
+        self.needs_update = False
+        self.needs_raf_callbacks = False
 
     def handle_click(self, e):
         self.focus = None
@@ -702,7 +707,7 @@ class Browser:
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.render()
+                self.draw()
         else:
             x, y = e.x, e.y + self.scroll - 60
             obj = find_layout(x, y, self.document)
@@ -718,7 +723,8 @@ class Browser:
                 elif elt.tag == "input":
                     elt.attributes["value"] = ""
                     self.focus = obj
-                    return self.layout(self.document.node)
+                    self.setNeedsUpdate()
+                    return
                 elif elt.tag == "button":
                     self.submit_form(elt)
                 elt = elt.parent
@@ -731,11 +737,11 @@ class Browser:
             return
         elif self.focus == "address bar":
             self.address_bar += e.char
-            self.render()
+            self.draw()
         else:
             self.focus.node.attributes["value"] += e.char
             self.dispatch_event("change", self.focus.node)
-            self.layout(self.document.node)
+            self.setNeedsUpdate()
 
     def submit_form(self, elt):
         while elt and elt.tag != "form":
@@ -787,7 +793,13 @@ class Browser:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
                 print("Script", script, "crashed", e)
-        self.layout(self.nodes)
+
+        self.setNeedsUpdate()
+
+    def setNeedsUpdate(self):
+        if not self.needs_update:
+            self.needs_update = True
+            self.canvas.after(REFRESH_RATE, self.beginMainFrame)
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -795,17 +807,22 @@ class Browser:
         self.handle_to_node = {}
         self.js.export_function("log", print)
         self.js.export_function("querySelectorAll", self.js_querySelectorAll)
-        self.js.export_function("getAttribute", self.js_getAttribute)
+        self.js.export_function("requestAnimationFrame", self.js_requestAnimationFrame)
         self.js.export_function("innerHTML", self.js_innerHTML)
-        with open("runtime9.js") as f:
+        self.js.export_function("now", self.js_now)
+        with open("runtime13.js") as f:
             self.js.evaljs(f.read())
 
     def js_querySelectorAll(self, sel):
         selector, _ = CSSParser(sel + "{").selector(0)
         elts = find_selected(self.nodes, selector, [])
         return [self.make_handle(elt) for elt in elts]
-    
-    def js_getAttribute(self, handle, attr):
+
+    def js_requestAnimationFrame(self):
+        self.needs_raf_callbacks = True
+        self.setNeedsUpdate()
+
+    def js_setTimeout(self, fn, timeout_in_ms):
         elt = self.handle_to_node[handle]
         return elt.attributes.get(attr, None)
 
@@ -816,7 +833,10 @@ class Browser:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
-        self.layout(self.document.node)
+        self.setNeedsUpdate();
+
+    def js_now(self):
+        return int(time.time() * 1000)
 
     def dispatch_event(self, type, elt):
        handle = self.node_to_handle.get(elt, -1)
@@ -832,16 +852,29 @@ class Browser:
             handle = self.node_to_handle[elt]
         return handle
 
-    def layout(self, tree):
-        style(tree, None, self.rules)
-        self.document = DocumentLayout(tree)
+    def beginMainFrame(self):
+        self.needs_update = False
+        if (self.needs_raf_callbacks):
+            self.needs_raf_callbacks = False
+            self.js.evaljs("__runRAFHandlers()")
+        self.runRenderingPipeline()
+        # This will cause a draw to the screen, even if there are pending
+        # requestAnimationFrame callbacks for the *next* frame (which may have
+        # been registered during a call to __runRAFHandlers). By default,
+        # tkinter doesn't run these until there are no more event queue
+        # tasks.
+        self.canvas.update_idletasks()
+
+    def runRenderingPipeline(self):
+        style(self.nodes, None, self.rules)
+        self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
         self.document.draw(self.display_list)
-        self.render()
+        self.draw()
         self.max_y = self.document.h - HEIGHT
 
-    def render(self):
+    def draw(self):
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
@@ -866,7 +899,7 @@ class Browser:
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
-        self.render()
+        self.draw()
 
 if __name__ == "__main__":
     import sys

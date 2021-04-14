@@ -47,9 +47,11 @@ def handle_request(method, url, headers, body):
         else:
             return show_page()
 
-def show_comments():
+def show_page():
     out = "<!doctype html>"
-    out += "Test"
+    out += "Let's count up to 50!"
+    out += "<br>"
+    out += "<div id=output></div>"
     out += "<script src=/eventloop13.js></script>"
     return out
 
