@@ -28,6 +28,9 @@ while True:
     runRenderingPipeline()
 ```
 
+Let's start by 
+
+
 Now that same chapter *also* says that there is a [frame
 budget](graphics.md#framebudget), which is the amount of time allocated to
 re-draw the screen after an input update. The frame budget is typically about

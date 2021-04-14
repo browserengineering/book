@@ -38,3 +38,4 @@ function __runRAFHandlers() {
         handlers_copy[i]();
     }
 }
+
