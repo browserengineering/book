@@ -380,7 +380,7 @@ text of the page, but also the tags in it. So `layout` must loop over
 tokens, not text:
 
 ``` {.python expected=False}
-def layout(self, tokens):
+def layout(tokens):
     # ...
     for tok in tokens:
         if isinstance(tok, Text):
