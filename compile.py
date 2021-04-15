@@ -153,6 +153,10 @@ LIBRARY_METHODS = [
     # tkinter.font
     "metrics",
     "measure",
+
+    # stuff the compiler needs
+    "toString",
+    "init",
 ]
 
 OUR_FNS = []
@@ -252,7 +256,7 @@ def compile_func(call, args, ctx):
         elif call.func.id in OUR_FNS:
             return "await " + call.func.id + "(" + ", ".join(args) + ")"
         elif call.func.id in OUR_CLASSES:
-            return "new " + call.func.id + "(" + ", ".join(args) + ")"
+            return "await (new " + call.func.id + "()).init(" + ", ".join(args) + ")"
         elif call.func.id == "len":
             assert len(args) == 1
             return args[0] + ".length"
@@ -369,7 +373,7 @@ def compile_expr(tree, ctx):
     elif isinstance(tree, ast.Call):
         args = [compile_expr(a, ctx) for a in tree.args]
         args += [compile_expr(kv.value, ctx) for kv in tree.keywords]
-        return compile_func(tree, args, ctx)
+        return "(" + compile_func(tree, args, ctx) + ")"
     elif isinstance(tree, ast.UnaryOp):
         rhs = compile_expr(tree.operand, ctx)
         if isinstance(tree.op, ast.Not): rhs = "truthy(" + rhs + ")"
@@ -490,19 +494,32 @@ def compile(tree, ctx, indent=0):
         assert not tree.decorator_list
         assert not tree.returns
         args = check_args(tree.args, ctx)
-        name = {
-            "__init__": "constructor",
-            "__repr__": "toString",
-        }.get(tree.name, tree.name)
-        kw = "" if ctx.type == "class" else "function "
-        def_line = kw + name + "(" + ", ".join(args) + ")"
-        if not tree.name.startswith("__"):
-            def_line = "async " + def_line
+
         ctx2 = Context("function", ctx)
         for arg in tree.args.args:
             ctx2[arg.arg] = True
         body = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
-        return " " * indent + def_line + " {\n" + body + "\n" + " " * indent + "}"
+
+        if tree.name == "__init__":
+            # JS constructors cannot be async, so we move that to a builder method
+            assert ctx.type == "class"
+            def_line = " " * indent + "async init(" + ", ".join(args) + ") {\n"
+            ret_line = "\n" + " " * indent + "return this;"
+            last_line = "\n" + " " * indent + "}"
+            return def_line + body + ret_line + last_line
+        elif tree.name == "__repr__":
+            # This actually defines a 'toString' operator
+            assert ctx.type == "class"
+            def_line = " " * indent + "toString(" + ", ".join(args) + ") {\n"
+            last_line = "\n" + " " * indent + "}"
+            return def_line + body + last_line
+        else:
+            kw = "" if ctx.type == "class" else "function "
+            def_line = kw + tree.name + "(" + ", ".join(args) + ") {\n"
+            if not tree.name.startswith("__"):
+                def_line = "async " + def_line
+            last_line = "\n" + " " * indent + "}"
+            return " " * indent + def_line + body + last_line
     elif isinstance(tree, ast.Expr) and ctx.type == "module" and \
          isinstance(tree.value, ast.Constant) and isinstance(tree.value.value, str):
         cmt = " " * indent + "// "
