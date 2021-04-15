@@ -158,7 +158,7 @@ static tkinter(options) {
         }
     }
 
-    return {Tk: wrap_class(Tk), Canvas: wrap_class(Canvas)}
+    return {Tk: wrap_class(Tk), Canvas: wrap_class(Canvas), font: { Font: wrap_class(Font) }}
 }
 
 }
