@@ -122,6 +122,7 @@ RENAME_METHODS = {
     "append": "push",
     "pop": "pop",
     "startswith": "startsWith",
+    "find": "indexOf",
 }
 
 RENAME_FNS = {
@@ -324,7 +325,8 @@ def lhs_targets(tree):
 def compile_lhs(tree, ctx):
     targets = lhs_targets(tree)
     for target in targets:
-        ctx[target] = True
+        if target not in ctx:
+            ctx[target] = True
     return compile_expr(tree, ctx)
 
 class Context(dict):
