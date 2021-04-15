@@ -213,6 +213,7 @@ class BlockLayout:
         self.children = []
 
     def layout(self):
+        breakpoint("layout_pre", self)
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
@@ -235,6 +236,8 @@ class BlockLayout:
 
         self.height = sum([child.height for child in self.children])
 
+        breakpoint("layout_post", self)
+
     def draw(self, display_list):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
@@ -251,6 +254,7 @@ class InlineLayout:
         self.children = []
 
     def layout(self):
+        breakpoint("layout_pre", self)
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -271,6 +275,7 @@ class InlineLayout:
         self.flush()
 
         self.height = self.cursor_y - self.y
+        breakpoint("layout_post", self)
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -344,6 +349,7 @@ class DocumentLayout:
         self.children = []
 
     def layout(self):
+        breakpoint("layout_pre", self)
         child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
@@ -352,6 +358,7 @@ class DocumentLayout:
         self.y = VSTEP
         child.layout()
         self.height = child.height + 2*VSTEP
+        breakpoint("layout_post", self)
 
     def draw(self, display_list):
         self.children[0].draw(display_list)
