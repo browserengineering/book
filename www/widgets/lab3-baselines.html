@@ -19,6 +19,8 @@
 <script src="rt.js"></script>
 <script>
 const ZOOM = 1.5;
+const colors = { a: "pink", A: "darkred", d: "lightblue", D: "darkblue" };
+
 const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
 const ssl = lib.ssl();
 const tkinter = lib.tkinter({ zoom: ZOOM });
@@ -60,7 +62,7 @@ function draw_widget() {
     if (STATE.max_asc) {
         ctx.fillText("baseline", 10, b - 15);
 
-        ctx.fillStyle = "orange";
+        ctx.fillStyle = colors.A;
         ctx.fillRect(margin - 5, y1, 5, b - y1);
         ctx.strokeStyle = "cyan";
         ctx.beginPath();
@@ -70,7 +72,7 @@ function draw_widget() {
         ctx.fillStyle = "black";
     }
     if (STATE.max_desc) {
-        ctx.fillStyle = "blue";
+        ctx.fillStyle = colors.D;
         ctx.fillRect(margin - 5, b, 5, 1.2 * STATE.max_desc * ZOOM);
         ctx.fillStyle = "black";
     }
@@ -94,9 +96,11 @@ function draw_widget() {
     if (STATE.metrics) {
         STATE.line.forEach(function ([x, word, font], i){
             let metric = STATE.metrics[i];
-            ctx.fillStyle = "orange";
+            ctx.fillStyle = colors.a;
+            if (STATE.max_asc && metric.ascent == STATE.max_asc) ctx.fillStyle = colors.A;
             ctx.fillRect(margin + (x - HSTEP) * ZOOM, 10, 5, metric.ascent * ZOOM);
-            ctx.fillStyle = "blue";
+            ctx.fillStyle = colors.d;
+            if (STATE.max_desc && metric.descent == STATE.max_desc) ctx.fillStyle = colors.D;
             ctx.fillRect(margin + (x - HSTEP) * ZOOM, 10 + metric.ascent * ZOOM, 5, metric.descent * ZOOM);
         });
     }
