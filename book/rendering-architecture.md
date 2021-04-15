@@ -62,7 +62,7 @@ speed, even if the CPU is up to it, because there is no point---the screen can't
 keep up anyway. For this reason, `16ms` is not just a frame budget but also a
 desired rendering *cadence*.
 
-Currently, your browser runs the rendering pipeline (style, layout, draw, and
+Currently, your browser runs the rendering pipeline (style, layout, paint, and
 drawToScreen) immediately after each possible change of state that might cause a
 change. These changes of state are: `handle_click`, `keypress`, `load`, and
 `js_innerHTML`. In addition, if the click or keypress hapens on the URL bar

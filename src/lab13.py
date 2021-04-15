@@ -876,10 +876,10 @@ class Browser:
             self.display_list = []
             self.document.paint(self.display_list)
             self.needs_style_and_layout = False
-        self.drawToScreen()
+        self.draw()
         self.max_y = self.document.h - HEIGHT
 
-    def drawToScreen(self):
+    def draw(self):
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
