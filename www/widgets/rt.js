@@ -302,3 +302,17 @@ function truthy(x) {
         return true;
     }
 }
+
+function pysplit(x, sep, cnt) {
+    let i = 0;
+    let out = [];
+    while (cnt > 0) {
+        let next = x.indexOf(sep, i);
+        if (next == 0) continue;
+        out.push(x.substring(i, next));
+        i = next + sep.length;
+        cnt--;
+    }
+    out.append(x.substring(i));
+    return out;
+}

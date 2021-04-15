@@ -226,12 +226,12 @@ def compile_func(call, args, ctx):
         assert 0 <= len(args) <= 2
         base = compile_expr(call.func.value, ctx)
         if len(args) == 0:
-            return base + ".split(/\s+/)"
+            return base + ".trim().split(/\s+/)"
         elif len(args) == 1:
             return base + ".split(" + args[0] + ")"
         elif len(args) == 2:
             assert args[1].isdigit()
-            return base + ".split(" + args[0] + ", " + str(int(args[1]) + 1) + ")"
+            return "pysplit(" + base + ", " + args[0] + ", " + str(int(args[1])) + ")"
         else:
             raise CantCompile(call)
     elif isinstance(call.func, ast.Attribute):
