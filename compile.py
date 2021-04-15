@@ -370,13 +370,14 @@ def compile_expr(tree, ctx):
         return compile_func(tree, args, ctx)
     elif isinstance(tree, ast.UnaryOp):
         rhs = compile_expr(tree.operand, ctx)
+        if isinstance(tree.op, ast.Not): rhs = "truthy(" + rhs + ")"
         return "(" + op2str(tree.op) + rhs + ")"
     elif isinstance(tree, ast.BinOp):
         lhs = compile_expr(tree.left, ctx)
         rhs = compile_expr(tree.right, ctx)
         return "(" + lhs + " " + op2str(tree.op) + " " + rhs + ")"
     elif isinstance(tree, ast.BoolOp):
-        parts = [compile_expr(val, ctx) for val in tree.values]
+        parts = ["truthy("+compile_expr(val, ctx)+")" for val in tree.values]
         return "(" + (" " + op2str(tree.op) + " ").join(parts) + ")"
     elif isinstance(tree, ast.Compare):
         assert len(tree.ops) == 1
@@ -571,7 +572,7 @@ def compile(tree, ctx, indent=0):
             ctx2 = Context(ctx.type, ctx)
             test = deparen(compile_expr(tree.test, ctx))
             body = compile(tree.body[0], indent=indent, ctx=ctx2)
-            return " " * indent + "if (" + test + ") " + body.strip()
+            return " " * indent + "if (truthy(" + test + ")) " + body.strip()
         else:
             parts = flatten_ifs(tree)
             out = " " * indent
@@ -582,6 +583,7 @@ def compile(tree, ctx, indent=0):
                 ctx2 = Context(ctx.type, ctx)
                 ctxs.append(ctx2)
                 for line in body: compile(line, ctx=ctx2)
+
             intros = set.intersection(*[set(ctx2) for ctx2 in ctxs]) - set(ctx)
             if intros:
                 for name in intros: ctx[name] = True
@@ -592,10 +594,10 @@ def compile(tree, ctx, indent=0):
                 body_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in body])
                 if not i and test:
                     test_js = deparen(compile_expr(test, ctx))
-                    out += "if (" + test_js + ") {\n"
+                    out += "if (truthy(" + test_js + ")) {\n"
                 elif i and test:
                     test_js = deparen(compile_expr(test, ctx))
-                    out += " else if (" + test_js + ") {\n"
+                    out += " else if (truthy(" + test_js + ")) {\n"
                 elif not test:
                     out += " else {\n"
                 out += body_js + "\n"

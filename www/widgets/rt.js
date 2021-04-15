@@ -283,3 +283,22 @@ class Widget {
     }
 }
 
+function truthy(x) {
+    // Emulates Python's truthiness function
+    if (Array.isArray(x)) {
+        return x.length > 0;
+    } else if (typeof x === "number") {
+        return x != 0;
+    } else if (typeof x === "string") {
+        return x.length > 0;
+    } else if (typeof x === "boolean") {
+        return x;
+    } else if (typeof x === "undefined" || x === null) {
+        return false;
+    } else if (typeof x === "object") {
+        return Object.entries(x).length > 0;
+    } else {
+        console.error("Checking truthiness of weird value", x);
+        return true;
+    }
+}
