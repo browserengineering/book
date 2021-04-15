@@ -46,8 +46,8 @@ def runRenderingPipeline():
     self.document = DocumentLayout(self.nodes)
     self.document.layout()
     self.display_list = []
-    self.document.draw(self.display_list)
-    self.draw()
+    self.document.paint(self.display_list)
+    self.drawToScreen()
     self.max_y = self.document.h - HEIGHT
 ```
 
@@ -62,15 +62,13 @@ speed, even if the CPU is up to it, because there is no point---the screen can't
 keep up anyway. For this reason, `16ms` is not just a frame budget but also a
 desired rendering *cadence*.
 
-Finally, if there is nothing new to display, there
-is no point in keeping the while loop running.
+Currently, your browser runs the rendering pipeline (style, layout, draw, and
+drawToScreen) immediately after each possible change of state that might cause a
+change. These changes of state are: `handle_click`, `keypress`, `load`, and
+`js_innerHTML`. In addition, if the click or keypress hapens on the URL bar
+instead of the browser window, only 
 
-Let's now implement these requirementswithin your browser. We'll do it
-with a new trick: the dirty bit. Whenever a change occurs that requires a re-
-render or re-draw.
 
-To
-ensure this, there are two things browser developers can do:
 
 1. Optimize `runRenderingPipeline()` and `handleEvent()` to run as fast as
 possible.
