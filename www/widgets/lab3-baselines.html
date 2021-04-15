@@ -1,0 +1,124 @@
+<!doctype html>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="widget.css" />
+
+<figure id="widget">
+  <canvas id="canvas" width="352" height="160"></canvas>
+  <div id="controls">
+  <div id="step-controls">
+    <button class="reset" disabled>Restart</button>
+    <button class="stepb" disabled>Back</button>
+    <button class="stepf">Next</button>
+    <button class="play">Animate</button>
+  </div>
+  <textarea id="input" rows="4">Mixed <big>big</big> and <small>small</small></textarea>
+  </div>
+</figure>
+
+<script src="lab3.js"></script>
+<script src="rt.js"></script>
+<script>
+const ZOOM = 1.5;
+const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
+const ssl = lib.ssl();
+const tkinter = lib.tkinter({ zoom: ZOOM });
+
+let widget = new Widget(document.querySelector("#widget"));
+let canvas = document.querySelector("#canvas");
+let ctx = canvas.getContext("2d");
+ctx.textAlign = "left";
+ctx.textBaseline = "top";
+  
+let STATE;
+  
+function draw_widget() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "black";
+    ctx.strokeStyle = "gray";
+    ctx.lineWidth = 2;
+    ctx.font = "16px serif";
+
+    let margin = 75;
+    let y1 = 70;
+    let b = y1 + 1.2 * STATE.max_asc * ZOOM;
+    let y2 = y1 + ZOOM * (STATE.final_y - STATE.initial_y);
+
+    if (STATE.initial_y) {
+        if (!STATE.final_y) ctx.fillText("cursor_y", 10, y1 - 15);
+        ctx.beginPath();
+        ctx.moveTo(margin, y1);
+        ctx.lineTo(canvas.width, y1);
+        ctx.stroke();
+    }
+    if (STATE.final_y) {
+        ctx.fillText("cursor_y", 10, y2 - 5);
+        ctx.beginPath();
+        ctx.moveTo(margin, y2);
+        ctx.lineTo(canvas.width, y2);
+        ctx.stroke();
+    }
+    if (STATE.max_asc) {
+        ctx.fillText("baseline", 10, b - 15);
+
+        ctx.fillStyle = "orange";
+        ctx.fillRect(margin - 5, y1, 5, b - y1);
+        ctx.strokeStyle = "cyan";
+        ctx.beginPath();
+        ctx.moveTo(margin, b);
+        ctx.lineTo(canvas.width, b);
+        ctx.stroke();
+        ctx.fillStyle = "black";
+    }
+    if (STATE.max_desc) {
+        ctx.fillStyle = "blue";
+        ctx.fillRect(margin - 5, b, 5, 1.2 * STATE.max_desc * ZOOM);
+        ctx.fillStyle = "black";
+    }
+
+    if (STATE.line) {
+        ctx.fillText("line", 10, 10);
+        for (let [x, word, font] of STATE.line) {
+            ctx.font = font.string;
+            ctx.fillText(word, margin + 5 + (x - HSTEP) * ZOOM, 10)
+        }
+    }
+
+    if (STATE.display_list) {
+        for (let [x, y, word, font] of STATE.display_list) {
+            let dy = (y - STATE.initial_y) * ZOOM + y1;
+            ctx.font = font.string;
+            ctx.fillText(word, margin + 5 + (x - HSTEP) * ZOOM, dy)
+        }
+    }
+
+    if (STATE.metrics) {
+        STATE.line.forEach(function ([x, word, font], i){
+            let metric = STATE.metrics[i];
+            ctx.fillStyle = "orange";
+            ctx.fillRect(margin + (x - HSTEP) * ZOOM, 10, 5, metric.ascent * ZOOM);
+            ctx.fillStyle = "blue";
+            ctx.fillRect(margin + (x - HSTEP) * ZOOM, 10 + metric.ascent * ZOOM, 5, metric.descent * ZOOM);
+        });
+    }
+}
+
+function record(... names) {
+    return function(... values) {
+        names.forEach((n, i) => (STATE[n] = values[i]));
+        draw_widget();
+    }
+}
+
+widget.pause("initial_y", record("initial_y", "line"));
+widget.pause("metrics", record("metrics"));
+widget.pause("max_ascent", record("max_asc"));
+widget.pause("aligned", record("display_list"));
+widget.pause("max_descent", record("max_desc"));
+widget.pause("final_y", record("final_y"));
+
+widget.run(async function() {
+    STATE = {};
+    let b = await (new Browser()).init();
+    await b.load("http://input/")
+});
+</script>
