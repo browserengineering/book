@@ -28,14 +28,48 @@ while True:
     runRenderingPipeline()
 ```
 
-Let's start by 
+Let's make the same changes to your browser, beginning with renaming
+the `render` method to `draw`, since it is only doing the part about drawing
+the display list to the screen:
 
+``` {.python}
+def draw():
+    # ...
+````
+
+Likewise, let's rename `layout` to `runRenderingPipeline`:
+
+
+``` {.python}
+def runRenderingPipeline():
+    style(self.nodes, None, self.rules)
+    self.document = DocumentLayout(self.nodes)
+    self.document.layout()
+    self.display_list = []
+    self.document.draw(self.display_list)
+    self.draw()
+    self.max_y = self.document.h - HEIGHT
+```
 
 Now that same chapter *also* says that there is a [frame
 budget](graphics.md#framebudget), which is the amount of time allocated to
 re-draw the screen after an input update. The frame budget is typically about
 16ms, in order to draw at 60Hz (`60 * 16.66ms ~= 1s`). This means that each
-iteration through the `while` loop should ideally complete in at most 16ms. To
+iteration through the `while` loop should ideally complete in at most 16ms.
+
+It also means that the browser should not run the while loop faster than that
+speed, even if the CPU is up to it, because there is no point---the screen can't
+keep up anyway. For this reason, `16ms` is not just a frame budget but also a
+desired rendering *cadence*.
+
+Finally, if there is nothing new to display, there
+is no point in keeping the while loop running.
+
+Let's now implement these requirementswithin your browser. We'll do it
+with a new trick: the dirty bit. Whenever a change occurs that requires a re-
+render or re-draw.
+
+To
 ensure this, there are two things browser developers can do:
 
 1. Optimize `runRenderingPipeline()` and `handleEvent()` to run as fast as

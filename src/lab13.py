@@ -16,12 +16,10 @@ def request(url, payload=None):
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
 
-    host = ""
-    path = ""
     if (url.find("/") >= 0):
         host, path = url.split("/", 1)
     else:
-        host = url
+        host, path = url, ""
 
     path = "/" + path
     port = 80 if scheme == "http" else 443
@@ -696,7 +694,8 @@ class Browser:
         self.window.bind("<Key>", self.keypress)
         self.window.bind("<Return>", self.pressenter)
         self.display_list = []
-        self.needs_update = False
+        self.needs_display = False
+        self.needs_style_and_layout = False
         self.needs_raf_callbacks = False
 
     def handle_click(self, e):
@@ -707,7 +706,7 @@ class Browser:
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.draw()
+                self.setNeedsDisplay()
         else:
             x, y = e.x, e.y + self.scroll - 60
             obj = find_layout(x, y, self.document)
@@ -723,7 +722,7 @@ class Browser:
                 elif elt.tag == "input":
                     elt.attributes["value"] = ""
                     self.focus = obj
-                    self.setNeedsUpdate()
+                    self.setNeedsStyleAndLayout()
                     return
                 elif elt.tag == "button":
                     self.submit_form(elt)
@@ -737,11 +736,11 @@ class Browser:
             return
         elif self.focus == "address bar":
             self.address_bar += e.char
-            self.draw()
+            self.setNeedsDisplay()
         else:
             self.focus.node.attributes["value"] += e.char
             self.dispatch_event("change", self.focus.node)
-            self.setNeedsUpdate()
+            self.setNeedsStyleAndLayout()
 
     def submit_form(self, elt):
         while elt and elt.tag != "form":
@@ -794,11 +793,15 @@ class Browser:
             except dukpy.JSRuntimeError as e:
                 print("Script", script, "crashed", e)
 
-        self.setNeedsUpdate()
+        self.setNeedsStyleAndLayout()
 
-    def setNeedsUpdate(self):
-        if not self.needs_update:
-            self.needs_update = True
+    def setNeedsStyleAndLayout(self):
+        self.needs_style_and_layout = True
+        self.setNeedsDisplay()
+
+    def setNeedsDisplay(self):
+        if not self.needs_display:
+            self.needs_display = True
             self.canvas.after(REFRESH_RATE, self.beginMainFrame)
 
     def setup_js(self):
@@ -820,7 +823,7 @@ class Browser:
 
     def js_requestAnimationFrame(self):
         self.needs_raf_callbacks = True
-        self.setNeedsUpdate()
+        self.setNeedsDisplay()
 
     def js_setTimeout(self, fn, timeout_in_ms):
         elt = self.handle_to_node[handle]
@@ -833,7 +836,7 @@ class Browser:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
-        self.setNeedsUpdate();
+        self.setNeedsStyleAndLayout()
 
     def js_now(self):
         return int(time.time() * 1000)
@@ -853,7 +856,7 @@ class Browser:
         return handle
 
     def beginMainFrame(self):
-        self.needs_update = False
+        self.needs_display = False
         if (self.needs_raf_callbacks):
             self.needs_raf_callbacks = False
             self.js.evaljs("__runRAFHandlers()")
@@ -866,15 +869,17 @@ class Browser:
         self.canvas.update_idletasks()
 
     def runRenderingPipeline(self):
-        style(self.nodes, None, self.rules)
-        self.document = DocumentLayout(self.nodes)
-        self.document.layout()
-        self.display_list = []
-        self.document.draw(self.display_list)
-        self.draw()
+        if self.needs_style_and_layout:
+            style(self.nodes, None, self.rules)
+            self.document = DocumentLayout(self.nodes)
+            self.document.layout()
+            self.display_list = []
+            self.document.draw(self.display_list)
+            self.needs_style_and_layout = False
+        self.drawToScreen()
         self.max_y = self.document.h - HEIGHT
 
-    def draw(self):
+    def drawToScreen(self):
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
@@ -899,7 +904,7 @@ class Browser:
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
-        self.draw()
+        self.setNeedsDisplay()
 
 if __name__ == "__main__":
     import sys
