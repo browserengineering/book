@@ -39,9 +39,8 @@ class AST39(ast.NodeTransformer):
             return ast.dump(tree)
 
 class CantCompile(Exception):
-    def __init__(self, tree, hint=None):
+    def __init__(self, hint=None):
         super().__init__(f"Could not compile `{AST39.unparse(tree)}`")
-        self.tree = tree
         self.hint = hint
         self.msg = None
 
@@ -93,7 +92,7 @@ def find_hint(t, key):
         break
     else:
         hint = {"line": t.lineno, "code": AST39.unparse(t, explain=True), key: "???"}
-        raise CantCompile(t, hint=hint)
+        raise CantCompile(hint=hint)
     h["used"] = True
     return h[key]
 
@@ -190,105 +189,95 @@ def load_outline(ol):
     assert not our_their, f"Methods defined by both our code and libraries: {our_their}"
     our_their = set(RENAME_FNS) & set(OUR_FNS)
     assert not our_their, f"Functions defined by our code shadow builtins: {our_their}"
-            
-@catch_issues
-def compile_func(call, args, ctx):
-    if isinstance(call.func, ast.Attribute) and \
-       call.func.attr == "format" and \
-       isinstance(call.func.value, ast.Constant):
-        assert isinstance(call.func.value.value, str)
-        parts = call.func.value.value.split("{}")
-        out = ""
+
+def compile_method(base, name, args, ctx):
+    base_js = compile_expr(base, ctx)
+    args_js = [compile_expr(arg, ctx) for arg in args]
+    if name in LIBRARY_METHODS:
+        return base_js + "." + name + "(" + ", ".join(args_js) + ")"
+    elif name in OUR_METHODS:
+        return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
+    elif name in RENAME_METHODS:
+        return base_js + "." + RENAME_METHODS[name] + "(" + ", ".join(args_js) + ")"
+    elif isinstance(base, ast.Name) and base.id == "self":
+        return base_js + "." + name + "(" + ", ".join(args_js) + ")"
+    elif isinstance(base, ast.Name) and base.id in IMPORTS:
+        return base_js + "." + name + "(" + ", ".join(args_js) + ")"
+    elif name == "format":
+        assert isinstance(base, ast.Constant)
+        assert isinstance(base.value, str)
+        parts = base.value.split("{}")
         assert len(parts) == len(args) + 1
-        for part, arg in zip(parts, [None] + args):
+        out = ""
+        for part, arg in zip(parts, [None] + args_js):
             assert "{" not in part
             if arg: out += " + " + arg
             if part: out += " + " + compile_expr(ast.Constant(part), ctx)
         return "(" + out[3:] + ")"
-    elif isinstance(call.func, ast.Attribute) and call.func.attr == "encode":
-        assert args == [compile_expr(ast.Constant('utf8'), ctx)]
-        base = compile_expr(call.func.value, ctx)
-        return base
-    elif isinstance(call.func, ast.Attribute) and call.func.attr == "join":
+    elif name == "encode":
         assert len(args) == 1
-        base = compile_expr(call.func.value, ctx)
-        return args[0] + ".join(" + base + ")"
-    elif isinstance(call.func, ast.Attribute) and call.func.attr == "isspace":
+        assert isinstance(args[0], ast.Constant)
+        assert args[0].value == "utf8"
+        return base_js
+    elif name == "join":
+        assert len(args) == 1
+        return args_js[0] + ".join(" + base_js + ")"
+    elif name == "isspace":
         assert len(args) == 0
-        base = compile_expr(call.func.value, ctx)
-        return base + ".match(/^\s*$/)"
-    elif isinstance(call.func, ast.Attribute) and \
-         call.func.attr in LIBRARY_METHODS:
-        base = compile_expr(call.func.value, ctx)
-        return base + "." + call.func.attr + "(" + ", ".join(args) + ")"
-    elif isinstance(call.func, ast.Attribute) and \
-         call.func.attr in OUR_METHODS:
-        base = compile_expr(call.func.value, ctx)
-        return "await " + base + "." + call.func.attr + "(" + ", ".join(args) + ")"
-    elif isinstance(call.func, ast.Attribute) and \
-         call.func.attr == "split":
+        return base_js + ".match(/^\s*$/)"
+    elif name == "items":
+        assert len(args) == 0
+        return "Object.entries(" + base_js + ")"
+    elif name == "split":
         assert 0 <= len(args) <= 2
-        base = compile_expr(call.func.value, ctx)
         if len(args) == 0:
-            return base + ".trim().split(/\s+/)"
+            return base_js + ".trim().split(/\s+/)"
         elif len(args) == 1:
-            return base + ".split(" + args[0] + ")"
-        elif len(args) == 2:
+            return base_js + ".split(" + args_js[0] + ")"
+        else:
             assert args[1].isdigit()
-            return "pysplit(" + base + ", " + args[0] + ", " + str(int(args[1])) + ")"
-        else:
-            raise CantCompile(call)
-    elif isinstance(call.func, ast.Attribute):
-        base = compile_expr(call.func.value, ctx)
-        if base == "this" or base in IMPORTS:
-            return base + "." + call.func.attr + "(" + ", ".join(args) + ")"
-        elif call.func.attr == "items":
-            assert len(args) == 0
-            return "Object.entries(" + base + ")"
-        elif call.func.attr in RENAME_METHODS:
-            fn = RENAME_METHODS[call.func.attr]
-            return base + "." + fn + "(" + ", ".join(args) + ")"
-        else:
-            raise CantCompile(call)
-    elif isinstance(call.func, ast.Name):
-        if call.func.id in RENAME_FNS:
-            return RENAME_FNS[call.func.id] + "(" + ", ".join(args) + ")"
-        elif call.func.id in OUR_FNS:
-            return "await " + call.func.id + "(" + ", ".join(args) + ")"
-        elif call.func.id in OUR_CLASSES:
-            return "await (new " + call.func.id + "()).init(" + ", ".join(args) + ")"
-        elif call.func.id == "len":
-            assert len(args) == 1
-            return args[0] + ".length"
-        elif call.func.id == "isinstance":
-            assert len(args) == 2
-            return args[0] + " instanceof " + args[1]
-        elif call.func.id == "sum":
-            assert len(args) == 1
-            return args[0] + ".reduce((a, v) => a + v, 0)"
-        elif call.func.id == "max":
-            if len(args) == 1:
-                return args[0] + ".reduce((a, v) => Math.max(a, v))"
-            else:
-                assert len(args) == 2
-                return "Math.max(" + args[0] + ", " + args[1] + ")"
-        elif call.func.id == "breakpoint":
-            assert isinstance(call.args[0], ast.Constant)
-            assert isinstance(call.args[0].value, str)
-            return "await breakpoint.event(" + ", ".join(args) + ")"
-        elif call.func.id == "min":
-            if len(args) == 1:
-                return args[0] + ".reduce((a, v) => Math.min(a, v))"
-            else:
-                assert len(args) == 2
-                return "Math.min(" + args[0] + ", " + args[1] + ")"
-        elif call.func.id == "repr":
-            assert len(args) == 1
-            return args[0] + ".toString()"
-        else:
-            raise CantCompile(call)
+            return "pysplit(" + base_js + ", " + args_js[0] + ", " + args_js[1] + ")"
     else:
-        raise CantCompile(call)
+        raise CantCompile()
+
+def compile_function(name, args, ctx):
+    args_js = [compile_expr(arg, ctx) for arg in args]
+    if name in RENAME_FNS:
+        return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
+    elif name in OUR_FNS:
+        return "await " + name + "(" + ", ".join(args_js) + ")"
+    elif name in OUR_CLASSES:
+        return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
+    elif name == "len":
+        assert len(args_js) == 1
+        return args_js[0] + ".length"
+    elif name == "isinstance":
+        assert len(args_js) == 2
+        return args_js[0] + " instanceof " + args_js[1]
+    elif name == "sum":
+        assert len(args_js) == 1
+        return args_js[0] + ".reduce((a, v) => a + v, 0)"
+    elif name == "max":
+        if len(args_js) == 1:
+            return args_js[0] + ".reduce((a, v) => Math.max(a, v))"
+        else:
+            assert len(args_js) == 2
+            return "Math.max(" + args_js[0] + ", " + args_js[1] + ")"
+    elif name == "breakpoint":
+        assert isinstance(args_js[0], ast.Constant)
+        assert isinstance(args_js[0].value, str)
+        return "await breakpoint.event(" + ", ".join(args_js) + ")"
+    elif name == "min":
+        if len(args_js) == 1:
+            return args_js[0] + ".reduce((a, v) => Math.min(a, v))"
+        else:
+            assert len(args_js) == 2
+            return "Math.min(" + args_js[0] + ", " + args_js[1] + ")"
+    elif name == "repr":
+        assert len(args_js) == 1
+        return args_js[0] + ".toString()"
+    else:
+        raise CantCompile()
 
 def op2str(op):
     if isinstance(op, ast.Add): return "+"
@@ -306,7 +295,7 @@ def op2str(op):
     elif isinstance(op, ast.And): return " && "
     elif isinstance(op, ast.Or): return " || "
     else:
-        raise CantCompile(op)
+        raise CantCompile()
 
 def deparen(s):
     if s[0] == "(" and s[-1] == ")":
@@ -324,7 +313,7 @@ def lhs_targets(tree):
     elif isinstance(tree, ast.Subscript):
         return set()
     else:
-        raise CantCompile(tree)
+        raise CantCompile()
     
 def compile_lhs(tree, ctx):
     targets = lhs_targets(tree)
@@ -371,9 +360,13 @@ def compile_expr(tree, ctx):
             else:
                 return lhs + "[" + rhs + "]"
     elif isinstance(tree, ast.Call):
-        args = [compile_expr(a, ctx) for a in tree.args]
-        args += [compile_expr(kv.value, ctx) for kv in tree.keywords]
-        return "(" + compile_func(tree, args, ctx) + ")"
+        args = tree.args + [kv.value for kv in tree.keywords]
+        if isinstance(call.func, ast.Attribute):
+            return "(" + compile_method(call.func.value, call.func.attr, args, ctx) + ")"
+        elif isinstance(call.func, ast.Name):
+            return "(" + compile_function(call.func.id, args, ctx) + ")"
+        else:
+            raise CantCompile()
     elif isinstance(tree, ast.UnaryOp):
         rhs = compile_expr(tree.operand, ctx)
         if isinstance(tree.op, ast.Not): rhs = "truthy(" + rhs + ")"
@@ -404,7 +397,6 @@ def compile_expr(tree, ctx):
             t = find_hint(tree, "type")
             negate = isinstance(tree.ops[0], ast.NotIn)
             assert t in ["str", "dict", "list"]
-
             cmp = "===" if negate else "!=="
             if t in ["str", "list"]:
                 return "(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)"
@@ -453,9 +445,9 @@ def compile_expr(tree, ctx):
         elif tree.value is None:
             return "null"
         else:
-            raise CantCompile(tree)
+            raise CantCompile()
     else:
-        raise CantCompile(tree)
+        raise CantCompile()
 
 def compile_str(s):
     out = repr(s)
@@ -628,7 +620,7 @@ def compile(tree, ctx, indent=0):
     elif isinstance(tree, ast.Break):
         return " " * indent + "break;"
     else:
-        raise CantCompile(tree)
+        raise CantCompile()
     
 def compile_module(tree, name):
     assert isinstance(tree, ast.Module)
