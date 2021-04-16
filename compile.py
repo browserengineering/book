@@ -294,12 +294,6 @@ def op2str(op):
     else:
         raise UnsupportedConstruct()
 
-def deparen(s):
-    if s[0] == "(" and s[-1] == ")":
-        return s[1:-1]
-    else:
-        return s
-    
 def lhs_targets(tree):
     if isinstance(tree, ast.Name):
         return set([tree.id])
@@ -493,7 +487,7 @@ def compile(tree, ctx, indent=0):
             # JS constructors cannot be async, so we move that to a builder method
             assert ctx.type == "class"
             def_line = " " * indent + "async init(" + ", ".join(args) + ") {\n"
-            ret_line = "\n" + " " * indent + "return this;"
+            ret_line = "\n" + " " * (indent + INDENT) + "return this;"
             last_line = "\n" + " " * indent + "}"
             return def_line + body + ret_line + last_line
         elif tree.name == "__repr__":
@@ -527,14 +521,14 @@ def compile(tree, ctx, indent=0):
         else: kw = ""
 
         lhs = compile_lhs(tree.targets[0], ctx)
-        rhs = deparen(compile_expr(tree.value, ctx))
+        rhs = compile_expr(tree.value, ctx)
         return " " * indent + kw + lhs + " = " + rhs + ";"
     elif isinstance(tree, ast.AugAssign):
         targets = lhs_targets(tree.target)
         for target in targets:
             assert target in ctx
         lhs = compile_lhs(tree.target, ctx)
-        rhs = deparen(compile_expr(tree.value, ctx))
+        rhs = compile_expr(tree.value, ctx)
         return " " * indent + lhs + " " + op2str(tree.op) + "= " + rhs + ";"
     elif isinstance(tree, ast.Assert):
         test = compile_expr(tree.test, ctx)
@@ -545,7 +539,7 @@ def compile(tree, ctx, indent=0):
         return " " * indent + "return" + (" " + ret if ret else "") + ";"
     elif isinstance(tree, ast.While):
         assert not tree.orelse
-        test = deparen(compile_expr(tree.test, ctx))
+        test = compile_expr(tree.test, ctx)
         out = " " * indent + "while (" + test + ") {\n"
         out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx) for line in tree.body])
         out += "\n" + " " * indent + "}"
@@ -578,7 +572,7 @@ def compile(tree, ctx, indent=0):
         if not tree.orelse and tree.test.lineno == tree.body[0].lineno:
             assert len(tree.body) == 1
             ctx2 = Context(ctx.type, ctx)
-            test = deparen(compile_expr(tree.test, ctx))
+            test = compile_expr(tree.test, ctx)
             body = compile(tree.body[0], indent=indent, ctx=ctx2)
             return " " * indent + "if (truthy(" + test + ")) " + body.strip()
         else:
@@ -601,10 +595,10 @@ def compile(tree, ctx, indent=0):
                 ctx2 = Context(ctx.type, ctx)
                 body_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in body])
                 if not i and test:
-                    test_js = deparen(compile_expr(test, ctx))
+                    test_js = compile_expr(test, ctx)
                     out += "if (truthy(" + test_js + ")) {\n"
                 elif i and test:
-                    test_js = deparen(compile_expr(test, ctx))
+                    test_js = compile_expr(test, ctx)
                     out += " else if (truthy(" + test_js + ")) {\n"
                 elif not test:
                     out += " else {\n"

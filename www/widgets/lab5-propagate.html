@@ -58,7 +58,7 @@ function tree_to_str(node, indent, current, status) {
     for (let field of ["x", "y", "width", "height"]) {
         if (!node[field]) continue;
         if (fields) s += ",";
-        s += " " + field;
+        s += " " + field + "=" + node[field];
         fields++;
     }
     s += " }";
