@@ -64,10 +64,8 @@ desired rendering *cadence*.
 
 Currently, your browser runs the rendering pipeline (style, layout, paint, and
 drawToScreen) immediately after each possible change of state that might cause a
-change. These changes of state are: `handle_click`, `keypress`, `load`, and
-`js_innerHTML`. In addition, if the click or keypress hapens on the URL bar
-instead of the browser window, only 
-
+change. These changes of state are: `handle_click`, `keypress`, `load`,
+`js_innerHTML` and `scrolldown`.
 
 
 1. Optimize `runRenderingPipeline()` and `handleEvent()` to run as fast as
