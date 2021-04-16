@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.9
       - uses: r-lib/actions/setup-pandoc@v1
         with:
           pandoc-version: 2.11.4
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.9
       - uses: r-lib/actions/setup-pandoc@v1
       - run: python3 compare.py book/http.md src/lab1.py
       - run: python3 compare.py book/graphics.md src/lab2.py

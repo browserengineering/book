@@ -281,12 +281,12 @@ class InlineLayout:
         if isinstance(node, Text):
             self.text(node.text)
         else:
-            self.open(node.tag)
+            self.open_tag(node.tag)
             for child in node.children:
                 self.recurse(child)
-            self.close(node.tag)
+            self.close_tag(node.tag)
 
-    def open(self, tag):
+    def open_tag(self, tag):
         if tag == "i":
             self.style = "italic"
         elif tag == "b":
@@ -298,7 +298,7 @@ class InlineLayout:
         elif tag == "br":
             self.flush()
 
-    def close(self, tag):
+    def close_tag(self, tag):
         if tag == "i":
             self.style = "roman"
         elif tag == "b":

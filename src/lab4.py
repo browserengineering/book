@@ -201,12 +201,12 @@ class Layout:
         if isinstance(tree, Text):
             self.text(tree.text)
         else:
-            self.open(tree.tag)
+            self.open_tag(tree.tag)
             for child in tree.children:
                 self.recurse(child)
-            self.close(tree.tag)
+            self.close_tag(tree.tag)
 
-    def open(self, tag):
+    def open_tag(self, tag):
         if tag == "i":
             self.style = "italic"
         elif tag == "b":
@@ -218,7 +218,7 @@ class Layout:
         elif tag == "br":
             self.flush()
 
-    def close(self, tag):
+    def close_tag(self, tag):
         if tag == "i":
             self.style = "roman"
         elif tag == "b":
