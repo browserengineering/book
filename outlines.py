@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import argparse
 import ast
 from dataclasses import dataclass
+import sys
 from typing import List
 
 groups = [ "Node", "Layout", "Draw" ]
@@ -122,8 +124,9 @@ def outline(tree):
     return objs
 
 if __name__ == "__main__":
-    import sys
-    import argparse
+    MIN_PYTHON = (3, 9)
+    if sys.version_info < MIN_PYTHON:
+        sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
 
     parser = argparse.ArgumentParser(description="Generates outlines for each chapter's code")
     parser.add_argument("file", type=argparse.FileType())
