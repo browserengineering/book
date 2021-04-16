@@ -235,7 +235,6 @@ def compile_method(base, name, args, ctx):
         elif len(args) == 1:
             return base_js + ".split(" + args_js[0] + ")"
         else:
-            assert args[1].isdigit()
             return "pysplit(" + base_js + ", " + args_js[0] + ", " + args_js[1] + ")"
     else:
         raise CantCompile()
