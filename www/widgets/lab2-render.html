@@ -30,8 +30,7 @@ widget.run(async function() {
     HSTEP = 16;
     VSTEP = 20;
 
-    let b = new Browser();
-    b.init();
+    let b = await (new Browser()).init();
     await b.load("http://input/")
 });
 </script>
