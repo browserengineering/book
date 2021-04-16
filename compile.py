@@ -38,11 +38,14 @@ class AST39(ast.NodeTransformer):
         else:
             return ast.dump(tree)
 
-class CantCompile(Exception):
-    def __init__(self, hint=None):
-        super().__init__(f"Could not compile unsupported Python construct")
+class UnsupportedConstruct(AssertionError): pass
+
+class MissingHint(Exception):
+    def __init__(self, tree, key, hint):
+        self.message = f"Could not find {key} key for `{AST39.unparse(tree)}`"
+        self.key = key
+        self.tree = tree
         self.hint = hint
-        self.msg = None
 
 ISSUES = []
 
@@ -50,21 +53,16 @@ def catch_issues(f):
     def wrapped(tree, *args, **kwargs):
         try:
             return f(tree, *args, **kwargs)
-        except AssertionError as e2:
+        except MissingHint as e:
+            ISSUES.append(e)
+            return "/* " + AST39.unparse(tree) + " */"
+        except AssertionError as e:
+            raise e
             try:
                 return find_hint(tree, "js")
-            except CantCompile as e:
-                e.msg = str(e2)
-                ISSUES.append(e)
+            except MissingHint as e2:
+                ISSUES.append(e2)
                 return "/* " + AST39.unparse(tree) + " */"
-        except CantCompile as e:
-            if not e.hint:
-                try:
-                    return find_hint(tree, "js")
-                except CantCompile as e2:
-                    e = e2
-            ISSUES.append(e)
-            return "/* " + AST39.unparse(e.tree) + " */"
     return wrapped
 
 HINTS = []
@@ -92,7 +90,7 @@ def find_hint(t, key):
         break
     else:
         hint = {"line": t.lineno, "code": AST39.unparse(t, explain=True), key: "???"}
-        raise CantCompile(hint=hint)
+        raise MissingHint(t, key, hint)
     h["used"] = True
     return h[key]
 
@@ -201,7 +199,7 @@ def compile_method(base, name, args, ctx):
         return base_js + "." + RENAME_METHODS[name] + "(" + ", ".join(args_js) + ")"
     elif isinstance(base, ast.Name) and base.id == "self":
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
-    elif isinstance(base, ast.Name) and base.id in IMPORTS:
+    elif base_js in IMPORTS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name == "format":
         assert isinstance(base, ast.Constant)
@@ -237,7 +235,7 @@ def compile_method(base, name, args, ctx):
         else:
             return "pysplit(" + base_js + ", " + args_js[0] + ", " + args_js[1] + ")"
     else:
-        raise CantCompile()
+        raise UnsupportedConstruct()
 
 def compile_function(name, args, ctx):
     args_js = [compile_expr(arg, ctx) for arg in args]
@@ -248,17 +246,17 @@ def compile_function(name, args, ctx):
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
     elif name == "len":
-        assert len(args_js) == 1
+        assert len(args) == 1
         return args_js[0] + ".length"
     elif name == "isinstance":
-        assert len(args_js) == 2
+        assert len(args) == 2
         return args_js[0] + " instanceof " + args_js[1]
     elif name == "sum":
-        assert len(args_js) == 1
+        assert len(args) == 1
         return args_js[0] + ".reduce((a, v) => a + v, 0)"
     elif name == "max":
-        assert 1 <= len(args_js) == 2
-        if len(args_js) == 1:
+        assert 1 <= len(args) <= 2
+        if len(args) == 1:
             return args_js[0] + ".reduce((a, v) => Math.max(a, v))"
         else:
             return "Math.max(" + args_js[0] + ", " + args_js[1] + ")"
@@ -267,16 +265,16 @@ def compile_function(name, args, ctx):
         assert isinstance(args[0].value, str)
         return "await breakpoint.event(" + ", ".join(args_js) + ")"
     elif name == "min":
-        assert 1 <= len(args_js) == 2
-        if len(args_js) == 1:
+        assert 1 <= len(args) <= 2
+        if len(args) == 1:
             return args_js[0] + ".reduce((a, v) => Math.min(a, v))"
         else:
             return "Math.min(" + args_js[0] + ", " + args_js[1] + ")"
     elif name == "repr":
-        assert len(args_js) == 1
+        assert len(args) == 1
         return args_js[0] + ".toString()"
     else:
-        raise CantCompile()
+        raise UnsupportedConstruct()
 
 def op2str(op):
     if isinstance(op, ast.Add): return "+"
@@ -294,7 +292,7 @@ def op2str(op):
     elif isinstance(op, ast.And): return " && "
     elif isinstance(op, ast.Or): return " || "
     else:
-        raise CantCompile()
+        raise UnsupportedConstruct()
 
 def deparen(s):
     if s[0] == "(" and s[-1] == ")":
@@ -312,7 +310,7 @@ def lhs_targets(tree):
     elif isinstance(tree, ast.Subscript):
         return set()
     else:
-        raise CantCompile()
+        raise UnsupportedConstruct()
     
 def compile_lhs(tree, ctx):
     targets = lhs_targets(tree)
@@ -365,7 +363,7 @@ def compile_expr(tree, ctx):
         elif isinstance(tree.func, ast.Name):
             return "(" + compile_function(tree.func.id, args, ctx) + ")"
         else:
-            raise CantCompile()
+            raise UnsupportedConstruct()
     elif isinstance(tree, ast.UnaryOp):
         rhs = compile_expr(tree.operand, ctx)
         if isinstance(tree.op, ast.Not): rhs = "truthy(" + rhs + ")"
@@ -444,9 +442,9 @@ def compile_expr(tree, ctx):
         elif tree.value is None:
             return "null"
         else:
-            raise CantCompile()
+            raise UnsupportedConstruct()
     else:
-        raise CantCompile()
+        raise UnsupportedConstruct()
 
 def compile_str(s):
     out = repr(s)
@@ -619,7 +617,7 @@ def compile(tree, ctx, indent=0):
     elif isinstance(tree, ast.Break):
         return " " * indent + "break;"
     else:
-        raise CantCompile()
+        raise UnsupportedConstruct()
     
 def compile_module(tree, name):
     assert isinstance(tree, ast.Module)
@@ -654,9 +652,8 @@ if __name__ == "__main__":
 
     issues = 0
     for i in ISSUES:
-        print(str(i), file=sys.stderr)
+        print(i.message)
         if i.hint:
-            if i.msg: print("  Issue: " + i.msg)
             print("  Hint:", json.dumps(i.hint), file=sys.stderr)
         issues += 1
 
