@@ -37,7 +37,7 @@ www/draft/%.html: book/%.md book/template.html book/signup.html book/filter.lua
 	@ mkdir -p $(dir $@)
 	pandoc --toc --template book/template.html \
 	       --metadata=mode:draft --variable=base=../ \
-               -c ../book.css $(PANDOC_COMMON_ARGS) \
+               -c book.css $(PANDOC_COMMON_ARGS) \
                $< -o $@
 
 www/widgets/%.js: src/%.py
