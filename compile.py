@@ -257,20 +257,20 @@ def compile_function(name, args, ctx):
         assert len(args_js) == 1
         return args_js[0] + ".reduce((a, v) => a + v, 0)"
     elif name == "max":
+        assert 1 <= len(args_js) == 2
         if len(args_js) == 1:
             return args_js[0] + ".reduce((a, v) => Math.max(a, v))"
         else:
-            assert len(args_js) == 2
             return "Math.max(" + args_js[0] + ", " + args_js[1] + ")"
     elif name == "breakpoint":
         assert isinstance(args[0], ast.Constant)
         assert isinstance(args[0].value, str)
         return "await breakpoint.event(" + ", ".join(args_js) + ")"
     elif name == "min":
+        assert 1 <= len(args_js) == 2
         if len(args_js) == 1:
             return args_js[0] + ".reduce((a, v) => Math.min(a, v))"
         else:
-            assert len(args_js) == 2
             return "Math.min(" + args_js[0] + ", " + args_js[1] + ")"
     elif name == "repr":
         assert len(args_js) == 1
