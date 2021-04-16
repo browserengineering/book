@@ -536,36 +536,36 @@ Using the node tree
 
 Right now, the `Layout` class works token-by-token; we now want it to
 go node-by-node instead. So let's separate the old `token` method into
-three parts: all the cases for open tags will go into a new `open`
-method; all the cases for close tags will go into a new `close`
+three parts: all the cases for open tags will go into a new `open_tag`
+method; all the cases for close tags will go into a new `close_tag`
 method; and instead of having a case for text tokens our browser can
 just call the existing `text` method directly:
 
 ``` {.python}
 class Layout:
-    def open(self, tag):
+    def open_tag(self, tag):
         if tag == "i":
             self.style = "italic"
         # ...
 
-    def close(self, tag):
+    def close_tag(self, tag):
         if tag == "i":
             self.style = "roman"
         # ...
 ```
 
-Now we need the `Layout` object to walk the node tree, calling `open`,
-`close`, and `text` in the right order:
+Now we need the `Layout` object to walk the node tree, calling `open_tag`,
+`close_tag`, and `text` in the right order:
 
 ``` {.python indent=4}
 def recurse(self, tree):
     if isinstance(tree, Text):
         self.text(tree.text)
     else:
-        self.open(tree.tag)
+        self.open_tag(tree.tag)
         for child in tree.children:
             self.recurse(child)
-        self.close(tree.tag)
+        self.close_tag(tree.tag)
 ```
 
 The `Layout` constructor can now call `recurse` instead of looping
