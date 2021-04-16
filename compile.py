@@ -141,7 +141,7 @@ LIBRARY_METHODS = [
     "makefile",
     "readline",
     "read",
-    #"close", # Shadows our code
+    "close",
 
     # tkinter
     "pack",

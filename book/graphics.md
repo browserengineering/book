@@ -286,9 +286,9 @@ makes it possible to read more than a single line:
 [^not-800]: Not 800, because we started at pixel 13 and I want to leave an
     even gap on both sides.
 
-Now we can read a lot of text, still not all of it: if there's enough
-text, all of the lines of text don't fit on the screen. We want users
-to *scroll* the page to look at different parts of it.
+Now we can read a lot of text, but still not all of it: if there's
+enough text, all of the lines of text don't fit on the screen. We want
+users to *scroll* the page to look at different parts of it.
 
 ::: {.further}
 Chinese characters are usually, but not always, independent: <span
