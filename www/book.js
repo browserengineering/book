@@ -23,6 +23,21 @@ function addEventListeners() {
 			event.preventDefault();
 		});
 	}
+
 }
 
 window.addEventListener("load", addEventListeners);
+
+function resize_iframes(event) {
+    let elts = document.querySelectorAll("[data-big-height][data-small-height]");
+    for (let elt of elts) {
+        if (document.documentElement.clientWidth <= 800) {
+            elt.height = elt.dataset.smallHeight;
+        } else {
+            elt.height = elt.dataset.bigHeight;
+        }
+    }
+}
+
+window.addEventListener("load", resize_iframes);
+window.addEventListener("resize", resize_iframes);

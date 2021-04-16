@@ -117,7 +117,9 @@ So we're building a layout tree with one layout object per HTML node,
 plus an extra layout object at the root, by recursively calling
 `layout`. It looks like this:
 
-<iframe class="widget" src="widgets/layout-block-container-example.html?embed=true" data-big-height="490px" data-small-height="860px"></iframe>
+<iframe class="widget"
+    src="widgets/layout-block-container-example.html?embed=true"
+    data-big-height=490 data-small-height=860></iframe>
 
 In this example there are four `BlockLayout` objects, in green, one
 per element. There's also a `DocumentLayout` at the root.

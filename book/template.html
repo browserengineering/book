@@ -5,6 +5,9 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes" />
 $for(author-meta)$  <meta name="author" content="$author-meta$" />$endfor$
+
+$if(base)$  <base href="$base$" />$endif$
+
 $if(prev)$  <link rel="prev" href="$prev$" />$endif$
 $if(next)$  <link rel="next" href="$next$" />$endif$
 $for(css)$  <link rel="stylesheet" href="$css$" />$endfor$
@@ -84,8 +87,7 @@ $endif$
   &copy; 2018&ndash;2020 <a href="https://pavpanchekha.com">Pavel Panchekha</a> &amp; <a href="https://github.com/chrishtr">Chris Harrelson</a>
 </footer>
 
-$for(script)$
-<script type="text/javascript" src="$script$"></script>
-$endfor$
+<script type="text/javascript" src="feedback.js"></script>
+<script type="text/javascript" src="book.js"></script>
 </body>
 </html>
