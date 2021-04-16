@@ -40,7 +40,7 @@ class AST39(ast.NodeTransformer):
 
 class CantCompile(Exception):
     def __init__(self, hint=None):
-        super().__init__(f"Could not compile `{AST39.unparse(tree)}`")
+        super().__init__(f"Could not compile")
         self.hint = hint
         self.msg = None
 
@@ -263,8 +263,8 @@ def compile_function(name, args, ctx):
             assert len(args_js) == 2
             return "Math.max(" + args_js[0] + ", " + args_js[1] + ")"
     elif name == "breakpoint":
-        assert isinstance(args_js[0], ast.Constant)
-        assert isinstance(args_js[0].value, str)
+        assert isinstance(args[0], ast.Constant)
+        assert isinstance(args[0].value, str)
         return "await breakpoint.event(" + ", ".join(args_js) + ")"
     elif name == "min":
         if len(args_js) == 1:
