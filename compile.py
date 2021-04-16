@@ -361,10 +361,10 @@ def compile_expr(tree, ctx):
                 return lhs + "[" + rhs + "]"
     elif isinstance(tree, ast.Call):
         args = tree.args + [kv.value for kv in tree.keywords]
-        if isinstance(call.func, ast.Attribute):
-            return "(" + compile_method(call.func.value, call.func.attr, args, ctx) + ")"
-        elif isinstance(call.func, ast.Name):
-            return "(" + compile_function(call.func.id, args, ctx) + ")"
+        if isinstance(tree.func, ast.Attribute):
+            return "(" + compile_method(tree.func.value, tree.func.attr, args, ctx) + ")"
+        elif isinstance(tree.func, ast.Name):
+            return "(" + compile_function(tree.func.id, args, ctx) + ")"
         else:
             raise CantCompile()
     elif isinstance(tree, ast.UnaryOp):
@@ -630,6 +630,10 @@ def compile_module(tree, name):
     return "\n\n".join(items)
 
 if __name__ == "__main__":
+    MIN_PYTHON = (3, 9)
+    if sys.version_info < MIN_PYTHON:
+        sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
+
     import sys, os
     import argparse
 
