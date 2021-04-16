@@ -328,6 +328,6 @@ function pysplit(x, sep, cnt) {
         i = next + sep.length;
         cnt--;
     }
-    out.append(x.substring(i));
+    out.push(x.substring(i));
     return out;
 }
