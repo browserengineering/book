@@ -72,7 +72,7 @@ widget.pause("layout_pre", (node) => draw_tree(node, "start"));
 widget.pause("layout_post", (node) => draw_tree(node, "done"));
 
 widget.run(async function() {
-    let b = new Browser();
+    let b = await (new Browser()).init();
     await b.load("http://input/")
 });
 </script>

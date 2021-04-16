@@ -4,9 +4,11 @@ ORDERED_PAGES=preface intro history http graphics text html layout styles chrome
 
 PANDOC_COMMON_ARGS=$(FLAGS) --from markdown --to html --lua-filter=book/filter.lua --fail-if-warnings --metadata-file=config.json
 
-book: $(patsubst book/%.md,www/%.html,$(wildcard book/*.md)) www/rss.xml
+WIDGET_LAB_CODE=lab2.js lab3.js lab5.js
+
+book: $(patsubst book/%.md,www/%.html,$(wildcard book/*.md)) www/rss.xml $(patsubst %,www/widgets/%,$(WIDGET_LAB_CODE))
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
-draft: $(patsubst book/%.md,www/draft/%.html,$(wildcard book/*.md)) www/draft/onepage.html
+draft: $(patsubst book/%.md,www/draft/%.html,$(wildcard book/*.md)) www/draft/onepage.html $(patsubst %,www/widgets/%,$(WIDGET_LAB_CODE))
 
 onepage/%.html: book/%.md book/template-onepage.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)
@@ -35,8 +37,11 @@ www/draft/%.html: book/%.md book/template.html book/signup.html book/filter.lua
 	@ mkdir -p $(dir $@)
 	pandoc --toc --template book/template.html \
 	       --metadata=mode:draft --variable=base=../ \
-               -c ../book.css $(PANDOC_COMMON_ARGS) \
+               -c book.css $(PANDOC_COMMON_ARGS) \
                $< -o $@
+
+www/widgets/%.js: src/%.py
+	python3 ./compile.py $< $@ --hints src/$*.hints
 
 publish:
 	rsync -rtu --exclude=*.pickle --exclude=*.hash www/ server:/home/www/browseng/
