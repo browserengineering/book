@@ -630,12 +630,12 @@ def compile_module(tree, name):
     return "\n\n".join(items)
 
 if __name__ == "__main__":
+    import sys, os
+    import argparse
+
     MIN_PYTHON = (3, 9)
     if sys.version_info < MIN_PYTHON:
         sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
-
-    import sys, os
-    import argparse
 
     parser = argparse.ArgumentParser(description="Compiles each chapter's Python code to JavaScript")
     parser.add_argument("--hints", default=None, type=argparse.FileType())
