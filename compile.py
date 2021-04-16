@@ -40,7 +40,7 @@ class AST39(ast.NodeTransformer):
 
 class CantCompile(Exception):
     def __init__(self, hint=None):
-        super().__init__(f"Could not compile")
+        super().__init__(f"Could not compile unsupported Python construct")
         self.hint = hint
         self.msg = None
 
