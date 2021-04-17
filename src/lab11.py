@@ -376,6 +376,10 @@ class LineLayout:
     def compute_height(self):
         if not self.children:
             self.h = 0
+            self.max_ascent = 0
+            self.max_descent = 0
+            self.metrics = None
+            self.cxs = []
             return
         self.metrics = [child.font.metrics() for child in self.children]
         self.max_ascent = max([metric["ascent"] for metric in self.metrics])
@@ -390,10 +394,11 @@ class LineLayout:
 
     def position(self):
         baseline = self.y + 1.2 * self.max_ascent
-        for cx, child, metrics in \
-          zip(self.cxs, self.children, self.metrics):
-            child.x = self.x + cx
-            child.y = baseline - metrics["ascent"]
+        if self.children:
+            for cx, child, metrics in \
+              zip(self.cxs, self.children, self.metrics):
+                child.x = self.x + cx
+                child.y = baseline - metrics["ascent"]
 
     def draw(self, to):
         for child in self.children:
