@@ -57,7 +57,7 @@ def request(url, headers={}, payload=None):
     body = "{} {} HTTP/1.0\r\n".format(method, path)
     body += "Host: {}\r\n".format(host)
     for header, value in headers.items():
-        s.send("{}: {}\r\n".format(header, value).encode("utf8"))
+        body += "{}: {}\r\n".format(header, value)
     if payload:
         content_length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(content_length)
@@ -848,7 +848,7 @@ class Browser:
         self.url = url
         self.history.append(url)
         req_headers = { "Cookie": self.cookie_string() }
-        header, body = request(url, headers=req_headers, payload=body)
+        headers, body = request(url, headers=req_headers, payload=body)
         if "set-cookie" in headers:
             kv, params = headers["set-cookie"].split(";", 1)
             key, value = kv.split("=", 1)

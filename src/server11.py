@@ -50,6 +50,8 @@ def check_login(username, pw):
 
 def parse_cookies(s):
     out = {}
+    if (len(s) == 0):
+        return out
     for cookie in s.split(";"):
         k, v = cookie.strip().split("=", 1)
         out[k] = v
