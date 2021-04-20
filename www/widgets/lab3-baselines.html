@@ -1,9 +1,23 @@
 <!doctype html>
 <meta charset="utf-8" />
 <link rel="stylesheet" href="widget.css" />
+<style>
+text.drawn { dominant-baseline: text-before-edge; }
+/* This nasty hack corrects for some weird difference in Chrome */
+@media screen and (-webkit-min-device-pixel-ratio:0) and (min-resolution:.001dpcm) {
+text.drawn { alignment-baseline: hanging; }
+}
+text.varname { fill: #444; font-family: monospace; }
+line { stroke: #888; }
+line.baseline { stroke-dasharray: 5, 5; }
+.areg { fill: pink; }
+.amax { fill: darkred; }
+.dreg { fill: lightblue; }
+.dmax { fill: darkblue; }
+</style>
 
 <figure id="widget">
-  <canvas id="canvas" width="352" height="160"></canvas>
+  <svg id="canvas" width="352" height="160" viewBox="0 0 352 160"></svg>
   <div id="controls">
   <div id="step-controls">
     <button class="reset" disabled>Restart</button>
@@ -26,82 +40,113 @@ const ssl = lib.ssl();
 const tkinter = lib.tkinter({ zoom: ZOOM });
 
 let widget = new Widget(document.querySelector("#widget"));
-let canvas = document.querySelector("#canvas");
-let ctx = canvas.getContext("2d");
-ctx.textAlign = "left";
-ctx.textBaseline = "top";
   
 let STATE;
   
-function draw_widget() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "black";
-    ctx.strokeStyle = "gray";
-    ctx.lineWidth = 2;
-    ctx.font = "16px serif";
+function svg(tag, attrs, children) {
+    if (typeof children == "string") children = [children];
+    if (typeof children == "undefined") children = [];
 
-    let margin = 75;
+    let elt = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (let [k, v] of Object.entries(attrs)) {
+        elt.setAttributeNS(null, k, v);
+    }
+    for (let child of children) {
+        if (child instanceof Element) {
+            elt.appendChild(child);
+        } else if (typeof child === "string") {
+            elt.appendChild(document.createTextNode(child));
+        } else {
+            throw new Error("Unknown element" + child);
+        }
+    }
+    return elt;
+}
+  
+function draw_widget() {
+    let elt = document.querySelector("#canvas");
+    while (elt.children.length) elt.removeChild(elt.children[0]);
+
+    let margin = 100;
     let y1 = 70;
     let b = y1 + 1.2 * STATE.max_asc * ZOOM;
     let y2 = y1 + ZOOM * (STATE.final_y - STATE.initial_y);
 
+    if (STATE.initial_y || STATE.final_y) {
+        let y = STATE.final_y ? y2 : y1;
+        elt.appendChild(svg("text", { x: 10, y: y, class: "varname" }, "cursor_y"));
+    }
+
     if (STATE.initial_y) {
-        if (!STATE.final_y) ctx.fillText("cursor_y", 10, y1 - 15);
-        ctx.beginPath();
-        ctx.moveTo(margin, y1);
-        ctx.lineTo(canvas.width, y1);
-        ctx.stroke();
+        elt.appendChild(svg("line", {
+            x1: margin, y1: y1,
+            x2: "100%", y2: y1,
+        }));
     }
     if (STATE.final_y) {
-        ctx.fillText("cursor_y", 10, y2 - 5);
-        ctx.beginPath();
-        ctx.moveTo(margin, y2);
-        ctx.lineTo(canvas.width, y2);
-        ctx.stroke();
+        elt.appendChild(svg("line", {
+            x1: margin, y1: y2,
+            x2: "100%", y2: y2,
+        }));
     }
-    if (STATE.max_asc) {
-        ctx.fillText("baseline", 10, b - 15);
 
-        ctx.fillStyle = colors.A;
-        ctx.fillRect(margin - 5, y1, 5, b - y1);
-        ctx.strokeStyle = "cyan";
-        ctx.beginPath();
-        ctx.moveTo(margin, b);
-        ctx.lineTo(canvas.width, b);
-        ctx.stroke();
-        ctx.fillStyle = "black";
+    if (STATE.max_asc) {
+        elt.appendChild(svg("text", { x: 10, y: b, class: "varname" }, "baseline"));
+        elt.appendChild(svg("line", {
+            x1: margin, y1: b,
+            x2: "100%", y2: b,
+            class: "baseline",
+        }));
+        elt.appendChild(svg("rect", {
+            x: margin - 5, y: y1,
+            width: 5, height: b - y1,
+            class: "amax",
+        }))
     }
     if (STATE.max_desc) {
-        ctx.fillStyle = colors.D;
-        ctx.fillRect(margin - 5, b, 5, 1.2 * STATE.max_desc * ZOOM);
-        ctx.fillStyle = "black";
+        elt.appendChild(svg("rect", {
+            x: margin - 5, y: b,
+            width: 5, height: 1.2 * STATE.max_desc * ZOOM,
+            class: "dmax",
+        }))
     }
 
     if (STATE.line) {
-        ctx.fillText("line", 10, 10);
+        elt.appendChild(svg("text", { x: 10, y: 20, class: "varname" }, "line"));
+        elt.appendChild(svg("line", { x1: margin, y1: 10, x2: "100%", y2: 10 }));
         for (let [x, word, font] of STATE.line) {
-            ctx.font = font.string;
-            ctx.fillText(word, margin + 5 + (x - HSTEP) * ZOOM, 10)
+            elt.appendChild(svg("text", {
+                x: margin + 5 + (x - HSTEP) * ZOOM, y: 10,
+                style: "font: " + font.string,
+                class: "drawn",
+            }, word));
         }
     }
 
     if (STATE.display_list) {
         for (let [x, y, word, font] of STATE.display_list) {
             let dy = (y - STATE.initial_y) * ZOOM + y1;
-            ctx.font = font.string;
-            ctx.fillText(word, margin + 5 + (x - HSTEP) * ZOOM, dy)
+            elt.appendChild(svg("text", {
+                x: margin + 5 + (x - HSTEP) * ZOOM, y: dy,
+                style: "font: " + font.string,
+                class: "drawn",
+            }, word));
         }
     }
 
     if (STATE.metrics) {
         STATE.line.forEach(function ([x, word, font], i){
             let metric = STATE.metrics[i];
-            ctx.fillStyle = colors.a;
-            if (STATE.max_asc && metric.ascent == STATE.max_asc) ctx.fillStyle = colors.A;
-            ctx.fillRect(margin + (x - HSTEP) * ZOOM, 10, 5, metric.ascent * ZOOM);
-            ctx.fillStyle = colors.d;
-            if (STATE.max_desc && metric.descent == STATE.max_desc) ctx.fillStyle = colors.D;
-            ctx.fillRect(margin + (x - HSTEP) * ZOOM, 10 + metric.ascent * ZOOM, 5, metric.descent * ZOOM);
+            elt.appendChild(svg("rect", {
+                x: margin + (x - HSTEP) * ZOOM, y: 10,
+                width: 5, height: metric.ascent * ZOOM,
+                class: metric.ascent === STATE.max_asc ? "amax" : "areg",
+            }))
+            elt.appendChild(svg("rect", {
+                x: margin + (x - HSTEP) * ZOOM, y: 10 + metric.ascent * ZOOM,
+                width: 5, height: metric.descent * ZOOM,
+                class: metric.ascent === STATE.max_asc ? "dmax" : "dreg",
+            }))
         });
     }
 }
