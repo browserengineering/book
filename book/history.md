@@ -8,7 +8,7 @@ prev: intro
 If you've read this far, hopefully you're convinced that browsers are
 interesting and important to study. Now we'll dig a bit into the web itself,
 where it came from, and how the web and browsers have evolved to date. This
-history is by no means exhaustive.[^sgml] Instead, you should view it as a brief
+history is by no means exhaustive.[^sgml] Instead, view it as a brief
 foray into a much larger---and quite interesting in its own right---subject.
 Despite that brevity, it covers some of the key efforts,
 designs and events that led to the web we know today, and how they came to be.
@@ -23,12 +23,39 @@ The Memex concept
 The earliest exploration of how computers might revolutionize information is a
 1945 essay by Vannevar Bush entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
-machine called a [Memex](https://en.wikipedia.org/wiki/Memex). The Memex was an
-imagined machine that helps (think: User Agent) an individual human to see and
+machine called a [Memex](https://en.wikipedia.org/wiki/Memex) that helps an
+individual human (think: User Agent) to see and
 explore all the information in the world. It was described in terms of microfilm
 screen technology of the time, but its purpose and concept has some clear
 similarities to the web as we know it today, even if the user interface and
 technology details differ.
+
+The web is at its core organized around the Memex-like goal of _representing and
+displaying information_, and how to provide a way for humans to effectively
+learn and explore that information. The collective knowledge and wisdom of the
+species long ago exceeded the capacity of a single mind, organization, library,
+country, culture, group or language. However, while we as humans cannot possibly
+know even a tiny fraction of what is possible to know, we can use technology to
+learn more efficiently than before, and, *in particular*, to quickly access
+information we need to learn, remember or recall. Consider this imagined
+research session, remarkably similar to today's web:
+
+> The owner of the memex, let us say, is interested in the origin and properties
+> of the bow and arrow. [..] He has dozens of possibly pertinent books and
+> articles in his memex. First he runs through an encyclopedia, finds an
+> interesting but sketchy article, leaves it projected. Next, in a history, he
+> finds another pertinent item, and ties the two together. Thus he goes,
+> building a trail of many items.
+
+Computers, and the internet, allow us to _process and store_ as much information
+as we want. But it is _the web_ that plays the role of _organizing and finding_
+that information and knowledge, making it useful.[^google-mission]
+
+[^google-mission]: The Google search engine's well-known
+[mission](https://about.google/) statement to “organize the world’s information
+and make it universally accessible and useful” is almost exactly the same.
+This is not a coincidence---the search engine concept is inherently
+connected to the web, and was inspired by the web's design and antecedents.
 
 Two features of the Memex were highlighted in the essay: information record
 lookup, and associations between related records. In fact, the essay emphasizes
@@ -40,25 +67,7 @@ known, but by making previously-unknown connections *between known things*:
 By "association", Bush meant a trail of thought leading from one record
 to the next via a human-curated link. He imagined not just a universal
 library, but a universal way to record the results of what we learn. That is
-what the web can do.
-
-The web is at its core organized around the Memex-like goal of _representing and
-displaying information_, and how to provide a way for humans to effectively
-learn and explore that information. The collective knowledge and wisdom of the
-species long ago exceeded the capacity of a single mind, organization, library,
-country, culture, group or language. However, while we as humans cannot possibly
-know even a tiny fraction of what is possible to know, we can use technology to
-learn more efficiently than before, and, *in particular*, to quickly access
-information we need to learn, remember or recall. Computers, and the internet,
-allow us to _process and store_ as much information as we want. The _web_, on
-the other hand, plays the role of _organizing and finding_ that information and
-knowledge to make it useful.[^google-mission]
-
-[^google-mission]: The Google search engine's well-known
-[mission](https://about.google/) statement to “organize the world’s information
-and make it universally accessible and useful” is almost exactly the same.
-This is not a coincidence---the search engine concept is inherently
-connected to the web, and was inspired by the web's design and antecedents.
+what today's web does.
 
 Documents and hyperlinks
 ========================
