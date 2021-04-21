@@ -72,20 +72,20 @@ between web pages are hyperlinks. The format for writing web pages is HTML,
 which is short for HyperText Markup Language. The protocol for loading web
 pages is HTTP, which is short for HyperText Transport Protocol.
 
-Independently, the first hyperlink system appeared for scrolling within a
-single document; it was later generalized to linking between multiple documents.
-And just like those original systems, the web has linking within documents
-as well as between them. For example, the url "http://example.com/doc.html#link"
-refers to a document "doc.html", as well as the element with the name "link"
-within it; clicking on a link to tha URL will load "doc.html" and scroll to the
-"link" element.
+Independently of Project Xanadu, the first hyperlink system appeared for
+scrolling within a single document; it was later generalized to linking between
+multiple documents. And just like those original systems, the web has linking
+within documents as well as between them. For example, the url
+"http://example.com/doc.html#link" refers to a document "doc.html", as well as
+the element with the name "link" within it; clicking on a link to tha URL will
+load "doc.html" and scroll to the "link" element.
 
-This work also formed and inspired one of the key parts of the [mother of all
-demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos), perhaps the most
-influential technology demonstration in the history of computing. That same
-demo not only showcased the key concepts of the web, but also introduced the
-computer mouse and graphical user interface concept, both of which are of course
-central components of a browser UI.[^even-more]
+This work also formed and inspired one of the key parts of Douglas Engelbart's
+[mother of all demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos),
+perhaps the most influential technology demonstration in the history of
+computing. That same demo not only showcased the key concepts of the web, but
+also introduced the computer mouse and graphical user interface concept, both of
+which are of course central components of a browser UI.[^even-more]
 
 [^even-more]: That demo went beyond even this! There are some parts of it that
 have not yet been realized in any computer system. I highly recommend watching
