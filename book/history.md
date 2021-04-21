@@ -159,10 +159,11 @@ systems that came before or after, and his explanation of it is worth quoting
 here (highlight is mine):
 
 > There was clearly a need for something like Enquire [ed: a predecessor
-> software system] but accessible to everyone. I wanted it to scale so that if
-> two people started to use it independently, and later started to work
-> together, *they could start linking together their information without
-> making any other changes*. This was the concept of the web.
+> web-like database system, also written by Berners-Lee] but accessible to
+> everyone. I wanted it to scale so that if two people started to use it
+> independently, and later started to work together, *they could start linking
+> together their information without making any other changes*. This was the
+> concept of the web.
 
 This quote captures one of the key value propositions of the web. The web was
 successful for several reasons, but I believe it’s primarily the following
