@@ -8,10 +8,10 @@ prev: intro
 If you've read this far, hopefully you're convinced that browsers are
 interesting and important to study. Now we'll dig a bit into the web itself,
 where it came from, and how the web and browsers have evolved to date. This
-history is by no means exhaustive.[^sgml] Instead, you should view it as a brief
-foray into a much larger---and quite interesting in its own right---subject.
-Despite that brevity, it covers some of the key efforts,
-designs and events that led to the web we know today, and how they came to be.
+history is by no means exhaustive.[^sgml] Instead, I'll focus on some key
+events and ideas that led to the web. These ideas and events will explain how
+exactly a thing such as the web came to be, as well as the motivations and goals
+of those who created it and its predecessors.
 
 [^sgml]: For example, there is nothing much about
 [SGML](https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language) or
@@ -63,25 +63,44 @@ connected to the web, and was inspired by the web's design and antecedents.
 Documents and hyperlinks
 ========================
 
-The concept of interlinked documents began to appear in about
-[1964-65](https://en.wikipedia.org/wiki/Hyperlink), when the term “link”
-appeared (though connected to text rather than pages).[^literary-criticism]
-Independently, the first hyperlink system appeared (though apparently not using
-that word[^hyperlink-first]) for navigating within a single document; it was
-later generalized to linking between multiple documents. This work also formed
-one of the key parts of the [mother of all
-demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos), perhaps the most
-influential technology demonstration in the history of computing.
+The concept of interlinked [hypertext](hypertext) documents and the
+hyperlink[^hyperlink-first] concept was invented in
+[1964-65](https://en.wikipedia.org/wiki/Hyperlink) by [Project
+Xanadu](xanadu).[^literary-criticism] Hypertext is text that is marked up with
+hyperlinks to other text. Sounds familiar? A web page is hypertext, and links
+between web pages are hyperlinks. The format for writing web pages is HTML,
+which is short for HyperText Markup Language. The protocol for loading web
+pages is HTTP, which is short for HyperText Transport Protocol.
 
-[^hyperlink-first]: The word "hyperlink" may have first appeared in 1987, in
-connection with the HyperCard system on the Macintosh.)
+Independently of Project Xanadu, the first hyperlink system appeared for
+scrolling within a single document; it was later generalized to linking between
+multiple documents. And just like those original systems, the web has linking
+within documents as well as between them. For example, the url
+"http://example.com/doc.html#link" refers to a document "doc.html", as well as
+the element with the name "link" within it; clicking on a link to tha URL will
+load "doc.html" and scroll to the "link" element.
+
+This work also formed and inspired one of the key parts of Douglas Engelbart's
+[mother of all demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos),
+perhaps the most influential technology demonstration in the history of
+computing. That same demo not only showcased the key concepts of the web, but
+also introduced the computer mouse and graphical user interface concept, both of
+which are of course central components of a browser UI.[^even-more]
+
+[^even-more]: That demo went beyond even this! There are some parts of it that
+have not yet been realized in any computer system. I highly recommend watching
+the demo yourself.
+
+[hypertext]: https://en.wikipedia.org/wiki/Hypertext
+
+[xanadu]: https://en.wikipedia.org/wiki/Project_Xanadu
+
+[^hyperlink-first]: The concept was there, but the specific word  "hyperlink"
+may have first appeared in 1987, in connection with the HyperCard system on the
+Macintosh.)
 
 [^literary-criticism]: These concepts are also the computer-based evolution of
 the long tradition of citation in academics and literary criticism.
-
-There is of course a very direct connection between this research and the
-document+URL+hyperlink setup of the web, which built on this idea and applied it
-in practice.
 
 The web emerges
 ===============
@@ -140,10 +159,11 @@ systems that came before or after, and his explanation of it is worth quoting
 here (highlight is mine):
 
 > There was clearly a need for something like Enquire [ed: a predecessor
-> software system] but accessible to everyone. I wanted it to scale so that if
-> two people started to use it independently, and later started to work
-> together, *they could start linking together their information without
-> making any other changes*. This was the concept of the web.
+> web-like database system, also written by Berners-Lee] but accessible to
+> everyone. I wanted it to scale so that if two people started to use it
+> independently, and later started to work together, *they could start linking
+> together their information without making any other changes*. This was the
+> concept of the web.
 
 This quote captures one of the key value propositions of the web. The web was
 successful for several reasons, but I believe it’s primarily the following
