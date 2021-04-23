@@ -128,7 +128,6 @@ the first, to introduce the concept of augmenting hypertext with scripts that
 handle user events, such as clicks, and perform actions that enhance the
 UI--just like JavaScript on a web page!
 
-
 [^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
 web”, or “the web ecosystem”---ecosystem being another way to capture the same
 concept as “World Wide”. The original wording lives on in the "www" in many
