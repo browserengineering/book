@@ -73,13 +73,17 @@ The web emerges
 ===============
 
 The concept of interlinked [hypertext](hypertext) documents and the
-hyperlink[^hyperlink-first] concept was invented in
+hyperlink concept was invented in
 [1964-65](https://en.wikipedia.org/wiki/Hyperlink#History) by [Project
-Xanadu](xanadu).[^literary-criticism] Hypertext is text that is marked up with
-hyperlinks to other text. Sounds familiar? A web page is hypertext, and links
-between web pages are hyperlinks. The format for writing web pages is HTML,
-which is short for HyperText Markup Language. The protocol for loading web
-pages is HTTP, which is short for HyperText Transport Protocol.
+Xanadu](xanadu), led by Ted Nelson.[^literary-criticism] Hypertext is text that
+is marked up with hyperlinks to other text. Sounds familiar? A web page is
+hypertext, and links between web pages are hyperlinks. The format for writing
+web pages is HTML, which is short for HyperText Markup Language. The protocol
+for loading web pages is HTTP, which is short for HyperText Transport Protocol.
+A successor system called [HES](hes) was the first to introduce the back button,
+which all browsers now have.
+
+[hes]: https://en.wikipedia.org/wiki/Hypertext_Editing_System
 
 Independently of Project Xanadu, the first hyperlink system appeared for
 scrolling within a single document; it was later generalized to linking between
@@ -107,9 +111,6 @@ the demo yourself.
 [^literary-criticism]: These concepts are also the computer-based evolution of
 the long tradition of citation in academics and literary criticism.
 
-[^hyperlink-first]: The word "hyperlink" may have first appeared in 1987, in
-connection with the HyperCard system on the Macintosh.)
-
 There is of course a very direct connection between this research and the
 document+URL+hyperlink setup of the web, which built on this idea and applied it
 in practice. The [HyperTIES](http://www.cs.umd.edu/hcil/hyperties/) system, for
@@ -120,6 +121,13 @@ source of the link concept in his World Wide Web
 concept,[^world-wide-web-terminology] in which he proposed to join the link
 concept with the availability of the internet, thus realizing many of the
 original goals of all the work from previous decades.[^realize-web-decades]
+
+The word "hyperlink" may have been coined in 1987, in connection with the
+HyperCard system on Apple computers. This system also was one of the first, or
+the first, to introduce the concept of augmenting hypertext with scripts that
+handle user events, such as clicks, and perform actions that enhance the
+UI--just like JavaScript on a web page! It also had graphical UI elements and
+not just text, unlike most predcessors.
 
 [^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
 web”, or “the web ecosystem”---ecosystem being another way to capture the same
