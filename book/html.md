@@ -200,11 +200,11 @@ tree by just finishing any unfinished nodes:
 ``` {.python}
 class HTMLParser:
     def finish(self):
-        while self.unfinished:
+        while len(self.unfinished) > 1:
             node = self.unfinished.pop()
-            if not self.unfinished: return node
             parent = self.unfinished[-1]
             parent.children.append(node)
+        return self.unfinished.pop()
 ```
 
 This is *almost* a complete parser, but it doesn't quite work at the

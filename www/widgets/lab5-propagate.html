@@ -1,0 +1,78 @@
+<!doctype html>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="widget.css" />
+
+<figure id="widget">
+  <pre id="output" style="width: 352px; height: 160px;"></pre>
+  <div id="controls">
+  <div id="step-controls">
+    <button class="reset" disabled>Restart</button>
+    <button class="stepb" disabled>Back</button>
+    <button class="stepf">Next</button>
+    <button class="play">Animate</button>
+  </div>
+  <textarea id="input" rows="4"><html>
+  <body>
+    <h1>Header</h1>
+    <p>Text 1</p>
+    <p>Text 2</p>
+    <p>Text 3</p>
+  </body>
+</html></textarea>
+  </div>
+</figure>
+
+<script src="lab5.js"></script>
+<script src="rt.js"></script>
+<script>
+const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
+const ssl = lib.ssl();
+const tkinter = lib.tkinter({ zoom: 2.0 });
+
+let widget = new Widget(document.querySelector("#widget"));
+  
+function draw_tree(node, status) {
+    let current = node;
+    while (node.parent) node = node.parent;
+    let output = document.querySelector("#output");
+    output.textContent = tree_to_str(node, "", current, status);
+}
+  
+function tree_to_str(node, indent, current, status) {
+    let s = "";
+    if (node === current) {
+        s += "> ";
+    } else {
+        s += "  ";
+    }
+    s += indent;
+    if (node instanceof BlockLayout) {
+        s += "Block";
+    } else if (node instanceof InlineLayout) {
+        s += "Inline";
+    } else if (node instanceof DocumentLayout) {
+        s += "Document";
+    }
+    s += " {";
+    let fields = 0;
+    for (let field of ["x", "y", "width", "height"]) {
+        if (!node[field]) continue;
+        if (fields) s += ",";
+        s += " " + field + "=" + node[field];
+        fields++;
+    }
+    s += " }";
+    for (let child of node.children) {
+        s += "\n" + tree_to_str(child, indent + "  ", current, status);
+    }
+    return s;
+}
+
+widget.pause("layout_pre", (node) => draw_tree(node, "start"));
+widget.pause("layout_post", (node) => draw_tree(node, "done"));
+
+widget.run(async function() {
+    let b = await (new Browser()).init();
+    await b.load("http://input/")
+});
+</script>
