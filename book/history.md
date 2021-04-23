@@ -126,7 +126,8 @@ The word "hyperlink" may have been coined in 1987, in connection with the
 HyperCard system on Apple computers. This system also was one of the first, or
 the first, to introduce the concept of augmenting hypertext with scripts that
 handle user events, such as clicks, and perform actions that enhance the
-UI--just like JavaScript on a web page!
+UI--just like JavaScript on a web page! It also had graphical UI elements and
+not just text, unlike most predcessors.
 
 [^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
 web”, or “the web ecosystem”---ecosystem being another way to capture the same
