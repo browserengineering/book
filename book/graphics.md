@@ -9,7 +9,7 @@ next: text
 A web browser doesn't just download web page; it also has to show that
 page to the user. In the 21^st^ century, that means a graphical
 application. How does that work? In this chapter we'll equip the toy
-browser with a graphical user interface [^1].
+browser with a graphical user interface.[^1]
 
 [^1]: There are some obscure text-based browsers: I used `w3m` as my
     main browser for most of 2011. I don't anymore.
