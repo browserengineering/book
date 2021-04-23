@@ -396,7 +396,7 @@ this topic in more detail.
 
 ::: {.further}
 Formally, computations on a tree like this can be described by an
-[attribute grammar](wiki-atgram). Attribute grammar engines analyze
+[attribute grammar][wiki-atgram]. Attribute grammar engines analyze
 dependencies between different attributes to determine the right order
 to traverse the tree and calculate each attribute.
 :::
