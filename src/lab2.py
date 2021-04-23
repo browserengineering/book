@@ -62,6 +62,7 @@ def lex(body):
             in_angle = False
         elif not in_angle:
             text += c
+        breakpoint("lex", text)
     return text
 
 WIDTH, HEIGHT = 800, 600
@@ -78,6 +79,7 @@ def layout(text):
         if cursor_x >= WIDTH - HSTEP:
             cursor_y += VSTEP
             cursor_x = HSTEP
+        breakpoint("layout", display_list)
     return display_list
 
 class Browser:
@@ -102,6 +104,7 @@ class Browser:
     def render(self):
         self.canvas.delete("all")
         for x, y, c in self.display_list:
+            breakpoint("render")
             if y > self.scroll + HEIGHT: continue
             if y + VSTEP < self.scroll: continue
             self.canvas.create_text(x, y - self.scroll, text=c)

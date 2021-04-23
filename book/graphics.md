@@ -36,7 +36,8 @@ program is responsible for drawing its contents. Applications have to redraw
 these contents quickly for interactions to feel fluid,[^3] and must respond
 quickly to clicks and key presses so the user doesn't get frustrated.
 
-<a name="framebudget">
+<a name="framebudget"></a>
+
 "Feel fluid" can be made more precise. Graphical applications such as browsers
 typically aim to redraw at a speed equal to the refresh rate, or *frame rate*,
 of the screen, and/or a fixed 60Hz[^sixty-hertz]. This means that the browser
@@ -268,7 +269,10 @@ for c in text:
 
 The code increases `cursor_y` and resets `cursor_x`[^crlf] once
 `cursor_x` goes past 787 pixels.[^not-800] Wrapping the text this way
-makes it possible to read more than a single line.
+makes it possible to read more than a single line:
+
+<iframe class="widget" src="widgets/lab2-render.html"
+    height=160 data-big-height=160 data-small-height=320></iframe>
 
 [^crlf]: In the olden days of type writers, increasing *y* meant
     *feed*ing in a new *line*, and resetting *x* meant *return*ing the
@@ -281,6 +285,10 @@ makes it possible to read more than a single line.
 
 [^not-800]: Not 800, because we started at pixel 13 and I want to leave an
     even gap on both sides.
+
+Now we can read a lot of text, but still not all of it: if there's
+enough text, all of the lines of text don't fit on the screen. We want
+users to *scroll* the page to look at different parts of it.
 
 ::: {.further}
 Chinese characters are usually, but not always, independent: <span
@@ -298,10 +306,6 @@ based on a [word frequency table][cjdict].
 
 Scrolling text
 ==============
-
-Now we can read a lot of text, still not all of it: if there's enough
-text, all of the lines of text don't fit on the screen. We want users
-to *scroll* the page to look at different parts of it.
 
 Scrolling introduces a layer of indirection between page coordinates
 (this text is 132 pixels from the top of the *page*) and screen

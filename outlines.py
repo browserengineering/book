@@ -102,14 +102,15 @@ def to_item(cmd):
         else:
             raise Exception(ast.dump(cmd))
         return Const(names)
-    elif isinstance(cmd, ast.Expr) and isinstance(cmd.value, ast.Str):
+    elif isinstance(cmd, ast.Expr) and \
+         isinstance(cmd.value, ast.Constant) and isinstance(cmd.value.value, str):
         return
     elif isinstance(cmd, ast.Import):
         return
     elif isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
          isinstance(cmd.test.left, ast.Name) and cmd.test.left.id == "__name__" and \
-         len(cmd.test.comparators) == 1 and isinstance(cmd.test.comparators[0], ast.Str) and \
-         cmd.test.comparators[0].s == "__main__" and len(cmd.test.ops) == 1 and \
+         len(cmd.test.comparators) == 1 and isinstance(cmd.test.comparators[0], ast.Constant) and \
+         cmd.test.comparators[0].value == "__main__" and len(cmd.test.ops) == 1 and \
          isinstance(cmd.test.ops[0], ast.Eq):
         return IfMain()
     else:

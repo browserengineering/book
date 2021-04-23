@@ -145,16 +145,22 @@ class Layout:
 
     def flush(self):
         if not self.line: return
+        breakpoint("initial_y", self.cursor_y, self.line);
         metrics = [font.metrics() for x, word, font in self.line]
+        breakpoint("metrics", metrics)
         max_ascent = max([metric["ascent"] for metric in metrics])
         baseline = self.cursor_y + 1.2 * max_ascent
+        breakpoint("max_ascent", max_ascent);
         for x, word, font in self.line:
             y = baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font))
+            breakpoint("aligned", self.display_list);
         self.cursor_x = HSTEP
         self.line = []
         max_descent = max([metric["descent"] for metric in metrics])
+        breakpoint("max_descent", max_descent);
         self.cursor_y = baseline + 1.2 * max_descent
+        breakpoint("final_y", self.cursor_y);
 
 class Browser:
     def __init__(self):

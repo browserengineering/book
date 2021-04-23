@@ -138,8 +138,7 @@ figure img { width: 100%; }
 .installation:before { content: "Installation"; color: blue; }
 .further { border: 2px solid green; padding-top: 0; }
 .further > :first-child:before { content: "Go further: "; font-weight: bold; color: green; }
-.widget[data-big-height="490px"] { height: 490px; width: 100%; border: 2px solid gray; }
-@media (max-width: 800px) { .widget[data-small-height="860px"] { height: 860px !important; } }
+.widget { width: 100%; border: 2px solid gray; }
 
 code .st { color: #666; }
 code .cf, code .kw, code .im { color: #606; }
