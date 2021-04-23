@@ -117,16 +117,6 @@ example, highlighted hyperlinks and was used to develop the world’s first
 electronically published academic journal, the 1988 issue of the [Communications
 of the ACM](https://cacm.acm.org/). Tim Berners-Lee cites this 1988 event as the
 source of the link concept in his World Wide Web
-=======
-The web emerges
-===============
-
-In 1983 the [HyperTIES](http://www.cs.umd.edu/hcil/hyperties/) system was
-developed around highlighted hyperlinks. This was used to develop the world’s
-first electronically published academic journal, the 1988 issue of the
-[Communications of the ACM](https://cacm.acm.org/). Tim Berners-Lee cites this
-1988 event as the source of the link concept in his World Wide Web
->>>>>>> main
 concept,[^world-wide-web-terminology] in which he proposed to join the link
 concept with the availability of the internet, thus realizing many of the
 original goals of all the work from previous decades.[^realize-web-decades]
