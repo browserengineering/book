@@ -122,11 +122,11 @@ concept,[^world-wide-web-terminology] in which he proposed to join the link
 concept with the availability of the internet, thus realizing many of the
 original goals of all the work from previous decades.[^realize-web-decades]
 
-The actual use of the word word "hyperlink" may have first appeared in 1987, in
-connection with the HyperCard system on the Macintosh. This system also was
-one of the first, or the first, to introduce the concept of augmenting hypertext
-with scripts that handle user events, such as clicks, and perform actions that
-enhance the UI--just like JavaScript on a web page!
+The word "hyperlink" may have been coined in 1987, in connection with the
+HyperCard system on Apple computers. This system also was one of the first, or
+the first, to introduce the concept of augmenting hypertext with scripts that
+handle user events, such as clicks, and perform actions that enhance the
+UI--just like JavaScript on a web page!
 
 
 [^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
