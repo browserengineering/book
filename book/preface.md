@@ -60,6 +60,17 @@ providing insight into those 10 million line of code behemoths.
 Acknowledgments
 ===============
 
+We'd like to start by recognizing the countless people who have helped to build
+those those wonders of the modern world that are browsers and the web. Thank
+you!
+
+Much of the background for for the history of the web came from Wikipedia (as
+you can see from the many links back to it within the text). We are grateful for
+this amazing resource, one which in turn was made possible by the very thing
+this book is about.
+
+
+
 #### Pavel
 
 [James R. Wilcox](https://homes.cs.washington.edu/~jrw12/) and I
