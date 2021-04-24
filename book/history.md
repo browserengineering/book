@@ -270,12 +270,12 @@ In the first years of the web, it was not so clear that browsers would remain
 standard and that one browser might not end up “winning” and becoming another
 proprietary software platform. There are multiple reasons this didn’t happen,
 among them the egalitarian ethos of the computing community and the presence and
-strength of the W3C. Equally important was the networked nature of the web, and
-therefore the desire of web developers to make sure their pages worked correctly
-in most or all of the browsers (otherwise they would lose customers), leading
-them to avoid any proprietary extensions. On the contrary---browsers worked hard
-to carefully reproduce each other's undocumented behaviors---even bugs---to make
-sure they continued supporting the whole web.
+strength of the W3C. Another important reason was the networked nature of the
+web, and therefore the desire of web developers to make sure their pages worked
+correctly in most or all of the browsers (otherwise they would lose customers),
+leading them to avoid any proprietary extensions. On the contrary---browsers
+worked hard to carefully reproduce each other's undocumented behaviors---even
+bugs---to make sure they continued supporting the whole web.
 
 Despite fears that this might happen, there never really was a point where any
 browser openly attempted to break away from the standard. Instead, intense
@@ -313,9 +313,9 @@ the beginning of the web.
 [^examples-of-browsers-today]: Examples of Chromium-based browsers include
 Chrome, Edge, Opera (which switched to Chromium from the
 [Presto](https://en.wikipedia.org/wiki/Presto_(browser_engine)) engine in 2013),
-Samsung Internet, Yandex Browser, and UC Browser. In addition, there are many
-"embedded" browsers, based on one or another of the three engines, for a wide
-variety of automobiles, phones, TVs and other electronic devices.
+Samsung Internet, Yandex Browser, UC Browser and Brave. In addition, there are
+many "embedded" browsers, based on one or another of the three engines, for a
+wide variety of automobiles, phones, TVs and other electronic devices.
 
 [^javascript-repo]: The JavaScript engines are actually in different
 repositories (as are various other sub-components that we won’t get into here),
@@ -354,10 +354,14 @@ browsers and avoid proprietary control.
 5. Browsers continued to compete and evolve at a rapid pace; that pace has
 overall not slowed in the years since.
 
-6. The web continued to grow in power and complexity, even growing beyond the
+6. Browsers appeared on all devices and operating systems, including all
+desktop and mobile devices & OSes, as well as embedded devices such as
+televisions, watches and kiosks.
+
+7. The web continued to grow in power and complexity, even going beyond the
 original conception of a web browser.
 
-6. Eventually, all web rendering engines became open source, as a recognition of
+8. Eventually, all web rendering engines became open source, as a recognition of
 their being a shared effort larger than any single entity.
 
 The web has come a long way! It'll be interesting to see where it goes in the
@@ -372,3 +376,9 @@ Exercises
 took its current form, what trends do you predict for its future evolution?
 For example, do you think it'll compete effectively against other non-web
 technologies and platforms?
+
+*What became of the original ideas?* The way the web works in practice is
+significantly different than the memex; one key differences is that there is no
+built-in way for the *user* of the web to add links between pages or notate
+them. Why do you think this is? Can you think of other goals from the original
+work that remain unrealized?
