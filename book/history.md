@@ -84,15 +84,16 @@ is marked up with hyperlinks to other text. Sounds familiar? A web page is
 hypertext, and links between web pages are hyperlinks. The format for writing
 web pages is HTML, which is short for HyperText Markup Language. The protocol
 for loading web pages is HTTP, which is short for HyperText Transport Protocol.
-A successor called [Hypertext Editing Sy8stem] was the first to introduce the
+A successor called [Hypertext Editing System] was the first to introduce the
 back button concept, which all browsers now have. (Since the system just had
 text, the "button" was itself text.)
 
 [hes]: https://en.wikipedia.org/wiki/Hypertext_Editing_System
 
-<figure> <img
-src="https://upload.wikimedia.org/wikipedia/commons/c/cd/HypertextEditingSystemConsoleBrownUniv1969.jpg">
-<caption>Hypertext Editing System</figure> </figure>
+<figure>
+	<img src="https://upload.wikimedia.org/wikipedia/commons/c/cd/HypertextEditingSystemConsoleBrownUniv1969.jpg">
+<caption>Hypertext Editing System</caption>
+</figure>
 
 Independently of Project Xanadu, the first hyperlink system appeared for
 scrolling within a single document; it was later generalized to linking between

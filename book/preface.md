@@ -61,7 +61,7 @@ Acknowledgments
 ===============
 
 We'd like to start by recognizing the countless people who have helped to build
-those those wonders of the modern world that are browsers and the web. Thank
+those wonders of the modern world that are browsers and the web. Thank
 you!
 
 Much of the background for for the history of the web came from Wikipedia (as
