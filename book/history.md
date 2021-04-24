@@ -39,7 +39,7 @@ know even a tiny fraction of what is possible to know, we can use technology to
 learn more efficiently than before, and, *in particular*, to quickly access
 information we need to learn, remember or recall. Consider this imagined
 research session described in the article, one that is remarkably similar to
-how we'd use today's web for the same tasks:
+how we'd use the web for the same tasks:
 
 > The owner of the memex, let us say, is interested in the origin and properties
 > of the bow and arrow. [..] He has dozens of possibly pertinent books and
@@ -68,7 +68,7 @@ known, but by making previously-unknown connections *between known things*:
 By "association", Bush meant a trail of thought leading from one record
 to the next via a human-curated link. He imagined not just a universal
 library, but a universal way to record the results of what we learn. That is
-what today's web can do as well.
+what today's web can do also.
 
 The web emerges
 ===============
