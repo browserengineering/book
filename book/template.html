@@ -8,8 +8,8 @@ $for(author-meta)$  <meta name="author" content="$author-meta$" />$endfor$
 
 $if(base)$  <base href="$base$" />$endif$
 
-$if(prev)$  <link rel="prev" href="$prev$.html" />$endif$
-$if(next)$  <link rel="next" href="$next$.html" />$endif$
+$if(prev)$  <link rel="prev" href="$rel$/$prev$.html" />$endif$
+$if(next)$  <link rel="next" href="$rel$/$next$.html" />$endif$
 $for(css)$  <link rel="stylesheet" href="$css$" />$endfor$
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn%7CLora&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn:400i%7CLora:400i&display=swap" />
@@ -37,22 +37,22 @@ $endif$
 $if(chapter)$
 <nav class="links">
   Chapter $chapter$ of <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
-  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
-  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$rel$/$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$rel$/$next$.html">&gt;</a>$endif$
 </nav>
 $endif$
 $if(type)$
 <nav class="links">
   The $type$ to <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
-  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
-  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$rel$/$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$rel$/$next$.html">&gt;</a>$endif$
 </nav>
 $endif$
 $if(date)$
 <nav class="links">
   The <a href="../index.html" title="Table of Contents">Web Browser Engineering</a> blog, dated <time>$date$</time>.
-  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
-  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$rel$/$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$rel$/$next$.html">&gt;</a>$endif$
 </nav>
 $endif$
 
@@ -71,15 +71,15 @@ $endfor$
 $if(chapter)$
 <nav class="links">
   Chapter $chapter$ of <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
-  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
-  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$rel$/$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$rel$/$next$.html">&gt;</a>$endif$
 </nav>
 $endif$
 $if(type)$
 <nav class="links">
   The $type$ of <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
-  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
-  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$rel$/$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$rel$/$next$.html">&gt;</a>$endif$
 </nav>
 $endif$
 

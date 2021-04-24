@@ -12,11 +12,11 @@ draft: $(patsubst book/%.md,www/draft/%.html,$(wildcard book/*.md)) www/draft/on
 
 onepage/%.html: book/%.md book/template-onepage.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)
-	pandoc --toc --template book/template-onepage.html --variable=base=../ -c book.css $(PANDOC_COMMON_ARGS) --metadata=mode:draft -c ../book.css $< -o $@
+	pandoc --toc --template book/template-onepage.html --variable=base=../ --variable=rel=onepage -c book.css $(PANDOC_COMMON_ARGS) --metadata=mode:draft -c ../book.css $< -o $@
 
 onepage/%-quicklink.html: book/%.md book/quicklink.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)
-	pandoc --toc --template book/quicklink.html --variable=base=../ $(PANDOC_COMMON_ARGS) $< -o $@
+	pandoc --toc --template book/quicklink.html --variable=base=../ --variable=rel=onepage $(PANDOC_COMMON_ARGS) $< -o $@
 
 www/draft/onepage.html: $(patsubst book/%.md,onepage/%.html,$(wildcard book/*.md)) $(patsubst book/%.md,onepage/%-quicklink.html,$(wildcard book/*.md)) book/onepage-head.html
 	mkdir -p $(dir $@)
@@ -24,7 +24,8 @@ www/draft/onepage.html: $(patsubst book/%.md,onepage/%.html,$(wildcard book/*.md
 
 www/%.html: book/%.md book/template.html book/signup.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)
-	pandoc --toc --template book/template.html -c book.css $(PANDOC_COMMON_ARGS) $< -o $@
+	pandoc --toc --template book/template.html  --variable=rel=. \
+			-c book.css $(PANDOC_COMMON_ARGS) $< -o $@
 
 www/rss.xml: book/news.yaml book/rss-template.xml
 	pandoc --template book/rss-template.xml  -f markdown -t html $< -o $@
@@ -36,7 +37,7 @@ www/blog/%.html: blog/%.md book/template.html book/filter.lua disabled.conf
 www/draft/%.html: book/%.md book/template.html book/signup.html book/filter.lua
 	@ mkdir -p $(dir $@)
 	pandoc --toc --template book/template.html \
-	       --metadata=mode:draft --variable=base=../ \
+	       --metadata=mode:draft --variable=base=../ --variable=rel=draft \
                -c book.css $(PANDOC_COMMON_ARGS) \
                $< -o $@
 
