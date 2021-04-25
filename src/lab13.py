@@ -1,26 +1,40 @@
 """
 This file compiles the code in Web Browser Engineering,
-up to and including Chapter 13 (Rendering Architecture4),
+up to and including Chapter 11 (Keeping Data Private),
 without exercises.
 """
 
+import dukpy
 import socket
 import ssl
 import time
 import tkinter
 import tkinter.font
-import dukpy
 
-def request(url, payload=None):
+class Timer:
+    def __init__(self):
+        self.phase = None
+        self.time = None
+
+    def start(self, name):
+        if self.phase: self.stop()
+        self.phase = name
+        self.time = time.time()
+
+    def stop(self):
+        dt = time.time() - self.time
+        print("[{:>10.6f}] {}".format(dt, self.phase))
+        self.phase = None
+
+def url_origin(url):
+    return "/".join(url.split("/")[:3])
+
+def request(url, headers={}, payload=None):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
 
-    if (url.find("/") >= 0):
-        host, path = url.split("/", 1)
-    else:
-        host, path = url, ""
-
+    host, path = url.split("/", 1)
     path = "/" + path
     port = 80 if scheme == "http" else 443
 
@@ -42,6 +56,8 @@ def request(url, payload=None):
     method = "POST" if payload else "GET"
     body = "{} {} HTTP/1.0\r\n".format(method, path)
     body += "Host: {}\r\n".format(host)
+    for header, value in headers.items():
+        body += "{}: {}\r\n".format(header, value)
     if payload:
         content_length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(content_length)
@@ -158,10 +174,7 @@ def parse(tokens):
             continue
         else:
             node = ElementNode(tok.tag, tok.attributes)
-            if len(currently_open) > 0:
-                node.parent = currently_open[-1]
-            else:
-                node.parent = None
+            node.parent = currently_open[-1]
             currently_open.append(node)
     while currently_open:
         node = currently_open.pop()
@@ -347,34 +360,49 @@ class LineLayout:
     def __init__(self, node, parent):
         self.node = node
         self.parent = parent
-        self.children = []
         self.cx = 0
         self.laid_out = False
+        self.children = []
 
     def append(self, child):
         self.children.append(child)
         child.parent = self
         self.cx += child.w + child.font.measure(" ")
 
-    def layout(self):
+    def size(self):
         self.w = self.parent.w
+        self.compute_height()
+
+    def compute_height(self):
         if not self.children:
             self.h = 0
+            self.max_ascent = 0
+            self.max_descent = 0
+            self.metrics = None
+            self.cxs = []
             return
-        metrics = [child.font.metrics() for child in self.children]
-        max_ascent = max([metric["ascent"] for metric in metrics])
-        baseline = self.y + 1.2 * max_ascent
-        self.cx = 0
-        for child, metric in zip(self.children, metrics):
-            child.x = self.x + self.cx
-            child.y = baseline - metric["ascent"]
-            self.cx += child.w + child.font.measure(" ")
-        max_descent = max([metric["descent"] for metric in metrics])
-        self.h = 1.2 * (max_descent + max_ascent)
+        self.metrics = [child.font.metrics() for child in self.children]
+        self.max_ascent = max([metric["ascent"] for metric in self.metrics])
+        self.max_descent = max([metric["descent"] for metric in self.metrics])
+        self.h = 1.2 * (self.max_descent + self.max_ascent)
 
-    def paint(self, to):
+        cx = 0
+        self.cxs = []
         for child in self.children:
-            child.paint(to)
+            self.cxs.append(cx)
+            cx += child.w + child.font.measure(" ")
+
+    def position(self):
+        baseline = self.y + 1.2 * self.max_ascent
+        if self.children:
+            for cx, child, metrics in \
+              zip(self.cxs, self.children, self.metrics):
+                child.x = self.x + cx
+                child.y = baseline - metrics["ascent"]
+
+    def draw(self, to):
+        for child in self.children:
+            child.draw(to)
 
 class TextLayout:
     def __init__(self, node, word):
@@ -382,7 +410,7 @@ class TextLayout:
         self.children = []
         self.word = word
 
-    def layout(self):
+    def size(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
@@ -390,9 +418,15 @@ class TextLayout:
         self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
         
         self.w = self.font.measure(self.word)
+        self.compute_height()
+
+    def compute_height(self):
         self.h = self.font.metrics('linespace')
 
-    def paint(self, to):
+    def position(self):
+        pass
+
+    def draw(self, to):
         color = self.node.style["color"]
         to.append(DrawText(self.x, self.y, self.word, self.font, color))
 
@@ -401,16 +435,22 @@ class InputLayout:
         self.node = node
         self.children = []
 
-    def layout(self):
+    def size(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(px(self.node.style["font-size"]) * .75)
         self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
         self.w = 200
+        self.compute_height()
+
+    def compute_height(self):
         self.h = 20
 
-    def paint(self, to):
+    def position(self):
+        pass
+
+    def draw(self, to):
         x1, x2 = self.x, self.x + self.w
         y1, y2 = self.y, self.y + self.h
         bgcolor = "light gray" if self.node.tag == "input" else "yellow"
@@ -427,9 +467,9 @@ class InlineLayout:
     def __init__(self, node, parent):
         self.node = node
         self.parent = parent
-        self.children = [LineLayout(self.node, self)]
 
-    def layout(self):
+    def size(self):
+        self.children = [LineLayout(self.node, self)]
         self.mt = self.bt = self.pt = 0
         self.mr = self.br = self.pr = 0
         self.mb = self.bb = self.pb = 0
@@ -438,12 +478,15 @@ class InlineLayout:
         self.w = self.parent.w - self.parent.pl - self.parent.pr \
             - self.parent.bl - self.parent.br
 
-        self.cy = self.y
         self.recurse(self.node)
         self.flush()
         self.children.pop()
+        self.compute_height()
 
-        self.h = self.cy - self.y
+    def compute_height(self):
+        self.h = 0
+        for child in self.children:
+            self.h += child.h
 
     def recurse(self, node):
         if isinstance(node, TextNode):
@@ -452,6 +495,8 @@ class InlineLayout:
             self.flush()
         elif node.tag == "input":
             self.input(node)
+        elif node.tag == "button":
+            self.input(node)
         else:
             for child in node.children:
                 self.recurse(child)
@@ -459,29 +504,34 @@ class InlineLayout:
     def text(self, node):
         for word in node.text.split():
             child = TextLayout(node, word)
-            child.layout()
+            child.size()
             if self.children[-1].cx + child.w > self.w:
                 self.flush()
             self.children[-1].append(child)
 
     def input(self, node):
         child = InputLayout(node)
-        child.layout()
+        child.size()
         if self.children[-1].cx + child.w > self.w:
             self.flush()
         self.children[-1].append(child)
 
     def flush(self):
         child = self.children[-1]
-        child.x = self.x
-        child.y = self.cy
-        child.layout()
-        self.cy += child.h
+        child.size()
         self.children.append(LineLayout(self.node, self))
 
-    def paint(self, to):
+    def position(self):
+        cy = self.y
         for child in self.children:
-            child.paint(to)
+            child.x = self.x
+            child.y = cy
+            child.position()
+            cy += child.h
+
+    def draw(self, to):
+        for child in self.children:
+            child.draw(to)
 
 def px(s):
     if s.endswith("px"):
@@ -493,7 +543,6 @@ class BlockLayout:
     def __init__(self, node, parent):
         self.node = node
         self.parent = parent
-        self.children = []
 
         self.x = -1
         self.y = -1
@@ -509,7 +558,8 @@ class BlockLayout:
                 return False
         return True
 
-    def layout(self):
+    def size(self):
+        self.children = []
         # block layout here
         if self.has_block_children():
             for child in self.node.children:
@@ -534,7 +584,16 @@ class BlockLayout:
         self.w = self.parent.w - self.parent.pl - self.parent.pr \
             - self.parent.bl - self.parent.br \
             - self.ml - self.mr
+        for child in self.children:
+            child.size()
+        self.compute_height()
 
+    def compute_height(self):
+        self.h = 0
+        for child in self.children:
+            self.h += child.mt + child.h + child.mb
+
+    def position(self):
         self.y += self.mt
         self.x += self.ml
 
@@ -542,16 +601,15 @@ class BlockLayout:
         for child in self.children:
             child.x = self.x + self.pl + self.bl
             child.y = y
-            child.layout()
+            child.position()
             y += child.mt + child.h + child.mb
-        self.h = y - self.y
 
-    def paint(self, to):
+    def draw(self, to):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.w, self.y + self.h
             to.append(DrawRect(self.x, self.y, x2, y2, "gray"))
         for child in self.children:
-            child.paint(to)
+            child.draw(to)
 
 class DocumentLayout:
     def __init__(self, node):
@@ -564,7 +622,7 @@ class DocumentLayout:
         self.w = -1
         self.h = -1
 
-    def layout(self):
+    def size(self):
         child = BlockLayout(self.node, self)
         self.children.append(child)
 
@@ -574,13 +632,20 @@ class DocumentLayout:
         self.mb = self.bb = self.pb = 0
         self.ml = self.bl = self.pl = 0
 
+        child.size()
+        self.compute_height()
+
+    def compute_height(self):
+        self.h = self.children[0].h
+
+    def position(self):
+        child = self.children[0]
         child.x = self.x = 0
         child.y = self.y = 0
-        child.layout()
-        self.h = child.h
+        child.position()
 
-    def paint(self, to):
-        self.children[0].paint(to)
+    def draw(self, to):
+        self.children[0].draw(to)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -590,7 +655,7 @@ class DrawText:
         self.font = font
         self.color = color
 
-        self.y2 = y1 + font.metrics("linespace")
+        self.y2 = y1 + font.measure("linespace")
 
     def draw(self, scroll, canvas):
         canvas.create_text(
@@ -668,11 +733,21 @@ def find_selected(node, sel, out):
         find_selected(child, sel, out)
     return out
 
+def layout_for_node(tree, node):
+    if tree.node == node:
+        return tree
+    for child in tree.children:
+        out = layout_for_node(child, node)
+        if out: return out
+
 def is_link(node):
     return isinstance(node, ElementNode) \
         and node.tag == "a" and "href" in node.attributes
 
-REFRESH_RATE = 16
+def drawTree(node, indent=0):
+    print(" "*indent, type(node).__name__, " ", node.node, sep="")
+    for child in node.children:
+        drawTree(child, indent + 2)
 
 class Browser:
     def __init__(self):
@@ -683,20 +758,19 @@ class Browser:
             height=HEIGHT
         )
         self.canvas.pack()
+        self.cookies = {}
 
         self.history = []
         self.focus = None
         self.address_bar = ""
         self.scroll = 0
+        self.display_list = []
 
+        self.timer = Timer()
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
         self.window.bind("<Key>", self.keypress)
         self.window.bind("<Return>", self.pressenter)
-        self.display_list = []
-        self.needs_display = False
-        self.needs_style_and_layout = False
-        self.needs_raf_callbacks = False
 
     def handle_click(self, e):
         self.focus = None
@@ -706,7 +780,7 @@ class Browser:
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.setNeedsDisplay()
+                self.render()
         else:
             x, y = e.x, e.y + self.scroll - 60
             obj = find_layout(x, y, self.document)
@@ -722,25 +796,24 @@ class Browser:
                 elif elt.tag == "input":
                     elt.attributes["value"] = ""
                     self.focus = obj
-                    self.setNeedsStyleAndLayout()
-                    return
+                    return self.reflow(self.focus)
                 elif elt.tag == "button":
                     self.submit_form(elt)
                 elt = elt.parent
 
     def keypress(self, e):
-        if not (len(e.char) == 1 and 0x20 <= ord(e.char) < 0x7f):
-            return
+        if len(e.char) == 0: return
+        if not (0x20 <= ord(e.char) < 0x7f): return
 
         if not self.focus:
             return
         elif self.focus == "address bar":
             self.address_bar += e.char
-            self.setNeedsDisplay()
+            self.render()
         else:
             self.focus.node.attributes["value"] += e.char
             self.dispatch_event("change", self.focus.node)
-            self.setNeedsStyleAndLayout()
+            self.reflow(self.focus)
 
     def submit_form(self, elt):
         while elt and elt.tag != "form":
@@ -768,41 +841,48 @@ class Browser:
             back = self.history.pop()
             self.load(back)
 
+    def cookie_string(self):
+        cookie_string = ""
+        for key, value in self.cookies.items():
+            cookie_string += "&" + key + "=" + value
+        return cookie_string[1:]
+
     def load(self, url, body=None):
+        self.timer.start("Downloading")
         self.address_bar = url
         self.url = url
         self.history.append(url)
-        header, body = request(url, body)
+        req_headers = { "Cookie": self.cookie_string() }
+        headers, body = request(url, headers=req_headers, payload=body)
+        if "set-cookie" in headers:
+            kv, params = headers["set-cookie"].split(";", 1)
+            key, value = kv.split("=", 1)
+            origin = url_origin(self.history[-1])
+            self.cookies.setdefault(origin, {})[key] = value
+
+        self.timer.start("Parsing HTML")
         self.nodes = parse(lex(body))
         
+        self.timer.start("Parsing CSS")
         with open("browser8.css") as f:
             self.rules = CSSParser(f.read()).parse()
 
         for link in find_links(self.nodes, []):
-            header, body = request(relative_url(link, url))
-            self4.rules.extend(CSSParser(body).parse())
+            header, body = request(relative_url(link, url), headers=req_headers)
+            self.rules.extend(CSSParser(body).parse())
 
         self.rules.sort(key=lambda x: x[0].priority())
         self.rules.reverse()
 
+        self.timer.start("Running JS")
         self.setup_js()
         for script in find_scripts(self.nodes, []):
-            header, body = request(relative_url(script, self.history[-1]))
+            header, body = request(relative_url(script, self.history[-1]), headers=req_headers)
             try:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
                 print("Script", script, "crashed", e)
-
-        self.setNeedsStyleAndLayout()
-
-    def setNeedsStyleAndLayout(self):
-        self.needs_style_and_layout = True
-        self.setNeedsDisplay()
-
-    def setNeedsDisplay(self):
-        if not self.needs_display:
-            self.needs_display = True
-            self.canvas.after(REFRESH_RATE, self.beginMainFrame)
+        self.layout(self.nodes)
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -810,36 +890,34 @@ class Browser:
         self.handle_to_node = {}
         self.js.export_function("log", print)
         self.js.export_function("querySelectorAll", self.js_querySelectorAll)
-        self.js.export_function("requestAnimationFrame", self.js_requestAnimationFrame)
+        self.js.export_function("getAttribute", self.js_getAttribute)
         self.js.export_function("innerHTML", self.js_innerHTML)
-        self.js.export_function("now", self.js_now)
-        with open("runtime13.js") as f:
+        self.js.export_function("cookie", self.cookie_string)
+        with open("runtime9.js") as f:
             self.js.evaljs(f.read())
 
     def js_querySelectorAll(self, sel):
         selector, _ = CSSParser(sel + "{").selector(0)
         elts = find_selected(self.nodes, selector, [])
         return [self.make_handle(elt) for elt in elts]
-
-    def js_requestAnimationFrame(self):
-        self.needs_raf_callbacks = True
-        self.setNeedsDisplay()
-
-    def js_setTimeout(self, fn, timeout_in_ms):
+    
+    def js_getAttribute(self, handle, attr):
         elt = self.handle_to_node[handle]
         return elt.attributes.get(attr, None)
 
     def js_innerHTML(self, handle, s):
-        doc = parse(lex("<html><body>" + s + "</body></html>"))
-        new_nodes = doc.children[0].children
-        elt = self.handle_to_node[handle]
-        elt.children = new_nodes
-        for child in elt.children:
-            child.parent = elt
-        self.setNeedsStyleAndLayout()
-
-    def js_now(self):
-        return int(time.time() * 1000)
+        try:
+            doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
+            new_nodes = doc.children[0].children
+            elt = self.handle_to_node[handle]
+            elt.children = new_nodes
+            for child in elt.children:
+                child.parent = elt
+            self.reflow(layout_for_node(self.document, elt))
+        except:
+            import traceback
+            traceback.print_exc()
+            raise
 
     def dispatch_event(self, type, elt):
        handle = self.node_to_handle.get(elt, -1)
@@ -855,36 +933,35 @@ class Browser:
             handle = self.node_to_handle[elt]
         return handle
 
-    def beginMainFrame(self):
-        self.needs_display = False
-        if (self.needs_raf_callbacks):
-            self.needs_raf_callbacks = False
-            self.js.evaljs("__runRAFHandlers()")
-        self.runRenderingPipeline()
-        # This will cause a draw to the screen, even if there are pending
-        # requestAnimationFrame callbacks for the *next* frame (which may have
-        # been registered during a call to __runRAFHandlers). By default,
-        # tkinter doesn't run these until there are no more event queue
-        # tasks.
-        self.canvas.update_idletasks()
+    def layout(self, tree):
+        self.document = DocumentLayout(tree)
+        self.reflow(self.document)
 
-    def runRenderingPipeline(self):
-        if self.needs_style_and_layout:
-            style(self.nodes, None, self.rules)
-            self.document = DocumentLayout(self.nodes)
-            self.document.layout()
-            self.display_list = []
-            self.document.paint(self.display_list)
-            self.needs_style_and_layout = False
-        self.draw()
+    def reflow(self, obj):
+        self.timer.start("Style")
+        style(obj.node, None, self.rules)
+        self.timer.start("Layout (phase 1A)")
+        obj.size()
+        self.timer.start("Layout (phase 1B)")
+        while obj.parent:
+            obj.parent.compute_height()
+            obj = obj.parent
+        self.timer.start("Layout (phase 2)")
+        self.document.position()
+        self.timer.start("Display list")
+        self.display_list = []
+        self.document.draw(self.display_list)
+        self.render()
         self.max_y = self.document.h - HEIGHT
 
-    def draw(self):
+    def render(self):
+        self.timer.start("Rendering")
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
             if cmd.y2 < self.scroll: continue
             cmd.draw(self.scroll - 60, self.canvas)
+        self.timer.start("Chrome")
         self.canvas.create_rectangle(0, 0, 800, 60, width=0, fill='light gray')
         self.canvas.create_rectangle(50, 10, 790, 50)
         font = tkinter.font.Font(family="Courier", size=30)
@@ -899,12 +976,13 @@ class Browser:
             x = self.focus.x + self.focus.font.measure(text)
             y = self.focus.y - self.scroll + 60
             self.canvas.create_line(x, y, x, y + self.focus.h)
+        self.timer.stop()
 
     def scrolldown(self, e):
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
-        self.setNeedsDisplay()
+        self.render()
 
 if __name__ == "__main__":
     import sys
