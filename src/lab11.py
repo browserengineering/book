@@ -893,7 +893,7 @@ class Browser:
         self.js.export_function("getAttribute", self.js_getAttribute)
         self.js.export_function("innerHTML", self.js_innerHTML)
         self.js.export_function("cookie", self.cookie_string)
-        with open("runtime9.js") as f:
+        with open("runtime11.js") as f:
             self.js.evaljs(f.read())
 
     def js_querySelectorAll(self, sel):

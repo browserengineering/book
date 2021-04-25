@@ -11,7 +11,7 @@ Object.defineProperty(document, "cookie", {
 
 function Node(handle) { this.handle = handle; }
 Node.prototype.getAttribute = function(attr) {
-    return call_python("getAttribute", self.handle, attr);
+    return call_python("getAttribute", this.handle, attr);
 }
 
 LISTENERS = {}

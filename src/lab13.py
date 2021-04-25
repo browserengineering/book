@@ -777,6 +777,7 @@ class Browser:
         self.reflow_roots = []
         self.needs_layout_tree_rebuild = False
         self.needs_display = False
+        self.needs_raf_callbacks = False
 
     def handle_click(self, e):
         self.focus = None
@@ -926,6 +927,10 @@ class Browser:
             traceback.print_exc()
             raise
 
+    def js_requestAnimationFrame(self):
+        self.needs_raf_callbacks = True
+        self.set_needs_display()
+
     def dispatch_event(self, type, elt):
        handle = self.node_to_handle.get(elt, -1)
        do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
@@ -955,6 +960,11 @@ class Browser:
 
     def begin_main_frame(self):
         self.needs_display = False
+
+        if (self.needs_raf_callbacks):
+            self.needs_raf_callbacks = False
+            self.js.evaljs("__runRAFHandlers()")
+
         self.run_rendering_pipeline()
         # This will cause a draw to the screen, even if there are pending
         # requestAnimationFrame callbacks for the *next* frame (which may have
