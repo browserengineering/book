@@ -780,7 +780,7 @@ class Browser:
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.render()
+                self.draw()
         else:
             x, y = e.x, e.y + self.scroll - 60
             obj = find_layout(x, y, self.document)
@@ -809,7 +809,7 @@ class Browser:
             return
         elif self.focus == "address bar":
             self.address_bar += e.char
-            self.render()
+            self.draw()
         else:
             self.focus.node.attributes["value"] += e.char
             self.dispatch_event("change", self.focus.node)
@@ -951,11 +951,11 @@ class Browser:
         self.timer.start("Display list")
         self.display_list = []
         self.document.draw(self.display_list)
-        self.render()
+        self.draw()
         self.max_y = self.document.h - HEIGHT
 
-    def render(self):
-        self.timer.start("Rendering")
+    def draw(self):
+        self.timer.start("Drawing")
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
@@ -982,7 +982,7 @@ class Browser:
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
-        self.render()
+        self.draw()
 
 if __name__ == "__main__":
     import sys
