@@ -772,6 +772,9 @@ class Browser:
         self.window.bind("<Key>", self.keypress)
         self.window.bind("<Return>", self.pressenter)
 
+        self.reflow_roots = []
+        self.needs_layout_tree_rebuild = False
+
     def handle_click(self, e):
         self.focus = None
         if e.y < 60: # Browser chrome
@@ -796,7 +799,8 @@ class Browser:
                 elif elt.tag == "input":
                     elt.attributes["value"] = ""
                     self.focus = obj
-                    return self.reflow(self.focus)
+                    self.set_needs_reflow(self.focus)
+                    return self.layout()
                 elif elt.tag == "button":
                     self.submit_form(elt)
                 elt = elt.parent
@@ -813,7 +817,8 @@ class Browser:
         else:
             self.focus.node.attributes["value"] += e.char
             self.dispatch_event("change", self.focus.node)
-            self.reflow(self.focus)
+            self.set_needs_reflow(self.focus)
+            self.layout()
 
     def submit_form(self, elt):
         while elt and elt.tag != "form":
@@ -882,7 +887,9 @@ class Browser:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
                 print("Script", script, "crashed", e)
-        self.layout(self.nodes)
+
+        self.set_needs_layout_tree_rebuild()
+        self.layout()
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -913,7 +920,8 @@ class Browser:
             elt.children = new_nodes
             for child in elt.children:
                 child.parent = elt
-            self.reflow(layout_for_node(self.document, elt))
+            self.set_need_reflow(layout_for_node(self.document, elt))
+            self.layout()
         except:
             import traceback
             traceback.print_exc()
@@ -933,9 +941,21 @@ class Browser:
             handle = self.node_to_handle[elt]
         return handle
 
-    def layout(self, tree):
-        self.document = DocumentLayout(tree)
-        self.reflow(self.document)
+    def set_needs_reflow(self, obj):
+        self.reflow_roots.append(obj)
+
+    def set_needs_layout_tree_rebuild(self):
+        self.needs_layout_tree_rebuild = True
+
+    def layout(self):
+        if self.needs_layout_tree_rebuild:
+            self.document = DocumentLayout(self.nodes)
+            self.reflow_roots = [self.document]
+        self.needs_layout_tree_rebuild = False
+
+        for reflow_root in self.reflow_roots:
+             self.reflow(reflow_root)
+        self.reflow_roots = []
 
     def reflow(self, obj):
         self.timer.start("Style")
