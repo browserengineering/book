@@ -800,7 +800,7 @@ class Browser:
                     elt.attributes["value"] = ""
                     self.focus = obj
                     self.set_needs_reflow(self.focus)
-                    return self.layout()
+                    return self.run_rendering_pipeline()
                 elif elt.tag == "button":
                     self.submit_form(elt)
                 elt = elt.parent
@@ -818,7 +818,7 @@ class Browser:
             self.focus.node.attributes["value"] += e.char
             self.dispatch_event("change", self.focus.node)
             self.set_needs_reflow(self.focus)
-            self.layout()
+            self.run_rendering_pipeline()
 
     def submit_form(self, elt):
         while elt and elt.tag != "form":
@@ -889,7 +889,7 @@ class Browser:
                 print("Script", script, "crashed", e)
 
         self.set_needs_layout_tree_rebuild()
-        self.layout()
+        self.run_rendering_pipeline()
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -921,7 +921,7 @@ class Browser:
             for child in elt.children:
                 child.parent = elt
             self.set_need_reflow(layout_for_node(self.document, elt))
-            self.layout()
+            self.run_rendering_pipeline()
         except:
             import traceback
             traceback.print_exc()
@@ -947,7 +947,7 @@ class Browser:
     def set_needs_layout_tree_rebuild(self):
         self.needs_layout_tree_rebuild = True
 
-    def layout(self):
+    def run_rendering_pipeline(self):
         if self.needs_layout_tree_rebuild:
             self.document = DocumentLayout(self.nodes)
             self.reflow_roots = [self.document]
