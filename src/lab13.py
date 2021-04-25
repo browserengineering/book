@@ -749,6 +749,8 @@ def drawTree(node, indent=0):
     for child in node.children:
         drawTree(child, indent + 2)
 
+REFRESH_RATE = 16
+
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -774,6 +776,7 @@ class Browser:
 
         self.reflow_roots = []
         self.needs_layout_tree_rebuild = False
+        self.needs_display = False
 
     def handle_click(self, e):
         self.focus = None
@@ -800,7 +803,6 @@ class Browser:
                     elt.attributes["value"] = ""
                     self.focus = obj
                     self.set_needs_reflow(self.focus)
-                    return self.run_rendering_pipeline()
                 elif elt.tag == "button":
                     self.submit_form(elt)
                 elt = elt.parent
@@ -813,12 +815,11 @@ class Browser:
             return
         elif self.focus == "address bar":
             self.address_bar += e.char
-            self.draw()
+            self.set_needs_display()
         else:
             self.focus.node.attributes["value"] += e.char
             self.dispatch_event("change", self.focus.node)
             self.set_needs_reflow(self.focus)
-            self.run_rendering_pipeline()
 
     def submit_form(self, elt):
         while elt and elt.tag != "form":
@@ -889,7 +890,6 @@ class Browser:
                 print("Script", script, "crashed", e)
 
         self.set_needs_layout_tree_rebuild()
-        self.run_rendering_pipeline()
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -921,7 +921,6 @@ class Browser:
             for child in elt.children:
                 child.parent = elt
             self.set_need_reflow(layout_for_node(self.document, elt))
-            self.run_rendering_pipeline()
         except:
             import traceback
             traceback.print_exc()
@@ -943,9 +942,26 @@ class Browser:
 
     def set_needs_reflow(self, obj):
         self.reflow_roots.append(obj)
+        self.set_needs_display()
 
     def set_needs_layout_tree_rebuild(self):
         self.needs_layout_tree_rebuild = True
+        self.set_needs_display()
+
+    def set_needs_display(self):
+        if not self.needs_display:
+            self.needs_display = True
+            self.canvas.after(REFRESH_RATE, self.begin_main_frame)
+
+    def begin_main_frame(self):
+        self.needs_display = False
+        self.run_rendering_pipeline()
+        # This will cause a draw to the screen, even if there are pending
+        # requestAnimationFrame callbacks for the *next* frame (which may have
+        # been registered during a call to __runRAFHandlers). By default,
+        # tkinter doesn't run these until there are no more event queue
+        # tasks.
+        self.canvas.update_idletasks()
 
     def run_rendering_pipeline(self):
         if self.needs_layout_tree_rebuild:
