@@ -682,7 +682,7 @@ header contains some other value, it's best not to cache the response.
 
 *Entities:* Implement support for the less-than (`&lt;`) and greater-than (`&gt;`)
 entities. These should be printed as  `<` and `>`, respectively.
-For example, if the HTML response was `&lt;div&gt;abc&lt;div&gt;`, the `show`
+For example, if the HTML response was `&lt;div&gt;abc&lt;/div&gt;`, the `show`
 method of your browser should print `<div>abc</div>` (and *not* just `abc`).
 Entities allow web pages to include these special characters without the browser
 interpreting them as tags.

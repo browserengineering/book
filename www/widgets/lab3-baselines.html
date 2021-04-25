@@ -1,0 +1,173 @@
+<!doctype html>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="widget.css" />
+<style>
+text.drawn { dominant-baseline: text-before-edge; }
+/* This nasty hack corrects for some weird difference in Chrome */
+@media screen and (-webkit-min-device-pixel-ratio:0) and (min-resolution:.001dpcm) {
+text.drawn { alignment-baseline: hanging; }
+}
+text.varname { fill: #444; font-family: monospace; }
+line { stroke: #888; }
+line.baseline { stroke-dasharray: 5, 5; }
+.areg { fill: pink; }
+.amax { fill: darkred; }
+.dreg { fill: lightblue; }
+.dmax { fill: darkblue; }
+</style>
+
+<figure id="widget">
+  <svg id="canvas" width="352" height="160" viewBox="0 0 352 160"></svg>
+  <div id="controls">
+  <div id="step-controls">
+    <button class="reset" disabled>Restart</button>
+    <button class="stepb" disabled>Back</button>
+    <button class="stepf">Next</button>
+    <button class="play">Animate</button>
+  </div>
+  <textarea id="input" rows="4">Mixed <big>big</big> and <small>small</small></textarea>
+  </div>
+</figure>
+
+<script src="lab3.js"></script>
+<script src="rt.js"></script>
+<script>
+const ZOOM = 1.5;
+const colors = { a: "pink", A: "darkred", d: "lightblue", D: "darkblue" };
+
+const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
+const ssl = lib.ssl();
+const tkinter = lib.tkinter({ zoom: ZOOM });
+
+let widget = new Widget(document.querySelector("#widget"));
+  
+let STATE;
+  
+function svg(tag, attrs, children) {
+    if (typeof children == "string") children = [children];
+    if (typeof children == "undefined") children = [];
+
+    let elt = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (let [k, v] of Object.entries(attrs)) {
+        elt.setAttributeNS(null, k, v);
+    }
+    for (let child of children) {
+        if (child instanceof Element) {
+            elt.appendChild(child);
+        } else if (typeof child === "string") {
+            elt.appendChild(document.createTextNode(child));
+        } else {
+            throw new Error("Unknown element" + child);
+        }
+    }
+    return elt;
+}
+  
+function draw_widget() {
+    let elt = document.querySelector("#canvas");
+    while (elt.children.length) elt.removeChild(elt.children[0]);
+
+    let margin = 100;
+    let y1 = 70;
+    let b = y1 + 1.2 * STATE.max_asc * ZOOM;
+    let y2 = y1 + ZOOM * (STATE.final_y - STATE.initial_y);
+
+    if (STATE.initial_y || STATE.final_y) {
+        let y = STATE.final_y ? y2 : y1;
+        elt.appendChild(svg("text", { x: 10, y: y, class: "varname" }, "cursor_y"));
+    }
+
+    if (STATE.initial_y) {
+        elt.appendChild(svg("line", {
+            x1: margin, y1: y1,
+            x2: "100%", y2: y1,
+        }));
+    }
+    if (STATE.final_y) {
+        elt.appendChild(svg("line", {
+            x1: margin, y1: y2,
+            x2: "100%", y2: y2,
+        }));
+    }
+
+    if (STATE.max_asc) {
+        elt.appendChild(svg("text", { x: 10, y: b, class: "varname" }, "baseline"));
+        elt.appendChild(svg("line", {
+            x1: margin, y1: b,
+            x2: "100%", y2: b,
+            class: "baseline",
+        }));
+        elt.appendChild(svg("rect", {
+            x: margin - 5, y: y1,
+            width: 5, height: b - y1,
+            class: "amax",
+        }))
+    }
+    if (STATE.max_desc) {
+        elt.appendChild(svg("rect", {
+            x: margin - 5, y: b,
+            width: 5, height: 1.2 * STATE.max_desc * ZOOM,
+            class: "dmax",
+        }))
+    }
+
+    if (STATE.line) {
+        elt.appendChild(svg("text", { x: 10, y: 20, class: "varname" }, "line"));
+        elt.appendChild(svg("line", { x1: margin, y1: 10, x2: "100%", y2: 10 }));
+        for (let [x, word, font] of STATE.line) {
+            elt.appendChild(svg("text", {
+                x: margin + 5 + (x - HSTEP) * ZOOM, y: 10,
+                style: "font: " + font.string,
+                class: "drawn",
+            }, word));
+        }
+    }
+
+    if (STATE.display_list) {
+        for (let [x, y, word, font] of STATE.display_list) {
+            let dy = (y - STATE.initial_y) * ZOOM + y1;
+            elt.appendChild(svg("text", {
+                x: margin + 5 + (x - HSTEP) * ZOOM, y: dy,
+                style: "font: " + font.string,
+                class: "drawn",
+            }, word));
+        }
+    }
+
+    if (STATE.metrics) {
+        STATE.line.forEach(function ([x, word, font], i){
+            let metric = STATE.metrics[i];
+            elt.appendChild(svg("rect", {
+                x: margin + (x - HSTEP) * ZOOM, y: 10,
+                width: 5, height: metric.ascent * ZOOM,
+                class: metric.ascent === STATE.max_asc ? "amax" : "areg",
+            }))
+            elt.appendChild(svg("rect", {
+                x: margin + (x - HSTEP) * ZOOM, y: 10 + metric.ascent * ZOOM,
+                width: 5, height: metric.descent * ZOOM,
+                class: metric.ascent === STATE.max_asc ? "dmax" : "dreg",
+            }))
+        });
+    }
+}
+
+function record(... names) {
+    return function(... values) {
+        names.forEach((n, i) => (STATE[n] = values[i]));
+        draw_widget();
+    }
+}
+
+widget.pause("initial_y", record("initial_y", "line"));
+widget.pause("metrics", record("metrics"));
+widget.pause("max_ascent", record("max_asc"));
+widget.pause("aligned", record("display_list"));
+widget.pause("max_descent", record("max_desc"));
+widget.pause("final_y", record("final_y"));
+
+widget.run(async function() {
+    STATE = {};
+    let b = await (new Browser()).init();
+    await b.load("http://input/")
+});
+</script>

@@ -8,10 +8,10 @@ prev: intro
 If you've read this far, hopefully you're convinced that browsers are
 interesting and important to study. Now we'll dig a bit into the web itself,
 where it came from, and how the web and browsers have evolved to date. This
-history is by no means exhaustive.[^sgml] Instead, you should view it as a brief
-foray into a much larger---and quite interesting in its own right---subject.
-Despite that brevity, it covers some of the key efforts,
-designs and events that led to the web we know today, and how they came to be.
+history is by no means exhaustive.[^sgml] Instead, I'll focus on some key
+events and ideas that led to the web. These ideas and events will explain how
+exactly a thing such as the web came to be, as well as the motivations and goals
+of those who created it and its predecessors.
 
 [^sgml]: For example, there is nothing much about
 [SGML](https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language) or
@@ -23,12 +23,39 @@ The Memex concept
 The earliest exploration of how computers might revolutionize information is a
 1945 essay by Vannevar Bush entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
-machine called a [Memex](https://en.wikipedia.org/wiki/Memex). The Memex was an
-imagined machine that helps (think: User Agent) an individual human to see and
+machine called a [Memex](https://en.wikipedia.org/wiki/Memex) that helps an
+individual human (think: User Agent) to see and
 explore all the information in the world. It was described in terms of microfilm
 screen technology of the time, but its purpose and concept has some clear
 similarities to the web as we know it today, even if the user interface and
 technology details differ.
+
+The web is at its core organized around the Memex-like goal of _representing and
+displaying information_, and how to provide a way for humans to effectively
+learn and explore that information. The collective knowledge and wisdom of the
+species long ago exceeded the capacity of a single mind, organization, library,
+country, culture, group or language. However, while we as humans cannot possibly
+know even a tiny fraction of what is possible to know, we can use technology to
+learn more efficiently than before, and, *in particular*, to quickly access
+information we need to learn, remember or recall. Consider this imagined
+research session, remarkably similar to today's web:
+
+> The owner of the memex, let us say, is interested in the origin and properties
+> of the bow and arrow. [..] He has dozens of possibly pertinent books and
+> articles in his memex. First he runs through an encyclopedia, finds an
+> interesting but sketchy article, leaves it projected. Next, in a history, he
+> finds another pertinent item, and ties the two together. Thus he goes,
+> building a trail of many items.
+
+Computers, and the internet, allow us to _process and store_ as much information
+as we want. But it is _the web_ that plays the role of _organizing and finding_
+that information and knowledge, making it useful.[^google-mission]
+
+[^google-mission]: The Google search engine's well-known
+[mission](https://about.google/) statement to “organize the world’s information
+and make it universally accessible and useful” is almost exactly the same.
+This is not a coincidence---the search engine concept is inherently
+connected to the web, and was inspired by the web's design and antecedents.
 
 Two features of the Memex were highlighted in the essay: information record
 lookup, and associations between related records. In fact, the essay emphasizes
@@ -40,60 +67,67 @@ known, but by making previously-unknown connections *between known things*:
 By "association", Bush meant a trail of thought leading from one record
 to the next via a human-curated link. He imagined not just a universal
 library, but a universal way to record the results of what we learn. That is
-what the web can do.
+what today's web does.
 
-The web is at its core organized around the Memex-like goal of _representing and
-displaying information_, and how to provide a way for humans to effectively
-learn and explore that information. The collective knowledge and wisdom of the
-species long ago exceeded the capacity of a single mind, organization, library,
-country, culture, group or language. However, while we as humans cannot possibly
-know even a tiny fraction of what is possible to know, we can use technology to
-learn more efficiently than before, and, *in particular*, to quickly access
-information we need to learn, remember or recall. Computers, and the internet,
-allow us to _process and store_ as much information as we want. The _web_, on
-the other hand, plays the role of _organizing and finding_ that information and
-knowledge to make it useful.[^google-mission]
+The web emerges
+===============
 
-[^google-mission]: The Google search engine's well-known
-[mission](https://about.google/) statement to “organize the world’s information
-and make it universally accessible and useful” is almost exactly the same.
-This is not a coincidence---the search engine concept is inherently
-connected to the web, and was inspired by the web's design and antecedents.
+The concept of interlinked [hypertext](hypertext) documents and the
+hyperlink concept was invented in
+[1964-65](https://en.wikipedia.org/wiki/Hyperlink#History) by [Project
+Xanadu](xanadu), led by Ted Nelson.[^literary-criticism] Hypertext is text that
+is marked up with hyperlinks to other text. Sounds familiar? A web page is
+hypertext, and links between web pages are hyperlinks. The format for writing
+web pages is HTML, which is short for HyperText Markup Language. The protocol
+for loading web pages is HTTP, which is short for HyperText Transport Protocol.
+A successor system called [HES](hes) was the first to introduce the back button,
+which all browsers now have.
 
-Documents and hyperlinks
-========================
+[hes]: https://en.wikipedia.org/wiki/Hypertext_Editing_System
 
-The concept of interlinked documents began to appear in about
-[1964-65](https://en.wikipedia.org/wiki/Hyperlink), when the term “link”
-appeared (though connected to text rather than pages).[^literary-criticism]
-Independently, the first hyperlink system appeared (though apparently not using
-that word[^hyperlink-first]) for navigating within a single document; it was
-later generalized to linking between multiple documents. This work also formed
-one of the key parts of the [mother of all
-demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos), perhaps the most
-influential technology demonstration in the history of computing.
+Independently of Project Xanadu, the first hyperlink system appeared for
+scrolling within a single document; it was later generalized to linking between
+multiple documents. And just like those original systems, the web has linking
+within documents as well as between them. For example, the url
+"http://example.com/doc.html#link" refers to a document "doc.html", as well as
+the element with the name "link" within it; clicking on a link to tha URL will
+load "doc.html" and scroll to the "link" element.
 
-[^hyperlink-first]: The word "hyperlink" may have first appeared in 1987, in
-connection with the HyperCard system on the Macintosh.)
+This work also formed and inspired one of the key parts of Douglas Engelbart's
+[mother of all demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos),
+perhaps the most influential technology demonstration in the history of
+computing. That same demo not only showcased the key concepts of the web, but
+also introduced the computer mouse and graphical user interface concept, both of
+which are of course central components of a browser UI.[^even-more]
+
+[^even-more]: That demo went beyond even this! There are some parts of it that
+have not yet been realized in any computer system. I highly recommend watching
+the demo yourself.
+
+[hypertext]: https://en.wikipedia.org/wiki/Hypertext
+
+[xanadu]: https://en.wikipedia.org/wiki/Project_Xanadu
 
 [^literary-criticism]: These concepts are also the computer-based evolution of
 the long tradition of citation in academics and literary criticism.
 
 There is of course a very direct connection between this research and the
 document+URL+hyperlink setup of the web, which built on this idea and applied it
-in practice.
-
-The web emerges
-===============
-
-In 1983 the [HyperTIES](http://www.cs.umd.edu/hcil/hyperties/) system was
-developed around highlighted hyperlinks. This was used to develop the world’s
-first electronically published academic journal, the 1988 issue of the
-[Communications of the ACM](https://cacm.acm.org/). Tim Berners-Lee cites this
-1988 event as the source of the link concept in his World Wide Web
+in practice. The [HyperTIES](http://www.cs.umd.edu/hcil/hyperties/) system, for
+example, highlighted hyperlinks and was used to develop the world’s first
+electronically published academic journal, the 1988 issue of the [Communications
+of the ACM](https://cacm.acm.org/). Tim Berners-Lee cites this 1988 event as the
+source of the link concept in his World Wide Web
 concept,[^world-wide-web-terminology] in which he proposed to join the link
 concept with the availability of the internet, thus realizing many of the
 original goals of all the work from previous decades.[^realize-web-decades]
+
+The word "hyperlink" may have been coined in 1987, in connection with the
+HyperCard system on Apple computers. This system also was one of the first, or
+the first, to introduce the concept of augmenting hypertext with scripts that
+handle user events, such as clicks, and perform actions that enhance the
+UI--just like JavaScript on a web page! It also had graphical UI elements and
+not just text, unlike most predcessors.
 
 [^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
 web”, or “the web ecosystem”---ecosystem being another way to capture the same
@@ -106,33 +140,33 @@ the vision laid out by the web. (No, it's not done yet!)
 
 In 1989-1990, the first browser (named “WorldWideWeb”) and web server (named
 “httpd”, for “HTTP Daemon” according to UNIX naming conventions) were born,
-again written in their first version by Berners-Lee. Interestingly, that
-browser’s capabilities were in some ways inferior to the browser you will
-implement in this book,[^no-css] and in some ways go beyond the capabilities
-available even in modern browsers.[^more-less-powerful] On December 20, 1990 the
-[first web page](http://info.cern.ch/hypertext/WWW/TheProject.html) was created.
-The browser we will implement in this book is easily able to render this web
-page, even today.[^original-aesthetics] In 1991, Berners-Lee advertised his
-browser and the concept on the [alt.hypertext Usenet
+written by Berners-Lee. Interestingly, while that browser’s capabilities were in
+some ways inferior to the browser you will implement in this book,[^no-css]
+in other ways they go beyond the capabilities available even in modern
+browsers.[^more-less-powerful] On December 20, 1990 the [first web
+page](http://info.cern.ch/hypertext/WWW/TheProject.html) was created. The
+browser we will implement in this book is easily able to render this web page,
+even today.[^original-aesthetics] In 1991, Berners-Lee advertised his browser
+and the concept on the [alt.hypertext Usenet
 group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 
 [^no-css]: No CSS!
 
-[^more-less-powerful]: For example, it included the concept of an index page
-meant for searching within a site (vestiges of which exist today in the
-“index.html” convention when a URL path ends in /”), and had a WYSIWYG web page
-editor (the “contenteditable” HTML attribute and “html()” method on DOM elements
-have similar semantic behavior, but built-in file saving is gone). Today, the
-index is replaced with a search engine, and web page editors as a concept are
-somewhat obsolete due to the highly dynamic nature of today’s web page
-rendering.
+[^more-less-powerful]: For example, the first browser included the concept of an
+index page meant for searching within a site (vestiges of which exist today in
+the “index.html” convention when a URL path ends in /”), and had a WYSIWYG web
+page editor (the “contenteditable” HTML attribute and “html()” method on DOM
+elements have similar semantic behavior, but built-in file saving is gone).
+Today, the index is replaced with a search engine, and web page editors as a
+concept are somewhat obsolete due to the highly dynamic nature of today’s web
+page rendering.
 
 [^original-aesthetics]: Also, as you can see clearly, that web page has not been
 updated in the meantime, and retains its original aesthetics!
 
-Berners-Lee has also written a [Brief History of the
-Web](https://www.w3.org/DesignIssues/TimBook-old/History.html) that  highlights
-a number of other interesting factors leading to the establishment of the web as
+Berners-Lee's [Brief History of the
+Web](https://www.w3.org/DesignIssues/TimBook-old/History.html) highlights a
+number of other interesting factors leading to the establishment of the web as
 we know it. One key factor was its decentralized nature, which he describes as
 arising from the culture of [CERN](https://home.cern/), where he worked. The
 decentralized nature of the web is a key feature that distinguishes it from many
@@ -140,43 +174,44 @@ systems that came before or after, and his explanation of it is worth quoting
 here (highlight is mine):
 
 > There was clearly a need for something like Enquire [ed: a predecessor
-> software system] but accessible to everyone. I wanted it to scale so that if
-> two people started to use it independently, and later started to work
-> together, *they could start linking together their information without
-> making any other changes*. This was the concept of the web.
+> web-like database system, also written by Berners-Lee] but accessible to
+> everyone. I wanted it to scale so that if two people started to use it
+> independently, and later started to work together, *they could start linking
+> together their information without making any other changes*. This was the
+> concept of the web.
 
 This quote captures one of the key value propositions of the web. The web was
 successful for several reasons, but I believe it’s primarily the following
 three:
 
-*   It provides a very low-friction way to publish information and applications.
+ - It provides a very low-friction way to publish information and applications.
 There is no gatekeeper to doing anything, and it’s easy for novices to make a
 simple web page and publish it.
 
-*   Once bootstrapped, it builds quickly upon itself via [network
+ - Once bootstrapped, it builds quickly upon itself via [network
 effects](https://en.wikipedia.org/wiki/Network_effect) made possible by
 compatibility between sites and the power of the hyperlink to reinforce this
 compatibility. Hyperlinks drive traffic between sites, but also into the web
 _from the outside_, from sources such as email, social networking, and search
 engines.
 
-*   It is outside the control of any one entity - and kept that way via
-standards organizations - and therefore not subject to problems of monopoly
+ - It is outside the control of any one entity---and kept that way via
+standards organizations---and therefore not subject to problems of monopoly
 control or manipulation.
 
 Browsers
 ========
 
-I'll now give a brief overview of the evolution of browser implementations. The
-first _widely distributed_ browser may have been
+The first _widely distributed_ browser may have been
 [ViolaWWW](https://en.wikipedia.org/wiki/ViolaWWW); this browser also pioneered
 multiple interesting features such as applets and images. This browser was in
 turn the inspiration for [NCSA
 Mosaic](https://en.wikipedia.org/wiki/Mosaic_(web_browser)), which launched in
 1993. One of the two original authors of Mosaic went on to co-found
 [Netscape](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
-_commercial browser_,[^commercial-browser] which launched in 1994. The era of
-the [”first browser
+_commercial browser_,[^commercial-browser] which launched in 1994.
+
+The era of the [”first browser
 war”](https://en.wikipedia.org/wiki/Browser_wars#First_Browser_War_(1995%E2%80%932001))
 ensued, in a competition between Netscape and Internet Explorer. In addition,
 there were other browsers with smaller market shares; one notable example is
@@ -189,20 +224,22 @@ this codebase). Likewise, the
 [Gecko](https://en.wikipedia.org/wiki/Gecko_(software)) rendering engine was
 originally developed by Netscape starting in 1997; the
 [Firefox](https://en.wikipedia.org/wiki/Firefox) browser is descended from this
-codebase.  During the first browser war period, nearly all of the core features
-of this book's simple browser were added,
-including CSS, DOM, and JavaScript.
+codebase. During the first browser war period, nearly all of the core features
+of this book's simple browser were added, including CSS, DOM, and JavaScript.
 
  The "second browser war", which according to Wikipedia was
 [2004-2017](https://en.wikipedia.org/wiki/Browser_wars#Second_Browser_War_(2004%E2%80%932017)),
-was between a variety of browsers - Internet Explorer, Firefox, Safari and
+was fought between a variety of browsers---Internet Explorer, Firefox, Safari and
 Chrome in particular. Chrome split off its rendering engine subsystem into its
 own code base called
 [Blink](https://en.wikipedia.org/wiki/Blink_(browser_engine)) in 2013.
+The second browser war saw the development of many features of the modern web,
+including AJAX requests, HTML5 features like `<canvas>`, and a huge explosion in
+third-party JavaScript libraries and frameworks.
 
 [^commercial-browser]: By commercial I mean built by a for-profit entity.
 Netscape's early versions were also not free software---you had to buy them from
-a store.
+a store. They cost about $50.
 
 Web standards
 =============
@@ -210,27 +247,30 @@ Web standards
 In parallel with these developments was another, equally important, one---the
 standardization of web APIs. In October 1994, the [World Wide Web
 Consortium](https://www.w3.org/Consortium/facts) (W3C) was founded in order to
-provide oversight and standards for web features. After this point, browsers
+provide oversight and standards for web features. Prior to this point, browsers
 would often introduce new HTML elements or APIs, and competing browsers would
-copy them. Those elements and APIs were subsequently agreed upon and documented
-in W3C specifications. (These days, an initial discussion,  design and
-specification precedes any new feature.) Later on, the HTML specification ended
-up moving to a different standards body called the
-[WHATWG](https://whatwg.org/), but [CSS](https://drafts.csswg.org/) and other
-features are still standardized at the W3C. JavaScript is standardized at
+have to copy them. With a standards organization, those elements and APIs could
+subsequently be agreed upon and documented in specifications. (These days, an
+initial discussion, design and specification precedes any new feature.) Later
+on, the HTML specification ended up moving to a different standards body called
+the [WHATWG](https://whatwg.org/), but [CSS](https://drafts.csswg.org/) and
+other features are still standardized at the W3C. JavaScript is standardized at
 [TC39](https://tc39.es/) (“Technical Committee 39” at
 [ECMA](https://www.ecma-international.org/memento/history.htm), yet another
 standards body). [HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
-the [IETF](https://www.ietf.org/about/).
+the [IETF](https://www.ietf.org/about/). The point is that the standards process
+set up in the mid-nignties is still with us.
 
 In the first years of the web, it was not so clear that browsers would remain
 standard and that one browser might not end up “winning” and becoming another
 proprietary software platform. There are multiple reasons this didn’t happen,
 among them the egalitarian ethos of the computing community and the presence and
-strength of the W3C.  Equally important was the networked nature of the web, and
+strength of the W3C. Equally important was the networked nature of the web, and
 therefore the desire of web developers to make sure their pages worked correctly
 in most or all of the browsers (otherwise they would lose customers), leading
-them to avoid any proprietary extensions.
+them to avoid any proprietary extensions. On the contrary---browsers worked hard
+to carefully reproduce each other's undocumented behaviors---even bugs---to make
+sure they continued supporting the whole web.
 
 Despite fears that this might happen, there never really was a point where any
 browser openly attempted to break away from the standard. Instead, intense
@@ -278,15 +318,16 @@ and can and do exist outside of browsers as JavaScript virtual machines. One
 important such application is the use of
 [v8](https://en.wikipedia.org/wiki/V8_(JavaScript_engine)) to power
 [node.js](https://en.wikipedia.org/wiki/Node.js). However, each of the three
-rendering engines does have its own JavaScript implementation, so conflating the
-two is reasonable.
+rendering engines does have a corresponding JavaScript implementation, so
+conflating the two is reasonable.
 
 That this occurred is not an accident, and in fact tells us something quite
 interesting about the most cost-effective way to implement a rendering engine
 based on a commodity set of platform APIs. For example, it's common for a wide
 variety of independent developers (ones not paid by the company nominally
 controlling the browser) to contribute code and features. There are even
-companies and individuals that specialize in implementing these features!
+companies and individuals that specialize in implementing these features! And
+every major browser being open source strengthens the standards process.
 
 Putting it all together
 =======================
@@ -299,8 +340,8 @@ information.
 2. Once the technology became mature enough, the web proper was proposed and
 implemented.
 
-3. The web became popular quite quickly, and many browsers appeared in order
-to capitalize on the web's opportunity.
+3. The web became popular quite quickly, and many browsers appeared in order to
+capitalize on the web's opportunity.
 
 4. Standards organizations were introduced in order to negotiate between the
 browsers and avoid proprietary control.
