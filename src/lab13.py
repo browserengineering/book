@@ -901,7 +901,9 @@ class Browser:
         self.js.export_function("getAttribute", self.js_getAttribute)
         self.js.export_function("innerHTML", self.js_innerHTML)
         self.js.export_function("cookie", self.cookie_string)
-        with open("runtime9.js") as f:
+        self.js.export_function("requestAnimationFrame", self.js_requestAnimationFrame)
+        self.js.export_function("now", self.js_now)
+        with open("runtime13.js") as f:
             self.js.evaljs(f.read())
 
     def js_querySelectorAll(self, sel):
@@ -921,7 +923,10 @@ class Browser:
             elt.children = new_nodes
             for child in elt.children:
                 child.parent = elt
-            self.set_need_reflow(layout_for_node(self.document, elt))
+            if self.document:
+                self.set_needs_reflow(layout_for_node(self.document, elt))
+            else:
+                self.set_needs_layout_tree_rebuild()
         except:
             import traceback
             traceback.print_exc()
@@ -930,6 +935,9 @@ class Browser:
     def js_requestAnimationFrame(self):
         self.needs_raf_callbacks = True
         self.set_needs_display()
+
+    def js_now(self):
+        return int(time.time() * 1000)
 
     def dispatch_event(self, type, elt):
        handle = self.node_to_handle.get(elt, -1)
