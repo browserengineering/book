@@ -400,9 +400,9 @@ class LineLayout:
                 child.x = self.x + cx
                 child.y = baseline - metrics["ascent"]
 
-    def draw(self, to):
+    def paint(self, to):
         for child in self.children:
-            child.draw(to)
+            child.paint(to)
 
 class TextLayout:
     def __init__(self, node, word):
@@ -426,7 +426,7 @@ class TextLayout:
     def position(self):
         pass
 
-    def draw(self, to):
+    def paint(self, to):
         color = self.node.style["color"]
         to.append(DrawText(self.x, self.y, self.word, self.font, color))
 
@@ -450,7 +450,7 @@ class InputLayout:
     def position(self):
         pass
 
-    def draw(self, to):
+    def paint(self, to):
         x1, x2 = self.x, self.x + self.w
         y1, y2 = self.y, self.y + self.h
         bgcolor = "light gray" if self.node.tag == "input" else "yellow"
@@ -529,9 +529,9 @@ class InlineLayout:
             child.position()
             cy += child.h
 
-    def draw(self, to):
+    def paint(self, to):
         for child in self.children:
-            child.draw(to)
+            child.paint(to)
 
 def px(s):
     if s.endswith("px"):
@@ -604,12 +604,12 @@ class BlockLayout:
             child.position()
             y += child.mt + child.h + child.mb
 
-    def draw(self, to):
+    def paint(self, to):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.w, self.y + self.h
             to.append(DrawRect(self.x, self.y, x2, y2, "gray"))
         for child in self.children:
-            child.draw(to)
+            child.paint(to)
 
 class DocumentLayout:
     def __init__(self, node):
@@ -644,8 +644,8 @@ class DocumentLayout:
         child.y = self.y = 0
         child.position()
 
-    def draw(self, to):
-        self.children[0].draw(to)
+    def paint(self, to):
+        self.children[0].paint(to)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -970,7 +970,7 @@ class Browser:
         self.document.position()
         self.timer.start("Display list")
         self.display_list = []
-        self.document.draw(self.display_list)
+        self.document.paint(self.display_list)
         self.draw()
         self.max_y = self.document.h - HEIGHT
 
