@@ -20,6 +20,10 @@ other predecessors to HTML. (Except in this footnote!)
 The Memex concept
 =================
 
+<figure>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/7/7f/The_Memex_%283002477109%29.jpg">
+</figure>
+
 The earliest exploration of how computers might revolutionize information is a
 1945 essay by Vannevar Bush entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
@@ -72,18 +76,24 @@ what today's web does.
 The web emerges
 ===============
 
-The concept of interlinked [hypertext](hypertext) documents and the
-hyperlink concept was invented in
+The concept of interlinked [hypertext](hypertext) documents and the hyperlink
+concept was invented in
 [1964-65](https://en.wikipedia.org/wiki/Hyperlink#History) by [Project
 Xanadu](xanadu), led by Ted Nelson.[^literary-criticism] Hypertext is text that
 is marked up with hyperlinks to other text. Sounds familiar? A web page is
 hypertext, and links between web pages are hyperlinks. The format for writing
 web pages is HTML, which is short for HyperText Markup Language. The protocol
 for loading web pages is HTTP, which is short for HyperText Transport Protocol.
-A successor system called [HES](hes) was the first to introduce the back button,
-which all browsers now have.
+A successor called [Hypertext Editing System] was the first to introduce the
+back button concept, which all browsers now have. (Since the system just had
+text, the "button" was itself text.)
 
 [hes]: https://en.wikipedia.org/wiki/Hypertext_Editing_System
+
+<figure>
+	<img src="https://upload.wikimedia.org/wikipedia/commons/c/cd/HypertextEditingSystemConsoleBrownUniv1969.jpg">
+<caption>Hypertext Editing System</caption>
+</figure>
 
 Independently of Project Xanadu, the first hyperlink system appeared for
 scrolling within a single document; it was later generalized to linking between
@@ -100,6 +110,11 @@ computing. That same demo not only showcased the key concepts of the web, but
 also introduced the computer mouse and graphical user interface concept, both of
 which are of course central components of a browser UI.[^even-more]
 
+<figure>
+	<img src="https://cdn.arstechnica.net/wp-content/uploads/2015/04/Engelbart-68-demo_0-2-640x426.jpg">
+	<figcaption>The mother of all demos!</figcaption>
+</figure>
+
 [^even-more]: That demo went beyond even this! There are some parts of it that
 have not yet been realized in any computer system. I highly recommend watching
 the demo yourself.
@@ -109,7 +124,8 @@ the demo yourself.
 [xanadu]: https://en.wikipedia.org/wiki/Project_Xanadu
 
 [^literary-criticism]: These concepts are also the computer-based evolution of
-the long tradition of citation in academics and literary criticism.
+the long tradition of citation in academics and literary criticism. The
+Project Xanadu research papers were heavily motivated by this use case.
 
 There is of course a very direct connection between this research and the
 document+URL+hyperlink setup of the web, which built on this idea and applied it
@@ -149,6 +165,11 @@ browser we will implement in this book is easily able to render this web page,
 even today.[^original-aesthetics] In 1991, Berners-Lee advertised his browser
 and the concept on the [alt.hypertext Usenet
 group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
+
+<figure>
+	<img src="https://www.w3.org/History/1994/WWW/Journals/CACM/screensnap2_24c.gif">
+	<caption>WorldWideWeb, the first web browser</caption>
+</figure>
 
 [^no-css]: No CSS!
 
@@ -207,13 +228,34 @@ The first _widely distributed_ browser may have been
 multiple interesting features such as applets and images. This browser was in
 turn the inspiration for [NCSA
 Mosaic](https://en.wikipedia.org/wiki/Mosaic_(web_browser)), which launched in
-1993. One of the two original authors of Mosaic went on to co-found
-[Netscape](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
+1993. One of the two original authors of Mosaic went on to co-found Netscape,
+which built [Netscape
+Navigator](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
 _commercial browser_,[^commercial-browser] which launched in 1994.
+
+<figure>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/e/ea/NCSA_Mosaic_Browser_Screenshot.png">
+  <figcaption>Mosaic</figcaption>
+</figure>
+
+<figure>
+	<img style="width: 351px; height:; 291px" src="https://upload.wikimedia.org/wikipedia/en/0/0e/ViolaWWW.png">
+	<figcaption>ViolaWWW</figcaption>
+</figure>
+
+<figure>
+	<img style="width: 347px; height: 286px" src="https://upload.wikimedia.org/wikipedia/en/c/c9/Navigator_1-22.png">
+	<figcaption>Netscape Navigator</figcaption>
+</figure>
+
+<figure>
+	<img style="width: 365px; height: 275px" src="https://upload.wikimedia.org/wikipedia/en/3/39/Internet_Explorer_1.0.png">
+	<figcaption>Internet Explorer 1.0</figcaption>
+</figure>
 
 The era of the [”first browser
 war”](https://en.wikipedia.org/wiki/Browser_wars#First_Browser_War_(1995%E2%80%932001))
-ensued, in a competition between Netscape and Internet Explorer. In addition,
+ensued, in a competition between Netscape Navigator and [Internet Explorer]. In addition,
 there were other browsers with smaller market shares; one notable example is
 [Opera](https://en.wikipedia.org/wiki/Opera_(web_browser)). The
 [WebKit](https://en.wikipedia.org/wiki/WebKit) project began in 1999
@@ -226,6 +268,8 @@ originally developed by Netscape starting in 1997; the
 [Firefox](https://en.wikipedia.org/wiki/Firefox) browser is descended from this
 codebase. During the first browser war period, nearly all of the core features
 of this book's simple browser were added, including CSS, DOM, and JavaScript.
+
+[Internet Explorer]: https://en.wikipedia.org/wiki/Internet_Explorer
 
  The "second browser war", which according to Wikipedia was
 [2004-2017](https://en.wikipedia.org/wiki/Browser_wars#Second_Browser_War_(2004%E2%80%932017)),
