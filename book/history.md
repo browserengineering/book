@@ -68,7 +68,7 @@ known, but by making previously-unknown connections *between known things*:
 By "association", Bush meant a trail of thought leading from one record
 to the next via a human-curated link. He imagined not just a universal
 library, but a universal way to record the results of what we learn. That is
-what today's web can do also.
+what the web can do today.
 
 The web emerges
 ===============
