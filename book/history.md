@@ -72,7 +72,7 @@ known, but by making previously-unknown connections *between known things*:
 By "association", Bush meant a trail of thought leading from one record
 to the next via a human-curated link. He imagined not just a universal
 library, but a universal way to record the results of what we learn. That is
-what today's web can do also.
+what the web can do today.
 
 The web emerges
 ===============
@@ -235,14 +235,9 @@ The first _widely distributed_ browser may have been
 multiple interesting features such as applets and images. This browser was in
 turn the inspiration for [NCSA
 Mosaic](https://en.wikipedia.org/wiki/Mosaic_(web_browser)), which launched in
-<<<<<<< HEAD
-1993. One of the two original authors of Mosaic subsequently co-founded
-[Netscape](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
-=======
 1993. One of the two original authors of Mosaic went on to co-found Netscape,
 which built [Netscape
 Navigator](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
->>>>>>> 3d89e59968a4b40dc02680f5cb5c9b2637019819
 _commercial browser_,[^commercial-browser] which launched in 1994.
 
 <figure>
