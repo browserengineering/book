@@ -74,7 +74,7 @@ The web emerges
 ===============
 
 The concept of interlinked [hypertext](hypertext) documents and the [hyperlink]
-concept was invented in 1964-65 by [Project Xanadu](xanadu), led by Ted
+concept was invented in 1964-65 by [Project Xanadu][xanadu], led by Ted
 Nelson.[^literary-criticism] A successor system called [HES](hes) was the first
 to introduce the back button, which all browsers now have.
 
