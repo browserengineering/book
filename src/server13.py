@@ -128,7 +128,7 @@ def show_count():
     out = "<!doctype html>"
     out += "Let's count up to 50!"
     out += "<br>"
-    out += "<div id=output></div>"
+    out += "<div id=output>hi</div>"
     out += "<script src=/eventloop13.js></script>"
     return out    
 

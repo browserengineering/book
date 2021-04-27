@@ -134,8 +134,8 @@ class ElementNode:
         self.tag = tag
         self.attributes = attributes
         self.children = []
-
-        self.style = {}
+ 
+       self.style = {}
         for pair in self.attributes.get("style", "").split(";"):
             if ":" not in pair: continue
             prop, val = pair.split(":")
@@ -465,6 +465,8 @@ class InputLayout:
 
 class InlineLayout:
     def __init__(self, node, parent):
+        print('InlineLayout')
+        print(node)
         self.node = node
         self.parent = parent
 
@@ -541,6 +543,8 @@ def px(s):
 
 class BlockLayout:
     def __init__(self, node, parent):
+        print('blocklayout')
+        print(node)
         self.node = node
         self.parent = parent
 
@@ -734,11 +738,16 @@ def find_selected(node, sel, out):
     return out
 
 def layout_for_node(tree, node):
+    print('layout_for_node')
+#    print(node)
+    print(tree.node)
     if tree.node == node:
         return tree
     for child in tree.children:
         out = layout_for_node(child, node)
-        if out: return out
+        if out:
+            return out
+    print('oops')
 
 def is_link(node):
     return isinstance(node, ElementNode) \
@@ -767,6 +776,7 @@ class Browser:
         self.address_bar = ""
         self.scroll = 0
         self.display_list = []
+        self.document = None
 
         self.timer = Timer()
         self.window.bind("<Down>", self.scrolldown)
@@ -923,10 +933,13 @@ class Browser:
             elt.children = new_nodes
             for child in elt.children:
                 child.parent = elt
+            print('here1')
             if self.document:
+                print('path1')
                 self.set_needs_reflow(layout_for_node(self.document, elt))
             else:
                 self.set_needs_layout_tree_rebuild()
+            print('here2')
         except:
             import traceback
             traceback.print_exc()
@@ -954,6 +967,8 @@ class Browser:
         return handle
 
     def set_needs_reflow(self, obj):
+        print('set_needs_reflow: ')
+        print(obj)
         self.reflow_roots.append(obj)
         self.set_needs_display()
 
@@ -967,6 +982,7 @@ class Browser:
             self.canvas.after(REFRESH_RATE, self.begin_main_frame)
 
     def begin_main_frame(self):
+        print('begin_main_frame')
         self.needs_display = False
 
         if (self.needs_raf_callbacks):
@@ -985,10 +1001,13 @@ class Browser:
         if self.needs_layout_tree_rebuild:
             self.document = DocumentLayout(self.nodes)
             self.reflow_roots = [self.document]
+        else:
+            print('other reflow')
         self.needs_layout_tree_rebuild = False
 
         for reflow_root in self.reflow_roots:
-             self.reflow(reflow_root)
+            print(reflow_root)
+            self.reflow(reflow_root)
         self.reflow_roots = []
 
     def reflow(self, obj):
