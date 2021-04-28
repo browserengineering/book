@@ -381,6 +381,8 @@ run into the very edge of the window and get cut off.
 For all three types of layout object, the order of the steps in the
 `layout` method should be the same:
 
+<iframe class="widget" src="widgets/lab5-propagate.html" height=204></iframe>
+
 + When `layout` is called, it first creates a child layout object for
   each child element.
 + Then, `layout` computes the `width`, `x`, and `y` fields, reading from the
@@ -651,6 +653,16 @@ This chapter was a dramatic rewrite of your browser's layout engine:
 Tree-based layout makes it possible to dramatically expand our
 browser's styling capabilities. We'll work on that in the [next
 chapter](styles.md).
+
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 outlines.py --html src/lab5.py
+:::
 
 Exercises
 =========

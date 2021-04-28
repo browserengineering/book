@@ -9,7 +9,7 @@ next: text
 A web browser doesn't just download web page; it also has to show that
 page to the user. In the 21^st^ century, that means a graphical
 application. How does that work? In this chapter we'll equip the toy
-browser with a graphical user interface [^1].
+browser with a graphical user interface.[^1]
 
 [^1]: There are some obscure text-based browsers: I used `w3m` as my
     main browser for most of 2011. I don't anymore.
@@ -271,8 +271,7 @@ The code increases `cursor_y` and resets `cursor_x`[^crlf] once
 `cursor_x` goes past 787 pixels.[^not-800] Wrapping the text this way
 makes it possible to read more than a single line:
 
-<iframe class="widget" src="widgets/lab2-render.html"
-    height=160 data-big-height=160 data-small-height=320></iframe>
+<iframe class="widget" src="widgets/lab2-render.html" height=204></iframe>
 
 [^crlf]: In the olden days of type writers, increasing *y* meant
     *feed*ing in a new *line*, and resetting *x* meant *return*ing the

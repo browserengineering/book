@@ -1,19 +1,35 @@
 html, body, figure { margin: 0; padding: 0; height: 100%; }
-figure { width: 100%; display: flex; align-items: start; }
-@media (max-width: 600px) { figure { flex-direction: column; align-items: center; }}
-#controls { margin: 0; background: gray; padding: .5em; flex-grow: 1; align-self: stretch; }
-#step-controls { margin-bottom: 1em; text-align: center; }
-#step-controls button {
-    min-width: 2em; height: 2em; background: lightgray; border: 0; border-radius: 1em;
+figure { width: 100%; }
+#controls {
+    box-sizing: border-box; margin: 0; padding: .5em .5em 0;
+    background: #e5f7ff; border-top: 2px solid steelblue;
 }
-#step-controls button[disabled] { background: darkgray; }
-textarea {
-    box-model: border-box;
-    border: 0;
-    width: 100%;
-    display: block;
-    font-size: 120%;
+fieldset { border: none; margin: 0; padding: 0; }
+#input-controls { margin: .5em 0; }
+
+#controls { position: absolute; left: 0; right: 0; bottom: 0; overflow: hidden; }
+@media (max-height: 400px) {
+  #input-controls { transition: all .3s ease; max-height: 160px; }
+  .running #input-controls { max-height: 0; margin: .5em 0 0; }
 }
-textarea[disabled] {
-    background: darkgray;
+
+#step-controls { display: flex; gap: 1ex; font-size: 20px; }
+#step-controls h1 {
+    flex-grow: 1; order: 3; text-align: center;
+    font: 100% sans; margin: 0; line-height: 1.33em;
 }
+#step-controls .left { order: 1; }
+#step-controls .right { order: 5; }
+@media (max-width: 600px) { #step-controls { font-size: 16px; } }
+@media (max-width: 400px) { #step-controls { flex-wrap: wrap; } }
+#step-controls button { font: 70% sans-serif; min-width: 2em; height: 2em; border-radius: 1em; }
+
+textarea { box-sizing: border-box; width: 100%; font: 20px monospace; }
+
+#step-controls button:hover { cursor: pointer; }
+#step-controls button:hover, textarea:focus { border: 2px solid blue; }
+#step-controls button, textarea { border: 2px solid steelblue; background: transparent; }
+#step-controls button:disabled, textarea:disabled {
+    background: #cdecfa; border-color: #cdecfa; cursor: default; }
+
+#input-controls button { float: right; }
