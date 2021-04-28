@@ -205,7 +205,7 @@ class Widget {
             back: elt.querySelector(".stepb"),
             next: elt.querySelector(".stepf"),
             animate: elt.querySelector(".play"),
-            input: elt.querySelector("textarea"),
+            input: elt.querySelector("#input-controls"),
         };
 
         if (this.controls.reset) this.controls.reset.addEventListener("click", this.reset.bind(this));
@@ -225,6 +225,7 @@ class Widget {
         breakpoint.capture(evt, function(...args) {
             return new Promise(function (resolve) {
                 that.step += 1;
+                that.controls.back.disabled = (that.step <= 0);
                 if (cb) cb(...args);
                 if (that.step < that.stop && that.stop >= 0) {
                     resolve();
@@ -247,7 +248,8 @@ class Widget {
         return this;
     }
 
-    reset() {
+    reset(e) {
+        this.elt.classList.remove("running");
         this.step = -1;
         this.k = this.runner;
         if (this.timer) clearInterval(this.timer);
@@ -257,24 +259,32 @@ class Widget {
         this.controls.input.disabled = false;
         this.controls.next.disabled = false;
         this.controls.animate.disabled = false;
+        this.controls.next.textContent = "Start";
+        if (e) e.preventDefault();
     }
 
-    back() {
+    back(e) {
         this.stop = this.step - 1;
         this.reset();
         this.next();
+        if (e) e.preventDefault();
     }
 
-    next() {
+    next(e) {
+        this.elt.classList.add("running");
         console.assert(this.k, "Tried to step forward but no next state available");
+        this.controls.next.textContent = "Next";
         this.controls.input.disabled = true;
         this.controls.reset.disabled = false;
         this.controls.back.disabled = false;
         this.k();
+        if (e) e.preventDefault();
     }
 
-    animate() {
+    animate(e) {
         this.timer = setInterval(this.next.bind(this), 250);
+        this.next();
+        if (e) e.preventDefault();
     }
 
   
