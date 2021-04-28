@@ -86,7 +86,7 @@ We can do that by *scheduling a render to occur* instead of synchronously
 computing it, via a call to a new method called `set_needs_display`:
 
 ``` {.python}
-REFRESH_RATE=16 # 16ms
+REFRESH_RATE = 16 # 16ms
 
 class Browser:
     def __init__(self):
@@ -100,15 +100,15 @@ class Browser:
 
 For `handle_click`, this means replacing a call to `self.reflow(self.focus)`
 with `self.set_needs_display`. But that's not all---if we just called
-`set_needs_display`, the fact that it was `self.focus` that needed reflow
-would be lost. To solve that we'll record the need for a reflow in a new
-variable:
+`set_needs_display`, the fact that it was `self.focus` that needed reflow would
+be lost. To solve that we'll record the need for a reflow in a new variable
+`reflow_roots`, which records which layout objects need reflow:
 
 ``` {.python}
 class Browser:
     # ...
-    self.
-
+    self.reflow_roots = []
+```
 
 1. Optimize `run_rendering_pipeline()` and `handle_event()` to run as fast as
 possible.
