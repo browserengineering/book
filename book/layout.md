@@ -652,6 +652,16 @@ Tree-based layout makes it possible to dramatically expand our
 browser's styling capabilities. We'll work on that in the [next
 chapter](styles.md).
 
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 outlines.py --html src/lab5.py
+:::
+
 Exercises
 =========
 
