@@ -33,7 +33,7 @@ the `render` method to `draw`, since it is only doing the part about drawing
 the display list to the screen:
 
 ``` {.python}
-def draw():
+def draw(self):
     # ...
 ````
 
@@ -41,14 +41,9 @@ Likewise, let's rename `layout` to `runRenderingPipeline`:
 
 
 ``` {.python}
-def runRenderingPipeline():
-    style(self.nodes, None, self.rules)
-    self.document = DocumentLayout(self.nodes)
-    self.document.layout()
-    self.display_list = []
-    self.document.paint(self.display_list)
-    self.drawToScreen()
-    self.max_y = self.document.h - HEIGHT
+def run_rendering_pipeline(self):
+    # ...
+    self.reflow(reflow_root)
 ```
 
 Now that same chapter *also* says that there is a [frame

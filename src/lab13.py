@@ -133,8 +133,7 @@ class ElementNode:
     def __init__(self, tag, attributes):
         self.tag = tag
         self.attributes = attributes
-        self.children = []
- 
+        self.children = [] 
         self.style = {}
         for pair in self.attributes.get("style", "").split(";"):
             if ":" not in pair: continue
@@ -738,8 +737,7 @@ def layout_for_node(tree, node):
         return tree
     for child in tree.children:
         out = layout_for_node(child, node)
-        if out:
-            return out
+        if out: return out
 
 def is_link(node):
     return isinstance(node, ElementNode) \
@@ -794,7 +792,7 @@ class Browser:
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.draw()
+                self.set_needs_display()
         else:
             x, y = e.x, e.y + self.scroll - 60
             obj = find_layout(x, y, self.document)
@@ -1047,7 +1045,7 @@ class Browser:
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
-        self.draw()
+        self.set_needs_display()
 
 if __name__ == "__main__":
     import sys
