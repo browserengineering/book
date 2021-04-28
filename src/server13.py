@@ -126,10 +126,11 @@ def show_comments(username):
 
 def show_count():
     out = "<!doctype html>"
-    out += "Let's count up to 50!"
-    out += "<br>"
+    out += "<div>";
+    out += "  Let's count up to 50!"
+    out += "</div>";
     out += "<div id=output>hi</div>"
-    out += "<script src=/eventloop13.js></script>"
+    out += "<div><script src=/eventloop13.js></script></div>"
     return out    
 
 def check_nonce(params, username):

@@ -135,7 +135,7 @@ class ElementNode:
         self.attributes = attributes
         self.children = []
  
-       self.style = {}
+        self.style = {}
         for pair in self.attributes.get("style", "").split(";"):
             if ":" not in pair: continue
             prop, val = pair.split(":")
@@ -295,7 +295,7 @@ class CSSParser:
     def parse(self):
         rules, _ = self.file(0)
         return rules
-    
+
 class TagSelector:
     def __init__(self, tag):
         self.tag = tag
@@ -740,23 +740,31 @@ def find_selected(node, sel, out):
 def layout_for_node(tree, node):
     print('layout_for_node')
 #    print(node)
-    print(tree.node)
+    print(node)
+    retval = layout_for_node_internal(tree, node)
+    print(retval)
+
+def layout_for_node_internal(tree, node):
     if tree.node == node:
         return tree
     for child in tree.children:
-        out = layout_for_node(child, node)
+        out = layout_for_node_internal(child, node)
         if out:
             return out
-    print('oops')
 
 def is_link(node):
     return isinstance(node, ElementNode) \
         and node.tag == "a" and "href" in node.attributes
 
-def drawTree(node, indent=0):
+def drawHTMLTree(node, indent=0):
+    print(" "*indent, type(node).__name__, " ", node, sep="")
+    for child in node.children:
+        drawHTMLTree(child, indent + 2)
+
+def drawLayoutTree(node, indent=0):
     print(" "*indent, type(node).__name__, " ", node.node, sep="")
     for child in node.children:
-        drawTree(child, indent + 2)
+        drawLayoutTree(child, indent + 2)
 
 REFRESH_RATE = 16
 
@@ -879,6 +887,7 @@ class Browser:
 
         self.timer.start("Parsing HTML")
         self.nodes = parse(lex(body))
+        drawHTMLTree(self.nodes)
         
         self.timer.start("Parsing CSS")
         with open("browser8.css") as f:
@@ -927,9 +936,15 @@ class Browser:
 
     def js_innerHTML(self, handle, s):
         try:
+            print('js_innerHTML')
+            print(self.needs_layout_tree_rebuild)
+            self.run_rendering_pipeline()
+
             doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
             new_nodes = doc.children[0].children
             elt = self.handle_to_node[handle]
+            print('element')
+            print(elt)
             elt.children = new_nodes
             for child in elt.children:
                 child.parent = elt
@@ -1001,6 +1016,7 @@ class Browser:
         if self.needs_layout_tree_rebuild:
             self.document = DocumentLayout(self.nodes)
             self.reflow_roots = [self.document]
+            print('document reflow')
         else:
             print('other reflow')
         self.needs_layout_tree_rebuild = False
@@ -1026,6 +1042,7 @@ class Browser:
         self.document.paint(self.display_list)
         self.draw()
         self.max_y = self.document.h - HEIGHT
+        drawLayoutTree(self.document)
 
     def draw(self):
         self.timer.start("Drawing")
