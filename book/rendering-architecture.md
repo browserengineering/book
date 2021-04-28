@@ -23,9 +23,9 @@ screen. In terms of our new terminology, the code is:
 
 ``` {.python expected=False}
 while True:
-    for evt in pendingEvents():
-        handleEvent(evt)
-    runRenderingPipeline()
+    for evt in pending_events():
+        handle_event(evt)
+    run_rendering_pipeline()
 ```
 
 Let's make the same changes to your browser, beginning with renaming
@@ -37,7 +37,7 @@ def draw(self):
     # ...
 ````
 
-Likewise, let's rename `layout` to `runRenderingPipeline`:
+Likewise, let's rename `layout` to `run_rendering_pipeline`:
 
 
 ``` {.python}
@@ -45,6 +45,12 @@ def run_rendering_pipeline(self):
     # ...
     self.reflow(reflow_root)
 ```
+
+As a reminder, if you're using tkinter, the call to `tkinter.mainloop()`
+is what your browser uses to implement the above while loop.
+
+The cadence of rendering
+========================
 
 Now that same chapter *also* says that there is a [frame
 budget](graphics.md#framebudget), which is the amount of time allocated to
@@ -57,17 +63,58 @@ speed, even if the CPU is up to it, because there is no point---the screen can't
 keep up anyway. For this reason, `16ms` is not just a frame budget but also a
 desired rendering *cadence*.
 
+Our next goal is to make the browser match this cadence.
+
+(TODO: rename the pipeline stages in earlier chapters to match the nomenclature below.)
+
 Currently, your browser runs the rendering pipeline (style, layout, paint, and
-drawToScreen) immediately after each possible change of state that might cause a
-change. These changes of state are: `handle_click`, `keypress`, `load`,
-`js_innerHTML` and `scrolldown`.
+draw) immediately after each possible event that might cause a change to what is
+shown on the screen. These events are: `handle_click`, `keypress`, `load`,
+`js_innerHTML` and `scrolldown`. tkinter makes a task on the event loop for each
+time one of the above events happen; that is effect of binding *event handler*
+methods to those events, via this code:
+
+``` {.python}
+        self.window.bind("<Down>", self.scrolldown)
+        self.window.bind("<Button-1>", self.handle_click)
+        self.window.bind("<Key>", self.keypress)
+        self.window.bind("<Return>", self.pressenter)
+```
+
+What we want to do next is to run the rendering pipeline in a separte event.
+We can do that by *scheduling a render to occur* instead of synchronously
+computing it, via a call to a new method called `set_needs_display`:
+
+``` {.python}
+REFRESH_RATE=16 # 16ms
+
+class Browser:
+    def __init__(self):
+        self.needs_display = False
+
+    def set_needs_display(self):
+        if not self.needs_display:
+            self.needs_display = True
+            self.canvas.after(REFRESH_RATE, self.run_rendering_pipeline)
+```
+
+For `handle_click`, this means replacing a call to `self.reflow(self.focus)`
+with `self.set_needs_display`. But that's not all---if we just called
+`set_needs_display`, the fact that it was `self.focus` that needed reflow
+would be lost. To solve that we'll record the need for a reflow in a new
+variable:
+
+``` {.python}
+class Browser:
+    # ...
+    self.
 
 
-1. Optimize `runRenderingPipeline()` and `handleEvent()` to run as fast as
+1. Optimize `run_rendering_pipeline()` and `handle_event()` to run as fast as
 possible.
-2. Avoid using up the frame budget calling `handleEvent()` too many times.
+2. Avoid using up the frame budget calling `handle_event()` too many times.
 
-You've already seen several ways to optimize `runRenderingPipeline()`, such as
+You've already seen several ways to optimize `run_rendering_pipeline()`, such as
 [not painting](graphics.md#faster-rendering)  content that is offscreen and
 [optimizing](reflow.md) partial layouts. Real browsers implement many more such
 optimizations, and some of those will be described in detail in later chapters.

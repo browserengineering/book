@@ -972,24 +972,15 @@ class Browser:
     def set_needs_display(self):
         if not self.needs_display:
             self.needs_display = True
-            self.canvas.after(REFRESH_RATE, self.begin_main_frame)
+            self.canvas.after(REFRESH_RATE, self.run_rendering_pipeline)
 
-    def begin_main_frame(self):
+    def run_rendering_pipeline(self):
         self.needs_display = False
 
         if (self.needs_raf_callbacks):
             self.needs_raf_callbacks = False
             self.js.evaljs("__runRAFHandlers()")
 
-        self.run_rendering_pipeline()
-        # This will cause a draw to the screen, even if there are pending
-        # requestAnimationFrame callbacks for the *next* frame (which may have
-        # been registered during a call to __runRAFHandlers). By default,
-        # tkinter doesn't run these until there are no more event queue
-        # tasks.
-        self.canvas.update_idletasks()
-
-    def run_rendering_pipeline(self):
         if self.needs_layout_tree_rebuild:
             self.document = DocumentLayout(self.nodes)
             self.reflow_roots = [self.document]
@@ -998,6 +989,14 @@ class Browser:
         for reflow_root in self.reflow_roots:
             self.reflow(reflow_root)
         self.reflow_roots = []
+
+        # This will cause a draw to the screen, even if there are pending
+        # requestAnimationFrame callbacks for the *next* frame (which may have
+        # been registered during a call to __runRAFHandlers). By default,
+        # tkinter doesn't run these until there are no more event queue
+        # tasks.
+        self.canvas.update_idletasks()
+
 
     def reflow(self, obj):
         self.timer.start("Style")
