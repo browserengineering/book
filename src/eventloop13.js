@@ -8,8 +8,8 @@ console.log('callback!!!');
 	output.innerHTML = "count: " + (count++) + "<br>" +
  		" time elapsed since last frame: " +  (Date.now() - cur_frame_time) + "ms" +
 		" total time elapsed: " + (Date.now() - start_time) + "ms";
-	if (count <= 1)
+	if (count <= 100)
 		requestAnimationFrame(callback);
 	cur_frame_time = Date.now()
 }
-//requestAnimationFrame(callback);
+requestAnimationFrame(callback);

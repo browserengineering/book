@@ -465,8 +465,6 @@ class InputLayout:
 
 class InlineLayout:
     def __init__(self, node, parent):
-        print('InlineLayout')
-        print(node)
         self.node = node
         self.parent = parent
 
@@ -543,8 +541,6 @@ def px(s):
 
 class BlockLayout:
     def __init__(self, node, parent):
-        print('blocklayout')
-        print(node)
         self.node = node
         self.parent = parent
 
@@ -738,17 +734,10 @@ def find_selected(node, sel, out):
     return out
 
 def layout_for_node(tree, node):
-    print('layout_for_node')
-#    print(node)
-    print(node)
-    retval = layout_for_node_internal(tree, node)
-    print(retval)
-
-def layout_for_node_internal(tree, node):
     if tree.node == node:
         return tree
     for child in tree.children:
-        out = layout_for_node_internal(child, node)
+        out = layout_for_node(child, node)
         if out:
             return out
 
@@ -887,7 +876,7 @@ class Browser:
 
         self.timer.start("Parsing HTML")
         self.nodes = parse(lex(body))
-        drawHTMLTree(self.nodes)
+#        drawHTMLTree(self.nodes)
         
         self.timer.start("Parsing CSS")
         with open("browser8.css") as f:
@@ -936,25 +925,18 @@ class Browser:
 
     def js_innerHTML(self, handle, s):
         try:
-            print('js_innerHTML')
-            print(self.needs_layout_tree_rebuild)
             self.run_rendering_pipeline()
 
             doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
             new_nodes = doc.children[0].children
             elt = self.handle_to_node[handle]
-            print('element')
-            print(elt)
             elt.children = new_nodes
             for child in elt.children:
                 child.parent = elt
-            print('here1')
             if self.document:
-                print('path1')
                 self.set_needs_reflow(layout_for_node(self.document, elt))
             else:
                 self.set_needs_layout_tree_rebuild()
-            print('here2')
         except:
             import traceback
             traceback.print_exc()
@@ -982,8 +964,6 @@ class Browser:
         return handle
 
     def set_needs_reflow(self, obj):
-        print('set_needs_reflow: ')
-        print(obj)
         self.reflow_roots.append(obj)
         self.set_needs_display()
 
@@ -997,7 +977,6 @@ class Browser:
             self.canvas.after(REFRESH_RATE, self.begin_main_frame)
 
     def begin_main_frame(self):
-        print('begin_main_frame')
         self.needs_display = False
 
         if (self.needs_raf_callbacks):
@@ -1016,13 +995,9 @@ class Browser:
         if self.needs_layout_tree_rebuild:
             self.document = DocumentLayout(self.nodes)
             self.reflow_roots = [self.document]
-            print('document reflow')
-        else:
-            print('other reflow')
         self.needs_layout_tree_rebuild = False
 
         for reflow_root in self.reflow_roots:
-            print(reflow_root)
             self.reflow(reflow_root)
         self.reflow_roots = []
 
@@ -1042,7 +1017,7 @@ class Browser:
         self.document.paint(self.display_list)
         self.draw()
         self.max_y = self.document.h - HEIGHT
-        drawLayoutTree(self.document)
+#        drawLayoutTree(self.document)
 
     def draw(self):
         self.timer.start("Drawing")
