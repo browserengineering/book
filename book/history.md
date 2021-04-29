@@ -20,6 +20,10 @@ other predecessors to HTML. (Except in this footnote!)
 The Memex concept
 =================
 
+<style>
+	figure { text-align: center; }
+</style>
+
 <figure>
   <img src="https://upload.wikimedia.org/wikipedia/commons/7/7f/The_Memex_%283002477109%29.jpg">
 </figure>
@@ -240,25 +244,25 @@ which built [Netscape
 Navigator](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
 _commercial browser_,[^commercial-browser] which launched in 1994.
 
+<div style="display: grid; grid-template-columns: repeat(2, 1fr);">
 <figure>
-  <img src="https://upload.wikimedia.org/wikipedia/commons/e/ea/NCSA_Mosaic_Browser_Screenshot.png">
-  <figcaption>Mosaic</figcaption>
+		<img src="https://upload.wikimedia.org/wikipedia/commons/e/ea/NCSA_Mosaic_Browser_Screenshot.png">
+	<figcaption>Mosaic</figcaption>
+</figure>
+<figure>
+		<img src="https://upload.wikimedia.org/wikipedia/en/0/0e/ViolaWWW.png">
+		<figcaption>ViolaWWW</figcaption>
+</figure>
+<figure>
+		<img src="https://upload.wikimedia.org/wikipedia/en/c/c9/Navigator_1-22.png">
+		<figcaption>Netscape Navigator</figcaption>
+</figure>
+<figure>
+		<img src="https://upload.wikimedia.org/wikipedia/en/3/39/Internet_Explorer_1.0.png">
+		<figcaption>Internet Explorer 1.0</figcaption>
 </figure>
 
-<figure>
-	<img style="width: 351px; height:; 291px" src="https://upload.wikimedia.org/wikipedia/en/0/0e/ViolaWWW.png">
-	<figcaption>ViolaWWW</figcaption>
-</figure>
-
-<figure>
-	<img style="width: 347px; height: 286px" src="https://upload.wikimedia.org/wikipedia/en/c/c9/Navigator_1-22.png">
-	<figcaption>Netscape Navigator</figcaption>
-</figure>
-
-<figure>
-	<img style="width: 365px; height: 275px" src="https://upload.wikimedia.org/wikipedia/en/3/39/Internet_Explorer_1.0.png">
-	<figcaption>Internet Explorer 1.0</figcaption>
-</figure>
+</div>
 
 The era of the [”first browser
 war”](https://en.wikipedia.org/wiki/Browser_wars#First_Browser_War_(1995%E2%80%932001))
