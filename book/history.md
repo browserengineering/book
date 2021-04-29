@@ -21,9 +21,7 @@ The Memex concept
 =================
 
 <style>
-	figure {
-		text-align: center;
-	}
+	figure { text-align: center; }
 </style>
 
 <figure>
