@@ -894,7 +894,8 @@ class Browser:
     def load_scripts(self, scripts):
         req_headers = { "Cookie": self.cookie_string() }
         for script in find_scripts(self.nodes, []):
-            header, body = request(relative_url(script, self.history[-1]), headers=req_headers)
+            header, body = request(
+                relative_url(script, self.history[-1]), headers=req_headers)
             scripts.append([header, body])
 
     def run_scripts(self):
@@ -920,7 +921,8 @@ class Browser:
         self.js.export_function("getAttribute", self.js_getAttribute)
         self.js.export_function("innerHTML", self.js_innerHTML)
         self.js.export_function("cookie", self.cookie_string)
-        self.js.export_function("requestAnimationFrame", self.js_requestAnimationFrame)
+        self.js.export_function(
+            "requestAnimationFrame", self.js_requestAnimationFrame)
         self.js.export_function("now", self.js_now)
         with open("runtime13.js") as f:
             self.js.evaljs(f.read())

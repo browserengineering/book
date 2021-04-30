@@ -97,7 +97,7 @@ class Browser:
         if not self.needs_display:
             self.needs_display = True
             self.canvas.after(REFRESH_RATE,
-                              self.run_rendering_pipeline)
+                              self.begin_main_frame)
 ```
 
 For `handle_click`, this means replacing a call to `self.reflow(self.focus)`
@@ -152,11 +152,13 @@ different set of threads or processes):
         # ...
 
         self.run_scripts()
+        self.set_needs_layout_tree_rebuild()
 
-            def load_scripts(self, scripts):
+    def load_scripts(self, scripts):
         req_headers = { "Cookie": self.cookie_string() }
         for script in find_scripts(self.nodes, []):
-            header, body = request(relative_url(script, self.history[-1]), headers=req_headers)
+            header, body = request(
+                relative_url(script, self.history[-1]), headers=req_headers)
             scripts.append([header, body])
 
     def run_scripts(self):
@@ -210,13 +212,14 @@ JavaScript callbacks. The full definition is:
 ``` {.python}
     def setup_js(self):
         # ...
-        self.js.export_function("requestAnimationFrame", self.js_requestAnimationFrame)
+        self.js.export_function(
+            "requestAnimationFrame", self.js_requestAnimationFrame)
 
     def js_requestAnimationFrame(self):
         self.needs_raf_callbacks = True
         self.set_needs_display()
 
-    def run_rendering_pipeline(self):
+    def begin_main_frame(self):
         self.needs_display = False
 
         if (self.needs_raf_callbacks):
@@ -224,6 +227,11 @@ JavaScript callbacks. The full definition is:
             self.timer.start("runRAFHandlers")
             self.js.evaljs("__runRAFHandlers()")
 
+        self.run_rendering_pipeline()
+        self.timer.start("IdleTasks")
+        self.canvas.update_idletasks()
+
+    def run_rendering_pipeline(self):
         if self.needs_layout_tree_rebuild:
             self.document = DocumentLayout(self.nodes)
             self.reflow_roots = [self.document]
@@ -232,15 +240,16 @@ JavaScript callbacks. The full definition is:
         for reflow_root in self.reflow_roots:
             self.reflow(reflow_root)
         self.reflow_roots = []
-
-        self.timer.start("IdleTasks")
-        self.canvas.update_idletasks()
-
 ```
 
 And in the JavaScript runtime we'll need:
 
 ``` {.javascript}
+function Date() {}
+Date.now = function() {
+    return call_python("now");
+}
+
 RAF_LISTENERS = [];
 
 function requestAnimationFrame(fn) {
@@ -291,7 +300,8 @@ var cur_frame_time = start_time
 function callback() {
     var output = document.querySelectorAll("#output")[0];
     output.innerHTML = "count: " + (count++) + "<br>" +
-        " time elapsed since last frame: " +  (Date.now() - cur_frame_time) + "ms" +
+        " time elapsed since last frame: " + 
+        (Date.now() - cur_frame_time) + "ms" +
         " total time elapsed: " + (Date.now() - start_time) + "ms";
     if (count <= 100)
         requestAnimationFrame(callback);

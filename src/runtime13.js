@@ -48,7 +48,6 @@ Event.prototype.preventDefault = function() {
     this.do_default = false;
 }
 
-
 function Date() {}
 Date.now = function() {
     return call_python("now");
