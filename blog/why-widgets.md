@@ -25,8 +25,8 @@ one by one. You can see how baseline computation:
 
 + Finds the ascent and descent height of each individual word
 + Adds the maximum ascent to the _y_-cursor to compute the baseline
-+ Places each word by moving it its ascent above the baseline
-+ Computes the new _y_-cursor by adding the maximumn descent to the baseline
++ Places each word above the baseline by the size of its ascent
++ Computes the new _y_-cursor by adding the maximum descent to the baseline
 
 In the widget, pink and blue represent ascents and descents, with dark
 red and dark blue showing the maximum ascent / descent (once that's
@@ -64,10 +64,10 @@ things on the screen, labeled "Phase 1" and "Phase 2", reinforces that.
 
 Third, the widget can actually reveal things that were hidden in the
 description. For example, the bullet points in the previous section
-didn't mention leading, but it clearly shows up in the widget.
-Moreover, the widget shows that the leading isn't evenly distributed
-around the line---something a real browser does but this book's toy
-doesn't do.
+didn't mention leading, but it clearly shows up in the widget. In
+fact, in a propert browser, the amount of leading above and below the
+line should be the same---the widget shows that this book's toy
+browser doesn't do that (for simplicity).
 
 Finally, the widget can use color or shape to highlight relationships
 and states. My widget above shows the maximum ascent and descent in a
