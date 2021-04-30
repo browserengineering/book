@@ -213,7 +213,8 @@ JavaScript callbacks. The full definition is:
     def setup_js(self):
         # ...
         self.js.export_function(
-            "requestAnimationFrame", self.js_requestAnimationFrame)
+            "requestAnimationFrame",
+            self.js_requestAnimationFrame)
 
     def js_requestAnimationFrame(self):
         self.needs_raf_callbacks = True

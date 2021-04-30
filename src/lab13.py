@@ -922,7 +922,8 @@ class Browser:
         self.js.export_function("innerHTML", self.js_innerHTML)
         self.js.export_function("cookie", self.cookie_string)
         self.js.export_function(
-            "requestAnimationFrame", self.js_requestAnimationFrame)
+            "requestAnimationFrame",
+            self.js_requestAnimationFrame)
         self.js.export_function("now", self.js_now)
         with open("runtime13.js") as f:
             self.js.evaljs(f.read())
