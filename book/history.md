@@ -31,8 +31,8 @@ The Memex concept
 The earliest exploration of how computers might revolutionize information is a
 1945 essay by Vannevar Bush entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
-machine called a [Memex](https://en.wikipedia.org/wiki/Memex) that helps an
-individual human see and explore (think: User Agent) all the information in the
+machine called a [Memex](https://en.wikipedia.org/wiki/Memex) that helps (think:
+User Agent) an individual human see and explore all the information in the
 world. It was described in terms of the microfilm screen technology of the time,
 but its purpose and concept has some clear similarities to the web as we know it
 today, even if the user interface and technology details differ.
@@ -55,7 +55,7 @@ Vannevar Bush--one that is remarkably similar to how we sometimes use the web:
 > building a trail of many items.
 
 Computers, and the internet, allow us to _process and store_ the information we
-want. But it is _the web_ that plays the _organizes and finds_ that information,
+want. But it is _the web_ that helps us _organize and find_ that information,
 that knowledge, making it useful.[^google-mission]
 
 [^google-mission]: The Google search engine's well-known
@@ -197,7 +197,7 @@ updated in the meantime, and retains its original aesthetics!
 
 Berners-Lee's [Brief History of the
 Web](https://www.w3.org/DesignIssues/TimBook-old/History.html) highlights a
-number of other key factors that lead to the World Wide Web becoming the web we
+number of other key factors that led to the World Wide Web becoming the web we
 know today. One key factor was its decentralized nature, which he describes as
 arising from the academic culture of [CERN](https://home.cern/), where he
 worked. The decentralized nature of the web is a key feature that distinguishes
@@ -320,11 +320,11 @@ standard and that one browser might not end up “winning” and becoming anothe
 proprietary software platform. There are multiple reasons this didn’t happen,
 among them the egalitarian ethos of the computing community and the presence and
 strength of the W3C. Another important reason was the networked nature of the
-web, and therefore the drive by web developers to make sure their pages worked
-correctly in most or all of the browsers (otherwise they would lose customers),
-leading them to avoid proprietary extensions. On the contrary---browsers worked
-hard to carefully reproduce each other's undocumented behaviors---even bugs---to
-make sure they continued supporting the whole web.
+web, and therefore the necessity for web developers to make sure their pages
+worked correctly in most or all of the browsers (otherwise they would lose
+customers), leading them to avoid proprietary extensions. On the
+contrary---browsers worked hard to carefully reproduce each other's undocumented
+behaviors---even bugs---to make sure they continued supporting the whole web.
 
 There never really was a point where any browser openly attempted to break away
 from the standard, despite fears that that might happen. Instead, intense
