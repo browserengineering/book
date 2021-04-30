@@ -8,6 +8,7 @@ import dukpy
 import socket
 import ssl
 import time
+import threading
 import tkinter
 import tkinter.font
 
@@ -887,16 +888,28 @@ class Browser:
         self.rules.sort(key=lambda x: x[0].priority())
         self.rules.reverse()
 
-        self.timer.start("Running JS")
-        self.setup_js()
+        self.run_scripts()
+        self.set_needs_layout_tree_rebuild()
+
+    def load_scripts(self, scripts):
+        req_headers = { "Cookie": self.cookie_string() }
         for script in find_scripts(self.nodes, []):
             header, body = request(relative_url(script, self.history[-1]), headers=req_headers)
+            scripts.append([header, body])
+
+    def run_scripts(self):
+        self.timer.start("Running JS")
+        self.setup_js()
+
+        scripts=[]
+        thread = threading.Thread(target=self.load_scripts, args=(scripts,))
+        thread.start()
+        thread.join()
+        for [header, body] in scripts:
             try:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
                 print("Script", script, "crashed", e)
-
-        self.set_needs_layout_tree_rebuild()
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -961,8 +974,8 @@ class Browser:
             handle = self.node_to_handle[elt]
         return handle
 
-    def set_needs_reflow(self, obj):
-        self.reflow_roots.append(obj)
+    def set_needs_reflow(self, layout_object):
+        self.reflow_roots.append(layout_object)
         self.set_needs_display()
 
     def set_needs_layout_tree_rebuild(self):
@@ -972,15 +985,28 @@ class Browser:
     def set_needs_display(self):
         if not self.needs_display:
             self.needs_display = True
-            self.canvas.after(REFRESH_RATE, self.run_rendering_pipeline)
+            self.canvas.after(REFRESH_RATE,
+                              self.begin_main_frame)
 
-    def run_rendering_pipeline(self):
+    def begin_main_frame(self):
         self.needs_display = False
 
         if (self.needs_raf_callbacks):
             self.needs_raf_callbacks = False
+            self.timer.start("runRAFHandlers")
             self.js.evaljs("__runRAFHandlers()")
 
+        self.run_rendering_pipeline()
+        # This will cause a draw to the screen, even if there are pending
+        # requestAnimationFrame callbacks for the *next* frame (which may have
+        # been registered during a call to __runRAFHandlers). By default,
+        # tkinter doesn't run these until there are no more event queue
+        # tasks.
+        self.timer.start("IdleTasks")
+        self.canvas.update_idletasks()
+        self.timer.stop()
+
+    def run_rendering_pipeline(self):
         if self.needs_layout_tree_rebuild:
             self.document = DocumentLayout(self.nodes)
             self.reflow_roots = [self.document]
@@ -989,14 +1015,6 @@ class Browser:
         for reflow_root in self.reflow_roots:
             self.reflow(reflow_root)
         self.reflow_roots = []
-
-        # This will cause a draw to the screen, even if there are pending
-        # requestAnimationFrame callbacks for the *next* frame (which may have
-        # been registered during a call to __runRAFHandlers). By default,
-        # tkinter doesn't run these until there are no more event queue
-        # tasks.
-        self.canvas.update_idletasks()
-
 
     def reflow(self, obj):
         self.timer.start("Style")
@@ -1038,7 +1056,6 @@ class Browser:
             x = self.focus.x + self.focus.font.measure(text)
             y = self.focus.y - self.scroll + 60
             self.canvas.create_line(x, y, x, y + self.focus.h)
-        self.timer.stop()
 
     def scrolldown(self, e):
         self.scroll = self.scroll + SCROLL_STEP
