@@ -910,7 +910,7 @@ class Browser:
             try:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
-                print("Script", script, "crashed", e)
+                print("Script", body, "crashed", e)
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -1030,7 +1030,7 @@ class Browser:
             obj = obj.parent
         self.timer.start("Layout (phase 2)")
         self.document.position()
-        self.timer.start("Display list")
+        self.timer.start("Paint")
         self.display_list = []
         self.document.paint(self.display_list)
         self.draw()
@@ -1038,13 +1038,13 @@ class Browser:
 #        drawLayoutTree(self.document)
 
     def draw(self):
-        self.timer.start("Drawing")
+        self.timer.start("Draw")
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
             if cmd.y2 < self.scroll: continue
             cmd.draw(self.scroll - 60, self.canvas)
-        self.timer.start("Chrome")
+        self.timer.start("Draw Chrome")
         self.canvas.create_rectangle(0, 0, 800, 60, width=0, fill='light gray')
         self.canvas.create_rectangle(50, 10, 790, 50)
         font = tkinter.font.Font(family="Courier", size=30)

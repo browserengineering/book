@@ -332,16 +332,41 @@ the rendering pipeline:
     [  0.094592] Layout (phase 1A)
     [  0.000010] Layout (phase 1B)
     [  0.000050] Layout (phase 2)
-    [  0.019368] Display list
-    [  0.029137] Drawing
-    [  0.002585] Chrome
+    [  0.019368] Paint
+    [  0.029137] Draw
+    [  0.002585] Draw Chrome
     [  0.004198] IdleTasks
     Total: 0.150807s (~150ms)
 
-And the long pole in the rendering pipeline in this case is layout, paint and
-drawing, which in turn is caused by setting the innerHTML of the `#output`
-element. The new runRAFHandlers timing shows less than 1ms spent running
-JavaScript; commenting out that line of JavaScript cases the frames to be at
-exactly the right 16ms cadence.
+And the long pole in the rendering pipeline in this case is layout phase 1A,
+followed by Paint and Drawing, which in turn is caused by setting the innerHTML
+of the `#output` element. The new runRAFHandlers timing shows less than 1ms
+spent running JavaScript; commenting out that line of JavaScript cases the
+frames to be at exactly the right 16ms cadence.
 
-TODO: rest of chapter.
+However, in an other scenario it could also easily occur that the slowest part
+ends up being runRAFHandlers. For example, suppose we inserted the following
+busyloop into the callback, like so:
+
+``` {.javascript}
+function callback() {
+    var now = Date.now();
+    while (Date.now() - date < 100) {}
+    # ...
+}
+```
+
+The performance timings now look like this:
+
+[  0.100409] runRAFHandlers
+[  0.000095] Style
+[  0.157739] Layout (phase 1A)
+[  0.000012] Layout (phase 1B)
+[  0.000052] Layout (phase 2)
+[  0.024089] Paint
+[  0.033669] Draw
+[  0.002961] Draw Chrome
+[  0.010219] IdleTasks
+
+As you can see, runRAFHandlers now takes 100ms to finish, so it's the slowest
+part of the loop.
