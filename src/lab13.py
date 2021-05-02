@@ -404,6 +404,16 @@ class LineLayout:
         for child in self.children:
             child.paint(to)
 
+FONT_CACHE = {}
+
+def GetFont(size, weight, style):
+    key = (size, weight, style)
+    value = FONT_CACHE.get(key)
+    if value: return value
+    value = tkinter.font.Font(size=size, weight=weight, slant=style)
+    FONT_CACHE[key] = value
+    return value
+
 class TextLayout:
     def __init__(self, node, word):
         self.node = node
@@ -415,8 +425,8 @@ class TextLayout:
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(px(self.node.style["font-size"]) * .75)
-        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
-        
+        self.font = GetFont(size, weight, style) 
+
         self.w = self.font.measure(self.word)
         self.compute_height()
 
@@ -785,6 +795,8 @@ class Browser:
         self.needs_display = False
         self.needs_raf_callbacks = False
 
+        self.frame_count = 0
+
     def handle_click(self, e):
         self.focus = None
         if e.y < 60: # Browser chrome
@@ -1008,6 +1020,10 @@ class Browser:
         self.timer.start("IdleTasks")
         self.canvas.update_idletasks()
         self.timer.stop()
+
+        self.frame_count = self.frame_count + 1
+#        if self.frame_count > 50:
+#            sys.exit()
 
     def run_rendering_pipeline(self):
         if self.needs_layout_tree_rebuild:

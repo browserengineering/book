@@ -173,7 +173,7 @@ different set of threads or processes):
             try:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
-                print("Script", script, "crashed", e)
+                print("Script", body, "crashed", e)
 ```
 
 Note that the *loading* happens on a background thread, but not the *evaluation*
@@ -321,8 +321,8 @@ When I ran the script script in this book's browser, I found that there were
 about *140ms* between each frame. Looks like we have some work to do to get
 to 16ms!
 
-Optimizing the event loop
-=========================
+Speeding up the event loop
+==========================
 
 Analyzing timings shows that, in this case, the slowdown is almost entirely in
 the rendering pipeline:
@@ -344,9 +344,15 @@ of the `#output` element. The new runRAFHandlers timing shows less than 1ms
 spent running JavaScript; commenting out that line of JavaScript cases the
 frames to be at exactly the right 16ms cadence.
 
-However, in an other scenario it could also easily occur that the slowest part
-ends up being runRAFHandlers. For example, suppose we inserted the following
-busyloop into the callback, like so:
+However, in another scenario it could also easily occur that the slowest part
+ends up being Style, or Paint, or IdleTasks. As one example of how Style
+could end up being the slow part, the style sheet could have a huge number of
+complex rules in it, many of which may not actually affect the newly-changed
+elements. If we're not very careful in the implementation (or even if we are!)
+it could still be slow.
+
+In addition, it could be that runRAFHandlers is the slowest part. For example,
+suppose we inserted the following busyloop into the callback, like so:
 
 ``` {.javascript}
 function callback() {
@@ -358,15 +364,139 @@ function callback() {
 
 The performance timings now look like this:
 
-[  0.100409] runRAFHandlers
-[  0.000095] Style
-[  0.157739] Layout (phase 1A)
-[  0.000012] Layout (phase 1B)
-[  0.000052] Layout (phase 2)
-[  0.024089] Paint
-[  0.033669] Draw
-[  0.002961] Draw Chrome
-[  0.010219] IdleTasks
+    [  0.100409] runRAFHandlers
+    [  0.000095] Style
+    [  0.157739] Layout (phase 1A)
+    [  0.000012] Layout (phase 1B)
+    [  0.000052] Layout (phase 2)
+    [  0.024089] Paint
+    [  0.033669] Draw
+    [  0.002961] Draw Chrome
+    [  0.010219] IdleTasks
 
 As you can see, runRAFHandlers now takes 100ms to finish, so it's the slowest
-part of the loop.
+part of the loop. This demonstrates, of course, that no matter how fast or
+cleverly we optimize the browser, it's always possible for JavaScript to
+make it slow.
+
+There are a few general techniques to optimize the browser when encountering
+these situations:
+
+1. Optimize: find ways to do less work to achieve the same goal. For example, a
+faster algorithm, fewer memory allocations, fewer function calls and branches,
+or skipping work that is not necessary. An example is the optimizations to
+[skip painting](graphics.md#faster-rendering) for off-screen elements.
+
+2. Cache: carefully remember what the browser already knows from the previous
+frame, and re-compute only what is absolutely necessary for the next one.
+An example is the partial layout optimizations in [chapter 10](reflow.md)
+
+3. Parallelize: run tasks on an different thread or process. An example
+is the change we made earlier in this chapter to run network loading
+asynchronously in a background thread.
+
+4. Schedule: when possible, delay tasks that can be done later, or break up
+work into smaller chunks and do them in separate frames. We haven't encountered
+an optimization of this kind yet.
+
+Let's consider each class of optimization in turn
+
+Optimize
+========
+
+What could we do to make Paint, for example, faster? There are a few micro-
+optimizations[^micro-optimization] we could try, such as pre-allocationg
+`self.display_list` rather than appending to it each time. when I tried this, on
+my machine it yielded a very small optimization, but that's probably because the
+browser is written in Python, which is a not-very-efficient interpreted
+language. Browsers written in a more optimized language like C++ do in fact
+benefit from optimizations of this kind, because the language itself has already
+been built to optimize out all the other overhead. (In other words, if I really
+wanted to micro-optimize the Python browser, the first thing I should do is
+re-write it in an optimized language).
+
+How about Layout?
+
+Cache
+=====
+
+Within Paint, there is an opportunity to cache in the same way that we did for
+Layout in chapter 10. Right now, regardless of how much re-layout there was,
+we re-paint the entire display list. This could be optmiized in a few ways,
+such as:
+
+* Caching the previous display list and only updating the parts that
+changed, by walking only part of the layout tree
+
+* Caching each entry in the display list within the corresponding layout object.
+For example, via code like this:
+
+``` {.python expected=False}
+class TextLayout:
+    def __init__(self, node, word):
+        # ...
+        self.display_item = None
+
+    def size(self):
+        # Sizing changed, so we need to re-creae the display item
+        self.display_item = None
+            # ...
+
+    def paint(self, to):
+        if not self.display_item:
+            color = self.node.style["color"]
+            self.display_item = DrawText(self.x, self.y, self.word, self.font, color)
+        to.append(self.display_item)
+```
+
+I tried this, and was not able to observe a significant speed increase.
+
+Let's now consider Layout. One thing that jumped out at me is that there are
+a number of TextLayout objects created in each frame of the animation, and
+all of them have the same font. Unless cached well, fonts are actually very
+expensive to create and load. The reason for this is usually that font files are
+sometimes very large, and as a result are not loaded into memory unless
+necessary. Any unnecessary duplication of loading fonts from disk will be
+a big source of slowdowns. On a guess that tkinter fonts don't have good
+internal caching, I tried the following optimization:
+
+``` {.python}
+FONT_CACHE = {}
+
+def GetFont(size, weight, style):
+    key = (size, weight, style)
+    value = FONT_CACHE.get(key)
+    if value: return value
+    value = tkinter.font.Font(size=size, weight=weight, slant=style)
+    FONT_CACHE[key] = value
+    return value
+
+class TextLayout:
+    # ...
+
+    def size(self):
+        # ...
+        self.font = GetFont(size, weight, style) 
+```
+
+This will create only one font object for each tuple of `(size, weight, style)`.
+The timing results after this optimization are:
+
+    [  0.000753] runRAFHandlers
+    [  0.000091] Style
+    [  0.000925] Layout (phase 1A)
+    [  0.000012] Layout (phase 1B)
+    [  0.000055] Layout (phase 2)
+    [  0.000194] Paint
+    [  0.004903] Draw
+    [  0.003691] Draw Chrome
+    [  0.001578] IdleTasks
+    Total: 0.012s = 12ms
+
+Success! This optimization made a huge difference, and the rendering pipeline
+now fits within our 16ms frame budget. Note that not only was it a lot cheaper
+to only create one font object, but this made Paint an order of magnitude faster
+as well. This is because DrawText calls `font.measure("linespace")`, and
+that is expensive to compute from scratch, but is (presumably) cached within
+a tkinter Font object. So we saved the time of re-compuoting this measurement
+for each DrawText.
