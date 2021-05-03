@@ -128,6 +128,8 @@ body { counter-reset: fn; }
 
 pre { margin-left: 2ex; }
 
+figure { text-align: center; }
+.grid figure { margin: .5em; }
 figure img { width: 100%; }
 
 .quirk { border: 2px solid purple; }

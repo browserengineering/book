@@ -20,12 +20,14 @@ other predecessors to HTML. (Except in this footnote!)
 The Memex concept
 =================
 
-<style>
-	figure { text-align: center; }
-</style>
-
 <figure>
   <img src="https://upload.wikimedia.org/wikipedia/commons/7/7f/The_Memex_%283002477109%29.jpg">
+  <figcaption>
+    (<a href="https://www.flickr.com/people/79255326@N00">Dunkoman</a>
+    from Berlin, Germany,
+    <a href="https://commons.wikimedia.org/wiki/File:The_Memex_(3002477109).jpg">The Memex (3002477109)</a>,
+    <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)
+  </figcaption>
 </figure>
 
 The earliest exploration of how computers might revolutionize information is a
@@ -104,7 +106,7 @@ HyperText Transport Protocol.
 
 <figure>
 	<img src="https://upload.wikimedia.org/wikipedia/commons/c/cd/HypertextEditingSystemConsoleBrownUniv1969.jpg">
-<caption>Hypertext Editing System</caption>
+    <figcaption>Hypertext Editing System (Gregory Lloyd, <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">HypertextEditingSystemConsoleBrownUniv1969</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)</figcaption>
 </figure>
 
 Independently of Project Xanadu, the first hyperlink system appeared for
@@ -124,7 +126,8 @@ course central components of a browser UI.[^even-more]
 
 <figure>
 	<img src="https://cdn.arstechnica.net/wp-content/uploads/2015/04/Engelbart-68-demo_0-2-640x426.jpg">
-	<figcaption>The mother of all demos, 1968</figcaption>
+	<figcaption>The mother of all demos, 1968 (SRI International, via the <a
+	href="https://www.dougengelbart.org/content/view/374/464/">Doug Engelbart Institute</a></figcaption>
 </figure>
 
 [^even-more]: That demo went beyond even this! There are some parts of it that
@@ -178,7 +181,9 @@ group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 
 <figure>
 	<img src="https://www.w3.org/History/1994/WWW/Journals/CACM/screensnap2_24c.gif">
-	<caption>WorldWideWeb, the first web browser</caption>
+	<caption>WorldWideWeb, the first web browser (<a
+	href="https://dl.acm.org/doi/10.1145/179606.179671">Communications of the
+	ACM</a>, August 1994)</caption>
 </figure>
 
 [^no-css]: No CSS!
@@ -243,24 +248,28 @@ which built [Netscape
 Navigator](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
 _commercial browser_,[^commercial-browser] which launched in 1994.
 
-<div style="display: grid; grid-template-columns: repeat(2, 1fr);">
+<div class="grid" style="display: grid; grid-template-columns: repeat(2, 1fr);">
 <figure>
-		<img src="https://upload.wikimedia.org/wikipedia/commons/e/ea/NCSA_Mosaic_Browser_Screenshot.png">
-	<figcaption>Mosaic</figcaption>
+<img src="https://upload.wikimedia.org/wikipedia/commons/e/ea/NCSA_Mosaic_Browser_Screenshot.png">
+<figcaption>Mosaic (Programm: National Center for Supercomputing Applications, <a href="https://commons.wikimedia.org/wiki/File:NCSA_Mosaic_Browser_Screenshot.png">NCSA Mosaic Browser Screenshot</a>, <a href="https://creativecommons.org/publicdomain/zero/1.0/legalcode" rel="license">CC0 1.0</a>)</figcaption>
 </figure>
 <figure>
-		<img src="https://upload.wikimedia.org/wikipedia/en/0/0e/ViolaWWW.png">
-		<figcaption>ViolaWWW</figcaption>
+<img src="https://upload.wikimedia.org/wikipedia/en/0/0e/ViolaWWW.png">
+<figcaption>
+ViolaWWW (<a href="http://viola.org/wei/">Pei-Yuan Wei</a>,
+<a href="http://viola.org/viola/book/preface.html">Viola in a Nutshell</a>)
+</figcaption>
 </figure>
 <figure>
-		<img src="https://upload.wikimedia.org/wikipedia/en/c/c9/Navigator_1-22.png">
-		<figcaption>Netscape Navigator</figcaption>
+<img src="https://upload.wikimedia.org/wikipedia/en/c/c9/Navigator_1-22.png">
+<figcaption>Netscape Navigator (<a href="https://en.wikipedia.org/wiki/File:Navigator_1-22.png#filehistory">Wikipedia</a>)</figcaption>
 </figure>
 <figure>
-		<img src="https://upload.wikimedia.org/wikipedia/en/3/39/Internet_Explorer_1.0.png">
-		<figcaption>Internet Explorer 1.0</figcaption>
+<img src="https://upload.wikimedia.org/wikipedia/en/3/39/Internet_Explorer_1.0.png">
+<figcaption>Microsoft Internet Explorer 1.0
+(<a href="https://en.wikipedia.org/wiki/File:Internet_Explorer_1.0.png">Wikipedia</a>,
+used <a href="https://www.microsoft.com/en-us/legal/copyright/permissions">with permission from Microsoft</a>)</figcaption>
 </figure>
-
 </div>
 
 The era of the [”first browser
