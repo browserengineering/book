@@ -212,6 +212,7 @@ class Widget {
         if (this.controls.back) this.controls.back.addEventListener("click", this.back.bind(this));
         if (this.controls.next) this.controls.next.addEventListener("click", this.next.bind(this));
         if (this.controls.animate) this.controls.animate.addEventListener("click", this.animate.bind(this));
+        window.addEventListener("resize", this.redraw.bind(this));
 
         this.step = -1;
         this.stop = -1;
@@ -268,6 +269,12 @@ class Widget {
         this.reset();
         this.next();
         if (e) e.preventDefault();
+    }
+
+    redraw(e) {
+        this.stop = this.step;
+        this.reset();
+        this.next();
     }
 
     next(e) {
