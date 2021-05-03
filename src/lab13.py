@@ -4,6 +4,7 @@ up to and including Chapter 11 (Keeping Data Private),
 without exercises.
 """
 
+import argparse
 import dukpy
 import socket
 import ssl
@@ -1022,8 +1023,8 @@ class Browser:
         self.timer.stop()
 
         self.frame_count = self.frame_count + 1
-#        if self.frame_count > 50:
-#            sys.exit()
+        if args.stop_after > 0  and self.frame_count > args.stop_after:
+           sys.exit()
 
     def run_rendering_pipeline(self):
         if self.needs_layout_tree_rebuild:
@@ -1084,6 +1085,14 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
+
+    parser = argparse.ArgumentParser(description="Chapter 13 source code")
+    parser.add_argument("--url", default=2, type=str, required=True,
+        help="URL to load")
+    parser.add_argument("--stop_after", default=0, type=int,
+        help="If set, exits the browser after this many generates frames")
+    args = parser.parse_args()
+
     browser = Browser()
-    browser.load(sys.argv[1])
+    browser.load(args.url)
     tkinter.mainloop()
