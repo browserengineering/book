@@ -407,15 +407,10 @@ Optimize
 What could we do to make Paint, for example, faster? There are a few micro-
 optimizations[^micro-optimization] we could try, such as pre-allocationg
 `self.display_list` rather than appending to it each time. when I tried this, on
-my machine it yielded a very small optimization, but that's probably because the
-browser is written in Python, which is a not-very-efficient interpreted
-language. Browsers written in a more optimized language like C++ do in fact
-benefit from optimizations of this kind, because the language itself has already
-been built to optimize out all the other overhead. (In other words, if I really
-wanted to micro-optimize the Python browser, the first thing I should do is
-re-write it in an optimized language).
+my machine it showed no benefit. That may or may not be due to the interpred
+nature of Python vs compiled languages such as C++.
 
-How about Layout?
+
 
 Cache
 =====
@@ -449,7 +444,11 @@ class TextLayout:
         to.append(self.display_item)
 ```
 
-I tried this, and was not able to observe a significant speed increase.
+I tried this, and was able to observe perhaps a 5% increase in speed. One
+reason it was not higher may be that each frame of animation in this testcase
+includes about 12 *new* TextLayout objects (the ones that are part of the
+`innerHTML` contents), as compared with 5 other ones. This optimization of
+course can only apply to a TextLayout object that is preserved across frames.
 
 Let's now consider Layout. One thing that jumped out at me is that there are
 a number of TextLayout objects created in each frame of the animation, and

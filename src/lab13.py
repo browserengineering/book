@@ -420,8 +420,11 @@ class TextLayout:
         self.node = node
         self.children = []
         self.word = word
+        self.display_item = None
 
     def size(self):
+        self.display_item = None
+
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
@@ -438,8 +441,10 @@ class TextLayout:
         pass
 
     def paint(self, to):
-        color = self.node.style["color"]
-        to.append(DrawText(self.x, self.y, self.word, self.font, color))
+        if not self.display_item:
+            color = self.node.style["color"]
+            self.display_item = DrawText(self.x, self.y, self.word, self.font, color)
+        to.append(self.display_item)
 
 class InputLayout:
     def __init__(self, node):
