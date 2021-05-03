@@ -4,6 +4,13 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: History of the Web
+    link: https://browser.engineering/history.html
+    description:
+      Today we’re releasing a new chapter on the History of the Web.
+      The rest of the book is about how web browsers work, but this
+      chapter is about why. It’s about the goals and motivations for
+      the web and for web browsers, which shape the way they work.
   - title: Laying Out Pages
     link: https://browser.engineering/layout.html
     description:

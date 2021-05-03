@@ -2,7 +2,7 @@
     "disabled_files": {
         "preface.md": false,
         "intro.md": false,
-        "history.md": true,
+        "history.md": false,
         "preliminaries.md": true,
 
         "http.md": false,
