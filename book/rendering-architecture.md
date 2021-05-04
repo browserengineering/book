@@ -410,7 +410,7 @@ rather than appending to it each time. when I tried this, on my machine it
 showed no benefit. That may or may not be due to the interpred nature of Python
 vs compiled languages such as C++.
 
-Ok that didn't work.  Micro-optimization is hard to guess solutions for,
+Ok that didn't work.  Micro-optimization can be hard to guess solutions for,
 especially for interpreted languages which have speed characteristics that
 are hard to predict without a lot of experience. Instead, let's take the next
 step beyond using per-rendering pipeline stage timing, and do a CPU profile of
@@ -419,6 +419,11 @@ python, via a command like like:
 
 `python -m cPython <my-program.py>`
 
+If you do this, you'll likely find that most of the time is spent in library
+code such as tkinter, and not in my-program.py. To actually "zero in" on
+potential optimizations, you'll need to edit the JavaaScript to create much
+larger HTML that exercises the style and layout machiner harder. I did this,
+but was unable to find anything to significantly unoptimized. How about you?
 
 Cache
 =====
