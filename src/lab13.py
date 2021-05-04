@@ -1074,7 +1074,7 @@ class Browser:
     def draw(self):
         if args.compute_timings:
             self.timer.start("Draw")
-            self.canvas.delete("all")
+        self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
             if cmd.y2 < self.scroll: continue
@@ -1112,8 +1112,6 @@ if __name__ == "__main__":
         help="If set, exits the browser after this many generates frames")
     parser.add_argument("--compute_timings", type=bool,
         help="Compute timings")
-    parser.add_argument('--profile_file', type=str,
-        help="Compute a CPU profile into this file")
     args = parser.parse_args()
 
     browser = Browser()
