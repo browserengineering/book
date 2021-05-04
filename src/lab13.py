@@ -879,7 +879,8 @@ class Browser:
         return cookie_string[1:]
 
     def load(self, url, body=None):
-        self.timer.start("Downloading")
+        if args.compute_timings:
+            self.timer.start("Downloading")
         self.address_bar = url
         self.url = url
         self.history.append(url)
@@ -891,11 +892,13 @@ class Browser:
             origin = url_origin(self.history[-1])
             self.cookies.setdefault(origin, {})[key] = value
 
-        self.timer.start("Parsing HTML")
+        if args.compute_timings:
+            self.timer.start("Parsing HTML")
         self.nodes = parse(lex(body))
 #        drawHTMLTree(self.nodes)
         
-        self.timer.start("Parsing CSS")
+        if args.compute_timings:
+            self.timer.start("Parsing CSS")
         with open("browser8.css") as f:
             self.rules = CSSParser(f.read()).parse()
 
@@ -917,7 +920,8 @@ class Browser:
             scripts.append([header, body])
 
     def run_scripts(self):
-        self.timer.start("Running JS")
+        if args.compute_timings:
+            self.timer.start("Running JS")
         self.setup_js()
 
         scripts=[]
@@ -1014,7 +1018,8 @@ class Browser:
 
         if (self.needs_raf_callbacks):
             self.needs_raf_callbacks = False
-            self.timer.start("runRAFHandlers")
+            if args.compute_timings:
+                self.timer.start("runRAFHandlers")
             self.js.evaljs("__runRAFHandlers()")
 
         self.run_rendering_pipeline()
@@ -1023,9 +1028,11 @@ class Browser:
         # been registered during a call to __runRAFHandlers). By default,
         # tkinter doesn't run these until there are no more event queue
         # tasks.
-        self.timer.start("IdleTasks")
+        if args.compute_timings:
+            self.timer.start("IdleTasks")
         self.canvas.update_idletasks()
-        self.timer.stop()
+        if args.compute_timings:
+            self.timer.stop()
 
         self.frame_count = self.frame_count + 1
         if args.stop_after > 0  and self.frame_count > args.stop_after:
@@ -1042,17 +1049,22 @@ class Browser:
         self.reflow_roots = []
 
     def reflow(self, obj):
-        self.timer.start("Style")
+        if args.compute_timings:
+            self.timer.start("Style")
         style(obj.node, None, self.rules)
-        self.timer.start("Layout (phase 1A)")
+        if args.compute_timings:
+            self.timer.start("Layout (phase 1A)")
         obj.size()
-        self.timer.start("Layout (phase 1B)")
+        if args.compute_timings:
+            self.timer.start("Layout (phase 1B)")
         while obj.parent:
             obj.parent.compute_height()
             obj = obj.parent
-        self.timer.start("Layout (phase 2)")
+        if args.compute_timings:
+            self.timer.start("Layout (phase 2)")
         self.document.position()
-        self.timer.start("Paint")
+        if args.compute_timings:
+            self.timer.start("Paint")
         self.display_list = []
         self.document.paint(self.display_list)
         self.draw()
@@ -1060,13 +1072,15 @@ class Browser:
 #        drawLayoutTree(self.document)
 
     def draw(self):
-        self.timer.start("Draw")
-        self.canvas.delete("all")
+        if args.compute_timings:
+            self.timer.start("Draw")
+            self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
             if cmd.y2 < self.scroll: continue
             cmd.draw(self.scroll - 60, self.canvas)
-        self.timer.start("Draw Chrome")
+        if args.compute_timings:
+            self.timer.start("Draw Chrome")
         self.canvas.create_rectangle(0, 0, 800, 60, width=0, fill='light gray')
         self.canvas.create_rectangle(50, 10, 790, 50)
         font = tkinter.font.Font(family="Courier", size=30)
@@ -1096,6 +1110,10 @@ if __name__ == "__main__":
         help="URL to load")
     parser.add_argument("--stop_after", default=0, type=int,
         help="If set, exits the browser after this many generates frames")
+    parser.add_argument("--compute_timings", type=bool,
+        help="Compute timings")
+    parser.add_argument('--profile_file', type=str,
+        help="Compute a CPU profile into this file")
     args = parser.parse_args()
 
     browser = Browser()

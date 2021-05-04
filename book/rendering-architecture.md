@@ -404,12 +404,20 @@ Let's consider each class of optimization in turn
 Optimize
 ========
 
-What could we do to make Paint, for example, faster? There are a few micro-
-optimizations[^micro-optimization] we could try, such as pre-allocationg
-`self.display_list` rather than appending to it each time. when I tried this, on
-my machine it showed no benefit. That may or may not be due to the interpred
-nature of Python vs compiled languages such as C++.
+What could we do to make Paint, for example, faster? There are a few
+micro-optimizations we could try, such as pre-allocationg `self.display_list`
+rather than appending to it each time. when I tried this, on my machine it
+showed no benefit. That may or may not be due to the interpred nature of Python
+vs compiled languages such as C++.
 
+Ok that didn't work.  Micro-optimization is hard to guess solutions for,
+especially for interpreted languages which have speed characteristics that
+are hard to predict without a lot of experience. Instead, let's take the next
+step beyond using per-rendering pipeline stage timing, and do a CPU profile of
+the program. We can do that by using the cPython profiler that comes with
+python, via a command like like:
+
+`python -m cPython <my-program.py>`
 
 
 Cache
