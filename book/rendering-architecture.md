@@ -584,4 +584,27 @@ as we'd start missing the 16ms frame budget again.
 Or is there something we can do? Let's go back to the list of ways to make
 the event loop faster. We alreedy showed that Optimize and Cache are two ways.
 What about Parallelize? Can't we run these draw commands on a different thread?
-Well, of course we can. 
+Well, of course we can.
+
+The Compositor thread
+=====================
+
+This second thread that runs drawing is often called the Compositor thread
+It's so named because in a real browser it'll end up doing a lot more than
+drawing to a canvas, but let's forget that for now and focus on drawing.
+
+To get this composiotr thread working, we'll have to find a way to run tkinter
+on a second thread, and communicate between the threads in a way that allows
+them to do things in parallel. The first thing you should know is that tkinter
+is *not* thread-safe, so it cannot magically parallelize for free. Instead we'll
+have to carefully avoid using tkinter at all on the main thread, and move all
+use of it to the compositor thread.
+
+It turns out that, outside of drawing to a canvas, we're only using tkinter for
+two things:
+
+a. Font measurement (used in layout and paint)
+
+b. Scheduling tasks (via the `canvas.after()` method)
+
+It may be possible to use tkinter in a way that 
