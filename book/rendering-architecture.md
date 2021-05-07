@@ -581,3 +581,7 @@ time spent drawing text is only 0.201s in this case, and therefore 4ms per
 frame. If the amount of text was much larger, this would become a big problem,
 as we'd start missing the 16ms frame budget again.
 
+Or is there something we can do? Let's go back to the list of ways to make
+the event loop faster. We alreedy showed that Optimize and Cache are two ways.
+What about Parallelize? Can't we run these draw commands on a different thread?
+Well, of course we can. 
