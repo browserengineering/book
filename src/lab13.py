@@ -1046,6 +1046,12 @@ class Browser:
 
         for reflow_root in self.reflow_roots:
             self.reflow(reflow_root)
+            self.display_list = []
+            self.document.paint(self.display_list)
+            self.draw()
+            self.max_y = self.document.h - HEIGHT
+            # drawLayoutTree(self.document)
+
         self.reflow_roots = []
 
     def reflow(self, obj):
@@ -1065,11 +1071,6 @@ class Browser:
         self.document.position()
         if args.compute_timings:
             self.timer.start("Paint")
-        self.display_list = []
-        self.document.paint(self.display_list)
-        self.draw()
-        self.max_y = self.document.h - HEIGHT
-#        drawLayoutTree(self.document)
 
     def draw(self):
         if args.compute_timings:
