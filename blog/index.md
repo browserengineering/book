@@ -6,6 +6,8 @@ main: true
 
 Writing progress, updates, and [my book on web browsers](../).
 
+- [Why Widgets](why-widgets.md) \
+  Why we're adding interactive widgets to the book
 - [Code Outlines](outlines.md) \
   Showing the intermediate-level structure of the browser
 - [Why Python?](why-python.md) \
