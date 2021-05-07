@@ -300,7 +300,7 @@ based on a [word frequency table][cjdict].
 :::
 
 [icu]: http://site.icu-project.org
-[icu-wb]: http://userguide.icu-project.org/boundaryanalysis/break-rules
+[icu-wb]: https://unicode-org.github.io/icu/userguide/boundaryanalysis/break-rules.html#details-about-dictionary-based-break-iteration
 [cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
 
 Scrolling text
