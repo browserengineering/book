@@ -401,8 +401,8 @@ an optimization of this kind yet.
 
 Let's consider each class of optimization in turn
 
-Optimize
-========
+Optimize & Cache
+================
 
 What could we do to make Paint, for example, faster? There are a few
 micro-optimizations we could try, such as pre-allocationg `self.display_list`
@@ -419,58 +419,51 @@ python, via a command like like:
 
 `python -m cPython <my-program.py>`
 
-If you do this, you'll likely find that most of the time is spent in library
-code such as tkinter, and not in my-program.py. To actually "zero in" on
-potential optimizations, you'll need to edit the JavaaScript to create much
-larger HTML that exercises the style and layout machiner harder. I did this,
-but was unable to find anything to significantly unoptimized. How about you?
+The output looks like this for me (only listing the top methods by cumulative
+time spent:
 
-Cache
-=====
-
-Within Paint, there is an opportunity to cache in the same way that we did for
-Layout in chapter 10. Right now, regardless of how much re-layout there was,
-we re-paint the entire display list. This could be optmiized in a few ways,
-such as:
-
-* Caching the previous display list and only updating the parts that
-changed, by walking only part of the layout tree
-
-* Caching each entry in the display list within the corresponding layout object.
-For example, via code like this:
-
-``` {.python expected=False}
-class TextLayout:
-    def __init__(self, node, word):
-        # ...
-        self.display_item = None
-
-    def size(self):
-        # Sizing changed, so we need to re-creae the display item
-        self.display_item = None
-            # ...
-
-    def paint(self, to):
-        if not self.display_item:
-            color = self.node.style["color"]
-            self.display_item = DrawText(self.x, self.y, self.word, self.font, color)
-        to.append(self.display_item)
+```
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+     65/1    0.000    0.000    6.633    6.633 {built-in method builtins.exec}
+        1    0.000    0.000    6.633    6.633 lab13.py:1(<module>)
+        1    0.000    0.000    6.512    6.512 __init__.py:601(mainloop)
+        1    0.028    0.028    6.512    6.512 {method 'mainloop' of '_tkinter.tkapp' objects}
+       51    0.000    0.000    6.484    0.127 __init__.py:1887(__call__)
+       51    0.000    0.000    6.484    0.127 __init__.py:812(callit)
+       51    0.001    0.000    6.482    0.127 lab13.py:1016(begin_main_frame)
+     6290    6.344    0.001    6.344    0.001 {method 'call' of '_tkinter.tkapp' objects}
+      102    0.000    0.000    6.311    0.062 lab13.py:1041(run_rendering_pipeline)
+       52    0.001    0.000    6.311    0.121 lab13.py:1051(reflow)
+   159/52    0.002    0.000    4.221    0.081 lab13.py:577(size)
+       53    0.001    0.000    4.216    0.080 lab13.py:487(size)
+     2472    0.006    0.000    3.307    0.001 font.py:152(measure)
+   208/53    0.001    0.000    2.856    0.054 lab13.py:507(recurse)
+      104    0.003    0.000    2.583    0.025 lab13.py:520(text)
+      618    0.004    0.000    1.759    0.003 lab13.py:425(size)
+     1236    0.008    0.000    1.678    0.001 font.py:159(metrics)
+      104    0.001    0.000    1.632    0.016 lab13.py:535(flush)
+      104    0.000    0.000    1.631    0.016 lab13.py:373(size)
+      104    0.002    0.000    1.631    0.016 lab13.py:377(compute_height)
+       52    0.004    0.000    1.271    0.024 lab13.py:1074(draw)
 ```
 
-I tried this, and was able to observe perhaps a 5% increase in speed. One
-reason it was not higher may be that each frame of animation in this testcase
-includes about 12 *new* TextLayout objects (the ones that are part of the
-`innerHTML` contents), as compared with 5 other ones. This optimization of
-course can only apply to a TextLayout object that is preserved across frames.
+As you can see, there is a bunch of time spent, seemingly about equally spread
+between layout and painting. The next thing to do is to examine each method
+mentioned above and see if you can find anything that might be optimized out. As
+it turns out, there is one that is pretty easy to fix, which is the `font.py`
+lines that do font measurement. It's apparently the case that tkinter fonts
+don't have a good internal cache, and loading fonts is
+expensive[^why-fonts-slow]. But right now we don't take advantage of the fact
+that everything on the page has the same font, and repeat that font for every
+object! Let's fix that:
 
-Let's now consider Layout. One thing that jumped out at me is that there are
-a number of TextLayout objects created in each frame of the animation, and
-all of them have the same font. Unless cached well, fonts are actually very
-expensive to create and load. The reason for this is usually that font files are
-sometimes very large, and as a result are not loaded into memory unless
-necessary. Any unnecessary duplication of loading fonts from disk will be
-a big source of slowdowns. On a guess that tkinter fonts don't have good
-internal caching, I tried the following optimization:
+[^why-fonts-slow]: fonts are surprisingly large, especially for scripts like
+Chinese that have a lot of diffferent, complex characters. For this reason they
+are generally stored on disk and only loaded into memory on-demand. Hence it is
+slow to load them. Optimizing font loading (and the cost to shape them and lay
+them out, since many web pages have a *lot* of text) turns out to be one of the
+most important factors in a fast rendering engine.
+
 
 ``` {.python}
 FONT_CACHE = {}
@@ -491,8 +484,41 @@ class TextLayout:
         self.font = GetFont(size, weight, style) 
 ```
 
-This will create only one font object for each tuple of `(size, weight, style)`.
-The timing results after this optimization are:
+This turns out to make a dramatic difference, not just in text measurement, but
+in layout *and* paint!
+
+```
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+     65/1    0.000    0.000    1.143    1.143 {built-in method builtins.exec}
+        1    0.000    0.000    1.143    1.143 lab13.py:1(<module>)
+        1    0.000    0.000    1.007    1.007 __init__.py:601(mainloop)
+        1    0.435    0.435    1.007    1.007 {method 'mainloop' of '_tkinter.tkapp' objects}
+       51    0.000    0.000    0.572    0.011 __init__.py:1887(__call__)
+       51    0.001    0.000    0.572    0.011 __init__.py:812(callit)
+       51    0.002    0.000    0.570    0.011 lab13.py:1016(begin_main_frame)
+     5108    0.449    0.000    0.450    0.000 {method 'call' of '_tkinter.tkapp' objects}
+      102    0.000    0.000    0.441    0.004 lab13.py:1041(run_rendering_pipeline)
+       52    0.001    0.000    0.441    0.008 lab13.py:1051(reflow)
+       52    0.003    0.000    0.290    0.006 lab13.py:1074(draw)
+     1133    0.005    0.000    0.270    0.000 __init__.py:2768(_create)
+      925    0.001    0.000    0.258    0.000 __init__.py:2808(create_text)
+      873    0.002    0.000    0.152    0.000 lab13.py:676(draw)
+       56    0.001    0.000    0.150    0.003 evaljs.py:39(evaljs)
+       56    0.018    0.000    0.145    0.003 {built-in method dukpy._dukpy.eval_string}
+   159/52    0.003    0.000    0.127    0.002 lab13.py:577(size)
+      308    0.003    0.000    0.127    0.000 evaljs.py:72(_call_python)
+       53    0.000    0.000    0.121    0.002 lab13.py:487(size)
+       51    0.001    0.000    0.112    0.002 lab13.py:962(js_innerHTML)
+   208/53    0.000    0.000    0.091    0.002 lab13.py:507(recurse)
+        1    0.000    0.000    0.086    0.086 lab13.py:641(size)
+      104    0.002    0.000    0.086    0.001 lab13.py:520(text)
+     2472    0.003    0.000    0.085    0.000 font.py:152(measure)
+```
+
+As you can see, everything became a lot cheaper. This is because font
+measurement overhead was making both layout and paint slower for every single
+object. The new timings show that we're easily meeting the 16ms frame budget:
+
 
     [  0.000753] runRAFHandlers
     [  0.000091] Style
@@ -505,10 +531,53 @@ The timing results after this optimization are:
     [  0.001578] IdleTasks
     Total: 0.012s = 12ms
 
-Success! This optimization made a huge difference, and the rendering pipeline
-now fits within our 16ms frame budget. Note that not only was it a lot cheaper
-to only create one font object, but this made Paint an order of magnitude faster
-as well. This is because DrawText calls `font.measure("linespace")`, and
-that is expensive to compute from scratch, but is (presumably) cached within
-a tkinter Font object. So we saved the time of re-compuoting this measurement
-for each DrawText.
+Great! Technically speaking though, this font optimization is not a pure
+micro-optimization, but a caching strategy, so let's now discuss that.
+
+Various kinds of caches are the single most important class of optimizations for
+browsers. Real browsers have caches all over the place---network resource
+caches and font caches are two. (Well, we haven't actually implemented a network
+cache yet---maybe in a future chapter?) The rendering pipeline is no different:
+there are caches of various kinds throughout style, layout, and paint. In fact,
+we already saw an example of this in [chapter 10](reflow.md).
+
+Notice that the layout tree itself is a cache, as is the display list. We can
+come up with all sorts of ideas to minimize changes to the tree or the list
+when things change.
+
+Let's keep optimizing. The top item in the CPU profile below
+`run_rendering_pipeline` is `reflow`. However, this is a little unclear, since
+reflow currently includes style, layout, paint and draw. Let's at least separate
+paint and draw:
+
+``` {.python}
+    def run_rendering_pipeline(self):
+        # ...
+
+    def reflow(self, obj):
+        for reflow_root in self.reflow_roots:
+            self.reflow(reflow_root)
+            self.display_list = []
+            self.document.paint(self.display_list)
+            self.draw()
+            self.max_y = self.document.h - HEIGHT
+```
+
+With these changes, the profile now shows that `draw` is actually a big
+component of the remaining cost, with these pieces. The following data
+is aggregated over 50 frames of animation:
+
+```
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       52    0.005    0.000    0.391    0.008 lab13.py:1075(draw)
+      873    0.003    0.000    0.201    0.000 lab13.py:676(draw)
+```
+
+Line 676 is `DrawText.draw`. Half the total time drawing is in drawing text
+I told you that fonts and text rendering are big time hogs and sources of 
+optimization!) Unfortunately, in this case there is nothing further we can do,
+without finding out where to optmiize tkinter further. Also note that the total
+time spent drawing text is only 0.201s in this case, and therefore 4ms per
+frame. If the amount of text was much larger, this would become a big problem,
+as we'd start missing the 16ms frame budget again.
+
