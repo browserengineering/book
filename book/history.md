@@ -321,7 +321,7 @@ other features are still standardized at the W3C. JavaScript is standardized at
 [ECMA](https://www.ecma-international.org/memento/history.htm), yet another
 standards body). [HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
 the [IETF](https://www.ietf.org/about/). The point is that the standards process
-set up in the mid-nignties is still with us.
+set up in the mid-nineties is still with us.
 
 In the first years of the web, it was not so clear that browsers would remain
 standard and that one browser might not end up “winning” and becoming another
