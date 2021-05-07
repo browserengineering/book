@@ -21,7 +21,7 @@ The Memex concept
 =================
 
 <figure>
-  <img src="https://upload.wikimedia.org/wikipedia/commons/7/7f/The_Memex_%283002477109%29.jpg">
+  <img src="im/memex.jpg">
   <figcaption>
     (<a href="https://www.flickr.com/people/79255326@N00">Dunkoman</a>
     from <a href="https://commons.wikimedia.org/wiki/File:The_Memex_(3002477109).jpg">Wikipedia</a>,
@@ -104,7 +104,7 @@ Language. The protocol for loading web pages is HTTP, which is short for
 HyperText Transport Protocol.
 
 <figure>
-	<img src="https://upload.wikimedia.org/wikipedia/commons/c/cd/HypertextEditingSystemConsoleBrownUniv1969.jpg">
+	<img src="im/hes.jpg">
     <figcaption>Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)</figcaption>
 </figure>
 
@@ -124,7 +124,7 @@ introduced the computer mouse and graphical user interface, both of which are of
 course central components of a browser UI.[^even-more]
 
 <figure>
-	<img src="https://cdn.arstechnica.net/wp-content/uploads/2015/04/Engelbart-68-demo_0-2-640x426.jpg">
+	<img src="im/engelbart.jpg">
 	<figcaption>The mother of all demos, 1968 <br/> (SRI International, via the <a
 	href="https://www.dougengelbart.org/content/view/374/464/">Doug Engelbart Institute</a>)</figcaption>
 </figure>
@@ -179,7 +179,7 @@ and the concept on the [alt.hypertext Usenet
 group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 
 <figure>
-	<img src="https://www.w3.org/History/1994/WWW/Journals/CACM/screensnap2_24c.gif">
+	<img src="im/worldwideweb.gif">
 	<caption>WorldWideWeb, the first web browser <br/> (<a
 	href="https://dl.acm.org/doi/10.1145/179606.179671">Communications of the
 	ACM</a>, August 1994)</caption>
@@ -249,21 +249,21 @@ _commercial browser_,[^commercial-browser] which launched in 1994.
 
 <div class="grid" style="display: grid; grid-template-columns: repeat(2, 1fr);">
 <figure>
-<img src="https://upload.wikimedia.org/wikipedia/commons/e/ea/NCSA_Mosaic_Browser_Screenshot.png">
+<img src="im/mosaic.png">
 <figcaption>Mosaic (<a href="https://commons.wikimedia.org/wiki/File:NCSA_Mosaic_Browser_Screenshot.png">Wikipedia</a>, <a href="https://creativecommons.org/publicdomain/zero/1.0/legalcode" rel="license">CC0 1.0</a>)</figcaption>
 </figure>
 <figure>
-<img src="https://upload.wikimedia.org/wikipedia/en/0/0e/ViolaWWW.png">
+<img src="im/violawww.png">
 <figcaption>
 ViolaWWW (<a href="http://viola.org/viola/book/preface.html">Viola in a Nutshell</a>)
 </figcaption>
 </figure>
 <figure>
-<img src="https://upload.wikimedia.org/wikipedia/en/c/c9/Navigator_1-22.png">
+<img src="im/netscape.png">
 <figcaption>Netscape Navigator (<a href="https://en.wikipedia.org/wiki/File:Navigator_1-22.png#filehistory">Wikipedia</a>)</figcaption>
 </figure>
 <figure>
-<img src="https://upload.wikimedia.org/wikipedia/en/3/39/Internet_Explorer_1.0.png">
+<img src="im/ie1.png">
 <figcaption>Microsoft Internet Explorer 1.0
 <br/>
 (<a href="https://en.wikipedia.org/wiki/File:Internet_Explorer_1.0.png">Wikipedia</a>,
