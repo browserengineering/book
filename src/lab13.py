@@ -1045,14 +1045,21 @@ class Browser:
         self.needs_layout_tree_rebuild = False
 
         for reflow_root in self.reflow_roots:
+            tkinter_lock.acquire(blocking=True)
             self.reflow(reflow_root)
-            self.display_list = []
-            self.document.paint(self.display_list)
+            self.paint()
             self.draw()
+            tkinter_lock.release()
             self.max_y = self.document.h - HEIGHT
             # drawLayoutTree(self.document)
 
         self.reflow_roots = []
+
+    def paint(self):
+        if args.compute_timings:
+            self.timer.start("Paint")
+        self.display_list = []
+        self.document.paint(self.display_list)
 
     def reflow(self, obj):
         if args.compute_timings:
@@ -1069,8 +1076,6 @@ class Browser:
         if args.compute_timings:
             self.timer.start("Layout (phase 2)")
         self.document.position()
-        if args.compute_timings:
-            self.timer.start("Paint")
 
     def draw(self):
         if args.compute_timings:
@@ -1115,6 +1120,7 @@ if __name__ == "__main__":
         help="Compute timings")
     args = parser.parse_args()
 
+    tkinter_lock = threading.Lock()
     browser = Browser()
     browser.load(args.url)
     tkinter.mainloop()

@@ -607,4 +607,6 @@ a. Font measurement (used in layout and paint)
 
 b. Scheduling tasks (via the `canvas.after()` method)
 
-It may be possible to use tkinter in a way that 
+It may be possible to use tkinter in a way that allows clever parallelism with
+fonts, but for now the simplest thing to do is use a lock to allow both threads
+to be doing tkinter stuff at the same time. 
