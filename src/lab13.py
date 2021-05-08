@@ -17,6 +17,10 @@ class Timer:
     def __init__(self):
         self.phase = None
         self.time = None
+        self.accumulated = 0
+
+    def reset(self):
+        self.accumulated = 0
 
     def start(self, name):
         if self.phase: self.stop()
@@ -27,6 +31,10 @@ class Timer:
         dt = time.time() - self.time
         print("[{:>10.6f}] {}".format(dt, self.phase))
         self.phase = None
+        self.accumulated += dt
+
+    def print_accumulated(self):
+        print("[{:>10.6f}] {}\n".format(self.accumulated, "Total"))
 
 def url_origin(url):
     return "/".join(url.split("/")[:3])
@@ -836,7 +844,8 @@ class Browser:
 
         self.document = None
 
-        self.timer = Timer()
+        self.main_thread_timer = Timer()
+        self.compositor_thread_timer = Timer()
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
         self.window.bind("<Key>", self.keypress)
@@ -955,8 +964,9 @@ class Browser:
         return cookie_string[1:]
 
     def load(self, url, body=None):
-        if args.compute_timings:
-            self.timer.start("Downloading")
+        # TODO: it's wrong to run this code on the compositor thread
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Downloading")
         self.address_bar = url
         self.url = url
         self.history.append(url)
@@ -968,13 +978,13 @@ class Browser:
             origin = url_origin(self.history[-1])
             self.cookies.setdefault(origin, {})[key] = value
 
-        if args.compute_timings:
-            self.timer.start("Parsing HTML")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Parsing HTML")
         self.nodes = parse(lex(body))
 #        drawHTMLTree(self.nodes)
         
-        if args.compute_timings:
-            self.timer.start("Parsing CSS")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Parsing CSS")
         with open("browser8.css") as f:
             self.rules = CSSParser(f.read()).parse()
 
@@ -996,8 +1006,8 @@ class Browser:
             scripts.append([header, body])
 
     def run_scripts(self):
-        if args.compute_timings:
-            self.timer.start("Running JS")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Running JS")
         self.setup_js()
 
         scripts=[]
@@ -1096,10 +1106,13 @@ class Browser:
     def begin_main_frame(self):
         self.needs_display = False
 
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.reset()
+
         if (self.needs_raf_callbacks):
             self.needs_raf_callbacks = False
-            if args.compute_timings:
-                self.timer.start("runRAFHandlers")
+            if args.compute_main_thread_timings:
+                self.main_thread_timer.start("runRAFHandlers")
             self.js.evaljs("__runRAFHandlers()")
 
         self.run_rendering_pipeline()
@@ -1108,11 +1121,12 @@ class Browser:
         # been registered during a call to __runRAFHandlers). By default,
         # tkinter doesn't run these until there are no more event queue
         # tasks.
-        if args.compute_timings:
-            self.timer.start("IdleTasks")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("IdleTasks")
         self.canvas.update_idletasks()
-        if args.compute_timings:
-            self.timer.stop()
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.stop()
+            self.main_thread_timer.print_accumulated()
 
         self.frame_count = self.frame_count + 1
         if args.stop_after > 0  and self.frame_count > args.stop_after:
@@ -1133,37 +1147,38 @@ class Browser:
         # drawLayoutTree(self.document)
 
     def paint(self):
-        if args.compute_timings:
-            self.timer.start("Paint")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Paint")
         self.display_list = []
         self.document.paint(self.display_list)
 
     def reflow(self, obj):
-        if args.compute_timings:
-            self.timer.start("Style")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Style")
         style(obj.node, None, self.rules)
-        if args.compute_timings:
-            self.timer.start("Layout (phase 1A)")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Layout (phase 1A)")
         obj.size()
-        if args.compute_timings:
-            self.timer.start("Layout (phase 1B)")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Layout (phase 1B)")
         while obj.parent:
             obj.parent.compute_height()
             obj = obj.parent
-        if args.compute_timings:
-            self.timer.start("Layout (phase 2)")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Layout (phase 2)")
         self.document.position()
 
     def draw(self):
-        if args.compute_timings:
-            self.timer.start("Draw")
+        if args.compute_compositor_thread_timings:
+            self.compositor_thread_timer.reset()
+            self.compositor_thread_timer.start("Draw")
         self.canvas.delete("all")
         for cmd in self.draw_display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
             if cmd.y2 < self.scroll: continue
             cmd.draw(self.scroll - 60, self.canvas)
-        if args.compute_timings:
-            self.timer.start("Draw Chrome")
+        if args.compute_compositor_thread_timings:
+            self.main_thread_timer.start("Draw Chrome")
         self.canvas.create_rectangle(0, 0, 800, 60, width=0, fill='light gray')
         self.canvas.create_rectangle(50, 10, 790, 50)
         font = tkinter.font.Font(family="Courier", size=30)
@@ -1178,6 +1193,9 @@ class Browser:
             x = self.focus.x + self.focus.font.measure(text)
             y = self.focus.y - self.scroll + 60
             self.canvas.create_line(x, y, x, y + self.focus.h)
+        if args.compute_compositor_thread_timings:
+            self.compositor_thread_timer.stop()
+            self.compositor_thread_timer.print_accumulated()
 
     def scrolldown(self, e):
         self.scroll = self.scroll + SCROLL_STEP
@@ -1193,8 +1211,10 @@ if __name__ == "__main__":
         help="URL to load")
     parser.add_argument("--stop_after", default=0, type=int,
         help="If set, exits the browser after this many generates frames")
-    parser.add_argument("--compute_timings", type=bool,
-        help="Compute timings")
+    parser.add_argument("--compute_main_thread_timings", type=bool,
+        help="Compute main thread timings")
+    parser.add_argument("--compute_compositor_thread_timings", type=bool,
+        help="Compute compositor thread timings")
     args = parser.parse_args()
 
     browser = Browser()

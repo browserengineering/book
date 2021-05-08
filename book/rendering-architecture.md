@@ -609,4 +609,13 @@ b. Scheduling tasks (via the `canvas.after()` method)
 
 It may be possible to use tkinter in a way that allows clever parallelism with
 fonts, but for now the simplest thing to do is use a lock to allow both threads
-to be doing tkinter stuff at the same time. 
+to be doing tkinter stuff at the same time.
+
+
+Here are the results:
+    Average total compositor thread time (Draw and Draw Chrome): 4.8ms
+    Average total main thread time: 4.4ms
+
+This means that we've been able to save about 4.8ms of main-thread time, in
+which we can do other work, such as more JavaScript tasks, while in parallel
+the draw operations happen.
