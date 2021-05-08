@@ -6,6 +6,7 @@ without exercises.
 
 import argparse
 import dukpy
+import functools
 import socket
 import ssl
 import time
@@ -787,6 +788,7 @@ class MainThreadRunner:
         self.needs_begin_main_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
         self.script_tasks = []
+        self.browser_tasks = []
 
     def schedule_main_frame(self):
         self.lock.acquire(blocking=True)
@@ -796,6 +798,11 @@ class MainThreadRunner:
     def schedule_script_task(self, script):
         self.lock.acquire(blocking=True)
         self.script_tasks.append(script)
+        self.lock.release()
+
+    def schedule_browser_task(self, callback):
+        self.lock.acquire(blocking=True)
+        self.browser_tasks.append(callback)
         self.lock.release()
 
     def schedule_event_handler():
@@ -813,8 +820,21 @@ class MainThreadRunner:
                 browser.begin_main_frame()
                 self.browser.commit()
 
+            browser_method = None
+            self.lock.acquire(blocking=True)
+            if len(self.browser_tasks) > 0:
+                browser_method = self.browser_tasks.pop(0)
+            self.lock.release()
+            if browser_method:
+                browser_method()
+
+            script = None
+            self.lock.acquire(blocking=True)
             if len(self.script_tasks) > 0:
                 script = self.script_tasks.pop(0)
+            self.lock.release()
+
+            if script:
                 try:
                     retval = self.browser.js.evaljs(script)
                 except dukpy.JSRuntimeError as e:
@@ -849,7 +869,7 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
         self.window.bind("<Key>", self.keypress)
-        self.window.bind("<Return>", self.pressenter)
+        self.window.bind("<Return>", self.press_enter)
 
         self.reflow_roots = []
         self.needs_layout_tree_rebuild = False
@@ -908,7 +928,7 @@ class Browser:
                     pass
                 elif is_link(elt):
                     url = relative_url(elt.attributes["href"], self.url)
-                    return self.load(url)
+                    return self.schedule_load(url)
                 elif elt.tag == "input":
                     elt.attributes["value"] = ""
                     self.focus = obj
@@ -944,18 +964,18 @@ class Browser:
             body += "&" + name + "=" + value.replace(" ", "%20")
         body = body[1:]
         url = relative_url(elt.attributes["action"], self.url)
-        self.load(url, body)
+        self.schedule_load(url, body)
 
-    def pressenter(self, e):
+    def press_enter(self, e):
         if self.focus == "address bar":
             self.focus = None
-            self.load(self.address_bar)
+            self.schedule_load(self.address_bar)
 
     def go_back(self):
         if len(self.history) > 1:
             self.history.pop()
             back = self.history.pop()
-            self.load(back)
+            self.schedule_load(back)
 
     def cookie_string(self):
         cookie_string = ""
@@ -963,8 +983,11 @@ class Browser:
             cookie_string += "&" + key + "=" + value
         return cookie_string[1:]
 
-    def load(self, url, body=None):
-        # TODO: it's wrong to run this code on the compositor thread
+    def schedule_load(self, url, body=None):
+        self.main_thread_runner.schedule_browser_task(
+            functools.partial(self.load, url, body))
+
+    def load(self, url, body):
         if args.compute_main_thread_timings:
             self.main_thread_timer.start("Downloading")
         self.address_bar = url
@@ -1219,5 +1242,5 @@ if __name__ == "__main__":
 
     browser = Browser()
     browser.start()
-    browser.load(args.url)
+    browser.schedule_load(args.url)
     tkinter.mainloop()
