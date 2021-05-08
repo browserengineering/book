@@ -772,6 +772,48 @@ def drawLayoutTree(node, indent=0):
 
 REFRESH_RATE = 16 # 16ms
 
+class MainThreadRunner:
+    def __init__(self, browser):
+        self.lock = threading.Lock()
+        self.browser = browser
+        self.needs_begin_main_frame = False
+        self.main_thread = threading.Thread(target=self.run, args=())
+        self.script_tasks = []
+
+    def schedule_main_frame(self):
+        self.lock.acquire(blocking=True)
+        self.needs_begin_main_frame = True
+        self.lock.release()
+
+    def schedule_script_task(self, script):
+        self.lock.acquire(blocking=True)
+        self.script_tasks.append(script)
+        self.lock.release()
+
+    def schedule_event_handler():
+        pass
+
+    def start(self):
+        self.main_thread.start()
+
+    def run(self):
+        while True:
+            self.lock.acquire(blocking=True)
+            needs_begin_main_frame = self.needs_begin_main_frame
+            self.lock.release()
+            if needs_begin_main_frame:
+                browser.begin_main_frame()
+                self.browser.commit()
+
+            if len(self.script_tasks) > 0:
+                script = self.script_tasks.pop(0)
+                try:
+                    retval = self.browser.js.evaljs(script)
+                except dukpy.JSRuntimeError as e:
+                    print("Script", script, "crashed", e)
+
+            time.sleep(0.01)
+
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -788,6 +830,10 @@ class Browser:
         self.address_bar = ""
         self.scroll = 0
         self.display_list = []
+
+        self.draw_display_list = []
+        self.needs_draw = False
+
         self.document = None
 
         self.timer = Timer()
@@ -799,9 +845,39 @@ class Browser:
         self.reflow_roots = []
         self.needs_layout_tree_rebuild = False
         self.needs_display = False
+        self.display_scheduled = False
         self.needs_raf_callbacks = False
 
         self.frame_count = 0
+        self.compositor_lock = threading.Lock()
+
+        self.needs_quit = False
+
+    def commit(self):
+        self.compositor_lock.acquire(blocking=True)
+        self.needs_draw = True
+        self.draw_display_list = self.display_list.copy()
+        self.compositor_lock.release()
+
+    def start(self):
+        self.main_thread_runner = MainThreadRunner(self)
+        self.main_thread_runner.start()
+        self.canvas.after(1, self.maybe_draw)
+
+    def maybe_draw(self):
+        self.compositor_lock.acquire(blocking=True)
+        if self.needs_quit:
+            sys.exit()
+        if self.needs_display and not self.display_scheduled:
+            self.canvas.after(REFRESH_RATE,
+                              self.main_thread_runner.schedule_main_frame)
+            self.display_scheduled = True
+
+        if self.needs_draw:
+            self.draw()
+        self.needs_draw = False
+        self.compositor_lock.release()
+        self.canvas.after(1, self.maybe_draw)
 
     def handle_click(self, e):
         self.focus = None
@@ -929,10 +1005,7 @@ class Browser:
         thread.start()
         thread.join()
         for [header, body] in scripts:
-            try:
-                print("Script returned: ", self.js.evaljs(body))
-            except dukpy.JSRuntimeError as e:
-                print("Script", body, "crashed", e)
+            self.main_thread_runner.schedule_script_task(body)
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -948,7 +1021,8 @@ class Browser:
             self.js_requestAnimationFrame)
         self.js.export_function("now", self.js_now)
         with open("runtime13.js") as f:
-            self.js.evaljs(f.read())
+            self.main_thread_runner.schedule_script_task(f.read())
+
 
     def js_querySelectorAll(self, sel):
         selector, _ = CSSParser(sel + "{").selector(0)
@@ -962,7 +1036,6 @@ class Browser:
     def js_innerHTML(self, handle, s):
         try:
             self.run_rendering_pipeline()
-
             doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
             new_nodes = doc.children[0].children
             elt = self.handle_to_node[handle]
@@ -987,6 +1060,8 @@ class Browser:
 
     def dispatch_event(self, type, elt):
        handle = self.node_to_handle.get(elt, -1)
+
+       # TODO: this iis wrong. Event handlers must run on the main thread.
        do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
        return not do_default
 
@@ -1008,10 +1083,15 @@ class Browser:
         self.set_needs_display()
 
     def set_needs_display(self):
-        if not self.needs_display:
+        self.compositor_lock.acquire(blocking=True)
+        if not self.display_scheduled:
             self.needs_display = True
-            self.canvas.after(REFRESH_RATE,
-                              self.begin_main_frame)
+        self.compositor_lock.release()
+
+    def quit(self):
+        self.compositor_lock.acquire(blocking=True)
+        self.needs_quit = True
+        self.compositor_lock.release();        
 
     def begin_main_frame(self):
         self.needs_display = False
@@ -1036,7 +1116,8 @@ class Browser:
 
         self.frame_count = self.frame_count + 1
         if args.stop_after > 0  and self.frame_count > args.stop_after:
-           sys.exit()
+            self.quit()
+            sys.exit()
 
     def run_rendering_pipeline(self):
         if self.needs_layout_tree_rebuild:
@@ -1045,15 +1126,11 @@ class Browser:
         self.needs_layout_tree_rebuild = False
 
         for reflow_root in self.reflow_roots:
-            tkinter_lock.acquire(blocking=True)
             self.reflow(reflow_root)
-            self.paint()
-            self.draw()
-            tkinter_lock.release()
-            self.max_y = self.document.h - HEIGHT
-            # drawLayoutTree(self.document)
-
         self.reflow_roots = []
+        self.paint()
+        self.max_y = self.document.h - HEIGHT
+        # drawLayoutTree(self.document)
 
     def paint(self):
         if args.compute_timings:
@@ -1081,7 +1158,7 @@ class Browser:
         if args.compute_timings:
             self.timer.start("Draw")
         self.canvas.delete("all")
-        for cmd in self.display_list:
+        for cmd in self.draw_display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
             if cmd.y2 < self.scroll: continue
             cmd.draw(self.scroll - 60, self.canvas)
@@ -1120,7 +1197,7 @@ if __name__ == "__main__":
         help="Compute timings")
     args = parser.parse_args()
 
-    tkinter_lock = threading.Lock()
     browser = Browser()
+    browser.start()
     browser.load(args.url)
     tkinter.mainloop()
