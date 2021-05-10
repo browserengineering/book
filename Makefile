@@ -32,7 +32,7 @@ www/rss.xml: book/news.yaml book/rss-template.xml
 
 www/blog/%.html: blog/%.md book/template.html book/filter.lua disabled.conf
 	mkdir -p $(dir $@)
-	pandoc --metadata=toc:none --variable=base=../  --template book/template.html -c book.css $(PANDOC_COMMON_ARGS) $< -o $@
+	pandoc --metadata=toc:none --variable=base=../  --variable=rel=blog --template book/template.html -c book.css $(PANDOC_COMMON_ARGS) $< -o $@
 
 www/draft/%.html: book/%.md book/template.html book/signup.html book/filter.lua
 	@ mkdir -p $(dir $@)
