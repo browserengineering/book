@@ -65,7 +65,7 @@ things on the screen, labeled "Phase 1" and "Phase 2", reinforces that.
 Third, the widget can actually reveal things that were hidden in the
 description. For example, the bullet points in the previous section
 didn't mention [leading], but it clearly shows up in the widget. In
-fact, in a propert browser, the amount of leading above and below the
+fact, in a proper browser, the amount of leading above and below the
 text should be the same---the widget shows that (for simplicity) this
 book's toy browser doesn't do that.
 
