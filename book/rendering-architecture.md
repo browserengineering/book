@@ -79,22 +79,22 @@ methods to those events, via this code:
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
         self.window.bind("<Key>", self.keypress)
-        self.window.bind("<Return>", self.pressenter)
+        self.window.bind("<Return>", self.press_enter)
 ```
 
 What we want to do next is to run the rendering pipeline in a separte event.
 We can do that by *scheduling a render to occur* instead of synchronously
 computing it, via a call to a new method called `set_needs_display`:
 
-``` {.python}
+``` {.python expected=False}
 REFRESH_RATE = 16 # 16ms
 
 class Browser:
     def __init__(self):
-        self.needs_display = False
+        self.display_scheduled = False
 
     def set_needs_display(self):
-        if not self.needs_display:
+        if not self.display_scheduled:
             self.needs_display = True
             self.canvas.after(REFRESH_RATE,
                               self.begin_main_frame)
@@ -148,7 +148,7 @@ One simple way to fix this is to perform the fetches on another CPU thread
 different set of threads or processes):
 
 ``` {.python}
-    def load(self, url, body=None):
+    def load(self, url, body):
         # ...
 
         self.run_scripts()
@@ -162,18 +162,14 @@ different set of threads or processes):
             scripts.append([header, body])
 
     def run_scripts(self):
-        self.timer.start("Running JS")
+        # ....
         self.setup_js()
 
         scripts=[]
         thread = threading.Thread(target=self.load_scripts, args=(scripts,))
         thread.start()
         thread.join()
-        for [header, body] in scripts:
-            try:
-                print("Script returned: ", self.js.evaljs(body))
-            except dukpy.JSRuntimeError as e:
-                print("Script", body, "crashed", e)
+        # ...
 ```
 
 Note that the *loading* happens on a background thread, but not the *evaluation*
@@ -225,11 +221,11 @@ JavaScript callbacks. The full definition is:
 
         if (self.needs_raf_callbacks):
             self.needs_raf_callbacks = False
-            self.timer.start("runRAFHandlers")
+            # ...
             self.js.evaljs("__runRAFHandlers()")
 
         self.run_rendering_pipeline()
-        self.timer.start("IdleTasks")
+        # ...
         self.canvas.update_idletasks()
 
     def run_rendering_pipeline(self):
@@ -552,15 +548,11 @@ paint and draw:
 
 ``` {.python}
     def run_rendering_pipeline(self):
-        # ...
-
-    def reflow(self, obj):
         for reflow_root in self.reflow_roots:
             self.reflow(reflow_root)
-            self.display_list = []
-            self.document.paint(self.display_list)
-            self.draw()
-            self.max_y = self.document.h - HEIGHT
+        self.reflow_roots = []
+        self.paint()
+        # ...
 ```
 
 With these changes, the profile now shows that `draw` is actually a big
@@ -593,7 +585,7 @@ This second thread that runs drawing is often called the Compositor thread
 It's so named because in a real browser it'll end up doing a lot more than
 drawing to a canvas, but let's forget that for now and focus on drawing.
 
-To get this composiotr thread working, we'll have to find a way to run tkinter
+To get this compositor thread working, we'll have to find a way to run tkinter
 on a second thread, and communicate between the threads in a way that allows
 them to do things in parallel. The first thing you should know is that tkinter
 is *not* thread-safe, so it cannot magically parallelize for free. Instead we'll
