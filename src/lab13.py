@@ -867,8 +867,8 @@ class Browser:
         self.main_thread_timer = Timer()
         self.compositor_thread_timer = Timer()
         self.window.bind("<Down>", self.scrolldown)
-        self.window.bind("<Button-1>", self.handle_click)
-        self.window.bind("<Key>", self.keypress)
+        self.window.bind("<Button-1>", self.compositor_handle_click)
+        self.window.bind("<Key>", self.compositor_keypress)
         self.window.bind("<Return>", self.press_enter)
 
         self.reflow_roots = []
@@ -908,7 +908,7 @@ class Browser:
         self.compositor_lock.release()
         self.canvas.after(1, self.maybe_draw)
 
-    def handle_click(self, e):
+    def compositor_handle_click(self, e):
         self.focus = None
         if e.y < 60: # Browser chrome
             if 10 <= e.x < 35 and 10 <= e.y < 50:
@@ -918,26 +918,34 @@ class Browser:
                 self.address_bar = ""
                 self.set_needs_display()
         else:
-            x, y = e.x, e.y + self.scroll - 60
-            obj = find_layout(x, y, self.document)
-            if not obj: return
-            elt = obj.node
-            if elt and self.dispatch_event("click", elt): return
-            while elt:
-                if isinstance(elt, TextNode):
-                    pass
-                elif is_link(elt):
-                    url = relative_url(elt.attributes["href"], self.url)
-                    return self.schedule_load(url)
-                elif elt.tag == "input":
-                    elt.attributes["value"] = ""
-                    self.focus = obj
-                    self.set_needs_reflow(self.focus)
-                elif elt.tag == "button":
-                    self.submit_form(elt)
-                elt = elt.parent
+            self.main_thread_runner.schedule_browser_task(
+                functools.partial(self.handle_click, e))
 
-    def keypress(self, e):
+    def handle_click(self, e):
+        # Lock to check scroll, which is updated on the compositor thread.
+        self.compositor_lock.acquire(blocking=True)
+        x, y = e.x, e.y + self.scroll - 60
+        self.compositor_lock.release()
+        obj = find_layout(x, y, self.document)
+        if not obj: return
+        elt = obj.node
+        if elt and self.dispatch_event("click", elt): return
+        while elt:
+            if isinstance(elt, TextNode):
+                pass
+            elif is_link(elt):
+                url = relative_url(elt.attributes["href"], self.url)
+                return self.schedule_load(url)
+            elif elt.tag == "input":
+                elt.attributes["value"] = ""
+                self.focus = obj
+                self.set_needs_reflow(self.focus)
+            elif elt.tag == "button":
+                self.submit_form(elt)
+            elt = elt.parent
+
+    # runs on the compositor thread.
+    def compositor_keypress(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
 
@@ -947,9 +955,14 @@ class Browser:
             self.address_bar += e.char
             self.set_needs_display()
         else:
-            self.focus.node.attributes["value"] += e.char
-            self.dispatch_event("change", self.focus.node)
-            self.set_needs_reflow(self.focus)
+            self.main_thread_runner.schedule_browser_task(
+                functools.partial(self.keypress, e))
+
+    # runs on the main thread.
+    def keypress(self, e):
+        self.focus.node.attributes["value"] += e.char
+        self.dispatch_event("change", self.focus.node)
+        self.set_needs_reflow(self.focus)
 
     def submit_form(self, elt):
         while elt and elt.tag != "form":
@@ -966,6 +979,7 @@ class Browser:
         url = relative_url(elt.attributes["action"], self.url)
         self.schedule_load(url, body)
 
+    # Runs on the compositor thread
     def press_enter(self, e):
         if self.focus == "address bar":
             self.focus = None
@@ -1094,7 +1108,6 @@ class Browser:
     def dispatch_event(self, type, elt):
        handle = self.node_to_handle.get(elt, -1)
 
-       # TODO: this iis wrong. Event handlers must run on the main thread.
        do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
        return not do_default
 
@@ -1220,10 +1233,13 @@ class Browser:
             self.compositor_thread_timer.stop()
             self.compositor_thread_timer.print_accumulated()
 
+    # Runs on the compositor thread
     def scrolldown(self, e):
+        self.compositor_lock.acquire(blocking=True)
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
+        self.compositor_lock.release()
         self.set_needs_display()
 
 if __name__ == "__main__":
