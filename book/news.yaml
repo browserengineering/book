@@ -4,6 +4,12 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Why Widgets?
+    link: https://browser.engineering/blog/why-widgets.html
+    description:
+      We're working interactive widgets to Web Browser Engineering to
+      better explain the concepts and to make room for discoveries.
+      But it's not easy!
   - title: History of the Web
     link: https://browser.engineering/history.html
     description:
