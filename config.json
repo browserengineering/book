@@ -23,6 +23,9 @@
 
         "skipped.md": true,
         "change.md": true,
-        "todo.md": false
+        "todo.md": false,
+
+        "glossary.md": true,
+        "bibliography.md": false
     }
 }

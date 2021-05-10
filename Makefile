@@ -37,7 +37,7 @@ www/blog/%.html: blog/%.md book/template.html book/filter.lua disabled.conf
 www/draft/%.html: book/%.md book/template.html book/signup.html book/filter.lua
 	@ mkdir -p $(dir $@)
 	pandoc --toc --template book/template.html \
-	       --metadata=mode:draft --variable=base=../ --variable=rel=draft \
+	       --metadata=mode:draft --variable=base=../ --variable=rel=draft --variable=draft \
                -c book.css $(PANDOC_COMMON_ARGS) \
                $< -o $@
 
