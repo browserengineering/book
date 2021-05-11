@@ -3,6 +3,7 @@ title: Code Outlines
 author: Pavel Panchekha
 date: 4 January 2021
 prev: why-python
+next: why-widgets
 ...
 
 You may have noticed that [Web Browser Engineering](../)'s chapters

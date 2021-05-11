@@ -6,11 +6,13 @@ main: true
 
 Writing progress, updates, and [my book on web browsers](../).
 
-- [Code Outlines](outlines.md) \
+- [Why Widgets](blog/why-widgets.md) \
+  Why we're adding interactive widgets to the book
+- [Code Outlines](blog/outlines.md) \
   Showing the intermediate-level structure of the browser
-- [Why Python?](why-python.md) \
+- [Why Python?](blog/why-python.md) \
   Javascript, Rust, and other options
-- [Typos and Comments](feedback.md) \
+- [Typos and Comments](blog/feedback.md) \
   Crowdsourcing book feedback
-- [The Beginning](beginning.md) \
+- [The Beginning](blog/beginning.md) \
   Setting up this website

@@ -75,3 +75,9 @@ Conclusion
 
 2. [A Changing Landscape](change.md)
 :::
+
+Appendix
+========
+
+(@) [Glossary](glossary.md)
+(@) [Bibliography](bibliography.md)

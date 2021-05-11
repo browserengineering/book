@@ -9,19 +9,55 @@ text.drawn { dominant-baseline: text-before-edge; }
 @media screen and (-webkit-min-device-pixel-ratio:0) and (min-resolution:.001dpcm) {
 text.drawn { alignment-baseline: hanging; }
 }
-text.varname { fill: #444; font-family: monospace; }
+text.varname { fill: #444; font-family: monospace; text-anchor: end; transform: translate(-10px, 0); }
+text.title { font: bold 16px serif; text-transform: uppercase; fill: steelblue; letter-spacing: .1ex; }
+text.label { fill: #444; }
 line { stroke: #888; }
 line.baseline { stroke-dasharray: 5, 5; }
-.areg { fill: pink; }
-.amax { fill: darkred; }
-.dreg { fill: lightblue; }
-.dmax { fill: darkblue; }
-line.areg { stroke: darkred; }
-line.dreg { stroke: darkblue; }
+.areg { fill: pink; stroke: pink; }
+.amax { fill: darkred; stroke: darkred; }
+.dreg { fill: lightblue; stroke: lightblue; }
+.dmax { fill: darkblue; stroke: darkblue }
+svg { width: 100%; }
+#g1 { transform: translate(50px, 0); }
+#g2 { transform: translate(400px, 0); }
+#caption { transform: translate(670px, 0); }
+@media screen and (max-width: 750px) {
+    #g1 { transform: translate(80px, -10px); }
+    #g2 { transform: translate(80px, 60px); }
+    #caption { transform: translate(400px, 0); }
+    #g1 text.title { transform: translate(-70px, 10px); }
+    #g2 text.title { transform: translate(-70px, 10px); }
+}
 </style>
 
 <figure id="widget">
-  <svg id="canvas" width="352" height="160" viewBox="0 0 352 160"></svg>
+  <svg id="canvas" height="160">
+    <g id="g1"></g>
+    <g id="g2"></g>
+    <g id="caption">
+      <text x="0" y="20" class="title">Caption</text>
+
+      <g>
+        <rect x="2.5" y="70" width="5" height="30" class="areg"></rect>
+        <rect x="2.5" y="100" width="5" height="20" class="dreg"></rect>
+      </g>
+
+      <g transform="translate(10 0)">
+        <line x1="5" y1="50" x2="5" y2="70" class="amax"></line>
+        <rect x="2.5" y="70" width="5" height="30" class="amax"></rect>
+        <rect x="2.5" y="100" width="5" height="20" class="dmax"></rect>
+        <line x1="5" y1="120" x2="5" y2="140" class="dmax"></line>
+      </g>
+
+      <g transform="translate(25 0)">
+        <text x="0" y="65" class="label">Leading</text>
+        <text x="0" y="90" class="label">Ascent</text>
+        <text x="0" y="115" class="label">Descent</text>
+        <text x="0" y="135" class="label">Leading</text>
+      </g>
+    </g>
+  </svg>
   <form id="controls">
     <fieldset id="step-controls">
       <h1>Aligning the words on a line</h1>
@@ -71,71 +107,76 @@ function svg(tag, attrs, children) {
 }
   
 function draw_widget() {
-    let elt = document.querySelector("#canvas");
-    while (elt.children.length) elt.removeChild(elt.children[0]);
+    let g1 = document.querySelector("#g1");
+    let g2 = document.querySelector("#g2");
+    while (g1.children.length) g1.removeChild(g1.children[0]);
+    while (g2.children.length) g2.removeChild(g2.children[0]);
 
-    let margin = 100;
-    let y1 = 70;
+    let width = 250;
+    let tmargin = 50;
+    let y1 = tmargin;
     let b = y1 + 1.2 * STATE.max_asc * ZOOM;
     let y2 = y1 + ZOOM * (STATE.final_y - STATE.initial_y);
 
     if (STATE.initial_y || STATE.final_y) {
+        g2.appendChild(svg("text", { x: 0, y: tmargin - 30, class: "title" }, "Phase 2"));
         let y = STATE.final_y ? y2 : y1;
-        elt.appendChild(svg("text", { x: 10, y: y, class: "varname" }, "cursor_y"));
+        g2.appendChild(svg("text", { x: 0, y: y, class: "varname" }, "cursor_y"));
     }
 
     if (STATE.initial_y) {
-        elt.appendChild(svg("line", {
-            x1: margin, y1: y1,
-            x2: "100%", y2: y1,
+        g2.appendChild(svg("line", {
+            x1: 0, y1: y1,
+            x2: width, y2: y1,
         }));
     }
     if (STATE.final_y) {
-        elt.appendChild(svg("line", {
-            x1: margin, y1: y2,
-            x2: "100%", y2: y2,
+        g2.appendChild(svg("line", {
+            x1: 0, y1: y2,
+            x2: width, y2: y2,
         }));
     }
 
     if (STATE.max_asc) {
-        elt.appendChild(svg("text", { x: 10, y: b, class: "varname" }, "baseline"));
-        elt.appendChild(svg("line", {
-            x1: margin, y1: b,
-            x2: "100%", y2: b,
+        g2.appendChild(svg("text", { x: 0, y: b, class: "varname" }, "baseline"));
+        g2.appendChild(svg("line", {
+            x1: 0, y1: b,
+            x2: width, y2: b,
             class: "baseline",
         }));
         let h = STATE.max_asc * ZOOM;
-        elt.appendChild(svg("rect", {
-            x: margin - 5, y: b - h,
+        g2.appendChild(svg("rect", {
+            x: -5, y: b - h,
             width: 5, height: h,
             class: "amax",
         }));
-        elt.appendChild(svg("line", {
-            x1: margin-2.5, y1: y1,
-            x2: margin-2.5, y2: b - h,
-            class: "areg",
+        g2.appendChild(svg("line", {
+            x1: -2.5, y1: y1,
+            x2: -2.5, y2: b - h,
+            class: "amax",
         }));
     }
     if (STATE.max_desc) {
         let h = STATE.max_desc * ZOOM;
-        elt.appendChild(svg("rect", {
-            x: margin - 5, y: b,
+        g2.appendChild(svg("rect", {
+            x: -5, y: b,
             width: 5, height: h,
             class: "dmax",
         }));
-        elt.appendChild(svg("line", {
-            x1: margin-2.5, y1: b + h,
-            x2: margin-2.5, y2: b + h * 1.2,
-            class: "dreg",
+        g2.appendChild(svg("line", {
+            x1: -2.5, y1: b + h,
+            x2: -2.5, y2: b + h * 1.2,
+            class: "dmax",
         }));
     }
 
     if (STATE.line) {
-        elt.appendChild(svg("text", { x: 10, y: 20, class: "varname" }, "line"));
-        elt.appendChild(svg("line", { x1: margin, y1: 10, x2: "100%", y2: 10 }));
+        g1.appendChild(svg("text", { x: 0, y: tmargin - 30, class: "title" }, "Phase 1"));
+        g1.appendChild(svg("text", { x: 0, y: tmargin, class: "varname" }, "line"));
+        g1.appendChild(svg("line", { x1: 0, y1: tmargin, x2: width, y2: tmargin }));
         for (let [x, word, font] of STATE.line) {
-            elt.appendChild(svg("text", {
-                x: margin + 5 + (x - HSTEP) * ZOOM, y: 10,
+            g1.appendChild(svg("text", {
+                x: 5 + (x - HSTEP) * ZOOM, y: tmargin,
                 style: "font: " + font.string,
                 class: "drawn",
             }, word));
@@ -143,26 +184,32 @@ function draw_widget() {
     }
 
     if (STATE.display_list) {
-        for (let [x, y, word, font] of STATE.display_list) {
-            let dy = (y - STATE.initial_y) * ZOOM + y1;
-            elt.appendChild(svg("text", {
-                x: margin + 5 + (x - HSTEP) * ZOOM, y: dy,
+        STATE.display_list.forEach(function ([x, y, word, font], i) {
+            let metric = STATE.metrics[i];
+            let dy = (y - STATE.initial_y) * ZOOM;
+            g2.appendChild(svg("text", {
+                x: 10 + (x - HSTEP) * ZOOM, y: dy + y1,
                 style: "font: " + font.string,
                 class: "drawn",
             }, word));
-        }
+            g2.appendChild(svg("rect", {
+                x: 4 + (x - HSTEP) * ZOOM, y: b - metric.ascent * ZOOM,
+                width: 5, height: metric.ascent * ZOOM,
+                class: "areg",
+            }))
+        });
     }
 
     if (STATE.metrics) {
         STATE.line.forEach(function ([x, word, font], i){
             let metric = STATE.metrics[i];
-            elt.appendChild(svg("rect", {
-                x: margin + (x - HSTEP) * ZOOM, y: 10,
+            g1.appendChild(svg("rect", {
+                x: (x - HSTEP) * ZOOM, y: tmargin,
                 width: 5, height: metric.ascent * ZOOM,
                 class: metric.ascent === STATE.max_asc ? "amax" : "areg",
             }))
-            elt.appendChild(svg("rect", {
-                x: margin + (x - HSTEP) * ZOOM, y: 10 + metric.ascent * ZOOM,
+            g1.appendChild(svg("rect", {
+                x: (x - HSTEP) * ZOOM, y: tmargin + metric.ascent * ZOOM,
                 width: 5, height: metric.descent * ZOOM,
                 class: metric.ascent === STATE.max_asc ? "dmax" : "dreg",
             }))

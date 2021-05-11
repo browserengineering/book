@@ -57,8 +57,8 @@ and have the modifications automatically run against a set of tests.
 Graphics and figures could be generated directly from a running
 browser, and could allow deeper explorations into the browser.
 Finally, JavaScript has native support far beyond Python: could *Web
-Browser Engineering* could implement a compositing rendering engine
-using WebGL, for example?
+Browser Engineering* implement a compositing rendering engine using
+WebGL, for example?
 
 Yet technical details sour me on JavaScript. Were the browser written
 in JavaScript, the browser code and the code on web pages themselves
