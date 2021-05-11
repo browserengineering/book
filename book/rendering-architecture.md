@@ -87,7 +87,7 @@ We can do that by *scheduling a render to occur* instead of synchronously
 computing it, via a call to a new method called `set_needs_display`:
 
 ``` {.python}
-REFRESH_RATE = 16 # 16ms
+REFRESH_RATE_MS = 16 # 16ms
 
 class Browser:
     def __init__(self):
