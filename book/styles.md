@@ -38,11 +38,11 @@ To keep this style data easily accessible, let's parse it and store it
 in a `style` field on each `ElementNode`:
 
 ``` {.python}
-class ElementNode:
-    def __init__(self, tag, parent, attributes):
+class Element:
+    def __init__(self, tag, attributes, parent):
         # ...
         self.style = {}
-        for pair in self.attributes.get("style", "").split(";"):
+        for pair in attributes.get("style", "").split(";"):
             if ":" not in pair: continue
             prop, val = pair.split(":")
             self.style[prop.strip().lower()] = val.strip()
@@ -120,17 +120,15 @@ that it understands.
 
 To support CSS in our browser, we'll need to:
 
-- Parse CSS files to understand the selector for each block and also
-  the property values that block sets;
-- Run each selector to figure out which elements on the page each
-  block selects;
+- Parse CSS files into selectors, blocks, property-values pairs;
+- Figure out which elements on the page match each selector; and
 - Add the block's property values to those elements' `style` fields.
 
 Let's start with the parsing. I'll use recursive *parsing functions*,
-each parsing a certain type of CSS element like selectors, properties,
-or blocks. Parsing function will take an index into the input and
-return a new index, plus the data it parsed. Since we'll have a lot of
-parsing functions, let's organize them in a `CSSParser` class:
+where there's a function for each CSS construct like selectors,
+blocks, and properties. Each parsing function take an index into the
+input and return a new index, plus the data it parsed. We'll have a
+lot of these functions, so let's organize them in a `CSSParser` class:
 
 ``` {.python}
 class CSSParser:
@@ -172,32 +170,37 @@ condition is false.[^add-a-comma]
     your assertions to help in debugging.
 
 Parsing functions can also return data. For example, to parse CSS
-properties and values, we'll use:
+properties and values, we'll use this code:
 
 ``` {.python}
 def word(self, i):
-    j = i
-    while j < len(self.s) and self.s[j].isalnum() or self.s[j] in "-.":
-        j += 1
-    assert j > i
-    return self.s[i:j], j
+    start = i
+    while i < len(self.s) and self.s[i].isalnum() or self.s[i] in "#-.":
+        i += 1
+    assert i > start
+    return self.s[start:i], i
 ```
 
 This function takes index `i` pointing to the start of the value and
-returns index `j` pointing to its end. It computes `j` by advancing
-through letters, numbers, and minus and period characters (which might
-be present in numbers), and returns all the text it iterated through
-as the parsed data. Also note the check: if `j` didn't advance, that
-means `i` didn't point at a word to begin with.
+increments it through any word characters,[^word-chars] much like
+`literal`. But unlike `literal`, it also returns the word as parsed
+data, and to do that it stores where it started and extracts the
+substring it moved through. Also note the check: if `i` didn't
+advance, that means `i` didn't point at a word to begin with.
 
-Parsing functions can also build upon one another. Property-value
-pairs, for example, are a word, a colon, and another
-word,[^technically-different] with whitespace in between:
+[^word-chars]: I've chosen the set of word characters here to cover
+    property names (which use letters and dash), length units (which
+    use the minus sign, numbers, and periods), and colors (which use
+    the hash sign). But the real CSS syntax is more complex.
+
+Parsing functions can build upon one another. Property-value pairs,
+for example, are a word for the property, a colon, and another word
+for the value,[^technically-different] with whitespace in between:
 
 [^technically-different]: In reality properties and values have
     different syntaxes, so using `word` for both isn't quite right,
-    but our browser supports few enough values in our parser that this
-    simplification will be alright.
+    but for our browser's limited CSS support this simplification will
+    be alright.
 
 ``` {.python}
 def pair(self, i):
@@ -210,11 +213,10 @@ def pair(self, i):
 ```
 
 This builds upon `word`, `whitespace`, and `literal` to build a more
-complicated parsing function. And note that if
-`i` does not actually point to a property-value pair, one of the
-`word` calls, or the `literal` call, will fail. When we parse rule
-bodies, we can catch this error to skip property-value pairs that
-don't parse:
+complicated parsing function. And note that if `i` does not actually
+point to a property-value pair, one of the `word` calls or the
+`literal` call will fail. When we parse rule bodies, we can catch
+this error to skip property-value pairs that don't parse:
 
 ``` {.python indent=4}
 def body(self, i):
