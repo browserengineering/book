@@ -604,11 +604,12 @@ will have these kinds of tasks:
 
  The compositor thread (the one with tkinter in it) will be in charge of:
 
-* Listening to mouse and keyboard events
-
 * Scheduling a rendering pipeline frame every 16ms
 
-* Drawing to the screen after the rendering pipeline is done
+* Drawing to the screen after the rendering pipeline is done, and initiating
+* load of a web page
+
+* Listening to mouse and keyboard events
 
 To do this we'll have to expand greatly on the implementation of an event loop,
 because now we'lll need to manage this event loop ourselves rather than using
@@ -693,9 +694,9 @@ for 1ms and checks again.
 ```
 
 The `begin_main_frame` method on `Browser` will run on the main thread. Since
-`draw` is supposed to happen on the compositor thread. This is where the
-`commit` method on the `Browser ` class that the code snippet above calls comes
-in to play:
+`draw` is supposed to happen on the compositor thread, we can't run it as part
+of the main thread rendering pipeline. Instead, we need to `commit` (copy) the
+display list to the compositor thread:
 
 ``` {.python}
     def commit(self):
@@ -705,11 +706,148 @@ in to play:
         self.compositor_lock.release()
 ```
 
+Over on the compositor thread, we need a loop that keeps looking for
+opportunities to draw (when `self.needs_draw` is true, and then doing so:
 
+```
+    def maybe_draw(self):
+        self.compositor_lock.acquire(blocking=True)
+        if self.needs_quit:
+            sys.exit()
+        if self.needs_display and not self.display_scheduled:
+            self.canvas.after(REFRESH_RATE,
+                              self.main_thread_runner.schedule_main_frame)
+            self.display_scheduled = True
+
+        if self.needs_draw:
+            self.draw()
+        self.needs_draw = False
+        self.compositor_lock.release()
+        self.canvas.after(1, self.maybe_draw)
+```
+
+And of course, draw itself draws `self.draw_display_list`, not
+`self.display_list`:
+
+```
+    def draw(self):
+        # ....
+        for cmd in self.draw_display_list:
+        # ...
+```
+
+Other threaded tasks
+====================
+
+Next up we'll move browser tasks such as loading to the main thread. Now that
+we have `MainThreadRunner`, this is super easy! Whenever the compositor thread
+needs to schedule a task on the main thread event loop, we just call
+`main_thread_runner.schedule_browser_task`:
+
+```
+    # Runs on the compositor thread
+    def schedule_load(self, url, body=None):
+        self.main_thread_runner.schedule_browser_task(
+            functools.partial(self.load, url, body))
+
+    # Runs on the main thread
+    def load(self, url, body):
+        # ...
+
+```
+
+We can do the same for input event handlers, but there are a few additional
+subtleties. Let's look closely at each of them in turn, but first notice that
+all of the click handlers are on the `window` object, which is supplied by
+tkinter. But what happens when processing that event---a click, for example? In
+most cases, we will need to [hit test](chrome.md#hit-testing) for which DOM
+element receives the click event, and also fire an event that JavaScript
+can listen to. In this case, it seems clear we should just send the click
+event to the main thread for processing. But if the click was *not* within
+the web page window, we can handle it right there in the compositor thread:
+
+``` {.python}
+        self.window.bind("<Button-1>", self.compositor_handle_click)
+
+    # Runs on the compositor thread
+    def compositor_handle_click(self, e):
+        self.focus = None
+        if e.y < 60:
+            # Browser chrome clicks can be handled without the main thread...
+            if 10 <= e.x < 35 and 10 <= e.y < 50:
+                self.go_back()
+            elif 50 <= e.x < 790 and 10 <= e.y < 50:
+                self.focus = "address bar"
+                self.address_bar = ""
+                self.set_needs_display()
+        else:
+            # ...but not clicks within the web page contents area
+            self.main_thread_runner.schedule_browser_task(
+                functools.partial(self.handle_click, e))
+
+    # Runs on the main thread
+    def handle_click(self, e):
+        # ...
+```
+
+The same logic holds for keypresses:
+
+```
+        self.window.bind("<Key>", self.compositor_keypress)
+        self.window.bind("<Return>", self.press_enter)
+
+        # Runs on the compositor thread
+    def compositor_keypress(self, e):
+        if len(e.char) == 0: return
+        if not (0x20 <= ord(e.char) < 0x7f): return
+
+        if not self.focus:
+            return
+        elif self.focus == "address bar":
+            self.address_bar += e.char
+            self.set_needs_display()
+        else:
+            self.main_thread_runner.schedule_browser_task(
+                functools.partial(self.keypress, e))
+
+    # Runs on the main thread
+    def keypress(self, e):
+        self.focus.node.attributes["value"] += e.char
+        self.dispatch_event("change", self.focus.node)
+        self.set_needs_reflow(self.focus)
+
+```
+
+The return key and scrolling, however, have no use for the main thread at
+present:
+
+```
+        self.window.bind("<Down>", self.scrolldown)
+        self.window.bind("<Return>", self.press_enter)
+
+
+    # Runs on the compositor thread
+    def scrolldown(self, e):
+        self.compositor_lock.acquire(blocking=True)
+        self.scroll = self.scroll + SCROLL_STEP
+        self.scroll = min(self.scroll, self.max_y)
+        self.scroll = max(0, self.scroll)
+        self.compositor_lock.release()
+        self.set_needs_display()
+
+    # Runs on the compositor thread
+    def press_enter(self, e):
+        if self.focus == "address bar":
+            self.focus = None
+            self.schedule_load(self.address_bar)
+```
+
+And we're done! Now we can reap the benefits of two threads working in parallel.
 Here are the results:
+
     Average total compositor thread time (Draw and Draw Chrome): 4.8ms
     Average total main thread time: 4.4ms
 
-This means that we've been able to save about 4.8ms of main-thread time, in
-which we can do other work, such as more JavaScript tasks, while in parallel
+This means that we've been able to save about half of the of main-thread time,
+in which we can do other work, such as more JavaScript tasks, while in parallel
 the draw operations happen.

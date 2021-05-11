@@ -898,7 +898,7 @@ class Browser:
         if self.needs_quit:
             sys.exit()
         if self.needs_display and not self.display_scheduled:
-            self.canvas.after(REFRESH_RATE,
+            self.canvas.after(REFRESH_RATE_MS,
                               self.main_thread_runner.schedule_main_frame)
             self.display_scheduled = True
 
@@ -908,9 +908,11 @@ class Browser:
         self.compositor_lock.release()
         self.canvas.after(1, self.maybe_draw)
 
+    # Runs on the compositor thread
     def compositor_handle_click(self, e):
         self.focus = None
-        if e.y < 60: # Browser chrome
+        if e.y < 60:
+            # Browser chrome clicks can be handled without the main thread...
             if 10 <= e.x < 35 and 10 <= e.y < 50:
                 self.go_back()
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
@@ -918,9 +920,11 @@ class Browser:
                 self.address_bar = ""
                 self.set_needs_display()
         else:
+            # ...but not clicks within the web page contents area
             self.main_thread_runner.schedule_browser_task(
                 functools.partial(self.handle_click, e))
 
+    # Runs on the main thread
     def handle_click(self, e):
         # Lock to check scroll, which is updated on the compositor thread.
         self.compositor_lock.acquire(blocking=True)
@@ -944,7 +948,7 @@ class Browser:
                 self.submit_form(elt)
             elt = elt.parent
 
-    # runs on the compositor thread.
+    # Runs on the compositor thread
     def compositor_keypress(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
@@ -958,7 +962,7 @@ class Browser:
             self.main_thread_runner.schedule_browser_task(
                 functools.partial(self.keypress, e))
 
-    # runs on the main thread.
+    # Runs on the main thread
     def keypress(self, e):
         self.focus.node.attributes["value"] += e.char
         self.dispatch_event("change", self.focus.node)
@@ -1047,6 +1051,7 @@ class Browser:
             self.main_thread_timer.start("Running JS")
         self.setup_js()
 
+        scripts=[]
         scripts=[]
         thread = threading.Thread(target=self.load_scripts, args=(scripts,))
         thread.start()
