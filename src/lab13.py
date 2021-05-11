@@ -779,7 +779,7 @@ def drawLayoutTree(node, indent=0):
     for child in node.children:
         drawLayoutTree(child, indent + 2)
 
-REFRESH_RATE = 16 # 16ms
+REFRESH_RATE_MS = 16 # 16ms
 
 class MainThreadRunner:
     def __init__(self, browser):

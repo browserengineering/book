@@ -42,7 +42,7 @@ li { margin: 1em 0; }
 .main ol { margin: 0; padding-left: 0; color: black; }
 .main li { font-size: 80%; font-style: italic; }
 .main li a, .main li .link { font-size: 125%; font-style: normal; }
-
+#onepage { font-size: 125% }
 .intro, .outro { }
 .intro ol { list-style: lower-roman; }
 .outro ol { list-style: upper-alpha; }
@@ -128,6 +128,8 @@ body { counter-reset: fn; }
 
 pre { margin-left: 2ex; }
 
+figure { text-align: center; }
+.grid figure { margin: .5em; }
 figure img { width: 100%; }
 
 .quirk { border: 2px solid purple; }
