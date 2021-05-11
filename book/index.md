@@ -64,6 +64,9 @@ Part 4: Modern Browsers
 (@) [Adding Visual Effects](visual-effects.md)\
     Filters and transformations 
 
+(@) [Browser Rendering Architecture Concepts](rendering-architecture.md)\
+    The Rendering Event Loop and Pipeline
+
 Conclusion
 ==========
 

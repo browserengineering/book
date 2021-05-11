@@ -84,11 +84,13 @@ the desktop environment to create the window and returns its
 identifier, while `tkinter.mainloop()` enters a loop that looks
 similar to this [^5]:
 
+<a name="eventloop"></a>
+
 ``` {.python expected=False}
 while True:
-    drawScreen()
     for evt in pendingEvents():
         handleEvent(evt)
+    drawScreen()
 ```
 
 Here, `drawScreen` draws the various widgets, `pendingEvent` asks the
@@ -303,6 +305,8 @@ based on a [word frequency table][cjdict].
 [icu-wb]: https://unicode-org.github.io/icu/userguide/boundaryanalysis/break-rules.html#details-about-dictionary-based-break-iteration
 [cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
 
+<a name="graphics-scrolling"></a>
+
 Scrolling text
 ==============
 
@@ -446,6 +450,8 @@ def render(self):
 ```
 
 Scrolling should now work!
+
+<a name="faster-rendering"></a>
 
 Faster Rendering
 ================

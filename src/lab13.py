@@ -4,12 +4,13 @@ up to and including Chapter 11 (Keeping Data Private),
 without exercises.
 """
 
+import dukpy
 import socket
 import ssl
+import time
+import threading
 import tkinter
 import tkinter.font
-import dukpy
-import time
 
 class Timer:
     def __init__(self):
@@ -133,8 +134,7 @@ class ElementNode:
     def __init__(self, tag, attributes):
         self.tag = tag
         self.attributes = attributes
-        self.children = []
-
+        self.children = [] 
         self.style = {}
         for pair in self.attributes.get("style", "").split(";"):
             if ":" not in pair: continue
@@ -295,7 +295,7 @@ class CSSParser:
     def parse(self):
         rules, _ = self.file(0)
         return rules
-    
+
 class TagSelector:
     def __init__(self, tag):
         self.tag = tag
@@ -400,9 +400,9 @@ class LineLayout:
                 child.x = self.x + cx
                 child.y = baseline - metrics["ascent"]
 
-    def draw(self, to):
+    def paint(self, to):
         for child in self.children:
-            child.draw(to)
+            child.paint(to)
 
 class TextLayout:
     def __init__(self, node, word):
@@ -426,7 +426,7 @@ class TextLayout:
     def position(self):
         pass
 
-    def draw(self, to):
+    def paint(self, to):
         color = self.node.style["color"]
         to.append(DrawText(self.x, self.y, self.word, self.font, color))
 
@@ -450,7 +450,7 @@ class InputLayout:
     def position(self):
         pass
 
-    def draw(self, to):
+    def paint(self, to):
         x1, x2 = self.x, self.x + self.w
         y1, y2 = self.y, self.y + self.h
         bgcolor = "light gray" if self.node.tag == "input" else "yellow"
@@ -529,9 +529,9 @@ class InlineLayout:
             child.position()
             cy += child.h
 
-    def draw(self, to):
+    def paint(self, to):
         for child in self.children:
-            child.draw(to)
+            child.paint(to)
 
 def px(s):
     if s.endswith("px"):
@@ -604,12 +604,12 @@ class BlockLayout:
             child.position()
             y += child.mt + child.h + child.mb
 
-    def draw(self, to):
+    def paint(self, to):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.w, self.y + self.h
             to.append(DrawRect(self.x, self.y, x2, y2, "gray"))
         for child in self.children:
-            child.draw(to)
+            child.paint(to)
 
 class DocumentLayout:
     def __init__(self, node):
@@ -644,8 +644,8 @@ class DocumentLayout:
         child.y = self.y = 0
         child.position()
 
-    def draw(self, to):
-        self.children[0].draw(to)
+    def paint(self, to):
+        self.children[0].paint(to)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -744,10 +744,17 @@ def is_link(node):
     return isinstance(node, ElementNode) \
         and node.tag == "a" and "href" in node.attributes
 
-def drawTree(node, indent=0):
+def drawHTMLTree(node, indent=0):
+    print(" "*indent, type(node).__name__, " ", node, sep="")
+    for child in node.children:
+        drawHTMLTree(child, indent + 2)
+
+def drawLayoutTree(node, indent=0):
     print(" "*indent, type(node).__name__, " ", node.node, sep="")
     for child in node.children:
-        drawTree(child, indent + 2)
+        drawLayoutTree(child, indent + 2)
+
+REFRESH_RATE_MS = 16 # 16ms
 
 class Browser:
     def __init__(self):
@@ -765,12 +772,18 @@ class Browser:
         self.address_bar = ""
         self.scroll = 0
         self.display_list = []
+        self.document = None
 
         self.timer = Timer()
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
         self.window.bind("<Key>", self.keypress)
         self.window.bind("<Return>", self.pressenter)
+
+        self.reflow_roots = []
+        self.needs_layout_tree_rebuild = False
+        self.needs_display = False
+        self.needs_raf_callbacks = False
 
     def handle_click(self, e):
         self.focus = None
@@ -780,7 +793,7 @@ class Browser:
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.render()
+                self.set_needs_display()
         else:
             x, y = e.x, e.y + self.scroll - 60
             obj = find_layout(x, y, self.document)
@@ -796,7 +809,7 @@ class Browser:
                 elif elt.tag == "input":
                     elt.attributes["value"] = ""
                     self.focus = obj
-                    return self.reflow(self.focus)
+                    self.set_needs_reflow(self.focus)
                 elif elt.tag == "button":
                     self.submit_form(elt)
                 elt = elt.parent
@@ -809,11 +822,11 @@ class Browser:
             return
         elif self.focus == "address bar":
             self.address_bar += e.char
-            self.render()
+            self.set_needs_display()
         else:
             self.focus.node.attributes["value"] += e.char
             self.dispatch_event("change", self.focus.node)
-            self.reflow(self.focus)
+            self.set_needs_reflow(self.focus)
 
     def submit_form(self, elt):
         while elt and elt.tag != "form":
@@ -862,6 +875,7 @@ class Browser:
 
         self.timer.start("Parsing HTML")
         self.nodes = parse(lex(body))
+#        drawHTMLTree(self.nodes)
         
         self.timer.start("Parsing CSS")
         with open("browser8.css") as f:
@@ -874,15 +888,29 @@ class Browser:
         self.rules.sort(key=lambda x: x[0].priority())
         self.rules.reverse()
 
+        self.run_scripts()
+        self.set_needs_layout_tree_rebuild()
+
+    def load_scripts(self, scripts):
+        req_headers = { "Cookie": self.cookie_string() }
+        for script in find_scripts(self.nodes, []):
+            header, body = request(
+                relative_url(script, self.history[-1]), headers=req_headers)
+            scripts.append([header, body])
+
+    def run_scripts(self):
         self.timer.start("Running JS")
         self.setup_js()
-        for script in find_scripts(self.nodes, []):
-            header, body = request(relative_url(script, self.history[-1]), headers=req_headers)
+
+        scripts=[]
+        thread = threading.Thread(target=self.load_scripts, args=(scripts,))
+        thread.start()
+        thread.join()
+        for [header, body] in scripts:
             try:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
                 print("Script", script, "crashed", e)
-        self.layout(self.nodes)
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -893,7 +921,11 @@ class Browser:
         self.js.export_function("getAttribute", self.js_getAttribute)
         self.js.export_function("innerHTML", self.js_innerHTML)
         self.js.export_function("cookie", self.cookie_string)
-        with open("runtime11.js") as f:
+        self.js.export_function(
+            "requestAnimationFrame",
+            self.js_requestAnimationFrame)
+        self.js.export_function("now", self.js_now)
+        with open("runtime13.js") as f:
             self.js.evaljs(f.read())
 
     def js_querySelectorAll(self, sel):
@@ -907,17 +939,29 @@ class Browser:
 
     def js_innerHTML(self, handle, s):
         try:
+            self.run_rendering_pipeline()
+
             doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
             new_nodes = doc.children[0].children
             elt = self.handle_to_node[handle]
             elt.children = new_nodes
             for child in elt.children:
                 child.parent = elt
-            self.reflow(layout_for_node(self.document, elt))
+            if self.document:
+                self.set_needs_reflow(layout_for_node(self.document, elt))
+            else:
+                self.set_needs_layout_tree_rebuild()
         except:
             import traceback
             traceback.print_exc()
             raise
+
+    def js_requestAnimationFrame(self):
+        self.needs_raf_callbacks = True
+        self.set_needs_display()
+
+    def js_now(self):
+        return int(time.time() * 1000)
 
     def dispatch_event(self, type, elt):
        handle = self.node_to_handle.get(elt, -1)
@@ -933,9 +977,47 @@ class Browser:
             handle = self.node_to_handle[elt]
         return handle
 
-    def layout(self, tree):
-        self.document = DocumentLayout(tree)
-        self.reflow(self.document)
+    def set_needs_reflow(self, layout_object):
+        self.reflow_roots.append(layout_object)
+        self.set_needs_display()
+
+    def set_needs_layout_tree_rebuild(self):
+        self.needs_layout_tree_rebuild = True
+        self.set_needs_display()
+
+    def set_needs_display(self):
+        if not self.needs_display:
+            self.needs_display = True
+            self.canvas.after(REFRESH_RATE,
+                              self.begin_main_frame)
+
+    def begin_main_frame(self):
+        self.needs_display = False
+
+        if (self.needs_raf_callbacks):
+            self.needs_raf_callbacks = False
+            self.timer.start("runRAFHandlers")
+            self.js.evaljs("__runRAFHandlers()")
+
+        self.run_rendering_pipeline()
+        # This will cause a draw to the screen, even if there are pending
+        # requestAnimationFrame callbacks for the *next* frame (which may have
+        # been registered during a call to __runRAFHandlers). By default,
+        # tkinter doesn't run these until there are no more event queue
+        # tasks.
+        self.timer.start("IdleTasks")
+        self.canvas.update_idletasks()
+        self.timer.stop()
+
+    def run_rendering_pipeline(self):
+        if self.needs_layout_tree_rebuild:
+            self.document = DocumentLayout(self.nodes)
+            self.reflow_roots = [self.document]
+        self.needs_layout_tree_rebuild = False
+
+        for reflow_root in self.reflow_roots:
+            self.reflow(reflow_root)
+        self.reflow_roots = []
 
     def reflow(self, obj):
         self.timer.start("Style")
@@ -950,12 +1032,13 @@ class Browser:
         self.document.position()
         self.timer.start("Display list")
         self.display_list = []
-        self.document.draw(self.display_list)
-        self.render()
+        self.document.paint(self.display_list)
+        self.draw()
         self.max_y = self.document.h - HEIGHT
+#        drawLayoutTree(self.document)
 
-    def render(self):
-        self.timer.start("Rendering")
+    def draw(self):
+        self.timer.start("Drawing")
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
@@ -976,13 +1059,12 @@ class Browser:
             x = self.focus.x + self.focus.font.measure(text)
             y = self.focus.y - self.scroll + 60
             self.canvas.create_line(x, y, x, y + self.focus.h)
-        self.timer.stop()
 
     def scrolldown(self, e):
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
-        self.render()
+        self.set_needs_display()
 
 if __name__ == "__main__":
     import sys

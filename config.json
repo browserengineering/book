@@ -20,6 +20,7 @@
         "security.md": true,
 
         "visual-effects.md": true,
+        "rendering-architecture.md": true,
 
         "skipped.md": true,
         "change.md": true,

@@ -1,6 +1,6 @@
 FLAGS=
 
-ORDERED_PAGES=preface intro history http graphics text html layout styles chrome forms scripts reflow security visual-effects skipped change glossary
+ORDERED_PAGES=preface intro history http graphics text html layout styles chrome forms scripts reflow security visual-effects rendering-architecture skipped change glossary
 
 PANDOC_COMMON_ARGS=$(FLAGS) --from markdown --to html --lua-filter=book/filter.lua --fail-if-warnings --metadata-file=config.json
 
