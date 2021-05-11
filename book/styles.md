@@ -6,34 +6,36 @@ prev: layout
 next: chrome
 ...
 
-So far, the appearance of the various elements has been fixed. But web
-pages should be able to override our style decisions and take on a
-unique character. This is done via CSS.
+So far, the appearance of an HTML element has been hard-coded into our
+browser. But web pages should be able to override our style decisions
+and take on a unique character. This is done via _Cascading Style
+Sheets_, a simple styling language for web authors (and, as we'll see,
+browser developers) to define how a web page out to look.
 
-The `style` attribute
-=====================
+The style attribute
+===================
 
-Different elements have different styles, like margins for paragraphs
-and borders for code blocks. Those styles are assigned by our browser,
-and it *is* good to have some defaults. But webpages should be able to
-override those choices.
+In the [last chapter](layout.md), we gave each `pre` element a gray
+background. It looks OK, and it *is* good to have some defaults, but
+you can imagine a site wanting to have some say in how it looks.
 
 The simplest mechanism for that is the `style` attribute on elements.
 It looks like this:
 
 ``` {.example}
-<div style="margin-left:10px;margin-right:10px;"></div>
+<div style="background-color:lightblue;"></div>
 ```
 
-It's a `<div>` element with its `style` attribute set. That attribute
-contains two key-value pairs, which set `margin-left` and
-`margin-right` to 10 pixels each.^[CSS allows spaces around the
-punctuation, but our attribute parser does not support it.] We want to
-store these pairs in a `style` field on the `ElementNode` so we can
-consult them during layout:[^python-get]
+This is a `<div>` element with its `style` attribute set. That
+attribute contains set of property/value pairs, in this case one pair
+matching the property `background-color` to the value
+`lightblue`.^[CSS allows spaces around the punctuation, but our
+attribute parser does not support it.] Our browser should look at those
+property-value pairs when drawing elements to allow web page authors
+to override defaults like the gray background for `pre` elements.
 
-[^python-get]: The `get` method for dictionaries gets a value out of a
-    dictionary, or uses a default value if it's not present.
+To keep this style data easily accessible, let's parse it and store it
+in a `style` field on each `ElementNode`:
 
 ``` {.python}
 class ElementNode:
@@ -46,122 +48,59 @@ class ElementNode:
             self.style[prop.strip().lower()] = val.strip()
 ```
 
-Each `ElementNode` now has a `style` field with any stylistic choices
-made by the author. Let's add support for *margins*, *borders*, and
-*padding*, which change the position of block layout objects. Here's
-how those work. In effect, every block has four rectangles associated
-with it: the *margin rectangle*, the *border rectangle*, the *padding
-rectangle*, and the *content rectangle*:
+[^python-get]: The `get` method for dictionaries gets a value out of a
+    dictionary, or uses a default value if it's not present.
 
-![](https://www.w3.org/TR/CSS2/images/boxdim.png)
+Here we're adding the `style` field in the `ElementNode` constructor,
+based on the `style` attribute,[^python-get] and filling it by parsing
+that attribute's value. Now we can use that information when we do
+layout:
 
-So far, our block layout objects have had just one size and position;
-these will refer to the border rectangle (so that the `x` and `y`
-fields point to the top-left corner of the outside of the layout
-object's border). To track the margin, border, and padding, we'll also
-store the margin, border, and padding widths on each side of the
-layout object in the variables `mt`, `mr`, `mb,` and `ml`; `bt`, `br`,
-`bb`, and `bl`; and `pt`, `pr`, `pb`, and `pl`. The naming convention
-here is that the first letter stands for margin, border, or padding,
-while the second letter stands for top, right, bottom, or left.
-
-Since each block layout object now has more variables, we'll need to
-add code to `layout` to compute them:
-
-``` {.python}
-def px(s):
-    if s.endswith("px"):
-        return int(s[:-2])
-    else:
-        return 0
-
+``` {.python style=background-color:papayawhip;}
 class BlockLayout:
-    def layout(self):
-        self.mt = px(self.node.style.get("margin-top", "0px"))
-        self.bt = px(self.node.style.get("border-top-width", "0px"))
-        self.pt = px(self.node.style.get("padding-top", "0px"))
-        # ... repeat for the right, bottom, and left edges
+    def draw(self, display_list):
+        bgcolor = self.node.style.get("background-color", "transparent")
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            display_list.append(rect)
+        # ...
 ```
 
-Remember to write out the code to access the other 9 properties, and
-don't forget that the border one is called `border-X-width`, not
-`border-X`.[^because-colors]
+Open up this web page in your browser; you should see a light orange
+background behind that code block. So this works, and lets web pages
+define their appearance. But honestly it's a bit of a pain---you need
+to set a `style` attribute on each element, and if you decide to
+change the style there's a lot of attributes to edit. Luckily,
+browsers have a better way...
 
-[^because-colors]: Because borders have not only widths but also
-    colors and styles, while paddings and margins are thought of as
-    whitespace, not something you draw.
+::: {.further}
+Actually, before CSS, you'd style pages with custom elements like
+[`font`][font-elt] and [`center`][center-elt]. This was easy to
+implement (we did it!) but hard to use consistently. There were also a
+few properties on `<body>` like [`text` and `vlink`][body-attrs] that
+could consistently set text colors, but only for links.
+:::
 
-You'll also want to add these twelve variables to `DocumentLayout` and
-`InlineLayout` objects. Set them all to zero.
-
-With their values now loaded, we can use these fields to drive layout.
-First of all, when we compute width, we need to account for the space
-taken up by the parent's border and padding; and likewise we'll need
-to adjust each layout object's `x` and `y` based on its margins:[^backslash-continue]
-
-[^backslash-continue]: In Python, if you end a line with a backslash,
-    the newline is ignored by the parser, letting you split a logical
-    line of code across two actual lines in your file.
-
-``` {.python}
-def layout(self):
-    # ...
-    self.w = self.parent.w - self.parent.pl - self.parent.pr \
-        - self.parent.bl - self.parent.br \
-        - self.ml - self.mr
-    self.y += self.mt
-    self.x += self.ml
-    # ...
-```
-
-Similarly, when we position child layout objects, we'll need to
-account for our their parent's border and padding:
-
-``` {.python indent=4}
-def layout(self):
-    # ...
-    y = self.y
-    for child in self.children:
-        child.x = self.x + self.pl + self.bl
-        child.y = y
-        child.layout()
-        y += child.mt + child.h + child.mb
-    self.h = y - self.y
-```
-
-Likewise, in `InlineLayout` we'll need to account for the parent's
-padding and border:
-
-``` {.python}
-class InlineLayout:
-    def layout(self):
-        self.w = self.parent.w - self.parent.pl - self.parent.pr \
-            - self.parent.bl - self.parent.br
-```
-
-It's now possible to indent a single element by giving it a `style`
-attribute that adds a `margin-left`. But while that's good for one-off
-changes, it is a tedious way to change the style of, say, every
-paragraph on the page. And if you have a site with many pages, you'll
-need to remember to add the same `style` attributes to every web page
-to achieve a measure of consistency. CSS provides a better way.
+[font-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/font
+[center-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/center
+[body-attrs]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#attributes
 
 Parsing CSS
 ===========
 
 In the early days of the web,^[I'm talking Netscape 3. The late 90s.]
-the element-by-element approach was all there was.^[Though back then
-it wasn't the `style` attribute, it was a custom elements like `font`
-and `center`.] CSS was invented to improve on this state of affairs:
+the element-by-element approach was all there was. CSS was invented to
+improve on this state of affairs:
 
--   CSS files can adjust styling of many elements at once
--   CSS files can style multiple pages from a single file
--   CSS is future-proof and supports browsers with different features
+- One CSS file can consistently style many web pages at once
+- One line of CSS can consistently style many elements at once
+- CSS is future-proof and supports browsers with different features
 
 To achieve these goals, CSS extends the key-value `style` attribute
-with two connected ideas: *selectors* and *cascading*. In CSS, you
-have blocks of style information, but those blocks apply to *multiple
-elements*, specified using a selector:
+with two connected ideas: *selectors* and *cascading*. In CSS, a block
+of style information can apply to multiple elements, across many pages,
+consistently. Those elements are specified using a selector:
 
 ``` {.css}
 selector {
@@ -172,9 +111,12 @@ selector {
 }
 ```
 
-To account for the possibility that several blocks apply to a single
-element, there's a *cascading* mechanism to resolve conflicts in favor
-of the most specific rule.
+Once one block can apply to many elements, the possibility exists for
+several blocks apply to a single element. So browsers have a
+*cascading* mechanism to resolve conflicts in favor of the most
+specific rule. Cascading also means browsers can ignore rules they
+don't understand---the cascade will apply the next-most-specific rule
+that it understands.
 
 To support CSS in our browser, we'll need to:
 
