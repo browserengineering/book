@@ -75,7 +75,7 @@ shown on the screen. These events are currently `handle_click`, `keypress`, `loa
 time one of the above events happen; that is effect of binding *event handler*
 methods to those events, via this code:
 
-``` {.python}
+``` {.python expected=False}
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
         self.window.bind("<Key>", self.keypress)
@@ -592,16 +592,118 @@ is *not* thread-safe, so it cannot magically parallelize for free. Instead we'll
 have to carefully avoid using tkinter at all on the main thread, and move all
 use of it to the compositor thread.
 
-It turns out that, outside of drawing to a canvas, we're only using tkinter for
-two things:
+The approach we'll take is to take the thread we already have and call it the
+compositor thread, and add a new thread that is the "main thread". This thread
+will have these kinds of tasks:
 
-a. Font measurement (used in layout and paint)
+* JavaScript
 
-b. Scheduling tasks (via the `canvas.after()` method)
+* Run a browser-internal tasks like executing a page load
 
-It may be possible to use tkinter in a way that allows clever parallelism with
-fonts, but for now the simplest thing to do is use a lock to allow both threads
-to be doing tkinter stuff at the same time.
+* The rendering pipeline (including `requestAnimationFrame`)
+
+ The compositor thread (the one with tkinter in it) will be in charge of:
+
+* Listening to mouse and keyboard events
+
+* Scheduling a rendering pipeline frame every 16ms
+
+* Drawing to the screen after the rendering pipeline is done
+
+To do this we'll have to expand greatly on the implementation of an event loop,
+because now we'lll need to manage this event loop ourselves rather than using
+tkinter for most of it.
+
+Let's start the implementation by introducing a class that encapsulates the main
+thread and the event loop, called `MainThreadRunner`. The two threads will
+communicate by writing to and reading from some shared data structures. This
+of course introduces the risk of a race condition between the threads,
+so we'll add a `threading.Lock` object for each thread. Any code that touches
+the shared data structures for a thread will have to acquire the lock before
+doing so.
+
+Let's introduce a new class called `MainThreadRunner` that encapsulates the
+maind thread its event loop, and a few queues for different types of event loop
+tasks:
+
+```
+class MainThreadRunner:
+    def __init__(self, browser):
+        self.lock = threading.Lock()
+        self.browser = browser
+        self.needs_begin_main_frame = False
+        self.main_thread = threading.Thread(target=self.run, args=())
+        self.script_tasks = []
+        self.browser_tasks = []
+
+    def start(self):
+        self.main_thread.start()        
+```
+
+It will have some methods to set the variables, such as:
+
+```
+    def schedule_main_frame(self):
+        self.lock.acquire(blocking=True)
+        self.needs_begin_main_frame = True
+        self.lock.release()
+
+    def schedule_script_task(self, script):
+        self.lock.acquire(blocking=True)
+        self.script_tasks.append(script)
+        self.lock.release()
+```
+
+Its main functionality is in the `run` method. It implements a simple event
+loop strategy that runs the rendering pipeline if needed, and also one browser
+method and one script task, if there are any on those queues. It then sleeps
+for 1ms and checks again.
+
+```
+     def run(self):
+        while True:
+            self.lock.acquire(blocking=True)
+            needs_begin_main_frame = self.needs_begin_main_frame
+            self.lock.release()
+            if needs_begin_main_frame:
+                browser.begin_main_frame()
+                self.browser.commit()
+
+            browser_method = None
+            self.lock.acquire(blocking=True)
+            if len(self.browser_tasks) > 0:
+                browser_method = self.browser_tasks.pop(0)
+            self.lock.release()
+            if browser_method:
+                browser_method()
+
+            script = None
+            self.lock.acquire(blocking=True)
+            if len(self.script_tasks) > 0:
+                script = self.script_tasks.pop(0)
+            self.lock.release()
+
+            if script:
+                try:
+                    retval = self.browser.js.evaljs(script)
+                except dukpy.JSRuntimeError as e:
+                    print("Script", script, "crashed", e)
+
+            time.sleep(0.01)
+```
+
+The `begin_main_frame` method on `Browser` will run on the main thread. Since
+`draw` is supposed to happen on the compositor thread. This is where the
+`commit` method on the `Browser ` class that the code snippet above calls comes
+in to play:
+
+``` {.python}
+    def commit(self):
+        self.compositor_lock.acquire(blocking=True)
+        self.needs_draw = True
+        self.draw_display_list = self.display_list.copy()
+        self.compositor_lock.release()
+```
 
 
 Here are the results:

@@ -840,7 +840,7 @@ class MainThreadRunner:
                 except dukpy.JSRuntimeError as e:
                     print("Script", script, "crashed", e)
 
-            time.sleep(0.01)
+            time.sleep(0.001) # 1ms
 
 class Browser:
     def __init__(self):
