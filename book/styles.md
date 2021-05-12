@@ -431,8 +431,8 @@ to other parenthesis" feature to go through the output quickly.
 Anyway, once you've got your parser debugged, let's move on to the
 next step: applying CSS to the elements on the page.
 
-Selecting styled elements
-=========================
+Applying styles to elements
+===========================
 
 Our next step, after parsing CSS, is to figure out which elements each
 rule applies to. The easiest way to do that is to add a method to each
@@ -487,10 +487,11 @@ def style(node, rules):
             style(child, rules)
 ```
 
-Note that this code skips properties that already have a value. That's
-because `style` attributes should take priority, and they're loaded in
-first. But that also means that it matters what order you apply the
-rules in.
+Note that this code skips properties that already have a value. Since
+`style` attributes are filled in first (when the `Element` is
+created), that means `style` attributes take priority over CSS
+stylesheet, which is how it is supposed to work. But it's also a hint
+that it matters what order you apply the rules in.
 
 What's the correct order? In CSS, it's called *cascade order*, and it
 is based on the selector used by the rule. Tag selectors get the
@@ -667,9 +668,17 @@ list:
 def load(self, url):
     # ...
     for link in links:
-        header, body = request(relative_url(link, url))
-        rules.extend(CSSParser(body).parse())
+        try:
+            header, body = request(relative_url(link, url))
+            rules.extend(CSSParser(body).parse())
+        except:
+            continue
 ```
+
+The `try`/`except` here handles the case where downloading a style
+sheet fails---in which case the browser just ignores it. But if you're
+debugging `relative_url` try removing the `try`/`except` here, which
+can hide errors.
 
 Since the page's stylesheets come *after* browser style, user styles
 take priority over the browser style sheet.^[They do that in real
@@ -693,15 +702,15 @@ backgrounds on every code block (thanks to the browser style sheet)
 and light-gold backgrounds on this book's mailing list signup form
 (try the book's main page).
 
-Inherited styles
-================
-
 Alright: we've got background colors that can be configured by web
 page authors. But there's more to web design than that! At the very
 least, if you're changing background colors you might want to change
-foreground colors as well---the CSS `color` property. But there's a
-catch: color is mostly concerned with text, but text nodes don't have
-any styles at all. How can that work?
+foreground colors as well---the CSS `color` property. For example,
+usually links are blue. But there's a catch: `color` affects text, but
+text nodes don't have any styles at all. How can that work?
+
+Inherited styles
+================
 
 The solution in CSS is *inheritance*. Inheritance means that if some
 node doesn't have a value for a certain property, it uses its parent's
@@ -856,6 +865,9 @@ in blue---and you'll also notice that the rest of the text has become
 slightly lighter.^[Check out [the book's stylesheet](book.css) to see
 the details.]
 
+Font Properties
+===============
+
 Well---since we're already mucking around with `InlineLayout`, let's
 also modify it to look up the font size, weight, and style information
 via CSS instead of using the `style`, `weigth`, and `size` fields on
@@ -864,12 +876,12 @@ via CSS instead of using the `style`, `weigth`, and `size` fields on
 ::: {.todo}
 How do we resolve percentage values for nodes? And the `font-size`
 needs to be converted from pixels to points.[^72ppi]
+:::
 
 [^72ppi]: Normally you think of points as a physical length unit (one
     72^nd^ of an inch) and pixels as a digital unit (dependent on the
     screen) but in CSS, the conversion is fixed at exactly 75% (or 96
     pixels per inch) because that was once a common screen resolution.
-:::
 
 ``` {.python indent=4}
 def text(self, node):

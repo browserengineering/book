@@ -582,8 +582,11 @@ class Browser:
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
-            header, body = request(relative_url(link, url))
-            rules.extend(CSSParser(body).parse())
+            try:
+                header, body = request(relative_url(link, url))
+                rules.extend(CSSParser(body).parse())
+            except:
+                continue
         rules.sort(key=lambda x: x[0].priority())
         rules.reverse()
         style(nodes, rules)
