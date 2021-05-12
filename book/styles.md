@@ -672,11 +672,11 @@ def load(self, url):
 ```
 
 Since the page's stylesheets come *after* browser style, user styles
-take priority over the browser style sheet.^[In reality this is
-handled by browser styles having a lower score than user styles in the
-cascade order, but our browser style sheet only has tag selectors in
-it, so every rule already has the lowest possible score.] With the
-rules loaded, we need only sort and apply them and then do layout:
+take priority over the browser style sheet.^[They do that in real
+browsers too, but real browsers accomplish this goal by fiddling with
+priorities. Our browser style sheet only has tag selectors in it, so
+just putting them first works well enough.] With the rules loaded, we
+need only sort and apply them and then do layout:
 
 ``` {.python indent=4}
 def load(self, url):
