@@ -186,7 +186,7 @@ form h1 { margin-bottom: 1em; margin-top: 0; }
 a.checkoff { font-size: 24px; }
 form .checkoff, form button[type=submit] { margin-top: 1em; }
 
-#signup { border: 2px solid gold; padding: 1em; margin: 1em 0; background: #fffbe5; position: relative; }
+#signup { border: 2px solid gold; padding: 1em; margin: 1em 0; background-color: #fffbe5; position: relative; }
 #signup input { border: 2px none gold; border-bottom-style: solid; background: transparent; }
 #signup button { border: 2px solid gold; background: #fff7cc; }
 #signup button:hover { background: #fff099; cursor: pointer; }

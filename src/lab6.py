@@ -58,6 +58,20 @@ def request(url):
 
     return headers, body
 
+def relative_url(url, current):
+    if "://" in url:
+        return url
+    elif url.startswith("/"):
+        scheme, hostpath = current.split("://", 1)
+        host, oldpath = hostpath.split("/", 1)
+        return host + url
+    else:
+        dir, _ = current.rsplit("/", 1)
+        while url.startswith("../"):
+            dir, _ = dir.rsplit("/", 1)
+            url = url[3:]
+        return dir + "/" + url
+
 class Text:
     def __init__(self, text, parent):
         self.text = text
@@ -200,11 +214,11 @@ class CSSParser:
         return None, i + len(literal)
 
     def word(self, i):
-        j = i
-        while j < len(self.s) and self.s[j].isalnum() or self.s[j] in "-.":
-            j += 1
-        assert j > i
-        return self.s[i:j], j
+        start = i
+        while i < len(self.s) and self.s[i].isalnum() or self.s[i] in "-.":
+            i += 1
+        assert i > start
+        return self.s[start:i], i
 
     def pair(self, i):
         prop, i = self.word(i)
@@ -215,8 +229,11 @@ class CSSParser:
         return (prop.lower(), val), i
 
     def ignore_until(self, i, chars):
-        while i < len(self.s) and self.s[i] not in chars:
-            i += 1
+        while i < len(self.s):
+            if self.s[i] in chars:
+                return self.s[i], i
+            else:
+                i += 1
         return None, i
 
     def body(self, i):
@@ -229,56 +246,105 @@ class CSSParser:
                 pairs[prop] = val
                 _, i = self.whitespace(i)
                 _, i = self.literal(i, ";")
+                _, i = self.whitespace(i)
             except AssertionError:
-                _, i = self.ignore_until(i, [";", "}"])
-                if i < len(self.s) and self.s[i] == ";":
+                why, i = self.ignore_until(i, [";", "}"])
+                if why == ";"
                     _, i = self.literal(i, ";")
-            _, i = self.whitespace(i)
+                    _, i = self.whitespace(i)
+                else:
+                    break
         _, i = self.literal(i, "}")
         return pairs, i
 
-    def selector(self, i):
+    def base_selector(self, i):
+        assert i < len(s)
         if self.s[i] == "#":
             _, i = self.literal(i, "#")
             name, i = self.word(i)
             return IdSelector(name), i
-        elif self.s[i] == ".":
-            _, i = self.literal(i, ".")
-            name, i = self.word(i)
-            return ClassSelector(name), i
         else:
             name, i = self.word(i)
             return TagSelector(name.lower()), i
 
-    def rule(self, i):
-        selector, i = self.selector(i)
+    def selector(self, i):
+        out, i = self.base_selector(i)
         _, i = self.whitespace(i)
-        body, i = self.body(i)
-        return (selector, body), i
+        while i < len(self.s) and self.s[i] != "{":
+            descendent, i = self.base_selector(i)
+            out = DescendantSelector(out, descendant)
+            _, i = self.whitespace(i)
+        return out, i
 
     def file(self, i):
         rules = []
         _, i = self.whitespace(i)
         while i < len(self.s):
             try:
-                rule, i = self.rule(i)
-                rules.append(rule)
+                selector, i = self.selector(i)
+                _, i = self.whitespace(i)
+                body, i = self.body(i)
+                rules.append((selector, body))
             except AssertionError:
-                _, i = self.ignore_until(i, "}")
-                _, i = self.literal(i, "}")
-            _, i = self.whitespace(i)
+                why, i = self.ignore_until(i, "}")
+                if why == "}":
+                    _, i = self.literal(i, "}")
+                    _, i = self.whitespace(i)
+                else:
+                    break
         return rules, i
 
     def parse(self):
         rules, _ = self.file(0)
         return rules
     
+class TagSelector:
+    def __init__(self, tag):
+        self.tag = tag
+        self.priority = 1
+
+    def matches(self, node):
+        return self.tag == node.tag
+
+class IdSelector:
+    def __init__(self, id):
+        self.id = id
+        self.priority = 100
+
+    def matches(self, node):
+        return self.id == node.attributes.get("id")
+
+class DescendantSelector:
+    def __init__(self, ancestor, descendant):
+        self.ancestor = ancestor
+        self.descendant = descendant
+        self.priority = ancestor.priority + descendant + priority
             
+    def matches(self, node):
+        if not self.descendant.matches(node): return False
+        parent = node.parent
+        while parent:
+            if self.ancestor.matches(parent): return True
+            parent = parent.parent
+        return False
 
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
+def tree_to_list(tree, list):
+    list.append(tree)
+    for child in tree.children:
+        tree_to_list(child, list)
+    return list
 
-SCROLL_STEP = 100
+def style(node, rules):
+    if isinstance(node, TextNode):
+        return
+    else:
+        for selector, pairs in rules:
+            if selector.matches(node):
+                for property in pairs:
+                    if property not in node.style:
+                        node.style[property] = pairs[property]
+        for child in node.children:
+            style(child, rules)
 
 BLOCK_ELEMENTS = [
     "html", "body", "article", "section", "nav", "aside",
@@ -492,6 +558,11 @@ class DrawRect:
             fill=self.color,
         )
 
+WIDTH, HEIGHT = 800, 600
+HSTEP, VSTEP = 13, 18
+
+SCROLL_STEP = 100
+
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -509,6 +580,21 @@ class Browser:
     def load(self, url):
         headers, body = request(url)
         nodes = HTMLParser(body).parse()
+
+        with open("browser.css") as f:
+            rules = CSSParser(f.read()).parse()
+        links = [node.attributes["href"]
+                 for node in tree_to_list(nodes, [])
+                 if node.tag == "link"
+                 and "href" in node.attributes
+                 and node.attributes.get("rel") == "stylesheet"]
+        for link in links:
+            header, body = request(relative_url(link, url))
+            rules.extend(CSSParser(body).parse())
+        rules.sort(key=lambda x: x[0].priority())
+        rules.reverse()
+        style(nodes, rules)
+
         self.document = DocumentLayout(nodes)
         self.document.layout()
         self.display_list = []
