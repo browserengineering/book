@@ -431,8 +431,8 @@ to other parenthesis" feature to go through the output quickly.
 Anyway, once you've got your parser debugged, let's move on to the
 next step: applying CSS to the elements on the page.
 
-Applying styles to elements
-===========================
+Applying stylesheets
+====================
 
 Our next step, after parsing CSS, is to figure out which elements each
 rule applies to. The easiest way to do that is to add a method to each
@@ -681,10 +681,7 @@ debugging `relative_url` try removing the `try`/`except` here, which
 can hide errors.
 
 Since the page's stylesheets come *after* browser style, user styles
-take priority over the browser style sheet.^[They do that in real
-browsers too, but real browsers accomplish this goal by fiddling with
-priorities. Our browser style sheet only has tag selectors in it, so
-just putting them first works well enough.] With the rules loaded, we
+take priority over the browser style sheet. With the rules loaded, we
 need only sort and apply them and then do layout:
 
 ``` {.python indent=4}
@@ -708,6 +705,26 @@ least, if you're changing background colors you might want to change
 foreground colors as well---the CSS `color` property. For example,
 usually links are blue. But there's a catch: `color` affects text, but
 text nodes don't have any styles at all. How can that work?
+
+::: {.further}
+Each browser has its own browser style sheet ([Chrome][blink-css],
+[Safari][webkit-css], [Firefox][gecko-css]). [Reset
+stylesheets][mdn-reset] are often used to overcome any differences.
+This works because web page style sheets take precedence over the
+browser style sheet, just like in our browser, though real browsers
+[fiddling with priorities][cascade-order] to make that
+happen.[^ours-works]
+:::
+
+[mdn-reset]: https://developer.mozilla.org/en-US/docs/Web/CSS/all
+[cascade-order]: https://www.w3.org/TR/2011/REC-CSS2-20110607/cascade.html#cascading-order
+[blink-css]: https://source.chromium.org/chromium/chromium/src/+/master:third_party/blink/renderer/core/html/resources/html.css
+[gecko-css]: https://searchfox.org/mozilla-central/source/layout/style/res/html.css
+[webkit-css]: https://github.com/WebKit/WebKit/blob/main/Source/WebCore/css/html.css
+
+[^ours-works]: Our browser style sheet only has tag selectors in it,
+so just putting them first works well enough.
+
 
 Inherited styles
 ================
