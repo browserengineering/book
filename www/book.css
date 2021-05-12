@@ -143,7 +143,9 @@ figure img { width: 100%; }
 .widget { width: 100%; border: 2px solid steelblue; }
 
 code .st { color: #666; }
-code .cf, code .kw, code .im { color: #606; }
+code .cf { color: #606; }
+code .kw { color: #606; }
+code .im { color: #606; }
 code .co { color: #a86; }
 
 .todo { background: darkred; color: white; padding-bottom: 1em; }

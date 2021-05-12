@@ -67,15 +67,17 @@ class BlockLayout:
         # ...
 ```
 
+You can put exact same lines of code inside `InlineLayout` as well,
+for giving paragraphs and list items and so on backgrounds as well.
 Open up this web page in your browser; you should see that this code
-block, unlike the others, has a white background. So this works, and
-lets web pages define their appearance. But honestly it's a bit of a
-pain---you need to set a `style` attribute on each element, and if you
-decide to change the style there's a lot of attributes to edit.
+block, unlike the others, has a white background.
 
-In the early days of the web,^[I'm talking Netscape 3. The late 90s.]
-the element-by-element approach was all there was. CSS was invented to
-improve on this state of affairs:
+So this works, and lets web pages define their appearance. But
+honestly it's a bit of a pain---you need to set a `style` attribute on
+each element, and if you decide to change the style there's a lot of
+attributes to edit. In the early days of the web,^[I'm talking
+Netscape 3. The late 90s.] the element-by-element approach was all
+there was. CSS was invented to improve on this state of affairs:
 
 - One CSS file can consistently style many web pages at once
 - One line of CSS can consistently style many elements at once
@@ -214,7 +216,7 @@ Sometimes we need to call these parsing functions in a loop. For
 example, a rule body is an open brace, a sequence of property-value
 pairs, and a close brace:
 
-``` {.python indent=4 expected=False}
+``` {.python indent=4}
 def body(self, i):
     pairs = {}
     _, i = self.literal(i, "{")
@@ -236,7 +238,7 @@ feature that our parser doesn't support. We can catch this error to
 skip property-value pairs that don't parse. We'll use this little
 function to skips things:
 
-``` {.python}
+``` {.python indent=4}
 def ignore_until(self, i, chars):
     while i < len(self.s):
         if self.s[i] in chars:
@@ -378,7 +380,7 @@ def file(self, i):
             body, i = self.body(i)
             rules.append((selector, body))
         except AssertionError:
-            why i = self.ignore_until(i, "}")
+            why, i = self.ignore_until(i, "}")
             if why == "}":
                 _, i = self.literal(i, "}")
                 _, i = self.whitespace(i)
@@ -563,8 +565,8 @@ load and parse that file when it downloads a page:
 ``` {.python replace=browser.css/browser6.css}
 class Browser:
     def load(self, url):
-        header, body = request(url)
-        nodes = parse(lex(body))
+        headers, body = request(url)
+        nodes = HTMLParser(body).parse()
 
         with open("browser.css") as f:
             rules = CSSParser(f.read()).parse()
@@ -653,7 +655,7 @@ def relative_url(url, current):
         while url.startswith("../"):
             dir, _ = dir.rsplit("/", 1)
             url = url[3:]
-        return current + "/" + url
+        return dir + "/" + url
 ```
 
 Let's put it all together. We want to collect CSS rules from each of
@@ -694,35 +696,54 @@ and light-gold backgrounds on this book's mailing list signup form
 Inherited styles
 ================
 
-Our implementation of margins, borders, and padding styles only affect
-the block layout mode.[^inline-margins] We'd like to extend CSS to
-affect inline layout mode as well, for example to change text styling.
-But there's a catch: inline layout is mostly concerned with text, but
-text nodes don't have any styles at all. How can that work?
-
-[^inline-margins]: Margins, borders, and padding can be applied to
-    inline layout objects in a real browser, but they work in a kind
-    of funky way.
+Alright: we've got background colors that can be configured by web
+page authors. But there's more to web design than that! At the very
+least, if you're changing background colors you might want to change
+foreground colors as well---the CSS `color` property. But there's a
+catch: color is mostly concerned with text, but text nodes don't have
+any styles at all. How can that work?
 
 The solution in CSS is *inheritance*. Inheritance means that if some
-node doesn't have a value for a certain property, it uses its
-parent's value instead. Some properties are inherited and some
-aren't; it depends on the property: the margin, border, and padding
-properties aren't inherited, but the font properties are.
+node doesn't have a value for a certain property, it uses its parent's
+value instead. Some properties are inherited and some aren't; it
+depends on the property. Background color isn't inherited, but text
+color and other font properties are.
 
-Let's implement three inherited properties: `font-weight` (which can
-be `normal` or `bold`), `font-style` (which can be `normal` or
-`italic`), and `font-size` (which can be any pixel value). To inherit
-a property, we need to check, after all the rules and inline styles
-have been applied, whether the property is set and, if it isn't, to
-use the parent node's style. To begin with, let's list our inherited
-properties and their default values:
+So let's implement text color and inheritance. And while we're at it,
+let's also implement three other font properties: `font-weight`
+(`normal` or `bold`), `font-style` (`normal` or `italic`), and
+`font-size` (a percentage). The `font-weight` and `font-style`
+properties are inherited, but `font-size` won't be.[^font-size] That
+way we could add a few more lines to the browser style sheet:
+
+[^font-size]: Check out [the docs][mdn-font-size], and you'll see that
+    actually, `font-size` is defined to inherit. But percentages
+    inherit in a weird way (they are first resolved to absolute units,
+    then inherited) which for simplicity I'd rather skip; if you
+    *only* use percentages for fonts, and never absolute `em` units,
+    you won't notice a difference, and our browser won't support `em`
+    anyway.
+
+[mdn-font-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-size
+
+``` {.css}
+a { color: blue; }
+i { font-style: italic; }
+b { font-weight: bold; }
+small { font-size: 110%; }
+big { font-size: 90%; }
+```
+
+To inherit a property, we need to check, after all the rules and
+inline styles have been applied, whether the property is set and, if
+it isn't, to use the parent node's style. To begin with, let's list
+our inherited properties and their default values:
 
 ``` {.python}
 INHERITED_PROPERTIES = {
     "font-style": "normal",
     "font-weight": "normal",
-    "font-size": "16px",
+    "color": "black",
 }
 ```
 
@@ -731,14 +752,17 @@ but *before* the recursive calls, to inherit properties:
 
 ``` {.python}
 def style(node, rules):
-    # ...
-    for property, default in INHERITED_PROPERTIES.items():
-        if property not in node.style:
-            if node.parent:
-                node.style[property] = node.parent.style[property]
-            else:
-                node.style[property] = default
-    # ...
+    if isinstance(node, TextNode):
+        node.style = node.parent.style
+    else:
+        # ...
+        for property, default in INHERITED_PROPERTIES.items():
+            if property not in node.style:
+                if node.parent:
+                    node.style[property] = node.parent.style[property]
+                else:
+                    node.style[property] = default
+        # ...
 ```
 
 Because this loop comes *before* the recursive call, the parent has
@@ -756,104 +780,134 @@ def style(node, rules):
         # ...
 ```
 
-With `font-weight` and `font-style` set on every node, `InlineLayout`
-no longer needs `style`, `weight`, and `size` fields; they were only
-there to track when text was inside or outside `<i>` and `<b>` tags,
-and now styles and inheritance are doing that job:
+With all this in place, we can implement text color itself. First,
+let's add a `color` parameter to `DrawText` and pass it to
+`create_text`'s `fill` parameter:
 
 ``` {.python}
-class InlineLayout:
-    def font(self, node):
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = int(px(node.style["font-size"]) * .75)
-        return tkinter.font.Font(size=size, weight=weight, slant=style)
-    
+class DrawText:
+    def __init__(self, x1, y1, text, font, color):
+        # ...
+        self.color = color
+
+    def execute(self, scroll, canvas):
+        canvas.create_text(
+            # ...
+            color=self.color,
+        )
 ```
 
-Note that the `font-style` needs to replace the CSS default of
-"normal" with the Tk value "roman", and the `font-size` needs to be
-converted from pixels to points.[^72ppi]
+Now we need to pass in the color when we create a `DrawText` command.
+But this is a little tricky: one paragraph can have text of different
+colors in it! This is going to require a couple of tricky changes to
+`InlineLayout` to make it work.
+
+Inside `InlineLayout`, font information for every word is looked up in
+the `text` method. That's where color information should be looked up
+too---and for that we'll need to change `text` to take a `Text` input,
+not just a string:
+
+``` {.python indent=4}
+def text(self, node):
+    color = node.style["color"]
+    # ...
+    for word in node.text.split():
+        # ...
+        self.line.append((self.cursor_x, word, font, color))
+        # ...
+```
+
+We also need to change `recurse` to pass that node:
+
+``` {.python indent=4}
+def recurse(self, node):
+    if isinstance(node, Text):
+        self.text(node)
+    else:
+        # ...
+```
+
+Since the `line` field now stores color, we need to modify `flush`,
+which reads that variable:
+
+``` {.python indent=4}
+def flush(self):
+    if not self.line: return
+    metrics = [font.metrics() for x, word, font, color in self.line]
+    # ...
+    for x, word, font, color in self.line:
+        # ...
+        self.display_list.append((x, y, word, font, color))
+    # ...
+```
+
+Finally, that `display_list` is read in `draw`:
+
+``` {.python indent=4}
+def draw(self, display_list):
+    # ...
+    for x, y, word, font, color in self.display_list:
+        display_list.append(DrawText(x, y, word, font, color))
+```
+
+Phew! That was a lot of coordinated changes, so please test everything
+and make sure it works. You should now see links on this page appear
+in blue---and you'll also notice that the rest of the text has become
+slightly lighter.^[Check out [the book's stylesheet](book.css) to see
+the details.]
+
+Well---since we're already mucking around with `InlineLayout`, let's
+also modify it to look up the font size, weight, and style information
+via CSS instead of using the `style`, `weigth`, and `size` fields on
+`InlineLayout`:
+
+::: {.todo}
+How do we resolve percentage values for nodes? And the `font-size`
+needs to be converted from pixels to points.[^72ppi]
 
 [^72ppi]: Normally you think of points as a physical length unit (one
     72^nd^ of an inch) and pixels as a digital unit (dependent on the
     screen) but in CSS, the conversion is fixed at exactly 75% (or 96
-    pixels per inch). The goal is device-independence, though it seems
-    weird to me and it does cause problems.
+    pixels per inch) because that was once a common screen resolution.
+:::
 
-To use this new `font` method, we need `text` to take a `TextNode` as
-input, not just the text inside of it, so that `text` has access to
-the element style:
-
-``` {.python}
-class InlineLayout:
-    def recurse(self, node):
-        if isinstance(node, TextNode):
-            self.text(node)
-        else:
-            for child in node.children:
-                self.recurse(child)
-
-    def text(self, node):
-        font = self.font(node)
-        for word in node.text.split():
-            # ...
+``` {.python indent=4}
+def text(self, node):
+    # ...
+    weight = node.style["font-weight"]
+    style = node.style["font-style"]
+    if style == "normal": style = "roman"
+    size = node.style["font-size"] * .75 # ???
+    font = tkinter.font.Font(size=style, weight=weight, slant=style)
+    # ...
 ```
 
-Now support for the `i`, `b`, `small`, and `big` tags can all be moved
-to CSS:
+Note that for `font-style` we needs to translate CSS "normal" to Tk
+"roman". Thanks to these changes, we now never need to read the
+`style`, `weight`, and `size` properties on `InlineLayout`, so we can
+delete all the code that sets those properties in the `layout`,
+`open_tag`, and `close_tag` methods. Once you do that, you'll notice
+that `close_tag` is totally empty, while `open_tag` just has code to
+handle `br` tags. Let's refactor a bit to get rid of these methods:
 
-``` {.css}
-i { font-style: italic; }
-b { font-weight: bold; }
-small { font-size: 12px; }
-big { font-size: 20px; }
+``` {.python indent=4}
+def recurse(self, node):
+    if isinstance(node, Text):
+        self.text(node)
+    else:
+        if self.tag == "br":
+            self.flush()
+        for child in node.children:
+            self.recurse(child)
 ```
 
-Another place where the code depends on specific tag names is
-`has_block_children`, which relies on a list of inline elements. The
-CSS `display`, which can be either `block` or `inline`, replaces that
-mechanism.[^lots-of-values] So we can add all the inline elements to
-our browser style sheet:
-
-[^lots-of-values]: Modern CSS adds way more values, like `run-in` or
-    `inline-block` or `flex` or `grid`, and it has layout modes set by
-    other properties, like `float` and `position`. These values allow
-    for layouts you couldn't do with just `block` and `inline`, and
-    people really care about making their web pages look good.
-
-``` {.css}
-a { display: inline; }
-em { display: inline; }
-/* ... */
-```
-
-And then read that in `has_block_children`:[^default-block]
-
-[^default-block]: Actually, the `display` property is specified to
-    default to `inline`, not `block`, so a real browser would list all
-    the block elements in its browser stylesheet. But there are a lot
-    more of them, so I'm cutting a corner here.
-
-``` {.python}
-def has_block_children(self):
-    for child in self.node.children:
-        # ...
-        elif child.style.get("display", "inline") == "inline":
-            return False
-    return True
-```
-
-With these changes, `InlineLayout` can lose its `open` and `close`
-methods, becoming a small, self-contained engine for line layout while
-most of its domain-specific knowledge of tags is moved to the browser
-style sheet.
-
-That style sheet is easier to edit, since it's independent of the rest
-of the code. And while sometimes moving things to a data file means
-maintaining a new format, here we get to reuse a format, CSS, that our
-browser needs to support anyway.
+So we made `InlineLayout` more complex in some ways, less complex in
+others. But more importantly: we replaced some browser implementation
+code with browser stylesheet. And that's a big improvement: The style
+sheet is easier to edit, since it's independent of the rest of the
+code. And while sometimes converting code to data means maintaining a
+new format, here we get to reuse a format, CSS, that our browser needs
+to support anyway.
 
 Summary
 =======
@@ -873,30 +927,41 @@ and selectors.
 Exercises
 =========
 
-*Shorthand Properties*: CSS "shorthand properties" set multiple
-related CSS properties at the same time; for example, `margin: 10px`
-sets all four margin properties to `10px`, while `margin: 1px 2px 3px
-4px` sets the top, right, bottom, and left margins to one, two, three,
-and four pixels respectively. Implement the `margin`, `padding`,
-`border-width`, and `font` shorthands as part of the parser.
-
-*Selector Groups*: CSS allows grouping multiple rules, all with the
-same body, by listing all their selectors with commas in between. For
-example, `b, strong { font-weight: bold }` makes both the `b` and
-`strong` tags bold. Implement this as part of your parser and use it
-to shorten and shorten the browser style sheet.
+*Fonts*: Implement the `font-family` property, and inheritable
+property that names which font should be used in an element. Make
+`code` fonts use some nice monospaced font like `Courier`.
 
 *Width/Height*: Add support to block layout objects for the `width`
 and `height` properties. These can either be a pixel value, which
 directly sets the width or height of the layout object, or the word
 `auto`, in which case the existing layout algorithm is used.
 
-*Percentages*: Most places where you can specify a pixel value in CSS,
-you can also write a percentage value like `50%`. When you do that for
-`margin`, `border`, or `padding` properties, it's relative to the
-layout object's width, while when you do it for `font-size` it's
-relative to the parent's font size. Implement percentage values for
-all of these properties.
+*Class Selectors*: Any HTML element can have a `class` attribute,
+whose value is a space-separated list of tags that apply to that
+element. A CSS class selector, like `.main`, affects all elements
+tagged `main`. Implement class selectors; give them priority 10.
+If you've implemented them correctly, you should see code blocks in
+this book being syntax-highlighted.
+
+*Display*: Right now, the `layout_mode` function relies on a
+hard-coded list of block elements. In a real browser, the `display`
+property controls this. Implement `display` with a default value of
+`inline`, and move the list of block elements to the browser style
+sheet.
+
+*Shorthand Properties*: CSS "shorthand properties" set multiple
+related CSS properties at the same time; for example, `font: italic
+bold 100% Times` sets the `font-style`, `font-weight`, `font-size`,
+and `font-family` properties all at once. Add shorthand properties to
+your parser. (If you haven't implemented `font-family`, just ignore
+that part.)
+
+*Fast Descendants*: Right now, matching a selector like `div div div
+div div` against a `div` element with only three `div` ancestors takes
+a long time---more precisely, it's *O(n^2^)* in the length of the
+selector. Modify the descendant-selector matching code to run in
+*O(n)* time. It may help to have `DescendantSelector` store a list of
+base selectors instead of just two.
 
 *Selector Sequences*: Sometimes you want to select an element by tag
 *and* class. You do this by concatenating the selectors without
@@ -913,17 +978,11 @@ priorities.[^lexicographic]
     in the sequence will work fine as long as no one strings more than
     16 selectors together.
 
-*Descendant Selectors*: When multiple selectors are separated with
-spaces, like `ul b`, that selects all `<b>` elements with a `<ul>`
-ancestor. Implement descendent selectors; scoring for descendent
-selectors works just like for combination selectors. Make sure that
-something like `section .warning` selects warnings inside sections,
-while `section.warning` selects warnings that *are* sections.
-
-*Ancestor Selectors*: an ancestor selector is the inverse of a descendant
-selector - it styles an ancestor according to the presence of a descendant.
-This feature is one of the benefits provided by the
-[`:has` syntax](https://drafts.csswg.org/selectors-4/#relational). However, you
-will find that `:has` is not implemented in any real browser as yet. Can you
-guess why? Hint: try to implement ancestor selectors and analyze the speed of
-your algorithm.
+*Ancestor Selectors*: an ancestor selector is the inverse of a
+descendant selector - it styles an ancestor according to the presence
+of a descendant. This feature is one of the benefits provided by the
+[`:has` syntax](https://drafts.csswg.org/selectors-4/#relational). Try
+to implement ancestor selectors. As I write this, no browser has
+actually implemented `:has`; why? Hint: analyze the asymptotic speed
+of your implementation. There is a clever implementation that is
+*O(1)* amortized per element---can you find it?

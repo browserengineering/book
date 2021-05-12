@@ -215,7 +215,7 @@ class CSSParser:
 
     def word(self, i):
         start = i
-        while i < len(self.s) and self.s[i].isalnum() or self.s[i] in "-.":
+        while i < len(self.s) and self.s[i].isalnum() or self.s[i] in "#-.":
             i += 1
         assert i > start
         return self.s[start:i], i
@@ -249,7 +249,7 @@ class CSSParser:
                 _, i = self.whitespace(i)
             except AssertionError:
                 why, i = self.ignore_until(i, [";", "}"])
-                if why == ";"
+                if why == ";":
                     _, i = self.literal(i, ";")
                     _, i = self.whitespace(i)
                 else:
@@ -258,7 +258,7 @@ class CSSParser:
         return pairs, i
 
     def base_selector(self, i):
-        assert i < len(s)
+        assert i < len(self.s)
         if self.s[i] == "#":
             _, i = self.literal(i, "#")
             name, i = self.word(i)
@@ -334,15 +334,28 @@ def tree_to_list(tree, list):
         tree_to_list(child, list)
     return list
 
+INHERITED_PROPERTIES = {
+    "font-style": "normal",
+    "font-weight": "normal",
+    "color": "black",
+}
+
 def style(node, rules):
     if isinstance(node, TextNode):
-        return
+        node.style = node.parent.style
     else:
         for selector, pairs in rules:
             if selector.matches(node):
                 for property in pairs:
                     if property not in node.style:
                         node.style[property] = pairs[property]
+        for property, default in INHERITED_PROPERTIES.items():
+            if property not in node.style:
+                if node.parent:
+                    node.style[property] = node.parent.style[property]
+                else:
+                    node.style[property] = default
+                node.style[property] = default
         for child in node.children:
             style(child, rules)
 
@@ -426,9 +439,6 @@ class InlineLayout:
             self.y = self.parent.y
 
         self.display_list = []
-        self.weight = "normal"
-        self.style = "roman"
-        self.size = 16
 
         self.cursor_x = self.x
         self.cursor_y = self.y
@@ -441,67 +451,48 @@ class InlineLayout:
 
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node.text)
+            self.text(node)
         else:
-            self.open_tag(node.tag)
+            if self.tag == "br":
+                self.flush()
             for child in node.children:
                 self.recurse(child)
-            self.close_tag(node.tag)
 
-    def open_tag(self, tag):
-        if tag == "i":
-            self.style = "italic"
-        elif tag == "b":
-            self.weight = "bold"
-        elif tag == "small":
-            self.size -= 2
-        elif tag == "big":
-            self.size += 4
-        elif tag == "br":
-            self.flush()
-
-    def close_tag(self, tag):
-        if tag == "i":
-            self.style = "roman"
-        elif tag == "b":
-            self.weight = "normal"
-        elif tag == "small":
-            self.size += 2
-        elif tag == "big":
-            self.size -= 4
-        elif tag == "p":
-            self.flush()
-            self.cursor_y += VSTEP
-        
-    def text(self, text):
-        font = tkinter.font.Font(
-            size=self.size,
-            weight=self.weight,
-            slant=self.style,
-        )
-        for word in text.split():
+    def text(self, node):
+        color = node.style["color"]
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = node.style["font-size"] * .75 # ???
+        font = tkinter.font.Font(size=style, weight=weight, slant=style)
+        for word in node.text.split():
             w = font.measure(word)
             if self.cursor_x + w > WIDTH - HSTEP:
                 self.flush()
-            self.line.append((self.cursor_x, word, font))
+            self.line.append((self.cursor_x, word, font, color))
             self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
-        metrics = [font.metrics() for x, word, font in self.line]
+        metrics = [font.metrics() for x, word, font, color in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
         baseline = self.cursor_y + 1.2 * max_ascent
-        for x, word, font in self.line:
+        for x, word, font, color in self.line:
             y = baseline - font.metrics("ascent")
-            self.display_list.append((x, y, word, font))
+            self.display_list.append((x, y, word, font, color))
         self.cursor_x = self.x
         self.line = []
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.2 * max_descent
 
     def draw(self, display_list):
-        for x, y, word, font in self.display_list:
-            display_list.append(DrawText(x, y, word, font))
+        bgcolor = self.node.style.get("background-color", "transparent")
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            display_list.append(rect)
+        for x, y, word, font, color in self.display_list:
+            display_list.append(DrawText(x, y, word, font, color))
 
 class DocumentLayout:
     def __init__(self, node):
@@ -526,11 +517,12 @@ class DocumentLayout:
         self.children[0].draw(display_list)
 
 class DrawText:
-    def __init__(self, x1, y1, text, font):
+    def __init__(self, x1, y1, text, font, color):
         self.top = y1
         self.left = x1
         self.text = text
         self.font = font
+        self.color = color
 
         self.bottom = y1 + font.metrics("linespace")
 
@@ -540,6 +532,7 @@ class DrawText:
             text=self.text,
             font=self.font,
             anchor='nw',
+            color=self.color,
         )
 
 class DrawRect:
@@ -581,7 +574,7 @@ class Browser:
         headers, body = request(url)
         nodes = HTMLParser(body).parse()
 
-        with open("browser.css") as f:
+        with open("browser6.css") as f:
             rules = CSSParser(f.read()).parse()
         links = [node.attributes["href"]
                  for node in tree_to_list(nodes, [])
