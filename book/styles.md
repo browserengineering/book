@@ -194,8 +194,8 @@ advance, that means `i` didn't point at a word to begin with.
     the hash sign). But the real CSS syntax is more complex.
 
 Parsing functions can build upon one another. Property-value pairs,
-for example, are a word for the property, a colon, and another word
-for the value,[^technically-different] with whitespace in between:
+for example, are a property, a colon, and
+value,[^technically-different] with whitespace in between:
 
 [^technically-different]: In reality properties and values have
     different syntaxes, so using `word` for both isn't quite right,
@@ -215,8 +215,11 @@ def pair(self, i):
 This builds upon `word`, `whitespace`, and `literal` to build a more
 complicated parsing function. And note that if `i` does not actually
 point to a property-value pair, one of the `word` calls or the
-`literal` call will fail. When we parse rule bodies, we can catch
-this error to skip property-value pairs that don't parse:
+`literal` call will fail.
+
+Sometimes we need to call these parsing functions in a loop. For
+example, a rule body is an open brace, a sequence of property-value
+pairs, and a close brace:
 
 ``` {.python indent=4}
 def body(self, i):
@@ -224,39 +227,60 @@ def body(self, i):
     _, i = self.literal(i, "{")
     _, i = self.whitespace(i)
     while i < len(self.s) and self.s[i] != "}":
-        try:
-            (prop, val), i = self.pair(i)
-            pairs[prop] = val
-            _, i = self.whitespace(i)
-            _, i = self.literal(i, ";")
-        except AssertionError:
-            _, i = self.ignore_until(i, [";", "}"])
-            if i < len(self.s) and self.s[i] == ";":
-                _, i = self.literal(i, ";")
+        (prop, val), i = self.pair(i)
+        pairs[prop] = val
+        _, i = self.whitespace(i)
+        _, i = self.literal(i, ";")
         _, i = self.whitespace(i)
     _, i = self.literal(i, "}")
     return pairs, i
 ```
 
-This parsing function introduces a few new tricks. First, it has a
-while loop to collect multiple property-value pairs into a dictionary.
-Secondly, it uses a `try` block to catch exceptions from malformed
-property-value pairs. When a malformed pair is seen, it uses this
-`ignore_until` function:
+Another twist to parsing functions is handling errors. So for example,
+sometimes our parser will see a malformed property-value pair, either
+because the page author made a mistake or because they're using a CSS
+feature that our parser doesn't support. We can catch this error to
+skip property-value pairs that don't parse. We'll use this little
+function to skips things:
 
 ``` {.python}
 def ignore_until(self, i, chars):
-    while i < len(self.s) and self.s[i] not in chars:
-        i += 1
+    while i < len(self.s):
+        if self.s[i] in chars:
+            return self.s[i], i
+        else:
+            i += 1
     return None, i
 ```
 
+Note that this stops at any one of a list of characters, and returns
+that character (or `None` if it was stopped by the end of the file).
+That's because when we fail to parse a property-value pair, we need to
+go to either the next property-value pair (skip to a semicolon) or to
+the end of the block (skip to a close brace).
+
+``` {.python indent=4}
+def body(self, i):
+    # ...
+    while i < len(self.s) and self.s[i] != "}":
+        try:
+            # ...
+        except AssertionError:
+            why, i = self.ignore_until(i, [";", "}"])
+            if why == ";":
+                _, i = self.literal(i, ";")
+                _, i = self.whitespace(i)
+            else:
+                break
+    # ...
+```
+
 Skipping parse errors is a double-edged sword. It hides error
-messages, so debugging CSS files becomes more difficult, and also
+messages, so debugging CSS files becomes more difficult, and it also
 makes it harder to debug your parser.[^try-no-try] This makes
 "catch-all" error handling like this a code smell in most cases.
 
-[^try-no-try]: Try debugging without the `try` block first.
+[^try-no-try]: Try removing the `try` block when debugging.
 
 However, on the web there is an unusual benefit: it supports an
 ecosystem of multiple implementations. For example, different browsers
@@ -265,10 +289,12 @@ Thanks to silent parse errors, web pages can use features that only
 some browsers support, with other browsers just ignoring it. This
 principle variously called "Postel's Law",[^for-jon] the "Digital
 Principle",[^from-circuits] or the "Robustness Principle": produce
-maximally supported output but accept unsupported input.
+maximally conformant output but accept even minimally conformant
+input.
 
 [^like-parens]: Our browser does not support parentheses in property
-    values, which are valid in real browsers, for example.
+    values, for example, which real browsers use for things like the
+    `calc` and `url` functions.
     
 [^for-jon]: After a line in the specification of TCP, written by Jon
     Postel
