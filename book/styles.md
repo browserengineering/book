@@ -924,6 +924,16 @@ files. That means we:
 Our styling engine is also relatively easy to extend with properties
 and selectors.
 
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 outlines.py --html src/lab6.py
+:::
+
 Exercises
 =========
 
