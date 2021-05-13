@@ -39,7 +39,6 @@ def draw(self):
 
 Likewise, let's rename `layout` to `run_rendering_pipeline`:
 
-
 ``` {.python}
 def run_rendering_pipeline(self):
     # ...
@@ -380,22 +379,28 @@ these situations:
 
 1. Optimize: find ways to do less work to achieve the same goal. For example, a
 faster algorithm, fewer memory allocations, fewer function calls and branches,
-or skipping work that is not necessary. An example is the optimizations to
-[skip painting](graphics.md#faster-rendering) for off-screen elements.
+or skipping work that is not necessary. An example is the optimizations we
+worked out in [chapter 2](graphics.md#faster-rendering) to skip painting for
+off-screen elements.
 
 2. Cache: carefully remember what the browser already knows from the previous
 frame, and re-compute only what is absolutely necessary for the next one.
-An example is the partial layout optimizations in [chapter 10](reflow.md)
+An example is the partial layout optimizations in [chapter 10](reflow.md).
 
 3. Parallelize: run tasks on an different thread or process. An example
 is the change we made earlier in this chapter to run network loading
 asynchronously in a background thread.
 
-4. Schedule: when possible, delay tasks that can be done later, or break up
-work into smaller chunks and do them in separate frames. We haven't encountered
-an optimization of this kind yet.
+4. Schedule: when possible, delay tasks that can be done later in batches, or
+break up work into smaller chunks and do them in separate frames. The every-16ms
+rendering pipeline task is a form of scheduling---it waits that long on purpose
+to gather up rendering worko queued in the meantime.[^not-much-queueing]
 
-Let's consider each class of optimization in turn
+[^not-much-queueing]: There aren't a lot of great examples of this yet in this
+book's browser, and this chapter is already long. I've left some examples to
+explore for exercises.
+
+Let's consider each class of optimization in turn.
 
 Optimize & Cache
 ================
@@ -448,10 +453,10 @@ between layout and painting. The next thing to do is to examine each method
 mentioned above and see if you can find anything that might be optimized out. As
 it turns out, there is one that is pretty easy to fix, which is the `font.py`
 lines that do font measurement. It's apparently the case that tkinter fonts
-don't have a good internal cache, and loading fonts is
-expensive[^why-fonts-slow]. But right now we don't take advantage of the fact
-that everything on the page has the same font, and repeat that font for every
-object! Let's fix that:
+don't have a good internal cache (or perhaps they have a cache keyed off the
+font object), and loading fonts is expensive[^why-fonts-slow]. But right now we
+don't take advantage of the fact that everything on the page has the same font,
+and repeat that font for every object! Let's fix that:
 
 [^why-fonts-slow]: fonts are surprisingly large, especially for scripts like
 Chinese that have a lot of diffferent, complex characters. For this reason they
@@ -598,7 +603,7 @@ will have these kinds of tasks:
 
 * JavaScript
 
-* Run a browser-internal tasks like executing a page load
+* Browser-internal tasks like executing a page load
 
 * The rendering pipeline (including `requestAnimationFrame`)
 
@@ -606,8 +611,7 @@ will have these kinds of tasks:
 
 * Scheduling a rendering pipeline frame every 16ms
 
-* Drawing to the screen after the rendering pipeline is done, and initiating
-* load of a web page
+* Drawing to the screen after the rendering pipeline is done
 
 * Listening to mouse and keyboard events
 
@@ -850,4 +854,246 @@ Here are the results:
 
 This means that we've been able to save about half of the of main-thread time,
 in which we can do other work, such as more JavaScript tasks, while in parallel
-the draw operations happen.
+the draw operations happen. This kind of optimization is called 
+*pipeline parallelization*.
+
+Threaded interactions
+=====================
+
+However, that's not all. All this work to create a compositor thread is not just
+to offload some of the rendering pipeline. There is another, even more
+important, performance advantage: any operation that does not require the main
+thread *cannot be slowed down by it*. Look closely at the code we've written in
+the previous section to handle input events---you'll see that in these cases 
+the main thread is not involved at all:
+
+* Interactions with browser chrome (if the click or keyboard event is not
+targeted at the web page)
+
+* Scrolling (never involves the main thread)
+
+These are  *threaded interactions*---ones that don't need to run any code at all
+on the main thread. No matter how slow the main-thread rendering pipeline is, or
+how slow JavaScript is (even if it's in an infinite loop!), we can still
+smoothly scroll the parts of it that we've already put into `draw_display_list`;
+likewise, we can type in the browser URL box smoothly in the same situation.
+
+In real browsers, the two examples listed above are *extremely* important
+optimizations. Think how annoying it would be to type in the name of a new
+website if the old one was getting in the way of your keystrokes because it was
+doing a lot of very slow work. Likewise, scrolling a web page with a lot of slow
+JavaScript is quite painful unless the scrolling is
+threaded.
+
+Unfortunately, threaded scrolling is not always possible or feasible. In the
+best browsers today, there are two primary reasons why threaded scrolling may
+fail:
+
+* There are JavaScript events for listening to a scroll, and if the event
+handler for the [`scroll`][scroll-event] event calls `preventDefault` on the
+first such event  (or via [`touchstart`][touchstart-event] on mobile devices),
+the scroll will not be threaded in most browsers. Our browser has not
+implemented these events, and so can avoid this
+situation.[^real-browser-threaded-scroll]
+
+[scroll-event]: https://developer.mozilla.org/en-US/docs/Web/API/Document/scroll_event
+[touchstart-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/touchstart_event
+
+[^real-browser-threaded-scroll]: A real browser would have an optimization to disable
+threaded scrolling only if there was such an event listener, and transition back
+to threaded as soon as it doens't see `preventDefault` called. This situation is
+so important that there is also a special kind of event listener [designed just
+for it][designed-for].
+
+* There are also some advanced rendering situations,
+such as [background-attachment:
+fixed](https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment),
+that make it difficult to perform threaded scrolling. In these situations,
+browser scrolling is at the mercy of the web page's script performance, and the
+get back threaded scrolling is to not use these features on the website.
+
+[designed-for]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#improving_scrolling_performance_with_passive_listeners
+
+Threaded style and layout
+=========================
+
+You might have wondered: does the rendering pipeline---style, layout and paint
+have to run on the main thread? The answer is: in principle, no you don't. The
+only thing you have to do is implement all the APIs correctly, and draw to the
+screen what the web page wanted once scripts and `requestAnimationFrame`
+callbacks have completed. The specification spells this out in detail
+in what it calls the [update-the-rendering] steps. Go look at that link and come
+back. Notice anything missing? That's right, it doesn't mention style or layout
+at all!
+
+[update-the-rendering]: https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering
+
+How can that be? Aren't style and layout crucial parts of the way HTML and CSS
+work? Yes they are---but note the spec doesn't mention paint, draw or raster
+either. And just like those parts of the pipeline, style recalc and layout are
+considered pure implementation details of a browser. The spec simply says
+that if rendering "opportunities" arise, then the update-the-rendering steps
+are the sequence of *JavaScript-observable* things that have to happen before
+drawing to the screen.[^spec-draw-screen]
+
+[^spec-draw-screen]: Even funnier, "draw to the screen" isn't spelled out per se
+either; instead it presumes that drawing to the screen is an expected task of a
+good browser that one would want to use. (Or is it? There are actually browser
+use cases that don't have a screen at all, such as [headless] browsers for
+testing, or server-side rendering.)
+
+[headless]: https://en.wikipedia.org/wiki/Headless_browser
+
+Nevertheless, no current modern browser runs style or layout on another thread
+than the main thread.[^servo] The reason is simple: there are many JavaScript
+APIs that can query style or layout state. For example, there is
+[`getComputedStyle`](https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle)
+that requires style to have been computed, and `Element.getBoundingClientRect`,
+which returns the box model of a DOM element.[^nothing-later] These are called
+*forced style recalc* or *forced layout*. Here the world "forced" refers to
+forcing the computation to happen synchronously, as opposed to possibly 16ms in
+the future.
+
+[^servo]: The [Servo] rendering engine is sort of an exception. However, in that
+case it's not that style and layout run on a different thread, but that they
+attempt to take advantage of parallelism for faster end-to-end performance. It's
+more akin to the reason the hardware acceleration we saw in [chapter
+12](visual-effects.md#hardware-acceleration) makes things faster; this is not
+the same thing as "threaded style and layout".
+
+[Servo]: https://en.wikipedia.org/wiki/Servo_(software)
+
+[^nothing-later]: There is no JavaScript API that allows reading back state
+from anything later in the rendering pipeline than layout.
+
+By analogy with web pages that don't `preventDefault` a scroll, is it a good
+idea to try to optimistically move style and layout off the main thread for
+cases when JavaScript doesn't force it to be done otherwise? Maybe, but even
+setting aside this problem there are unfortunately other sources of forced
+style+layout. One example is our current implementation of `innerHTML`. Look
+closely at the code, can you see the forced layout?
+
+``` {.python}
+    def js_innerHTML(self, handle, s):
+        try:
+            self.run_rendering_pipeline()
+            doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
+            new_nodes = doc.children[0].children
+            elt = self.handle_to_node[handle]
+            elt.children = new_nodes
+            for child in elt.children:
+                child.parent = elt
+            if self.document:
+                self.set_needs_reflow(layout_for_node(self.document, elt))
+            else:
+                self.set_needs_layout_tree_rebuild()
+        except:
+            import traceback
+            traceback.print_exc()
+            raise
+```
+
+In this case, a forced layout is needed because we need to call
+`layout_for_node` in order to perform an optimized reflow. This could of course
+be fixed. One way---one that's employed by real browsers---is to store a pointer
+from each DOM element to its layout object, rather than searching for it by
+walking the layout tree.
+
+However, there are yet more reasons why forced layouts are needed. The most
+tricky such one is hit testing. When a click event happens, looking at positions
+of layout objects is how the browser knows which element was clicked on. This
+is implemented in `find_layout`:
+
+```
+def find_layout(x, y, tree):
+    for child in reversed(tree.children):
+        result = find_layout(x, y, child)
+        if result: return result
+    if tree.x <= x < tree.x + tree.w and \
+       tree.y <= y < tree.y + tree.h:
+        return tree
+```
+
+However, `handle_click` doesn't call `run_rendering_pipeline` like
+`js_innerHTML` does; why not? In a real browser, this would be a bug, but in
+our current browser it's really difficult to cause a situation to happen where
+a click event happens but the rendering pipeline is not up-to-date. That's
+because the currently the only way to schedule a script task is via
+`requestAnimationFrame`. In a real browser there is also `setTimeout`, for
+example. But for completeness, let's implement it by adding a call to 
+`update_rendering_pipeline` before `find_layout`:
+
+``` {.python}
+    # Runs on the main thread
+    def handle_click(self, e):
+        # ...
+        self.run_rendering_pipeline()
+        obj = find_layout(x, y, self.document)
+        # ...
+```
+
+It's not impossible to move style and layout off the main thread
+"optimistically", but these are the reasons it's challenging. for browsers to do
+it. However, I expect that at some point in the future it will be achieved.
+
+Summary
+=======
+
+This chapter explained in some detail the two-thread rendering system at the
+core of modern browsers.The
+main points to remember are:
+
+* The goal is to consistently generate drawn frames to the screen at a 60Hz
+cadence, which means a 16ms budget to draw each frame.
+
+* There are multiple ways to achieve the desired frame candence: Optimize (make
+stuff faster), Cache (reuse past work), Parallelize (do stuff in multiple
+threads), and Schedule (put off less important work for later, or batch work
+together).
+
+* The main thread runs an event loop that runs various tasks, including
+JavaScript and browser rendering. The rendering task is special, can include
+special JavaScript `requestAnimationFrame` callbacks in it, and at the end
+commits a display list to a second thread.
+
+* The second thread is the compsitor thread. It draws the display list to the
+screen and handles/dispatches input events, scrolls, and interactions with the
+browser chrome.
+
+* Forced style and layout makes it hard to fully isolate the rendering pipeline
+from JavaScript.
+
+Exercises
+=========
+
+* *Date.now*: Implement this JavaScript API and its bindings in the browser.
+You'll need it for an exercise below, and for the sample JavaScript code in this
+chapter.
+
+* *Networking thread*: Real browsers tend to have a separate thread for
+networking (and other I/O). Implement a third thread with an event loop and put
+all networking tasks (including HTML and script fetches) on it.
+
+* *setTimeout*: The [`setTimeout`] JavaScript API schedules a function to be
+called a fixed number of milliseconds from now. Implement it, and try to
+implement a web page that demonstrates the hit testing but we fixed above.
+
+[setTimeout]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setTimeout
+
+* *setInterval*: [`setInterval`][setInterval] is similar to `setTimeout` but
+runs repeatedly at a given cadence until [`clearInterval`][clearInterval] is
+called. Implement these, and test them out on a sample page that also uses
+`requestAnimationFrame` with various cadences, and with some expensive rendering
+pipeline work to do. Use console.log or `innerHTML` to record the actual timings
+via `Date.now`. How consistent are the cadences?
+
+[setInterval]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setInterval
+[clearInterval]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/clearInterval
+
+* *Scheduling*: As more types of complex tasks end up on the event queue, there
+comes a greater need to carefully schedule them to ensure the rendering cadence
+is as close to 16ms as possible, and also to avoid task starvation. Implement a
+sample web page that taxes the system with a lot of `setTimeout`-based tasks,
+come up with a simple scheduling algorithm that does a good job at balancing
+these two needs.
+

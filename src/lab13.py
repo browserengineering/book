@@ -930,6 +930,7 @@ class Browser:
         self.compositor_lock.acquire(blocking=True)
         x, y = e.x, e.y + self.scroll - 60
         self.compositor_lock.release()
+        self.run_rendering_pipeline()
         obj = find_layout(x, y, self.document)
         if not obj: return
         elt = obj.node
