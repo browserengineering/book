@@ -3,20 +3,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="widget.css" />
 
+<form id="controls">
+  <fieldset id="step-controls">
+    <h1>Character-by-character Rendering</h1>
+    <button class="reset left" disabled><span>Restart</span></button>
+    <button class="stepb left" disabled><span>Back</span></button>
+    <button class="stepf right"><span>Next</span></button>
+    <button class="play right"><span>Animate</span></button>
+  </fieldset>
+  <fieldset id="input-controls">
+    <textarea id="input" rows="4">第一回 灵根育孕源流出 心性修持大道生</textarea>
+  </fieldset>
+</div>
 <figure id="widget">
   <canvas id="canvas" width="352" height="160"></canvas>
-  <form id="controls">
-    <fieldset id="step-controls">
-      <h1>Character-by-character Rendering</h1>
-      <button class="reset left" disabled><span>Restart</span></button>
-      <button class="stepb left" disabled><span>Back</span></button>
-      <button class="stepf right"><span>Next</span></button>
-      <button class="play right"><span>Animate</span></button>
-    </fieldset>
-    <fieldset id="input-controls">
-      <textarea id="input" rows="4">第一回 灵根育孕源流出 心性修持大道生</textarea>
-    </fieldset>
-  </div>
 </figure>
 
 <script src="lab2.js"></script>
@@ -26,7 +26,7 @@ const socket = lib.socket({ "http://input/": http_textarea(document.querySelecto
 const ssl = lib.ssl();
 const tkinter = lib.tkinter({ canvas: document.querySelector("#canvas"), zoom: 2.0 });
 
-let widget = new Widget(document.querySelector("#widget"));
+let widget = new Widget(document.querySelector("#controls"));
 widget.pause("render");
 widget.run(async function() {
     WIDTH = 16 * 11;

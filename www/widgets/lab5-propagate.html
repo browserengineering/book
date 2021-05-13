@@ -7,27 +7,26 @@
 #output { margin: 0 1ex; }
 </style>
 
+<form id="controls">
+  <fieldset id="step-controls">
+    <h1>Computing sizes and positions</h1>
+    <button class="reset left" disabled><span>Restart</span></button>
+    <button class="stepb left" disabled><span>Back</span></button>
+    <button class="stepf right"><span>Next</span></button>
+    <button class="play right"><span>Animate</span></button>
+  </fieldset>
+  <fieldset id="input-controls">
+    <textarea id="input" rows="4">
+<html><body>
+  <h1>Header</h1>
+  <p>Text 1</p>
+  <p>Text 2</p>
+  <p>Text 3</p>
+</body></html></textarea>
+  </fieldset>
+</form>
 <figure id="widget">
   <pre id="output" style="width: 352px; height: 160px;"></pre>
-  <form id="controls">
-    <fieldset id="step-controls">
-      <h1>Computing sizes and positions</h1>
-      <button class="reset left" disabled><span>Restart</span></button>
-      <button class="stepb left" disabled><span>Back</span></button>
-      <button class="stepf right"><span>Next</span></button>
-      <button class="play right"><span>Animate</span></button>
-    </fieldset>
-    <fieldset id="input-controls">
-      <textarea id="input" rows="4"><html>
-  <body>
-    <h1>Header</h1>
-    <p>Text 1</p>
-    <p>Text 2</p>
-    <p>Text 3</p>
-  </body>
-</html></textarea>
-    </fieldset>
-  </form>
 </figure>
 
 <script src="lab5.js"></script>
@@ -37,7 +36,7 @@ const socket = lib.socket({ "http://input/": http_textarea(document.querySelecto
 const ssl = lib.ssl();
 const tkinter = lib.tkinter({ zoom: 2.0 });
 
-let widget = new Widget(document.querySelector("#widget"));
+let widget = new Widget(document.querySelector("#controls"));
   
 function draw_tree(node, status) {
     let current = node;

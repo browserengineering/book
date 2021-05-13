@@ -1,19 +1,14 @@
-html, body, figure { margin: 0; padding: 0; height: 100%; }
-figure { width: 100%; }
+html, body, #widget, fieldset { border: none; margin: 0; padding: 0; }
+#widget, #controls { width: 100%; }
 #controls {
-    box-sizing: border-box; margin: 0; padding: .5em .5em 0;
-    background: #e5f7ff; border-top: 2px solid steelblue;
+    box-sizing: border-box; margin: 0; padding: .5em;
+    background: #e5f7ff; border-bottom: 2px solid steelblue; font-size: 20px;
 }
-fieldset { border: none; margin: 0; padding: 0; }
-#input-controls { margin: .5em 0; }
 
-#controls {
-    position: absolute; width: 100%; bottom: 0; overflow: hidden;
-    font-size: 20px;
-}
+#input-controls { margin: .5em 0 0; overflow: hidden; }
 @media (max-height: 400px) {
   #input-controls { transition: all .3s ease; max-height: 160px; }
-  .running #input-controls { max-height: 0; margin: .5em 0 0; }
+  .running #input-controls { max-height: 0; margin: 0; }
 }
 
 #step-controls { display: flex; gap: 1ex; }
@@ -24,10 +19,12 @@ fieldset { border: none; margin: 0; padding: 0; }
 #step-controls .left { order: 1; }
 #step-controls .right { order: 5; }
 #step-controls button { font: 70% sans-serif; min-width: 2em; height: 2em; border-radius: 1em; }
-#input-controls textarea { box-sizing: border-box; width: 100%; font: 100% monospace; }
+#input-controls textarea {
+    box-sizing: border-box; display: block; width: 100%; font: 1em monospace; margin: 0;
+}
 @media (max-width: 600px) { #controls { font-size: 16px; } }
-@media (max-width: 400px) {
-  #controls { padding: .5ex .5ex 0; font-size: 14px; }
+@media (max-width: 450px) {
+  #controls { padding: .5ex; font-size: 14px; }
   #input-controls { margin: .5ex 0; }
   .running #input-controls { margin: .5ex 0 0; }
   #step-controls { gap: .5ex; }
