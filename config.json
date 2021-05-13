@@ -43,19 +43,20 @@
     "modes": {
         "book": {
             "rel": ".",
+            "show_toc": true,
             "show_signup": true
         },
         "draft": {
             "base": "../",
             "rel": "draft",
             "draft": true,
+            "show_toc": true,
             "show_disabled": true,
             "show_todos": true
         },
         "blog": {
             "base": "../",
             "rel": "blog",
-            "toc": false,
             "show_signup": true
         }
     }

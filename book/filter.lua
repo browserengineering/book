@@ -4,7 +4,6 @@ local config = nil
 local chapters = nil
 
 local main = nil
-local toc = true
 
 function LoadMeta(meta)
   if not meta.mode then meta.mode = "book" end
@@ -12,11 +11,12 @@ function LoadMeta(meta)
   chapters = meta.chapters
   if not config then error("Invalid mode " .. meta.mode) end
 
+  meta.rel = config.rel
+  meta.base = config.base
+  meta.draft = meta.mode == "draft"
+
   if meta.main then
     main = true
-  end
-  if meta.toc == "none" then
-     toc = nil
   end
   return meta
 end
@@ -94,7 +94,7 @@ function Header(el)
 end
 
 function Doc(el)
-   if main or not toc then
+   if main or not config.show_toc then
       return el
    end
    -- Find where to put the in-line TOC
