@@ -1,8 +1,8 @@
 html, body, #widget, fieldset { border: none; margin: 0; padding: 0; }
 #widget, #controls { width: 100%; }
 #controls {
-    box-sizing: border-box; margin: 0; padding: .5em;
-    background: #e5f7ff; border-bottom: 2px solid steelblue; font-size: 20px;
+    box-sizing: border-box; padding: .5em; font-size: 20px;
+    background: navy; color: white; z-index: 10;
 }
 
 #input-controls { margin: .5em 0 0; overflow: hidden; }
@@ -37,10 +37,11 @@ html, body, #widget, fieldset { border: none; margin: 0; padding: 0; }
   #step-controls .play::before { content: "Play"; }
 }
 
+button, textarea { border: none; }
 #step-controls button:hover { cursor: pointer; }
-#step-controls button:hover, textarea:focus { border: 2px solid blue; }
-#step-controls button, textarea { border: 2px solid steelblue; background: transparent; }
+#step-controls button, textarea { background: darkslateblue; color: white; }
+#step-controls button:hover, textarea:focus { background: slateblue; }
 #step-controls button:disabled, textarea:disabled {
-    background: #cdecfa; border-color: #cdecfa; cursor: default; }
+    background: transparent; color: mediumpurple; cursor: default; }
 
 #input-controls button { float: right; }
