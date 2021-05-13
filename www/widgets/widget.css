@@ -7,24 +7,38 @@ figure { width: 100%; }
 fieldset { border: none; margin: 0; padding: 0; }
 #input-controls { margin: .5em 0; }
 
-#controls { position: absolute; left: 0; right: 0; bottom: 0; overflow: hidden; }
+#controls {
+    position: absolute; width: 100%; bottom: 0; overflow: hidden;
+    font-size: 20px;
+}
 @media (max-height: 400px) {
   #input-controls { transition: all .3s ease; max-height: 160px; }
   .running #input-controls { max-height: 0; margin: .5em 0 0; }
 }
 
-#step-controls { display: flex; gap: 1ex; font-size: 20px; }
+#step-controls { display: flex; gap: 1ex; }
 #step-controls h1 {
     flex-grow: 1; order: 3; text-align: center;
     font: 100% sans; margin: 0; line-height: 1.33em;
 }
 #step-controls .left { order: 1; }
 #step-controls .right { order: 5; }
-@media (max-width: 600px) { #step-controls { font-size: 16px; } }
-@media (max-width: 400px) { #step-controls { flex-wrap: wrap; } }
 #step-controls button { font: 70% sans-serif; min-width: 2em; height: 2em; border-radius: 1em; }
-
-textarea { box-sizing: border-box; width: 100%; font: 20px monospace; }
+#input-controls textarea { box-sizing: border-box; width: 100%; font: 100% monospace; }
+@media (max-width: 600px) { #controls { font-size: 16px; } }
+@media (max-width: 400px) {
+  #controls { padding: .5ex .5ex 0; font-size: 14px; }
+  #input-controls { margin: .5ex 0; }
+  .running #input-controls { margin: .5ex 0 0; }
+  #step-controls { gap: .5ex; }
+  #step-controls button { min-width: 0; padding: 2px; }
+  #step-controls button.play { width: auto; }
+  #step-controls button span { font-size: 0px; }
+  #step-controls .reset::before { content: "Reset"; }
+  #step-controls .stepb::before { content: "◀"; }
+  #step-controls .stepf::before { content: "▶"; }
+  #step-controls .play::before { content: "Play"; }
+}
 
 #step-controls button:hover { cursor: pointer; }
 #step-controls button:hover, textarea:focus { border: 2px solid blue; }
