@@ -13,7 +13,7 @@ function LoadMeta(meta)
 
   meta.rel = config.rel
   meta.base = config.base
-  meta.draft = meta.mode == "draft"
+  meta.draft = config.draft
 
   if meta.main then
     main = true

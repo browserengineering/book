@@ -1,5 +1,4 @@
 ---
-cur: preface
 title: Preface
 type: Preface
 next: intro

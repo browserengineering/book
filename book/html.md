@@ -1,7 +1,6 @@
 ---
 title: Constructing a Document Tree
 chapter: 4
-cur: html
 prev: text
 next: layout
 ...

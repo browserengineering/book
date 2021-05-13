@@ -1,7 +1,6 @@
 ---
 title: Adding Visual Effects
 chapter: 12
-cur: visual-effects
 prev: security
 next: rendering-architecture
 ...

@@ -1,7 +1,6 @@
 ---
 title: Drawing to the Screen
 chapter: 2
-cur: graphics
 prev: http
 next: text
 ...

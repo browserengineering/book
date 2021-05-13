@@ -1,7 +1,6 @@
 ---
 title: Downloading Web Pages
 chapter: 1
-cur: http
 prev: history
 next: graphics
 ...

@@ -1,7 +1,6 @@
 ---
 title: What Wasn't Covered
 type: Conclusion
-cur: skipped
 prev: visual-effects
 next: change 
 ...

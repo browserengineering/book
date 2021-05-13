@@ -1,7 +1,6 @@
 ---
 title: Formatting Text
 chapter: 3
-cur: text
 prev: graphics
 next: html
 ...
