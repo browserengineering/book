@@ -62,7 +62,7 @@ function Div(el)
   if not config.show_todos and el.classes[1] == "todo" then
     return pandoc.Div
   elseif config.show_signup and el.classes[1] == "signup" then
-    local signup = assert(io.open("book/signup.html")):read("*all")
+    local signup = assert(io.open("infra/signup.html")):read("*all")
     return pandoc.RawBlock("html", signup)
   elseif el.classes[1] == "cmd" then
     if #el.content ~= 1 or
