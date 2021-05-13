@@ -1,44 +1,45 @@
-require "os"
+-- Pass 1: Load configuration data
 
--- Links in disabled.conf disabled unless mode is set to draft
-local disabled = {}
-local draft = nil
+local config = nil
+local chapters = nil
+
 local main = nil
 local toc = true
 
-function Meta (meta)
-  if meta.mode == "draft" then
-    draft = true
-  else
-    disabled = meta.disabled_files
-  end
+function LoadMeta(meta)
+  if not meta.mode then meta.mode = "book" end
+  config = meta.modes[meta.mode]
+  chapters = meta.chapters
+  if not config then error("Invalid mode " .. meta.mode) end
+
   if meta.main then
     main = true
   end
   if meta.toc == "none" then
      toc = nil
   end
-  -- and  
-  if meta.prev then
-    if disabled[tostring(meta.prev[1].text) .. ".md"] then
-      -- io.write("Disabling previous pointer\n")
-      meta.prev = nil
-    end
+  return meta
+end
+
+-- Pass 2: Implement disabled links, footnotes, and custom blocks
+
+function is_disabled(link)
+   return not config.show_disabled and chapters[link] and chapters[link].disabled
+end
+
+function DisableMeta(meta)
+  if meta.prev and is_disabled(tostring(meta.prev[1].text) .. ".md") then
+    meta.prev = nil
   end
-  if meta.next then
-    if disabled[tostring(meta.next[1].text) .. ".md"] then
-      -- io.write("Disabling next pointer\n")
-      meta.next = nil
-    end
+  if meta.next and is_disabled(tostring(meta.next[1].text) .. ".md") then
+    meta.next = nil
   end
   return meta
 end
 
-
--- Links to Markdown files now link to HTML files
-function Link(el)
-  if not draft and disabled[el.target] then
-    -- io.write("Disabling link " .. el.target .. "\n")
+function DisableLinks(el)
+  -- Links to Markdown files now link to HTML files
+  if is_disabled(el.target) then
     el2 = pandoc.Span(el.content)
     el2.classes = { "link" }
     return el2
@@ -48,8 +49,8 @@ function Link(el)
   end
 end
 
--- Footnotes become margin notes
 function Note(el)
+  -- Footnotes become margin notes
   note = pandoc.Span(el.content[1].content)
   note.classes = { "note" }
   wrapper = pandoc.Span { note }
@@ -58,11 +59,9 @@ function Note(el)
 end
 
 function Div(el)
-  if not draft and el.classes[1] == "todo" then
-    -- io.write("Disabling todo block\n")
+  if not config.show_todos and el.classes[1] == "todo" then
     return pandoc.Div
-  elseif (not draft and el.classes[1] == "signup")
-  or (main and not draft and el.classes[1] == "warning") then
+  elseif config.show_signup and el.classes[1] == "signup" then
     local signup = assert(io.open("book/signup.html")):read("*all")
     return pandoc.RawBlock("html", signup)
   elseif el.classes[1] == "cmd" then
@@ -85,6 +84,8 @@ function Div(el)
     return el
   end
 end
+
+-- Pass 3: Collect and insert a table of contents
 
 local headers = pandoc.List()
 
@@ -116,8 +117,10 @@ function Doc(el)
    return el
 end
 
+-- Set up and return the three passes
+
 return { 
-  { Meta = Meta },
-  { Link = Link, Note = Note, Div = Div },
+  { Meta = LoadMeta },
+  { Meta = DisableMeta, Link = DisableLinks, Note = Note, Div = Div },
   { Header = Header, Doc = Doc },
 }

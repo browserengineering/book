@@ -1,32 +1,62 @@
 {
-    "disabled_files": {
-        "preface.md": false,
-        "intro.md": false,
-        "history.md": false,
-        "preliminaries.md": true,
+    "sequence": [
+        "preface.md", "intro.md", "history.md",
+        "http.md", "graphics.md", "text.md",
+        "html.md", "layout.md", "styles.md", "chrome.md",
+        "forms.md", "scripts.md", "reflow.md", "security.md",
+        "visual-effects.md", "rendering-architecture.md",
+        "skipped.md", "change.md",
+        "glossary.md", "bibliography.md"
+    ],
 
-        "http.md": false,
-        "graphics.md": false,
-        "text.md": false,
+    "chapters": {
+        "preface.md": { "disabled": false },
+        "intro.md": { "disabled": false },
+        "history.md": { "disabled": false },
+        "preliminaries.md": { "disabled": true },
 
-        "html.md": false,
-        "layout.md": false,
-        "styles.md": true,
-        "chrome.md": true,
+        "http.md": { "disabled": false },
+        "graphics.md": { "disabled": false },
+        "text.md": { "disabled": false },
 
-        "forms.md": true,
-        "scripts.md": true,
-        "reflow.md": true,
-        "security.md": true,
+        "html.md": { "disabled": false },
+        "layout.md": { "disabled": false },
+        "styles.md": { "disabled": true },
+        "chrome.md": { "disabled": true },
 
-        "visual-effects.md": true,
-        "rendering-architecture.md": true,
+        "forms.md": { "disabled": true },
+        "scripts.md": { "disabled": true },
+        "reflow.md": { "disabled": true },
+        "security.md": { "disabled": true },
 
-        "skipped.md": true,
-        "change.md": true,
-        "todo.md": false,
+        "visual-effects.md": { "disabled": true },
+        "rendering-architecture.md": { "disabled": true },
 
-        "glossary.md": true,
-        "bibliography.md": false
+        "skipped.md": { "disabled": true },
+        "change.md": { "disabled": true },
+        "todo.md": { "disabled": false },
+
+        "glossary.md": { "disabled": true },
+        "bibliography.md": { "disabled": false }
+    },
+
+    "modes": {
+        "book": {
+            "rel": ".",
+            "show_signup": true
+        },
+        "draft": {
+            "base": "../",
+            "rel": "draft",
+            "draft": true,
+            "show_disabled": true,
+            "show_todos": true
+        },
+        "blog": {
+            "base": "../",
+            "rel": "blog",
+            "toc": false,
+            "show_signup": true
+        }
     }
 }
