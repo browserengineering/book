@@ -103,10 +103,6 @@ def find_block(block, text):
 
     
 if __name__ == "__main__":
-    MIN_PYTHON = (3, 9)
-    if sys.version_info < MIN_PYTHON:
-        sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
-
     import sys, argparse
     argparser = argparse.ArgumentParser(description="Compare book blocks to teacher's copy")
     argparser.add_argument("book", metavar="book.md", type=argparse.FileType("r"))
