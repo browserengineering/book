@@ -1,7 +1,6 @@
 ---
 title: Downloading Web Pages
 chapter: 1
-cur: http
 prev: history
 next: graphics
 ...
@@ -627,7 +626,7 @@ The complete set of functions, classes, and methods in our browser
 should look something like this:
 
 ::: {.cmd .python .outline html=True}
-    python3 outlines.py --html src/lab1.py
+    python3 infra/outlines.py --html src/lab1.py
 :::
 
 Exercises

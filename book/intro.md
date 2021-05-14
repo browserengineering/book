@@ -1,5 +1,4 @@
 ---
-cur: preface
 title: Browsers and the Web
 type: Introduction
 next: history

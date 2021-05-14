@@ -1,0 +1,32 @@
+<div id="$cur$">
+
+$for(include-before)$
+$include-before$
+$endfor$
+
+$if(title)$
+<header>
+<h1 class="title">$title$</h1>
+</header>
+$endif$
+
+$if(chapter)$
+<nav class="links">
+  Chapter $chapter$ of <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
+</nav>
+$endif$
+$if(type)$
+<nav class="links">
+  The $type$ to <a href="./index.html" title="Table of Contents">Web Browser Engineering</a>.
+</nav>
+$endif$
+
+$if(table-of-contents)$
+<nav id="toc">
+$table-of-contents$
+</nav>
+$endif$
+
+$body$
+
+</div>

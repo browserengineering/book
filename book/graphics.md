@@ -1,7 +1,6 @@
 ---
 title: Drawing to the Screen
 chapter: 2
-cur: graphics
 prev: http
 next: text
 ...
@@ -546,7 +545,7 @@ The complete set of functions, classes, and methods in our browser
 should look something like this:
 
 ::: {.cmd .python .outline html=True}
-    python3 outlines.py --html src/lab2.py
+    python3 infra/outlines.py --html src/lab2.py
 :::
 
 Exercises

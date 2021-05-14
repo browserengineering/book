@@ -1,7 +1,6 @@
 ---
 title: Constructing a Document Tree
 chapter: 4
-cur: html
 prev: text
 next: layout
 ...
@@ -789,7 +788,7 @@ The complete set of functions, classes, and methods in our browser
 should look something like this:
 
 ::: {.cmd .python .outline html=True}
-    python3 outlines.py --html src/lab4.py
+    python3 infra/outlines.py --html src/lab4.py
 :::
 
 Exercises
