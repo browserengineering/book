@@ -1,4 +1,4 @@
-.PHONY: book blog draft widgets publish clean download
+.PHONY: book blog draft widgets publish clean download wc
 
 FLAGS=
 
@@ -33,6 +33,9 @@ www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 www/onepage.html: $(patsubst %,www/onepage/%.html,$(CHAPTERS))
 www/onepage.html: book/onepage.md infra/template.html infra/filter.lua config.json
 	$(PANDOC) --metadata=mode:onepage --template infra/template.html -c book.css $< -o $@
+
+wc:
+	@ printf " Words  Code  File\n"; awk -f infra/wc.awk book/*.md | sort -rn
 
 publish:
 	rsync -rtu --exclude=*.pickle --exclude=*.hash www/ server:/home/www/browseng/
