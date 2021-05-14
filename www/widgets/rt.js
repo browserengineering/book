@@ -260,7 +260,7 @@ class Widget {
         this.controls.input.disabled = false;
         this.controls.next.disabled = false;
         this.controls.animate.disabled = false;
-        this.controls.next.textContent = "Start";
+        this.controls.next.children[0].textContent = "Start";
         if (e) e.preventDefault();
     }
 
@@ -280,7 +280,7 @@ class Widget {
     next(e) {
         this.elt.classList.add("running");
         console.assert(this.k, "Tried to step forward but no next state available");
-        this.controls.next.textContent = "Next";
+        this.controls.next.children[0].textContent = "Next";
         this.controls.input.disabled = true;
         this.controls.reset.disabled = false;
         this.controls.back.disabled = false;
