@@ -3,7 +3,6 @@
         "preface.md": { "disabled": false },
         "intro.md": { "disabled": false },
         "history.md": { "disabled": false },
-        "preliminaries.md": { "disabled": true },
 
         "http.md": { "disabled": false },
         "graphics.md": { "disabled": false },
@@ -24,7 +23,6 @@
 
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
-        "todo.md": { "disabled": false },
 
         "glossary.md": { "disabled": true },
         "bibliography.md": { "disabled": false }
