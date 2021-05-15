@@ -1,14 +1,4 @@
 {
-    "sequence": [
-        "preface.md", "intro.md", "history.md",
-        "http.md", "graphics.md", "text.md",
-        "html.md", "layout.md", "styles.md", "chrome.md",
-        "forms.md", "scripts.md", "reflow.md", "security.md",
-        "visual-effects.md", "rendering-architecture.md",
-        "skipped.md", "change.md",
-        "glossary.md", "bibliography.md"
-    ],
-
     "chapters": {
         "preface.md": { "disabled": false },
         "intro.md": { "disabled": false },
@@ -26,9 +16,9 @@
 
         "forms.md": { "disabled": true },
         "scripts.md": { "disabled": true },
-        "reflow.md": { "disabled": true },
         "security.md": { "disabled": true },
 
+        "reflow.md": { "disabled": true },
         "visual-effects.md": { "disabled": true },
         "rendering-architecture.md": { "disabled": true },
 

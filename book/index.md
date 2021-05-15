@@ -58,17 +58,16 @@ Part 3: Running Applications
     Form submission and web servers
 (@) [Running Interactive Scripts](scripts.md)\
     Changing the DOM and reacting to events
-(@) [Saving Partial Layouts](reflow.md)\
-    Two-phase layout and fast rendering
 (@) [Keeping Data Private](security.md)\
     Cookies and logins, XSS and CSRF
 
 Part 4: Modern Browsers
 =======================
 
+(@) [Saving Partial Layouts](reflow.md)\
+    Two-phase layout and fast rendering
 (@) [Adding Visual Effects](visual-effects.md)\
     Filters and transformations 
-
 (@) [Browser Rendering Architecture Concepts](rendering-architecture.md)\
     The Rendering Event Loop and Pipeline
 
