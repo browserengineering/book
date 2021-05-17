@@ -148,6 +148,8 @@ if __name__ == "__main__":
             chapters = data["chapters"]
             for chapter, chapter_metadata in data["chapters"].items():
                 if "lab" in chapter_metadata:
+                    print("Comparing chapter " + chapter + " with lab " +
+                        chapter_metadata["lab"])
                     book = open("book/" + chapter, "r")
                     code = open("src/" + chapter_metadata["lab"], "r")
                     cur_failure = compare_files(book, code, None)
