@@ -597,11 +597,11 @@ class Browser:
         document = DocumentLayout(tree)
         document.layout()
         self.display_list = []
-        document.draw(self.display_list)
-        self.render()
+        document.paint(self.display_list)
+        self.draw()
         self.max_y = document.h - HEIGHT
 
-    def render(self):
+    def draw(self):
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT: continue
@@ -612,7 +612,7 @@ class Browser:
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
-        self.render()
+        self.draw()
 
 if __name__ == "__main__":
     import sys

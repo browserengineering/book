@@ -275,9 +275,9 @@ class Browser:
         headers, body = request(url)
         tree = HTMLParser(body).parse()
         self.display_list = Layout(tree).display_list
-        self.render()
+        self.draw()
 
-    def render(self):
+    def draw(self):
         self.canvas.delete("all")
         for x, y, word, font in self.display_list:
             if y > self.scroll + HEIGHT: continue
@@ -286,7 +286,7 @@ class Browser:
 
     def scrolldown(self, e):
         self.scroll += SCROLL_STEP
-        self.render()
+        self.draw()
 
 if __name__ == "__main__":
     import sys

@@ -350,19 +350,19 @@ to display.^[The term is standard.] Since `layout` is all about page
 coordinates, we don't need to change anything else about it to support
 scrolling.
 
-Once the display list is computed, `render` needs to loop through
+Once the display list is computed, `draw` needs to loop through
 the display list and draw each character:
 
 ``` {.python expected=False}
 class Browser:
-    def render(self):
+    def draw(self):
         for x, y, c in self.display_list:
           self.canvas.create_text(x, y, text=c)
 ```
 
-Since `render` does need access to the canvas, we keep it a method on
+Since `draw` does need access to the canvas, we keep it a method on
 `Browser`. Now the `load` just needs to call `layout` followed by
-`render`:
+`draw`:
 
 ```
 class Browser:
@@ -370,7 +370,7 @@ class Browser:
         headers, body = request(url)
         text = lex(body)
         self.display_list = layout(text)
-        self.render()
+        self.draw()
 ```
 
 Now we can add scrolling. Let's have a variable for how far you've
@@ -386,7 +386,7 @@ class Browser:
 The page coordinate `y` then has screen coordinate `y - self.scroll`:
 
 ```
-def render(self):
+def draw(self):
     for x, y, c in display_list:
         self.canvas.create_text(x, y - self.scroll, text=c)
 ```
@@ -435,7 +435,7 @@ SCROLL_STEP = 100
 
 def scrolldown(self, e):
     self.scroll += SCROLL_STEP
-    self.render()
+    self.draw()
 ```
 
 If you try this out, you'll find that scrolling draws all the text a
@@ -443,7 +443,7 @@ second time. That's because we didn't erase the old text before
 drawing the new text. Call `canvas.delete` to clear the old text:
 
 ``` {.python}
-def render(self):
+def draw(self):
     self.canvas.delete("all")
     # ...
 ```
@@ -482,7 +482,7 @@ the second skips characters above it. In that second `if` statement,
 character that are halfway inside the viewing window are still drawn.
 
 Scrolling should now be pleasantly fast, and hopefully well within the 16ms
-frame budget. And because we split `layout` and `render`, we don't need to
+frame budget. And because we split `layout` and `draw`, we don't need to
 change `layout` at all to implement this optimization.
 
 Mobile devices
@@ -587,7 +587,7 @@ the line breaks must change, so you will need to call `layout` again.
 *Zoom*: Make the `+` and `-` keys change the text size. You will need
 to use the `font` argument in `create_text` to change the size of
 text. Be careful in how you split the task between `layout` and
-`render`. Make sure that scrolling also works when zoomed in.
+`draw`. Make sure that scrolling also works when zoomed in.
 
 [^3]: On older systems, applications drew directly to the screen, and if
     they didn't update, whatever was there last would stay in place,

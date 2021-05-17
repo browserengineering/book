@@ -173,7 +173,7 @@ that the user is typing into.
 
 Finally, since we've changed the content of the input element (by
 clearing it) we need to redraw the screen. But unlike before, where a
-simple `render` call was enough, we're now changing the web page HTML
+simple `draw` call was enough, we're now changing the web page HTML
 itself! This means we must change the layout tree, and to do that, we
 must call `layout`:
 
@@ -199,11 +199,11 @@ def keypress(self, e):
         self.layout(self.document.node)
 ```
 
-While we're at it, let's modify `render` to draw a cursor into the
+While we're at it, let's modify `draw` to draw a cursor into the
 focused input area:
 
 ``` {.python indent=4}
-def render(self):
+def draw(self):
     # ...
     if self.focus == "address bar":
         # ...
