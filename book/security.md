@@ -1,8 +1,8 @@
 ---
 title: Keeping Data Private
-chapter: 11
-prev: reflow
-next: visual-effects
+chapter: 10
+prev: scripts
+next: reflow
 ...
 
 Our browser has grown up and now runs (small) web applications. Let's

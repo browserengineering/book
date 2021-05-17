@@ -34,8 +34,8 @@ Your web browser will "work" every step of the way, and every chapter
 will build upon the last.[^jrwilcox-idea] That way, you will also
 practice growing and improving complex software. If you feel
 particularly interested in some component, please do flesh it out,
-complete exercises, and add missing features. We've tried to arrange
-it so that this doesn't make later chapters more difficult.
+complete the exercises, and add missing features. We've tried to
+arrange it so that this doesn't make later chapters more difficult.
 
 [^jrwilcox-idea]: This idea is from [J.R. Wilcox][jrw], inspired in turn by
     [S. Zdancewic][sz]'s course on compilers.
