@@ -10,7 +10,7 @@ So far, the appearance of an HTML element has been hard-coded into our
 browser. But web pages should be able to override our style decisions
 and take on a unique character. This is done via _Cascading Style
 Sheets_, a simple styling language for web authors (and, as we'll see,
-browser developers) to define how a web page out to look.
+browser developers) to define how a web page ought to look.
 
 The style attribute
 ===================
@@ -35,7 +35,7 @@ property-value pairs when drawing elements to allow web page authors
 to override defaults like the gray background for `pre` elements.
 
 To keep this style data easily accessible, let's parse it and store it
-in a `style` field on each `ElementNode`:
+in a `style` field on each `Element`:
 
 ``` {.python}
 class Element:
@@ -51,10 +51,10 @@ class Element:
 [^python-get]: The `get` method for dictionaries gets a value out of a
     dictionary, or uses a default value if it's not present.
 
-Here we're adding the `style` field in the `ElementNode` constructor,
+Here we're adding the `style` field in the `Element` constructor,
 based on the `style` attribute,[^python-get] and filling it by parsing
-that attribute's value. Now we can use that information when we do
-layout:
+that attribute's value. Now we can use that information when we paint
+it:
 
 ``` {.python style=background-color:white;}
 class BlockLayout:
@@ -100,7 +100,7 @@ don't understand---the cascade will apply the next-most-specific rule
 that it understands.
 
 Let's add support for CSS to our browser. We'll need to parse CSS
-files into selectors, blocks, property-values pairs; to figure out
+files into selectors, blocks, and property-values pairs; figure out
 which elements on the page match each selector; and then add the
 block's property values to those elements' `style` fields.
 
@@ -178,9 +178,9 @@ def word(self, i):
 
 This function takes index `i` pointing to the start of the value and
 increments it through any word characters,[^word-chars] much like
-`literal`. But unlike `literal`, it also returns the word as parsed
-data, and to do that it stores where it started and extracts the
-substring it moved through. Also note the check: if `i` didn't
+`whitespace`. But unlike `whitespace`, it also returns the word as
+parsed data, and to do that it stores where it started and extracts
+the substring it moved through. Also note the check: if `i` didn't
 advance, that means `i` didn't point at a word to begin with.
 
 [^word-chars]: I've chosen the set of word characters here to cover
@@ -275,7 +275,7 @@ messages, so debugging CSS files becomes more difficult, and it also
 makes it harder to debug your parser.[^try-no-try] This makes
 "catch-all" error handling like this a code smell in most cases.
 
-[^try-no-try]: Try removing the `try` block when debugging.
+[^try-no-try]: I suggest removing the `try` block when debugging.
 
 However, on the web there is an unusual benefit: it supports an
 ecosystem of multiple implementations. For example, different browsers
@@ -467,7 +467,7 @@ So we know which rules apply to an element, and now we need to add
 those rules' property-value pairs to the element's `style`. The logic
 is pretty simple:
 
--   Recurse over the tree of `ElementNode`s;
+-   Recurse over the tree of `Element`s;
 -   For each rule, check if the rule matches;
 -   If it does, go through the property/value pairs and assign them.
 
@@ -490,7 +490,7 @@ def style(node, rules):
 Note that this code skips properties that already have a value. Since
 `style` attributes are filled in first (when the `Element` is
 created), that means `style` attributes take priority over CSS
-stylesheet, which is how it is supposed to work. But it's also a hint
+stylesheets, which is how it is supposed to work. But it's also a hint
 that it matters what order you apply the rules in.
 
 What's the correct order? In CSS, it's called *cascade order*, and it
@@ -501,10 +501,10 @@ sort the rules in priority order, with higher-priority rules first.
 
 So let's add a `priority` method to the selector classes that return
 this priority. In this simplest implementation the exact numbers don't
-matter if they sort right so let's assign tag selectors priority `1`
-and ID selectors priority `100`, and have descendant selectors add the
-priority of their two halves. This means `#a b` takes priority over
-`#a` which takes priority over `b`.
+matter so long as they sort right so let's assign tag selectors
+priority `1` and ID selectors priority `100`, and have descendant
+selectors add the priority of their two halves. This means `#a b`
+takes priority over `#a` which takes priority over `b`.
 
 ``` {.python}
 class TagSelector:
@@ -592,7 +592,7 @@ is mandatory. And the `href` attribute describes the CSS file's URL.
     of a page and is used by search engines to track pages that appear
     at multiple URLs.
 
-We could definitely write a little recursive function to find ever
+We could definitely write a little recursive function to find every
 `link` element with those exact attributes. But we'll be doing similar
 tasks a lot in the next few chapters, so let's instead write a more
 general recursive function to turn a tree into a list:
@@ -707,12 +707,12 @@ usually links are blue. But there's a catch: `color` affects text, but
 text nodes don't have any styles at all. How can that work?
 
 ::: {.further}
-Each browser has its own browser style sheet ([Chrome][blink-css],
+Each browser has its own browser style sheet ([Chromium][blink-css],
 [Safari][webkit-css], [Firefox][gecko-css]). [Reset
 stylesheets][mdn-reset] are often used to overcome any differences.
 This works because web page style sheets take precedence over the
 browser style sheet, just like in our browser, though real browsers
-[fiddling with priorities][cascade-order] to make that
+[fiddle with priorities][cascade-order] to make that
 happen.[^ours-works]
 :::
 
@@ -879,15 +879,17 @@ def draw(self, display_list):
 Phew! That was a lot of coordinated changes, so please test everything
 and make sure it works. You should now see links on this page appear
 in blue---and you'll also notice that the rest of the text has become
-slightly lighter.^[Check out [the book's stylesheet](book.css) to see
-the details.]
+slightly lighter.[^book-css]
+
+[^book-css]: Check out [the book's stylesheet](book.css) to see the
+    details.
 
 Font Properties
 ===============
 
-Well---since we're already mucking around with `InlineLayout`, let's
-also modify it to look up the font size, weight, and style information
-via CSS instead of using the `style`, `weigth`, and `size` fields on
+Since we're already mucking around with `InlineLayout`, let's also
+modify it to look up the font size, weight, and style information via
+CSS instead of using the `style`, `weigth`, and `size` fields on
 `InlineLayout`:
 
 ::: {.todo}
@@ -911,7 +913,7 @@ def text(self, node):
     # ...
 ```
 
-Note that for `font-style` we needs to translate CSS "normal" to Tk
+Note that for `font-style` we need to translate CSS "normal" to Tk
 "roman". Thanks to these changes, we now never need to read the
 `style`, `weight`, and `size` properties on `InlineLayout`, so we can
 delete all the code that sets those properties in the `layout`,
@@ -1017,11 +1019,21 @@ priorities.[^lexicographic]
     in the sequence will work fine as long as no one strings more than
     16 selectors together.
 
-*Ancestor Selectors*: an ancestor selector is the inverse of a
-descendant selector - it styles an ancestor according to the presence
+*Important*: a CSS property-value pair can be marked "important" using
+the `!important` syntax, like this:
+
+    #banner a { color: black !important; }
+
+This gives that property-value pair (but not other pairs in the same
+block!) a higher priority. Parse and implement `!important`, giving
+any property-value pairs marked this way a priority 10 000 higher than
+normal property-value pairs.
+
+*Ancestor Selectors*: An ancestor selector is the inverse of a
+descendant selector---it styles an ancestor according to the presence
 of a descendant. This feature is one of the benefits provided by the
 [`:has` syntax](https://drafts.csswg.org/selectors-4/#relational). Try
 to implement ancestor selectors. As I write this, no browser has
-actually implemented `:has`; why? Hint: analyze the asymptotic speed
-of your implementation. There is a clever implementation that is
-*O(1)* amortized per element---can you find it?
+actually implemented `:has`; why do you think that is? Hint: analyze
+the asymptotic speed of your implementation. There is a clever
+implementation that is *O(1)* amortized per element---can you find it?
