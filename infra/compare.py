@@ -128,7 +128,10 @@ def compare_files(book, code, file):
                     print(" ", l, end="")
             print()
         if name.get("last"): break
-    print("Found differences in {} / {} blocks".format(failure, count))
+    if failure:
+        print("  Found differences in {} / {} blocks".format(failure, count))
+    else:
+        print("  Found no differences {} blocks".format(count))
     return failure
 
 if __name__ == "__main__":
@@ -147,15 +150,13 @@ if __name__ == "__main__":
 
             chapters = data["chapters"]
             for chapter, chapter_metadata in data["chapters"].items():
-                if "lab" in chapter_metadata:
-                    print("Comparing chapter " + chapter + " with lab " +
-                        chapter_metadata["lab"])
-                    book = open("book/" + chapter, "r")
-                    code = open("src/" + chapter_metadata["lab"], "r")
+                if "lab" not in chapter_metadata: continue
+                lab = chapter_metadata["lab"]
+                print(f"Comparing chapter {chapter} with lab {lab}")
+                with open("book/" + chapter) as book, \
+                     open("src/" + lab) as code:
                     cur_failure = compare_files(book, code, None)
-                    failure = failure or cur_failure
-                    book.close()
-                    code.close()
+                    failure += cur_failure
     else:
         failure = compare_files(args.book, args.code, args.file)
     sys.exit(failure)
