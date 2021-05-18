@@ -79,7 +79,7 @@ For simplicity, I'll make input elements have a light gray background:
 
 ``` {.python replace=%22light%20gray%22/bgcolor }
 class InputLayout:
-    def draw(self, to):
+    def paint(self, to):
         x1, x2 = self.x, self.x + self.w
         y1, y2 = self.y, self.y + self.h
         to.append(DrawRect(x1, y1, x2, y2, "light gray"))
@@ -302,7 +302,7 @@ First, let's give buttons a different color:
 
 ``` {.python}
 class InputLayout:
-    def draw(self, to):
+    def paint(self, to):
         # ...
         bgcolor = "light gray" if self.node.tag == "input" else "yellow"
         to.append(DrawRect(x1, y1, x2, y2, bgcolor))
@@ -314,7 +314,7 @@ attributes:
 
 ``` {.python}
 class InputLayout:
-    def draw(self, to):
+    def paint(self, to):
         # ...
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")

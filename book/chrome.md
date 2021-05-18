@@ -267,7 +267,7 @@ paragraph, each word can now be drawn by its corresponding a
 
 ``` {.python}
 class TextLayout:
-    def draw(self, to):
+    def paint(self, to):
         color = self.node.style["color"]
         to.append(DrawText(self.x, self.y, self.word, self.font, color))
 ```
