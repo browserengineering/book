@@ -4,7 +4,9 @@ up to and including Chapter 11 (Keeping Data Private),
 without exercises.
 """
 
+import argparse
 import dukpy
+import functools
 import socket
 import ssl
 import time
@@ -16,6 +18,10 @@ class Timer:
     def __init__(self):
         self.phase = None
         self.time = None
+        self.accumulated = 0
+
+    def reset(self):
+        self.accumulated = 0
 
     def start(self, name):
         if self.phase: self.stop()
@@ -26,6 +32,10 @@ class Timer:
         dt = time.time() - self.time
         print("[{:>10.6f}] {}".format(dt, self.phase))
         self.phase = None
+        self.accumulated += dt
+
+    def print_accumulated(self):
+        print("[{:>10.6f}] {}\n".format(self.accumulated, "Total"))
 
 def url_origin(url):
     return "/".join(url.split("/")[:3])
@@ -404,19 +414,32 @@ class LineLayout:
         for child in self.children:
             child.paint(to)
 
+FONT_CACHE = {}
+
+def GetFont(size, weight, style):
+    key = (size, weight, style)
+    value = FONT_CACHE.get(key)
+    if value: return value
+    value = tkinter.font.Font(size=size, weight=weight, slant=style)
+    FONT_CACHE[key] = value
+    return value
+
 class TextLayout:
     def __init__(self, node, word):
         self.node = node
         self.children = []
         self.word = word
+        self.display_item = None
 
     def size(self):
+        self.display_item = None
+
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(px(self.node.style["font-size"]) * .75)
-        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
-        
+        self.font = GetFont(size, weight, style) 
+
         self.w = self.font.measure(self.word)
         self.compute_height()
 
@@ -427,8 +450,10 @@ class TextLayout:
         pass
 
     def paint(self, to):
-        color = self.node.style["color"]
-        to.append(DrawText(self.x, self.y, self.word, self.font, color))
+        if not self.display_item:
+            color = self.node.style["color"]
+            self.display_item = DrawText(self.x, self.y, self.word, self.font, color)
+        to.append(self.display_item)
 
 class InputLayout:
     def __init__(self, node):
@@ -756,6 +781,67 @@ def drawLayoutTree(node, indent=0):
 
 REFRESH_RATE_MS = 16 # 16ms
 
+class MainThreadRunner:
+    def __init__(self, browser):
+        self.lock = threading.Lock()
+        self.browser = browser
+        self.needs_begin_main_frame = False
+        self.main_thread = threading.Thread(target=self.run, args=())
+        self.script_tasks = []
+        self.browser_tasks = []
+
+    def schedule_main_frame(self):
+        self.lock.acquire(blocking=True)
+        self.needs_begin_main_frame = True
+        self.lock.release()
+
+    def schedule_script_task(self, script):
+        self.lock.acquire(blocking=True)
+        self.script_tasks.append(script)
+        self.lock.release()
+
+    def schedule_browser_task(self, callback):
+        self.lock.acquire(blocking=True)
+        self.browser_tasks.append(callback)
+        self.lock.release()
+
+    def schedule_event_handler():
+        pass
+
+    def start(self):
+        self.main_thread.start()
+
+    def run(self):
+        while True:
+            self.lock.acquire(blocking=True)
+            needs_begin_main_frame = self.needs_begin_main_frame
+            self.lock.release()
+            if needs_begin_main_frame:
+                browser.begin_main_frame()
+                self.browser.commit()
+
+            browser_method = None
+            self.lock.acquire(blocking=True)
+            if len(self.browser_tasks) > 0:
+                browser_method = self.browser_tasks.pop(0)
+            self.lock.release()
+            if browser_method:
+                browser_method()
+
+            script = None
+            self.lock.acquire(blocking=True)
+            if len(self.script_tasks) > 0:
+                script = self.script_tasks.pop(0)
+            self.lock.release()
+
+            if script:
+                try:
+                    retval = self.browser.js.evaljs(script)
+                except dukpy.JSRuntimeError as e:
+                    print("Script", script, "crashed", e)
+
+            time.sleep(0.001) # 1ms
+
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -772,22 +858,61 @@ class Browser:
         self.address_bar = ""
         self.scroll = 0
         self.display_list = []
+
+        self.draw_display_list = []
+        self.needs_draw = False
+
         self.document = None
 
-        self.timer = Timer()
+        self.main_thread_timer = Timer()
+        self.compositor_thread_timer = Timer()
         self.window.bind("<Down>", self.scrolldown)
-        self.window.bind("<Button-1>", self.handle_click)
-        self.window.bind("<Key>", self.keypress)
-        self.window.bind("<Return>", self.pressenter)
+        self.window.bind("<Button-1>", self.compositor_handle_click)
+        self.window.bind("<Key>", self.compositor_keypress)
+        self.window.bind("<Return>", self.press_enter)
 
         self.reflow_roots = []
         self.needs_layout_tree_rebuild = False
         self.needs_display = False
+        self.display_scheduled = False
         self.needs_raf_callbacks = False
 
-    def handle_click(self, e):
+        self.frame_count = 0
+        self.compositor_lock = threading.Lock()
+
+        self.needs_quit = False
+
+    def commit(self):
+        self.compositor_lock.acquire(blocking=True)
+        self.needs_draw = True
+        self.draw_display_list = self.display_list.copy()
+        self.compositor_lock.release()
+
+    def start(self):
+        self.main_thread_runner = MainThreadRunner(self)
+        self.main_thread_runner.start()
+        self.canvas.after(1, self.maybe_draw)
+
+    def maybe_draw(self):
+        self.compositor_lock.acquire(blocking=True)
+        if self.needs_quit:
+            sys.exit()
+        if self.needs_display and not self.display_scheduled:
+            self.canvas.after(REFRESH_RATE_MS,
+                              self.main_thread_runner.schedule_main_frame)
+            self.display_scheduled = True
+
+        if self.needs_draw:
+            self.draw()
+        self.needs_draw = False
+        self.compositor_lock.release()
+        self.canvas.after(1, self.maybe_draw)
+
+    # Runs on the compositor thread
+    def compositor_handle_click(self, e):
         self.focus = None
-        if e.y < 60: # Browser chrome
+        if e.y < 60:
+            # Browser chrome clicks can be handled without the main thread...
             if 10 <= e.x < 35 and 10 <= e.y < 50:
                 self.go_back()
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
@@ -795,26 +920,37 @@ class Browser:
                 self.address_bar = ""
                 self.set_needs_display()
         else:
-            x, y = e.x, e.y + self.scroll - 60
-            obj = find_layout(x, y, self.document)
-            if not obj: return
-            elt = obj.node
-            if elt and self.dispatch_event("click", elt): return
-            while elt:
-                if isinstance(elt, TextNode):
-                    pass
-                elif is_link(elt):
-                    url = relative_url(elt.attributes["href"], self.url)
-                    return self.load(url)
-                elif elt.tag == "input":
-                    elt.attributes["value"] = ""
-                    self.focus = obj
-                    self.set_needs_reflow(self.focus)
-                elif elt.tag == "button":
-                    self.submit_form(elt)
-                elt = elt.parent
+            # ...but not clicks within the web page contents area
+            self.main_thread_runner.schedule_browser_task(
+                functools.partial(self.handle_click, e))
 
-    def keypress(self, e):
+    # Runs on the main thread
+    def handle_click(self, e):
+        # Lock to check scroll, which is updated on the compositor thread.
+        self.compositor_lock.acquire(blocking=True)
+        x, y = e.x, e.y + self.scroll - 60
+        self.compositor_lock.release()
+        self.run_rendering_pipeline()
+        obj = find_layout(x, y, self.document)
+        if not obj: return
+        elt = obj.node
+        if elt and self.dispatch_event("click", elt): return
+        while elt:
+            if isinstance(elt, TextNode):
+                pass
+            elif is_link(elt):
+                url = relative_url(elt.attributes["href"], self.url)
+                return self.schedule_load(url)
+            elif elt.tag == "input":
+                elt.attributes["value"] = ""
+                self.focus = obj
+                self.set_needs_reflow(self.focus)
+            elif elt.tag == "button":
+                self.submit_form(elt)
+            elt = elt.parent
+
+    # Runs on the compositor thread
+    def compositor_keypress(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
 
@@ -824,9 +960,14 @@ class Browser:
             self.address_bar += e.char
             self.set_needs_display()
         else:
-            self.focus.node.attributes["value"] += e.char
-            self.dispatch_event("change", self.focus.node)
-            self.set_needs_reflow(self.focus)
+            self.main_thread_runner.schedule_browser_task(
+                functools.partial(self.keypress, e))
+
+    # Runs on the main thread
+    def keypress(self, e):
+        self.focus.node.attributes["value"] += e.char
+        self.dispatch_event("change", self.focus.node)
+        self.set_needs_reflow(self.focus)
 
     def submit_form(self, elt):
         while elt and elt.tag != "form":
@@ -841,18 +982,19 @@ class Browser:
             body += "&" + name + "=" + value.replace(" ", "%20")
         body = body[1:]
         url = relative_url(elt.attributes["action"], self.url)
-        self.load(url, body)
+        self.schedule_load(url, body)
 
-    def pressenter(self, e):
+    # Runs on the compositor thread
+    def press_enter(self, e):
         if self.focus == "address bar":
             self.focus = None
-            self.load(self.address_bar)
+            self.schedule_load(self.address_bar)
 
     def go_back(self):
         if len(self.history) > 1:
             self.history.pop()
             back = self.history.pop()
-            self.load(back)
+            self.schedule_load(back)
 
     def cookie_string(self):
         cookie_string = ""
@@ -860,8 +1002,13 @@ class Browser:
             cookie_string += "&" + key + "=" + value
         return cookie_string[1:]
 
-    def load(self, url, body=None):
-        self.timer.start("Downloading")
+    def schedule_load(self, url, body=None):
+        self.main_thread_runner.schedule_browser_task(
+            functools.partial(self.load, url, body))
+
+    def load(self, url, body):
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Downloading")
         self.address_bar = url
         self.url = url
         self.history.append(url)
@@ -873,11 +1020,13 @@ class Browser:
             origin = url_origin(self.history[-1])
             self.cookies.setdefault(origin, {})[key] = value
 
-        self.timer.start("Parsing HTML")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Parsing HTML")
         self.nodes = parse(lex(body))
 #        drawHTMLTree(self.nodes)
         
-        self.timer.start("Parsing CSS")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Parsing CSS")
         with open("browser8.css") as f:
             self.rules = CSSParser(f.read()).parse()
 
@@ -899,18 +1048,17 @@ class Browser:
             scripts.append([header, body])
 
     def run_scripts(self):
-        self.timer.start("Running JS")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Running JS")
         self.setup_js()
 
+        scripts=[]
         scripts=[]
         thread = threading.Thread(target=self.load_scripts, args=(scripts,))
         thread.start()
         thread.join()
         for [header, body] in scripts:
-            try:
-                print("Script returned: ", self.js.evaljs(body))
-            except dukpy.JSRuntimeError as e:
-                print("Script", script, "crashed", e)
+            self.main_thread_runner.schedule_script_task(body)
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -926,7 +1074,8 @@ class Browser:
             self.js_requestAnimationFrame)
         self.js.export_function("now", self.js_now)
         with open("runtime13.js") as f:
-            self.js.evaljs(f.read())
+            self.main_thread_runner.schedule_script_task(f.read())
+
 
     def js_querySelectorAll(self, sel):
         selector, _ = CSSParser(sel + "{").selector(0)
@@ -940,7 +1089,6 @@ class Browser:
     def js_innerHTML(self, handle, s):
         try:
             self.run_rendering_pipeline()
-
             doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
             new_nodes = doc.children[0].children
             elt = self.handle_to_node[handle]
@@ -965,6 +1113,7 @@ class Browser:
 
     def dispatch_event(self, type, elt):
        handle = self.node_to_handle.get(elt, -1)
+
        do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
        return not do_default
 
@@ -986,17 +1135,26 @@ class Browser:
         self.set_needs_display()
 
     def set_needs_display(self):
-        if not self.needs_display:
+        self.compositor_lock.acquire(blocking=True)
+        if not self.display_scheduled:
             self.needs_display = True
-            self.canvas.after(REFRESH_RATE,
-                              self.begin_main_frame)
+        self.compositor_lock.release()
+
+    def quit(self):
+        self.compositor_lock.acquire(blocking=True)
+        self.needs_quit = True
+        self.compositor_lock.release();        
 
     def begin_main_frame(self):
         self.needs_display = False
 
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.reset()
+
         if (self.needs_raf_callbacks):
             self.needs_raf_callbacks = False
-            self.timer.start("runRAFHandlers")
+            if args.compute_main_thread_timings:
+                self.main_thread_timer.start("runRAFHandlers")
             self.js.evaljs("__runRAFHandlers()")
 
         self.run_rendering_pipeline()
@@ -1005,9 +1163,17 @@ class Browser:
         # been registered during a call to __runRAFHandlers). By default,
         # tkinter doesn't run these until there are no more event queue
         # tasks.
-        self.timer.start("IdleTasks")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("IdleTasks")
         self.canvas.update_idletasks()
-        self.timer.stop()
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.stop()
+            self.main_thread_timer.print_accumulated()
+
+        self.frame_count = self.frame_count + 1
+        if args.stop_after > 0  and self.frame_count > args.stop_after:
+            self.quit()
+            sys.exit()
 
     def run_rendering_pipeline(self):
         if self.needs_layout_tree_rebuild:
@@ -1018,33 +1184,43 @@ class Browser:
         for reflow_root in self.reflow_roots:
             self.reflow(reflow_root)
         self.reflow_roots = []
+        self.paint()
+        self.max_y = self.document.h - HEIGHT
+        # drawLayoutTree(self.document)
+
+    def paint(self):
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Paint")
+        self.display_list = []
+        self.document.paint(self.display_list)
 
     def reflow(self, obj):
-        self.timer.start("Style")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Style")
         style(obj.node, None, self.rules)
-        self.timer.start("Layout (phase 1A)")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Layout (phase 1A)")
         obj.size()
-        self.timer.start("Layout (phase 1B)")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Layout (phase 1B)")
         while obj.parent:
             obj.parent.compute_height()
             obj = obj.parent
-        self.timer.start("Layout (phase 2)")
+        if args.compute_main_thread_timings:
+            self.main_thread_timer.start("Layout (phase 2)")
         self.document.position()
-        self.timer.start("Display list")
-        self.display_list = []
-        self.document.paint(self.display_list)
-        self.draw()
-        self.max_y = self.document.h - HEIGHT
-#        drawLayoutTree(self.document)
 
     def draw(self):
-        self.timer.start("Drawing")
+        if args.compute_compositor_thread_timings:
+            self.compositor_thread_timer.reset()
+            self.compositor_thread_timer.start("Draw")
         self.canvas.delete("all")
-        for cmd in self.display_list:
+        for cmd in self.draw_display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
             if cmd.y2 < self.scroll: continue
             cmd.draw(self.scroll - 60, self.canvas)
-        self.timer.start("Chrome")
+        if args.compute_compositor_thread_timings:
+            self.main_thread_timer.start("Draw Chrome")
         self.canvas.create_rectangle(0, 0, 800, 60, width=0, fill='light gray')
         self.canvas.create_rectangle(50, 10, 790, 50)
         font = tkinter.font.Font(family="Courier", size=30)
@@ -1059,15 +1235,34 @@ class Browser:
             x = self.focus.x + self.focus.font.measure(text)
             y = self.focus.y - self.scroll + 60
             self.canvas.create_line(x, y, x, y + self.focus.h)
+        if args.compute_compositor_thread_timings:
+            self.compositor_thread_timer.stop()
+            self.compositor_thread_timer.print_accumulated()
 
+    # Runs on the compositor thread
     def scrolldown(self, e):
+        self.compositor_lock.acquire(blocking=True)
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
+        self.compositor_lock.release()
         self.set_needs_display()
 
 if __name__ == "__main__":
     import sys
+
+    parser = argparse.ArgumentParser(description="Chapter 13 source code")
+    parser.add_argument("--url", default=2, type=str, required=True,
+        help="URL to load")
+    parser.add_argument("--stop_after", default=0, type=int,
+        help="If set, exits the browser after this many generates frames")
+    parser.add_argument("--compute_main_thread_timings", type=bool,
+        help="Compute main thread timings")
+    parser.add_argument("--compute_compositor_thread_timings", type=bool,
+        help="Compute compositor thread timings")
+    args = parser.parse_args()
+
     browser = Browser()
-    browser.load(sys.argv[1])
+    browser.start()
+    browser.schedule_load(args.url)
     tkinter.mainloop()

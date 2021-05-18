@@ -391,6 +391,8 @@ stacking context is [“backface visible”](backface-visible).
 
 [backface-visible]: https://drafts.csswg.org/css-transforms-2/#propdef-backface-visibility
 
+<a name=hardware-acceleration>
+
 Hardware Acceleration
 =====================
 

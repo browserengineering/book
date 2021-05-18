@@ -4,6 +4,13 @@
 <link rel="stylesheet" href="widget.css" />
 
 <style>
+figure { display: flex; flex-wrap: wrap; justify-content: space-between; }
+#phases {
+    flex: 1; flex-basis: 300px;
+    display: flex; flex-wrap: wrap; justify-content: space-between;
+}
+#phases:after { content: ""; } /* Adds an extra gap */
+
 text.drawn { dominant-baseline: text-before-edge; }
 /* This nasty hack corrects for some weird difference in Chrome */
 @media screen and (-webkit-min-device-pixel-ratio:0) and (min-resolution:.001dpcm) {
@@ -18,58 +25,53 @@ line.baseline { stroke-dasharray: 5, 5; }
 .amax { fill: darkred; stroke: darkred; }
 .dreg { fill: lightblue; stroke: lightblue; }
 .dmax { fill: darkblue; stroke: darkblue }
-svg { width: 100%; }
-#g1 { transform: translate(50px, 0); }
-#g2 { transform: translate(400px, 0); }
-#caption { transform: translate(670px, 0); }
-@media screen and (max-width: 750px) {
-    #g1 { transform: translate(80px, -10px); }
-    #g2 { transform: translate(80px, 60px); }
-    #caption { transform: translate(400px, 0); }
-    #g1 text.title { transform: translate(-70px, 10px); }
-    #g2 text.title { transform: translate(-70px, 10px); }
-}
+#g1 { transform: translate(80px, 0); }
+#g2 { transform: translate(80px, 0); }
 </style>
 
+<form id="controls">
+  <fieldset id="step-controls">
+    <h1>Aligning the words on a line</h1>
+    <button class="reset left" disabled><span>Restart</span></button>
+    <button class="stepb left" disabled><span>Back</span></button>
+    <button class="stepf right"><span>Next</span></button>
+    <button class="play right"><span>Animate</span></button>
+  </fieldset>
+  <fieldset id="input-controls">
+    <textarea id="input" rows="4">Mixed <big>big</big> and <small>small</small></textarea>
+  </fieldset>
+</form>
 <figure id="widget">
-  <svg id="canvas" height="160">
-    <g id="g1"></g>
-    <g id="g2"></g>
-    <g id="caption">
-      <text x="0" y="20" class="title">Caption</text>
+  <div id="phases">
+    <svg width="300" height="100">
+      <g id="g1"></g>
+    </svg>
+    <svg width="300" height="120">
+      <g id="g2"></g>
+    </svg>
+  </div>
+  <svg width="100" height="160" id="caption">
+    <text x="0" y="20" class="title">Caption</text>
 
-      <g>
-        <rect x="2.5" y="70" width="5" height="30" class="areg"></rect>
-        <rect x="2.5" y="100" width="5" height="20" class="dreg"></rect>
-      </g>
+    <g>
+      <rect x="2.5" y="70" width="5" height="30" class="areg"></rect>
+      <rect x="2.5" y="100" width="5" height="20" class="dreg"></rect>
+    </g>
 
-      <g transform="translate(10 0)">
-        <line x1="5" y1="50" x2="5" y2="70" class="amax"></line>
-        <rect x="2.5" y="70" width="5" height="30" class="amax"></rect>
-        <rect x="2.5" y="100" width="5" height="20" class="dmax"></rect>
-        <line x1="5" y1="120" x2="5" y2="140" class="dmax"></line>
-      </g>
+    <g transform="translate(10 0)">
+      <line x1="5" y1="50" x2="5" y2="70" class="amax"></line>
+      <rect x="2.5" y="70" width="5" height="30" class="amax"></rect>
+      <rect x="2.5" y="100" width="5" height="20" class="dmax"></rect>
+      <line x1="5" y1="120" x2="5" y2="140" class="dmax"></line>
+    </g>
 
-      <g transform="translate(25 0)">
-        <text x="0" y="65" class="label">Leading</text>
-        <text x="0" y="90" class="label">Ascent</text>
-        <text x="0" y="115" class="label">Descent</text>
-        <text x="0" y="135" class="label">Leading</text>
-      </g>
+    <g transform="translate(25 0)">
+      <text x="0" y="65" class="label">Leading</text>
+      <text x="0" y="90" class="label">Ascent</text>
+      <text x="0" y="115" class="label">Descent</text>
+      <text x="0" y="135" class="label">Leading</text>
     </g>
   </svg>
-  <form id="controls">
-    <fieldset id="step-controls">
-      <h1>Aligning the words on a line</h1>
-      <button class="reset left" disabled>Restart</button>
-      <button class="stepb left" disabled>Back</button>
-      <button class="stepf right">Next</button>
-      <button class="play right">Animate</button>
-    </fieldset>
-    <fieldset id="input-controls">
-      <textarea id="input" rows="4">Mixed <big>big</big> and <small>small</small></textarea>
-    </fieldset>
-  </form>
 </figure>
 
 <script src="lab3.js"></script>
@@ -82,7 +84,7 @@ const socket = lib.socket({ "http://input/": http_textarea(document.querySelecto
 const ssl = lib.ssl();
 const tkinter = lib.tkinter({ zoom: ZOOM });
 
-let widget = new Widget(document.querySelector("#widget"));
+let widget = new Widget(document.querySelector("#controls"));
   
 let STATE;
   
@@ -112,14 +114,14 @@ function draw_widget() {
     while (g1.children.length) g1.removeChild(g1.children[0]);
     while (g2.children.length) g2.removeChild(g2.children[0]);
 
-    let width = 250;
-    let tmargin = 50;
+    let width = 220;
+    let tmargin = 30;
     let y1 = tmargin;
     let b = y1 + 1.2 * STATE.max_asc * ZOOM;
     let y2 = y1 + ZOOM * (STATE.final_y - STATE.initial_y);
 
     if (STATE.initial_y || STATE.final_y) {
-        g2.appendChild(svg("text", { x: 0, y: tmargin - 30, class: "title" }, "Phase 2"));
+        g2.appendChild(svg("text", { x: 0, y: 20, class: "title" }, "Phase 2"));
         let y = STATE.final_y ? y2 : y1;
         g2.appendChild(svg("text", { x: 0, y: y, class: "varname" }, "cursor_y"));
     }
@@ -171,7 +173,7 @@ function draw_widget() {
     }
 
     if (STATE.line) {
-        g1.appendChild(svg("text", { x: 0, y: tmargin - 30, class: "title" }, "Phase 1"));
+        g1.appendChild(svg("text", { x: 0, y: 20, class: "title" }, "Phase 1"));
         g1.appendChild(svg("text", { x: 0, y: tmargin, class: "varname" }, "line"));
         g1.appendChild(svg("line", { x1: 0, y1: tmargin, x2: width, y2: tmargin }));
         for (let [x, word, font] of STATE.line) {

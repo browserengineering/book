@@ -4,13 +4,13 @@
         "intro.md": { "disabled": false },
         "history.md": { "disabled": false },
 
-        "http.md": { "disabled": false },
-        "graphics.md": { "disabled": false },
-        "text.md": { "disabled": false },
+        "http.md": { "disabled": false, "lab": "lab1.py" },
+        "graphics.md": { "disabled": false, "lab": "lab2.py" },
+        "text.md": { "disabled": false, "lab": "lab3.py" },
 
-        "html.md": { "disabled": false },
-        "layout.md": { "disabled": false },
-        "styles.md": { "disabled": true },
+        "html.md": { "disabled": false, "lab": "lab4.py" },
+        "layout.md": { "disabled": false, "lab": "lab5.py" },
+        "styles.md": { "disabled": true, "lab": "lab6.py" },
         "chrome.md": { "disabled": true },
 
         "forms.md": { "disabled": true },
