@@ -211,7 +211,7 @@ need to make `size` call their `size` method. Rename the old `layout`
 method to `size`, remove the loop at the end, and replace it with
 this:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def size(self):
         self.children = []
@@ -272,7 +272,7 @@ values in terms of `baseline`. Let's leave `max_ascent` and
 `max_descent` in the `size` method but move `baseline` and the loop
 over children to the `position` method.
 
-``` {.python}
+``` {.python expected=False}
 class LineLayout:
     def size(self):
         self.w = self.parent.w
@@ -285,7 +285,6 @@ class LineLayout:
         self.h = 1.2 * (self.max_descent + self.max_ascent)
 
     def position(self):
-        if not self.children: return
         baseline = self.y + 1.2 * self.max_ascent
         cx = 0
         for child, metrics in zip(self.children, self.metrics):
@@ -325,7 +324,7 @@ only computed later on, in the `position` phase. So instead of
 initializing `cy` to `self.y`, let's initialize it to `0` instead.
 Then to compute `h`, we won't need to subtract off `self.y`.
 
-``` {.python}
+``` {.python expected=False}
 class InlineLayout:
     def size(self):
         # ...
@@ -340,7 +339,7 @@ Wait a minute... If `h` is just set to `cy`, why not just drop the
 `cy` field, and use `h`? Yeah, let's do that:
 
 
-``` {.python}
+``` {.python expected=False}
 class InlineLayout:
     def size(self):
         # ...
@@ -360,7 +359,7 @@ Finally, the `flush` method creates new children, sets their `x` and
 The `flush` method should just create children and call their `size`
 method:
 
-``` {.python}
+``` {.python expected=False}
 class InlineLayout:
     def flush(self):
         child = self.children[-1]
@@ -387,7 +386,7 @@ Now that all the layout objects have been updated, we should have one
 final `layout` method in the whole browser: the one on the `Browser`
 object itself. It now needs to call both `size` and `position`:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def layout(self, tree):
         # ...
@@ -581,7 +580,7 @@ The `load` function doesn't need any changes, because it calls
 In `handle_click`, we're interested in the case where the user clicks
 on an input element, and we only need to reflow that input element:
 
-``` {.python}
+``` {.python expected=False}
 def handle_click:
     # ...
     elif elt.tag == "input":
@@ -593,7 +592,7 @@ def handle_click:
 
 Likewise in `keypress`:
 
-``` {.python}
+``` {.python expected=False}
 def keypress(self, e):
     # ...
     else:
@@ -723,7 +722,7 @@ Next up: the `BlockLayout`. Here `compute_height` looks like this:
 ``` {.python}
 class BlockLayout:
     def compute_height(self):
-        self.h = self.pt + self.pb
+        self.h = 0
         for child in self.children:
             self.h += child.mt + child.h + child.mb
 ```
@@ -740,7 +739,6 @@ line that adjusts `h` inside `flush`, and move that into a new
 class InlineLayout:
     def size(self):
         # ...
-        
         self.recurse(self.node)
         self.flush()
         self.children.pop()
