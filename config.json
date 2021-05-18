@@ -22,15 +22,15 @@
         "html.md": { "disabled": false, "lab": "lab4.py" },
         "layout.md": { "disabled": false, "lab": "lab5.py" },
         "styles.md": { "disabled": true, "lab": "lab6.py" },
-        "chrome.md": { "disabled": true },
+        "chrome.md": { "disabled": true, "lab": "lab7.py" },
 
-        "forms.md": { "disabled": true },
-        "scripts.md": { "disabled": true },
-        "reflow.md": { "disabled": true },
-        "security.md": { "disabled": true },
+        "forms.md": { "disabled": true, "lab": "lab8.py" },
+        "scripts.md": { "disabled": true, "lab": "lab9.py" },
+        "reflow.md": { "disabled": true, "lab": "lab10.py" },
+        "security.md": { "disabled": true, "lab": "lab11.py" },
 
         "visual-effects.md": { "disabled": true },
-        "rendering-architecture.md": { "disabled": true },
+        "rendering-architecture.md": { "disabled": true, "lab": "lab13.py" },
 
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
