@@ -101,20 +101,12 @@ def find_block(block, text):
         last_type = type
     return same
 
-    
-if __name__ == "__main__":
-    import sys, argparse
-    argparser = argparse.ArgumentParser(description="Compare book blocks to teacher's copy")
-    argparser.add_argument("book", metavar="book.md", type=argparse.FileType("r"))
-    argparser.add_argument("code", metavar="code.py", type=argparse.FileType("r"))
-    argparser.add_argument("--file", dest="file", help="Only consider code blocks from this file")
-    args = argparser.parse_args()
- 
-    src = args.code.read()
-    blocks = tangle(args.book.name)
+def compare_files(book, code, file):
+    src = code.read()
+    blocks = tangle(book.name)
     failure, count = 0, 0
     for name, block in blocks:
-        if name.get("file") != args.file: continue
+        if name.get("file") != file: continue
         block = indent(block, name.get("indent", "0"))
         block = replace(block, *[item.split("/", 1) for item in name.get("replace", "/").split(",")])
         cng = find_block(block, src)
@@ -136,5 +128,35 @@ if __name__ == "__main__":
                     print(" ", l, end="")
             print()
         if name.get("last"): break
-    print("Found differences in {} / {} blocks".format(failure, count))
+    if failure:
+        print("  Found differences in {} / {} blocks".format(failure, count))
+    else:
+        print("  Found no differences {} blocks".format(count))
+    return failure
+
+if __name__ == "__main__":
+    import sys, argparse
+    argparser = argparse.ArgumentParser(description="Compare book blocks to teacher's copy")
+    argparser.add_argument("--config", type=str)
+    argparser.add_argument("--book", metavar="book.md", type=argparse.FileType("r"))
+    argparser.add_argument("--code", metavar="code.py", type=argparse.FileType("r"))
+    argparser.add_argument("--file", dest="file", help="Only consider code blocks from this file")
+    args = argparser.parse_args()
+
+    failure = False
+    if args.config:
+        with open(args.config) as f:
+            data = json.load(f)
+
+            chapters = data["chapters"]
+            for chapter, chapter_metadata in data["chapters"].items():
+                if "lab" not in chapter_metadata: continue
+                lab = chapter_metadata["lab"]
+                print(f"Comparing chapter {chapter} with lab {lab}")
+                with open("book/" + chapter) as book, \
+                     open("src/" + lab) as code:
+                    cur_failure = compare_files(book, code, None)
+                    failure += cur_failure
+    else:
+        failure = compare_files(args.book, args.code, args.file)
     sys.exit(failure)
