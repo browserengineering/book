@@ -60,7 +60,7 @@ binding directly to the `duktape` library that `dukpy` uses.
 
 To test whether you installed DukPy correctly, execute:
 
-``` {.python}
+``` {.python expected=False}
 import dukpy
 dukpy.evaljs("2 + 2")
 ```
@@ -107,13 +107,14 @@ def find_scripts(node, out):
 Then, when we load a web page, we will find all of the scripts and run
 them:
 
-``` {.python}
+```
 def load(self, url, body=None):
     # ... load, parse, style
     for script in find_scripts(self.nodes, []):
         header, body = request(relative_url(script, self.history[-1]))
-        print("Script returned: ", dukpy.evaljs(body))
-    self.layout(nodes)
+        print("Script returned: ", self.js.evaljs(body))
+
+    self.layout(self.nodes)
 ```
 
 That snippet refers to `self.nodes`; let's just create that field and
@@ -128,7 +129,7 @@ x + x
 
 Write that to `test.js` and try the following web page:
 
-``` {.python}
+```
 <script src=test.js></script>
 ```
 
@@ -161,7 +162,7 @@ registered on a `JSInterpreter` object, which we'll need to create:
 ``` {.python}
 class Browser:
     def setup_js(self):
-        self.js_environment = dukpy.JSInterpreter()
+        self.js = dukpy.JSInterpreter()
 ```
 
 We can call this `setup_js` function when pages load:
@@ -184,7 +185,7 @@ argument---`print`.[^5] We can register it using `export_function`:
 ``` {.python}
 def setup_js(self):
     # ...
-    self.js_environment.export_function("log", print)
+    self.js.export_function("log", print)
 ```
 
 You can call this registered function via Dukpy's `call_python`
@@ -220,11 +221,11 @@ can call that JavaScript code our "JavaScript runtime"; we run it
 before we run any user code, so let's stick it in a `runtime.js`
 file that's run in `setup_js`:
 
-``` {.python}
+``` {.python expected=False}
 def setup_js(self):
     # ...
     with open("runtime.js") as f:
-        self.js_environment.evaljs(f.read())
+        self.js.evaljs(f.read())
 ```
 
 Now you should be able to run the script `console.log("Hi from JS!")`
@@ -234,7 +235,7 @@ As a side benefit of using one `JSInterpreter` for all scripts, it is
 now possible to run two scripts and have one of them define a variable
 that the other uses, say on a page like:
 
-``` {.python}
+```
 <script src=a.js></script>
 <script src=b.js></script>
 ```
@@ -258,7 +259,7 @@ of crashes: crashes in web page scripts, and crashes in your own
 JavaScript runtime. In the first case, you want to ignore those
 crashes:
 
-``` {.python}
+``` {.python expected=False}
 try:
     print("Script returned: ", self.js.evaljs(body))
 except dukpy.JSRuntimeError as e:
@@ -276,7 +277,7 @@ runtime code calls into a registered function that crashes.
 To help, wrap each registered function to print any backtraces it
 produces:
 
-``` {.python}
+``` {.python expected=False}
 try:
     # ...
 except:
@@ -330,17 +331,14 @@ Let's start with `querySelectorAll`. First, register a function:
 ``` {.python}
 def setup_js(self):
     # ...
-    self.js_environment.export_function(
-        "querySelectorAll",
-        self.js_querySelectorAll
-    )
+    self.js.export_function("querySelectorAll", self.js_querySelectorAll)
     # ...
 ```
 
 In JavaScript, `querySelectorAll` is a method on the `document`
 object, so define one in the JavaScript runtime:
 
-``` {.python}
+``` {.javascript}
 document = { querySelectorAll: function(s) {
     return call_python("querySelectorAll", s);
 }}
@@ -350,7 +348,7 @@ The `js_querySelectorAll` handler will first parse the selector, then
 find and return the matching elements. To parse just the selector,
 I'll call into the `CSSParser`'s `selector` method:
 
-``` {.python}
+``` {.python expected=False}
 def js_querySelectorAll(self, selector_text):
     selector, _ = CSSParser(selector_text + "{").selector(0)
 ```
@@ -360,7 +358,7 @@ selector parser won't go off the end of the string and throw an
 error. I've moved the actual selector matching to a recursive helper
 function:[^6]
 
-``` {.python}
+``` {.python expected=False}
 def js_querySelectorAll(self, selector_text):
     # ...
     return find_selected(self.nodes, selector, [])
@@ -432,7 +430,7 @@ Then, I'll allocate new handles for each node being returned into
 JavaScript:
 
 ``` {.python}
-def js_querySelectorAll(self, sel):)
+def js_querySelectorAll(self, sel):
     # ...
     elts = find_selected(self.nodes, selector, [])
     return [self.make_handle(elt) for elt in elts]
@@ -444,14 +442,14 @@ yet:[^id-elt]
 [^id-elt]: `node_to_handle` uses `id(elt)` instead of `elt` as its key
     because Python objects can't be used as hash keys by default.
 
-``` {.python}
+``` {.python expected=False}
 def make_handle(self, elt):
-    if id(elt) not in self.node_to_handle:
+    if elt not in self.node_to_handle:
         handle = len(self.node_to_handle)
         self.node_to_handle[id(elt)] = handle
         self.handle_to_node[handle] = elt
     else:
-        handle = self.node_to_handle[id(elt)]
+        handle = self.node_to_handle[elt]
     return handle
 ```
 
@@ -570,20 +568,22 @@ Let's start with generating events. First, create a `dispatch_event`
 method and call it whenever an event is generated. First, any time we
 click in the page:
 
-``` {.python}
+``` {.python expected=False}
 def handle_click(self, e):
+    # ...
     if e.y < 60:
         # ...
     else:
         # ...
         elt = obj.node
-        if elt: self.dispatch_event('click', elt)
+        if elt:
+             self.dispatch_event('click', elt)
         # ...
 ```
 
 Second, after updating input area values:[^edit-then-event]
 
-``` {.python}
+``` {.python expected=False}
 def keypress(self, e):
     # ...
     else:
@@ -598,7 +598,7 @@ def keypress(self, e):
 And finally, when submitting forms but before actually sending the
 request to the server:
 
-``` {.python}
+``` {.python expected=False}
 def submit_form(self, elt):
     # ...
     if not elt: return
@@ -646,9 +646,8 @@ So `event` now just calls `__runHandlers` from Python:
 
 ``` {.python}
 def dispatch_event(self, type, elt):
-    handle = self.make_handle(elt)
-    code = "__runHandlers({}, \"{}\")".format(handle, type)
-    self.js_environment.evaljs(code)
+    handle = self.node_to_handle.get(elt, -1)
+    do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
 ```
 
 Note that this code passes arguments to `__runHandlers` by generating
@@ -662,7 +661,7 @@ browser supplies that value that won't ever happen.[^dukpy-object]
 With all this event-handling machinery in place, we can run the
 character count every time an input area changes:
 
-``` {.python}
+``` {.javascript}
 function lengthCheck() {
     var name = this.getAttribute("name");
     var value = this.getAttribute("value");
@@ -718,10 +717,7 @@ string. Next, we need to register the `innerHTML` function:
 ``` {.python}
 def setup_js(self):
     # ...
-    self.js_environment.export_function(
-        "innerHTML",
-        self.js_innerHTML
-    )
+    self.js.export_function("innerHTML", self.js_innerHTML)
     # ...
 ```
 
@@ -742,7 +738,7 @@ def js_innerHTML(self, handle, s):
 Now the new nodes can be made the children of the element `innerHTML`
 was called on:
 
-``` {.python}
+``` {.python expected=False}
 def js_innerHTML(self, handle, s):
     # ...
     elt = self.handle_to_node[handle]
@@ -759,7 +755,7 @@ might be tempted to do that by calling `layout`, like so:
 ``` {.python}
 def js_innerHTML(self, handle, s):
     # ...
-    self.layout(self.nodes)
+    self.layout(self.document.node)
 ```
 
 But remember that before we lay out a node, we need to style it,
@@ -769,7 +765,9 @@ To fix this, we'll need to save the CSS rules in `load`
 ``` {.python}
 def load(self, url, body=None):
     # ...
-    self.rules = rules
+    with open("browser8.css") as f:
+        self.rules = CSSParser(f.read()).parse()
+    # ...
     self.layout(self.nodes)
 ```
 
@@ -793,7 +791,7 @@ error message into it if the paragraph gets too long.
 
 Next, let's add a script to the page. That means a new line of HTML:
 
-``` {.python}
+``` {.python expected=False}
 def show_comments():
     # ...
     out += "<script src=/comment.js></script>"
@@ -803,7 +801,7 @@ def show_comments():
 We also need to *serve* that new JavaScript file, so our little web
 server will now need to respond to the `/comment.js` URL:
 
-``` {.python}
+``` {.python expected=False}
 def handle_request(method, url, headers, body):
     if method == 'POST':
         # ..
@@ -893,17 +891,17 @@ function __runHandlers(handle, type) {
 
 On the Python side, `event` can return that boolean to its handler
 
-``` {.python}
+``` {.python expected=False}
 def dispatch_event(self, type, elt):
     # ...
-    do_default = self.js_environment.evaljs(code)
+    do_default = self.js.evaljs(code)
     return not do_default
 ```
 
 Finally, whatever event handler runs `dispatch_event` should check
 that return value and stop if it is `True`. So in `handle_click`:
 
-``` {.python}
+``` {.python expected=False}
 def handle_click(self, e):
     # ...
     if elt and self.dispatch_event('click', elt): return
@@ -913,7 +911,7 @@ def handle_click(self, e):
 And also in `submit_form`:
 
 ``` {.python}
-def submit_form(self, form):
+def submit_form(self, elt):
     # ...
     if self.dispatch_event("submit", elt): return
 ```
@@ -947,7 +945,7 @@ Well... Impossible in this browser. But there are browsers that don't
 run JavaScript (like ours, one chapter back). So we should do the
 check on the server side also:
 
-``` {.python}
+``` {.python expected=False}
 def add_entry(params):
     if 'guest' in params and len(params['guest']) <= 100:
         ENTRIES.append(params["guest"])

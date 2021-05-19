@@ -174,7 +174,7 @@ HEAD_TAGS = [
             
 def implicit_tags(tok, currently_open):
     tag = tok.tag if isinstance(tok, Tag) else None
-    while True:
+    while True:4
         open_tags = [node.tag for node in currently_open]
         if open_tags == [] and tag != "html":
             node = ElementNode("html", {})
@@ -817,9 +817,9 @@ class Browser:
         self.layout(self.document.node)
 
     def dispatch_event(self, type, elt):
-       handle = self.node_to_handle.get(elt, -1)
-       do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
-       return not do_default
+        handle = self.node_to_handle.get(elt, -1)
+        do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
+        return not do_default
 
     def make_handle(self, elt):
         if elt not in self.node_to_handle:
