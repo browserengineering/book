@@ -577,7 +577,7 @@ class Browser:
         headers, body = request(url)
         tree = HTMLParser(body).parse()
         self.display_list = Layout(tree).display_list
-        self.render()
+        self.draw()
 ```
 
 Run it---the browser should now work off of the parsed HTML tree.

@@ -363,9 +363,9 @@ class LineLayout:
         max_descent = max([metric["descent"] for metric in metrics])
         self.h = 1.2 * (max_descent + max_ascent)
 
-    def draw(self, to):
+    def paint(self, to):
         for child in self.children:
-            child.draw(to)
+            child.paint(to)
 
 class TextLayout:
     def __init__(self, node, word):
@@ -383,7 +383,7 @@ class TextLayout:
         self.w = self.font.measure(self.word)
         self.h = self.font.metrics("linespace")
 
-    def draw(self, to):
+    def paint(self, to):
         color = self.node.style["color"]
         to.append(DrawText(self.x, self.y, self.word, self.font, color))
 
@@ -434,9 +434,9 @@ class InlineLayout:
         self.cy += child.h
         self.children.append(LineLayout(self.node, self))
 
-    def draw(self, to):
+    def paint(self, to):
         for child in self.children:
-            child.draw(to)
+            child.paint(to)
 
 def px(s):
     if s.endswith("px"):
@@ -501,12 +501,12 @@ class BlockLayout:
             y += child.mt + child.h + child.mb
         self.h = y - self.y
 
-    def draw(self, to):
+    def paint(self, to):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.w, self.y + self.h
             to.append(DrawRect(self.x, self.y, x2, y2, "gray"))
         for child in self.children:
-            child.draw(to)
+            child.paint(to)
 
 class DocumentLayout:
     def __init__(self, node):
@@ -534,8 +534,8 @@ class DocumentLayout:
         child.layout()
         self.h = child.h
 
-    def draw(self, to):
-        self.children[0].draw(to)
+    def paint(self, to):
+        self.children[0].paint(to)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -631,7 +631,7 @@ class Browser:
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.render()
+                self.draw()
         else:
             x, y = e.x, e.y + self.scroll - 60
             obj = find_layout(x, y, self.document)
@@ -648,7 +648,7 @@ class Browser:
         if not (0x20 <= ord(e.char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += e.char
-            self.render()
+            self.draw()
 
     def pressenter(self, e):
         if self.focus == "address bar":
@@ -684,11 +684,11 @@ class Browser:
         self.document = DocumentLayout(tree)
         self.document.layout()
         self.display_list = []
-        self.document.draw(self.display_list)
-        self.render()
+        self.document.paint(self.display_list)
+        self.draw()
         self.max_y = self.document.h - HEIGHT
 
-    def render(self):
+    def draw(self):
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.y1 > self.scroll + HEIGHT - 60: continue
@@ -708,7 +708,7 @@ class Browser:
         self.scroll = self.scroll + SCROLL_STEP
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
-        self.render()
+        self.draw()
 
 if __name__ == "__main__":
     import sys

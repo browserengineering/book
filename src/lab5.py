@@ -238,13 +238,13 @@ class BlockLayout:
 
         breakpoint("layout_post", self)
 
-    def draw(self, display_list):
+    def paint(self, display_list):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
             display_list.append(rect)
         for child in self.children:
-            child.draw(display_list)
+            child.paint(display_list)
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
@@ -337,7 +337,7 @@ class InlineLayout:
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.2 * max_descent
 
-    def draw(self, display_list):
+    def paint(self, display_list):
         for x, y, word, font in self.display_list:
             display_list.append(DrawText(x, y, word, font))
 
@@ -360,8 +360,8 @@ class DocumentLayout:
         self.height = child.height + 2*VSTEP
         breakpoint("layout_post", self)
 
-    def draw(self, display_list):
-        self.children[0].draw(display_list)
+    def paint(self, display_list):
+        self.children[0].paint(display_list)
 
 class DrawText:
     def __init__(self, x1, y1, text, font):
@@ -416,10 +416,10 @@ class Browser:
         self.document = DocumentLayout(nodes)
         self.document.layout()
         self.display_list = []
-        self.document.draw(self.display_list)
-        self.render()
+        self.document.paint(self.display_list)
+        self.draw()
 
-    def render(self):
+    def draw(self):
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.top > self.scroll + HEIGHT: continue
@@ -429,7 +429,7 @@ class Browser:
     def scrolldown(self, e):
         max_y = self.document.height - HEIGHT
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
-        self.render()
+        self.draw()
 
 if __name__ == "__main__":
     import sys

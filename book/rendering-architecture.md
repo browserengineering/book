@@ -64,8 +64,6 @@ desired rendering *cadence*.
 
 Our next goal is to make the browser match this cadence.
 
-(TODO: rename the pipeline stages in earlier chapters to match the nomenclature below.)
-
 Currently, your browser runs the rendering pipeline (style, layout, paint, and
 draw) immediately after each possible event that might cause a change to what is
 shown on the screen. These events are currently `handle_click`, `keypress`, `load`,

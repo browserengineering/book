@@ -267,7 +267,7 @@ paragraph, each word can now be drawn by its corresponding a
 
 ``` {.python}
 class TextLayout:
-    def draw(self, to):
+    def paint(self, to):
         color = self.node.style["color"]
         to.append(DrawText(self.x, self.y, self.word, self.font, color))
 ```
@@ -357,10 +357,10 @@ the address bar there. That 60 pixels is called the browser
 
 To do that, we first have to move the page content itself further down.
 I'm going to reserve 60 pixels for the browser chrome, which we need
-to subtract in `render`:
+to subtract in `draw`:
 
 ``` {.python}
-def render(self):
+def draw(self):
     self.canvas.delete("all")
     for cmd in self.display_list:
         if cmd.y1 > self.scroll + HEIGHT - 60: continue
@@ -374,7 +374,7 @@ we need to cover up[^11] any actual page contents that got drawn to that top
 60 pixels:
 
 ``` {.python}
-def render(self):
+def draw(self):
     # ...
     self.canvas.create_rectangle(0, 0, 800, 60, width=0, fill='light gray')
 ```
@@ -503,19 +503,19 @@ def handle_click(self, e):
         elif 50 <= e.x < 790 and 10 <= e.y < 50:
             self.focus = "address bar"
             self.address_bar = ""
-            self.render()
+            self.draw()
     # ...
 ```
 
 The click method now resets the text focus by default, and only
 focuses on the address bar when it is clicked on. Note that I call
-`render()` to make sure the screen is redrawn with the new address bar
-content. Make sure to modify `render` to use `address_bar` as the text
+`draw()` to make sure the screen is redrawn with the new address bar
+content. Make sure to modify `draw` to use `address_bar` as the text
 in the address bar. If the address bar is focused let's also draw a
 cursor:
 
 ``` {.python indent=4}
-def render(self):
+def draw(self):
     # ...
     if self.focus == "address bar":
         w = font.measure(self.address_bar)
@@ -538,7 +538,7 @@ class Browser:
 
         if self.focus == "address bar":
             self.address_bar += e.char
-            self.render()
+            self.draw()
 ```
 
 This `keypress` handler starts with some conditions: `<Key>` is Tk's
@@ -549,7 +549,7 @@ ASCII range (the arrow keys and function keys correspond to larger key
 codes).
 
 Because we modify `address_bar`, we want the browser chrome redrawn,
-so we need to call `render()`. So now you can type into the address
+so we need to call `draw()`. So now you can type into the address
 bar. Our last step is to handle the "Enter" key, which Tk calls
 `<Return>`, so that you can navigate to a new address:
 
@@ -565,7 +565,7 @@ class Browser:
             self.load(self.address_bar)
 ```
 
-In this case, `load` calls `render` so we don't need to do so directly.
+In this case, `load` calls `draw` so we don't need to do so directly.
 
 Summary
 =======

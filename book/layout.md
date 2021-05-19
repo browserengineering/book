@@ -421,11 +421,11 @@ class Browser:
 ```
 
 [Recall](graphics.html#scrolling-text) that our browser draws a web page
-by first collecting a display list and then calling `render` to draw
+by first collecting a display list and then calling `paint` to draw
 the things in the list. With tree-based layout, we collect the display
 list by recursing down the layout tree.
 
-I think it's most convenient to do that by adding a `draw` function to
+I think it's most convenient to do that by adding a `paint` function to
 each layout object which does the recursion. A neat trick here is to
 pass the list itself as an argument, and have the recursive function
 append to that list. For `DocumentLayout`, which only has one child,
@@ -433,30 +433,30 @@ the recursion looks like this:
 
 ``` {.python}
 class DocumentLayout:
-    def draw(self, display_list):
-        self.children[0].draw(display_list)
+    def paint(self, display_list):
+        self.children[0].paint(display_list)
 ```
 
-For `BlockLayout`, which has multiple children, `draw` is called on
+For `BlockLayout`, which has multiple children, `paint` is called on
 each child:
 
 ``` {.python}
 class BlockLayout:
-    def draw(self, display_list):
+    def paint(self, display_list):
         for child in self.children:
-            child.draw(display_list)
+            child.paint(display_list)
 ```
 
-Finally, `InlineLayout` is already storing things to draw in its
+Finally, `InlineLayout` is already storing things to paint in its
 `display_list` variable, so we can copy them over:
 
 ``` {.python expected=False}
 class InlineLayout:
-    def draw(self, display_list):
+    def paint(self, display_list):
         display_list.extend(self.display_list)
 ```
 
-Now the browser can use `draw` to collect its own `display_list`
+Now the browser can use `paint` to collect its own `display_list`
 variable:
 
 ``` {.python}
@@ -464,8 +464,8 @@ class Browser:
     def load(self, url):
         # ...
         self.display_list = []
-        self.document.draw(self.display_list)
-        self.render()
+        self.document.paint(self.display_list)
+        self.draw()
 ```
 
 Check it out: your browser is now using fancy tree-based layout! I
@@ -524,7 +524,7 @@ later.
 
 ``` {.python}
 class InlineLayout:
-    def draw(self, display_list):
+    def paint(self, display_list):
         for x, y, word, font in self.display_list:
             display_list.append(DrawText(x, y, word, font))
 ```
@@ -535,7 +535,7 @@ examples):
 
 ``` {.python}
 class BlockLayout:
-    def draw(self, display_list):
+    def paint(self, display_list):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
@@ -543,11 +543,11 @@ class BlockLayout:
         # ...
 ```
 
-Make sure this code comes *before* the recursive `draw` call on child
+Make sure this code comes *before* the recursive `paint` call on child
 layout objects: the background has to be drawn *below* and therefore
 *before* the text inside the source block.
 
-With the display list filled out, we need the `render` method to run
+With the display list filled out, we need the `paint` method to run
 each graphics command. Let's add an `execute` method for this. On
 `DrawText` it calls `create_text`:
 
@@ -589,11 +589,11 @@ def __init__(self, x1, y1, text, font):
     self.bottom = y1 + font.metrics("linespace")
 ```
 
-The browser's `render` method now just uses `top` and `bottom` to
+The browser's `draw` method now just uses `top` and `bottom` to
 decide which commands to `execute`:
 
 ``` {.python}
-def render(self):
+def draw(self):
     self.canvas.delete("all")
     for cmd in self.display_list:
         if cmd.top > self.scroll + HEIGHT: continue
@@ -621,7 +621,7 @@ browser can use that to avoid scrolling past the bottom of the page:
 def scrolldown(self, e):
     max_y = self.document.height - HEIGHT
     self.scroll = min(self.scroll + SCROLL_STEP, max_y)
-    self.render()
+    self.draw()
 ```
 
 So that's the basics of tree-based layout! In fact, as we'll see in
