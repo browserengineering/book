@@ -572,6 +572,16 @@ Encrypted HTTP connections usually use port 443 instead of port 80:
 port = 80 if scheme == "http" else 443
 ```
 
+Next, we'll wrap the socket with the `ssl` library:
+
+``` {.python}
+if scheme == "https":
+    ctx = ssl.create_default_context()
+    s = ctx.wrap_socket(s, server_hostname=host)
+```
+
+Your browser should now be able to connect to HTTPS sites.
+
 While we're at it, let's add support for custom ports, which are
 specified in a URL by putting a colon after the host name, like in
 `http://example.org:8080/`:
@@ -582,17 +592,14 @@ if ":" in host:
     port = int(port)
 ```
 
-Custom ports are handy [for debugging](preliminaries.md).
+Custom ports are handy for debugging. Python has a built-in web server
+you can use to serve files on your computer. For example, if you run
 
-Next, we'll wrap the socket with the `ssl` library:
+    python3 -m http.server 8000
 
-``` {.python}
-if scheme == "https":
-    ctx = ssl.create_default_context()
-    s = ctx.wrap_socket(s, server_hostname=host)
-```
-
-Your browser should now be able to connect to HTTPS sites.
+from some directory, then going to `http://localhost:8000/` should
+show you all the files in that directory. This is going to be a good
+way to test your browser.
 
 ::: {.further}
 TLS is pretty complicated. You can read the details in [RFC
