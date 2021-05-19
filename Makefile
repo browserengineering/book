@@ -10,7 +10,7 @@ blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
 widgets: $(patsubst %,www/widgets/%,$(WIDGET_LAB_CODE))
 
-lint:
+lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json
 
 PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)

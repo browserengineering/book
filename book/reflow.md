@@ -722,7 +722,7 @@ Next up: the `BlockLayout`. Here `compute_height` looks like this:
 ``` {.python}
 class BlockLayout:
     def compute_height(self):
-        self.h = 0
+        self.h = self.pt + self.pb
         for child in self.children:
             self.h += child.mt + child.h + child.mb
 ```

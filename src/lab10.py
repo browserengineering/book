@@ -579,7 +579,7 @@ class BlockLayout:
         self.compute_height()
 
     def compute_height(self):
-        self.h = 0
+        self.h = self.pt + self.pb
         for child in self.children:
             self.h += child.mt + child.h + child.mb
 
