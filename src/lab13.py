@@ -781,6 +781,28 @@ def drawLayoutTree(node, indent=0):
 
 REFRESH_RATE_MS = 16 # 16ms
 
+class Task:
+    def __init__(self, task_code):
+        self.code = code
+
+    def run():
+        self.task_code()
+        # Prevent it accidentally running twice.
+        self.task_code = None
+
+class TaskList:
+    def __init__(self):
+        self.tasks = []
+
+    def add_task(self, task_code):
+        self.tasks.append(task_code)
+
+    def has_tasks(self):
+        return len(self.tasks) > 0
+
+    def get_next_task(self):
+        return self.tasks.pop(0)
+
 class MainThreadRunner:
     def __init__(self, browser):
         self.lock = threading.Lock()
@@ -788,7 +810,7 @@ class MainThreadRunner:
         self.needs_begin_main_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
         self.script_tasks = []
-        self.browser_tasks = []
+        self.browser_tasks = TaskList()
 
     def schedule_main_frame(self):
         self.lock.acquire(blocking=True)
@@ -802,7 +824,7 @@ class MainThreadRunner:
 
     def schedule_browser_task(self, callback):
         self.lock.acquire(blocking=True)
-        self.browser_tasks.append(callback)
+        self.browser_tasks.add_task(callback)
         self.lock.release()
 
     def schedule_event_handler():
@@ -822,8 +844,8 @@ class MainThreadRunner:
 
             browser_method = None
             self.lock.acquire(blocking=True)
-            if len(self.browser_tasks) > 0:
-                browser_method = self.browser_tasks.pop(0)
+            if self.browser_tasks.has_tasks():
+                browser_method = self.browser_tasks.get_next_task()
             self.lock.release()
             if browser_method:
                 browser_method()

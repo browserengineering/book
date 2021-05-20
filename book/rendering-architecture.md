@@ -10,9 +10,47 @@ The Rendering Event Loop and Pipeline
 
 In previous chapters, you learned about how to load a web page with HTTP, parse
 HTML into an HTML tree, compute styles on that tree, construct the layout tree,
-layout its contents, and paint the result to the screen. These steps are the
+lay out its contents, and paint the result to the screen. These steps are the
 basics of the [*rendering
-pipeline*](https://en.wikipedia.org/wiki/Graphics_pipeline) of the browser. 
+pipeline*](https://en.wikipedia.org/wiki/Graphics_pipeline) of the browser.
+
+But of course, there is more to web pages than just running the rendering
+pipeline. There is keyboard, mouse and touch input, scrolling, interacting with
+browser chrome, submitting forms, executing scripts, loading things off the
+network, and so on. All of these are *tasks* that the browser executes. The
+rendering pipeline is also a task. To keep track of the list of tasks that it
+needs to execute next, a browser maintains a set of *task queues*.
+
+When the browser is free to do work, it picks one of these tasks off one of the
+queues and runs it; when it's done it takes another one. This process is called
+the *event loop*[^event-loop]. There is more than one event loop in a real
+browser, but by far the most important one is the *rendering event loop*.
+
+[^event-loop]: Event loops were also briefly touched on in [chapter
+[2](graphics.md#eventloop). Tkinter uses an event loop behind the scenes to run
+our browser code.
+
+In this chapter we'll first introduce the task queue concept into our browser.
+Then we'll dive into the rendering event loop, its performance, and its
+complexities. All this work will then pay off handsomely---we'll be ready to
+implement the compositor thread.[^compositor-thread] Once that is done, , your
+browser will start to have an structure that is recognizably similar to real
+browsers, and starts to have similar performance characteristics. Not bad for a
+thousand lines of code or so!
+
+[^compositor-thread]: The compositor thread is an extremely important
+optimization present in all modern browsers. By using two CPU threads instead of
+one to render, we can make pages run faster and have dramatically better
+scrolling performance.
+
+Task queues
+===========
+
+Let's implement a `Task` and a `TaskQueue` class. Then we can move all of the
+rendering event loop tasks into task queues.
+
+Implementing the event loop
+===========================
 
 Chapter 2 also introduced the notion of an [event loop](graphics.md#eventloop),
 which is a how a browser iteratively finds out about inputs---or other changes
