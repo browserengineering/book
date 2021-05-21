@@ -809,7 +809,7 @@ class MainThreadRunner:
         self.browser = browser
         self.needs_begin_main_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
-        self.script_tasks = []
+        self.script_tasks = TaskList()
         self.browser_tasks = TaskList()
 
     def schedule_main_frame(self):
@@ -819,7 +819,7 @@ class MainThreadRunner:
 
     def schedule_script_task(self, script):
         self.lock.acquire(blocking=True)
-        self.script_tasks.append(script)
+        self.script_tasks.add_task(script)
         self.lock.release()
 
     def schedule_browser_task(self, callback):
@@ -852,15 +852,12 @@ class MainThreadRunner:
 
             script = None
             self.lock.acquire(blocking=True)
-            if len(self.script_tasks) > 0:
-                script = self.script_tasks.pop(0)
+            if self.script_tasks.has_tasks():
+                script = self.script_tasks.get_next_task()
             self.lock.release()
 
             if script:
-                try:
-                    retval = self.browser.js.evaljs(script)
-                except dukpy.JSRuntimeError as e:
-                    print("Script", script, "crashed", e)
+                script()
 
             time.sleep(0.001) # 1ms
 
@@ -1069,6 +1066,9 @@ class Browser:
                 relative_url(script, self.history[-1]), headers=req_headers)
             scripts.append([header, body])
 
+    def script_run_wrapper(self, script_text):
+        return functools.partial(self.js.evaljs, script_text)
+
     def run_scripts(self):
         if args.compute_main_thread_timings:
             self.main_thread_timer.start("Running JS")
@@ -1080,7 +1080,8 @@ class Browser:
         thread.start()
         thread.join()
         for [header, body] in scripts:
-            self.main_thread_runner.schedule_script_task(body)
+            self.main_thread_runner.schedule_script_task(
+                self.script_run_wrapper(body))
 
     def setup_js(self):
         self.js = dukpy.JSInterpreter()
@@ -1096,7 +1097,8 @@ class Browser:
             self.js_requestAnimationFrame)
         self.js.export_function("now", self.js_now)
         with open("runtime13.js") as f:
-            self.main_thread_runner.schedule_script_task(f.read())
+            self.main_thread_runner.schedule_script_task(
+                self.script_run_wrapper(f.read()))
 
 
     def js_querySelectorAll(self, sel):
