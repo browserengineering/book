@@ -782,15 +782,25 @@ def drawLayoutTree(node, indent=0):
 REFRESH_RATE_MS = 16 # 16ms
 
 class Task:
-    def __init__(self, task_code):
-        self.code = code
+    def __init__(self, task_code, arg1=None, arg2=None):
+        self.task_code = task_code
+        self.arg1 = arg1
+        self.arg2 = arg2
+        self.__name__ = "task"
 
-    def run():
-        self.task_code()
+    def __call__(self):
+        if self.arg2:
+            self.task_code(self.arg1, self.arg2)
+        elif self.arg1:
+            self.task_code(self.arg1)
+        else:
+            self.task_code()
         # Prevent it accidentally running twice.
         self.task_code = None
+        self.arg1 = None
+        self.arg2 = None
 
-class TaskList:
+class TaskQueue:
     def __init__(self):
         self.tasks = []
 
@@ -809,8 +819,8 @@ class MainThreadRunner:
         self.browser = browser
         self.needs_begin_main_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
-        self.script_tasks = TaskList()
-        self.browser_tasks = TaskList()
+        self.script_tasks = TaskQueue()
+        self.browser_tasks = TaskQueue()
 
     def schedule_main_frame(self):
         self.lock.acquire(blocking=True)
@@ -901,6 +911,7 @@ class Browser:
 
         self.needs_quit = False
 
+
     def commit(self):
         self.compositor_lock.acquire(blocking=True)
         self.needs_draw = True
@@ -941,7 +952,7 @@ class Browser:
         else:
             # ...but not clicks within the web page contents area
             self.main_thread_runner.schedule_browser_task(
-                functools.partial(self.handle_click, e))
+                Task(self.handle_click, e))
 
     # Runs on the main thread
     def handle_click(self, e):
@@ -980,7 +991,7 @@ class Browser:
             self.set_needs_display()
         else:
             self.main_thread_runner.schedule_browser_task(
-                functools.partial(self.keypress, e))
+                Task(self.keypress, e))
 
     # Runs on the main thread
     def keypress(self, e):
@@ -1021,11 +1032,13 @@ class Browser:
             cookie_string += "&" + key + "=" + value
         return cookie_string[1:]
 
+    # Runs on the compositor thread
     def schedule_load(self, url, body=None):
         self.main_thread_runner.schedule_browser_task(
-            functools.partial(self.load, url, body))
+            Task(self.load, url, body))
 
-    def load(self, url, body):
+    # Runs on the main thread
+    def load(self, url, body=None):
         if args.compute_main_thread_timings:
             self.main_thread_timer.start("Downloading")
         self.address_bar = url
@@ -1067,7 +1080,7 @@ class Browser:
             scripts.append([header, body])
 
     def script_run_wrapper(self, script_text):
-        return functools.partial(self.js.evaljs, script_text)
+        return Task(self.js.evaljs, script_text)
 
     def run_scripts(self):
         if args.compute_main_thread_timings:

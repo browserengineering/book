@@ -28,7 +28,7 @@ browser, but by far the most important one is the *rendering event loop*.
 
 [^event-loop]: Event loops were also briefly touched on in [chapter
 [2](graphics.md#eventloop). Tkinter uses an event loop behind the scenes to run
-our browser code.
+our browser code. As a reminder, that's what `tkinter.mainloop()` does.
 
 In this chapter we'll first introduce the task queue concept into our browser.
 Then we'll dive into the rendering event loop, its performance, and its
@@ -49,32 +49,59 @@ Task queues
 Let's implement a `Task` and a `TaskQueue` class. Then we can move all of the
 rendering event loop tasks into task queues.
 
+``` {.python}
+class Task:
+    def __init__(self, task_code, arg1=None, arg2=None):
+        self.task_code = task_code
+        self.arg1 = arg1
+        self.arg2 = arg2
+        self.__name__ = "task"
+
+    def __call__(self):
+        if self.arg2:
+            self.task_code(self.arg1, self.arg2)
+        elif self.arg1:
+            self.task_code(self.arg1)
+        else:
+            self.task_code()
+        # Prevent it accidentally running twice.
+        self.task_code = None
+        self.arg1 = None
+        self.arg2 = None
+
+class TaskQueue:
+    def __init__(self):
+        self.tasks = []
+
+    def add_task(self, task_code):
+        self.tasks.append(task_code)
+
+    def has_tasks(self):
+        return len(self.tasks) > 0
+
+    def get_next_task(self):
+        return self.tasks.pop(0)
+```
+
+But we can't do much with this unless we implement our own event loop, instead
+of relying on the tkinter one. Go ahead and make one now. 
+
 Implementing the event loop
 ===========================
 
-Chapter 2 also introduced the notion of an [event loop](graphics.md#eventloop),
-which is a how a browser iteratively finds out about inputs---or other changes
-of state---that affect
-rendering, then re-runs the rendering pipeline, leading to an update on the
-screen. In terms of our new terminology, the code is:
+A simple event loop looks approximately like this:
 
 ``` {.python expected=False}
 while True:
-    for evt in pending_events():
-        handle_event(evt)
+    while there_is_enough_time():
+        run_a_task_from_a_task_queue()
     run_rendering_pipeline()
 ```
+In other words, run some tasks from the task queue, until enough time has passed
+that it's time to draw to the screen. Then run the rendering pipeline.
 
-Let's make the same changes to your browser, beginning with renaming
-the `render` method to `draw`, since it is only doing the part about drawing
-the display list to the screen:
-
-``` {.python}
-def draw(self):
-    # ...
-````
-
-Likewise, let's rename `layout` to `run_rendering_pipeline`:
+As a frst step, let's correspondingly rename `layout` to
+`run_rendering_pipeline`:
 
 ``` {.python}
 def run_rendering_pipeline(self):
@@ -83,17 +110,12 @@ def run_rendering_pipeline(self):
     # ...
 ```
 
-As a reminder, if you're using `tkinter`, the call to `tkinter.mainloop()`
-is what your browser uses to implement the above while loop.
-
-The cadence of rendering
-========================
-
-Now that same chapter *also* says that there is a [frame
-budget](graphics.md#framebudget), which is the amount of time allocated to
+How long should "enough time" be? Chapter 2 discussed that, by introducing the
+[frame budget](graphics.md#framebudget), This is the amount of time allocated to
 re-draw the screen after an input update. The frame budget is typically about
-16ms, in order to draw at 60Hz (`60 * 16.66ms ~= 1s`). This means that each
-iteration through the `while` loop should ideally complete in at most 16ms.
+16ms, in order to draw at 60Hz (`60 * 16.66ms ~= 1s`), and matches the refresh
+rate of most displays. This means that each iteration through the `while` loop
+should ideally complete in at most 16ms.
 
 It also means that the browser should not run the while loop faster than that
 speed, even if the CPU is up to it, because there is no point---the screen can't
@@ -116,7 +138,7 @@ methods to those events, via this code:
         self.window.bind("<Return>", self.press_enter)
 ```
 
-What we want to do next is to run the rendering pipeline in a separte event.
+What we want to do next is to run the rendering pipeline in a separate event.
 We can do that by *scheduling a render to occur* instead of synchronously
 computing it, via a call to a new method called `set_needs_display`:
 
@@ -131,7 +153,7 @@ class Browser:
         if not self.display_scheduled:
             self.needs_display = True
             self.canvas.after(REFRESH_RATE,
-                              self.begin_main_frame)
+                              Task(self.begin_main_frame))
 ```
 
 For `handle_click`, this means replacing a call to `self.reflow(self.focus)`
@@ -153,6 +175,29 @@ class Browser:
     def handle_click(self, e):
         # ...
         self.set_needs_reflow(self.focus)
+```
+
+Going one step further, let's make the event handlers tasks, and run them in the
+tkinter event loop as an explicit task. This doesn't use the `TaskList` class
+yet, but we'll get to that soon.
+
+``` {.python expected=False}
+class Browser
+    def __init__:
+        self.window.bind("<Down>",
+            self.bind_task(self.scrolldown))
+        self.window.bind("<Button-1>",
+            self.bind_task(self.handle_click))
+        self.window.bind("<Key>",
+            self.bind_task(self.keypress))
+        self.window.bind("<Return>",
+            self.bind_task(self.press_enter))
+
+    def bind_task(self, task):
+        return functools.partial(self.schedule_task, task)
+
+    def schedule_task(self, task, e):
+        self.canvas.after(0, Task(task, e))
 ```
 
 Scripts in the event loop
@@ -182,7 +227,7 @@ One simple way to fix this is to perform the fetches on another CPU thread
 different set of threads or processes):
 
 ``` {.python}
-    def load(self, url, body):
+    def load(self, url, body=None):
         # ...
 
         self.run_scripts()
@@ -665,15 +710,15 @@ Let's introduce a new class called `MainThreadRunner` that encapsulates the
 maind thread its event loop, and a few queues for different types of event loop
 tasks:
 
-```
+``` {.python}
 class MainThreadRunner:
     def __init__(self, browser):
         self.lock = threading.Lock()
         self.browser = browser
         self.needs_begin_main_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
-        self.script_tasks = []
-        self.browser_tasks = []
+        self.script_tasks = TaskQueue()
+        self.browser_tasks = TaskQueue()
 
     def start(self):
         self.main_thread.start()        
@@ -681,7 +726,7 @@ class MainThreadRunner:
 
 It will have some methods to set the variables, such as:
 
-```
+``` {.python}
     def schedule_main_frame(self):
         self.lock.acquire(blocking=True)
         self.needs_begin_main_frame = True
@@ -689,7 +734,7 @@ It will have some methods to set the variables, such as:
 
     def schedule_script_task(self, script):
         self.lock.acquire(blocking=True)
-        self.script_tasks.append(script)
+        self.script_tasks.add_task(script)
         self.lock.release()
 ```
 
@@ -782,14 +827,14 @@ we have `MainThreadRunner`, this is super easy! Whenever the compositor thread
 needs to schedule a task on the main thread event loop, we just call
 `main_thread_runner.schedule_browser_task`:
 
-```
+``` {.python}
     # Runs on the compositor thread
     def schedule_load(self, url, body=None):
         self.main_thread_runner.schedule_browser_task(
-            functools.partial(self.load, url, body))
+            Task(self.load, url, body))
 
     # Runs on the main thread
-    def load(self, url, body):
+    def load(self, url, body=None):
         # ...
 
 ```
@@ -821,7 +866,7 @@ the web page window, we can handle it right there in the compositor thread:
         else:
             # ...but not clicks within the web page contents area
             self.main_thread_runner.schedule_browser_task(
-                functools.partial(self.handle_click, e))
+                Task(self.handle_click, e))
 
     # Runs on the main thread
     def handle_click(self, e):
