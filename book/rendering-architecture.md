@@ -207,54 +207,15 @@ In addition to event handlers, it's also of course possible for script to run in
 the event loop, or schedule itself to be run. In general, the event loop can any
 of a wide variety of *tasks*, only some of which respond to input events. As we
 saw in [chapter 9](scripts.md), the first way in which scripts can be run is
-that when a `<script>` tag is inserted into the DOM, and the script load. The
-browser currently synchronously fetches the script and then evaluates it, like
-so:
+that when a `<script>` tag is inserted into the DOM, and the script load. 
+We can easily wrap all this in a `Task`, like so:
 
 ``` {.python expected=False}
     for script in find_scripts(self.nodes, []):
         header, body = request(relative_url(
             script, self.history[-1]), headers=req_headers)
-        self.js.evaljs(body)
+        self.canvas.after(0, Task(self.js.evaljs, body))
 ```
-
-Real browsers of course don't synchronously fetch the script, because otherwise
-the whole browser would lock up in the meantime---and who knows how long it will
-take to fetch it!
-
-One simple way to fix this is to perform the fetches on another CPU thread
-(and this is how real browsers typically do it---network fetches happen in a
-different set of threads or processes):
-
-``` {.python}
-    def load(self, url, body=None):
-        # ...
-
-        self.run_scripts()
-        self.set_needs_layout_tree_rebuild()
-
-    def load_scripts(self, scripts):
-        req_headers = { "Cookie": self.cookie_string() }
-        for script in find_scripts(self.nodes, []):
-            header, body = request(
-                relative_url(script, self.history[-1]), headers=req_headers)
-            scripts.append([header, body])
-
-    def run_scripts(self):
-        # ....
-        self.setup_js()
-
-        scripts=[]
-        thread = threading.Thread(target=self.load_scripts, args=(scripts,))
-        thread.start()
-        thread.join()
-        # ...
-```
-
-Note that the *loading* happens on a background thread, but not the *evaluation*
-of the script. That's because JavaScript is not multi-threaded, and all scripts
-have to be evaluated on the main thread. (I'll get into the implications of this
-later in the chapter.)
 
 But that's not all! In addition to runing straight through, scripts can also
 schedule more events to be put on the event loop and run later. There are

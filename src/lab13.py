@@ -1088,10 +1088,7 @@ class Browser:
         self.setup_js()
 
         scripts=[]
-        scripts=[]
-        thread = threading.Thread(target=self.load_scripts, args=(scripts,))
-        thread.start()
-        thread.join()
+        self.load_scripts(scripts)
         for [header, body] in scripts:
             self.main_thread_runner.schedule_script_task(
                 self.script_run_wrapper(body))
