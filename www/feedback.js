@@ -222,6 +222,7 @@ function setup_feedback() {
     }
     
     function do_cancel(e) {
+        window.localStorage["edit"] = "false";
         overlay.remove();
     }
 
