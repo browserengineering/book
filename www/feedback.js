@@ -2,14 +2,24 @@
 
 // Thanks for reading the code! You can hit Ctrl+E to access the feedback tools.
 
+var chapter_overlay;
+
 document.addEventListener("DOMContentLoaded", function() {
     window.addEventListener("keydown", function(e) {
         if (String.fromCharCode(e.keyCode) != "E") return;
         if (!(e.metaKey || e.ctrlKey)) return;
         e.preventDefault();
-        setup_feedback();
+        setup_text_feedback();
+    });
+
+    let feedback_button = document.querySelector("#feedback-button");
+    feedback_button.addEventListener("click", function(e) {
+        console.log('click on feedback button!');
+        setup_chapter_feedback();
+        e.preventDefault();
     });
 });
+
 
 var EDITABLE_ELEMENTS = "p, li, div.sourceCode, .note";
 
@@ -114,7 +124,7 @@ Tools.prototype.comment = function(e) {
         var text = markdown(that.node, []).join("");
         if (editing && comment) {
             console.log("Submitting comment");
-            submit_comment(that.node, text, comment);
+            submit_text_comment(that.node, text, comment);
         }
         editing = false;
         submit.remove()
@@ -171,10 +181,10 @@ function submit_typo(elt, oldt, newt) {
     }));
 }
 
-function submit_comment(elt, text, comment) {
+function submit_text_comment(elt, text, comment) {
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", bad_request);
-    xhr.open("POST", "/api/comment");
+    xhr.open("POST", "/api/text_comment");
     xhr.send(JSON.stringify({
         'tag': elt.tagName,
         'text': text,
@@ -184,7 +194,82 @@ function submit_comment(elt, text, comment) {
     }));
 }
 
-function setup_feedback() {
+function submit_chapter_comment(comment) {
+    var xhr = new XMLHttpRequest();
+    xhr.addEventListener("load", bad_request);
+    xhr.open("POST", "/api/chapter_comment");
+    xhr.send(JSON.stringify({
+        'comment': comment,
+        'url': location.pathname,
+        'name': window.localStorage["name"],
+    }));
+}
+
+
+function setup_chapter_feedback() {
+    var submit = Element("button", { type: "submit" }, "Submit feedback");
+    var cancel = Element("a", { href: "#", className: "checkoff" }, "Cancel");
+    var form = Element("div", { className: "popup" }, [
+        Element("form", { method: "get", action: "/" }, [
+            Element("h1", "Comment on this chapter"),
+            Element("p", [
+                "Let us know what you got out of this chapter--",
+                "what you liked, and what you didn't like. ",
+                "If you'd aldo like to provide feedback about particular ",
+                "pieces of text, press ",
+                 Element("kbd", "Ctrl+E"), "." 
+            ]),
+            Element("div", { className: "inputs" }, [
+                Element("label", { "for": "name" }, "Your name: "),
+            ]),
+            Element("div", { className: "inputs" }, [
+                Element("input", { name: "name", autofocus: "", required: "" }, []),
+            ]),
+            Element("div", { className: "inputs"}, [
+                Element("label", { "for": "feedback" }, "Your feedback: "),
+            ]),
+            Element("div", { className: "inputs"}, [
+                Element("textarea", { name: "feedback", autofocus: "", required: "" }, []),
+            ]),
+            Element("p", { className: "legalese" }, [
+                "By making edits, you agree to assign all rights ",
+                "to your comments or typo fixes to us (Pavel Panchekha and Chris Harrelson), ",
+                "and allow us to attribute edits to you in acknowledgements, ",
+                "blog posts, or other media.",
+            ]),
+            Element("div", [submit, cancel]),
+            Element("div", { className: "confirm-feedback" }, [
+                "Thank you for your feedback!"
+            ])
+        ]),
+    ]);
+    chapter_overlay = Element("div", { id: "overlay" }, [form]);
+
+    function do_submit(e) {
+        window.localStorage["name"] = this.querySelector("input").value;
+        submit_chapter_comment(this.querySelector("textarea").value)
+        e.preventDefault();
+        this.querySelector(".confirm-feedback").classList.add("active");
+        setTimeout(() => chapter_overlay.remove(), 2000);
+    }
+    
+    function do_cancel(e) {
+        chapter_overlay.remove();
+    }
+
+    form.addEventListener("submit", do_submit);
+    chapter_overlay.addEventListener("click", do_cancel);
+    cancel.addEventListener("click", do_cancel);
+    form.addEventListener("click", function(e) { e.stopPropagation(); });
+
+    document.documentElement.appendChild(chapter_overlay);
+
+}
+
+function setup_text_feedback() {
+    if (chapter_overlay)
+        chapter_overlay.remove();
+
     var submit = Element("button", { type: "submit" }, "Turn on feedback tools");
     var cancel = Element("a", { href: "#", className: "checkoff" }, "Keep them off");
     var form = Element("div", { className: "popup" }, [
@@ -204,8 +289,8 @@ function setup_feedback() {
             ]),
             Element("p", { className: "legalese" }, [
                 "By making edits, you agree to assign all rights ",
-                "to your comments or typo fixes to me (Pavel Panchekha) ",
-                "and allow me to attribute edits to you in acknowledgements, ",
+                "to your comments or typo fixes to us (Pavel Panchekha and Chris Harrelson), ",
+                "and allow us to attribute edits to you in acknowledgements, ",
                 "blog posts, or other media.",
             ]),
             Element("div", [submit, cancel]),

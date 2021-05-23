@@ -154,6 +154,7 @@ input[type=checkbox][disabled] { display: none; }
 #overlay {
     position: fixed; top: 0; right: 0; bottom: 0; left: 0;
     background-color: rgba(256, 256, 256, .9);
+    overflow:auto;
 }
 .popup {
     padding: 1em; border: 1px solid gray; box-shadow: 0 0 20px 10px gray;
@@ -161,9 +162,14 @@ input[type=checkbox][disabled] { display: none; }
 }
 .popup h1 { text-align: center; }
 .popup .inputs { font-size: 30px; }
-.popup input { font-size: 30px; }
+.popup input { font-size: 30px; width: 400px; }
 .popup .legalese { font-size: 60%; }
 .popup button { font-size: 24px; }
+
+.popup textarea { width: 400px; height: 300px; }
+
+.confirm-feedback { display: none; }
+.confirm-feedback.active { display: block; }
 
 p, li, div.sourceCode, .note { position: relative; }
 .tools {
