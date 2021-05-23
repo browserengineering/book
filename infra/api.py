@@ -155,15 +155,12 @@ def prettify(obj):
 @bottle.route("/feedback")
 @bottle.view("feedback.view")
 def feedback():
-    print('hi')
     new = [prettify(o) for o in DATA if o['status'] == "new"]
-    print(new)
     saved = {}
     for o in DATA:
         if o['status'] == "saved":
             page = os.path.split(o['url'])[1].rsplit(".", 1)[0]
             saved.setdefault(page, []).append(prettify(o))
-    print(saved)
     return { 'new': new, 'saved': saved }
 
 @bottle.route("/api/status", method=["POST", "OPTIONS"])
