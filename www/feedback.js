@@ -3,8 +3,6 @@
 // Thanks for reading the code! You can hit Ctrl+E to access the feedback tools.
 
 document.addEventListener("DOMContentLoaded", function() {
-    if (window.localStorage["edit"] == "true") return typo_mode();
-
     window.addEventListener("keydown", function(e) {
         if (String.fromCharCode(e.keyCode) != "E") return;
         if (!(e.metaKey || e.ctrlKey)) return;
