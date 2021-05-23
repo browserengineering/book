@@ -183,7 +183,6 @@ def static(file):
 
 @bottle.route('/')
 def index():
-    print('/')
     return bottle.static_file("index.html", root=".")
 
 @bottle.route("/auth/tools")
