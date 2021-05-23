@@ -14,7 +14,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
     let feedback_button = document.querySelector("#feedback-button");
     feedback_button.addEventListener("click", function(e) {
-        console.log('click on feedback button!');
         setup_chapter_feedback();
         e.preventDefault();
     });
@@ -204,7 +203,6 @@ function submit_chapter_comment(comment) {
         'name': window.localStorage["name"],
     }));
 }
-
 
 function setup_chapter_feedback() {
     var submit = Element("button", { type: "submit" }, "Submit feedback");
