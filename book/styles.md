@@ -59,7 +59,7 @@ element:
 
 ``` {.python}
 class BlockLayout:
-    def draw(self, display_list):
+    def paint(self, display_list):
         bgcolor = self.node.style.get("background-color", "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
@@ -843,7 +843,7 @@ def flush(self):
 Finally, that `display_list` is read in `draw`:
 
 ``` {.python indent=4}
-def draw(self, display_list):
+def paint(self, display_list):
     # ...
     for x, y, word, font, color in self.display_list:
         display_list.append(DrawText(x, y, word, font, color))
