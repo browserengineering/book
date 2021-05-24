@@ -901,6 +901,12 @@ needs to be converted from pixels to points.[^72ppi]
     72^nd^ of an inch) and pixels as a digital unit (dependent on the
     screen) but in CSS, the conversion is fixed at exactly 75% (or 96
     pixels per inch) because that was once a common screen resolution.
+    This might seem weird, but [OS internals][why-72] are equally
+    bizarre, let alone the fact that a traditional typesetters' point
+    is [one 72.27^th^ of an inch][why-7227].
+
+[why-72]: https://tonsky.me/blog/font-size/
+[why-7227]: https://tex.stackexchange.com/questions/200934/why-does-a-tex-point-differ-from-a-desktop-publishing-point
 
 ``` {.python indent=4}
 def text(self, node):
@@ -1036,4 +1042,5 @@ of a descendant. This feature is one of the benefits provided by the
 to implement ancestor selectors. As I write this, no browser has
 actually implemented `:has`; why do you think that is? Hint: analyze
 the asymptotic speed of your implementation. There is a clever
-implementation that is *O(1)* amortized per element---can you find it?
+implementation that is *O(1)* amortized per element---can you find
+it?^[No, this clever implementation is still not fast enough.]
