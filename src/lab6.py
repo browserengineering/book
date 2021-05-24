@@ -203,99 +203,86 @@ class HTMLParser:
 class CSSParser:
     def __init__(self, s):
         self.s = s
+        self.i = 0
 
-    def whitespace(self, i):
-        while i < len(self.s) and self.s[i].isspace():
-            i += 1
-        return None, i
+    def whitespace(self):
+        while self.i < len(self.s) and self.s[self.i].isspace():
+            self.i += 1
 
-    def literal(self, i, literal):
-        assert self.s[i:i+len(literal)] == literal
-        return None, i + len(literal)
+    def literal(self, literal):
+        assert self.s[self.i:self.i+len(literal)] == literal
+        self.i += len(literal)
 
-    def word(self, i):
-        start = i
-        while i < len(self.s) and self.s[i].isalnum() or self.s[i] in "#-.":
-            i += 1
-        assert i > start
-        return self.s[start:i], i
-
-    def pair(self, i):
-        prop, i = self.word(i)
-        _, i = self.whitespace(i)
-        _, i = self.literal(i, ":")
-        _, i = self.whitespace(i)
-        val, i = self.word(i)
-        return (prop.lower(), val), i
-
-    def ignore_until(self, i, chars):
-        while i < len(self.s):
-            if self.s[i] in chars:
-                return self.s[i], i
+    def word(self):
+        start = self.i
+        while self.i < len(self.s):
+            if self.s[self.i].isalnum() or self.s[self.i] in "#-.%":
+                self.i += 1
             else:
-                i += 1
-        return None, i
+                break
+        assert self.i > start
+        return self.s[start:self.i]
 
-    def body(self, i):
+    def pair(self):
+        prop = self.word()
+        self.whitespace()
+        self.literal(":")
+        self.whitespace()
+        val = self.word()
+        return prop.lower(), val
+
+    def ignore_until(self, chars):
+        while self.i < len(self.s):
+            if self.s[self.i] in chars:
+                return self.s[self.i]
+            else:
+                self.i += 1
+
+    def body(self):
         pairs = {}
-        _, i = self.literal(i, "{")
-        _, i = self.whitespace(i)
-        while i < len(self.s) and self.s[i] != "}":
+        self.literal("{")
+        self.whitespace()
+        while self.i < len(self.s) and self.s[self.i] != "}":
             try:
-                (prop, val), i = self.pair(i)
+                prop, val = self.pair()
                 pairs[prop] = val
-                _, i = self.whitespace(i)
-                _, i = self.literal(i, ";")
-                _, i = self.whitespace(i)
+                self.whitespace()
+                self.literal(";")
+                self.whitespace()
             except AssertionError:
-                why, i = self.ignore_until(i, [";", "}"])
+                why = self.ignore_until([";", "}"])
                 if why == ";":
-                    _, i = self.literal(i, ";")
-                    _, i = self.whitespace(i)
+                    self.literal(";")
+                    self.whitespace()
                 else:
                     break
-        _, i = self.literal(i, "}")
-        return pairs, i
+        self.literal("}")
+        return pairs
 
-    def base_selector(self, i):
-        assert i < len(self.s)
-        if self.s[i] == "#":
-            _, i = self.literal(i, "#")
-            name, i = self.word(i)
-            return IdSelector(name), i
-        else:
-            name, i = self.word(i)
-            return TagSelector(name.lower()), i
-
-    def selector(self, i):
-        out, i = self.base_selector(i)
-        _, i = self.whitespace(i)
-        while i < len(self.s) and self.s[i] != "{":
-            descendent, i = self.base_selector(i)
+    def selector(self):
+        out = TagSelector(self.word().lower())
+        self.whitespace()
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            descendant = TagSelector(self.word().lower())
             out = DescendantSelector(out, descendant)
-            _, i = self.whitespace(i)
-        return out, i
-
-    def file(self, i):
-        rules = []
-        _, i = self.whitespace(i)
-        while i < len(self.s):
-            try:
-                selector, i = self.selector(i)
-                _, i = self.whitespace(i)
-                body, i = self.body(i)
-                rules.append((selector, body))
-            except AssertionError:
-                why, i = self.ignore_until(i, "}")
-                if why == "}":
-                    _, i = self.literal(i, "}")
-                    _, i = self.whitespace(i)
-                else:
-                    break
-        return rules, i
+            self.whitespace()
+        return out
 
     def parse(self):
-        rules, _ = self.file(0)
+        rules = []
+        self.whitespace()
+        while self.i < len(self.s):
+            try:
+                selector = self.selector()
+                body = self.body()
+                rules.append((selector, body))
+            except AssertionError:
+                why = self.ignore_until(["}"])
+                if why == "}":
+                    self.literal("}")
+                    self.whitespace()
+                else:
+                    break
         return rules
     
 class TagSelector:
@@ -412,14 +399,14 @@ class BlockLayout:
 
         breakpoint("layout_post", self)
 
-    def draw(self, display_list):
+    def paint(self, display_list):
         bgcolor = self.node.style.get("background-color", "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
             display_list.append(rect)
         for child in self.children:
-            child.draw(display_list)
+            child.paint(display_list)
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
@@ -485,7 +472,7 @@ class InlineLayout:
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.2 * max_descent
 
-    def draw(self, display_list):
+    def paint(self, display_list):
         bgcolor = self.node.style.get("background-color", "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
@@ -513,8 +500,8 @@ class DocumentLayout:
         self.height = child.height + 2*VSTEP
         breakpoint("layout_post", self)
 
-    def draw(self, display_list):
-        self.children[0].draw(display_list)
+    def paint(self, display_list):
+        self.children[0].paint(display_list)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -594,10 +581,10 @@ class Browser:
         self.document = DocumentLayout(nodes)
         self.document.layout()
         self.display_list = []
-        self.document.draw(self.display_list)
-        self.render()
+        self.document.paint(self.display_list)
+        self.draw()
 
-    def render(self):
+    def draw(self):
         self.canvas.delete("all")
         for cmd in self.display_list:
             if cmd.top > self.scroll + HEIGHT: continue
@@ -607,7 +594,7 @@ class Browser:
     def scrolldown(self, e):
         max_y = self.document.height - HEIGHT
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
-        self.render()
+        self.draw()
 
 if __name__ == "__main__":
     import sys
