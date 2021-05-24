@@ -1016,4 +1016,5 @@ to implement ancestor selectors. As I write this, no browser has
 actually implemented `:has`; why do you think that is? Hint: analyze
 the asymptotic speed of your implementation. There is a clever
 implementation that is *O(1)* amortized per element---can you find
-it?^[No, this clever implementation is still not fast enough.]
+it?^[No, this clever implementation is still not fast enough for real
+browsers to implement.]
