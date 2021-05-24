@@ -8,7 +8,7 @@ body {
 }
 
 pre, code { hyphens: none; -webkit-hyphens: none; }
-pre { font-size: 80%; overflow: auto; }
+pre { font-size: 18px; overflow: auto; }
 
 dt { margin-top: 1em; }
 dd { margin-bottom: 1em; }

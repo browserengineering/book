@@ -288,31 +288,20 @@ class CSSParser:
 class TagSelector:
     def __init__(self, tag):
         self.tag = tag
-        self.priority = 1
 
     def matches(self, node):
         return self.tag == node.tag
-
-class IdSelector:
-    def __init__(self, id):
-        self.id = id
-        self.priority = 100
-
-    def matches(self, node):
-        return self.id == node.attributes.get("id")
 
 class DescendantSelector:
     def __init__(self, ancestor, descendant):
         self.ancestor = ancestor
         self.descendant = descendant
-        self.priority = ancestor.priority + descendant + priority
             
     def matches(self, node):
         if not self.descendant.matches(node): return False
-        parent = node.parent
-        while parent:
-            if self.ancestor.matches(parent): return True
-            parent = parent.parent
+        while node.parent:
+            if self.ancestor.matches(node.parent): return True
+            node = node.parent
         return False
 
 def tree_to_list(tree, list):
@@ -342,9 +331,12 @@ def style(node, rules):
                     node.style[property] = node.parent.style[property]
                 else:
                     node.style[property] = default
-                node.style[property] = default
         for child in node.children:
             style(child, rules)
+
+def cascade_priority(rule):
+    selector, body = rule
+    return selector.priority
 
 BLOCK_ELEMENTS = [
     "html", "body", "article", "section", "nav", "aside",
@@ -574,9 +566,7 @@ class Browser:
                 rules.extend(CSSParser(body).parse())
             except:
                 continue
-        rules.sort(key=lambda x: x[0].priority())
-        rules.reverse()
-        style(nodes, rules)
+        style(nodes, reversed(sorted(rules, cascade_priority)))
 
         self.document = DocumentLayout(nodes)
         self.document.layout()

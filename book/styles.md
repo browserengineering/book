@@ -406,88 +406,73 @@ next step: applying CSS to the page.
 Applying stylesheets
 ====================
 
-Our next step, after parsing CSS, is to figure out which elements each
-rule applies to. The easiest way to do that is to add a method to each
-selector, which tells you if the selector matches an element. Here's
-what it looks like for `TagSelector` and `IdSelector`:
+The goal isn't just parsing CSS: it's using it to style the web page.
+First, the browser has to figure out which elements each rule applies
+to. Let's start by adding a method to each selector that tells you if
+it matches a given element:
 
 ``` {.python}
 class TagSelector:
      def matches(self, node):
          return self.tag == node.tag
-
-class IdSelector:
-    def matches(self, node):
-        return self.id == node.attributes.get("id")
 ```
 
-Descendant selectors wrap other selectors, so their `match` method is
-recursive:
+Since descendant selectors wrap other selectors, their `match` method
+is recursive:
 
 ``` {.python}
 class DescendantSelector:
     def matches(self, node):
         if not self.descendant.matches(node): return False
-        parent = node.parent
-        while parent:
-            if self.ancestor.matches(parent): return True
-            parent = parent.parent
+        while node.parent:
+            if self.ancestor.matches(node.parent): return True
+            node = node.parent
         return False
 ```
 
-So we know which rules apply to an element, and now we need to add
-those rules' property-value pairs to the element's `style`. The logic
-is pretty simple:
-
--   Recurse over the tree of `Element`s;
--   For each rule, check if the rule matches;
--   If it does, go through the property/value pairs and assign them.
-
-Here's what the code would look like:
+If a rule applies to an element, the browser needs to add its
+property-value pairs to the element's `style`. The logic is pretty
+simple. First, we need to recurse over all the HTML elements:
 
 ``` {.python replace=return/node.style%20=%20node.parent.style}
 def style(node, rules):
     if isinstance(node, TextNode):
         return
     else:
-        for selector, pairs in rules:
-            if selector.matches(node):
-                for property in pairs:
-                    if property not in node.style:
-                        node.style[property] = pairs[property]
+        # ...
         for child in node.children:
             style(child, rules)
 ```
 
-Note that this code skips properties that already have a value. Since
-`style` attributes are filled in first (when the `Element` is
-created), that means `style` attributes take priority over CSS
-stylesheets, which is how it is supposed to work. But it's also a hint
-that it matters what order you apply the rules in.
+Second, for each `Element` node we need to determine which CSS rules
+apply to it and copy their property/value pairs over
 
+``` {.python indent=8}
+for selector, body in rules:
+    if not selector.matches(node): continue
+    for property, value in body.items():
+        if property in node.style: continue
+        node.style[property] = value
+```
+
+The outer loop skips rules that don't match, while the inner loop
+skips properties that are already set. Since the `style` attribute is
+filled in first (when the `Element` is created), that means the
+`style` attribute takes priority over CSS stylesheets, which is how it
+is supposed to work.
+
+It's also means that it matters what order you apply the rules in.
 What's the correct order? In CSS, it's called *cascade order*, and it
 is based on the selector used by the rule. Tag selectors get the
 lowest priority; class selectors one higher; and id selectors higher
-still. Just like how the `style` attribute comes first, we need to
-sort the rules in priority order, with higher-priority rules first.
-
-So let's add a `priority` method to the selector classes that return
-this priority. In this simplest implementation the exact numbers don't
-matter so long as they sort right so let's assign tag selectors
-priority `1` and ID selectors priority `100`, and have descendant
-selectors add the priority of their two halves. This means `#a b`
-takes priority over `#a` which takes priority over `b`.
+still. But since our CSS parser just has tag selectors, you just count
+the number of tag selectors to put the rules in order:
 
 ``` {.python}
 class TagSelector:
     def __init__(self, tag):
         # ...
         self.priority = 1
-        
-class IdSelector:
-    def __init__(self, id):
-        # ...
-        self.priority = 100
 
 class DescendantSelector:
     def __init__(self, ancestor, descendant):
@@ -495,24 +480,30 @@ class DescendantSelector:
         self.priority = ancestor.priority + descendant + priority
 ```
 
-Before we call `style` we need to put our rules in the right order;
-that would look something like this:
+To use Python's `sorted` function, we need a function that extracts
+the priority of a rule's selector:
 
-``` {.python expected=False}
-rules.sort(key=lambda x: x[0].priority)
-rules.reverse()
+``` {.python}
+def cascade_priority(rule):
+    selector, body = rule
+    return selector.priority
 ```
 
-Here the `sort` function is given an inline function as an argument.
-That function takes a rule, extracts its selector, and returns its
-priority; in other words we sort by selector priority. Note the
-`reverse` call: we want higher-priority rules to come first.
+Then we can style web page using a list of parsed rules like this:
 
-In Python, the `sort` function is *stable*, which means that things
+``` {.python indent=8}
+style(nodes, reversed(sorted(rules, cascade_priority)))
+```
+
+In Python, the `sorted` function is *stable*, which means that things
 keep their relative order if possible. This means that in general, a
 rule that comes later in the CSS file has higher priority, unless the
 selectors used force something different. That's how real browsers do
-it, too.
+it, too. The `reversed` call is because we want higher-priority rules
+to come first.
+
+So our browser just needs to download some CSS files and it can start
+styling web pages!
 
 Downloading styles
 ==================
@@ -940,7 +931,7 @@ The complete set of functions, classes, and methods in our browser
 should look something like this:
 
 ::: {.cmd .python .outline html=True}
-    python3 outlines.py --html src/lab6.py
+    python3 infra/outlines.py --html src/lab6.py
 :::
 
 Exercises
