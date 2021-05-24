@@ -1,0 +1,12 @@
+[Unit]
+Description=Runs the Web Browser Engineering backend server
+
+[Service]
+WorkingDirectory=/home/www/browseng/
+ExecStart=/usr/bin/python3 infra/api.py --debug
+User=www
+Group=www
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

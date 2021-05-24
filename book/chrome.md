@@ -1,7 +1,6 @@
 ---
 title: Handling Buttons and Links
 chapter: 7
-cur: chrome
 prev: styles
 next: forms
 ...
@@ -13,6 +12,7 @@ need to implement hyperlinks, and we might as well add an address bar
 and a back button while we're at it.
 
 <a name="hit-testing">
+
 Click handling
 ==============
 

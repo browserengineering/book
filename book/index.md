@@ -8,8 +8,13 @@ Web browsers are ubiquitous, but how do they work? This book explains,
 building a basic but complete web browser, from networking to
 JavaScript, in a thousand lines of Python.
 
-::: {.warning}
-This book is a [work in progress](todo.md). Use at your own risk.
+::: {.todo}
+This draft version of the book includes unfinished chapters, and those
+chapters make inaccurate claims, fail to match published chapters, or
+misbehave. Read them at your own risk.
+:::
+
+::: {.signup}
 :::
 
 Follow this book's [blog](blog/) or
@@ -53,17 +58,16 @@ Part 3: Running Applications
     Form submission and web servers
 (@) [Running Interactive Scripts](scripts.md)\
     Changing the DOM and reacting to events
-(@) [Saving Partial Layouts](reflow.md)\
-    Two-phase layout and fast rendering
 (@) [Keeping Data Private](security.md)\
     Cookies and logins, XSS and CSRF
 
 Part 4: Modern Browsers
 =======================
 
+(@) [Saving Partial Layouts](reflow.md)\
+    Two-phase layout and fast rendering
 (@) [Adding Visual Effects](visual-effects.md)\
     Filters and transformations 
-
 (@) [Browser Rendering Architecture Concepts](rendering-architecture.md)\
     The Rendering Event Loop and Pipeline
 

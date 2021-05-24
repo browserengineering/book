@@ -2,6 +2,7 @@ www/*.html
 www/draft/*.html
 www/draft/*.js
 www/blog/*.html
+www/onepage/*.html
 www/widgets/lab*.js
 www/rss.xml
 .DS_Store
@@ -10,7 +11,6 @@ class/
 lectures/
 www/db.pickle
 www/pw.hash
-onepage/
 node_modules/
 package-lock.json
 src/__pycache__/

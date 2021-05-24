@@ -13,21 +13,4 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v1
         with:
           pandoc-version: 2.11.4
-      - run: make book
-  compare:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-      - uses: r-lib/actions/setup-pandoc@v1
-      - run: python3 compare.py book/http.md src/lab1.py
-      - run: python3 compare.py book/graphics.md src/lab2.py
-      - run: python3 compare.py book/text.md src/lab3.py
-      - run: python3 compare.py book/html.md src/lab4.py
-      - run: python3 compare.py book/layout.md src/lab5.py
-      - run: python3 compare.py book/styles.md src/lab6.py
-      - run: python3 compare.py book/chrome.md src/lab7.py
-      - run: python3 compare.py book/forms.md src/lab8.py
-      - run: python3 compare.py --file server book/forms.md src/server8.py
+      - run: make book draft blog

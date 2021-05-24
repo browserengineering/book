@@ -1,7 +1,6 @@
 ---
 title: Applying User Styles
 chapter: 6
-cur: styles
 prev: layout
 next: chrome
 ...

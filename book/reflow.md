@@ -1,9 +1,8 @@
 ---
 title: Saving Partial Layouts
-chapter: 10
-cur: reflow
-prev: scripts
-next: security
+chapter: 11
+prev: security
+next: visual-effects
 ...
 
 Our little browser now renders pages that *change*. That means it's

@@ -1,7 +1,6 @@
 ---
 title: Adding Visual Effects
 chapter: 12
-cur: visual-effects
 prev: security
 next: rendering-architecture
 ...
@@ -391,6 +390,8 @@ Reason (b) can be solved by specifying a perspective matrix to apply when the
 stacking context is [“backface visible”](backface-visible).
 
 [backface-visible]: https://drafts.csswg.org/css-transforms-2/#propdef-backface-visibility
+
+<a name=hardware-acceleration>
 
 Hardware Acceleration
 =====================

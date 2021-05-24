@@ -1,32 +1,56 @@
 {
-    "disabled_files": {
-        "preface.md": false,
-        "intro.md": false,
-        "history.md": false,
-        "preliminaries.md": true,
+    "chapters": {
+        "preface.md": { "disabled": false },
+        "intro.md": { "disabled": false },
+        "history.md": { "disabled": false },
 
-        "http.md": false,
-        "graphics.md": false,
-        "text.md": false,
+        "http.md": { "disabled": false, "lab": "lab1.py" },
+        "graphics.md": { "disabled": false, "lab": "lab2.py" },
+        "text.md": { "disabled": false, "lab": "lab3.py" },
 
-        "html.md": false,
-        "layout.md": false,
-        "styles.md": true,
-        "chrome.md": true,
+        "html.md": { "disabled": false, "lab": "lab4.py" },
+        "layout.md": { "disabled": false, "lab": "lab5.py" },
+        "styles.md": { "disabled": true, "lab": "lab6.py" },
+        "chrome.md": { "disabled": true },
 
-        "forms.md": true,
-        "scripts.md": true,
-        "reflow.md": true,
-        "security.md": true,
+        "forms.md": { "disabled": true },
+        "scripts.md": { "disabled": true },
+        "security.md": { "disabled": true },
 
-        "visual-effects.md": true,
-        "rendering-architecture.md": true,
+        "reflow.md": { "disabled": true },
+        "visual-effects.md": { "disabled": true },
+        "rendering-architecture.md": { "disabled": true },
 
-        "skipped.md": true,
-        "change.md": true,
-        "todo.md": false,
+        "skipped.md": { "disabled": true },
+        "change.md": { "disabled": true },
 
-        "glossary.md": true,
-        "bibliography.md": false
+        "glossary.md": { "disabled": true },
+        "bibliography.md": { "disabled": false }
+    },
+
+    "modes": {
+        "book": {
+            "rel": ".",
+            "show_toc": true,
+            "show_signup": true
+        },
+        "draft": {
+            "base": "../",
+            "rel": "draft",
+            "draft": true,
+            "show_toc": true,
+            "show_disabled": true,
+            "show_todos": true
+        },
+        "blog": {
+            "base": "../",
+            "rel": "blog",
+            "show_signup": true
+        },
+        "onepage": {
+            "draft": true,
+            "show_toc": true,
+            "show_disabled": true
+        }
     }
 }
