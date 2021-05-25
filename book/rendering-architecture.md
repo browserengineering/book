@@ -140,7 +140,7 @@ methods to those events, via this code:
 
 What we want to do next is to run the rendering pipeline in a separate event.
 We can do that by *scheduling a render to occur* instead of synchronously
-computing it, via a call to a new method called `set_needs_display`:
+computing it, via a call to a new method called `set_needs_animation_frame`:
 
 ``` {.python expected=False}
 REFRESH_RATE_MS = 16 # 16ms
@@ -149,19 +149,19 @@ class Browser:
     def __init__(self):
         self.display_scheduled = False
 
-    def set_needs_display(self):
+    def set_needs_animation_frame(self):
         if not self.display_scheduled:
-            self.needs_display = True
+            self.needs_animation_frame = True
             self.canvas.after(REFRESH_RATE,
-                              Task(self.begin_main_frame))
+                              Task(self.run_animation_frame))
 ```
 
 For `handle_click`, this means replacing a call to `self.reflow(self.focus)`
-with `self.set_needs_display()`. But that's not all---if we just called
-`set_needs_display()`, the fact that it was `self.focus` that needed reflow would
-be lost. To solve that we'll record the need for a reflow in a new variable
-`reflow_roots`, which records which layout objects need reflow, and insert
-into it when needed:
+with `self.set_needs_animation_frame()`. But that's not all---if we just called
+`set_needs_animation_frame()`, the fact that it was `self.focus` that needed
+reflow would be lost. To solve that we'll record the need for a reflow in a new
+variable `reflow_roots`, which records which layout objects need reflow, and
+insert into it when needed:
 
 ``` {.python expected=False}
 class Browser:
@@ -170,7 +170,7 @@ class Browser:
 
     def set_needs_reflow(self, layout_object):
         self.reflow_roots.append(layout_object)
-        self.set_needs_display()
+        self.set_needs_animation_frame()
 
     def handle_click(self, e):
         # ...
@@ -217,14 +217,14 @@ We can easily wrap all this in a `Task`, like so:
         self.canvas.after(0, Task(self.js.evaljs, body))
 ```
 
-But that's not all! In addition to runing straight through, scripts can also
-schedule more events to be put on the event loop and run later. There are
-multiple JavaScript APIs in browsers to do this, but for now let's focus on the
-one most related to rendering: `requestAnimationFrame`. This API is used like
-this:
+Of course, scripts are not just for running straight through in one task, or
+listening for input events. They can also schedule more events to be put on the
+event loop and run later. There are multiple JavaScript APIs in browsers to do
+this, but for now let's focus on the one most related to rendering:
+`requestAnimationFrame`. Th API is used like this:
 
 ``` {.javascript}
-/* This is JavaScript! */
+/* This is JavaScript */
 function callback() {
     console.log("I was called!");
 }
@@ -232,14 +232,14 @@ requestAnimationFrame(callback);
 ```
 
 This code will do two things: request an "animation frame", and call `callback`
-just before that happens. An animation frame is the same thing as "run the
-rendering pipeline". The implenmentation of this JavaScript API, then is as
-follows:
+just before that happens, and within the same task.  An animation frame is the
+same thing as "run the rendering pipeline", and allows JavaScript to
+participate. The implenmentation of this JavaScript API, then, is as follows:
 
 ``` {.python}
     def js_requestAnimationFrame(self):
         self.needs_raf_callbacks = True
-        self.set_needs_display()
+        self.set_needs_animation_frame()
 ```
 
 We'll also need to modify `run_rendering_pipeline` to first execute the
@@ -254,10 +254,10 @@ JavaScript callbacks. The full definition is:
 
     def js_requestAnimationFrame(self):
         self.needs_raf_callbacks = True
-        self.set_needs_display()
+        self.set_needs_animation_frame()
 
-    def begin_main_frame(self):
-        self.needs_display = False
+    def run_animation_frame(self):
+        self.needs_animation_frame = False
 
         if (self.needs_raf_callbacks):
             self.needs_raf_callbacks = False
@@ -309,7 +309,7 @@ function __runRAFHandlers() {
 
 Let's walk through what it does:
 
-1. Reset the `needs_display` and `needs_raf_callbacks` variables to false.
+1. Reset the `needs_animation_frame` and `needs_raf_callbacks` variables to false.
 
 2. Call the JavaScript callbacks.
 
@@ -471,7 +471,7 @@ time spent:
         1    0.028    0.028    6.512    6.512 {method 'mainloop' of '_tkinter.tkapp' objects}
        51    0.000    0.000    6.484    0.127 __init__.py:1887(__call__)
        51    0.000    0.000    6.484    0.127 __init__.py:812(callit)
-       51    0.001    0.000    6.482    0.127 lab13.py:1016(begin_main_frame)
+       51    0.001    0.000    6.482    0.127 lab13.py:1016(run_animation_frame)
      6290    6.344    0.001    6.344    0.001 {method 'call' of '_tkinter.tkapp' objects}
       102    0.000    0.000    6.311    0.062 lab13.py:1041(run_rendering_pipeline)
        52    0.001    0.000    6.311    0.121 lab13.py:1051(reflow)
@@ -536,7 +536,7 @@ in layout *and* paint!
         1    0.435    0.435    1.007    1.007 {method 'mainloop' of '_tkinter.tkapp' objects}
        51    0.000    0.000    0.572    0.011 __init__.py:1887(__call__)
        51    0.001    0.000    0.572    0.011 __init__.py:812(callit)
-       51    0.002    0.000    0.570    0.011 lab13.py:1016(begin_main_frame)
+       51    0.002    0.000    0.570    0.011 lab13.py:1016(run_animation_frame)
      5108    0.449    0.000    0.450    0.000 {method 'call' of '_tkinter.tkapp' objects}
       102    0.000    0.000    0.441    0.004 lab13.py:1041(run_rendering_pipeline)
        52    0.001    0.000    0.441    0.008 lab13.py:1051(reflow)
@@ -676,7 +676,7 @@ class MainThreadRunner:
     def __init__(self, browser):
         self.lock = threading.Lock()
         self.browser = browser
-        self.needs_begin_main_frame = False
+        self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
         self.script_tasks = TaskQueue()
         self.browser_tasks = TaskQueue()
@@ -688,9 +688,9 @@ class MainThreadRunner:
 It will have some methods to set the variables, such as:
 
 ``` {.python}
-    def schedule_main_frame(self):
+    def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)
-        self.needs_begin_main_frame = True
+        self.needs_animation_frame = True
         self.lock.release()
 
     def schedule_script_task(self, script):
@@ -708,10 +708,10 @@ for 1ms and checks again.
      def run(self):
         while True:
             self.lock.acquire(blocking=True)
-            needs_begin_main_frame = self.needs_begin_main_frame
+            needs_animation_frame = self.needs_animation_frame
             self.lock.release()
-            if needs_begin_main_frame:
-                browser.begin_main_frame()
+            if needs_animation_frame:
+                browser.run_animation_frame()
                 self.browser.commit()
 
             browser_method = None
@@ -737,7 +737,7 @@ for 1ms and checks again.
             time.sleep(0.01)
 ```
 
-The `begin_main_frame` method on `Browser` will run on the main thread. Since
+The `run_animation_frame` method on `Browser` will run on the main thread. Since
 `draw` is supposed to happen on the compositor thread, we can't run it as part
 of the main thread rendering pipeline. Instead, we need to `commit` (copy) the
 display list to the compositor thread:
@@ -758,9 +758,9 @@ opportunities to draw (when `self.needs_draw` is true, and then doing so:
         self.compositor_lock.acquire(blocking=True)
         if self.needs_quit:
             sys.exit()
-        if self.needs_display and not self.display_scheduled:
+        if self.needs_animation_frame and not self.display_scheduled:
             self.canvas.after(REFRESH_RATE,
-                              self.main_thread_runner.schedule_main_frame)
+                              self.main_thread_runner.schedule_animation_frame)
             self.display_scheduled = True
 
         if self.needs_draw:
@@ -823,7 +823,7 @@ the web page window, we can handle it right there in the compositor thread:
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.set_needs_display()
+                self.set_needs_animation_frame()
         else:
             # ...but not clicks within the web page contents area
             self.main_thread_runner.schedule_browser_task(
@@ -849,7 +849,7 @@ The same logic holds for keypresses:
             return
         elif self.focus == "address bar":
             self.address_bar += e.char
-            self.set_needs_display()
+            self.set_needs_animation_frame()
         else:
             self.main_thread_runner.schedule_browser_task(
                 functools.partial(self.keypress, e))
@@ -877,7 +877,7 @@ present:
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
         self.compositor_lock.release()
-        self.set_needs_display()
+        self.set_needs_animation_frame()
 
     # Runs on the compositor thread
     def press_enter(self, e):

@@ -817,14 +817,14 @@ class MainThreadRunner:
     def __init__(self, browser):
         self.lock = threading.Lock()
         self.browser = browser
-        self.needs_begin_main_frame = False
+        self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
         self.script_tasks = TaskQueue()
         self.browser_tasks = TaskQueue()
 
-    def schedule_main_frame(self):
+    def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)
-        self.needs_begin_main_frame = True
+        self.needs_animation_frame = True
         self.lock.release()
 
     def schedule_script_task(self, script):
@@ -846,10 +846,10 @@ class MainThreadRunner:
     def run(self):
         while True:
             self.lock.acquire(blocking=True)
-            needs_begin_main_frame = self.needs_begin_main_frame
+            needs_animation_frame = self.needs_animation_frame
             self.lock.release()
-            if needs_begin_main_frame:
-                browser.begin_main_frame()
+            if needs_animation_frame:
+                browser.run_animation_frame()
                 self.browser.commit()
 
             browser_method = None
@@ -902,7 +902,7 @@ class Browser:
 
         self.reflow_roots = []
         self.needs_layout_tree_rebuild = False
-        self.needs_display = False
+        self.needs_animation_frame = False
         self.display_scheduled = False
         self.needs_raf_callbacks = False
 
@@ -927,9 +927,9 @@ class Browser:
         self.compositor_lock.acquire(blocking=True)
         if self.needs_quit:
             sys.exit()
-        if self.needs_display and not self.display_scheduled:
+        if self.needs_animation_frame and not self.display_scheduled:
             self.canvas.after(REFRESH_RATE_MS,
-                              self.main_thread_runner.schedule_main_frame)
+                              self.main_thread_runner.schedule_animation_frame)
             self.display_scheduled = True
 
         if self.needs_draw:
@@ -948,7 +948,7 @@ class Browser:
             elif 50 <= e.x < 790 and 10 <= e.y < 50:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.set_needs_display()
+                self.set_needs_animation_frame()
         else:
             # ...but not clicks within the web page contents area
             self.main_thread_runner.schedule_browser_task(
@@ -988,7 +988,7 @@ class Browser:
             return
         elif self.focus == "address bar":
             self.address_bar += e.char
-            self.set_needs_display()
+            self.set_needs_animation_frame()
         else:
             self.main_thread_runner.schedule_browser_task(
                 Task(self.keypress, e))
@@ -1140,7 +1140,7 @@ class Browser:
 
     def js_requestAnimationFrame(self):
         self.needs_raf_callbacks = True
-        self.set_needs_display()
+        self.set_needs_animation_frame()
 
     def js_now(self):
         return int(time.time() * 1000)
@@ -1162,16 +1162,16 @@ class Browser:
 
     def set_needs_reflow(self, layout_object):
         self.reflow_roots.append(layout_object)
-        self.set_needs_display()
+        self.set_needs_animation_frame()
 
     def set_needs_layout_tree_rebuild(self):
         self.needs_layout_tree_rebuild = True
-        self.set_needs_display()
+        self.set_needs_animation_frame()
 
-    def set_needs_display(self):
+    def set_needs_animation_frame(self):
         self.compositor_lock.acquire(blocking=True)
         if not self.display_scheduled:
-            self.needs_display = True
+            self.needs_animation_frame = True
         self.compositor_lock.release()
 
     def quit(self):
@@ -1179,8 +1179,8 @@ class Browser:
         self.needs_quit = True
         self.compositor_lock.release();        
 
-    def begin_main_frame(self):
-        self.needs_display = False
+    def run_animation_frame(self):
+        self.needs_animation_frame = False
 
         if args.compute_main_thread_timings:
             self.main_thread_timer.reset()
@@ -1280,7 +1280,7 @@ class Browser:
         self.scroll = min(self.scroll, self.max_y)
         self.scroll = max(0, self.scroll)
         self.compositor_lock.release()
-        self.set_needs_display()
+        self.set_needs_animation_frame()
 
 if __name__ == "__main__":
     import sys
