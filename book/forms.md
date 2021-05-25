@@ -79,7 +79,7 @@ For simplicity, I'll make input elements have a light gray background:
 
 ``` {.python replace=%22light%20gray%22/bgcolor }
 class InputLayout:
-    def draw(self, to):
+    def paint(self, to):
         x1, x2 = self.x, self.x + self.w
         y1, y2 = self.y, self.y + self.h
         to.append(DrawRect(x1, y1, x2, y2, "light gray"))
@@ -173,7 +173,7 @@ that the user is typing into.
 
 Finally, since we've changed the content of the input element (by
 clearing it) we need to redraw the screen. But unlike before, where a
-simple `render` call was enough, we're now changing the web page HTML
+simple `draw` call was enough, we're now changing the web page HTML
 itself! This means we must change the layout tree, and to do that, we
 must call `layout`:
 
@@ -199,11 +199,11 @@ def keypress(self, e):
         self.layout(self.document.node)
 ```
 
-While we're at it, let's modify `render` to draw a cursor into the
+While we're at it, let's modify `draw` to draw a cursor into the
 focused input area:
 
 ``` {.python indent=4}
-def render(self):
+def draw(self):
     # ...
     if self.focus == "address bar":
         # ...
@@ -302,7 +302,7 @@ First, let's give buttons a different color:
 
 ``` {.python}
 class InputLayout:
-    def draw(self, to):
+    def paint(self, to):
         # ...
         bgcolor = "light gray" if self.node.tag == "input" else "yellow"
         to.append(DrawRect(x1, y1, x2, y2, bgcolor))
@@ -314,7 +314,7 @@ attributes:
 
 ``` {.python}
 class InputLayout:
-    def draw(self, to):
+    def paint(self, to):
         # ...
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")

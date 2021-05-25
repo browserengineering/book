@@ -73,8 +73,8 @@ class Browser:
 
 Then, when responses are processed:
 
-``` {.python}
-def load(self, url, body=None)
+``` {.python expected=False}
+def load(self, url, body=None):
     # ...
     if "set-cookie" in headers:
         kv, params = headers["set-cookie"].split(";", 1)
@@ -103,14 +103,14 @@ we can pass in the value of the `Cookie` header:
 def request(url, headers={}, payload=None):
     # ...
     for header, value in headers.items():
-        s.send("{}: {}\r\n".format(header, value).encode("utf8"))
+        body += "{}: {}\r\n".format(header, value)
     # ...
 ```
 
 Now before calling `request` in `load`, let's construct the cookie
 string:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def cookie_string(self):
         cookie_string = ""
@@ -118,7 +118,7 @@ class Browser:
             cookie_string += "&" + key + "=" + value
         return cookie_string[1:]
     
-    def load(url, body=None):
+    def load(self, url, body=None):
         req_headers = { "Cookie": self.cookie_string() }
         # ...
         headers, body = request(url, headers=req_headers, payload=body)
@@ -147,7 +147,7 @@ Let's start coding. First, we'll need to store usernames in `ENTRIES`:[^3]
     [Hack the Planet!](https://xkcd.com/1337)
 
 
-``` {.python .browser}
+``` {.python .browser expected=False}
 ENTRIES = [
     ("No names. We are nameless!", "cerealkiller"),
     ("HACK THE PLANET!!!", "crashoverride"),
@@ -157,20 +157,20 @@ ENTRIES = [
 
 When we print the guest book entries, print the username as well:
 
-``` {.python .browser}
+``` {.python .browser expected=False}
 for entry, who in ENTRIES:
     out += '<p>' + entry + " <i>from " + who + '</i></p>'
 ```
 
 We'll also need a data structure to store usernames and passwords:
 
-``` {.python .browser}
+``` {.python .browser expected=False}
 LOGINS = { "crashoverride": "0cool", "cerealkiller": "emmanuel" }
 ```
 
 Next, let's add the `/login` URL:
 
-``` {.python}
+``` {.python expected=False}
 def handle_request(method, url, headers, body):
     if method == 'POST':
         # ...
@@ -198,7 +198,7 @@ implement the login logic directly in `handle_request`:
     in a real browser will draw stars or dots instead of showing what
     you've entered, though our browser doesn't do that.
 
-``` {.python}
+``` {.python expected=False}
 def handle_request(method, url, headers, body):
     username = None
     if method == 'POST' and url == "/":
@@ -210,7 +210,7 @@ def handle_request(method, url, headers, body):
 
 The `check_login` method does exactly what you'd expect:
 
-``` {.python}
+``` {.python expected=False}
 def check_login(username, pw):
     return username in LOGINS and LOGINS[username] == pw
 ```
@@ -221,7 +221,7 @@ a cookie so that the browser actually remembers the login:[^5]
 [^5]: Like with the cookie jar, this is a transparently insecure design,
     on purpose, so that I can demonstrate an attack.
 
-``` {.python}
+``` {.python expected=False}
 def handle_request(method, url, headers, body):
     resp_headers = {}
     
@@ -237,7 +237,7 @@ We'll need to send those headers in `handle_connection`, so first
 modify `handle_request` to return `resp_headers` in each case (there
 are lots!). Then, modify `handle_connection` to use them:
 
-``` {.python}
+``` {.python expected=False}
 def handle_connection(conx):
     # ...
     body, headers = handle_request(method, url, headers, body)
@@ -252,7 +252,7 @@ Since we're now setting cookies we should also be reading them:[^6]
 [^6]: In reality there's also special syntax if you want an equal sign
     in your cookie, but I'm ignoring that.
 
-``` {.python}
+``` {.python expected=False}
 def parse_cookies(s):
     out = {}
     for cookie in s.split("&"):
@@ -263,7 +263,7 @@ def parse_cookies(s):
 
 That allows us to automatically log in users with the login cookie:
 
-``` {.python}
+``` {.python expected=False}
 def handle_request(method, url, headers, body):
     resp_headers = {}
     if method == "POST" and url = "/":
@@ -278,7 +278,7 @@ make some changes to the existing guest book code to handle logins.
 We can pass `username` to `show_comments` and use it to either send
 the user the input form or to give them a login link:
 
-``` {.python}
+``` {.python expected=False}
 def show_comments(username):
     # ...
     if username:
@@ -291,7 +291,7 @@ def show_comments(username):
 When you post to the guest book, we'll also need to know your
 username:
 
-``` {.python}
+``` {.python expected=False}
 def add_entry(params, username):
     if 'guest' in params and len(params['guest']) <= 100 and username:
         ENTRIES.append((params['guest'], username))
@@ -315,7 +315,6 @@ ones.
 [^7]: I should be hashing passwords! Using `bcrypt`! We should verify
     email addresses! Over TLS! We should be comparing passwords in a
     constant-time fashion!
-
 
 Changing your login
 ===================
@@ -353,7 +352,7 @@ short.[^8] So cookies don't usually store *data*; they store
 Let's add login tokens in our guest book. I'll store the tokens in a
 global variable:
 
-``` {.python}
+``` {.python expected=False}
 import random
 TOKENS = {}
 ```
@@ -361,7 +360,7 @@ TOKENS = {}
 Then where we set `Set-Cookie` we'll create a new token and remember
 its username:
 
-``` {.python}
+``` {.python expected=False}
 def handle_request(method, url, headers, body):
     # ...
     token = str(random.random())[2:]
@@ -373,7 +372,7 @@ def handle_request(method, url, headers, body):
 Then when we read the `Cookie` header, we'll use the token to retrieve
 the username:
 
-``` {.python}
+``` {.python expected=False}
 def handle_request(method, url, headers, body):
     # ...
     elif "cookie" in headers:
@@ -427,7 +426,7 @@ def load(self, url, body=None):
 Then, in `cookie_string` instead of iterating over all cookies we'll
 do:
 
-``` {.python}
+``` {.python expected=False}
 def cookie_string(self):
     cookie_string = ""
     origin = url_origin(self.history[-1])
@@ -485,7 +484,7 @@ anything malicious. And this is true, if our users cooperate. But web
 services sometimes turn into battlegrounds between users. And consider
 the code we wrote to output guest book entries:
 
-``` {.python}
+``` {.python expected=False}
 out += '<p>' + entry + ' <i> from ' + who + '</i></p>'
 ```
 
@@ -580,7 +579,7 @@ is not sending `entry`, the user comment, directly to the browser.
 Instead, we'd do something to ensure the browser would not interpret it
 as code, something like:
 
-``` {.python}
+``` {.python expected=False}
 def html_escape(text):
     return text.replace("&", "&amp;").replace("<", "&lt;")
 
@@ -709,7 +708,7 @@ requests to the same server), so it can't be misused in the same way.
 Let's implement nonces in our guest book. Generate a secret nonce and
 add it to the form:
 
-``` {.python}
+``` {.python expected=False}
 def show_comments(username):
     # ...
     if username:
@@ -733,7 +732,7 @@ valid and also that it is associated with the correct user:[^22]
 [^22]: Otherwise an attacker could get a nonce for *their* account and
     then use in a CSRF attack for another user's submission.
 
-``` {.python}
+``` {.python expected=False}
 def show_comments(username):
     # ...
     if username:
@@ -743,7 +742,7 @@ def show_comments(username):
 
 When the form is submitted, we will check the nonce:
 
-``` {.python}
+``` {.python expected=False}
 def add_entry(params, username):
     if not check_nonce(params, username):
         return "Invalid nonce", {}

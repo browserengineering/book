@@ -13,4 +13,4 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v1
         with:
           pandoc-version: 2.11.4
-      - run: make book draft blog
+      - run: make book draft blog lint

@@ -64,8 +64,6 @@ desired rendering *cadence*.
 
 Our next goal is to make the browser match this cadence.
 
-(TODO: rename the pipeline stages in earlier chapters to match the nomenclature below.)
-
 Currently, your browser runs the rendering pipeline (style, layout, paint, and
 draw) immediately after each possible event that might cause a change to what is
 shown on the screen. These events are currently `handle_click`, `keypress`, `load`,
@@ -273,19 +271,18 @@ Let's walk through what it does:
 
 3. Run the rendering pipeline (style, layout, paint, draw)
 
-Let's look a bit more closely at steps 1 and 2. Would it work to run step 1
-*after* step 2?[^copy-raf] The answer is no, but the reason is subtle: it's because
-the JavaScript callback code could *once again* call `requestAnimationFrame`.
-If this happens during such a callback, the spec says that a *second* frame
-should be scheduled (and 16ms further in the future, naturally).
+Look a bit more closely at steps 1 and 2. Would it work to run step 1 *after*
+step 2? The answer is no, but the reason is subtle: it's because the JavaScript
+callback code could *once again* call `requestAnimationFrame`. If this happens
+during such a callback, the spec says that a *second* frame should be scheduled
+(and 16ms further in the future, naturally). Likewise the runtime JavaScript
+needs to be careful to copy the `RAF_LISTENERS` array to a temporary variable
+and clear out RAF_LISTENERS, so that it can be re-filled by new calls to
+`requestAnimationFrame` later.
 
-[^copy-raf]: Likewise the runtime JavaScript needs to be careful to copy the
-`RAF_LISTENERS` array to a temporary variable and clear out RAF_LISTENERS, so
-that it can be re-filled by new calls to `requestAnimationFrame` later.
-
-This may seem like a corner case, but it's actually very important, as it's the
-way that JavaScript can cause a 60Hz animation loop to happen. Let's try it out
-with a script that counts from 1 to 100, one frame at a time:
+This situation may seem like a corner case, but it's actually very important, as
+it's the way that JavaScript can cause a 60Hz animation loop to happen. Let's
+try it out with a script that counts from 1 to 100, one frame at a time:
 
 ```
 var count = 0;

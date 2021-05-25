@@ -224,7 +224,7 @@ x += font1.measure("Hello, ")
 canvas.create_text(x, y, text="overlapping!", font=font2, anchor='nw')
 ```
 
-Modify the `render` function to set `anchor` to `"nw"`; we didn't need
+Modify the `draw` function to set `anchor` to `"nw"`; we didn't need
 to do that in the previous chapter because all Chinese characters are
 the same width.
 
@@ -423,7 +423,7 @@ text.[^even-misnested]
     [next chapter](html.md).
 
 The `bold` and `italic` variables are used to select the font. Since
-the font is computed in `layout` but used in `render`, we'll need to
+the font is computed in `layout` but used in `draw`, we'll need to
 add the font used to each entry in the display list.
 
 ``` {.python expected=False}
@@ -438,7 +438,7 @@ if instance(tok, Text):
         display_list.append((cursor_x, cursor_y, word, font))
 ```
 
-Make sure to update `render` to expect and use this extra font field
+Make sure to update `draw` to expect and use this extra font field
 in display list entries.
 
 ::: {.further}
@@ -515,7 +515,7 @@ class Browser:
         headers, body = request(url)
         tokens = lex(body)
         self.display_list = Layout(tokens).display_list
-        self.render()
+        self.draw()
 ```
 
 When you do big refactors like this, it's important to work
