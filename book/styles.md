@@ -477,7 +477,7 @@ class TagSelector:
 class DescendantSelector:
     def __init__(self, ancestor, descendant):
         # ...
-        self.priority = ancestor.priority + descendant + priority
+        self.priority = ancestor.priority + descendant.priority
 ```
 
 To use Python's `sorted` function, we need a function that extracts
@@ -492,7 +492,15 @@ def cascade_priority(rule):
 Then we can style web page using a list of parsed rules like this:
 
 ``` {.python indent=8}
-style(nodes, reversed(sorted(rules, cascade_priority)))
+def load(self, url):
+    # ...
+    nodes = HTMLParser(body).parse()
+
+    rules = []
+    style(nodes, reversed(sorted(rules, cascade_priority)))
+
+    self.document = DocumentLayout(nodes)
+    # ...
 ```
 
 In Python, the `sorted` function is *stable*, which means that things
@@ -529,11 +537,11 @@ load and parse that file when it downloads a page:
 ``` {.python replace=browser.css/browser6.css}
 class Browser:
     def load(self, url):
-        headers, body = request(url)
-        nodes = HTMLParser(body).parse()
-
+        # ...
+        rules = []
         with open("browser.css") as f:
-            rules = CSSParser(f.read()).parse()
+            rules.extend(CSSParser(f.read()).parse())
+        # ...
 ```
 
 Beyond the browser styles, our browser needs to find website-specific
@@ -645,22 +653,11 @@ can hide errors.
 
 Since the page's stylesheets come *after* browser style, user styles
 take priority over the browser style sheet. With the rules loaded, we
-need only sort and apply them and then do layout:
-
-``` {.python indent=4}
-def load(self, url):
-    # ...
-    rules.sort(key=lambda x: x[0].priority())
-    rules.reverse()
-    style(nodes, rules)
-    # ...
-```
-
-Now every element is styled and ready to be laid out and drawn to the
-screen. Open this page up again, and you should see both gray
-backgrounds on every code block (thanks to the browser style sheet)
-and light-gold backgrounds on this book's mailing list signup form
-(try the book's main page).
+need only sort and apply them and then do layout, the code for which
+we've already added to `load`. Open this page up again, and you should
+see both gray backgrounds on every code block (thanks to the browser
+style sheet) and light-gold backgrounds on this book's mailing list
+signup form (try the book's main page).
 
 Alright: we've got background colors that can be configured by web
 page authors. But there's more to web design than that! At the very
@@ -746,11 +743,11 @@ def style(node, rules):
     else:
         # ...
         for property, default in INHERITED_PROPERTIES.items():
-            if property not in node.style:
-                if node.parent:
-                    node.style[property] = node.parent.style[property]
-                else:
-                    node.style[property] = default
+            if property in node.style: continue
+            if node.parent:
+                node.style[property] = node.parent.style[property]
+            else:
+                node.style[property] = default
         # ...
 ```
 

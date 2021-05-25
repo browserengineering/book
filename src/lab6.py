@@ -288,6 +288,7 @@ class CSSParser:
 class TagSelector:
     def __init__(self, tag):
         self.tag = tag
+        self.priority = 1
 
     def matches(self, node):
         return self.tag == node.tag
@@ -296,6 +297,7 @@ class DescendantSelector:
     def __init__(self, ancestor, descendant):
         self.ancestor = ancestor
         self.descendant = descendant
+        self.priority = ancestor.priority + descendant.priority
             
     def matches(self, node):
         if not self.descendant.matches(node): return False
@@ -320,17 +322,17 @@ def style(node, rules):
     if isinstance(node, TextNode):
         node.style = node.parent.style
     else:
-        for selector, pairs in rules:
-            if selector.matches(node):
-                for property in pairs:
-                    if property not in node.style:
-                        node.style[property] = pairs[property]
+        for selector, body in rules:
+            if not selector.matches(node): continue
+            for property, value in body.items():
+                if property in node.style: continue
+                node.style[property] = value
         for property, default in INHERITED_PROPERTIES.items():
-            if property not in node.style:
-                if node.parent:
-                    node.style[property] = node.parent.style[property]
-                else:
-                    node.style[property] = default
+            if property in node.style: continue
+            if node.parent:
+                node.style[property] = node.parent.style[property]
+            else:
+                node.style[property] = default
         for child in node.children:
             style(child, rules)
 
@@ -553,8 +555,9 @@ class Browser:
         headers, body = request(url)
         nodes = HTMLParser(body).parse()
 
+        rules = []
         with open("browser6.css") as f:
-            rules = CSSParser(f.read()).parse()
+            rules.extend(CSSParser(f.read()).parse())
         links = [node.attributes["href"]
                  for node in tree_to_list(nodes, [])
                  if node.tag == "link"
