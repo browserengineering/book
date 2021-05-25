@@ -955,11 +955,11 @@ fixed`](https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment),
 that make it difficult to perform threaded scrolling. In these situations,
 browser scrolling is at the mercy of the web page's script performance, and the
 only way to get back threaded scrolling is to not use these features on the
-website, or for the browser to not support those features[^not-support.
+website, or for the browser to not support those features.[^not-supported]
 
 [designed-for]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#improving_scrolling_performance_with_passive_listeners
 
-[^not-support]: Until 2020, Chromium-based browsers on Android did just this,
+[^not-supported]: Until 2020, Chromium-based browsers on Android did just this,
 and did not support `backround-attachment: fixed`.
 
 Threaded style and layout
