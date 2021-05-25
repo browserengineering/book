@@ -567,6 +567,109 @@ class Browser:
 
 In this case, `load` calls `draw` so we don't need to do so directly.
 
+Prettier pages
+==============
+
+Let's add support for *margins*, *borders*, and *padding*, which
+change the position of block layout objects. Here's how those work. In
+effect, every block has four rectangles associated with it: the
+*margin rectangle*, the *border rectangle*, the *padding rectangle*,
+and the *content rectangle*:
+
+![](https://www.w3.org/TR/CSS2/images/boxdim.png)
+
+So far, our block layout objects have had just one size and position;
+these will refer to the border rectangle (so that the `x` and `y`
+fields point to the top-left corner of the outside of the layout
+object's border). To track the margin, border, and padding, we'll also
+store the margin, border, and padding widths on each side of the
+layout object in the variables `mt`, `mr`, `mb,` and `ml`; `bt`, `br`,
+`bb`, and `bl`; and `pt`, `pr`, `pb`, and `pl`. The naming convention
+here is that the first letter stands for margin, border, or padding,
+while the second letter stands for top, right, bottom, or left.
+
+Since each block layout object now has more variables, we'll need to
+add code to `layout` to compute them:
+
+``` {.python}
+def px(s):
+    if s.endswith("px"):
+        return int(s[:-2])
+    else:
+        return 0
+
+class BlockLayout:
+    def layout(self):
+        self.mt = px(self.node.style.get("margin-top", "0px"))
+        self.bt = px(self.node.style.get("border-top-width", "0px"))
+        self.pt = px(self.node.style.get("padding-top", "0px"))
+        # ... repeat for the right, bottom, and left edges
+```
+
+Remember to write out the code to access the other 9 properties, and
+don't forget that the border one is called `border-X-width`, not
+`border-X`.[^because-colors]
+
+[^because-colors]: Because borders have not only widths but also
+    colors and styles, while paddings and margins are thought of as
+    whitespace, not something you draw.
+
+You'll also want to add these twelve variables to `DocumentLayout` and
+`InlineLayout` objects. Set them all to zero.
+
+With their values now loaded, we can use these fields to drive layout.
+First of all, when we compute width, we need to account for the space
+taken up by the parent's border and padding; and likewise we'll need
+to adjust each layout object's `x` and `y` based on its margins:[^backslash-continue]
+
+[^backslash-continue]: In Python, if you end a line with a backslash,
+    the newline is ignored by the parser, letting you split a logical
+    line of code across two actual lines in your file.
+
+``` {.python}
+def layout(self):
+    # ...
+    self.w = self.parent.w - self.parent.pl - self.parent.pr \
+        - self.parent.bl - self.parent.br \
+        - self.ml - self.mr
+    self.y += self.mt
+    self.x += self.ml
+    # ...
+```
+
+Similarly, when we position child layout objects, we'll need to
+account for our their parent's border and padding:
+
+``` {.python indent=4}
+def layout(self):
+    # ...
+    y = self.y
+    for child in self.children:
+        child.x = self.x + self.pl + self.bl
+        child.y = y
+        child.layout()
+        y += child.mt + child.h + child.mb
+    self.h = y - self.y
+```
+
+Likewise, in `InlineLayout` we'll need to account for the parent's
+padding and border:
+
+``` {.python}
+class InlineLayout:
+    def layout(self):
+        self.w = self.parent.w - self.parent.pl - self.parent.pr \
+            - self.parent.bl - self.parent.br
+```
+
+It's now possible to indent a single element by giving it a `style`
+attribute that adds a `margin-left`. But while that's good for one-off
+changes, it is a tedious way to change the style of, say, every
+paragraph on the page. And if you have a site with many pages, you'll
+need to remember to add the same `style` attributes to every web page
+to achieve a measure of consistency. CSS provides a better way.
+
+
 Summary
 =======
 

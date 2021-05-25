@@ -58,510 +58,484 @@ def request(url):
 
     return headers, body
 
+def relative_url(url, current):
+    if "://" in url:
+        return url
+    elif url.startswith("/"):
+        scheme, hostpath = current.split("://", 1)
+        host, oldpath = hostpath.split("/", 1)
+        return host + url
+    else:
+        dir, _ = current.rsplit("/", 1)
+        while url.startswith("../"):
+            dir, _ = dir.rsplit("/", 1)
+            url = url[3:]
+        return dir + "/" + url
+
 class Text:
-    def __init__(self, text):
+    def __init__(self, text, parent):
         self.text = text
-
-    def __repr__(self):
-        return "\"" + self.text.replace("\n", "\\n") + "\""
-
-SELF_CLOSING_TAGS = [
-    "area", "base", "br", "col", "embed", "hr", "img", "input",
-    "link", "meta", "param", "source", "track", "wbr",
-]
-
-class Tag:
-    def __init__(self, text):
-        parts = text.split()
-        self.tag = parts[0].lower()
-        self.attributes = {}
-        for attrpair in parts[1:]:
-            if "=" in attrpair:
-                key, value = attrpair.split("=", 1)
-                if len(value) > 2 and value[0] in ["'", "\""]:
-                    value = value[1:-1]
-                self.attributes[key.lower()] = value
-            else:
-                self.attributes[attrpair.lower()] = ""
-
-    def __repr__(self):
-        return "<" + self.tag + ">"
-
-def lex(body):
-    out = []
-    text = ""
-    in_tag = False
-    for c in body:
-        if c == "<":
-            in_tag = True
-            if text: out.append(Text(text))
-            text = ""
-        elif c == ">":
-            in_tag = False
-            out.append(Tag(text))
-            text = ""
-        else:
-            text += c
-    if not in_tag and text:
-        out.append(Text(text))
-    return out
-
-class ElementNode:
-    def __init__(self, tag, parent, attributes):
-        self.tag = tag
+        self.children = []
         self.parent = parent
+
+    def __repr__(self):
+        return repr(self.text)
+
+class Element:
+    def __init__(self, tag, attributes, parent):
+        self.tag = tag
         self.attributes = attributes
         self.children = []
+        self.parent = parent
 
         self.style = {}
-        for pair in self.attributes.get("style", "").split(";"):
+        for pair in attributes.get("style", "").split(";"):
             if ":" not in pair: continue
             prop, val = pair.split(":")
             self.style[prop.strip().lower()] = val.strip()
 
     def __repr__(self):
-        return "<" + self.tag + ">"
+        attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
+        return "<" + self.tag + "".join(attrs) + ">"
 
-class TextNode:
-    def __init__(self, text, parent):
-        self.text = text
-        self.parent = parent
-        self.children = []
+def print_tree(node, indent=0):
+    print(" " * indent, node)
+    for child in node.children:
+        print_tree(child, indent + 2)
 
-    def __repr__(self):
-        return self.text.replace("\n", "\\n")
-        
-def parse(tokens):
-    currently_open = []
-    for tok in tokens:
-        parent = currently_open[-1] if currently_open else None
+class HTMLParser:
+    def __init__(self, body):
+        self.body = body
+        self.unfinished = []
 
-        implicit_tags(tok, currently_open)
-        if isinstance(tok, Text):
-            if tok.text.isspace(): continue
-            node = TextNode(tok.text, parent)
-            parent.children.append(node)
-        elif tok.tag.startswith("/"):
-            node = currently_open.pop()
-            if not currently_open: return node
-            currently_open[-1].children.append(node)
-        elif tok.tag in SELF_CLOSING_TAGS:
-            node = ElementNode(tok.tag, parent, tok.attributes)
-            parent.children.append(node)
-        elif tok.tag.startswith("!"):
-            continue
-        else:
-            node = ElementNode(tok.tag, parent, tok.attributes)
-            currently_open.append(node)
-    while currently_open:
-        node = currently_open.pop()
-        if not currently_open: return node
-        currently_open[-1].children.append(node)
-
-HEAD_TAGS = [
-    "base", "basefont", "bgsound", "noscript",
-    "link", "meta", "title", "style", "script",
-]
-
-def implicit_tags(tok, currently_open):
-    tag = tok.tag if isinstance(tok, Tag) else None
-    while True:
-        open_tags = [node.tag for node in currently_open]
-        if open_tags == [] and tag != "html":
-            currently_open.append(ElementNode("html", None, {}))
-        elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
-            if tag in HEAD_TAGS:
-                implicit = "head"
+    def parse(self):
+        text = ""
+        in_tag = False
+        for c in self.body:
+            if c == "<":
+                in_tag = True
+                if text: self.add_text(text)
+                text = ""
+            elif c == ">":
+                in_tag = False
+                self.add_tag(text)
+                text = ""
             else:
-                implicit = "body"
-            parent = currently_open[-1]
-            currently_open.append(ElementNode(implicit, parent, {}))
-        elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
-            node = currently_open.pop()
-            parent = currently_open[-1]
+                text += c
+        if not in_tag and text:
+            self.add_text(text)
+        return self.finish()
+
+    def get_attributes(self, text):
+        parts = text.split()
+        tag = parts[0].lower()
+        attributes = {}
+        for attrpair in parts[1:]:
+            if "=" in attrpair:
+                key, value = attrpair.split("=", 1)
+                if len(value) > 2 and value[0] in ["'", "\""]:
+                    value = value[1:-1]
+                attributes[key.lower()] = value
+            else:
+                attributes[attrpair.lower()] = ""
+        return tag, attributes
+
+    def add_text(self, text):
+        if text.isspace(): return
+        self.implicit_tags(None)
+        parent = self.unfinished[-1]
+        node = Text(text, parent)
+        parent.children.append(node)
+
+    SELF_CLOSING_TAGS = [
+        "area", "base", "br", "col", "embed", "hr", "img", "input",
+        "link", "meta", "param", "source", "track", "wbr",
+    ]
+
+    def add_tag(self, tag):
+        tag, attributes = self.get_attributes(tag)
+        if tag.startswith("!"): return
+        self.implicit_tags(tag)
+
+        if tag.startswith("/"):
+            if len(self.unfinished) == 1: return
+            node = self.unfinished.pop()
+            parent = self.unfinished[-1]
+            parent.children.append(node)
+        elif tag in self.SELF_CLOSING_TAGS:
+            parent = self.unfinished[-1]
+            node = Element(tag, attributes, parent)
             parent.children.append(node)
         else:
-            break
+            parent = self.unfinished[-1] if self.unfinished else None
+            node = Element(tag, attributes, parent)
+            self.unfinished.append(node)
+
+    HEAD_TAGS = [
+        "base", "basefont", "bgsound", "noscript",
+        "link", "meta", "title", "style", "script",
+    ]
+
+    def implicit_tags(self, tag):
+        while True:
+            open_tags = [node.tag for node in self.unfinished]
+            if open_tags == [] and tag != "html":
+                self.add_tag("html")
+            elif open_tags == ["html"] \
+                 and tag not in ["head", "body", "/html"]:
+                if tag in self.HEAD_TAGS:
+                    self.add_tag("head")
+                else:
+                    self.add_tag("body")
+            elif open_tags == ["html", "head"] and \
+                 tag not in ["/head"] + self.HEAD_TAGS:
+                self.add_tag("/head")
+            else:
+                break
+
+    def finish(self):
+        while len(self.unfinished) > 1:
+            node = self.unfinished.pop()
+            parent = self.unfinished[-1]
+            parent.children.append(node)
+        return self.unfinished.pop()
 
 class CSSParser:
     def __init__(self, s):
         self.s = s
+        self.i = 0
 
-    def whitespace(self, i):
-        while i < len(self.s) and self.s[i].isspace():
-            i += 1
-        return None, i
+    def whitespace(self):
+        while self.i < len(self.s) and self.s[self.i].isspace():
+            self.i += 1
 
-    def literal(self, i, literal):
-        assert self.s[i:i+len(literal)] == literal
-        return None, i + len(literal)
+    def literal(self, literal):
+        assert self.s[self.i:self.i+len(literal)] == literal
+        self.i += len(literal)
 
-    def word(self, i):
-        j = i
-        while j < len(self.s) and self.s[j].isalnum() or self.s[j] in "-.":
-            j += 1
-        assert j > i
-        return self.s[i:j], j
+    def word(self):
+        start = self.i
+        while self.i < len(self.s):
+            if self.s[self.i].isalnum() or self.s[self.i] in "#-.%":
+                self.i += 1
+            else:
+                break
+        assert self.i > start
+        return self.s[start:self.i]
 
-    def pair(self, i):
-        prop, i = self.word(i)
-        _, i = self.whitespace(i)
-        _, i = self.literal(i, ":")
-        _, i = self.whitespace(i)
-        val, i = self.word(i)
-        return (prop.lower(), val), i
+    def pair(self):
+        prop = self.word()
+        self.whitespace()
+        self.literal(":")
+        self.whitespace()
+        val = self.word()
+        return prop.lower(), val
 
-    def ignore_until(self, i, chars):
-        while i < len(self.s) and self.s[i] not in chars:
-            i += 1
-        return None, i
+    def ignore_until(self, chars):
+        while self.i < len(self.s):
+            if self.s[self.i] in chars:
+                return self.s[self.i]
+            else:
+                self.i += 1
 
-    def body(self, i):
+    def body(self):
         pairs = {}
-        _, i = self.literal(i, "{")
-        _, i = self.whitespace(i)
-        while i < len(self.s) and self.s[i] != "}":
+        self.literal("{")
+        self.whitespace()
+        while self.i < len(self.s) and self.s[self.i] != "}":
             try:
-                (prop, val), i = self.pair(i)
+                prop, val = self.pair()
                 pairs[prop] = val
-                _, i = self.whitespace(i)
-                _, i = self.literal(i, ";")
+                self.whitespace()
+                self.literal(";")
+                self.whitespace()
             except AssertionError:
-                _, i = self.ignore_until(i, [";", "}"])
-                if i < len(self.s) and self.s[i] == ";":
-                    _, i = self.literal(i, ";")
-            _, i = self.whitespace(i)
-        _, i = self.literal(i, "}")
-        return pairs, i
+                why = self.ignore_until([";", "}"])
+                if why == ";":
+                    self.literal(";")
+                    self.whitespace()
+                else:
+                    break
+        self.literal("}")
+        return pairs
 
-    def selector(self, i):
-        if self.s[i] == "#":
-            _, i = self.literal(i, "#")
-            name, i = self.word(i)
-            return IdSelector(name), i
-        elif self.s[i] == ".":
-            _, i = self.literal(i, ".")
-            name, i = self.word(i)
-            return ClassSelector(name), i
-        else:
-            name, i = self.word(i)
-            return TagSelector(name.lower()), i
-
-    def rule(self, i):
-        selector, i = self.selector(i)
-        _, i = self.whitespace(i)
-        body, i = self.body(i)
-        return (selector, body), i
-
-    def file(self, i):
-        rules = []
-        _, i = self.whitespace(i)
-        while i < len(self.s):
-            try:
-                rule, i = self.rule(i)
-                rules.append(rule)
-            except AssertionError:
-                _, i = self.ignore_until(i, "}")
-                _, i = self.literal(i, "}")
-            _, i = self.whitespace(i)
-        return rules, i
+    def selector(self):
+        out = TagSelector(self.word().lower())
+        self.whitespace()
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            descendant = TagSelector(self.word().lower())
+            out = DescendantSelector(out, descendant)
+            self.whitespace()
+        return out
 
     def parse(self):
-        rules, _ = self.file(0)
+        rules = []
+        self.whitespace()
+        while self.i < len(self.s):
+            try:
+                selector = self.selector()
+                body = self.body()
+                rules.append((selector, body))
+            except AssertionError:
+                why = self.ignore_until(["}"])
+                if why == "}":
+                    self.literal("}")
+                    self.whitespace()
+                else:
+                    break
         return rules
     
 class TagSelector:
     def __init__(self, tag):
         self.tag = tag
+        self.priority = 1
 
     def matches(self, node):
         return self.tag == node.tag
 
-    def priority(self):
-        return 1
-
-class ClassSelector:
-    def __init__(self, cls):
-        self.cls = cls
-
+class DescendantSelector:
+    def __init__(self, ancestor, descendant):
+        self.ancestor = ancestor
+        self.descendant = descendant
+        self.priority = ancestor.priority + descendant.priority
+            
     def matches(self, node):
-        return self.cls in node.attributes.get("class", "").split()
+        if not self.descendant.matches(node): return False
+        while node.parent:
+            if self.ancestor.matches(node.parent): return True
+            node = node.parent
+        return False
 
-    def priority(self):
-        return 16
-
-class IdSelector:
-    def __init__(self, id):
-        self.id = id
-
-    def matches(self, node):
-        return self.id == node.attributes.get("id", "")
-
-    def priority(self):
-        return 256
+def tree_to_list(tree, list):
+    list.append(tree)
+    for child in tree.children:
+        tree_to_list(child, list)
+    return list
 
 INHERITED_PROPERTIES = {
     "font-style": "normal",
     "font-weight": "normal",
-    "font-size": "16px",
+    "color": "black",
 }
 
 def style(node, rules):
     if isinstance(node, TextNode):
         node.style = node.parent.style
     else:
-        for selector, pairs in rules:
-            if selector.matches(node):
-                for property in pairs:
-                    if property not in node.style:
-                        node.style[property] = pairs[property]
+        for selector, body in rules:
+            if not selector.matches(node): continue
+            for property, value in body.items():
+                if property in node.style: continue
+                node.style[property] = value
         for property, default in INHERITED_PROPERTIES.items():
-            if property not in node.style:
-                if node.parent:
-                    node.style[property] = node.parent.style[property]
-                else:
-                    node.style[property] = default
+            if property in node.style: continue
+            if node.parent:
+                node.style[property] = node.parent.style[property]
+            else:
+                node.style[property] = default
         for child in node.children:
             style(child, rules)
 
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
+def cascade_priority(rule):
+    selector, body = rule
+    return selector.priority
 
-SCROLL_STEP = 100
+BLOCK_ELEMENTS = [
+    "html", "body", "article", "section", "nav", "aside",
+    "h1", "h2", "h3", "h4", "h5", "h6", "hgroup", "header",
+    "footer", "address", "p", "hr", "ol", "ul", "menu", "li",
+    "dl", "dt", "dd", "figure", "figcaption", "main", "div",
+    "table", "form", "fieldset", "legend", "details", "summary",
+]
 
-class InlineLayout:
-    def __init__(self, node, parent):
+def layout_mode(node):
+    if isinstance(node, Text):
+        return "inline"
+    elif node.children:
+        for child in node.children:
+            if isinstance(child, Text): continue
+            if child.tag in BLOCK_ELEMENTS:
+                return "block"
+        return "inline"
+    else:
+        return "block"
+
+class BlockLayout:
+    def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
+        self.previous = previous
         self.children = []
 
-        self.x = -1
-        self.y = -1
-        self.w = -1
-        self.h = -1
+    def layout(self):
+        breakpoint("layout_pre", self)
+        previous = None
+        for child in self.node.children:
+            if layout_mode(child) == "inline":
+                next = InlineLayout(child, self, previous)
+            else:
+                next = BlockLayout(child, self, previous)
+            self.children.append(next)
+            previous = next
+
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for child in self.children:
+            child.layout()
+
+        self.height = sum([child.height for child in self.children])
+
+        breakpoint("layout_post", self)
+
+    def paint(self, display_list):
+        bgcolor = self.node.style.get("background-color", "transparent")
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            display_list.append(rect)
+        for child in self.children:
+            child.paint(display_list)
+
+class InlineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
 
     def layout(self):
-        self.mt = self.bt = self.pt = 0
-        self.mr = self.br = self.pr = 0
-        self.mb = self.bb = self.pb = 0
-        self.ml = self.bl = self.pl = 0
+        breakpoint("layout_pre", self)
+        self.width = self.parent.width
+        self.x = self.parent.x
 
-        self.w = self.parent.w - self.parent.pl - self.parent.pr \
-            - self.parent.bl - self.parent.br
-
-        self.cx = self.x
-        self.cy = self.y
-        self.weight = "normal"
-        self.style = "roman"
-        self.size = 16
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
 
         self.display_list = []
+
+        self.cursor_x = self.x
+        self.cursor_y = self.y
         self.line = []
         self.recurse(self.node)
         self.flush()
 
-        self.h = self.cy - self.y
+        self.height = self.cursor_y - self.y
+        breakpoint("layout_post", self)
 
     def recurse(self, node):
-        if isinstance(node, TextNode):
+        if isinstance(node, Text):
             self.text(node)
         else:
+            if self.tag == "br":
+                self.flush()
             for child in node.children:
                 self.recurse(child)
 
-    def font(self, node):
+    def text(self, node):
+        color = node.style["color"]
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
-        size = int(px(node.style["font-size"]) * .75)
-        return tkinter.font.Font(size=size, weight=weight, slant=style)
-
-    def text(self, node):
-        font = self.font(node)
+        size = node.style["font-size"] * .75 # ???
+        font = tkinter.font.Font(size=style, weight=weight, slant=style)
         for word in node.text.split():
             w = font.measure(word)
-            if self.cx + w > WIDTH - HSTEP:
+            if self.cursor_x + w > WIDTH - HSTEP:
                 self.flush()
-            self.line.append((self.cx, word, font))
-            self.cx += w + font.measure(" ")
+            self.line.append((self.cursor_x, word, font, color))
+            self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
-        metrics = [font.metrics() for x, word, font in self.line]
+        metrics = [font.metrics() for x, word, font, color in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
-        baseline = self.cy + 1.2 * max_ascent
-        for x, word, font in self.line:
+        baseline = self.cursor_y + 1.2 * max_ascent
+        for x, word, font, color in self.line:
             y = baseline - font.metrics("ascent")
-            self.display_list.append((x, y, word, font))
-        self.cx = self.x
+            self.display_list.append((x, y, word, font, color))
+        self.cursor_x = self.x
         self.line = []
         max_descent = max([metric["descent"] for metric in metrics])
-        self.cy = baseline + 1.2 * max_descent
+        self.cursor_y = baseline + 1.2 * max_descent
 
-    def draw(self, to):
-        for x, y, word, font in self.display_list:
-            to.append(DrawText(x, y, word, font))
-
-INLINE_ELEMENTS = [
-    "a", "em", "strong", "small", "s", "cite", "q", "dfn", "abbr",
-    "ruby", "rt", "rp", "data", "time", "code", "var", "samp",
-    "kbd", "sub", "sup", "i", "b", "u", "mark", "bdi", "bdo",
-    "span", "br", "wbr", "big"
-]
-
-def px(s):
-    if s.endswith("px"):
-        return int(s[:-2])
-    else:
-        return 0
-
-class BlockLayout:
-    def __init__(self, node, parent):
-        self.node = node
-        self.parent = parent
-        self.children = []
-
-        self.x = -1
-        self.y = -1
-        self.w = -1
-        self.h = -1
-
-    def has_block_children(self):
-        for child in self.node.children:
-            if isinstance(child, TextNode):
-                if not child.text.isspace():
-                    return False
-            elif child.style.get("display", "inline") == "inline":
-                return False
-        return True
-
-    def layout(self):
-        # block layout here
-        if self.has_block_children():
-            for child in self.node.children:
-                if isinstance(child, TextNode): continue
-                self.children.append(BlockLayout(child, self))
-        else:
-            self.children.append(InlineLayout(self.node, self))
-
-        self.mt = px(self.node.style.get("margin-top", "0px"))
-        self.bt = px(self.node.style.get("border-top-width", "0px"))
-        self.pt = px(self.node.style.get("padding-top", "0px"))
-        self.mr = px(self.node.style.get("margin-right", "0px"))
-        self.br = px(self.node.style.get("border-right-width", "0px"))
-        self.pr = px(self.node.style.get("padding-right", "0px"))
-        self.mb = px(self.node.style.get("margin-bottom", "0px"))
-        self.bb = px(self.node.style.get("border-bottom-width", "0px"))
-        self.pb = px(self.node.style.get("padding-bottom", "0px"))
-        self.ml = px(self.node.style.get("margin-left", "0px"))
-        self.bl = px(self.node.style.get("border-left-width", "0px"))
-        self.pl = px(self.node.style.get("padding-left", "0px"))
-
-        self.w = self.parent.w - self.parent.pl - self.parent.pr \
-            - self.parent.bl - self.parent.br \
-            - self.ml - self.mr
-
-        self.y += self.mt
-        self.x += self.ml
-
-        y = self.y
-        for child in self.children:
-            child.x = self.x + self.pl + self.bl
-            child.y = y
-            child.layout()
-            y += child.mt + child.h + child.mb
-        self.h = y - self.y
-
-    def draw(self, to):
-        if self.node.tag == "pre":
-            x2, y2 = self.x + self.w, self.y + self.h
-            to.append(DrawRect(self.x, self.y, x2, y2, "gray"))
-        for child in self.children:
-            child.draw(to)
+    def paint(self, display_list):
+        bgcolor = self.node.style.get("background-color", "transparent")
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            display_list.append(rect)
+        for x, y, word, font, color in self.display_list:
+            display_list.append(DrawText(x, y, word, font, color))
 
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
         self.parent = None
+        self.previous = None
         self.children = []
 
-        self.x = -1
-        self.y = -1
-        self.w = -1
-        self.h = -1
-
     def layout(self):
-        child = BlockLayout(self.node, self)
+        breakpoint("layout_pre", self)
+        child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
-        self.w = WIDTH
-        self.mt = self.bt = self.pt = 0
-        self.mr = self.br = self.pr = 0
-        self.mb = self.bb = self.pb = 0
-        self.ml = self.bl = self.pl = 0
-
-        child.x = self.x = 0
-        child.y = self.y = 0
+        self.width = WIDTH - 2*HSTEP
+        self.x = HSTEP
+        self.y = VSTEP
         child.layout()
-        self.h = child.h
+        self.height = child.height + 2*VSTEP
+        breakpoint("layout_post", self)
 
-    def draw(self, to):
-        self.children[0].draw(to)
+    def paint(self, display_list):
+        self.children[0].paint(display_list)
 
 class DrawText:
-    def __init__(self, x1, y1, text, font):
-        self.x1 = x1
-        self.y1 = y1
+    def __init__(self, x1, y1, text, font, color):
+        self.top = y1
+        self.left = x1
         self.text = text
         self.font = font
+        self.color = color
 
-        self.y2 = y1 + font.metrics("linespace")
+        self.bottom = y1 + font.metrics("linespace")
 
-    def draw(self, scroll, canvas):
+    def execute(self, scroll, canvas):
         canvas.create_text(
-            self.x1, self.y1 - scroll,
+            self.left, self.top - scroll,
             text=self.text,
             font=self.font,
             anchor='nw',
+            color=self.color,
         )
 
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
         self.color = color
 
-    def draw(self, scroll, canvas):
+    def execute(self, scroll, canvas):
         canvas.create_rectangle(
-            self.x1, self.y1 - scroll,
-            self.x2, self.y2 - scroll,
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
             width=0,
             fill=self.color,
         )
 
-def find_links(node, lst):
-    if not isinstance(node, ElementNode): return
-    if node.tag == "link" and \
-       node.attributes.get("rel", "") == "stylesheet" and \
-       "href" in node.attributes:
-        lst.append(node.attributes["href"])
-    for child in node.children:
-        find_links(child, lst)
-    return lst
+WIDTH, HEIGHT = 800, 600
+HSTEP, VSTEP = 13, 18
 
-def relative_url(url, current):
-    if "://" in url:
-        return url
-    elif url.startswith("/"):
-        return "/".join(current.split("/")[:3]) + url
-    else:
-        current = current.rsplit("/", 1)[0]
-        while url.startswith("../"):
-            current = current.rsplit("/", 1)[0]
-            url = url[3:]
-        return current + "/" + url
+SCROLL_STEP = 100
 
 class Browser:
     def __init__(self):
@@ -578,44 +552,44 @@ class Browser:
         self.display_list = []
 
     def load(self, url):
-        header, body = request(url)
-        nodes = parse(lex(body))
-        
+        headers, body = request(url)
+        nodes = HTMLParser(body).parse()
+
+        rules = []
         with open("browser6.css") as f:
-            rules = CSSParser(f.read()).parse()
+            rules.extend(CSSParser(f.read()).parse())
+        links = [node.attributes["href"]
+                 for node in tree_to_list(nodes, [])
+                 if node.tag == "link"
+                 and "href" in node.attributes
+                 and node.attributes.get("rel") == "stylesheet"]
+        for link in links:
+            try:
+                header, body = request(relative_url(link, url))
+                rules.extend(CSSParser(body).parse())
+            except:
+                continue
+        style(nodes, reversed(sorted(rules, cascade_priority)))
 
-        for link in find_links(nodes, []):
-            header, body = request(relative_url(link, url))
-            rules.extend(CSSParser(body).parse())
-
-        rules.sort(key=lambda x: x[0].priority())
-        rules.reverse()
-        style(nodes, rules)
-        self.layout(nodes)
-
-    def layout(self, tree):
-        document = DocumentLayout(tree)
-        document.layout()
+        self.document = DocumentLayout(nodes)
+        self.document.layout()
         self.display_list = []
-        document.paint(self.display_list)
+        self.document.paint(self.display_list)
         self.draw()
-        self.max_y = document.h - HEIGHT
 
     def draw(self):
         self.canvas.delete("all")
         for cmd in self.display_list:
-            if cmd.y1 > self.scroll + HEIGHT: continue
-            if cmd.y2 < self.scroll: continue
-            cmd.draw(self.scroll, self.canvas)
+            if cmd.top > self.scroll + HEIGHT: continue
+            if cmd.bottom < self.scroll: continue
+            cmd.execute(self.scroll, self.canvas)
 
     def scrolldown(self, e):
-        self.scroll = self.scroll + SCROLL_STEP
-        self.scroll = min(self.scroll, self.max_y)
-        self.scroll = max(0, self.scroll)
+        max_y = self.document.height - HEIGHT
+        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
         self.draw()
 
 if __name__ == "__main__":
     import sys
-    browser = Browser()
-    browser.load(sys.argv[1])
+    Browser().load(sys.argv[1])
     tkinter.mainloop()

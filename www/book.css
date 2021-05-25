@@ -8,7 +8,7 @@ body {
 }
 
 pre, code { hyphens: none; -webkit-hyphens: none; }
-pre { font-size: 80%; overflow: auto; }
+pre { font-size: 18px; overflow: auto; }
 
 dt { margin-top: 1em; }
 dd { margin-bottom: 1em; }
@@ -143,7 +143,9 @@ figure img { width: 100%; }
 .widget { width: 100%; border: 2px solid navy; }
 
 code .st { color: #666; }
-code .cf, code .kw, code .im { color: #606; }
+code .cf { color: #606; }
+code .kw { color: #606; }
+code .im { color: #606; }
 code .co { color: #a86; }
 
 .todo { background: darkred; color: white; padding-bottom: 1em; }
@@ -186,7 +188,7 @@ form h1 { margin-bottom: 1em; margin-top: 0; }
 a.checkoff { font-size: 24px; }
 form .checkoff, form button[type=submit] { margin-top: 1em; }
 
-#signup { border: 2px solid gold; padding: 1em; margin: 1em 0; background: #fffbe5; position: relative; }
+#signup { border: 2px solid gold; padding: 1em; margin: 1em 0; background-color: #fffbe5; position: relative; }
 #signup input { border: 2px none gold; border-bottom-style: solid; background: transparent; }
 #signup button { border: 2px solid gold; background: #fff7cc; }
 #signup button:hover { background: #fff099; cursor: pointer; }
