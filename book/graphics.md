@@ -40,8 +40,8 @@ quickly to clicks and key presses so the user doesn't get frustrated.
 "Feel fluid" can be made more precise. Graphical applications such as browsers
 typically aim to redraw at a speed equal to the refresh rate, or *frame rate*,
 of the screen, and/or a fixed 60Hz[^sixty-hertz]. This means that the browser
-has to finish all its work in less than 1/60th of a second, or 16ms, in order
-to keep up. For this reason, 16ms is called the *frame budget* of the
+has to finish all its work in less than 1/60th of a second, or 16ms, in order to
+keep up. For this reason, 16ms is called the *animation frame budget* of the
 application.
 
 ::: {.further}
@@ -482,8 +482,8 @@ the second skips characters above it. In that second `if` statement,
 character that are halfway inside the viewing window are still drawn.
 
 Scrolling should now be pleasantly fast, and hopefully well within the 16ms
-frame budget. And because we split `layout` and `draw`, we don't need to
-change `layout` at all to implement this optimization.
+animation frame budget. And because we split `layout` and `draw`, we don't need
+to change `layout` at all to implement this optimization.
 
 Mobile devices
 ==============

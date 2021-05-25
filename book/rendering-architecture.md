@@ -111,11 +111,11 @@ def run_rendering_pipeline(self):
 ```
 
 How long should "enough time" be? Chapter 2 discussed that, by introducing the
-[frame budget](graphics.md#framebudget), This is the amount of time allocated to
-re-draw the screen after an input update. The frame budget is typically about
-16ms, in order to draw at 60Hz (`60 * 16.66ms ~= 1s`), and matches the refresh
-rate of most displays. This means that each iteration through the `while` loop
-should ideally complete in at most 16ms.
+[animation frame budget](graphics.md#framebudget), This is the amount of time
+allocated to re-draw the screen after an input update. The animation frame
+budget is typically about 16ms, in order to draw at 60Hz (`60 * 16.66ms ~= 1s`),
+and matches the refresh rate of most displays. This means that each iteration
+through the `while` loop should ideally complete in at most 16ms.
 
 It also means that the browser should not run the while loop faster than that
 speed, even if the CPU is up to it, because there is no point---the screen can't
@@ -234,7 +234,7 @@ requestAnimationFrame(callback);
 This code will do two things: request an "animation frame", and call `callback`
 just before that happens, and within the same task.  An animation frame is the
 same thing as "run the rendering pipeline", and allows JavaScript to
-participate. The implenmentation of this JavaScript API, then, is as follows:
+participate. The implementation of this JavaScript API, then, is as follows:
 
 ``` {.python}
     def js_requestAnimationFrame(self):
@@ -282,11 +282,6 @@ JavaScript callbacks. The full definition is:
 And in the JavaScript runtime we'll need:
 
 ``` {.javascript}
-function Date() {}
-Date.now = function() {
-    return call_python("now");
-}
-
 RAF_LISTENERS = [];
 
 function requestAnimationFrame(fn) {
@@ -304,7 +299,6 @@ function __runRAFHandlers() {
         handlers_copy[i]();
     }
 }
-
 ```
 
 Let's walk through what it does:
@@ -347,17 +341,26 @@ function callback() {
 }
 requestAnimationFrame(callback);
 ```
+
+and this small addition to the runtime code:
+```
+function Date() {}
+Date.now = function() {
+    return call_python("now");
+}
+```
+
 This script will cause 101 JavaScript tasks to be put on event loop. First,
 there is a task that executes immediately after loading the script from the
-network. Then there is a sequence of frames generated (100 of them), each
-ideally separated by about a 16ms gap.
-
-When I ran the script script in this book's browser, I found that there were
-about *140ms* between each frame. Looks like we have some work to do to get
-to 16ms!
+network. Then there is a sequence of 100 animation frames generated.
 
 Speeding up the event loop
 ==========================
+
+To meet the desired rendering cadence of 60Hz, each of the 100 animation frames
+is ideally separated by about a 16ms gap. Unfortunately, when I ran the script
+script in this book's browser, I found that there were about *140ms* between
+each frame. Looks like we have some work to do to get to 16ms!
 
 Analyzing timings shows that, in this case, the slowdown is almost entirely in
 the rendering pipeline:
@@ -377,16 +380,19 @@ And the long pole in the rendering pipeline in this case is layout phase 1A,
 followed by Paint and Drawing, which in turn is caused by setting the innerHTML
 of the `#output` element. The new runRAFHandlers timing shows less than 1ms
 spent running JavaScript; commenting out that line of JavaScript cases the
-frames to be at exactly the right 16ms cadence.
+frames to be at exactly the right 16ms cadence.[^another-scenario]
 
-However, in another scenario it could also easily occur that the slowest part
-ends up being Style, or Paint, or IdleTasks. As one example of how Style
-could end up being the slow part, the style sheet could have a huge number of
-complex rules in it, many of which may not actually affect the newly-changed
+[^another-scenario]: In other scenarios, it could also easily occur that the
+slowest part ends up being Style, or Paint, or IdleTasks. As one example of how
+Style could end up being the slow part, the style sheet could have a huge number
+of complex rules in it, many of which may not actually affect the newly-changed
 elements. If we're not very careful in the implementation (or even if we are!)
-it could still be slow.
+it could still be slow. The only way to be sure is to profile the code; the
+true source of the slowdown is sometimes not what you thought it was. The case
+in this chapter was a real example---I was truly unsure of which part was slow,
+until I profiled it.
 
-In addition, it could be that runRAFHandlers is the slowest part. For example,
+Of course, it could also be that `runRAFHandlers` is the slowest part. For example,
 suppose we inserted the following busyloop into the callback, like so:
 
 ``` {.javascript}
@@ -412,38 +418,38 @@ The performance timings now look like this:
 As you can see, runRAFHandlers now takes 100ms to finish, so it's the slowest
 part of the loop. This demonstrates, of course, that no matter how fast or
 cleverly we optimize the browser, it's always possible for JavaScript to
-make it slow.
+make it slow, and often unavoidably slow (browser engineers can't rewrite
+a site's JavaScript to be magically faster!).
 
 There are a few general techniques to optimize the browser when encountering
-these situations:
+situations like we've discussed so far:
 
-1. Optimize: find ways to do less work to achieve the same goal. For example, a
+1. Do less work: find ways to do less work to achieve the same goal: include a
 faster algorithm, fewer memory allocations, fewer function calls and branches,
-or skipping work that is not necessary. An example is the optimizations we
-worked out in [chapter 2](graphics.md#faster-rendering) to skip painting for
-off-screen elements.
+or skipping work that is not necessary. The optimization we worked out in
+[chapter 2](graphics.md#faster-rendering) to skip painting for off-screen
+elements is an example of "do less work".
 
 2. Cache: carefully remember what the browser already knows from the previous
-frame, and re-compute only what is absolutely necessary for the next one.
-An example is the partial layout optimizations in [chapter 10](reflow.md).
+animation frame, and re-compute only what is absolutely necessary for the next
+one. An example is the partial layout optimizations in [chapter 10](reflow.md).
 
-3. Parallelize: run tasks on an different thread or process. An example
-is the change we made earlier in this chapter to run network loading
-asynchronously in a background thread.
+3. Parallelize: run tasks on different threads or processes. We haven't seen
+an example of this yet, but will see one later in this chapter---stay tuned!
 
 4. Schedule: when possible, delay tasks that can be done later in batches, or
-break up work into smaller chunks and do them in separate frames. The every-16ms
-rendering pipeline task is a form of scheduling---it waits that long on purpose
-to gather up rendering worko queued in the meantime.[^not-much-queueing]
+break up work into smaller chunks and do them in separate animation frames. The
+every-16ms animation frame task is a form of scheduling---it waits that long on
+purpose to gather up rendering work queued in the meantime.[^not-much-queueing]
 
-[^not-much-queueing]: There aren't a lot of great examples of this yet in this
-book's browser, and this chapter is already long. I've left some examples to
-explore for exercises.
+[^not-much-queueing]: There aren't a lot of great examples of scheduling yet in
+this book's browser, and this chapter is already long. I've left some examples
+to explore for exercises.
 
 Let's consider each class of optimization in turn.
 
-Optimize & Cache
-================
+Do less work & Cache
+====================
 
 What could we do to make Paint, for example, faster? There are a few
 micro-optimizations we could try, such as pre-allocationg `self.display_list`
@@ -455,7 +461,7 @@ Ok that didn't work.  Micro-optimization can be hard to guess solutions for,
 especially for interpreted languages which have speed characteristics that
 are hard to predict without a lot of experience. Instead, let's take the next
 step beyond using per-rendering pipeline stage timing, and do a CPU profile of
-the program. We can do that by using the cPython profiler that comes with
+the program. We can do that by using the `cPython` profiler that comes with
 python, via a command like like:
 
 `python -m cPython <my-program.py>`
@@ -492,19 +498,21 @@ As you can see, there is a bunch of time spent, seemingly about equally spread
 between layout and painting. The next thing to do is to examine each method
 mentioned above and see if you can find anything that might be optimized out. As
 it turns out, there is one that is pretty easy to fix, which is the `font.py`
-lines that do font measurement. It's apparently the case that tkinter fonts
-don't have a good internal cache (or perhaps they have a cache keyed off the
-font object), and loading fonts is expensive[^why-fonts-slow]. But right now we
-don't take advantage of the fact that everything on the page has the same font,
-and repeat that font for every object! Let's fix that:
+lines that do font measurement.[^how-found] It's apparently the case that
+tkinter fonts don't have a good internal cache (or perhaps they have a cache
+keyed off the font object), and loading fonts is expensive[^why-fonts-slow]. But
+right now we don't take advantage of the fact that everything on the page has
+the same font, and repeat that font for every object! Let's fix that:
 
-[^why-fonts-slow]: fonts are surprisingly large, especially for scripts like
-Chinese that have a lot of diffferent, complex characters. For this reason they
-are generally stored on disk and only loaded into memory on-demand. Hence it is
-slow to load them. Optimizing font loading (and the cost to shape them and lay
-them out, since many web pages have a *lot* of text) turns out to be one of the
-most important factors in a fast rendering engine.
+[^how-found]: How did I figure this out? Process of elimination.
 
+[^why-fonts-slow]: Fonts are surprisingly large, sometimes on the order of
+multiple megabytes. This is especially so for scripts like Chinese that have a
+lot of diffferent, complex characters. For this reason they are generally stored
+on disk and only loaded into memory on-demand, and it is slow to load them.
+Optimizing font loading (and the cost to shape them and lay them out, since many
+web pages have a *lot* of text) turns out to be one of the most important
+factors fast text rendering.
 
 ``` {.python}
 FONT_CACHE = {}
@@ -526,7 +534,7 @@ class TextLayout:
 ```
 
 This turns out to make a dramatic difference, not just in text measurement, but
-in layout *and* paint!
+in layout *and* paint. How simple and convenient!
 
 ```
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
@@ -556,10 +564,9 @@ in layout *and* paint!
      2472    0.003    0.000    0.085    0.000 font.py:152(measure)
 ```
 
-As you can see, everything became a lot cheaper. This is because font
-measurement overhead was making both layout and paint slower for every single
-object. The new timings show that we're easily meeting the 16ms frame budget:
-
+As you can see, everything became a lot faster. This is because font measurement
+overhead was making both layout and paint slower for every single object. The
+new timings show that we're easily meeting the 16ms animation frame budget:
 
     [  0.000753] runRAFHandlers
     [  0.000091] Style
@@ -575,12 +582,12 @@ object. The new timings show that we're easily meeting the 16ms frame budget:
 Great! Technically speaking though, this font optimization is not a pure
 micro-optimization, but a caching strategy, so let's now discuss that.
 
-Various kinds of caches are the single most important class of optimizations for
-browsers. Real browsers have caches all over the place---network resource
-caches and font caches are two. (Well, we haven't actually implemented a network
-cache yet---maybe in a future chapter?) The rendering pipeline is no different:
-there are caches of various kinds throughout style, layout, and paint. In fact,
-we already saw an example of this in [chapter 10](reflow.md).
+Various kinds of caches are the single most effective class of optimizations for
+browsers. Real browsers have caches all over the place---network resource caches
+and font caches are two. (Well, we haven't actually implemented a network cache
+yet---maybe in a future chapter?) The rendering pipeline is no different: there
+are caches of various kinds throughout style, layout, and paint. In fact, we
+already saw an example of this in [chapter 10](reflow.md).
 
 Notice that the layout tree itself is a cache, as is the display list. We can
 come up with all sorts of ideas to minimize changes to the tree or the list
@@ -601,8 +608,8 @@ paint and draw:
 ```
 
 With these changes, the profile now shows that `draw` is actually a big
-component of the remaining cost, with these pieces. The following data
-is aggregated over 50 frames of animation:
+component of the remaining cost, with the following breakdown.The following data
+is the time spent, aggregated over 50 animation frames:
 
 ```
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
@@ -610,66 +617,59 @@ is aggregated over 50 frames of animation:
       873    0.003    0.000    0.201    0.000 lab13.py:676(draw)
 ```
 
-Line 676 is `DrawText.draw`. Half the total time drawing is in drawing text
-I told you that fonts and text rendering are big time hogs and sources of 
-optimization!) Unfortunately, in this case there is nothing further we can do,
-without finding out where to optmiize tkinter further. Also note that the total
+Line 676 is `DrawText.draw`. Half the total time drawing is in drawing text (I
+told you that fonts and text rendering are big time hogs and sources of 
+optimization!)  Also note that the total
 time spent drawing text is only 0.201s in this case, and therefore 4ms per
-frame. If the amount of text was much larger, this would become a big problem,
-as we'd start missing the 16ms frame budget again.
+animation frame. If the amount of text was much larger, this would become a big
+problem, as we'd start missing the 16ms animation frame budget again.
 
-Or is there something we can do? Let's go back to the list of ways to make
-the event loop faster. We alreedy showed that Optimize and Cache are two ways.
-What about Parallelize? Can't we run these draw commands on a different thread?
-Well, of course we can.
+Unfortunately, in this case it appears there is nothing further we can do,
+without finding out where to optimize tkinter further...or is there? Let's go
+back to the list of ways to make the event loop faster. We alreedy showed that
+Optimize and Cache are two ways. What about Parallelize? Can't we run these draw
+commands on a different thread? Yes, we can!
 
 The Compositor thread
 =====================
 
-This second thread that runs drawing is often called the Compositor thread
+This second thread that runs drawing is often called the *compositor* thread
 It's so named because in a real browser it'll end up doing a lot more than
-drawing to a canvas, but let's forget that for now and focus on drawing.
+drawing to a canvas, but let's skip that par for now and focus on drawing.
 
-To get this compositor thread working, we'll have to find a way to run tkinter
+To get th compositor thread working, we'll have to find a way to run tkinter
 on a second thread, and communicate between the threads in a way that allows
 them to do things in parallel. The first thing you should know is that tkinter
 is *not* thread-safe, so it cannot magically parallelize for free. Instead we'll
 have to carefully avoid using tkinter at all on the main thread, and move all
 use of it to the compositor thread.
 
-The approach we'll take is to take the thread we already have and call it the
-compositor thread, and add a new thread that is the "main thread". This thread
-will have these kinds of tasks:
+The approach we'll take is to call the thread we already have the compositor
+thread, and add a new thread; this thread is usually called the *main* thread.
+The main thread will run these kinds of tasks in our browser:
 
 * JavaScript
 
 * Browser-internal tasks like executing a page load
 
-* The rendering pipeline (including `requestAnimationFrame`)
+* Animation frames - `rAF` callbacks plus the rendering pipeline
 
  The compositor thread (the one with tkinter in it) will be in charge of:
 
-* Scheduling a rendering pipeline frame every 16ms
+* Scheduling an animation frame every 16ms
 
 * Drawing to the screen after the rendering pipeline is done
 
 * Listening to mouse and keyboard events
 
 To do this we'll have to expand greatly on the implementation of an event loop,
-because now we'lll need to manage this event loop ourselves rather than using
+because now we'll need to manage this event loop ourselves rather than using
 tkinter for most of it.
 
-Let's start the implementation by introducing a class that encapsulates the main
-thread and the event loop, called `MainThreadRunner`. The two threads will
-communicate by writing to and reading from some shared data structures. This
-of course introduces the risk of a race condition between the threads,
-so we'll add a `threading.Lock` object for each thread. Any code that touches
-the shared data structures for a thread will have to acquire the lock before
-doing so.
-
-Let's introduce a new class called `MainThreadRunner` that encapsulates the
-maind thread its event loop, and a few queues for different types of event loop
-tasks:
+Let's start the implementation by introducing a class `MainThreadRunner` that
+encapsulates the main thread and the event loop. The two threads will
+communicate by writing to and reading from some shared data structures, and use
+a `threading.Lock` object to prevent race conditions.
 
 ``` {.python}
 class MainThreadRunner:
@@ -699,10 +699,10 @@ It will have some methods to set the variables, such as:
         self.lock.release()
 ```
 
-Its main functionality is in the `run` method. It implements a simple event
+Its main functionality is in the `run` method, which implements a simple event
 loop strategy that runs the rendering pipeline if needed, and also one browser
-method and one script task, if there are any on those queues. It then sleeps
-for 1ms and checks again.
+method and one script task, if there are any on those queues. It then sleeps for
+1ms and checks again.
 
 ```
      def run(self):
@@ -740,7 +740,8 @@ for 1ms and checks again.
 The `run_animation_frame` method on `Browser` will run on the main thread. Since
 `draw` is supposed to happen on the compositor thread, we can't run it as part
 of the main thread rendering pipeline. Instead, we need to `commit` (copy) the
-display list to the compositor thread:
+display list to the compositor thread, so that it can be drawn
+later[^fast-commit]:
 
 ``` {.python}
     def commit(self):
@@ -750,8 +751,13 @@ display list to the compositor thread:
         self.compositor_lock.release()
 ```
 
+[^fast-commit]: `commit` is the one time when both threads are both "stopped"
+simultaneously---in the sense that neither is running a different task. For this
+reason commit needs to be as fast as possible, so as to lose the minimum amount
+of parallelism.
+
 Over on the compositor thread, we need a loop that keeps looking for
-opportunities to draw (when `self.needs_draw` is true, and then doing so:
+opportunities to draw (when `self.needs_draw` is true), and then doing so:
 
 ```
     def maybe_draw(self):
@@ -780,8 +786,8 @@ And of course, draw itself draws `self.draw_display_list`, not
         # ...
 ```
 
-Other threaded tasks
-====================
+Other tasks
+===========
 
 Next up we'll move browser tasks such as loading to the main thread. Now that
 we have `MainThreadRunner`, this is super easy! Whenever the compositor thread
@@ -801,14 +807,13 @@ needs to schedule a task on the main thread event loop, we just call
 ```
 
 We can do the same for input event handlers, but there are a few additional
-subtleties. Let's look closely at each of them in turn, but first notice that
-all of the click handlers are on the `window` object, which is supplied by
-tkinter. But what happens when processing that event---a click, for example? In
-most cases, we will need to [hit test](chrome.md#hit-testing) for which DOM
-element receives the click event, and also fire an event that JavaScript
-can listen to. In this case, it seems clear we should just send the click
-event to the main thread for processing. But if the click was *not* within
-the web page window, we can handle it right there in the compositor thread:
+subtleties. Let's look closely at each of them in turn, starting with
+`handle_click`. In most cases, we will need to [hit test](chrome.md#hit-testing)
+for which DOM element receives the click event, and also fire an event that
+JavaScript can listen to. In this case, it seems clear we should just send the
+click event to the main thread for processing. But if the click was *not* within
+the web page window, we can handle it right there in the compositor thread, and
+leave the main thread none the wiser:
 
 ``` {.python}
         self.window.bind("<Button-1>", self.compositor_handle_click)
@@ -834,7 +839,7 @@ the web page window, we can handle it right there in the compositor thread:
         # ...
 ```
 
-The same logic holds for keypresses:
+The same logic holds for `keypress`:
 
 ```
         self.window.bind("<Key>", self.compositor_keypress)
@@ -862,8 +867,8 @@ The same logic holds for keypresses:
 
 ```
 
-The return key and scrolling, however, have no use for the main thread at
-present:
+As it turns out, the return key and scrolling have no use at all for the main
+thread:
 
 ```
         self.window.bind("<Down>", self.scrolldown)
@@ -900,12 +905,12 @@ the draw operations happen. This kind of optimization is called
 Threaded interactions
 =====================
 
-However, that's not all. All this work to create a compositor thread is not just
-to offload some of the rendering pipeline. There is another, even more
-important, performance advantage: any operation that does not require the main
-thread *cannot be slowed down by it*. Look closely at the code we've written in
-the previous section to handle input events---you'll see that in these cases 
-the main thread is not involved at all:
+All this work to create a compositor thread is not just to offload some of the
+rendering pipeline. There is another, even more important, performance
+advantage: any operation that does not require the main thread *cannot be slowed
+down by it*. Look closely at the code we've written in the previous section to
+handle input events---you'll see that in the following cases the main thread is
+not involved at all:
 
 * Interactions with browser chrome (if the click or keyboard event is not
 targeted at the web page)
@@ -922,19 +927,18 @@ In real browsers, the two examples listed above are *extremely* important
 optimizations. Think how annoying it would be to type in the name of a new
 website if the old one was getting in the way of your keystrokes because it was
 doing a lot of very slow work. Likewise, scrolling a web page with a lot of slow
-JavaScript is quite painful unless the scrolling is
-threaded.
+JavaScript is sometimes painful unless the scrolling is threaded, even for
+relatively good sites.
 
 Unfortunately, threaded scrolling is not always possible or feasible. In the
 best browsers today, there are two primary reasons why threaded scrolling may
 fail:
 
-* There are JavaScript events for listening to a scroll, and if the event
-handler for the [`scroll`][scroll-event] event calls `preventDefault` on the
-first such event  (or via [`touchstart`][touchstart-event] on mobile devices),
-the scroll will not be threaded in most browsers. Our browser has not
-implemented these events, and so can avoid this
-situation.[^real-browser-threaded-scroll]
+* There are JavaScript events for listening to a scroll; if the event handler
+for the [`scroll`][scroll-event] event calls `preventDefault` on the first such
+event (or via [`touchstart`][touchstart-event] on mobile devices), the scroll
+will not be threaded in most browsers. Our browser has not implemented these
+events, and so can avoid this situation.[^real-browser-threaded-scroll]
 
 [scroll-event]: https://developer.mozilla.org/en-US/docs/Web/API/Document/scroll_event
 [touchstart-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/touchstart_event
@@ -945,26 +949,30 @@ to threaded as soon as it doens't see `preventDefault` called. This situation is
 so important that there is also a special kind of event listener [designed just
 for it][designed-for].
 
-* There are also some advanced rendering situations,
-such as [background-attachment:
-fixed](https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment),
+* Certain advanced (and thankfully uncommon) rendering situations, such as
+[`background-attachment:
+fixed`](https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment),
 that make it difficult to perform threaded scrolling. In these situations,
 browser scrolling is at the mercy of the web page's script performance, and the
-get back threaded scrolling is to not use these features on the website.
+only way to get back threaded scrolling is to not use these features on the
+website, or for the browser to not support those features[^not-support.
 
 [designed-for]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#improving_scrolling_performance_with_passive_listeners
+
+[^not-support]: Until 2020, Chromium-based browsers on Android did just this,
+and did not support `backround-attachment: fixed`.
 
 Threaded style and layout
 =========================
 
 You might have wondered: does the rendering pipeline---style, layout and paint
-have to run on the main thread? The answer is: in principle, no you don't. The
-only thing you have to do is implement all the APIs correctly, and draw to the
-screen what the web page wanted once scripts and `requestAnimationFrame`
-callbacks have completed. The specification spells this out in detail
+have to run on the main thread? The answer is: in principle, no. The only thing
+browsers have to do is implement all the web APIs "correctly", and draw to the
+screen what the web page wanted once scripts and `requestAnimationFrame` ("rAF",
+for short) callbacks have completed. The specification spells this out in detail
 in what it calls the [update-the-rendering] steps. Go look at that link and come
 back. Notice anything missing? That's right, it doesn't mention style or layout
-at all!
+at all! All it says is "update the rendering or user interface" at the very end.
 
 [update-the-rendering]: https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering
 
@@ -974,15 +982,7 @@ either. And just like those parts of the pipeline, style recalc and layout are
 considered pure implementation details of a browser. The spec simply says
 that if rendering "opportunities" arise, then the update-the-rendering steps
 are the sequence of *JavaScript-observable* things that have to happen before
-drawing to the screen.[^spec-draw-screen]
-
-[^spec-draw-screen]: Even funnier, "draw to the screen" isn't spelled out per se
-either; instead it presumes that drawing to the screen is an expected task of a
-good browser that one would want to use. (Or is it? There are actually browser
-use cases that don't have a screen at all, such as [headless] browsers for
-testing, or server-side rendering.)
-
-[headless]: https://en.wikipedia.org/wiki/Headless_browser
+drawing to the screen.
 
 Nevertheless, no current modern browser runs style or layout on another thread
 than the main thread.[^servo] The reason is simple: there are many JavaScript
@@ -992,7 +992,7 @@ that requires style to have been computed, and `Element.getBoundingClientRect`,
 which returns the box model of a DOM element.[^nothing-later] These are called
 *forced style recalc* or *forced layout*. Here the world "forced" refers to
 forcing the computation to happen synchronously, as opposed to possibly 16ms in
-the future.
+the future if it didn't happen to be already computed.
 
 [^servo]: The [Servo] rendering engine is sort of an exception. However, in that
 case it's not that style and layout run on a different thread, but that they
@@ -1039,10 +1039,10 @@ be fixed. One way---one that's employed by real browsers---is to store a pointer
 from each DOM element to its layout object, rather than searching for it by
 walking the layout tree.
 
-However, there are yet more reasons why forced layouts are needed. The most
-tricky such one is hit testing. When a click event happens, looking at positions
-of layout objects is how the browser knows which element was clicked on. This
-is implemented in `find_layout`:
+However, even if we fix that there are yet more reasons why forced layouts are
+needed. The most tricky such one is hit testing. When a click event happens,
+looking at positions of layout objects is how the browser knows which element
+was clicked on. This is implemented in `find_layout`:
 
 ```
 def find_layout(x, y, tree):
@@ -1058,7 +1058,7 @@ However, `handle_click` doesn't call `run_rendering_pipeline` like
 `js_innerHTML` does; why not? In a real browser, this would be a bug, but in
 our current browser it's really difficult to cause a situation to happen where
 a click event happens but the rendering pipeline is not up-to-date. That's
-because the currently the only way to schedule a script task is via
+because currently the only way to schedule a script task is via
 `requestAnimationFrame`. In a real browser there is also `setTimeout`, for
 example. But for completeness, let's implement it by adding a call to 
 `update_rendering_pipeline` before `find_layout`:
@@ -1074,25 +1074,25 @@ example. But for completeness, let's implement it by adding a call to
 
 It's not impossible to move style and layout off the main thread
 "optimistically", but these are the reasons it's challenging. for browsers to do
-it. However, I expect that at some point in the future it will be achieved.
+it. I expect that at some point in the future it will be achieved (maybe you'll
+be the one to do it?).
 
 Summary
 =======
 
 This chapter explained in some detail the two-thread rendering system at the
-core of modern browsers.The
-main points to remember are:
+core of modern browsers. The main points to remember are:
 
-* The goal is to consistently generate drawn frames to the screen at a 60Hz
-cadence, which means a 16ms budget to draw each frame.
+* The browser uses event loops, tasks and task queues to do work.
 
-* There are multiple ways to achieve the desired frame candence: Optimize (make
-stuff faster), Cache (reuse past work), Parallelize (do stuff in multiple
-threads), and Schedule (put off less important work for later, or batch work
-together).
+* The goal is to consistently generate drawings to the screen at a 60Hz
+cadence, which means a 16ms budget to draw each animation frame.
 
-* The main thread runs an event loop that runs various tasks, including
-JavaScript and browser rendering. The rendering task is special, can include
+* There are multiple ways to achieve the desired animation frame candence:
+do less work, cache, parallelize, and schedule.
+
+* The main thread runs an event loop for various tasks, including
+JavaScript, style and layout. The rendering task is special, can include
 special JavaScript `requestAnimationFrame` callbacks in it, and at the end
 commits a display list to a second thread.
 
@@ -1105,10 +1105,6 @@ from JavaScript.
 
 Exercises
 =========
-
-* *Date.now*: Implement this JavaScript API and its bindings in the browser.
-You'll need it for an exercise below, and for the sample JavaScript code in this
-chapter.
 
 * *Networking thread*: Real browsers tend to have a separate thread for
 networking (and other I/O). Implement a third thread with an event loop and put
@@ -1137,3 +1133,5 @@ sample web page that taxes the system with a lot of `setTimeout`-based tasks,
 come up with a simple scheduling algorithm that does a good job at balancing
 these two needs.
 
+* *Font caching*: look at the tkinter source code. Can you figure out where its
+font cache is?
