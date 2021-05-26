@@ -322,10 +322,10 @@ def style(node, rules):
     if isinstance(node, TextNode):
         node.style = node.parent.style
     else:
+        node.style = {}
         for selector, body in rules:
             if not selector.matches(node): continue
             for property, value in body.items():
-                if property in node.style: continue
                 node.style[property] = value
         for property, default in INHERITED_PROPERTIES.items():
             if property in node.style: continue
