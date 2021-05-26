@@ -394,7 +394,8 @@ class BlockLayout:
         breakpoint("layout_post", self)
 
     def paint(self, display_list):
-        bgcolor = self.node.style.get("background-color", "transparent")
+        bgcolor = self.node.style.get("background-color",
+                                      "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
