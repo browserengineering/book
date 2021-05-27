@@ -707,9 +707,10 @@ color and other font properties are.
 So let's implement text color and inheritance. And while we're at it,
 let's also implement three other font properties: `font-weight`
 (`normal` or `bold`), `font-style` (`normal` or `italic`), and
-`font-size` (a percentage). The `font-weight` and `font-style`
-properties are inherited, but `font-size` won't be.[^font-size] That
-way we could add a few more lines to the browser style sheet:
+`font-size` (a length or percentage). The `font-weight` and
+`font-style` properties are inherited, but `font-size` won't
+be.[^font-size] That way we could add a few more lines to the browser
+style sheet:
 
 [^font-size]: Check out [the docs][mdn-font-size], and you'll see that
     actually, `font-size` is defined to inherit. But percentages
@@ -844,13 +845,58 @@ Font Properties
 Since we're already mucking around with `InlineLayout`, let's also
 modify it to look up the font size, weight, and style information via
 CSS instead of using the `style`, `weight`, and `size` fields on
-`InlineLayout`:
+`InlineLayout`.
 
-::: {.todo}
-How do we resolve percentage values for nodes? And the `font-size`
-needs to be converted from pixels to points.
-:::
-[^72ppi]
+For `style` and `weight`, this is straightforward:
+
+``` {.python indent=4}
+def text(self, node):
+    # ...
+    weight = node.style["font-weight"]
+    style = node.style["font-style"]
+    if style == "normal": style = "roman"
+    # ...
+```
+
+Note that for `font-style` we need to translate CSS "normal" to Tk
+"roman". Font size is a little more complex, however: if the font
+size is given as a percentage, we need to multiply the percentage by
+the parent's font size.
+
+To implement this, let's add a `font_size` field to each HTML element
+in the `style` function:
+
+``` {.python}
+def style(node, rules):
+    # ...
+    if node.style["font-size"].endswith("px"):
+        node.font_size = float(node.style["font-size"][:-2])
+    elif node.style["font-size"].endswith("%"):
+        parent_font_size = node.parent.font_size if node.parent else 16
+        pct = float(node.style["font-size"][:-1])
+        node.font_size = pct / 100 * parent_font_size
+    else:
+        node.font_size = node.parent.font_size if node.parent else 16
+    # ...
+```
+
+Note the fallback options: if you set a percentage size on the `html`
+element, that percentage is calculated from the default 16-pixel text.
+
+Now `InlineLayout` can use the `font_size` field to choose the font
+for each word:
+
+``` {.python indent=4}
+def text(self, node):
+    # ...
+    size = node.font_size * .75
+    font = tkinter.font.Font(size=style, weight=weight, slant=style)
+    # ...
+```
+
+I multiply the font size by 75% before passing it to Tk to convert
+from pixel values (which CSS uses) to point values (which Tk
+uses).[^72ppi]
 
 [^72ppi]: Normally you think of points as a physical length unit (one 72^nd^ of
 an inch) and pixels as a digital unit (dependent on the screen) but in CSS, the
@@ -862,19 +908,7 @@ are equally bizarre, let alone the fact that a traditional typesetters' point is
 [why-72]: https://tonsky.me/blog/font-size/
 [why-7227]: https://tex.stackexchange.com/questions/200934/why-does-a-tex-point-differ-from-a-desktop-publishing-point
 
-``` {.python indent=4}
-def text(self, node):
-    # ...
-    weight = node.style["font-weight"]
-    style = node.style["font-style"]
-    if style == "normal": style = "roman"
-    size = node.style["font-size"] * .75 # ???
-    font = tkinter.font.Font(size=style, weight=weight, slant=style)
-    # ...
-```
-
-Note that for `font-style` we need to translate CSS "normal" to Tk
-"roman". Thanks to these changes, we now never need to read the
+Thanks to these changes, we now never need to read the
 `style`, `weight`, and `size` properties on `InlineLayout`, so we can
 delete all the code that sets those properties in the `layout`,
 `open_tag`, and `close_tag` methods. Once you do that, you'll notice

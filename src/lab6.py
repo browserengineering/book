@@ -328,6 +328,14 @@ def style(node, rules):
             if ":" not in pair: continue
             prop, val = pair.split(":")
             node.style[prop.strip().lower()] = val.strip()
+    if node.style["font-size"].endswith("px"):
+        node.font_size = float(node.style["font-size"][:-2])
+    elif node.style["font-size"].endswith("%"):
+        parent_font_size = node.parent.font_size if node.parent else 16
+        pct = float(node.style["font-size"][:-1])
+        node.font_size = pct / 100 * parent_font_size
+    else:
+        node.font_size = node.parent.font_size if node.parent else 16
     for child in node.children:
         style(child, rules)
 
@@ -440,7 +448,7 @@ class InlineLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
-        size = node.style["font-size"] * .75 # ???
+        size = node.font_size * .75
         font = tkinter.font.Font(size=style, weight=weight, slant=style)
         for word in node.text.split():
             w = font.measure(word)
