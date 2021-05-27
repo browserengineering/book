@@ -51,7 +51,7 @@ Then the `style` dictionary can be filled in by parsing the element's
 [^python-get]: The `get` method for dictionaries gets a value out of a
     dictionary, or uses a default value if it's not present.
     
-``` {.python replace=(node)/(node%2C%20rules)}
+``` {.python replace=(node)/(node%2C%20rules),val.strip()/computed_value}
 def style(node):
     # ...
     if isinstance(node, Element):
@@ -455,7 +455,7 @@ def style(node, rules):
 Then, for each `Element` node we need to determine which CSS rules
 apply to it and copy their property/value pairs over:
 
-``` {.python indent=8}
+``` {.python replace==%20value/=%20computed_value}
 def style(node, rules):
     # ...
     for selector, body in rules:
@@ -707,44 +707,22 @@ color and other font properties are.
 So let's implement text color and inheritance. And while we're at it,
 let's also implement three other font properties: `font-weight`
 (`normal` or `bold`), `font-style` (`normal` or `italic`), and
-`font-size` (a length or percentage). The `font-weight` and
-`font-style` properties are inherited, but `font-size` won't
-be.[^font-size] That way we could add a few more lines to the browser
-style sheet:
+`font-size` (a length or percentage).
 
-[^font-size]: Check out [the docs][mdn-font-size], and you'll see that
-    actually, `font-size` is defined to inherit. But percentages
-    inherit in a weird way (they are first resolved to absolute units,
-    then inherited) which for simplicity I'd rather skip; if you
-    *only* use percentages for fonts, and never absolute `em` units,
-    you won't notice a difference, and our browser won't support `em`
-    anyway.
-
-[mdn-font-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-size
-
-``` {.css}
-a { color: blue; }
-i { font-style: italic; }
-b { font-weight: bold; }
-small { font-size: 110%; }
-big { font-size: 90%; }
-```
-
-To inherit a property, we need to check, after all the rules and
-inline styles have been applied, whether the property is set and, if
-it isn't, to use the parent node's style. To begin with, let's list
-our inherited properties and their default values:
+Let's start by listing our inherited properties and their default
+values:
 
 ``` {.python}
 INHERITED_PROPERTIES = {
+    "font-size": "16px",
     "font-style": "normal",
     "font-weight": "normal",
     "color": "black",
 }
 ```
 
-Let's add inherited properties to the `style` function. This should go
-*before* the other loops, since explicit rules override inheritance:
+The actual inheritance happens in the `style` function, *before* the
+other loops, since explicit rules override inheritance:
 
 ``` {.python}
 def style(node, rules):
@@ -757,44 +735,83 @@ def style(node, rules):
     # ...
 ```
 
-Because the recursive call comes at the end of `style`, the parent has
-already inherited the correct property value when the children try to
-read it.
+Inheriting font size comes with a twist. Web pages can use percentages
+as font sizes: `h1 { font-size: 150% }` makes headings 50% bigger than
+normal text. But what if you had, say, a `code` element inside an `h1`
+tag---would that inherit the `150%` value for `font-size`? Would it be
+another 50% bigger than the rest of the heading text? That seems
+wrong. So in fact, browsers resolve percentages to absolute pixel
+units before storing them in the `style`; it's called
+["computing"][^css-computed] the style.
 
-With all this in place, we can implement text color itself. First,
-let's add a `color` parameter to `DrawText` and pass it to
-`create_text`'s `fill` parameter:
+[^css-computed]: Full CSS is a bit more confusing: there are
+[specified, computed, used, and actual values][css-computed], and they
+affect lots of CSS properties besides `font-size`. We're just
+implementing those other properties in this book.
+
+[css-computed]: https://www.w3.org/TR/CSS2/cascade.html#value-stages
+
+In our browser, only `font-size` needs to be computed in this way, so
+the code looks like this:
 
 ``` {.python}
-class DrawText:
-    def __init__(self, x1, y1, text, font, color):
+def compute_style(node, property, value):
+    if property == "font-size":
         # ...
-        self.color = color
-
-    def execute(self, scroll, canvas):
-        canvas.create_text(
-            # ...
-            color=self.color,
-        )
+    else:
+        return value
 ```
 
-Now we need to pass in the color when we create a `DrawText` command.
-But this is a little tricky: one paragraph can have text of different
-colors in it! This is going to require a couple of tricky changes to
-`InlineLayout` to make it work.
+Compute `font-size` values works differently for pixel and percentages
+values:
+
+``` {.python indent=8}
+if value.endswith("px"):
+    return value
+elif value.endswith("%"):
+    if node.parent:
+        parent_px = float(node.parent.style["font-size"][:-2])
+    else:
+        parent_px = 16
+    return str(float(value[:-1]) / 100 * parent_font_size) + "px"
+else:
+    return None
+```
+
+Now `style` can call `computed_style` any time it reads a property
+value out of a stylesheet:
+
+``` {.python}
+def style(node, rules):
+    # ...
+    for selector, body in rules:
+        if not selector.matches(node): continue
+        for property, value in body.items():
+            computed_value = compute_style(node, property, value)
+            if not computed_value: continue
+            node.style[property] = computed_value
+    # ...
+```
+
+You'll also need to call `computed_style` in the loop that handles
+`style` attributes. Note that because `style` has the recursive call
+at the end of the function, any time `computed_style` is called for a
+node, that node's parent already has a `font-size` value stored.
+
+So now with the `color` and font properties implemented, let's change
+`InlineText` to use them!
+
+Font Properties
+===============
 
 Inside `InlineLayout`, font information for every word is looked up in
-the `text` method. That's where color information should be looked up
-too---and for that we'll need to change `text` to take a `Text` input,
-not just a string:
+the `text` method. Since we now want to use style information now,
+we'll need to change `text` to take a `Text` input, not just a string:
 
 ``` {.python indent=4}
 def text(self, node):
-    color = node.style["color"]
     # ...
     for word in node.text.split():
-        # ...
-        self.line.append((self.cursor_x, word, font, color))
         # ...
 ```
 
@@ -805,6 +822,48 @@ def recurse(self, node):
     if isinstance(node, Text):
         self.text(node)
     else:
+        # ...
+```
+
+Now we can look up font size, weight, and style information from
+`node` instead of using the `style`, `weight`, and `size` fields on
+`InlineLayout`:
+
+``` {.python indent=4}
+def text(self, node):
+    # ...
+    weight = node.style["font-weight"]
+    style = node.style["font-style"]
+    if style == "normal": style = "roman"
+    size = float(node.style["font-size"][:-2]) * .75
+    font = tkinter.font.Font(size=style, weight=weight, slant=style)
+    # ...
+```
+
+Note that for `font-style` we need to translate CSS "normal" to Tk
+"roman". Likewise, the `font-size` value is in pixels, but Tk uses
+points, so you have to multiply by 75% to convert.[^72ppi]
+
+[^72ppi]: Normally you think of points as a physical length unit (one 72^nd^ of
+an inch) and pixels as a digital unit (dependent on the screen) but in CSS, the
+conversion is fixed at exactly 75% (or 96 pixels per inch) because that was once
+a common screen resolution. This might seem weird, but [OS internals][why-72]
+are equally bizarre, let alone the fact that a traditional typesetters' point is
+[one 72.27^th^ of an inch][why-7227].
+
+[why-72]: https://tonsky.me/blog/font-size/
+[why-7227]: https://tex.stackexchange.com/questions/200934/why-does-a-tex-point-differ-from-a-desktop-publishing-point
+
+Text color is similar, but it requires a bit more plumbing. First, we
+have to read the color and store it in the current `line`:
+
+``` {.python indent=4}
+def text(self, node):
+    color = node.style["color"]
+    # ...
+    for word in node.text.split():
+        # ...
+        self.line.append((self.cursor_x, word, font, color))
         # ...
 ```
 
@@ -831,6 +890,22 @@ def paint(self, display_list):
         display_list.append(DrawText(x, y, word, font, color))
 ```
 
+Now `DrawText` needs to store the `color` argument and pass it to
+`create_text`'s `fill` parameter:
+
+``` {.python}
+class DrawText:
+    def __init__(self, x1, y1, text, font, color):
+        # ...
+        self.color = color
+
+    def execute(self, scroll, canvas):
+        canvas.create_text(
+            # ...
+            color=self.color,
+        )
+```
+
 Phew! That was a lot of coordinated changes, so please test everything
 and make sure it works. You should now see links on this page appear
 in blue---and you'll also notice that the rest of the text has become
@@ -839,93 +914,20 @@ slightly lighter.[^book-css]
 [^book-css]: Check out [the book's style sheet](book.css) to see the
     details.
 
-Font Properties
-===============
+Now we can add a few more lines to the browser style sheet:
 
-Since we're already mucking around with `InlineLayout`, let's also
-modify it to look up the font size, weight, and style information via
-CSS instead of using the `style`, `weight`, and `size` fields on
-`InlineLayout`.
-
-For `style` and `weight`, this is straightforward:
-
-``` {.python indent=4}
-def text(self, node):
-    # ...
-    weight = node.style["font-weight"]
-    style = node.style["font-style"]
-    if style == "normal": style = "roman"
-    # ...
+``` {.css}
+a { color: blue; }
+i { font-style: italic; }
+b { font-weight: bold; }
+small { font-size: 110%; }
+big { font-size: 90%; }
 ```
 
-Note that for `font-style` we need to translate CSS "normal" to Tk
-"roman". Font size is a little more complex, however: if the font
-size is given as a percentage, we need to multiply the percentage by
-the parent's font size.
-
-To implement this, let's add a `font_size` field to each HTML element
-in the `style` function:
-
-``` {.python}
-def style(node, rules):
-    # ...
-    if isinstance(node, Text):
-        node.font_size = node.parent.font_size
-    elif node.style["font-size"].endswith("px"):
-        node.font_size = float(node.style["font-size"][:-2])
-    elif node.style["font-size"].endswith("%"):
-        parent_font_size = node.parent.font_size if node.parent else 16
-        pct = float(node.style["font-size"][:-1])
-        node.font_size = pct / 100 * parent_font_size
-    else:
-        node.font_size = node.parent.font_size if node.parent else 16
-    # ...
-```
-
-Note the fallback options: if you set a percentage size on the `html`
-element, that percentage is calculated from the default 16-pixel text.
-
-Anyways, `InlineLayout` can now use the `font_size` field to choose
-the font for each word:
-
-``` {.python indent=4}
-def text(self, node):
-    # ...
-    size = node.font_size * .75
-    font = tkinter.font.Font(size=style, weight=weight, slant=style)
-    # ...
-```
-
-I multiply the font size by 75% before passing it to Tk to convert
-from pixel values (which CSS uses) to point values (which Tk
-uses).[^72ppi]
-
-[^72ppi]: Normally you think of points as a physical length unit (one 72^nd^ of
-an inch) and pixels as a digital unit (dependent on the screen) but in CSS, the
-conversion is fixed at exactly 75% (or 96 pixels per inch) because that was once
-a common screen resolution. This might seem weird, but [OS internals][why-72]
-are equally bizarre, let alone the fact that a traditional typesetters' point is
-[one 72.27^th^ of an inch][why-7227].
-
-[why-72]: https://tonsky.me/blog/font-size/
-[why-7227]: https://tex.stackexchange.com/questions/200934/why-does-a-tex-point-differ-from-a-desktop-publishing-point
-
-It may seem a little confusing to have so many places where a font
-size is stored: in the style sheet, inside the `style` field on the
-element, in the element's `font_size` field, and then finally in this
-local `size` variable. In CSS, these different versions are referred
-to as [specified, computed, used, and actual values][css-computed],
-and it affects all CSS properties, not just the `font-size`. It's an
-important wrinkle left out of this book's browser.
-
-[css-computed]: https://www.w3.org/TR/CSS2/cascade.html#value-stages
-
-So, thanks to all these changes, we now never need to read the
-`style`, `weight`, and `size` properties on `InlineLayout`, so we can
-delete all the code that sets those properties in the `layout`,
-`open_tag`, and `close_tag` methods. Once you do that, you'll notice
-that `close_tag` is totally empty, while `open_tag` just has code to
-handle `br` tags. Let's refactor a bit to get rid of these methods:
+That fully replaces all the code in `InlineLayout` that handles those
+tags, including the `style`, `weight`, and `size` properties and the
+`open_tag` and `close_tag` methods. Let's refactor a bit to get rid of
+them:
 
 ``` {.python indent=4}
 def recurse(self, node):
@@ -938,13 +940,13 @@ def recurse(self, node):
             self.recurse(child)
 ```
 
-So we made `InlineLayout` more complex in some ways, less complex in
-others. But more importantly: we replaced some browser implementation
-code with a browser style sheet. And that's a big improvement: The style
-sheet is easier to edit, since it's independent of the rest of the
-code. And while sometimes converting code to data means maintaining a
-new format, here we get to reuse a format, CSS, that our browser needs
-to support anyway.
+So these styling mechanisms we've implemented not only let web page
+authors style their own web pages---they also replace browser code
+with a simple style sheet. And that's a big improvement: the style
+sheet is independent of the rest of the code and easier to edit. And
+while sometimes converting code to data means maintaining a new
+format, here we get to reuse a format, CSS, that our browser needs to
+support anyway.
 
 Summary
 =======

@@ -307,10 +307,26 @@ def tree_to_list(tree, list):
     return list
 
 INHERITED_PROPERTIES = {
+    "font-size": "16px",
     "font-style": "normal",
     "font-weight": "normal",
     "color": "black",
 }
+
+def compute_style(node, property, value):
+    if property == "font-size":
+        if value.endswith("px"):
+            return value
+        elif value.endswith("%"):
+            if node.parent:
+                parent_px = float(node.parent.style["font-size"][:-2])
+            else:
+                parent_px = 16
+            return str(float(value[:-1]) / 100 * parent_font_size) + "px"
+        else:
+            return None
+    else:
+        return value
 
 def style(node, rules):
     node.style = {}
@@ -322,24 +338,16 @@ def style(node, rules):
     for selector, body in rules:
         if not selector.matches(node): continue
         for property, value in body.items():
-            node.style[property] = value
+            computed_value = compute_style(node, property, value)
+            if not computed_value: continue
+            node.style[property] = computed_value
     if isinstance(node, Element):
         for pair in node.attributes.get("style", "").split(";"):
             if ":" not in pair: continue
             prop, val = pair.split(":")
-            node.style[prop.strip().lower()] = val.strip()
-
-    if isinstance(node, Text):
-        node.font_size = node.parent.font_size
-    elif node.style["font-size"].endswith("px"):
-        node.font_size = float(node.style["font-size"][:-2])
-    elif node.style["font-size"].endswith("%"):
-        parent_font_size = node.parent.font_size if node.parent else 16
-        pct = float(node.style["font-size"][:-1])
-        node.font_size = pct / 100 * parent_font_size
-    else:
-        node.font_size = node.parent.font_size if node.parent else 16
-
+            computed_value = compute_style(node, property, val.strip())
+            if not computed_value: continue
+            node.style[prop.strip().lower()] = computed_value
     for child in node.children:
         style(child, rules)
 
@@ -452,7 +460,7 @@ class InlineLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
-        size = node.font_size * .75
+        size = float(node.style["font-size"][:-2]) * .75
         font = tkinter.font.Font(size=style, weight=weight, slant=style)
         for word in node.text.split():
             w = font.measure(word)
