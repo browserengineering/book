@@ -204,8 +204,8 @@ class CSSParser:
             self.i += 1
 
     def literal(self, literal):
-        assert self.s[self.i:self.i+len(literal)] == literal
-        self.i += len(literal)
+        assert self.s[self.i] == literal
+        self.i += 1
 
     def word(self):
         start = self.i
@@ -234,8 +234,6 @@ class CSSParser:
 
     def body(self):
         pairs = {}
-        self.literal("{")
-        self.whitespace()
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair()
@@ -250,7 +248,6 @@ class CSSParser:
                     self.whitespace()
                 else:
                     break
-        self.literal("}")
         return pairs
 
     def selector(self):
@@ -268,7 +265,10 @@ class CSSParser:
         while self.i < len(self.s):
             try:
                 selector = self.selector()
+                self.literal("{")
+                self.whitespace()
                 body = self.body()
+                self.literal("}")
                 rules.append((selector, body))
             except AssertionError:
                 why = self.ignore_until(["}"])

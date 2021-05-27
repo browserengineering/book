@@ -136,12 +136,12 @@ that could consistently set text colors, mainly for links.
 Parsing with functions
 ======================
 
-Let's start with the parsing. I'll use recursive *parsing functions*,
-where there's a function for each CSS construct like selectors,
-blocks, and properties. Each parsing function advances a pointer into
-the text it's parsing, then returns any data it parsed. We'll
-have a lot of these functions, so let's organize them in a `CSSParser`
-class containing the string `s` and index `i`:
+Let's start with the parsing. I'll use recursive *parsing functions*.
+Each CSS construct like selectors, blocks, and properties gets a
+parsing function, which advances through the text as it parses and
+returns any data it parsed. We'll have a lot of these functions, so
+let's organize them in a `CSSParser` class. The class can store the
+the string `s` and current index `i`:
 
 ``` {.python}
 class CSSParser:
@@ -151,7 +151,7 @@ class CSSParser:
 ```
 
 Let's start small and build up. A parsing function for whitespace
-looks like this:
+increments the index `i` past every whitespace character:
 
 ``` {.python}
 def whitespace(self):
@@ -159,26 +159,24 @@ def whitespace(self):
         self.i += 1
 ```
 
-This parsing function increments the index `i` past every whitespace
-character. Whitespace is insignificant, so there's no data to return.
+Whitespace is insignificant, so there's no data to return.
 
-Parsing functions can fail. For example, it's often helpful to check
-that there's a certain piece of text at the current location (and not
-return it, as it is purely syntatic):
+Parsing functions can fail. For example, to check for a literal colon
+(or some other punctuation character) you'd do this:
 
 ``` {.python}
 def literal(self, literal):
-    assert self.s[self.i:self.i+len(literal)] == literal
-    self.i += len(literal)
+    assert self.s[self.i] == literal
+    self.i += 1
 ```
 
-Here the check is done by `assert`, which raises an exception if the
-condition is false.[^add-a-comma]
+Here `assert` will raise an exception if the condition is
+false.[^add-a-comma]
 
 [^add-a-comma]: Add a comma after the condition, and you can add error
     text to the assertion. I recommend doing that for all of your
-    assertions to help in debugging. I also recommend making generous
-    use of assertions in general.
+    assertions to help in debugging. I also recommend using assertions
+    generously.
 
 Parsing functions can also return data. For example, to parse CSS
 properties and values, we'll use this code:
@@ -196,20 +194,20 @@ def word(self):
 ```
 
 This function increments `i` through any word characters,[^word-chars]
-much like `whitespace`. But unlike `whitespace`, it also returns the
-word as parsed data, and to do that it stores where it started and
-extracts the substring it moved through. Also note the assert: if `i`
-didn't advance though any word characters, that means `i` didn't point
-at a word to begin with.
+much like `whitespace`, but it also returns the parsed data. To do
+that it stores where it started and extracts the substring it moved
+through. Also note the assert: if `i` didn't advance though any word
+characters, that means `i` didn't point at a word to begin with.
 
 [^word-chars]: I've chosen the set of word characters here to cover
-    property names (which use letters and dash), length units (which
-    use the minus sign, numbers, periods, and the percent sign), and
-    colors (which use the hash sign). Real CSS values are more complex.
+    property names (which use letters and dash), numbers (which use
+    the minus sign, numbers, periods), units (the percent sign), and
+    colors (which use the hash sign). Real CSS values have a complex
+    syntax of their own.
 
-Parsing functions can built upon one another. Property-value pairs,
-for example, are a property, a colon, and a
-value,[^technically-different] with whitespace in between:
+Parsing functions built upon one another. Property-value pairs, for
+example, are a property, a colon, and a value,[^technically-different]
+with whitespace in between:
 
 [^technically-different]: In reality properties and values have
     different syntaxes, so using `word` for both isn't quite right,
@@ -226,31 +224,27 @@ def pair(self):
     return prop.lower(), val
 ```
 
-This builds upon `word`, `whitespace`, and `literal` to build a more
+This combines `word`, `whitespace`, and `literal` into a more
 complicated parsing function. And note that if `i` does not actually
 point to a property-value pair, one of the `word` calls or the
 `literal` call will fail.
 
 Sometimes we need to call these parsing functions in a loop. For
-example, a rule body is an open brace, a sequence of property-value
-pairs, and a close brace:
+example, a sequence of property-value pairs looks like this:
 
 ``` {.python indent=4}
 def body(self):
     pairs = {}
-    self.literal("{")
-    self.whitespace()
     while self.i < len(self.s) and self.s[self.i] != "}":
         prop, val = self.pair()
         pairs[prop] = val
         self.whitespace()
         self.literal(";")
         self.whitespace()
-    self.literal("}")
     return pairs
 ```
 
-Another twist to parsing functions is handling errors. So for example,
+One twist to parsing functions is handling errors. So for example,
 sometimes our parser will see a malformed property-value pair, either
 because the page author made a mistake or because they're using a CSS
 feature that our parser doesn't support. We can catch this error to
