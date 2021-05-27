@@ -103,7 +103,14 @@ improve on this state of affairs:
 
 To achieve these goals, CSS extends the key-value `style` attribute
 with two related ideas: *selectors* and *cascading*. Selectors
-describe which HTML elements a list of property/value pairs apply to:
+describe which HTML elements a list of property/value pairs apply
+to:[^media-queries]
+
+[^media-queries]: CSS rules can also be guarded by "media queries",
+    which say that a rule should apply only in certain browsing
+    environments (like only on mobile or only in landscape mode).
+    Media queries are super-important for building sites that work
+    across many devices (try this book on mobile!).
 
 ``` {.css}
 selector { property-1: value-1; property-2: value-2; }
@@ -232,7 +239,7 @@ point to a property-value pair, one of the `word` calls or the
 Sometimes we need to call these parsing functions in a loop. For
 example, a sequence of property-value pairs looks like this:
 
-``` {.python indent=4}
+``` {.python indent=8}
 def body(self):
     pairs = {}
     while self.i < len(self.s) and self.s[self.i] != "}":
@@ -248,8 +255,11 @@ One twist to parsing functions is handling errors. So for example,
 sometimes our parser will see a malformed property-value pair, either
 because the page author made a mistake or because they're using a CSS
 feature that our parser doesn't support. We can catch this error to
-skip property-value pairs that don't parse. We'll use this little
-function to skip things:
+skip property-value pairs that don't parse.
+
+We'll use this little function to skip things; it stops at any one of
+a list of characters, and returns that character (or `None` if it was
+stopped by the end of the file):
 
 ``` {.python indent=4}
 def ignore_until(self, chars):
@@ -260,13 +270,9 @@ def ignore_until(self, chars):
             self.i += 1
 ```
 
-Note that this stops at any one of a list of characters, and returns
-that character (or `None` if it was stopped by the end of the file).
-
-Now let's think back to parsing rule bodies. When we fail to parse a
-property-value pair, we need to go to either the next property-value
-pair (skip to a semicolon) or the end of the block (skip to a close
-brace).
+When we fail to parse a property-value pair, we need to go to either
+the next property-value pair (skip to a semicolon) or the end of the
+block (skip to a close brace).
 
 ``` {.python indent=4}
 def body(self):
@@ -285,21 +291,21 @@ def body(self):
 ```
 
 Skipping parse errors is a double-edged sword. It hides error
-messages, so debugging CSS files becomes more difficult, and it also
-makes it harder to debug your parser.[^try-no-try] This makes
-"catch-all" error handling like this a code smell in most cases.
+messages, so debugging style sheets becomes more difficult; it also
+makes it harder to debug your parser.[^try-no-try] So this "catch-all"
+error handling is usually a code smell.
 
 [^try-no-try]: I suggest removing the `try` block when debugging.
 
-On the web, however, there is an unusual benefit: it supports an
-ecosystem of multiple implementations. For example, different browsers
-support different kinds of property values,[^like-parens] so CSS that
-parses in one browser might not parse in another. With silent parse
-errors, browsers just ignore stuff they don't understand. The
-principle (variously called "Postel's Law",[^for-jon] the "Digital
-Principle",[^from-circuits] or the "Robustness Principle") is: produce
-maximally conformant output but accept even minimally conformant
-input.
+But on the web "catch-all" error handling has an unusual benefit. The
+web is an ecosystem of many browsers, which (for example) support
+different kinds of property values.[^like-parens] CSS that parses in
+one browser might not parse in another. With silent parse errors,
+browsers just ignore stuff they don't understand, and web pages mostly
+work in all of them. The principle (variously called "Postel's
+Law",[^for-jon] the "Digital Principle",[^from-circuits] or the
+"Robustness Principle") is: produce maximally conformant output but
+accept even minimally conformant input.
 
 [^like-parens]: Our browser does not support parentheses in property
     values, for example, which real browsers use for things like the
@@ -314,21 +320,22 @@ input.
 Selectors
 =========
 
-We've built a parser, using parsing functions, for CSS blocks. But
-that's just half of CSS; the other half is the selectors. Selectors
-come in lots of types but our browser will support the two simplest:
+So far our parser only handles property/value pairs. But the magic of
+CSS is the selectors! Selectors come in lots of types but our browser
+will support the two simplest:
 
 - Tag selectors: `p` selects all `<p>` elements, `ul` selects all
   `<ul>` elements, and so on.
+
 - Descendant selectors: `article div` selects all elements matching
   `div` that have an ancestor matching `article`.[^how-associate]
 
 [^how-associate]: The descendant selector associates to the left; in
-    other words, `a b c` means something like `(a b) c`, which is a
-    `c` that descends from a `b` that descends from an `a`. CSS
-    doesn't have parentheses, so the parentheses are always implicit.
+    other words, `a b c` means a `c` that descends from a `b` that
+    descends from an `a`, which maybe you'd write `(a b) c` if CSS had
+    parentheses.
 
-We'll start by defining some data structures for selectors:
+We'll start by defining data structures for selectors:
 
 ``` {.python}
 class TagSelector:
@@ -341,21 +348,22 @@ class DescendantSelector:
         self.descendant = descendant
 ```
 
-We now want a parsing function for selectors, which is another loop:
+A parsing function for selectors is just another loop:
 
 ``` {.python indent=4}
 def selector(self):
     out = TagSelector(self.word().lower())
     self.whitespace()
     while self.i < len(self.s) and self.s[self.i] != "{":
-        descendant = TagSelector(self.word().lower())
+        tag = self.word()
+        descendant = TagSelector(tag.lower())
         out = DescendantSelector(out, descendant)
         self.whitespace()
     return out
 ```
 
-Using `word` for tag names is again not quite right, but it's close
-enough. Note that tag names, in HTML, are case-insensitive.
+Tag names, in HTML, are case-insensitive; using `word` is actually not
+quite right but it is close enough.
 
 Now that we have parsers for both selectors and blocks, we can build a
 whole CSS parser. If a selector fails to parse, this combined parser
@@ -368,7 +376,10 @@ def parse(self):
     while self.i < len(self.s):
         try:
             selector = self.selector()
+            self.literal("{")
+            self.whitespace()
             body = self.body()
+            self.literal("}")
             rules.append((selector, body))
         except AssertionError:
             why = self.ignore_until(["}"])
@@ -380,23 +391,23 @@ def parse(self):
     return rules
 ```
 
-Make sure to test your parser, like you did the [HTML parser](html.md)
-two chapters back. There are a couple of errors you might run into:
+Make sure to test your parser, just like the HTML parser [two chapters
+back](html.md). Here are some errors you might run into:
 
-- If the output is missing some rules or properties, it's probably a bug
-  being covered up by the error handling. Remove some `try` blocks and see
+- If the output is missing some rules or properties, it's probably a
+  bug being hidden by error handling. Remove some `try` blocks and see
   if the error in question can be fixed.
-- If you're seeing extra rules or properties that looked like mangled
-  versions of the correct ones, you probably forgot to update `i`
-  somewhere.
-- If you're seeing an infinite loop, check the error-handling code.
-  Make sure each parsing function (except `whitespace`) always makes
-  progress and increments `i`.
+- If you're seeing extra rules or properties that are mangled versions
+  of the correct ones, you probably forgot to update `i` somewhere.
+- If you're seeing an infinite loop, check whether the error-handling
+  code always increases `i`. Each parsing function (except
+  `whitespace`) should always increment `i`.
 
-Also try adding a `print` statement to the start and end[^add-parens]
-of each parsing function. Print the name of the parsing
-function,[^add-spaces] the index `i`, and the parsed data. It's a lot
-of output, but step through it by hand and you will find your mistake.
+You can also add a `print` statement to the start and end[^add-parens]
+of each parsing function with the name of the parsing
+function,[^add-spaces] the index `i`,[^show-context] and the parsed
+data. It's a lot of output, but it's a sure-fire way to find really
+complicated bugs.
 
 [^add-parens]: If you print an open parenthesis at the start of the
 function and a close parenthesis at the end, you can use your editor's
@@ -406,8 +417,11 @@ function and a close parenthesis at the end, you can use your editor's
 it'll be a lot easier to read. Don't neglect debugging niceties like
 this!
 
-Anyway, once you've got your parser debugged, let's move on to the
-next step: applying CSS to the page.
+[^show-context]: It can be especially helpful to print, say, the 20
+characters around index `i` from the string.
+
+Once you've got your parser debugged, let's start applying the parsed
+style sheet to the web page.
 
 Applying style sheets
 =====================
