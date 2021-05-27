@@ -88,12 +88,6 @@ class Element:
         self.children = []
         self.parent = parent
 
-        self.style = {}
-        for pair in attributes.get("style", "").split(";"):
-            if ":" not in pair: continue
-            prop, val = pair.split(":")
-            self.style[prop.strip().lower()] = val.strip()
-
     def __repr__(self):
         attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
         return "<" + self.tag + "".join(attrs) + ">"
@@ -291,7 +285,7 @@ class TagSelector:
         self.priority = 1
 
     def matches(self, node):
-        return self.tag == node.tag
+        return isinstance(node, Element) and self.tag == node.tag
 
 class DescendantSelector:
     def __init__(self, ancestor, descendant):
@@ -319,22 +313,23 @@ INHERITED_PROPERTIES = {
 }
 
 def style(node, rules):
-    if isinstance(node, TextNode):
-        node.style = node.parent.style
-    else:
-        node.style = {}
-        for selector, body in rules:
-            if not selector.matches(node): continue
-            for property, value in body.items():
-                node.style[property] = value
-        for property, default in INHERITED_PROPERTIES.items():
-            if property in node.style: continue
-            if node.parent:
-                node.style[property] = node.parent.style[property]
-            else:
-                node.style[property] = default
-        for child in node.children:
-            style(child, rules)
+    node.style = {}
+    for property, default in INHERITED_PROPERTIES.items():
+        if node.parent:
+            node.style[property] = node.parent.style[property]
+        else:
+            node.style[property] = default
+    for selector, body in rules:
+        if not selector.matches(node): continue
+        for property, value in body.items():
+            node.style[property] = value
+    if isinstance(node, Element):
+        for pair in node.attributes.get("style", "").split(";"):
+            if ":" not in pair: continue
+            prop, val = pair.split(":")
+            node.style[prop.strip().lower()] = val.strip()
+    for child in node.children:
+        style(child, rules)
 
 def cascade_priority(rule):
     selector, body = rule
@@ -570,7 +565,7 @@ class Browser:
                 rules.extend(CSSParser(body).parse())
             except:
                 continue
-        style(nodes, reversed(sorted(rules, cascade_priority)))
+        style(nodes, sorted(rules, cascade_priority))
 
         self.document = DocumentLayout(nodes)
         self.document.layout()

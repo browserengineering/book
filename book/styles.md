@@ -33,27 +33,36 @@ does not support that.] The browser looks at those property-value
 pairs when drawing elements, so this `style` attribute allows web page
 authors to override the default background for `pre` elements.
 
-Let's implement that in our browser. To keep this style data easily
-accessible, let's parse it and store it in a `style` field on each
-`Element`:
+Let's implement that in our browser. We'll start wtih a recursive
+function to traverse all the elements and create a `style` field to
+store this style information:
 
-``` {.python}
-class Element:
-    def __init__(self, tag, attributes, parent):
-        # ...
-        self.style = {}
-        for pair in attributes.get("style", "").split(";"):
-            if ":" not in pair: continue
-            prop, val = pair.split(":")
-            self.style[prop.strip().lower()] = val.strip()
+``` {.python replace=(node)/(node%2C%20rules)}
+def style(node):
+    node.style = {}
+    # ...
+    for child in node.children:
+        style(child, rules)
 ```
+
+Then the `style` dictionary can be filled in by parsing the element's
+`style` attribute into property/value pairs[^python-get].
 
 [^python-get]: The `get` method for dictionaries gets a value out of a
     dictionary, or uses a default value if it's not present.
+    
+``` {.python replace=(node)/(node%2C%20rules)}
+def style(node):
+    # ...
+    if isinstance(node, Element):
+        for pair in node.attributes.get("style", "").split(";"):
+            if ":" not in pair: continue
+            prop, val = pair.split(":")
+            node.style[prop.strip().lower()] = val.strip()
+    # ...
+```
 
-Here we're setting the `style` field based on the element's `style`
-attribute,[^python-get] parsing that attribute into property/value
-pairs. The browser can use the `style` information when it paints the
+The browser can use the `style` information when it paints the
 element:
 
 ``` {.python}
@@ -314,7 +323,7 @@ Selectors
 
 We've built a parser, using parsing functions, for CSS blocks. But
 that's just half of CSS; the other half is the selectors. Selectors
-come in multiple types; for now, our browser will support three:
+come in lots of types but our browser will support the two simplest:
 
 - Tag selectors: `p` selects all `<p>` elements, `ul` selects all
   `<ul>` elements, and so on.
@@ -418,7 +427,7 @@ it matches a given element:
 ``` {.python}
 class TagSelector:
      def matches(self, node):
-         return self.tag == node.tag
+         return isinstance(node, Element) and self.tag == node.tag
 ```
 
 Since descendant selectors wrap other selectors, their `match` method
@@ -436,40 +445,37 @@ class DescendantSelector:
 
 If a rule applies to an element, the browser needs to add its
 property-value pairs to the element's `style`. The logic is pretty
-simple. First, we need to recurse over all the HTML elements:
+simple; first, we add a `rules` argument to the `style` function:
 
-``` {.python replace=return/node.style%20=%20node.parent.style}
+``` {.python}
 def style(node, rules):
-    if isinstance(node, TextNode):
-        return
-    else:
-        # ...
-        for child in node.children:
-            style(child, rules)
+    # ...
 ```
 
-Second, for each `Element` node we need to determine which CSS rules
+Then, for each `Element` node we need to determine which CSS rules
 apply to it and copy their property/value pairs over:
 
 ``` {.python indent=8}
-node.style = {}
-for selector, body in rules:
-    if not selector.matches(node): continue
-    for property, value in body.items():
-        node.style[property] = value
+def style(node, rules):
+    # ...
+    for selector, body in rules:
+        if not selector.matches(node): continue
+        for property, value in body.items():
+            node.style[property] = value
 ```
 
-The outer loop skips rules that don't match. Since the `style` attribute is
-filled in first (when the `Element` is created), that means the
-`style` attribute takes priority over CSS style sheets, which is how it
-is supposed to work.
+The outer loop skips rules that don't match and the inner loop copies
+over properties from matching rules. Put this loop before the one that
+parses the `style` attribute: the attribute is supposed to take
+priority over CSS style sheets.
 
-It also means that it matters what order you apply the rules in.
-What's the correct order? In CSS, it's called *cascade order*, and it
-is based on the selector used by the rule. Tag selectors get the
-lowest priority; class selectors one higher; and id selectors higher
-still. But since our CSS parser just has tag selectors, you just count
-the number of tag selectors to put the rules in order:
+Since two rules can apply to the same element, it matters what order
+you apply the rules in. What's the correct order? In CSS, it's called
+*cascade order*, and it is based on the selector used by the rule. Tag
+selectors get the lowest priority; class selectors one higher; and id
+selectors higher still. But since our CSS parser just has tag
+selectors, you just count the number of tag selectors to put the rules
+in order:
 
 ``` {.python}
 class TagSelector:
@@ -500,7 +506,7 @@ def load(self, url):
     nodes = HTMLParser(body).parse()
 
     rules = []
-    style(nodes, reversed(sorted(rules, cascade_priority)))
+    style(nodes, sorted(rules, cascade_priority))
 
     self.document = DocumentLayout(nodes)
     # ...
@@ -736,38 +742,23 @@ INHERITED_PROPERTIES = {
 }
 ```
 
-Now let's add another loop to `style`, *after* the handling of rules
-but *before* the recursive calls, to inherit properties:
+Let's add inherited properties to the `style` function. This should go
+*before* the other loops, since explicit rules override inheritance:
 
 ``` {.python}
 def style(node, rules):
-    if isinstance(node, TextNode):
-        node.style = node.parent.style
-    else:
-        # ...
-        for property, default in INHERITED_PROPERTIES.items():
-            if property in node.style: continue
-            if node.parent:
-                node.style[property] = node.parent.style[property]
-            else:
-                node.style[property] = default
-        # ...
+    # ...
+    for property, default in INHERITED_PROPERTIES.items():
+        if node.parent:
+            node.style[property] = node.parent.style[property]
+        else:
+            node.style[property] = default
+    # ...
 ```
 
-Because this loop comes *before* the recursive call, the parent has
+Because the recursive call comes at the end of `style`, the parent has
 already inherited the correct property value when the children try to
 read it.
-
-On `TextNode` objects we can do an even simpler trick, since a text
-node never has styles of its own and only inherits from its parent:
-
-``` {.python}
-def style(node, rules):
-    if isinstance(node, TextNode):
-        node.style = node.parent.style
-    else:
-        # ...
-```
 
 With all this in place, we can implement text color itself. First,
 let's add a `color` parameter to `DrawText` and pass it to
@@ -965,12 +956,12 @@ and `font-family` properties all at once. Add shorthand properties to
 your parser. (If you haven't implemented `font-family`, just ignore
 that part.)
 
-*Fast Descendant Selectors*: Right now, matching a selector like `div div div
-div div` against a `div` element with only three `div` ancestors takes a long
-time---more precisely, it's *O(nd)*, where n is the length of the selector and d
-is the depth of the layout tree. Modify the descendant-selector matching code to
-run in *O(n)* time. It may help to have `DescendantSelector` store a list of
-base selectors instead of just two.
+*Fast Descendant Selectors*: Right now, matching a selector like `div
+div div div div` can take a long time---it's *O(nd)* in the worst
+case, where *n* is the length of the selector and *d* is the depth of
+the layout tree. Modify the descendant-selector matching code to run
+in *O(n)* time. It may help to have `DescendantSelector` store a list
+of base selectors instead of just two.
 
 *Selector Sequences*: Sometimes you want to select an element by tag *and*
 class. You do this by concatenating the selectors without anything in
