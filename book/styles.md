@@ -59,7 +59,8 @@ element:
 ``` {.python}
 class BlockLayout:
     def paint(self, display_list):
-        bgcolor = self.node.style.get("background-color", "transparent")
+        bgcolor = self.node.style.get("background-color",
+                                      "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
@@ -67,10 +68,10 @@ class BlockLayout:
         # ...
 ```
 
-Put the exact same lines of code inside `InlineLayout` as well, so
-that paragraphs and list items and so on can have backgrounds as well.
-For now, we've removed the default gray background from `pre`
-elements, but we'll put it back soon.
+Put the exact same lines of code inside `InlineLayout` as well, so that
+paragraphs and list items and so on can have backgrounds as well. For now, also
+remove the default gray background from `pre` elements, but we'll put it back
+soon.
 
 Open up this web page in your browser; the code block right after this
 paragraph should have a light blue background now:
@@ -79,21 +80,22 @@ paragraph should have a light blue background now:
 <div style="background-color:lightblue"> ... </div>
 ```
 
-So this is one simple mechanism for web pages to change their
-appearance. But honestly it's a pain---you need to set a `style`
-attribute on each element, and if you decide to change the style
-that's a lot of attributes to edit. In the early days of the web,^[I'm
-talking Netscape 3. The late 90s.] the element-by-element approach was
-all there was. CSS was invented to improve on this state of affairs:
+So this is one simple mechanism for web pages to change their appearance. But
+honestly it's a pain---you need to set a `style` attribute on each element, and
+if you decide to change the style that's a lot of attributes to edit. In the
+early days of the web,^[I'm talking Netscape 3. The late 90s.] the
+element-by-element approach was all there was. CSS was invented to improve on
+this state of affairs, with these goals:
 
 - One CSS file can consistently style many web pages at once
 - One line of CSS can consistently style many elements at once
 - CSS is future-proof and supports browsers with different features
 
-To achieve these goals, CSS extends the key-value `style` attribute
-with two related ideas: *selectors* and *cascading*. In CSS, style
-information can apply to multiple elements, across many pages,
-specified using a selector:
+To achieve these goals, CSS extends the key-value `style` attribute with two
+related ideas: *selectors* and *cascading*. In CSS, style information can apply
+to multiple elements, across many pages, specified using a selector: a syntax
+for matching one or more elements. A selector plus a set of
+property-value pairs is called a *rule*:
 
 ``` {.css}
 selector { property-1: value-1; property-2: value-2; }
@@ -114,7 +116,7 @@ block's property values to those elements' `style` fields.
 ::: {.further}
 Actually, before CSS, you'd style pages with custom elements like
 [`font`][font-elt] and [`center`][center-elt]. This was easy to
-implement but it was hard to keep pages consistent this way. There
+implement but made it hard to keep pages consistent. There
 were also properties on `<body>` like [`text` and `vlink`][body-attrs]
 that could consistently set text colors, mainly for links.
 :::
@@ -129,7 +131,7 @@ Parsing with functions
 Let's start with the parsing. I'll use recursive *parsing functions*,
 where there's a function for each CSS construct like selectors,
 blocks, and properties. Each parsing function advances a pointer into
-the text it's parsing, plus returns whatever data it parsed. We'll
+the text it's parsing, then returns any data it parsed. We'll
 have a lot of these functions, so let's organize them in a `CSSParser`
 class containing the string `s` and index `i`:
 
@@ -153,7 +155,8 @@ This parsing function increments the index `i` past every whitespace
 character. Whitespace is insignificant, so there's no data to return.
 
 Parsing functions can fail. For example, it's often helpful to check
-that there's a certain piece of text at the current location:
+that there's a certain piece of text at the current location (and not
+return it, as it is purely syntatic):
 
 ``` {.python}
 def literal(self, literal):
@@ -166,7 +169,8 @@ condition is false.[^add-a-comma]
 
 [^add-a-comma]: Add a comma after the condition, and you can add error
     text to the assertion. I recommend doing that for all of your
-    assertions to help in debugging.
+    assertions to help in debugging. I also recommend making generous
+    use of assertions in general.
 
 Parsing functions can also return data. For example, to parse CSS
 properties and values, we'll use this code:
@@ -185,8 +189,8 @@ def word(self):
 
 This function increments `i` through any word characters,[^word-chars]
 much like `whitespace`. But unlike `whitespace`, it also returns the
-word as parsed data, and so to do that it stores where it started and
-extracts the substring it moved through. Also note the check: if `i`
+word as parsed data, and to do that it stores where it started and
+extracts the substring it moved through. Also note the assert: if `i`
 didn't advance though any word characters, that means `i` didn't point
 at a word to begin with.
 
@@ -195,7 +199,7 @@ at a word to begin with.
     use the minus sign, numbers, periods, and the percent sign), and
     colors (which use the hash sign). Real CSS values are more complex.
 
-Parsing functions can build upon one another. Property-value pairs,
+Parsing functions can built upon one another. Property-value pairs,
 for example, are a property, a colon, and a
 value,[^technically-different] with whitespace in between:
 
@@ -353,7 +357,7 @@ enough. Note that tag names, in HTML, are case-insensitive.
 
 Now that we have parsers for both selectors and blocks, we can build a
 whole CSS parser. If a selector fails to parse, this combined parser
-will skips both it and the associated block:
+will skip both it and the associated block:
 
 ``` {.python indent=4}
 def parse(self):
@@ -377,8 +381,8 @@ def parse(self):
 Make sure to test your parser, like you did the [HTML parser](html.md)
 two chapters back. There are a couple of errors you might run into:
 
-- If you missing some rules or properties, it's probably a bug being
-  covered up by the error handling. Remove some `try` blocks and see
+- If the output is missing some rules or properties, it's probably a bug
+  being covered up by the error handling. Remove some `try` blocks and see
   if the error in question can be fixed.
 - If you're seeing extra rules or properties that looked like mangled
   versions of the correct ones, you probably forgot to update `i`
@@ -403,8 +407,8 @@ this!
 Anyway, once you've got your parser debugged, let's move on to the
 next step: applying CSS to the page.
 
-Applying stylesheets
-====================
+Applying style sheets
+=====================
 
 The goal isn't just parsing CSS: it's using it to style the web page.
 First, the browser has to figure out which elements each rule applies
@@ -445,23 +449,22 @@ def style(node, rules):
 ```
 
 Second, for each `Element` node we need to determine which CSS rules
-apply to it and copy their property/value pairs over
+apply to it and copy their property/value pairs over:
 
 ``` {.python indent=8}
+node.style = {}
 for selector, body in rules:
     if not selector.matches(node): continue
     for property, value in body.items():
-        if property in node.style: continue
         node.style[property] = value
 ```
 
-The outer loop skips rules that don't match, while the inner loop
-skips properties that are already set. Since the `style` attribute is
+The outer loop skips rules that don't match. Since the `style` attribute is
 filled in first (when the `Element` is created), that means the
-`style` attribute takes priority over CSS stylesheets, which is how it
+`style` attribute takes priority over CSS style sheets, which is how it
 is supposed to work.
 
-It's also means that it matters what order you apply the rules in.
+It also means that it matters what order you apply the rules in.
 What's the correct order? In CSS, it's called *cascade order*, and it
 is based on the selector used by the rule. Tag selectors get the
 lowest priority; class selectors one higher; and id selectors higher
@@ -522,8 +525,8 @@ styles for all sorts of elements; second, browsers download CSS code
 from the web, as directed by web pages they browse to. Let's start
 with the browser style sheet.
 
-[^technically-ua]: Technically called a "user agent" style sheet,
-    because the browser acts as an agent of the user.
+[^technically-ua]: Technically called a "User Agent" style sheet. User Agent,
+ like the Memex.
 
 Our browser's style sheet might look like this:
 
@@ -532,7 +535,7 @@ pre { background-color: gray; }
 ```
 
 Let's store that in a new file, `browser.css`, and have our browser
-load and parse that file when it downloads a page:
+load and parse that file when it downloads a page:[^not-correct-browser-styles]
 
 ``` {.python replace=browser.css/browser6.css}
 class Browser:
@@ -553,8 +556,8 @@ CSS files using the `link` element, which looks like this:
 ```
 
 The `rel` attribute here tells that browser that this is a link to a
-stylesheet. Browsers mostly don't care about any [other kinds of
-links][link-types], but search engines do[^like-canonical], so `rel`
+style sheet. Browsers mostly don't care about any [other kinds of
+links][link-types], but search engines do,[^like-canonical] so `rel`
 is mandatory. And the `href` attribute describes the CSS file's URL.
 
 [link-types]: https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types
@@ -591,11 +594,11 @@ def load(self, url):
 ```
 
 It's kind of crazy, honestly, that Python lets you do this. Anyway,
-now we have all the stylesheet URLs. The browser is expected to make a
-GET request to that location, parse the stylesheet, and use it to
+now we have all the style sheet URLs. The browser is expected to make a
+GET request to that location, parse the style sheet, and use it to
 style the page.
 
-Note that stylesheet URLs we have are not full URLs; they are
+Note that style sheet URLs we have are not full URLs; they are
 something called *relative URLs*, which can come in three
 flavors:^[There are even more flavors, including query-relative and
 scheme-relative URLs, that I'm skipping.]
@@ -651,7 +654,7 @@ sheet fails---in which case the browser just ignores it. But if you're
 debugging `relative_url` try removing the `try`/`except` here, which
 can hide errors.
 
-Since the page's stylesheets come *after* browser style, user styles
+Since the page's style sheets come *after* browser styles, user styles
 take priority over the browser style sheet. With the rules loaded, we
 need only sort and apply them and then do layout, the code for which
 we've already added to `load`. Open this page up again, and you should
@@ -669,7 +672,7 @@ text nodes don't have any styles at all. How can that work?
 ::: {.further}
 Each browser has its own browser style sheet ([Chromium][blink-css],
 [Safari][webkit-css], [Firefox][gecko-css]). [Reset
-stylesheets][mdn-reset] are often used to overcome any differences.
+style sheets][mdn-reset] are often used to overcome any differences.
 This works because web page style sheets take precedence over the
 browser style sheet, just like in our browser, though real browsers
 [fiddle with priorities][cascade-order] to make that
@@ -683,8 +686,8 @@ happen.[^ours-works]
 [webkit-css]: https://github.com/WebKit/WebKit/blob/main/Source/WebCore/css/html.css
 
 [^ours-works]: Our browser style sheet only has tag selectors in it,
-so just putting them first works well enough.
-
+so just putting them first works well enough. But if the browser style sheet
+had any descendant selectors, we'd encounter bugs.
 
 Inherited styles
 ================
@@ -827,7 +830,7 @@ def flush(self):
     # ...
 ```
 
-Finally, that `display_list` is read in `draw`:
+Finally, that `display_list` is written in `paint`:
 
 ``` {.python indent=4}
 def paint(self, display_list):
@@ -841,7 +844,7 @@ and make sure it works. You should now see links on this page appear
 in blue---and you'll also notice that the rest of the text has become
 slightly lighter.[^book-css]
 
-[^book-css]: Check out [the book's stylesheet](book.css) to see the
+[^book-css]: Check out [the book's style sheet](book.css) to see the
     details.
 
 Font Properties
@@ -849,21 +852,21 @@ Font Properties
 
 Since we're already mucking around with `InlineLayout`, let's also
 modify it to look up the font size, weight, and style information via
-CSS instead of using the `style`, `weigth`, and `size` fields on
+CSS instead of using the `style`, `weight`, and `size` fields on
 `InlineLayout`:
 
 ::: {.todo}
 How do we resolve percentage values for nodes? And the `font-size`
-needs to be converted from pixels to points.[^72ppi]
+needs to be converted from pixels to points.
 :::
+[^72ppi]
 
-[^72ppi]: Normally you think of points as a physical length unit (one
-    72^nd^ of an inch) and pixels as a digital unit (dependent on the
-    screen) but in CSS, the conversion is fixed at exactly 75% (or 96
-    pixels per inch) because that was once a common screen resolution.
-    This might seem weird, but [OS internals][why-72] are equally
-    bizarre, let alone the fact that a traditional typesetters' point
-    is [one 72.27^th^ of an inch][why-7227].
+[^72ppi]: Normally you think of points as a physical length unit (one 72^nd^ of
+an inch) and pixels as a digital unit (dependent on the screen) but in CSS, the
+conversion is fixed at exactly 75% (or 96 pixels per inch) because that was once
+a common screen resolution. This might seem weird, but [OS internals][why-72]
+are equally bizarre, let alone the fact that a traditional typesetters' point is
+[one 72.27^th^ of an inch][why-7227].
 
 [why-72]: https://tonsky.me/blog/font-size/
 [why-7227]: https://tex.stackexchange.com/questions/200934/why-does-a-tex-point-differ-from-a-desktop-publishing-point
@@ -900,7 +903,7 @@ def recurse(self, node):
 
 So we made `InlineLayout` more complex in some ways, less complex in
 others. But more importantly: we replaced some browser implementation
-code with browser stylesheet. And that's a big improvement: The style
+code with a browser style sheet. And that's a big improvement: The style
 sheet is easier to edit, since it's independent of the rest of the
 code. And while sometimes converting code to data means maintaining a
 new format, here we get to reuse a format, CSS, that our browser needs
@@ -910,11 +913,10 @@ Summary
 =======
 
 This chapter implemented a rudimentary but complete styling engine,
-including downloading, parser, matching, sorting, and applying CSS
+including downloading, parsing, matching, sorting, and applying CSS
 files. That means we:
 
 - Added styling support in both `style` attributes and `link`ed CSS files;
-- Implemented for margins, borders, and padding to block layout objects;
 - Refactored `InlineLayout` to move the font properties to CSS;
 - Removed most tag-specific reasoning from our layout code.
 
@@ -925,7 +927,7 @@ Outline
 =======
 
 The complete set of functions, classes, and methods in our browser 
-should look something like this:
+should now look something like this:
 
 ::: {.cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab6.py
@@ -934,7 +936,7 @@ should look something like this:
 Exercises
 =========
 
-*Fonts*: Implement the `font-family` property, and inheritable
+*Fonts*: Implement the `font-family` property, an inheritable
 property that names which font should be used in an element. Make
 `code` fonts use some nice monospaced font like `Courier`.
 
@@ -963,19 +965,18 @@ and `font-family` properties all at once. Add shorthand properties to
 your parser. (If you haven't implemented `font-family`, just ignore
 that part.)
 
-*Fast Descendants*: Right now, matching a selector like `div div div
-div div` against a `div` element with only three `div` ancestors takes
-a long time---more precisely, it's *O(n^2^)* in the length of the
-selector. Modify the descendant-selector matching code to run in
-*O(n)* time. It may help to have `DescendantSelector` store a list of
+*Fast Descendant Selectors*: Right now, matching a selector like `div div div
+div div` against a `div` element with only three `div` ancestors takes a long
+time---more precisely, it's *O(nd)*, where n is the length of the selector and d
+is the depth of the layout tree. Modify the descendant-selector matching code to
+run in *O(n)* time. It may help to have `DescendantSelector` store a list of
 base selectors instead of just two.
 
-*Selector Sequences*: Sometimes you want to select an element by tag
-*and* class. You do this by concatenating the selectors without
-anything in between:[^no-ws] `span.announce` selects elements that
-match both `span` and `.announce`. Implement a new `SelectorSequence`
-class to represent these and modify the parser to parse them. Sum
-priorities.[^lexicographic]
+*Selector Sequences*: Sometimes you want to select an element by tag *and*
+class. You do this by concatenating the selectors without anything in
+between.[^no-ws] For example, `span.announce` selects elements that match both
+`span` and `.announce`. Implement a new `SelectorSequence` class to represent
+these and modify the parser to parse them. Sum priorities.[^lexicographic]
 
 [^no-ws]: Not even whitespace!
 
@@ -990,10 +991,10 @@ the `!important` syntax, like this:
 
     #banner a { color: black !important; }
 
-This gives that property-value pair (but not other pairs in the same
-block!) a higher priority. Parse and implement `!important`, giving
-any property-value pairs marked this way a priority 10 000 higher than
-normal property-value pairs.
+This gives that property-value pair (but not other pairs in the same block!) a
+higher priority than any other selector (except for other `!important`
+selector). Parse and implement `!important`, giving any property-value pairs
+marked this way a priority 10000 higher than normal property-value pairs.
 
 *Ancestor Selectors*: An ancestor selector is the inverse of a
 descendant selector---it styles an ancestor according to the presence
