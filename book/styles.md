@@ -452,7 +452,7 @@ Second, for each `Element` node we need to determine which CSS rules
 apply to it and copy their property/value pairs over:
 
 ``` {.python indent=8}
-'node.style = {}
+node.style = {}
 for selector, body in rules:
     if not selector.matches(node): continue
     for property, value in body.items():
