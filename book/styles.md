@@ -426,10 +426,9 @@ style sheet to the web page.
 Applying style sheets
 =====================
 
-The goal isn't just parsing CSS: it's using it to style the web page.
-First, the browser has to figure out which elements each rule applies
-to. Let's start by adding a method to each selector that tells you if
-it matches a given element:
+Each CSS rule can style many elements on the page. So the browser's
+first task is to figure out which elements each rule applies to. Let's
+add a method to each selector to test if it matches an element:
 
 ``` {.python}
 class TagSelector:
@@ -437,8 +436,8 @@ class TagSelector:
          return isinstance(node, Element) and self.tag == node.tag
 ```
 
-Since descendant selectors wrap other selectors, their `match` method
-is recursive:
+Descendant selectors wrap other selectors, so their `match` method is
+recursive:
 
 ``` {.python}
 class DescendantSelector:
@@ -450,17 +449,10 @@ class DescendantSelector:
         return False
 ```
 
-If a rule applies to an element, the browser needs to add its
+When a rule applies to an element, the browser needs to add its
 property-value pairs to the element's `style`. The logic is pretty
-simple; first, we add a `rules` argument to the `style` function:
-
-``` {.python}
-def style(node, rules):
-    # ...
-```
-
-Then, for each `Element` node we need to determine which CSS rules
-apply to it and copy their property/value pairs over:
+simple: we add a `rules` argument to the `style` function and copy
+property/value pairs from matching rules:
 
 ``` {.python replace==%20value/=%20computed_value}
 def style(node, rules):
@@ -471,18 +463,14 @@ def style(node, rules):
             node.style[property] = value
 ```
 
-The outer loop skips rules that don't match and the inner loop copies
-over properties from matching rules. Put this loop before the one that
-parses the `style` attribute: the attribute is supposed to take
-priority over CSS style sheets.
+Put this loop before the one that parses the `style` attribute: the
+attribute takes priority over style sheets.
 
-Since two rules can apply to the same element, it matters what order
-you apply the rules in. What's the correct order? In CSS, it's called
-*cascade order*, and it is based on the selector used by the rule. Tag
-selectors get the lowest priority; class selectors one higher; and id
-selectors higher still. But since our CSS parser just has tag
-selectors, you just count the number of tag selectors to put the rules
-in order:
+Since two rules can apply to the same element, rule order matters. In
+CSS, the correct order is called *cascade order*, and it is based on
+the rule's selector. Tag selectors get the lowest priority; class
+selectors one higher; and id selectors higher still. Since we only
+have tag selectors, our cascade order just counts them:
 
 ``` {.python}
 class TagSelector:
@@ -496,8 +484,7 @@ class DescendantSelector:
         self.priority = ancestor.priority + descendant.priority
 ```
 
-To use Python's `sorted` function, we need a function that extracts
-the priority of a rule's selector:
+Then the cascade order for rules is just those priorities:
 
 ``` {.python}
 def cascade_priority(rule):
@@ -505,41 +492,39 @@ def cascade_priority(rule):
     return selector.priority
 ```
 
-Then we can style web page using a list of parsed rules like this:
+Put it all together, and we can call `style` from the browser's `load`
+method like this:
 
 ``` {.python indent=8}
 def load(self, url):
     # ...
     nodes = HTMLParser(body).parse()
 
-    rules = []
+    # ... download rules
     style(nodes, sorted(rules, cascade_priority))
 
     self.document = DocumentLayout(nodes)
     # ...
 ```
 
-In Python, the `sorted` function is *stable*, which means that things
-keep their relative order if possible. This means that in general, a
-rule that comes later in the CSS file has higher priority, unless the
+Note that Python's `sorted` function keeps the relative order of
+things when possible. This means that in general, a rule that comes
+later in the CSS file comes later in cascade order, unless the
 selectors used force something different. That's how real browsers do
-it, too. The `reversed` call is because we want higher-priority rules
-to come first.
+it, too.
 
-So our browser just needs to download some CSS files and it can start
-styling web pages!
+To start styling web pages we just need to download some style sheets!
 
 Downloading styles
 ==================
 
-Browsers get CSS code from two sources. First, each browser ships with
-a *browser style sheet*,[^technically-ua] which defines the default
-styles for all sorts of elements; second, browsers download CSS code
-from the web, as directed by web pages they browse to. Let's start
-with the browser style sheet.
+Actually... let's back up. Yes, browsers download web-page-specific
+CSS files. But each browser also ships with a *browser style
+sheet*,[^technically-ua] which defines the default styles for all
+sorts of elements. Let's work on the browser style sheet first.
 
 [^technically-ua]: Technically called a "User Agent" style sheet. User Agent,
- like the Memex.
+    [like the Memex](history.md).
 
 Our browser's style sheet might look like this:
 
