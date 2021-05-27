@@ -869,7 +869,9 @@ in the `style` function:
 ``` {.python}
 def style(node, rules):
     # ...
-    if node.style["font-size"].endswith("px"):
+    if isinstance(node, Text):
+        node.font_size = node.parent.font_size
+    elif node.style["font-size"].endswith("px"):
         node.font_size = float(node.style["font-size"][:-2])
     elif node.style["font-size"].endswith("%"):
         parent_font_size = node.parent.font_size if node.parent else 16

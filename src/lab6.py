@@ -328,7 +328,10 @@ def style(node, rules):
             if ":" not in pair: continue
             prop, val = pair.split(":")
             node.style[prop.strip().lower()] = val.strip()
-    if node.style["font-size"].endswith("px"):
+
+    if isinstance(node, Text):
+        node.font_size = node.parent.font_size
+    elif node.style["font-size"].endswith("px"):
         node.font_size = float(node.style["font-size"][:-2])
     elif node.style["font-size"].endswith("%"):
         parent_font_size = node.parent.font_size if node.parent else 16
@@ -336,6 +339,7 @@ def style(node, rules):
         node.font_size = pct / 100 * parent_font_size
     else:
         node.font_size = node.parent.font_size if node.parent else 16
+
     for child in node.children:
         style(child, rules)
 
