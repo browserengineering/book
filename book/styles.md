@@ -5,37 +5,38 @@ prev: layout
 next: chrome
 ...
 
-So far, the appearance of each HTML element has been hard-coded into
-our browser. But web pages should be able to override our style
-decisions and take on a unique character. This is done via _Cascading
-Style Sheets_, a simple styling language for web authors (and, as
-we'll see, browser developers) to define how a web page ought to look.
+So far, each HTML element's appearance has been hard-coded into our
+browser. But web pages should be able to override our style decisions
+and take on a unique character. This is done via _Cascading Style
+Sheets_, a simple styling language for web authors (and, as we'll see,
+browser developers) to define how a web page ought to look.
 
 The style attribute
 ===================
 
 In the [last chapter](layout.md), we gave each `pre` element a gray
 background. It looks OK, and it *is* good to have some defaults, but
-you can imagine a site wanting to have some say in how it looks.
+you can imagine a site wanting a say in how it looks.
 
-The simplest mechanism for that is the `style` attribute on elements.
+The `style` attribute is the simplest way to override browser styles.
 It looks like this:
 
 ``` {.example}
 <div style="background-color:lightblue"></div>
 ```
 
-This `<div>` element has its `style` attribute set. That attribute
-contains set of property/value pairs, in this case one pair with the
-property `background-color` and the value `lightblue`.^[CSS allows
-spaces around the punctuation, but our simplistic attribute parser
-does not support that.] The browser looks at those property-value
-pairs when drawing elements, so this `style` attribute allows web page
-authors to override the default background for `pre` elements.
+This `<div>` element's `style` attribute contains a property/value
+pair matching the property `background-color` to the value
+`lightblue`.^[CSS allows spaces around the punctuation, but our
+simplistic attribute parser does not support that.] Multiple
+property/value pairs, separated by semicolons, are also allowed. The
+browser looks at those property-value pairs when painting the element;
+this way the `style` attribute allows web page authors to override the
+default background for `pre` elements.
 
-Let's implement that in our browser. We'll start wtih a recursive
-function to traverse all the elements and create a `style` field to
-store this style information:
+Let's implement that in our browser. We'll start with a recursive
+function that creates a `style` field on each node to store this style
+information:
 
 ``` {.python replace=(node)/(node%2C%20rules)}
 def style(node):
@@ -45,8 +46,8 @@ def style(node):
         style(child, rules)
 ```
 
-Then the `style` dictionary can be filled in by parsing the element's
-`style` attribute into property/value pairs[^python-get].
+The `style` dictionary is filled in by parsing the element's `style`
+attribute:[^python-get]
 
 [^python-get]: The `get` method for dictionaries gets a value out of a
     dictionary, or uses a default value if it's not present.
@@ -77,45 +78,43 @@ class BlockLayout:
         # ...
 ```
 
-Put the exact same lines of code inside `InlineLayout` as well, so that
-paragraphs and list items and so on can have backgrounds as well. For now, also
-remove the default gray background from `pre` elements, but we'll put it back
-soon.
+Put the exact same lines of code inside `InlineLayout` as well, so
+that paragraphs and list items and so on can have backgrounds as well.
+For now, also remove the default gray background from `pre` elements
+(we'll put it back soon).
 
-Open up this web page in your browser; the code block right after this
-paragraph should have a light blue background now:
+Open up this web page in your browser, and the code block right after
+this paragraph should now have a light blue background:
 
 ``` {.example style=background-color:lightblue}
 <div style="background-color:lightblue"> ... </div>
 ```
 
-So this is one simple mechanism for web pages to change their appearance. But
-honestly it's a pain---you need to set a `style` attribute on each element, and
-if you decide to change the style that's a lot of attributes to edit. In the
+So this is one way web pages change their appearance. But honestly,
+it's a pain---you need to set a `style` attribute on each element, and
+if you change the style that's a lot of attributes to edit. In the
 early days of the web,^[I'm talking Netscape 3. The late 90s.] the
-element-by-element approach was all there was. CSS was invented to improve on
-this state of affairs, with these goals:
+element-by-element approach was all there was. CSS was invented to
+improve on this state of affairs:
 
 - One CSS file can consistently style many web pages at once
 - One line of CSS can consistently style many elements at once
 - CSS is future-proof and supports browsers with different features
 
-To achieve these goals, CSS extends the key-value `style` attribute with two
-related ideas: *selectors* and *cascading*. In CSS, style information can apply
-to multiple elements, across many pages, specified using a selector: a syntax
-for matching one or more elements. A selector plus a set of
-property-value pairs is called a *rule*:
+To achieve these goals, CSS extends the key-value `style` attribute
+with two related ideas: *selectors* and *cascading*. Selectors
+describe which HTML elements a list of property/value pairs apply to:
 
 ``` {.css}
 selector { property-1: value-1; property-2: value-2; }
 ```
 
-Once one block can apply to many elements, the possibility exists for
-several blocks apply to a single element. So browsers have a
+Since one of these *rules* can apply to many elements, it's possible
+for several blocks to apply to the same element. So browsers have a
 *cascading* mechanism to resolve conflicts in favor of the most
 specific rule. Cascading also means a browser can ignore rules it
-doesn't understand---the cascade chooses the next-most-specific rule
-that the browser understands.
+doesn't understand and choose the next-most-specific rule that it does
+understand.
 
 Let's add support for CSS to our browser. We'll need to parse CSS
 files into selectors, blocks, and property-values pairs; figure out
