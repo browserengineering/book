@@ -883,8 +883,8 @@ def style(node, rules):
 Note the fallback options: if you set a percentage size on the `html`
 element, that percentage is calculated from the default 16-pixel text.
 
-Now `InlineLayout` can use the `font_size` field to choose the font
-for each word:
+Anyways, `InlineLayout` can now use the `font_size` field to choose
+the font for each word:
 
 ``` {.python indent=4}
 def text(self, node):
@@ -908,7 +908,17 @@ are equally bizarre, let alone the fact that a traditional typesetters' point is
 [why-72]: https://tonsky.me/blog/font-size/
 [why-7227]: https://tex.stackexchange.com/questions/200934/why-does-a-tex-point-differ-from-a-desktop-publishing-point
 
-Thanks to these changes, we now never need to read the
+It may seem a little confusing to have so many places where a font
+size is stored: in the style sheet, inside the `style` field on the
+element, in the element's `font_size` field, and then finally in this
+local `size` variable. In CSS, these different versions are referred
+to as [specified, computed, used, and actual values][css-computed],
+and it affects all CSS properties, not just the `font-size`. It's an
+important wrinkle left out of this book's browser.
+
+[css-computed]: https://www.w3.org/TR/CSS2/cascade.html#value-stages
+
+So, thanks to all these changes, we now never need to read the
 `style`, `weight`, and `size` properties on `InlineLayout`, so we can
 delete all the code that sets those properties in the `layout`,
 `open_tag`, and `close_tag` methods. Once you do that, you'll notice
