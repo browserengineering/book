@@ -97,6 +97,12 @@ def print_tree(node, indent=0):
     for child in node.children:
         print_tree(child, indent + 2)
 
+def tree_to_list(tree, list):
+    list.append(tree)
+    for child in tree.children:
+        tree_to_list(child, list)
+    return list
+
 class HTMLParser:
     def __init__(self, body):
         self.body = body
@@ -300,12 +306,6 @@ class DescendantSelector:
             if self.ancestor.matches(node.parent): return True
             node = node.parent
         return False
-
-def tree_to_list(tree, list):
-    list.append(tree)
-    for child in tree.children:
-        tree_to_list(child, list)
-    return list
 
 INHERITED_PROPERTIES = {
     "font-size": "16px",
