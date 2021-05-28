@@ -761,18 +761,14 @@ if value.endswith("px"):
     return value
 elif value.endswith("%"):
     if node.parent:
-        parent_px = float(node.parent.style["font-size"][:-2])
+        parent_font_size = node.parent.style["font-size"]
     else:
-        parent_px = FONT_SIZE_PX
-    return str(float(value[:-1]) / 100 * parent_font_size) + "px"
+        parent_font_size = INHERITED_PROPERTIES["font-size"]
+    node_pct = float(value[:-1]) / 100
+    parent_px = float(parent_font_size[:-2])
+    return str(node_pct * parent_px) + "px"
 else:
     return None
-```
-
-The default browser font size is usually 16 pixels or 12 points:
-
-``` {.python}
-FONT_SIZE_PX = 16
 ```
 
 Now `style` can call `computed_style` any time it reads a property
