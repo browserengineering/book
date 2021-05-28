@@ -243,7 +243,7 @@ class CSSParser:
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair()
-                pairs[prop] = val
+                pairs[prop.lower()] = val
                 self.whitespace()
                 self.literal(";")
                 self.whitespace()
@@ -344,13 +344,11 @@ def style(node, rules):
             computed_value = compute_style(node, property, value)
             if not computed_value: continue
             node.style[property] = computed_value
-    if isinstance(node, Element):
-        for pair in node.attributes.get("style", "").split(";"):
-            if ":" not in pair: continue
-            prop, val = pair.split(":")
-            computed_value = compute_style(node, property, val.strip())
-            if not computed_value: continue
-            node.style[prop.strip().lower()] = computed_value
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        for property, value in pairs.items():
+            computed_value = compute_style(node, property, value)
+            node.style[property] = computed_value
     for child in node.children:
         style(child, rules)
 
@@ -570,13 +568,14 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
         self.display_list = []
 
+        with open("browser6.css") as f:
+            self.default_style_sheet = CSSParser(f.read()).parse()
+
     def load(self, url):
         headers, body = request(url)
         nodes = HTMLParser(body).parse()
 
-        rules = []
-        with open("browser6.css") as f:
-            rules.extend(CSSParser(f.read()).parse())
+        rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(nodes, [])
                  if node.tag == "link"

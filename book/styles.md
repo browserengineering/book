@@ -5,37 +5,202 @@ prev: layout
 next: chrome
 ...
 
-So far, each HTML element's appearance has been hard-coded into our
-browser. But web pages should be able to override our style decisions
-and take on a unique character. This is done via _Cascading Style
-Sheets_, a simple styling language for web authors (and, as we'll see,
-browser developers) to define how a web page ought to look.
-
-The style attribute
-===================
-
 In the [last chapter](layout.md), we gave each `pre` element a gray
-background. It looks OK, and it *is* good to have some defaults, but
-you can imagine a site wanting a say in how it looks.
+background. It looks OK, and it *is* good to have defaults... but you
+can imagine a site wanting a say in how it looks. Web sites do that
+with _Cascading Style Sheets_, which allow web authors (and, as we'll
+see, browser developers) to define how a web page ought to look.
 
-The `style` attribute is the simplest way to override browser styles.
-It looks like this:
+Parsing with functions
+======================
+
+One way a web page can change its appearance is with the `style`
+attribute. For example, you can use `style` to change an element's
+background color:
 
 ``` {.example}
 <div style="background-color:lightblue"></div>
 ```
 
-This `<div>` element's `style` attribute contains a property/value
-pair matching the property `background-color` to the value
-`lightblue`.^[CSS allows spaces around the punctuation, but our
-simplistic attribute parser does not support that.] Multiple
-property/value pairs, separated by semicolons, are also allowed. The
-browser looks at those property-value pairs when painting the element,
-so web page authors can override the default background color.
+More generally a style attribute contains any number of property/value
+pairs, separated by semicolons. The browser looks at those
+property-value pairs when painting the element, for example to
+determine the background color.
 
-Let's implement that in our browser. We'll start with a recursive
-function that creates a `style` field on each node to store this style
-information:
+To add this to our browser, we'll need to parse these property/value
+pairs. I'll use recursive *parsing functions*, which are a good way to
+build complex parser step by step.
+
+The idea is to have functions that advance through the text and return
+the data they parsed. We'll have different functions for different
+types of data, and organize them in a `CSSParser` class that stores
+the string and our current position in it:
+
+``` {.python}
+class CSSParser:
+    def __init__(self, s):
+        self.s = s
+        self.i = 0
+```
+
+Let's start small and build up. A parsing function for whitespace
+increments the index `i` past every whitespace character:
+
+``` {.python}
+def whitespace(self):
+    while self.i < len(self.s) and self.s[self.i].isspace():
+        self.i += 1
+```
+
+Whitespace is insignificant, so there's no data to return.
+
+Parsing functions can fail. For example, to check for a literal colon
+(or some other punctuation character) you'd do this:
+
+``` {.python}
+def literal(self, literal):
+    assert self.s[self.i] == literal
+    self.i += 1
+```
+
+`assert` raises an exception if its condition is false.[^add-a-comma]
+
+[^add-a-comma]: You can add error text to the assertion, too; I
+    recommend doing that to help in debugging.
+
+Parsing functions can also return data, for example when parsing
+properties and values:
+
+``` {.python indent=4}
+def word(self):
+    start = self.i
+    while self.i < len(self.s):
+        if self.s[self.i].isalnum() or self.s[self.i] in "#-.%":
+            self.i += 1
+        else:
+            break
+    assert self.i > start
+    return self.s[start:self.i]
+```
+
+This function increments `i` through any word characters,[^word-chars]
+much like `whitespace`, but it also returns the parsed data. To do
+that it stores where it started and extracts the substring it moved
+through. Also note the assertion: if `i` didn't advance though any
+word characters, that means `i` didn't point at a word to begin with.
+
+[^word-chars]: I've chosen the set of word characters here to cover
+    property names (which use letters and the dash), numbers (which
+    use the minus sign, numbers, periods), units (the percent sign),
+    and colors (which use the hash sign). Real CSS values have a more
+    complex syntax but this is enough our toy browser.
+
+The great thing about parsing functions is that they can build on one
+another. For example, property-value pairs are a property, a colon,
+and a value,[^technically-different] with whitespace in between:
+
+[^technically-different]: In reality properties and values have
+    different syntaxes, so using `word` for both isn't quite right,
+    but for our browser's limited CSS support this simplification will
+    be alright.
+
+``` {.python}
+def pair(self):
+    prop = self.word()
+    self.whitespace()
+    self.literal(":")
+    self.whitespace()
+    val = self.word()
+    return prop.lower(), val
+```
+
+We can parse sequences by calling parsing functions in a loop. For
+example, a sequence of property-value pairs looks like this:
+
+``` {.python indent=8 expected=False}
+def body(self):
+    pairs = {}
+    while self.i < len(self.s):
+        prop, val = self.pair()
+        pairs[prop.lower()] = val
+        self.whitespace()
+        self.literal(";")
+        self.whitespace()
+    return pairs
+```
+
+That said, it's worth thinking about handling errors. For example,
+sometimes a web page author makes a mistake, or perhaps uses a feature
+that our browser doesn't support. In this case we want to skip
+property-value pairs that don't parse but still keep the ones that do.
+
+We can skip things with this little function; it stops at any one of a
+list of characters, and returns that character (or `None` if it was
+stopped by the end of the file):
+
+``` {.python indent=4}
+def ignore_until(self, chars):
+    while self.i < len(self.s):
+        if self.s[self.i] in chars:
+            return self.s[self.i]
+        else:
+            self.i += 1
+```
+
+When we fail to parse a property-value pair, we either skip to the
+next semicolon or to the end of the string:
+
+``` {.python indent=4 expected=False}
+def body(self):
+    # ...
+    while self.i < len(self.s):
+        try:
+            # ...
+        except AssertionError:
+            why = self.ignore_until([";"])
+            if why == ";":
+                self.literal(";")
+                self.whitespace()
+            else:
+                break
+    # ...
+```
+
+Skipping parse errors is a double-edged sword. It hides error
+messages, so debugging style sheets becomes more difficult; it also
+makes it harder to debug your parser.[^try-no-try] So this "catch-all"
+error handling is usually a code smell.
+
+[^try-no-try]: I suggest removing the `try` block when debugging.
+
+But on the web "catch-all" error handling has an unusual benefit. The
+web is an ecosystem of many browsers, which (for example) support
+different kinds of property values.[^like-parens] CSS that parses in
+one browser might not parse in another. With silent parse errors,
+browsers just ignore stuff they don't understand, and web pages mostly
+work in all of them. The principle (variously called "Postel's
+Law",[^for-jon] the "Digital Principle",[^from-circuits] or the
+"Robustness Principle") is: produce maximally conformant output but
+accept even minimally conformant input.
+
+[^like-parens]: Our browser does not support parentheses in property
+    values, for example, which real browsers use for things like the
+    `calc` and `url` functions.
+    
+[^for-jon]: After a line in the specification of TCP, written by Jon
+    Postel
+
+[^from-circuits]: After a similar idea in circuit design, where
+    transistors must be nonlinear to reduce analog noise.
+
+Anyway, now that the `style` attribute is parsed, we've got to modify
+the rest of the browser to use that parsed information.
+
+The `style` attribute
+=====================
+
+We'll start with a recursive function that creates a `style` field on
+each node to store this style information:
 
 ``` {.python replace=(node)/(node%2C%20rules)}
 def style(node):
@@ -51,14 +216,13 @@ attribute:[^python-get]
 [^python-get]: The `get` method for dictionaries gets a value out of a
     dictionary, or uses a default value if it's not present.
     
-``` {.python replace=(node)/(node%2C%20rules),val.strip()/computed_value}
+``` {.python replace=(node)/(node%2C%20rules),=%20value/=%20computed_value}
 def style(node):
     # ...
-    if isinstance(node, Element):
-        for pair in node.attributes.get("style", "").split(";"):
-            if ":" not in pair: continue
-            prop, val = pair.split(":")
-            node.style[prop.strip().lower()] = val.strip()
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        for property, value in pairs.items():
+            node.style[property] = value
     # ...
 ```
 
@@ -100,10 +264,9 @@ improve on this state of affairs:
 - One line of CSS can consistently style many elements at once
 - CSS is future-proof and supports browsers with different features
 
-To achieve these goals, CSS extends the key-value `style` attribute
-with two related ideas: *selectors* and *cascading*. Selectors
-describe which HTML elements a list of property/value pairs apply
-to:[^media-queries]
+To achieve these goals, CSS extends the `style` attribute with two
+related ideas: *selectors* and *cascading*. Selectors describe which
+HTML elements a list of property/value pairs apply to:[^media-queries]
 
 [^media-queries]: CSS rules can also be guarded by "media queries",
     which say that a rule should apply only in certain browsing
@@ -123,9 +286,9 @@ doesn't understand and choose the next-most-specific rule that it does
 understand.
 
 Let's add support for CSS to our browser. We'll need to parse CSS
-files into selectors, blocks, and property-values pairs; figure out
-which elements on the page match each selector; and then add the
-block's property values to those elements' `style` fields.
+files into selectors and blocks; figure out which elements on the page
+match each selector; and then apply those property values to the
+element's `style` fields.
 
 ::: {.further}
 Actually, before CSS, you'd style pages with custom elements like
@@ -139,195 +302,13 @@ that could consistently set text colors, mainly for links.
 [center-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/center
 [body-attrs]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#attributes
 
-Parsing with functions
-======================
-
-Let's start with the parsing. I'll use recursive *parsing functions*.
-Each CSS construct like selectors, blocks, and properties gets a
-parsing function, which advances through the text as it parses and
-returns any data it parsed. We'll have a lot of these functions, so
-let's organize them in a `CSSParser` class. The class can store the
-the string `s` and current index `i`:
-
-``` {.python}
-class CSSParser:
-    def __init__(self, s):
-        self.s = s
-        self.i = 0
-```
-
-Let's start small and build up. A parsing function for whitespace
-increments the index `i` past every whitespace character:
-
-``` {.python}
-def whitespace(self):
-    while self.i < len(self.s) and self.s[self.i].isspace():
-        self.i += 1
-```
-
-Whitespace is insignificant, so there's no data to return.
-
-Parsing functions can fail. For example, to check for a literal colon
-(or some other punctuation character) you'd do this:
-
-``` {.python}
-def literal(self, literal):
-    assert self.s[self.i] == literal
-    self.i += 1
-```
-
-Here `assert` will raise an exception if the condition is
-false.[^add-a-comma]
-
-[^add-a-comma]: Add a comma after the condition, and you can add error
-    text to the assertion. I recommend doing that for all of your
-    assertions to help in debugging. I also recommend using assertions
-    generously.
-
-Parsing functions can also return data. For example, to parse CSS
-properties and values, we'll use this code:
-
-``` {.python indent=4}
-def word(self):
-    start = self.i
-    while self.i < len(self.s):
-        if self.s[self.i].isalnum() or self.s[self.i] in "#-.%":
-            self.i += 1
-        else:
-            break
-    assert self.i > start
-    return self.s[start:self.i]
-```
-
-This function increments `i` through any word characters,[^word-chars]
-much like `whitespace`, but it also returns the parsed data. To do
-that it stores where it started and extracts the substring it moved
-through. Also note the assert: if `i` didn't advance though any word
-characters, that means `i` didn't point at a word to begin with.
-
-[^word-chars]: I've chosen the set of word characters here to cover
-    property names (which use letters and dash), numbers (which use
-    the minus sign, numbers, periods), units (the percent sign), and
-    colors (which use the hash sign). Real CSS values have a complex
-    syntax of their own.
-
-Parsing functions built upon one another. Property-value pairs, for
-example, are a property, a colon, and a value,[^technically-different]
-with whitespace in between:
-
-[^technically-different]: In reality properties and values have
-    different syntaxes, so using `word` for both isn't quite right,
-    but for our browser's limited CSS support this simplification will
-    be alright.
-
-``` {.python}
-def pair(self):
-    prop = self.word()
-    self.whitespace()
-    self.literal(":")
-    self.whitespace()
-    val = self.word()
-    return prop.lower(), val
-```
-
-This combines `word`, `whitespace`, and `literal` into a more
-complicated parsing function. And note that if `i` does not actually
-point to a property-value pair, one of the `word` calls or the
-`literal` call will fail.
-
-Sometimes we need to call these parsing functions in a loop. For
-example, a sequence of property-value pairs looks like this:
-
-``` {.python indent=8}
-def body(self):
-    pairs = {}
-    while self.i < len(self.s) and self.s[self.i] != "}":
-        prop, val = self.pair()
-        pairs[prop] = val
-        self.whitespace()
-        self.literal(";")
-        self.whitespace()
-    return pairs
-```
-
-One twist to parsing functions is handling errors. For example, our
-parser will sometimes see a malformed property-value pair, either
-because the page author made a mistake or because they're using a CSS
-feature that our parser doesn't support. We can catch this error to
-skip property-value pairs that don't parse.
-
-We'll use this little function to skip things; it stops at any one of
-a list of characters, and returns that character (or `None` if it was
-stopped by the end of the file):
-
-``` {.python indent=4}
-def ignore_until(self, chars):
-    while self.i < len(self.s):
-        if self.s[self.i] in chars:
-            return self.s[self.i]
-        else:
-            self.i += 1
-```
-
-When we fail to parse a property-value pair, we need to go to either
-the next property-value pair (skip to a semicolon) or the end of the
-block (skip to a close brace).
-
-``` {.python indent=4}
-def body(self):
-    # ...
-    while self.i < len(self.s) and self.s[self.i] != "}":
-        try:
-            # ...
-        except AssertionError:
-            why = self.ignore_until([";", "}"])
-            if why == ";":
-                self.literal(";")
-                self.whitespace()
-            else:
-                break
-    # ...
-```
-
-Skipping parse errors is a double-edged sword. It hides error
-messages, so debugging style sheets becomes more difficult; it also
-makes it harder to debug your parser.[^try-no-try] So this "catch-all"
-error handling is usually a code smell.
-
-[^try-no-try]: I suggest removing the `try` block when debugging.
-
-But on the web "catch-all" error handling has an unusual benefit. The
-web is an ecosystem of many browsers, which (for example) support
-different kinds of property values.[^like-parens] CSS that parses in
-one browser might not parse in another. With silent parse errors,
-browsers just ignore stuff they don't understand, and web pages mostly
-work in all of them. The principle (variously called "Postel's
-Law",[^for-jon] the "Digital Principle",[^from-circuits] or the
-"Robustness Principle") is: produce maximally conformant output but
-accept even minimally conformant input.
-
-[^like-parens]: Our browser does not support parentheses in property
-    values, for example, which real browsers use for things like the
-    `calc` and `url` functions.
-    
-[^for-jon]: After a line in the specification of TCP, written by Jon
-    Postel
-
-[^from-circuits]: After a similar idea in circuit design, where
-    transistors must be nonlinear to reduce analog noise.
-
 Selectors
 =========
 
-So far our parser only handles property/value pairs. But the magic of
-CSS is the selectors! Selectors come in lots of types but our browser
-will support the two simplest:
-
-- Tag selectors: `p` selects all `<p>` elements, `ul` selects all
-  `<ul>` elements, and so on.
-
-- Descendant selectors: `article div` selects all elements matching
-  `div` that have an ancestor matching `article`.[^how-associate]
+Selectors come in lots of types but our browser will support the two
+simplest: tag selectors: (`p` selects all `<p>` elements, `ul` selects
+all `<ul>` elements) and descendant selectors (`article div` selects
+all `div` elements with an `article` ancestor).[^how-associate]
 
 [^how-associate]: The descendant selector associates to the left; in
     other words, `a b c` means a `c` that descends from a `b` that
@@ -347,7 +328,33 @@ class DescendantSelector:
         self.descendant = descendant
 ```
 
-A parsing function for selectors is just another loop:
+The point of a selector is to test whether matches a given element.
+For a tag selector, that means comparing tag names:
+
+``` {.python}
+class TagSelector:
+     def matches(self, node):
+         return isinstance(node, Element) and self.tag == node.tag
+```
+
+Descendant selectors wrap other selectors, so their `match` method is
+recursive:
+
+``` {.python}
+class DescendantSelector:
+    def matches(self, node):
+        if not self.descendant.matches(node): return False
+        while node.parent:
+            if self.ancestor.matches(node.parent): return True
+            node = node.parent
+        return False
+```
+
+Selectors are one part of a CSS file, so we need to parse them. In
+this case, that's just another loop:[^not-quite-word]
+
+[^not-quite-word]: Once again, using `word` here for tag names is
+actually not quite right, but it is close enough.
 
 ``` {.python indent=4}
 def selector(self):
@@ -361,25 +368,51 @@ def selector(self):
     return out
 ```
 
-Tag names, in HTML, are case-insensitive; using `word` is actually not
-quite right but it is close enough.
-
-Now that we have parsers for both selectors and blocks, we can build a
-whole CSS parser. If a selector fails to parse, this combined parser
-will skip both it and the associated block:
+A CSS file is just a sequence of selectors and blocks:
 
 ``` {.python indent=4}
 def parse(self):
     rules = []
     self.whitespace()
     while self.i < len(self.s):
+        selector = self.selector()
+        self.literal("{")
+        self.whitespace()
+        body = self.body()
+        self.literal("}")
+        rules.append((selector, body))
+    return rules
+```
+
+Once again, let's pause to think about error handling. First, when
+we're parsing a CSS rule and call `body`, we want it to stop when it
+reaches a closing brace:
+
+``` {.python indent=4}
+def body(self):
+    # ...
+    while self.i < len(self.s) and self.s[self.i] != "}":
         try:
-            selector = self.selector()
-            self.literal("{")
-            self.whitespace()
-            body = self.body()
-            self.literal("}")
-            rules.append((selector, body))
+            # ...
+        except AssertionError:
+            why = self.ignore_until([";", "}"])
+            if why == ";":
+                self.literal(";")
+                self.whitespace()
+            else:
+                break
+    # ...
+```
+
+Secondly, there might also be an parse error while parsing a selector.
+In that case, we want to skip that whole rule:
+
+``` {.python indent=4}
+def parse(self):
+    # ...
+    while self.i < len(self.s):
+        try:
+            # ...
         except AssertionError:
             why = self.ignore_until(["}"])
             if why == "}":
@@ -387,17 +420,20 @@ def parse(self):
                 self.whitespace()
             else:
                 break
-    return rules
+    # ...
 ```
 
-Make sure to test your parser, just like the HTML parser [two chapters
-back](html.md). Here are some errors you might run into:
+Error handling is hard to get right, so make sure to test your parser,
+just like the HTML parser [two chapters back](html.md). Here are some
+errors you might run into:
 
 - If the output is missing some rules or properties, it's probably a
   bug being hidden by error handling. Remove some `try` blocks and see
   if the error in question can be fixed.
+
 - If you're seeing extra rules or properties that are mangled versions
   of the correct ones, you probably forgot to update `i` somewhere.
+
 - If you're seeing an infinite loop, check whether the error-handling
   code always increases `i`. Each parsing function (except
   `whitespace`) should always increment `i`.
@@ -419,39 +455,15 @@ this!
 [^show-context]: It can be especially helpful to print, say, the 20
 characters around index `i` from the string.
 
-Once you've got your parser debugged, let's start applying the parsed
-style sheet to the web page.
+With the parser debugged, the next step is applying the parsed style
+sheet to the web page.
 
 Applying style sheets
 =====================
 
 Each CSS rule can style many elements on the page. So the browser's
-first task is to figure out which elements each rule applies to. Let's
-add a method to each selector to test if it matches an element:
-
-``` {.python}
-class TagSelector:
-     def matches(self, node):
-         return isinstance(node, Element) and self.tag == node.tag
-```
-
-Descendant selectors wrap other selectors, so their `match` method is
-recursive:
-
-``` {.python}
-class DescendantSelector:
-    def matches(self, node):
-        if not self.descendant.matches(node): return False
-        while node.parent:
-            if self.ancestor.matches(node.parent): return True
-            node = node.parent
-        return False
-```
-
-When a rule applies to an element, the browser needs to add its
-property-value pairs to the element's `style`. The logic is pretty
-simple: we add a `rules` argument to the `style` function and copy
-property/value pairs from matching rules:
+first task is to figure out which elements each rule applies to. Only
+if the rule applies does it copy over the rule's property/value pairs:
 
 ``` {.python replace==%20value/=%20computed_value}
 def style(node, rules):
@@ -462,66 +474,13 @@ def style(node, rules):
             node.style[property] = value
 ```
 
-Put this loop before the one that parses the `style` attribute: the
-attribute takes priority over style sheets.
+Make sure to put this loop before the one that parses the `style`
+attribute: the `style` attribute should override style sheet values.
 
-Since two rules can apply to the same element, rule order matters. In
-CSS, the correct order is called *cascade order*, and it is based on
-the rule's selector. Tag selectors get the lowest priority; class
-selectors one higher; and id selectors higher still. File order is a
-tie breaker. Since we only have tag selectors, our cascade order just
-counts them:
-
-``` {.python}
-class TagSelector:
-    def __init__(self, tag):
-        # ...
-        self.priority = 1
-
-class DescendantSelector:
-    def __init__(self, ancestor, descendant):
-        # ...
-        self.priority = ancestor.priority + descendant.priority
-```
-
-Then the cascade order for rules is just those priorities:
-
-``` {.python}
-def cascade_priority(rule):
-    selector, body = rule
-    return selector.priority
-```
-
-Put it all together, and we can call `style` from the browser's `load`
-method like this:
-
-``` {.python indent=8}
-def load(self, url):
-    # ...
-    nodes = HTMLParser(body).parse()
-
-    # ... download rules
-    style(nodes, sorted(rules, cascade_priority))
-
-    self.document = DocumentLayout(nodes)
-    # ...
-```
-
-Note that Python's `sorted` function keeps the relative order of
-things when possible. This implements the tie breaker: rules later in
-the CSS file come later in cascade order, unless the selectors used
-force something different.
-
-To start styling web pages we just need to download some style sheets!
-
-Downloading styles
-==================
-
-Actually... let's back up. Yes, browsers download web-page-specific
-CSS files. But each browser also ships with a *browser style
-sheet*,[^technically-ua] which defines the default styles for all
-sorts of elements. Let's work on the browser style sheet first. It
-might look like this:
+To try this out, we'll need a style sheet. Every browser ships with a
+*browser style sheet*,[^technically-ua] which defines its default
+styling for the various HTML elements. For our browser, it might look
+like this:
 
 [^technically-ua]: Technically called a "User Agent" style sheet. User Agent,
     [like the Memex](history.md).
@@ -531,21 +490,31 @@ pre { background-color: gray; }
 ```
 
 Let's store that in a new file, `browser.css`, and have our browser
-load and parse that file when it downloads a page:
+read it when it starts:
 
 ``` {.python replace=browser.css/browser6.css}
 class Browser:
-    def load(self, url):
+    def __init__(self):
         # ...
-        rules = []
-        with open("browser.css") as f:
-            rules.extend(CSSParser(f.read()).parse())
-        # ...
+        with open("browser6.css") as f:
+            self.default_style_sheet = CSSParser(f.read()).parse()
 ```
 
-Our browser needs to find website-specific CSS files, download them,
-and use them as well. Web pages name their CSS files using the `link`
-element, which looks like this:
+Now, when the browser loads a web page, it can apply that default
+style sheet to set up its default styling for each element:
+
+``` {.python indent=8 expected=False}
+def load(self, url):
+    # ...
+    rules = self.default_style_sheet.copy()
+    style(nodes, rules)
+    # ...
+```
+
+The browser stylesheet is the default for the whole web. But
+individual web sites can use this same mechanism to set a consistent
+style for the whole set. To do that, the web site posts a CSS file and
+names it on each page using a `link` element:
 
 ``` {.example}
 <link rel="stylesheet" href="/main.css">
@@ -553,10 +522,10 @@ element, which looks like this:
 
 The mandatory `rel` attribute identifies this link as a style
 sheet[^like-canonical] and the `href` attribute has the style sheet
-URL. So we need to fine all links like this. We could do that with a
-little recursive function, but since we'll be doing similar tasks in
-the next few chapters, so let's instead write a more general recursive
-function that turns a tree into a list of nodes:
+URL. We need to find all these links, download their style sheets, and
+apply them. Since we'll be doing similar tasks in the next few
+chapters, let's generalize a bit and write a recursive function that
+turns a tree into a list of nodes:
 
 [^like-canonical]: Browsers mostly don't care about any [other kinds
 of links][link-types], but search engines use relations like
@@ -574,8 +543,9 @@ def tree_to_list(tree, list):
 ```
 
 I've written this to work on both HTML and layout tree, for later.
-Anyway, now we can use a Python's list expression to grab the URL of
-each linked style sheet:
+
+We can now use a Python's list expression to grab the URL of each
+linked style sheet:
 
 ``` {.python indent=4}
 def load(self, url):
@@ -588,11 +558,10 @@ def load(self, url):
     # ...
 ```
 
-It's kind of crazy, honestly, that Python lets you do this. Anyway,
-the browser has the style sheet URLs now. But these style sheet URLs
-are usually not full URLs; they are something called *relative URLs*,
-such as:^[There are even more flavors, including query-relative and
-scheme-relative URLs, that I'm skipping.]
+It's kind of crazy, honestly, that Python lets you do this. Now, these
+style sheet URLs are usually not full URLs; they are something called
+*relative URLs*, such as:^[There are other flavors, including
+query-relative and scheme-relative URLs, that I'm skipping.]
 
 -   A normal URL, which specifies a scheme, host, path, and so on;
 -   A host-relative URL, which starts with a slash but reuses the
@@ -605,7 +574,8 @@ scheme-relative URLs, that I'm skipping.]
     "directories" are dropped from the current URL; and then the
     relative URL is put at the end.
 
-So we need a function that turns a relative URL into a full URL:
+To download the style sheets, we'll need to convert each relative URL
+into a full URL:
 
 ``` {.python}
 def relative_url(url, current):
@@ -637,18 +607,63 @@ def load(self, url):
         rules.extend(CSSParser(body).parse())
 ```
 
-Note that we add the page's style sheets at the end of `rules`, which
-means that user styles take priority over the browser style sheet. The
-`try`/`except` here handles the case where downloading a style sheet
-fails, in which case the browser just ignores it. But if you're
-debugging `relative_url` try removing the `try`/`except` here, which
-can hide errors.
+The `try`/`except` ignores style sheets that fail to download, but it
+can also hide bugs, so try removing it if something's not right.
 
-With the rules loaded, we need only sort and apply them and then do
-layout, the code for which we've already added to `load`. Open this
-page up again, and you should see gray backgrounds on every code block
-(thanks to the browser style sheet) and light-gold backgrounds on this
-book's mailing list signup form (try the book's main page).
+Cascading
+=========
+
+A web page can now have any number of stylesheets applied to it. And
+since two rules can apply to the same element, rule order matters. In
+CSS, the correct order is called *cascade order*, and it is based on
+the rule's selector. Tag selectors get the lowest priority; class
+selectors one higher; and id selectors higher still. File order is a
+tie breaker. The point of this system is to allow more specific rules
+to override more general ones, so that you can have a browser style
+sheet, a site-wide style sheet, and maybe a special style sheet for
+your about page, all co-existing.
+
+Since our browser only has tag selectors, our cascade order just
+counts them:
+
+``` {.python}
+class TagSelector:
+    def __init__(self, tag):
+        # ...
+        self.priority = 1
+
+class DescendantSelector:
+    def __init__(self, ancestor, descendant):
+        # ...
+        self.priority = ancestor.priority + descendant.priority
+```
+
+Then our cascade order for rules is just those priorities:
+
+``` {.python}
+def cascade_priority(rule):
+    selector, body = rule
+    return selector.priority
+```
+
+Now when we call `style`, we need to sort the rules, like this:
+
+``` {.python indent=8}
+def load(self, url):
+    # ...
+    style(nodes, sorted(rules, cascade_priority))
+    # ...
+```
+
+Note that Python's `sorted` function keeps the relative order of
+things when possible. This implements the tie breaker: rules later in
+the CSS file come later in cascade order, unless the selectors used
+force something different.
+
+That's it: we've added CSS to our web browser! Open this page, and you
+should see gray backgrounds on every code block (thanks to the browser
+style sheet) and light-gold backgrounds on this book's mailing list
+signup form (try the book's main page).
 
 Alright: we've got background colors that can be configured by web
 page authors. But there's more to web design than that! At the very
