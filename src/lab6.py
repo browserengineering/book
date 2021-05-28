@@ -532,7 +532,7 @@ class DrawText:
             text=self.text,
             font=self.font,
             anchor='nw',
-            color=self.color,
+            fill=self.color,
         )
 
 class DrawRect:
@@ -585,9 +585,9 @@ class Browser:
         for link in links:
             try:
                 header, body = request(relative_url(link, url))
-                rules.extend(CSSParser(body).parse())
             except:
                 continue
+            rules.extend(CSSParser(body).parse())
         style(nodes, sorted(rules, cascade_priority))
 
         self.document = DocumentLayout(nodes)

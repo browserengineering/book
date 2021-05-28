@@ -520,19 +520,18 @@ Downloading styles
 Actually... let's back up. Yes, browsers download web-page-specific
 CSS files. But each browser also ships with a *browser style
 sheet*,[^technically-ua] which defines the default styles for all
-sorts of elements. Let's work on the browser style sheet first.
+sorts of elements. Let's work on the browser style sheet first. It
+might look like this:
 
 [^technically-ua]: Technically called a "User Agent" style sheet. User Agent,
     [like the Memex](history.md).
-
-Our browser's style sheet might look like this:
 
 ``` {.css}
 pre { background-color: gray; }
 ```
 
 Let's store that in a new file, `browser.css`, and have our browser
-load and parse that file when it downloads a page:[^not-correct-browser-styles]
+load and parse that file when it downloads a page:
 
 ``` {.python replace=browser.css/browser6.css}
 class Browser:
@@ -544,29 +543,27 @@ class Browser:
         # ...
 ```
 
-Beyond the browser styles, our browser needs to find website-specific
-CSS files, download them, and use them as well. Web pages name their
-CSS files using the `link` element, which looks like this:
+Our browser needs to find website-specific CSS files, download them,
+and use them as well. Web pages name their CSS files using the `link`
+element, which looks like this:
 
 ``` {.example}
 <link rel="stylesheet" href="/main.css">
 ```
 
-The `rel` attribute here tells that browser that this is a link to a
-style sheet. Browsers mostly don't care about any [other kinds of
-links][link-types], but search engines do,[^like-canonical] so `rel`
-is mandatory. And the `href` attribute describes the CSS file's URL.
+The mandatory `rel` attribute identifies this link as a style
+sheet[^like-canonical] and the `href` attribute has the style sheet
+URL. So we need to fine all links like this. We could do that with a
+little recursive function, but since we'll be doing similar tasks in
+the next few chapters, so let's instead write a more general recursive
+function that turns a tree into a list of nodes:
+
+[^like-canonical]: Browsers mostly don't care about any [other kinds
+of links][link-types], but search engines use relations like
+`rel=canonical`, which names the "true name" of a page and lets search
+engines track pages that appear at multiple URLs.
 
 [link-types]: https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types
-
-[^like-canonical]: For example, `rel=canonical` names the "true name"
-    of a page and is used by search engines to track pages that appear
-    at multiple URLs.
-
-We could definitely write a little recursive function to find every
-`link` element with those exact attributes. But we'll be doing similar
-tasks a lot in the next few chapters, so let's instead write a more
-general recursive function to turn a tree into a list:
 
 ``` {.python}
 def tree_to_list(tree, list):
@@ -576,8 +573,9 @@ def tree_to_list(tree, list):
     return list
 ```
 
-We can later use this function on the layout tree as well. Anyway, 
-now we can grab the URLs for each CSS file with this line:
+I've written this to work on both HTML and layout tree, for later.
+Anyway, now we can use a Python's list expression to grab the URL of
+each linked style sheet:
 
 ``` {.python indent=4}
 def load(self, url):
@@ -591,13 +589,9 @@ def load(self, url):
 ```
 
 It's kind of crazy, honestly, that Python lets you do this. Anyway,
-now we have all the style sheet URLs. The browser is expected to make a
-GET request to that location, parse the style sheet, and use it to
-style the page.
-
-Note that style sheet URLs we have are not full URLs; they are
-something called *relative URLs*, which can come in three
-flavors:^[There are even more flavors, including query-relative and
+the browser has the style sheet URLs now. But these style sheet URLs
+are usually not full URLs; they are something called *relative URLs*,
+such as:^[There are even more flavors, including query-relative and
 scheme-relative URLs, that I'm skipping.]
 
 -   A normal URL, which specifies a scheme, host, path, and so on;
@@ -611,8 +605,7 @@ scheme-relative URLs, that I'm skipping.]
     "directories" are dropped from the current URL; and then the
     relative URL is put at the end.
 
-To turn a relative URL into a full URL, then, we need to figure out
-which case we're in:
+So we need a function that turns a relative URL into a full URL:
 
 ``` {.python}
 def relative_url(url, current):
@@ -630,10 +623,8 @@ def relative_url(url, current):
         return dir + "/" + url
 ```
 
-Let's put it all together. We want to collect CSS rules from each of
-the linked files, and the browser style sheet, into one big list so we
-can apply each of them. So let's add them onto the end of the `rules`
-list:
+Now the browser can request each linked style sheet and add them onto
+the `rules` list:
 
 ``` {.python indent=4}
 def load(self, url):
@@ -641,23 +632,23 @@ def load(self, url):
     for link in links:
         try:
             header, body = request(relative_url(link, url))
-            rules.extend(CSSParser(body).parse())
         except:
             continue
+        rules.extend(CSSParser(body).parse())
 ```
 
-The `try`/`except` here handles the case where downloading a style
-sheet fails---in which case the browser just ignores it. But if you're
+Note that we add the page's style sheets at the end of `rules`, which
+means that user styles take priority over the browser style sheet. The
+`try`/`except` here handles the case where downloading a style sheet
+fails, in which case the browser just ignores it. But if you're
 debugging `relative_url` try removing the `try`/`except` here, which
 can hide errors.
 
-Since the page's style sheets come *after* browser styles, user styles
-take priority over the browser style sheet. With the rules loaded, we
-need only sort and apply them and then do layout, the code for which
-we've already added to `load`. Open this page up again, and you should
-see both gray backgrounds on every code block (thanks to the browser
-style sheet) and light-gold backgrounds on this book's mailing list
-signup form (try the book's main page).
+With the rules loaded, we need only sort and apply them and then do
+layout, the code for which we've already added to `load`. Open this
+page up again, and you should see gray backgrounds on every code block
+(thanks to the browser style sheet) and light-gold backgrounds on this
+book's mailing list signup form (try the book's main page).
 
 Alright: we've got background colors that can be configured by web
 page authors. But there's more to web design than that! At the very
@@ -729,11 +720,11 @@ def style(node, rules):
 Inheriting font size comes with a twist. Web pages can use percentages
 as font sizes: `h1 { font-size: 150% }` makes headings 50% bigger than
 normal text. But what if you had, say, a `code` element inside an `h1`
-tag---would that inherit the `150%` value for `font-size`? Would it be
-another 50% bigger than the rest of the heading text? That seems
-wrong. So in fact, browsers resolve percentages to absolute pixel
-units before storing them in the `style`; it's called
-["computing"][^css-computed] the style.
+tag---would that inherit the `150%` value for `font-size`? Surely it
+shouldn't be another 50% bigger than the rest of the heading text? So,
+in fact, browsers resolve percentages to absolute pixel units before
+storing them in the `style`; it's called ["computing"][^css-computed]
+the style.
 
 [^css-computed]: Full CSS is a bit more confusing: there are
 [specified, computed, used, and actual values][css-computed], and they
@@ -742,33 +733,34 @@ implementing those other properties in this book.
 
 [css-computed]: https://www.w3.org/TR/CSS2/cascade.html#value-stages
 
-In our browser, only `font-size` needs to be computed in this way, so
-the code looks like this:
+Of the properties our toy browser supports, only `font-size` needs to
+be computed in this way, so the code looks like this:
 
 ``` {.python}
 def compute_style(node, property, value):
     if property == "font-size":
-        # ...
+        if value.endswith("px"):
+            return value
+        elif value.endswith("%"):
+            # ...
+        else:
+            return None
     else:
         return value
 ```
 
-Computing `font-size` values works differently for pixel and
-percentage values:
+The case for percentage sizes has to handle a tricky edge case:
+percentage sizes for the root `html` element. In that case the
+percentage is relative to the default font size:
 
-``` {.python indent=8}
-if value.endswith("px"):
-    return value
-elif value.endswith("%"):
-    if node.parent:
-        parent_font_size = node.parent.style["font-size"]
-    else:
-        parent_font_size = INHERITED_PROPERTIES["font-size"]
-    node_pct = float(value[:-1]) / 100
-    parent_px = float(parent_font_size[:-2])
-    return str(node_pct * parent_px) + "px"
+``` {.python indent=12}
+if node.parent:
+    parent_font_size = node.parent.style["font-size"]
 else:
-    return None
+    parent_font_size = INHERITED_PROPERTIES["font-size"]
+node_pct = float(value[:-1]) / 100
+parent_px = float(parent_font_size[:-2])
+return str(node_pct * parent_px) + "px"
 ```
 
 Now `style` can call `computed_style` any time it reads a property
@@ -786,20 +778,29 @@ def style(node, rules):
     # ...
 ```
 
-You'll also need to call `computed_style` in the loop that handles
-`style` attributes. Note that because `style` has the recursive call
-at the end of the function, any time `computed_style` is called for a
-node, that node's parent already has a `font-size` value stored.
-
-So now with the `color` and font properties implemented, let's change
-`InlineText` to use them!
+The loop that handles `style` attributes should likewise call
+`computed_style`. Note that because the `style` function recurses at
+the end of the function, the node's parent already has a `font-size`
+value stored when `compute_style` is called.
 
 Font Properties
 ===============
 
-Inside `InlineLayout`, font information for every word is looked up in
-the `text` method. Since we now want to use style information now,
-we'll need to change `text` to take a `Text` input, not just a string:
+So now with all these font properties implemented, let's change layout
+to use them! Let's first move our default text styles to the browser
+style sheet:
+
+``` {.css}
+a { color: blue; }
+i { font-style: italic; }
+b { font-weight: bold; }
+small { font-size: 110%; }
+big { font-size: 90%; }
+```
+
+`InlineLayout` looks up font information in its `text` method. Since
+we now want it to use style information, we'll need to change `text`
+to take a node as input instead of just a string:
 
 ``` {.python indent=4}
 def text(self, node):
@@ -818,9 +819,9 @@ def recurse(self, node):
         # ...
 ```
 
-Now we can look up font size, weight, and style information from
-`node` instead of using the `style`, `weight`, and `size` fields on
-`InlineLayout`:
+The browser can now look up font size, weight, and style information
+instead of using `InlineLayout`'s `style`, `weight`, and `size`
+fields:
 
 ``` {.python indent=4}
 def text(self, node):
@@ -834,8 +835,8 @@ def text(self, node):
 ```
 
 Note that for `font-style` we need to translate CSS "normal" to Tk
-"roman". Likewise, the `font-size` value is in pixels, but Tk uses
-points, so you have to multiply by 75% to convert.[^72ppi]
+"roman" and for `font-size` we need to convert CSS pixels to Tk
+points.[^72ppi]
 
 [^72ppi]: Normally you think of points as a physical length unit (one 72^nd^ of
 an inch) and pixels as a digital unit (dependent on the screen) but in CSS, the
@@ -847,8 +848,8 @@ are equally bizarre, let alone the fact that a traditional typesetters' point is
 [why-72]: https://tonsky.me/blog/font-size/
 [why-7227]: https://tex.stackexchange.com/questions/200934/why-does-a-tex-point-differ-from-a-desktop-publishing-point
 
-Text color is similar, but it requires a bit more plumbing. First, we
-have to read the color and store it in the current `line`:
+Text color requires a bit more plumbing. First, we have to read the
+color and store it in the current `line`:
 
 ``` {.python indent=4}
 def text(self, node):
@@ -861,7 +862,7 @@ def text(self, node):
 ```
 
 Since the `line` field now stores color, we need to modify `flush`,
-which reads that variable:
+which copies from it to the `display_list`:
 
 ``` {.python indent=4}
 def flush(self):
@@ -874,7 +875,7 @@ def flush(self):
     # ...
 ```
 
-Finally, that `display_list` is written in `paint`:
+That `display_list` is converted to drawing commands in `paint`:
 
 ``` {.python indent=4}
 def paint(self, display_list):
@@ -883,7 +884,7 @@ def paint(self, display_list):
         display_list.append(DrawText(x, y, word, font, color))
 ```
 
-Now `DrawText` needs to store the `color` argument and pass it to
+`DrawText` now needs a `color` argument, and needs to pass it to
 `create_text`'s `fill` parameter:
 
 ``` {.python}
@@ -895,32 +896,23 @@ class DrawText:
     def execute(self, scroll, canvas):
         canvas.create_text(
             # ...
-            color=self.color,
+            fill=self.color,
         )
 ```
 
-Phew! That was a lot of coordinated changes, so please test everything
-and make sure it works. You should now see links on this page appear
-in blue---and you'll also notice that the rest of the text has become
-slightly lighter.[^book-css]
+Phew! That was a lot of coordinated changes, so test everything and
+make sure it works. You should now see links on this page appear in
+blue---and you'll might also notice that the rest of the text has
+become slightly lighter.[^book-css]
 
-[^book-css]: Check out [the book's style sheet](book.css) to see the
-    details.
+[^book-css]: The book's main body text is colored `#333`, a roughly
+    97% black color. Check out [the book's style sheet](book.css) to
+    see the details.
 
-Now we can add a few more lines to the browser style sheet:
-
-``` {.css}
-a { color: blue; }
-i { font-style: italic; }
-b { font-weight: bold; }
-small { font-size: 110%; }
-big { font-size: 90%; }
-```
-
-That fully replaces all the code in `InlineLayout` that handles those
-tags, including the `style`, `weight`, and `size` properties and the
-`open_tag` and `close_tag` methods. Let's refactor a bit to get rid of
-them:
+These changes also obsolete all the code in `InlineLayout` that
+handles specific tags, like the `style`, `weight`, and `size`
+properties and the `open_tag` and `close_tag` methods. Let's refactor
+a bit to get rid of them:
 
 ``` {.python indent=4}
 def recurse(self, node):
@@ -933,13 +925,11 @@ def recurse(self, node):
             self.recurse(child)
 ```
 
-So these styling mechanisms we've implemented not only let web page
-authors style their own web pages---they also replace browser code
-with a simple style sheet. And that's a big improvement: the style
-sheet is independent of the rest of the code and easier to edit. And
-while sometimes converting code to data means maintaining a new
-format, here we get to reuse a format, CSS, that our browser needs to
-support anyway.
+So styling not only lets web page authors style their own web pages;
+it also moves browser code to a simple style sheet. And that's a big
+improvement: the style sheet is simpler and easier to edit. Sometimes
+converting code to data like this means maintaining a new format, but
+browsers get to reuse a format, CSS, they need to support anyway.
 
 Summary
 =======
