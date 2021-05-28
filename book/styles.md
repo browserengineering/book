@@ -30,9 +30,8 @@ pair matching the property `background-color` to the value
 `lightblue`.^[CSS allows spaces around the punctuation, but our
 simplistic attribute parser does not support that.] Multiple
 property/value pairs, separated by semicolons, are also allowed. The
-browser looks at those property-value pairs when painting the element;
-this way the `style` attribute allows web page authors to override the
-default background for `pre` elements.
+browser looks at those property-value pairs when painting the element,
+so web page authors can override the default background color.
 
 Let's implement that in our browser. We'll start with a recursive
 function that creates a `style` field on each node to store this style
@@ -117,7 +116,7 @@ selector { property-1: value-1; property-2: value-2; }
 ```
 
 Since one of these *rules* can apply to many elements, it's possible
-for several blocks to apply to the same element. So browsers have a
+for several rules to apply to the same element. So browsers have a
 *cascading* mechanism to resolve conflicts in favor of the most
 specific rule. Cascading also means a browser can ignore rules it
 doesn't understand and choose the next-most-specific rule that it does
@@ -251,8 +250,8 @@ def body(self):
     return pairs
 ```
 
-One twist to parsing functions is handling errors. So for example,
-sometimes our parser will see a malformed property-value pair, either
+One twist to parsing functions is handling errors. For example, our
+parser will sometimes see a malformed property-value pair, either
 because the page author made a mistake or because they're using a CSS
 feature that our parser doesn't support. We can catch this error to
 skip property-value pairs that don't parse.
@@ -469,8 +468,9 @@ attribute takes priority over style sheets.
 Since two rules can apply to the same element, rule order matters. In
 CSS, the correct order is called *cascade order*, and it is based on
 the rule's selector. Tag selectors get the lowest priority; class
-selectors one higher; and id selectors higher still. Since we only
-have tag selectors, our cascade order just counts them:
+selectors one higher; and id selectors higher still. File order is a
+tie breaker. Since we only have tag selectors, our cascade order just
+counts them:
 
 ``` {.python}
 class TagSelector:
@@ -508,10 +508,9 @@ def load(self, url):
 ```
 
 Note that Python's `sorted` function keeps the relative order of
-things when possible. This means that in general, a rule that comes
-later in the CSS file comes later in cascade order, unless the
-selectors used force something different. That's how real browsers do
-it, too.
+things when possible. This implements the tie breaker: rules later in
+the CSS file come later in cascade order, unless the selectors used
+force something different.
 
 To start styling web pages we just need to download some style sheets!
 
@@ -754,8 +753,8 @@ def compute_style(node, property, value):
         return value
 ```
 
-Compute `font-size` values works differently for pixel and percentages
-values:
+Computing `font-size` values works differently for pixel and
+percentage values:
 
 ``` {.python indent=8}
 if value.endswith("px"):
@@ -764,10 +763,16 @@ elif value.endswith("%"):
     if node.parent:
         parent_px = float(node.parent.style["font-size"][:-2])
     else:
-        parent_px = 16
+        parent_px = FONT_SIZE_PX
     return str(float(value[:-1]) / 100 * parent_font_size) + "px"
 else:
     return None
+```
+
+The default browser font size is usually 16 pixels or 12 points:
+
+``` {.python}
+FONT_SIZE_PX = 16
 ```
 
 Now `style` can call `computed_style` any time it reads a property
