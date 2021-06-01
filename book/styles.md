@@ -978,6 +978,9 @@ files. That means we:
 Our styling engine is also relatively easy to extend with properties
 and selectors.
 
+::: {.signup}
+:::
+
 Outline
 =======
 
