@@ -85,7 +85,7 @@ other punctuation character) you'd do this:
 
 ``` {.python}
 def literal(self, literal):
-    assert self.s[self.i] == literal
+    assert self.i < len(self.s) and self.s[self.i] == literal
     self.i += 1
 ```
 
@@ -316,20 +316,24 @@ all `div` elements with an `article` ancestor).[^how-associate]
     descends from an `a`, which maybe you'd write `(a b) c` if CSS had
     parentheses.
 
-We'll have a class for each type of selector. It'll store the
-selector's contents, like the tag name for a tag selector, and test
-whether the selector matches an element:
+We'll have a class for each type of selector to store the
+selector's contents, like the tag name for a tag selector:
 
 ``` {.python}
 class TagSelector:
     def __init__(self, tag):
         self.tag = tag
+```
+
+Each selector class will also test whether the selector matches an
+element:
         
+``` {.python}
     def matches(self, node):
         return isinstance(node, Element) and self.tag == node.tag
 ```
 
-A descendant selector works in a similar. It has two parts, which are
+A descendant selector works similarly. It has two parts, which are
 both themselves selectors:
 
 ``` {.python}
@@ -378,8 +382,8 @@ A CSS file is just a sequence of selectors and blocks:
 ``` {.python indent=4}
 def parse(self):
     rules = []
-    self.whitespace()
     while self.i < len(self.s):
+        self.whitespace()
         selector = self.selector()
         self.literal("{")
         self.whitespace()
@@ -557,7 +561,8 @@ def load(self, url):
     # ...
     links = [node.attributes["href"]
              for node in tree_to_list(nodes, [])
-             if node.tag == "link"
+             if isinstance(node, Element)
+             and node.tag == "link"
              and "href" in node.attributes
              and node.attributes.get("rel") == "stylesheet"]
     # ...
@@ -656,7 +661,7 @@ Now when we call `style`, we need to sort the rules, like this:
 ``` {.python indent=8}
 def load(self, url):
     # ...
-    style(nodes, sorted(rules, cascade_priority))
+    style(nodes, sorted(rules, key=cascade_priority))
     # ...
 ```
 
@@ -814,8 +819,8 @@ style sheet:
 a { color: blue; }
 i { font-style: italic; }
 b { font-weight: bold; }
-small { font-size: 110%; }
-big { font-size: 90%; }
+small { font-size: 90%; }
+big { font-size: 110%; }
 ```
 
 `InlineLayout` looks up font information in its `text` method. Since
@@ -849,8 +854,8 @@ def text(self, node):
     weight = node.style["font-weight"]
     style = node.style["font-style"]
     if style == "normal": style = "roman"
-    size = float(node.style["font-size"][:-2]) * .75
-    font = tkinter.font.Font(size=style, weight=weight, slant=style)
+    size = int(float(node.style["font-size"][:-2]) * .75)
+    font = tkinter.font.Font(size=size, weight=weight, slant=style)
     # ...
 ```
 
@@ -939,7 +944,7 @@ def recurse(self, node):
     if isinstance(node, Text):
         self.text(node)
     else:
-        if self.tag == "br":
+        if node.tag == "br":
             self.flush()
         for child in node.children:
             self.recurse(child)

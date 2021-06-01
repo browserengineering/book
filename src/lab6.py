@@ -210,7 +210,7 @@ class CSSParser:
             self.i += 1
 
     def literal(self, literal):
-        assert self.s[self.i] == literal
+        assert self.i < len(self.s) and self.s[self.i] == literal
         self.i += 1
 
     def word(self):
@@ -268,9 +268,9 @@ class CSSParser:
 
     def parse(self):
         rules = []
-        self.whitespace()
         while self.i < len(self.s):
             try:
+                self.whitespace()
                 selector = self.selector()
                 self.literal("{")
                 self.whitespace()
@@ -445,13 +445,12 @@ class InlineLayout:
         self.flush()
 
         self.height = self.cursor_y - self.y
-        breakpoint("layout_post", self)
 
     def recurse(self, node):
         if isinstance(node, Text):
             self.text(node)
         else:
-            if self.tag == "br":
+            if node.tag == "br":
                 self.flush()
             for child in node.children:
                 self.recurse(child)
@@ -461,8 +460,8 @@ class InlineLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
-        size = float(node.style["font-size"][:-2]) * .75
-        font = tkinter.font.Font(size=style, weight=weight, slant=style)
+        size = int(float(node.style["font-size"][:-2]) * .75)
+        font = tkinter.font.Font(size=size, weight=weight, slant=style)
         for word in node.text.split():
             w = font.measure(word)
             if self.cursor_x + w > WIDTH - HSTEP:
@@ -578,7 +577,8 @@ class Browser:
         rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(nodes, [])
-                 if node.tag == "link"
+                 if isinstance(node, Element)
+                 and node.tag == "link"
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
@@ -587,7 +587,7 @@ class Browser:
             except:
                 continue
             rules.extend(CSSParser(body).parse())
-        style(nodes, sorted(rules, cascade_priority))
+        style(nodes, sorted(rules, key=cascade_priority))
 
         self.document = DocumentLayout(nodes)
         self.document.layout()
