@@ -15,21 +15,20 @@ Parsing with functions
 ======================
 
 One way a web page can change its appearance is with the `style`
-attribute. For example, you can use `style` to change an element's
-background color:
+attribute. For example, this changes an element's background color:
 
 ``` {.example}
 <div style="background-color:lightblue"></div>
 ```
 
-More generally a style attribute contains any number of property/value
-pairs, separated by semicolons. The browser looks at those
-property-value pairs when painting the element, for example to
-determine the background color.
+More generally, a `style` attribute contains property/value pairs
+separated by semicolons. The browser looks at those property-value
+pairs to determine how an element looks, for example to determine the
+background color.
 
-To add this to our browser, we'll need to parse these property/value
-pairs. I'll use recursive *parsing functions*, which are a good way to
-build complex parser step by step.
+To add this to our browser, we'll need to start by parsing these
+property/value pairs. I'll use recursive *parsing functions*, which
+are a good way to build complex parser step by step.
 
 The idea is to have functions that advance through the text and return
 the data they parsed. We'll have different functions for different
@@ -52,24 +51,9 @@ def whitespace(self):
         self.i += 1
 ```
 
-Whitespace is insignificant, so there's no data to return.
-
-Parsing functions can fail. For example, to check for a literal colon
-(or some other punctuation character) you'd do this:
-
-``` {.python}
-def literal(self, literal):
-    assert self.s[self.i] == literal
-    self.i += 1
-```
-
-`assert` raises an exception if its condition is false.[^add-a-comma]
-
-[^add-a-comma]: You can add error text to the assertion, too; I
-    recommend doing that to help in debugging.
-
-Parsing functions can also return data, for example when parsing
-properties and values:
+Whitespace is insignificant, so there's no data to return in this
+case. On the other hand, we'll want to return property names and
+values when we parse them:
 
 ``` {.python indent=4}
 def word(self):
@@ -84,10 +68,8 @@ def word(self):
 ```
 
 This function increments `i` through any word characters,[^word-chars]
-much like `whitespace`, but it also returns the parsed data. To do
-that it stores where it started and extracts the substring it moved
-through. Also note the assertion: if `i` didn't advance though any
-word characters, that means `i` didn't point at a word to begin with.
+much like `whitespace`. But to return the parsed data, it stores where
+it started and extracts the substring it moved through.
 
 [^word-chars]: I've chosen the set of word characters here to cover
     property names (which use letters and the dash), numbers (which
@@ -95,14 +77,28 @@ word characters, that means `i` didn't point at a word to begin with.
     and colors (which use the hash sign). Real CSS values have a more
     complex syntax but this is enough our toy browser.
 
+Parsing functions can fail. The `word` function we just wrote has an
+assertion to check that `i` advanced though at least one
+character---otherwise it didn't point at a word to begin
+with.[^add-a-comma] Likewise, to check for a literal colon (or some
+other punctuation character) you'd do this:
+
+``` {.python}
+def literal(self, literal):
+    assert self.s[self.i] == literal
+    self.i += 1
+```
+
+[^add-a-comma]: You can add error text to the assertion, too; I
+    recommend doing that to help you debug problems.
+
 The great thing about parsing functions is that they can build on one
 another. For example, property-value pairs are a property, a colon,
 and a value,[^technically-different] with whitespace in between:
 
 [^technically-different]: In reality properties and values have
     different syntaxes, so using `word` for both isn't quite right,
-    but for our browser's limited CSS support this simplification will
-    be alright.
+    but for our browser's limited CSS this simplification will do.
 
 ``` {.python}
 def pair(self):
@@ -115,7 +111,7 @@ def pair(self):
 ```
 
 We can parse sequences by calling parsing functions in a loop. For
-example, a sequence of property-value pairs looks like this:
+example, `style` attributes are a sequence of property-value pairs:
 
 ``` {.python indent=8 expected=False}
 def body(self):
@@ -129,13 +125,13 @@ def body(self):
     return pairs
 ```
 
-That said, it's worth thinking about handling errors. For example,
-sometimes a web page author makes a mistake, or perhaps uses a feature
-that our browser doesn't support. In this case we want to skip
-property-value pairs that don't parse but still keep the ones that do.
+Now, in a browser, we always have to think about handling errors.
+Sometimes a web page author makes a mistake; sometimes our browser
+doesn't support a feature some other browser does. So we should skip
+property-value pairs that don't parse, but keep the ones that do.
 
 We can skip things with this little function; it stops at any one of a
-list of characters, and returns that character (or `None` if it was
+set of characters, and returns that character (or `None` if it was
 stopped by the end of the file):
 
 ``` {.python indent=4}
@@ -147,7 +143,7 @@ def ignore_until(self, chars):
             self.i += 1
 ```
 
-When we fail to parse a property-value pair, we either skip to the
+So when we fail to parse a property-value pair, we either skip to the
 next semicolon or to the end of the string:
 
 ``` {.python indent=4 expected=False}
@@ -193,14 +189,21 @@ accept even minimally conformant input.
 [^from-circuits]: After a similar idea in circuit design, where
     transistors must be nonlinear to reduce analog noise.
 
-Anyway, now that the `style` attribute is parsed, we've got to modify
-the rest of the browser to use that parsed information.
+::: {.further}
+This parsing method is formally called recursive descent parsing for
+an [LL(1)][ll-parser] language. Parsers that use this method can be
+really, really fast, at least if you put a lot of work into it. In a
+browser, faster parsing means pages load faster.
+:::
+
+[ll-parser]: https://en.wikipedia.org/wiki/LL_parser
 
 The `style` attribute
 =====================
 
-We'll start with a recursive function that creates a `style` field on
-each node to store this style information:
+Now that the `style` attribute is parsed, we can use that parsed
+information in the rest of the browser. We'll store the parsed
+information in a `style` field on each node:
 
 ``` {.python replace=(node)/(node%2C%20rules)}
 def style(node):
@@ -210,11 +213,8 @@ def style(node):
         style(child, rules)
 ```
 
-The `style` dictionary is filled in by parsing the element's `style`
-attribute:[^python-get]
-
-[^python-get]: The `get` method for dictionaries gets a value out of a
-    dictionary, or uses a default value if it's not present.
+This `style` function will also fill in the `style` field by parsing
+the element's `style` attribute:
     
 ``` {.python replace=(node)/(node%2C%20rules),=%20value/=%20computed_value}
 def style(node):
@@ -226,8 +226,8 @@ def style(node):
     # ...
 ```
 
-The browser can use the `style` information when it paints the
-element:
+With the `style` information stored on each element, the browser can
+consult it for styling information:
 
 ``` {.python}
 class BlockLayout:
@@ -241,24 +241,25 @@ class BlockLayout:
         # ...
 ```
 
-Put the exact same lines of code inside `InlineLayout` as well, so
-that paragraphs and list items and so on can have backgrounds as well.
-For now, also remove the default gray background from `pre` elements
-(we'll put it back soon).
+Copy these lines of code to `InlineLayout` as well, so that paragraphs
+and list items and so on can have configurable backgrounds as well.
+I've removed the default gray background from `pre` elements for now,
+but we'll put it back soon.
 
-Open up this web page in your browser, and the code block right after
-this paragraph should now have a light blue background:
+Open up this chapter up in your browser to test your code: the code
+block right after this paragraph should now have a light blue
+background:
 
 ``` {.example style=background-color:lightblue}
 <div style="background-color:lightblue"> ... </div>
 ```
 
-So this is one way web pages change their appearance. But honestly,
-it's a pain---you need to set a `style` attribute on each element, and
-if you change the style that's a lot of attributes to edit. In the
-early days of the web,^[I'm talking Netscape 3. The late 90s.] the
-element-by-element approach was all there was. CSS was invented to
-improve on this state of affairs:
+So this is one way web pages can change their appearance. And in the
+early days of the web,^[I'm talking Netscape 3. The late 90s.]
+something like this was the *only* way. But honestly, it's a
+pain---you need to set a `style` attribute on each element, and if you
+change the style that's a lot of attributes to edit. CSS was invented
+to improve on this state of affairs:
 
 - One CSS file can consistently style many web pages at once
 - One line of CSS can consistently style many elements at once
@@ -272,7 +273,7 @@ HTML elements a list of property/value pairs apply to:[^media-queries]
     which say that a rule should apply only in certain browsing
     environments (like only on mobile or only in landscape mode).
     Media queries are super-important for building sites that work
-    across many devices (try this book on mobile!).
+    across many devices, like reading this book on a phone.
 
 ``` {.css}
 selector { property-1: value-1; property-2: value-2; }
@@ -285,10 +286,10 @@ specific rule. Cascading also means a browser can ignore rules it
 doesn't understand and choose the next-most-specific rule that it does
 understand.
 
-Let's add support for CSS to our browser. We'll need to parse CSS
-files into selectors and blocks; figure out which elements on the page
-match each selector; and then apply those property values to the
-element's `style` fields.
+So next, let's add support for CSS to our browser. We'll need to parse
+CSS files into selectors and property/value pairs; figure out which
+elements on the page match each selector; and then copy those property
+values to the element's `style` fields.
 
 ::: {.further}
 Actually, before CSS, you'd style pages with custom elements like
@@ -305,8 +306,8 @@ that could consistently set text colors, mainly for links.
 Selectors
 =========
 
-Selectors come in lots of types but our browser will support the two
-simplest: tag selectors: (`p` selects all `<p>` elements, `ul` selects
+Selectors come in lots of types; in our browser, we'll support the two
+simplest: tag selectors (`p` selects all `<p>` elements, `ul` selects
 all `<ul>` elements) and descendant selectors (`article div` selects
 all `div` elements with an `article` ancestor).[^how-associate]
 
@@ -315,30 +316,30 @@ all `div` elements with an `article` ancestor).[^how-associate]
     descends from an `a`, which maybe you'd write `(a b) c` if CSS had
     parentheses.
 
-We'll start by defining data structures for selectors:
+We'll have a class for each type of selector. It'll store the
+selector's contents, like the tag name for a tag selector, and test
+whether the selector matches an element:
 
 ``` {.python}
 class TagSelector:
     def __init__(self, tag):
         self.tag = tag
+        
+    def matches(self, node):
+        return isinstance(node, Element) and self.tag == node.tag
+```
 
+A descendant selector works in a similar. It has two parts, which are
+both themselves selectors:
+
+``` {.python}
 class DescendantSelector:
     def __init__(self, ancestor, descendant):
         self.ancestor = ancestor
         self.descendant = descendant
 ```
 
-The point of a selector is to test whether matches a given element.
-For a tag selector, that means comparing tag names:
-
-``` {.python}
-class TagSelector:
-     def matches(self, node):
-         return isinstance(node, Element) and self.tag == node.tag
-```
-
-Descendant selectors wrap other selectors, so their `match` method is
-recursive:
+Then the `match` method is recursive:
 
 ``` {.python}
 class DescendantSelector:
@@ -350,11 +351,15 @@ class DescendantSelector:
         return False
 ```
 
-Selectors are one part of a CSS file, so we need to parse them. In
-this case, that's just another loop:[^not-quite-word]
+Now, to create these selector objects, we need a parser. In this case,
+that's just another parsing function:[^not-quite-word]
 
 [^not-quite-word]: Once again, using `word` here for tag names is
-actually not quite right, but it is close enough.
+actually not quite right, but it is close enough. One tricky side
+effect of using `word` is that a class name selector (like `.main`) or
+an identifier selector (like `#signup`) is mis-parsed as a tag name
+selector. But that won't cause any harm since there aren't any
+elements with those tags.
 
 ``` {.python indent=4}
 def selector(self):
@@ -384,9 +389,9 @@ def parse(self):
     return rules
 ```
 
-Once again, let's pause to think about error handling. First, when
-we're parsing a CSS rule and call `body`, we want it to stop when it
-reaches a closing brace:
+Once again, let's pause to think about error handling. First, when we
+call `body` while parsing CSS, we need it to stop when it reaches a
+closing brace:
 
 ``` {.python indent=4}
 def body(self):
