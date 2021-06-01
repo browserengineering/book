@@ -107,7 +107,7 @@ class Layout:
 
     def token(self, tok):
         if isinstance(tok, Text):
-            self.text(tok.text)
+            self.text(tok)
         elif tok.tag == "i":
             self.style = "italic"
         elif tok.tag == "/i":
@@ -130,13 +130,13 @@ class Layout:
             self.flush()
             self.cursor_y += VSTEP
         
-    def text(self, text):
+    def text(self, tok):
         font = tkinter.font.Font(
             size=self.size,
             weight=self.weight,
             slant=self.style,
         )
-        for word in text.split():
+        for word in tok.text.split():
             w = font.measure(word)
             if self.cursor_x + w > WIDTH - HSTEP:
                 self.flush()

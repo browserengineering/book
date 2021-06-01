@@ -199,7 +199,7 @@ class Layout:
 
     def recurse(self, tree):
         if isinstance(tree, Text):
-            self.text(tree.text)
+            self.text(tree)
         else:
             self.open_tag(tree.tag)
             for child in tree.children:
@@ -231,13 +231,13 @@ class Layout:
             self.flush()
             self.cursor_y += VSTEP
         
-    def text(self, text):
+    def text(self, node):
         font = tkinter.font.Font(
             size=self.size,
             weight=self.weight,
             slant=self.style,
         )
-        for word in text.split():
+        for word in node.text.split():
             w = font.measure(word)
             if self.cursor_x + w > WIDTH - HSTEP:
                 self.flush()

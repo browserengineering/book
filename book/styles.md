@@ -850,28 +850,7 @@ big { font-size: 110%; }
 ```
 
 The browser looks up font information in its `text` method; we'll need
-to change that method to take a node as input (instead of just a
-string):
-
-``` {.python indent=4}
-def text(self, node):
-    # ...
-    for word in node.text.split():
-        # ...
-```
-
-We also need to change `recurse` to pass that node:
-
-``` {.python indent=4}
-def recurse(self, node):
-    if isinstance(node, Text):
-        self.text(node)
-    else:
-        # ...
-```
-
-The browser can now look up font size, weight, and style information
-from the node's `style` field:
+to change that method use the node's `style` field:
 
 ``` {.python indent=4}
 def text(self, node):

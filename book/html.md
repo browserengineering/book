@@ -559,7 +559,7 @@ Now we need the `Layout` object to walk the node tree, calling `open_tag`,
 ``` {.python indent=4}
 def recurse(self, tree):
     if isinstance(tree, Text):
-        self.text(tree.text)
+        self.text(tree)
     else:
         self.open_tag(tree.tag)
         for child in tree.children:
