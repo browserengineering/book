@@ -464,15 +464,27 @@ this!
 [^show-context]: It can be especially helpful to print, say, the 20
 characters around index `i` from the string.
 
-With the parser debugged, the next step is applying the parsed style
-sheet to the web page.
+::: {.further}
+A parser receives arbitrary bytes as input, so parser bugs are usually
+easy to exploit. Parser correctness is thus crucial to browser
+security, as [many][bug-1] [parser][bug-2] [bugs][bug-3] have
+demonstrated. Nowadays browser developers use [fuzzing] to try to find
+and fix such bugs.
+:::
+
+[bug-1]: https://nvd.nist.gov/vuln/detail/CVE-2010-3971
+[bug-2]: https://nvd.nist.gov/vuln/detail/CVE-2007-0943
+[bug-3]: https://nvd.nist.gov/vuln/detail/CVE-2010-1663
+[fuzzing]: https://hacks.mozilla.org/2021/02/browser-fuzzing-at-mozilla/
 
 Applying style sheets
 =====================
 
-Each CSS rule can style many elements on the page. So the browser's
-first task is to figure out which elements each rule applies to. Only
-if the rule applies does it copy over the rule's property/value pairs:
+With the parser debugged, the next step is applying the parsed style
+sheet to the web page. Since each CSS rule can style many elements on
+the page, this will require looping over all elements *and* all rules.
+When a rule applies its property/values pairs are copied to the
+element's style information:
 
 ``` {.python replace==%20value/=%20computed_value}
 def style(node, rules):
@@ -520,10 +532,10 @@ def load(self, url):
     # ...
 ```
 
-The browser stylesheet is the default for the whole web. But
-individual web sites can use this same mechanism to set a consistent
-style for the whole set. To do that, the web site posts a CSS file and
-names it on each page using a `link` element:
+The browser stylesheet is the default for the whole web. But each web
+sites can also use CSS to set a consistent style for the whole site.
+To do that, the web site posts a CSS file and references it from each
+page using a `link` element:
 
 ``` {.example}
 <link rel="stylesheet" href="/main.css">
@@ -532,14 +544,16 @@ names it on each page using a `link` element:
 The mandatory `rel` attribute identifies this link as a style
 sheet[^like-canonical] and the `href` attribute has the style sheet
 URL. We need to find all these links, download their style sheets, and
-apply them. Since we'll be doing similar tasks in the next few
-chapters, let's generalize a bit and write a recursive function that
-turns a tree into a list of nodes:
+apply them.
+
+Since we'll be doing similar tasks in the next few chapters, let's
+generalize a bit and write a recursive function that turns a tree into
+a list of nodes:
 
 [^like-canonical]: Browsers mostly don't care about any [other kinds
-of links][link-types], but search engines use relations like
-`rel=canonical`, which names the "true name" of a page and lets search
-engines track pages that appear at multiple URLs.
+of links][link-types], but search engines do use other relations. For
+example, `rel=canonical` names the "true name" of a page and lets
+search engines track pages that appear at multiple URLs.
 
 [link-types]: https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types
 
@@ -551,10 +565,9 @@ def tree_to_list(tree, list):
     return list
 ```
 
-I've written this to work on both HTML and layout tree, for later.
-
-We can now use a Python's list expression to grab the URL of each
-linked style sheet:
+I've written this helper to work on both HTML and layout tree, for
+later. We can use `tree_to_list` with Python's list comprehension to
+grab the URL of each linked style sheet:
 
 ``` {.python indent=4}
 def load(self, url):
@@ -568,21 +581,16 @@ def load(self, url):
     # ...
 ```
 
-It's kind of crazy, honestly, that Python lets you do this. Now, these
-style sheet URLs are usually not full URLs; they are something called
-*relative URLs*, such as:^[There are other flavors, including
+It's kind of crazy, honestly, that Python lets you write this. Now,
+these style sheet URLs are usually not full URLs; they are something
+called *relative URLs*, such as:^[There are other flavors, including
 query-relative and scheme-relative URLs, that I'm skipping.]
 
 -   A normal URL, which specifies a scheme, host, path, and so on;
 -   A host-relative URL, which starts with a slash but reuses the
     existing scheme and host; or
 -   A path-relative URL, which doesn't start with a slash and is
-    resolved like a file name would be.[^how-file]
-    
-[^how-file]: The "file name" after the last slash of the current URL
-    is dropped; if the relative URL starts with "../", slash-separated
-    "directories" are dropped from the current URL; and then the
-    relative URL is put at the end.
+    resolved like a file name would be.
 
 To download the style sheets, we'll need to convert each relative URL
 into a full URL:
@@ -594,17 +602,22 @@ def relative_url(url, current):
     elif url.startswith("/"):
         scheme, hostpath = current.split("://", 1)
         host, oldpath = hostpath.split("/", 1)
-        return host + url
+        return scheme + "://" + host + url
     else:
         dir, _ = current.rsplit("/", 1)
         while url.startswith("../"):
-            dir, _ = dir.rsplit("/", 1)
             url = url[3:]
+            if dir.count("/") == 2: continue
+            dir, _ = dir.rsplit("/", 1)
         return dir + "/" + url
 ```
 
-Now the browser can request each linked style sheet and add them onto
-the `rules` list:
+When resolving path-relative URLs, we count the number of slashes in
+the "directory" to make sure we never strip off the scheme and host
+name.
+
+Now the browser can request each linked style sheet and add its rules
+to the `rules` list:
 
 ``` {.python indent=4}
 def load(self, url):
@@ -620,18 +633,39 @@ def load(self, url):
 The `try`/`except` ignores style sheets that fail to download, but it
 can also hide bugs, so try removing it if something's not right.
 
+::: {.further}
+Each browser has its own browser style sheet ([Chromium][blink-css],
+[Safari][webkit-css], [Firefox][gecko-css]). [Reset
+style sheets][mdn-reset] are often used to overcome any differences.
+This works because web page style sheets take precedence over the
+browser style sheet, just like in our browser, though real browsers
+[fiddle with priorities][cascade-order] to make that
+happen.[^ours-works]
+:::
+
+[mdn-reset]: https://developer.mozilla.org/en-US/docs/Web/CSS/all
+[cascade-order]: https://www.w3.org/TR/2011/REC-CSS2-20110607/cascade.html#cascading-order
+[blink-css]: https://source.chromium.org/chromium/chromium/src/+/master:third_party/blink/renderer/core/html/resources/html.css
+[gecko-css]: https://searchfox.org/mozilla-central/source/layout/style/res/html.css
+[webkit-css]: https://github.com/WebKit/WebKit/blob/main/Source/WebCore/css/html.css
+
+[^ours-works]: Our browser style sheet only has tag selectors in it,
+so just putting them first works well enough. But if the browser style sheet
+had any descendant selectors, we'd encounter bugs.
+
 Cascading
 =========
 
 A web page can now have any number of stylesheets applied to it. And
-since two rules can apply to the same element, rule order matters. In
-CSS, the correct order is called *cascade order*, and it is based on
-the rule's selector. Tag selectors get the lowest priority; class
-selectors one higher; and id selectors higher still. File order is a
-tie breaker. The point of this system is to allow more specific rules
-to override more general ones, so that you can have a browser style
-sheet, a site-wide style sheet, and maybe a special style sheet for
-your about page, all co-existing.
+since two rules can apply to the same element, rule order matters: it
+determines which rules take priority, and when one rule overrides
+another.
+
+In CSS, the correct order is called *cascade order*, and it is based
+on the rule's selector, with file order as a tie breaker. This system
+allows more specific rules to override more general ones, so that you
+can have a browser style sheet, a site-wide style sheet, and maybe a
+special style sheet for your about page, all co-existing.
 
 Since our browser only has tag selectors, our cascade order just
 counts them:
@@ -658,63 +692,47 @@ def cascade_priority(rule):
 
 Now when we call `style`, we need to sort the rules, like this:
 
-``` {.python indent=8}
+``` {.python indent=4}
 def load(self, url):
     # ...
     style(nodes, sorted(rules, key=cascade_priority))
     # ...
 ```
 
-Note that Python's `sorted` function keeps the relative order of
-things when possible. This implements the tie breaker: rules later in
-the CSS file come later in cascade order, unless the selectors used
-force something different.
+Note that before sorting `rules`, it as in file order. Since Python's
+`sorted` function keeps the relative order of things when possible,
+file order thus acts as a tie breaker, as it should.
 
-That's it: we've added CSS to our web browser! Open this page, and you
-should see gray backgrounds on every code block (thanks to the browser
-style sheet) and light-gold backgrounds on this book's mailing list
-signup form (try the book's main page).
-
-Alright: we've got background colors that can be configured by web
-page authors. But there's more to web design than that! At the very
-least, if you're changing background colors you might want to change
-foreground colors as well---the CSS `color` property. For example,
-usually links are blue. But there's a catch: `color` affects text, but
-text nodes don't have any styles at all. How can that work?
+That's it: we've added CSS to our web browser! I mean---for background
+colors. But there's more to web design than that! At the very least,
+if you're changing background colors you might want to change
+foreground colors as well---the CSS `color` property. But there's a
+catch: `color` affects text, and there's no way to select a text node.
+How can that work?
 
 ::: {.further}
-Each browser has its own browser style sheet ([Chromium][blink-css],
-[Safari][webkit-css], [Firefox][gecko-css]). [Reset
-style sheets][mdn-reset] are often used to overcome any differences.
-This works because web page style sheets take precedence over the
-browser style sheet, just like in our browser, though real browsers
-[fiddle with priorities][cascade-order] to make that
-happen.[^ours-works]
+Web pages can also supply "[alternative style sheets][alternate-ss]",
+and some browsers provide (obscure) methods to switch from the default
+to an alternate style sheet. The CSS standard also allows for [browser
+extensions][userstyles] that set custom style sheets for websites.
 :::
 
-[mdn-reset]: https://developer.mozilla.org/en-US/docs/Web/CSS/all
-[cascade-order]: https://www.w3.org/TR/2011/REC-CSS2-20110607/cascade.html#cascading-order
-[blink-css]: https://source.chromium.org/chromium/chromium/src/+/master:third_party/blink/renderer/core/html/resources/html.css
-[gecko-css]: https://searchfox.org/mozilla-central/source/layout/style/res/html.css
-[webkit-css]: https://github.com/WebKit/WebKit/blob/main/Source/WebCore/css/html.css
-
-[^ours-works]: Our browser style sheet only has tag selectors in it,
-so just putting them first works well enough. But if the browser style sheet
-had any descendant selectors, we'd encounter bugs.
+[alternate-ss]: https://developer.mozilla.org/en-US/docs/Web/CSS/Alternative_style_sheets
+[userstyles]: https://userstyles.org
 
 Inherited styles
 ================
 
-The solution in CSS is *inheritance*. Inheritance means that if some
-node doesn't have a value for a certain property, it uses its parent's
-value instead. Some properties are inherited and some aren't; it
-depends on the property. Background color isn't inherited, but text
-color and other font properties are.
+The way text styles work in CSS is called *inheritance*. Inheritance
+means that if some node doesn't have a value for a certain property,
+it uses its parent's value instead. That includes text nodes. Some
+properties are inherited and some aren't; it depends on the property.
+Background color isn't inherited, but text color and other font
+properties are.
 
-So let's implement text color and inheritance. And while we're at it,
-let's also implement three other font properties: `font-weight`
-(`normal` or `bold`), `font-style` (`normal` or `italic`), and
-`font-size` (a length or percentage).
+Let's implement inheritance for four font properties: `color`,
+`font-weight` (`normal` or `bold`), `font-style` (`normal` or
+`italic`), and `font-size` (a length or percentage).
 
 Let's start by listing our inherited properties and their default
 values:
@@ -728,8 +746,9 @@ INHERITED_PROPERTIES = {
 }
 ```
 
-The actual inheritance happens in the `style` function, *before* the
-other loops, since explicit rules override inheritance:
+We'll then add the actual inheritance code to the `style` function. It
+has to come *before* the other loops, since explicit rules should
+override inheritance:
 
 ``` {.python}
 def style(node, rules):
@@ -744,22 +763,21 @@ def style(node, rules):
 
 Inheriting font size comes with a twist. Web pages can use percentages
 as font sizes: `h1 { font-size: 150% }` makes headings 50% bigger than
-normal text. But what if you had, say, a `code` element inside an `h1`
-tag---would that inherit the `150%` value for `font-size`? Surely it
-shouldn't be another 50% bigger than the rest of the heading text? So,
-in fact, browsers resolve percentages to absolute pixel units before
-storing them in the `style`; it's called ["computing"][^css-computed]
-the style.
+surrounding text. But what if you had, say, a `code` element inside an
+`h1` tag---would that inherit the `150%` value for `font-size`? Surely
+it shouldn't be another 50% bigger than the rest of the heading text?
+
+So, in fact, browsers resolve percentages to absolute pixel units
+before storing them in the `style`; it's called a ["computed
+style"][^css-computed]. Of the properties our toy browser supports,
+only `font-size` needs to be computed in this way:
 
 [^css-computed]: Full CSS is a bit more confusing: there are
 [specified, computed, used, and actual values][css-computed], and they
-affect lots of CSS properties besides `font-size`. We're just
+affect lots of CSS properties besides `font-size`. We're just not
 implementing those other properties in this book.
 
 [css-computed]: https://www.w3.org/TR/CSS2/cascade.html#value-stages
-
-Of the properties our toy browser supports, only `font-size` needs to
-be computed in this way, so the code looks like this:
 
 ``` {.python}
 def compute_style(node, property, value):
@@ -776,7 +794,11 @@ def compute_style(node, property, value):
 
 The case for percentage sizes has to handle a tricky edge case:
 percentage sizes for the root `html` element. In that case the
-percentage is relative to the default font size:
+percentage is relative to the default font size:[^why-parse]
+
+[^why-parse]: This code has to parse and unparse font sizes because
+    our `style` field stores strings; in a real browser the computed
+    style is stored parsed so this doesn't have to happen.
 
 ``` {.python indent=12}
 if node.parent:
@@ -808,12 +830,16 @@ The loop that handles `style` attributes should likewise call
 the end of the function, the node's parent already has a `font-size`
 value stored when `compute_style` is called.
 
+::: {.further}
+
+:::
+
 Font Properties
 ===============
 
 So now with all these font properties implemented, let's change layout
-to use them! Let's first move our default text styles to the browser
-style sheet:
+to use them! That will let us move our default text styles to the
+browser style sheet:
 
 ``` {.css}
 a { color: blue; }
@@ -823,9 +849,9 @@ small { font-size: 90%; }
 big { font-size: 110%; }
 ```
 
-`InlineLayout` looks up font information in its `text` method. Since
-we now want it to use style information, we'll need to change `text`
-to take a node as input instead of just a string:
+The browser looks up font information in its `text` method; we'll need
+to change that method to take a node as input (instead of just a
+string):
 
 ``` {.python indent=4}
 def text(self, node):
@@ -845,8 +871,7 @@ def recurse(self, node):
 ```
 
 The browser can now look up font size, weight, and style information
-instead of using `InlineLayout`'s `style`, `weight`, and `size`
-fields:
+from the node's `style` field:
 
 ``` {.python indent=4}
 def text(self, node):
@@ -886,12 +911,11 @@ def text(self, node):
         # ...
 ```
 
-Since the `line` field now stores color, we need to modify `flush`,
-which copies from it to the `display_list`:
+The `flush` method then copies it from `line` to `display_list`:
 
 ``` {.python indent=4}
 def flush(self):
-    if not self.line: return
+    # ...
     metrics = [font.metrics() for x, word, font, color in self.line]
     # ...
     for x, word, font, color in self.line:
@@ -930,14 +954,13 @@ make sure it works. You should now see links on this page appear in
 blue---and you'll might also notice that the rest of the text has
 become slightly lighter.[^book-css]
 
-[^book-css]: The book's main body text is colored `#333`, a roughly
-    97% black color. Check out [the book's style sheet](book.css) to
-    see the details.
+[^book-css]: The book's main body text [is colored](book.css) `#333`,
+    or roughly 97% black.
 
-These changes also obsolete all the code in `InlineLayout` that
-handles specific tags, like the `style`, `weight`, and `size`
-properties and the `open_tag` and `close_tag` methods. Let's refactor
-a bit to get rid of them:
+These changes obsolete all the code in `InlineLayout` that handles
+specific tags, like the `style`, `weight`, and `size` properties and
+the `open_tag` and `close_tag` methods. Let's refactor a bit to get
+rid of them:
 
 ``` {.python indent=4}
 def recurse(self, node):
@@ -950,11 +973,15 @@ def recurse(self, node):
             self.recurse(child)
 ```
 
-So styling not only lets web page authors style their own web pages;
-it also moves browser code to a simple style sheet. And that's a big
+Styling not only lets web page authors style their own web pages; it
+also moves browser code to a simple style sheet. And that's a big
 improvement: the style sheet is simpler and easier to edit. Sometimes
 converting code to data like this means maintaining a new format, but
 browsers get to reuse a format, CSS, they need to support anyway.
+
+::: {.further}
+
+:::
 
 Summary
 =======
@@ -963,9 +990,11 @@ This chapter implemented a rudimentary but complete styling engine,
 including downloading, parsing, matching, sorting, and applying CSS
 files. That means we:
 
-- Added styling support in both `style` attributes and `link`ed CSS files;
+- Wrote a CSS parser;
+- Added support for both `style` attributes and `link`ed CSS files;
+- Implemented cascading and inheritance;
 - Refactored `InlineLayout` to move the font properties to CSS;
-- Removed most tag-specific reasoning from our layout code.
+- Moved most tag-specific reasoning to a browser style sheet.
 
 Our styling engine is also relatively easy to extend with properties
 and selectors.
