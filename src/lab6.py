@@ -384,7 +384,6 @@ class BlockLayout:
         self.children = []
 
     def layout(self):
-        breakpoint("layout_pre", self)
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
@@ -407,7 +406,6 @@ class BlockLayout:
 
         self.height = sum([child.height for child in self.children])
 
-        breakpoint("layout_post", self)
 
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",
@@ -427,7 +425,6 @@ class InlineLayout:
         self.children = []
 
     def layout(self):
-        breakpoint("layout_pre", self)
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -499,7 +496,6 @@ class DocumentLayout:
         self.children = []
 
     def layout(self):
-        breakpoint("layout_pre", self)
         child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
@@ -508,7 +504,6 @@ class DocumentLayout:
         self.y = VSTEP
         child.layout()
         self.height = child.height + 2*VSTEP
-        breakpoint("layout_post", self)
 
     def paint(self, display_list):
         self.children[0].paint(display_list)
