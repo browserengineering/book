@@ -49,7 +49,7 @@ class Data:
         })
         self.save()
 
-    def comment(self, url, text, comment, name, tag="p"):
+    def text_comment(self, url, text, comment, name, tag="p"):
         if any(obj['type'] == 'comment' and
                obj['url'] == url and
                obj['text'] == text and
@@ -62,6 +62,22 @@ class Data:
             'tag': self.safe_tag(tag),
             'url': url,
             'text': text,
+            'comment': comment,
+            'name': name,
+            'status': 'new',
+        })
+        self.save()
+
+    def chapter_comment(self, url, comment, name):
+        if any(obj['type'] == 'chapter_comment' and
+               obj['url'] == url and
+               obj['comment'] == comment for obj in self.data):
+            return
+        self.data.append({
+            'id': len(self.data),
+            'time': time.time(),
+            'type': 'chapter_comment',
+            'url': url,
             'comment': comment,
             'name': name,
             'status': 'new',
@@ -85,10 +101,15 @@ def typo():
     data = json.load(bottle.request.body)
     DATA.typo(**data)
 
-@bottle.post("/api/comment")
+@bottle.post("/api/text_comment")
+def text_comment():
+    data = json.load(bottle.request.body)
+    DATA.text_comment(**data)
+
+@bottle.post("/api/chapter_comment")
 def comment():
     data = json.load(bottle.request.body)
-    DATA.comment(**data)
+    DATA.chapter_comment(**data)
 
 def splitword(text):
     out = [[]]

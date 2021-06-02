@@ -30,8 +30,11 @@
     <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
     %if obj['type'] == 'typo':
       <blockquote>{{!obj['diff']}}</blockquote>
-    %else:
+    %elif obj['type'] == 'comment':
       <blockquote>{{obj['text']}}</blockquote>
+      <p>{{obj['comment']}}</p>
+    %else:
+      <p>Overall comment:</p>
       <p>{{obj['comment']}}</p>
     %end
     </div>
