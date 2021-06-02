@@ -6,10 +6,10 @@ next: chrome
 ...
 
 In the [last chapter](layout.md), we gave each `pre` element a gray
-background. It looks OK, and it *is* good to have defaults... but you
-can imagine a site wanting a say in how it looks. Web sites do that
-with _Cascading Style Sheets_, which allow web authors (and, as we'll
-see, browser developers) to define how a web page ought to look.
+background. It looks OK, and it *is* good to have defaults... but of
+course sites wants a say in how they look. Web sites do that with
+_Cascading Style Sheets_, which allow web authors (and, as we'll see,
+browser developers) to define how a web page ought to look.
 
 Parsing with functions
 ======================
@@ -23,17 +23,16 @@ attribute. For example, this changes an element's background color:
 
 More generally, a `style` attribute contains property/value pairs
 separated by semicolons. The browser looks at those property-value
-pairs to determine how an element looks, for example to determine the
+pairs to determine how an element looks, for example to determine its
 background color.
 
 To add this to our browser, we'll need to start by parsing these
 property/value pairs. I'll use recursive *parsing functions*, which
-are a good way to build complex parser step by step.
-
-The idea is to have functions that advance through the text and return
-the data they parsed. We'll have different functions for different
-types of data, and organize them in a `CSSParser` class that stores
-the string and our current position in it:
+are a good way to build a complex parser step by step. The idea is
+that each parsing function advances through the text being parsed and
+returns the data it parsed. We'll have different functions for
+different types of data, and organize them in a `CSSParser` class that
+stores the text being parsed and the parser's current position in it:
 
 ``` {.python}
 class CSSParser:
@@ -143,7 +142,7 @@ def ignore_until(self, chars):
             self.i += 1
 ```
 
-So when we fail to parse a property-value pair, we either skip to the
+When we fail to parse a property-value pair, we either skip to the
 next semicolon or to the end of the string:
 
 ``` {.python indent=4 expected=False}
@@ -163,21 +162,26 @@ def body(self):
 ```
 
 Skipping parse errors is a double-edged sword. It hides error
-messages, so debugging style sheets becomes more difficult; it also
-makes it harder to debug your parser.[^try-no-try] So this "catch-all"
-error handling is usually a code smell.
+messages, making it harder for authors to debug their style sheets; it
+also makes it harder to debug your parser.[^try-no-try] So in most
+programming situations this "catch-all" error handling is usually a
+code smell.
 
 [^try-no-try]: I suggest removing the `try` block when debugging.
 
 But on the web "catch-all" error handling has an unusual benefit. The
-web is an ecosystem of many browsers, which (for example) support
-different kinds of property values.[^like-parens] CSS that parses in
-one browser might not parse in another. With silent parse errors,
-browsers just ignore stuff they don't understand, and web pages mostly
-work in all of them. The principle (variously called "Postel's
-Law",[^for-jon] the "Digital Principle",[^from-circuits] or the
-"Robustness Principle") is: produce maximally conformant output but
-accept even minimally conformant input.
+web is an ecosystem of many browsers,[^and-versions] which (for
+example) support different kinds of property values.[^like-parens] CSS
+that parses in one browser might not parse in another. With silent
+parse errors, browsers just ignore stuff they don't understand, and
+web pages mostly work in all of them. The principle (variously called
+"Postel's Law",[^for-jon] the "Digital Principle",[^from-circuits] or
+the "Robustness Principle") is: produce maximally conformant output
+but accept even minimally conformant input.
+
+[^and-versions]: And an ecosystem of many browser versions, some
+    of which haven't been written yet---but need to be supported as
+    best we can.
 
 [^like-parens]: Our browser does not support parentheses in property
     values, for example, which real browsers use for things like the
@@ -243,8 +247,8 @@ class BlockLayout:
 
 Copy these lines of code to `InlineLayout` as well, so that paragraphs
 and list items and so on can have configurable backgrounds as well.
-I've removed the default gray background from `pre` elements for now,
-but we'll put it back soon.
+(I've removed the default gray background from `pre` elements for now,
+but we'll put it back soon.)
 
 Open up this chapter up in your browser to test your code: the code
 block right after this paragraph should now have a light blue
@@ -413,8 +417,8 @@ def body(self):
     # ...
 ```
 
-Secondly, there might also be an parse error while parsing a selector.
-In that case, we want to skip that whole rule:
+Second, there might also be an parse error while parsing a selector.
+In that case, we want to skip the whole rule:
 
 ``` {.python indent=4}
 def parse(self):
@@ -466,8 +470,8 @@ characters around index `i` from the string.
 
 ::: {.further}
 A parser receives arbitrary bytes as input, so parser bugs are usually
-easy to exploit. Parser correctness is thus crucial to browser
-security, as [many][bug-1] [parser][bug-2] [bugs][bug-3] have
+easy for bad actors to exploit. Parser correctness is thus crucial to
+browser security, as [many][bug-1] [parser][bug-2] [bugs][bug-3] have
 demonstrated. Nowadays browser developers use [fuzzing] to try to find
 and fix such bugs.
 :::
@@ -532,7 +536,7 @@ def load(self, url):
     # ...
 ```
 
-The browser stylesheet is the default for the whole web. But each web
+The browser style sheet is the default for the whole web. But each web
 sites can also use CSS to set a consistent style for the whole site.
 To do that, the web site posts a CSS file and references it from each
 page using a `link` element:
@@ -550,10 +554,12 @@ Since we'll be doing similar tasks in the next few chapters, let's
 generalize a bit and write a recursive function that turns a tree into
 a list of nodes:
 
-[^like-canonical]: Browsers mostly don't care about any [other kinds
-of links][link-types], but search engines do use other relations. For
-example, `rel=canonical` names the "true name" of a page and lets
-search engines track pages that appear at multiple URLs.
+[^like-canonical]: For browsers, `stylesheet` is the most important
+[kinds of link][link-types], but there's also `preload` for loading
+assets that a page will use later and `icon` for identifying favicons.
+Search engines also use these links; for example, `rel=canonical`
+names the "true name" of a page and search engines use it to track
+pages that appear at multiple URLs.
 
 [link-types]: https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types
 
@@ -566,8 +572,11 @@ def tree_to_list(tree, list):
 ```
 
 I've written this helper to work on both HTML and layout tree, for
-later. We can use `tree_to_list` with Python's list comprehension to
-grab the URL of each linked style sheet:
+later. We can use `tree_to_list` with a Python list
+comprehension[^crazy] to grab the URL of each linked style sheet:
+
+[^crazy]: It's kind of crazy, honestly, that Python lets you write
+    things like this---crazy, but very convenient!
 
 ``` {.python indent=4}
 def load(self, url):
@@ -581,10 +590,9 @@ def load(self, url):
     # ...
 ```
 
-It's kind of crazy, honestly, that Python lets you write this. Now,
-these style sheet URLs are usually not full URLs; they are something
-called *relative URLs*, such as:^[There are other flavors, including
-query-relative and scheme-relative URLs, that I'm skipping.]
+Now, these style sheet URLs are usually not full URLs; they are
+something called *relative URLs*, such as:^[There are other flavors,
+including query-relative and scheme-relative URLs, that I'm skipping.]
 
 -   A normal URL, which specifies a scheme, host, path, and so on;
 -   A host-relative URL, which starts with a slash but reuses the
@@ -631,7 +639,8 @@ def load(self, url):
 ```
 
 The `try`/`except` ignores style sheets that fail to download, but it
-can also hide bugs, so try removing it if something's not right.
+can also hide bugs in your, so if something's not right try removing
+it temporarily.
 
 ::: {.further}
 Each browser has its own browser style sheet ([Chromium][blink-css],
@@ -656,7 +665,7 @@ had any descendant selectors, we'd encounter bugs.
 Cascading
 =========
 
-A web page can now have any number of stylesheets applied to it. And
+A web page can now have any number of style sheets applied to it. And
 since two rules can apply to the same element, rule order matters: it
 determines which rules take priority, and when one rule overrides
 another.
@@ -665,7 +674,7 @@ In CSS, the correct order is called *cascade order*, and it is based
 on the rule's selector, with file order as a tie breaker. This system
 allows more specific rules to override more general ones, so that you
 can have a browser style sheet, a site-wide style sheet, and maybe a
-special style sheet for your about page, all co-existing.
+special style sheet for a specific web page, all co-existing.
 
 Since our browser only has tag selectors, our cascade order just
 counts them:
@@ -704,11 +713,11 @@ Note that before sorting `rules`, it as in file order. Since Python's
 file order thus acts as a tie breaker, as it should.
 
 That's it: we've added CSS to our web browser! I mean---for background
-colors. But there's more to web design than that! At the very least,
-if you're changing background colors you might want to change
-foreground colors as well---the CSS `color` property. But there's a
-catch: `color` affects text, and there's no way to select a text node.
-How can that work?
+colors. But there's more to web design than that. For example, if
+you're changing background colors you might want to change foreground
+colors as well---the CSS `color` property. But there's a catch:
+`color` affects text, and there's no way to select a text node. How
+can that work?
 
 ::: {.further}
 Web pages can also supply "[alternative style sheets][alternate-ss]",
@@ -811,7 +820,7 @@ return str(node_pct * parent_px) + "px"
 ```
 
 Now `style` can call `computed_style` any time it reads a property
-value out of a stylesheet:
+value out of a style sheet:
 
 ``` {.python}
 def style(node, rules):
@@ -930,8 +939,8 @@ class DrawText:
 
 Phew! That was a lot of coordinated changes, so test everything and
 make sure it works. You should now see links on this page appear in
-blue---and you'll might also notice that the rest of the text has
-become slightly lighter.[^book-css]
+blue---and you might also notice that the rest of the text has become
+slightly lighter.[^book-css]
 
 [^book-css]: The book's main body text [is colored](book.css) `#333`,
     or roughly 97% black.
