@@ -817,7 +817,10 @@ class TaskQueue:
         return retval
 
     def get_next_task(self):
-        return self.tasks.pop(0)
+        self.lock.acquire(blocking=True)
+        retval = self.tasks.pop(0)
+        self.lock.release()
+        return retval
 
 class MainThreadRunner:
     def __init__(self, browser):
