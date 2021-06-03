@@ -801,14 +801,20 @@ class Task:
         self.arg2 = None
 
 class TaskQueue:
-    def __init__(self):
+    def __init__(self, lock):
         self.tasks = []
+        self.lock = lock
 
     def add_task(self, task_code):
+        self.lock.acquire(blocking=True)
         self.tasks.append(task_code)
+        self.lock.release()
 
     def has_tasks(self):
-        return len(self.tasks) > 0
+        self.lock.acquire(blocking=True)
+        retval = len(self.tasks) > 0
+        self.lock.release()
+        return retval
 
     def get_next_task(self):
         return self.tasks.pop(0)
@@ -819,8 +825,8 @@ class MainThreadRunner:
         self.browser = browser
         self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
-        self.script_tasks = TaskQueue()
-        self.browser_tasks = TaskQueue()
+        self.script_tasks = TaskQueue(self.lock)
+        self.browser_tasks = TaskQueue(self.lock)
 
     def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)
@@ -828,14 +834,10 @@ class MainThreadRunner:
         self.lock.release()
 
     def schedule_script_task(self, script):
-        self.lock.acquire(blocking=True)
         self.script_tasks.add_task(script)
-        self.lock.release()
 
     def schedule_browser_task(self, callback):
-        self.lock.acquire(blocking=True)
         self.browser_tasks.add_task(callback)
-        self.lock.release()
 
     def schedule_event_handler():
         pass
@@ -853,18 +855,14 @@ class MainThreadRunner:
                 self.browser.commit()
 
             browser_method = None
-            self.lock.acquire(blocking=True)
             if self.browser_tasks.has_tasks():
                 browser_method = self.browser_tasks.get_next_task()
-            self.lock.release()
             if browser_method:
                 browser_method()
 
             script = None
-            self.lock.acquire(blocking=True)
             if self.script_tasks.has_tasks():
                 script = self.script_tasks.get_next_task()
-            self.lock.release()
 
             if script:
                 script()
