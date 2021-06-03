@@ -274,7 +274,7 @@ makes it possible to read more than a single line:
 
 <iframe class="widget" src="widgets/lab2-render.html" height=204></iframe>
 
-[^crlf]: In the olden days of type writers, increasing *y* meant
+[^crlf]: In the olden days of typewriters, increasing *y* meant
     *feed*ing in a new *line*, and resetting *x* meant *return*ing the
     *carriage* that printed letters to the left edge of the page. So
     ASCII standardizes two separate characters—"carriage return" and

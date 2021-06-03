@@ -427,7 +427,7 @@ the font is computed in `layout` but used in `draw`, we'll need to
 add the font used to each entry in the display list.
 
 ``` {.python expected=False}
-if instance(tok, Text):
+if isinstance(tok, Text):
     font = tkinter.font.Font(
         size=16,
         weight=weight,
