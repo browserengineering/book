@@ -47,3 +47,6 @@ publish:
 
 download:
 	rsync -r 'server:/home/www/browseng/*.pickle' www/
+
+backup:
+	rsync server:/home/www/browseng/db.pickle infra/db.$(shell date +%Y-%m-%d).pickle
