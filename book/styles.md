@@ -74,7 +74,7 @@ it started and extracts the substring it moved through.
     property names (which use letters and the dash), numbers (which
     use the minus sign, numbers, periods), units (the percent sign),
     and colors (which use the hash sign). Real CSS values have a more
-    complex syntax but this is enough our toy browser.
+    complex syntax but this is enough for our toy browser.
 
 Parsing functions can fail. The `word` function we just wrote has an
 assertion to check that `i` advanced though at least one
@@ -164,12 +164,12 @@ def body(self):
 Skipping parse errors is a double-edged sword. It hides error
 messages, making it harder for authors to debug their style sheets; it
 also makes it harder to debug your parser.[^try-no-try] So in most
-programming situations this "catch-all" error handling is usually a
-code smell.
+programming situations this "catch-all" error handling is a code
+smell.
 
 [^try-no-try]: I suggest removing the `try` block when debugging.
 
-But on the web "catch-all" error handling has an unusual benefit. The
+But "catch-all" error handling has an unusual benefit on the web . The
 web is an ecosystem of many browsers,[^and-versions] which (for
 example) support different kinds of property values.[^like-parens] CSS
 that parses in one browser might not parse in another. With silent
@@ -293,7 +293,7 @@ understand.
 So next, let's add support for CSS to our browser. We'll need to parse
 CSS files into selectors and property/value pairs; figure out which
 elements on the page match each selector; and then copy those property
-values to the element's `style` fields.
+values to the elements' `style` fields.
 
 ::: {.further}
 Actually, before CSS, you'd style pages with custom elements like
@@ -310,10 +310,10 @@ that could consistently set text colors, mainly for links.
 Selectors
 =========
 
-Selectors come in lots of types; in our browser, we'll support the two
-simplest: tag selectors (`p` selects all `<p>` elements, `ul` selects
-all `<ul>` elements) and descendant selectors (`article div` selects
-all `div` elements with an `article` ancestor).[^how-associate]
+Selectors come in lots of types, but in our browser, we'll support two:
+tag selectors (`p` selects all `<p>` elements, `ul` selects all `<ul>`
+elements) and descendant selectors (`article div` selects all `div`
+elements with an `article` ancestor).[^how-associate]
 
 [^how-associate]: The descendant selector associates to the left; in
     other words, `a b c` means a `c` that descends from a `b` that
@@ -487,7 +487,7 @@ Applying style sheets
 With the parser debugged, the next step is applying the parsed style
 sheet to the web page. Since each CSS rule can style many elements on
 the page, this will require looping over all elements *and* all rules.
-When a rule applies its property/values pairs are copied to the
+When a rule applies, its property/values pairs are copied to the
 element's style information:
 
 ``` {.python replace==%20value/=%20computed_value}
@@ -537,7 +537,7 @@ def load(self, url):
 ```
 
 The browser style sheet is the default for the whole web. But each web
-sites can also use CSS to set a consistent style for the whole site.
+site can also use CSS to set a consistent style for the whole site.
 To do that, the web site posts a CSS file and references it from each
 page using a `link` element:
 
@@ -639,8 +639,8 @@ def load(self, url):
 ```
 
 The `try`/`except` ignores style sheets that fail to download, but it
-can also hide bugs in your, so if something's not right try removing
-it temporarily.
+can also hide bugs in your code, so if something's not right try
+removing it temporarily.
 
 ::: {.further}
 Each browser has its own browser style sheet ([Chromium][blink-css],
@@ -840,7 +840,7 @@ the end of the function, the node's parent already has a `font-size`
 value stored when `compute_style` is called.
 
 ::: {.further}
-
+Rule trees
 :::
 
 Font Properties
@@ -943,7 +943,9 @@ blue---and you might also notice that the rest of the text has become
 slightly lighter.[^book-css]
 
 [^book-css]: The book's main body text [is colored](book.css) `#333`,
-    or roughly 97% black.
+    or roughly 97% black after [gamma correction][gamma-correct].
+    
+[gamma-correct]: https://en.wikipedia.org/wiki/SRGB#The_reverse_transformation_(sRGB_to_CIE_XYZ)
 
 These changes obsolete all the code in `InlineLayout` that handles
 specific tags, like the `style`, `weight`, and `size` properties and
@@ -968,7 +970,7 @@ converting code to data like this means maintaining a new format, but
 browsers get to reuse a format, CSS, they need to support anyway.
 
 ::: {.further}
-
+Fractional font sizes
 :::
 
 Summary
