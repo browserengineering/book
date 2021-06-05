@@ -840,8 +840,17 @@ the end of the function, the node's parent already has a `font-size`
 value stored when `compute_style` is called.
 
 ::: {.further}
-Rule trees
+Styling a page can be slow, so real browsers apply tricks like [bloom
+filters] for descendant selectors, [indices] for simple selectors, and
+various forms of [sharing] and [parallelism]. Some types of sharing
+are also important to reduce memory usage---computed style sheets can
+be huge!
 :::
+
+[bloom filters]: https://bugs.webkit.org/show_bug.cgi?id=53880
+[indices]: https://source.chromium.org/chromium/chromium/src/+/refs/tags/93.0.4532.3:third_party/blink/renderer/core/css/style-calculation.md
+[sharing]: https://hacks.mozilla.org/2017/08/inside-a-super-fast-css-engine-quantum-css-aka-stylo/
+[parallelism]: https://blog.rust-lang.org/2017/11/14/Fearless-Concurrency-In-Firefox-Quantum.html
 
 Font Properties
 ===============
@@ -874,17 +883,7 @@ def text(self, node):
 
 Note that for `font-style` we need to translate CSS "normal" to Tk
 "roman" and for `font-size` we need to convert CSS pixels to Tk
-points.[^72ppi]
-
-[^72ppi]: Normally you think of points as a physical length unit (one 72^nd^ of
-an inch) and pixels as a digital unit (dependent on the screen) but in CSS, the
-conversion is fixed at exactly 75% (or 96 pixels per inch) because that was once
-a common screen resolution. This might seem weird, but [OS internals][why-72]
-are equally bizarre, let alone the fact that a traditional typesetters' point is
-[one 72.27^th^ of an inch][why-7227].
-
-[why-72]: https://tonsky.me/blog/font-size/
-[why-7227]: https://tex.stackexchange.com/questions/200934/why-does-a-tex-point-differ-from-a-desktop-publishing-point
+points.
 
 Text color requires a bit more plumbing. First, we have to read the
 color and store it in the current `line`:
@@ -970,8 +969,19 @@ converting code to data like this means maintaining a new format, but
 browsers get to reuse a format, CSS, they need to support anyway.
 
 ::: {.further}
-Fractional font sizes
+Usually a point is one 72^nd^ of an inch while pixel size depends on
+the screen, but CSS instead [defines an inch][css-fixed] as 96 pixels,
+because that was once a common screen resolution. And these CSS pixels
+[need not be][dppx] physical pixels! Seem weird? [OS
+internals][why-72] are equally bizarre, let alone [traditional
+typesetting][why-7227].
 :::
+
+[css-fixed]: https://www.w3.org/TR/2011/REC-CSS2-20110607/syndata.html#length-units
+[dppx]: https://developer.mozilla.org/en-US/docs/Web/CSS/resolution
+[why-72]: https://tonsky.me/blog/font-size/
+[why-7227]: https://tex.stackexchange.com/questions/200934/why-does-a-tex-point-differ-from-a-desktop-publishing-point
+
 
 Summary
 =======
