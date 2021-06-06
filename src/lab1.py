@@ -11,7 +11,6 @@ def request(url):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
-    print("url: " + url)
     host = ''
     path = ''
     if ("/" in url):
@@ -57,7 +56,8 @@ def request(url):
 
     return headers, body
 
-def show(body):
+def get_text(body):
+    out = ''
     in_angle = False
     for c in body:
         if c == "<":
@@ -65,11 +65,13 @@ def show(body):
         elif c == ">":
             in_angle = False
         elif not in_angle:
-            print(c, end="")
+            out = out + c
+    return out
 
 def load(url):
     headers, body = request(url)
-    show(body)
+    print(body)
+    print(get_text(body))
 
 if __name__ == "__main__":
     import sys
