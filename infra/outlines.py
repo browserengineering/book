@@ -16,7 +16,8 @@ class Function(Item):
     args: List[str]
     
     def str(self):
-        return "def {}({})".format(self.name, ", ".join(self.args))
+        args = self.args if self.args[0] != "self" else self.args[1:]
+        return "def {}({})".format(self.name, ", ".join(args))
 
     def html(self):
         return self.str().replace("def", "<span class=kw>def</span>")

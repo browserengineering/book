@@ -398,7 +398,7 @@ def add_tag(self, tag):
     # ...
     elif tag in self.SELF_CLOSING_TAGS:
         parent = self.unfinished[-1]
-        node = Element(text, parent)
+        node = Element(tag, parent)
         parent.children.append(node)
 ```
 
@@ -470,6 +470,7 @@ stripped out:[^for-ws]
 
 ``` {.python indent=12}
 if "=" in attrpair:
+    # ...
     if len(value) > 2 and value[0] in ["'", "\""]:
         value = value[1:-1]
     # ...
@@ -559,7 +560,7 @@ Now we need the `Layout` object to walk the node tree, calling `open_tag`,
 ``` {.python indent=4}
 def recurse(self, tree):
     if isinstance(tree, Text):
-        self.text(tree.text)
+        self.text(tree)
     else:
         self.open_tag(tree.tag)
         for child in tree.children:

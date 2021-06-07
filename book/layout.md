@@ -653,6 +653,9 @@ Tree-based layout makes it possible to dramatically expand our
 browser's styling capabilities. We'll work on that in the [next
 chapter](styles.md).
 
+::: {.signup}
+:::
+
 Outline
 =======
 

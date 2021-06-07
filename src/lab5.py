@@ -279,7 +279,7 @@ class InlineLayout:
 
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node.text)
+            self.text(node)
         else:
             self.open_tag(node.tag)
             for child in node.children:
@@ -311,13 +311,13 @@ class InlineLayout:
             self.flush()
             self.cursor_y += VSTEP
         
-    def text(self, text):
+    def text(self, node):
         font = tkinter.font.Font(
             size=self.size,
             weight=self.weight,
             slant=self.style,
         )
-        for word in text.split():
+        for word in node.text.split():
             w = font.measure(word)
             if self.cursor_x + w > WIDTH - HSTEP:
                 self.flush()

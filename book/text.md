@@ -427,7 +427,7 @@ the font is computed in `layout` but used in `draw`, we'll need to
 add the font used to each entry in the display list.
 
 ``` {.python expected=False}
-if instance(tok, Text):
+if isinstance(tok, Text):
     font = tkinter.font.Font(
         size=16,
         weight=weight,
@@ -496,13 +496,13 @@ In fact, the body of the `isinstance(tok, Text)` branch can be moved
 to its own method:
 
 ``` {.python replace=16/self.size indent=4}
-def text(self, text):
+def text(self, tok):
     font = tkinter.font.Font(
         size=16,
         weight=self.weight,
         slant=self.style,
     )
-    for word in text.split():
+    for word in tok.text.split():
         # ...
 ```
 
@@ -604,17 +604,18 @@ of the display list. Entries in `line` will have *x* but not *y*
 positions, since *y* positions aren't computed in the first phase:
 
 
-``` {.python}
-def __init__(self, tokens):
-    # ...
-    self.line = []
-    # ...
-
-def text(self, text):
-    # ...
-    for word in text.split():
+``` {.python indent=4}
+class Layout:
+    def __init__(self, tokens):
         # ...
-        self.line.append((self.cursor_x, word, font))
+        self.line = []
+        # ...
+    
+    def text(self, tok):
+        # ...
+        for word in tok.text.split():
+            # ...
+            self.line.append((self.cursor_x, word, font))
 ```
 
 The new `line` field is essentially a buffer, where words are held
