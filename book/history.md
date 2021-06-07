@@ -344,7 +344,7 @@ into a fully realized computing platform and ecosystem.[^web-os]
 
 [^dhtml]: Perhaps the closest the web came to fragmenting was with the late-90s
 introduction of features for
-[DHTML](https://en.wikipedia.org/wiki/Dynamic_HTML)--- early versions of the Document
+[DHTML](https://en.wikipedia.org/wiki/Dynamic_HTML)---early versions of the Document
 Object Model you'll learn about in this book. Netscape and Internet Explorer at
 first had incompatible implementations of these features, and it took years,
 development of a common specification, and significant pressure campaigns on
