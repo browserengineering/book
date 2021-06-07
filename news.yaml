@@ -4,6 +4,13 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Applying User Styles
+    link: https://browser.engineering/styles.html
+    description:
+      Today we’re releasing a chapter on Applying User Styles. I hope
+      you’ll find that building a simple CSS parser and implementing
+      selector matching and inheritance is interesting, approachable
+      and fun!
   - title: Why Widgets?
     link: https://browser.engineering/blog/why-widgets.html
     description:
