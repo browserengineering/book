@@ -169,7 +169,7 @@ smell.
 
 [^try-no-try]: I suggest removing the `try` block when debugging.
 
-But "catch-all" error handling has an unusual benefit on the web . The
+But "catch-all" error handling has an unusual benefit on the web. The
 web is an ecosystem of many browsers,[^and-versions] which (for
 example) support different kinds of property values.[^like-parens] CSS
 that parses in one browser might not parse in another. With silent
@@ -363,7 +363,7 @@ Now, to create these selector objects, we need a parser. In this case,
 that's just another parsing function:[^not-quite-word]
 
 [^not-quite-word]: Once again, using `word` here for tag names is
-actually not quite right, but it is close enough. One tricky side
+actually not quite right, but it's close enough. One tricky side
 effect of using `word` is that a class name selector (like `.main`) or
 an identifier selector (like `#signup`) is mis-parsed as a tag name
 selector. But that won't cause any harm since there aren't any
@@ -537,9 +537,8 @@ def load(self, url):
 ```
 
 The browser style sheet is the default for the whole web. But each web
-site can also use CSS to set a consistent style for the whole site.
-To do that, the web site posts a CSS file and references it from each
-page using a `link` element:
+site can also use CSS to set a consistent style for the whole site. by
+referencing CSS files using `link` elements:
 
 ``` {.example}
 <link rel="stylesheet" href="/main.css">
@@ -777,9 +776,10 @@ surrounding text. But what if you had, say, a `code` element inside an
 it shouldn't be another 50% bigger than the rest of the heading text?
 
 So, in fact, browsers resolve percentages to absolute pixel units
-before storing them in the `style`; it's called a ["computed
-style"][^css-computed]. Of the properties our toy browser supports,
-only `font-size` needs to be computed in this way:
+before storing them in the `style` and before those values are
+inherited; it's called a ["computed style"][^css-computed]. Of the
+properties our toy browser supports, only `font-size` needs to be
+computed in this way:
 
 [^css-computed]: Full CSS is a bit more confusing: there are
 [specified, computed, used, and actual values][css-computed], and they
@@ -801,9 +801,9 @@ def compute_style(node, property, value):
         return value
 ```
 
-The case for percentage sizes has to handle a tricky edge case:
-percentage sizes for the root `html` element. In that case the
-percentage is relative to the default font size:[^why-parse]
+Percentage sizes also have to handle a tricky edge case: percentage
+sizes for the root `html` element. In that case the percentage is
+relative to the default font size:[^why-parse]
 
 [^why-parse]: This code has to parse and unparse font sizes because
     our `style` field stores strings; in a real browser the computed
