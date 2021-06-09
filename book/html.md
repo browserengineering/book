@@ -378,11 +378,12 @@ Elements like `<meta>` and `<link>` are what are called self-closing:
 these tags don't surround content, so you don't ever write `</meta>`
 or `</link>`. Our parser needs special support for them. In HTML,
 there's a [specific list][html5-void-elements] of these self-closing
-tags:[^void-elements]
+tags (the spec calls them "void" tags):[^void-elements]
 
 [html5-void-elements]: https://html.spec.whatwg.org/multipage/syntax.html#void-elements
 
-[^void-elements]: A lot of these tags are obscure or obsolete.
+[^void-elements]: A lot of these tags are obscure. There are additional
+tags not listed here that are obsolete.
 
 ``` {.python}
 SELF_CLOSING_TAGS = [
