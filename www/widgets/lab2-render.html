@@ -14,7 +14,7 @@
   <fieldset id="input-controls">
     <textarea id="input" rows="4">第一回 灵根育孕源流出 心性修持大道生</textarea>
   </fieldset>
-</div>
+</form>
 <figure id="widget">
   <canvas id="canvas" width="352" height="160"></canvas>
 </figure>
@@ -27,7 +27,7 @@ const ssl = lib.ssl();
 const tkinter = lib.tkinter({ canvas: document.querySelector("#canvas"), zoom: 2.0 });
 
 let widget = new Widget(document.querySelector("#controls"));
-widget.pause("render");
+widget.pause("draw");
 widget.run(async function() {
     WIDTH = 16 * 11;
     HEIGHT = 20 * 4;
