@@ -693,15 +693,17 @@ method of your browser should print `<div>abc</div>` (and *not* just `abc`).
 Entities allow web pages to include these special characters without the browser
 interpreting them as tags.
 
-*view-source:* In addition to HTTP and HTTPS, there are other schemes,
-such as *view-source*; navigating in a real browser to
-`view-source:browser.engineering/http.html` shows the HTML source of
-this chapter rather than its rendered output. Add support for the
-view-source scheme. Your browser should print the entire HTML file as if
-it was text. *Hint*: To do so, you can utilize the entities from the
-previous exercise, and add an extra `transform()` method that adjusts
-the input to `show()` when in view-source mode, like this:
-`show(transform(body))`.
+*view-source:* In addition to HTTP and HTTPS, there are other meta-schemes, such
+ as *view-source*; navigating in a real browser to
+ `view-source:browser.engineering/http.html` shows the HTML source of this
+ chapter rather than its rendered output. (`view-source` is a meta-scheme and
+ not a scheme, because it contains a full URL, including scheme, within it. For
+ example, `view-source:https://browser.engineering/http.html` should work, and
+ encrypt the download.) Add support for the view-source meta-scheme. Your
+ browser should print the entire HTML file as if it was text. *Hint*: To do so,
+ you can utilize the entities from the previous exercise, and add an extra
+ `transform()` method that adjusts the input to `show()` when in view-source
+ mode, like this: `show(transform(body))`.
 
 *data:* Yet another scheme is *data*, which
 allow inlining HTML content into the URL itself. Try navigating to
