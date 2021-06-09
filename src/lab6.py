@@ -19,7 +19,6 @@ def request(url):
     else:
         host, path = url, ""
 
-
     path = "/" + path
     port = 80 if scheme == "http" else 443
 
@@ -357,6 +356,11 @@ def cascade_priority(rule):
     selector, body = rule
     return selector.priority
 
+WIDTH, HEIGHT = 800, 600
+HSTEP, VSTEP = 13, 18
+
+SCROLL_STEP = 100
+
 BLOCK_ELEMENTS = [
     "html", "body", "article", "section", "nav", "aside",
     "h1", "h2", "h3", "h4", "h5", "h6", "hgroup", "header",
@@ -543,11 +547,6 @@ class DrawRect:
             width=0,
             fill=self.color,
         )
-
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
-
-SCROLL_STEP = 100
 
 class Browser:
     def __init__(self):

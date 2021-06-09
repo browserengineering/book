@@ -336,15 +336,34 @@ function truthy(x) {
 }
 
 function pysplit(x, sep, cnt) {
-    let i = 0;
-    let out = [];
-    while (cnt > 0) {
-        let next = x.indexOf(sep, i);
-        if (next == 0) continue;
-        out.push(x.substring(i, next));
-        i = next + sep.length;
-        cnt--;
-    }
-    out.push(x.substring(i));
-    return out;
+    let parts = x.split(sep)
+    return parts.slice(0, cnt).concat([parts.slice(cnt).join(sep)])
 }
+
+function pyrsplit(x, sep, cnt) {
+    let parts = x.split(sep)
+    return [parts.slice(0, -cnt).join(sep)].concat(parts.slice(-cnt))
+}
+
+class FileSystem {
+    class File {
+        constructor(contents) {
+            this.contents = contents;
+        }
+        read() {
+            return this.contents;
+        }
+    }
+
+    constructor() {
+        this.files = {};
+    }
+    register(name, contents) {
+        this.files[name] = contents;
+    }
+    open(name) {
+        return File(this.files[name]);
+    }
+}
+
+const filesystem = FileSystem();

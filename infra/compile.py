@@ -52,17 +52,13 @@ ISSUES = []
 def catch_issues(f):
     def wrapped(tree, *args, **kwargs):
         try:
-            return f(tree, *args, **kwargs)
+            try:
+                return f(tree, *args, **kwargs)
+            except AssertionError as e:
+                return find_hint(tree, "js")
         except MissingHint as e:
             ISSUES.append(e)
             return "/* " + AST39.unparse(tree) + " */"
-        except AssertionError as e:
-            raise e
-            try:
-                return find_hint(tree, "js")
-            except MissingHint as e2:
-                ISSUES.append(e2)
-                return "/* " + AST39.unparse(tree) + " */"
     return wrapped
 
 HINTS = []
@@ -119,7 +115,9 @@ RENAME_METHODS = {
     "append": "push",
     "pop": "pop",
     "startswith": "startsWith",
+    "endswith": "endsWith",
     "find": "indexOf",
+    "copy": "slice",
 }
 
 RENAME_FNS = {
@@ -217,6 +215,9 @@ def compile_method(base, name, args, ctx):
         assert isinstance(args[0], ast.Constant)
         assert args[0].value == "utf8"
         return base_js
+    elif name == "extend":
+        assert len(args) == 1
+        return "Array.prototype.push.apply(" + base_js + ", " + args_js[0] + ")"
     elif name == "join":
         assert len(args) == 1
         return args_js[0] + ".join(" + base_js + ")"
@@ -226,6 +227,10 @@ def compile_method(base, name, args, ctx):
     elif name == "items":
         assert len(args) == 0
         return "Object.entries(" + base_js + ")"
+    elif name == "get":
+        assert 1 <= len(args) <= 2
+        default = args_js[1] if len(args) == 2 else "null"
+        return "(" + base_js + "." + args_js[0] + " ?? " + default + ")"
     elif name == "split":
         assert 0 <= len(args) <= 2
         if len(args) == 0:
@@ -234,6 +239,15 @@ def compile_method(base, name, args, ctx):
             return base_js + ".split(" + args_js[0] + ")"
         else:
             return "pysplit(" + base_js + ", " + args_js[0] + ", " + args_js[1] + ")"
+    elif name == "rsplit":
+        assert len(args) == 2
+        return "pyrsplit(" + base_js + ", " + args_js[0] + ", " + args_js[1] + ")"
+    elif name == "count":
+        assert len(args) == 1
+        return base_js + ".split(" + args_js[0] + ").length"
+    elif name == "isalnum":
+        assert len(args) == 0
+        return base_js + ".test(/^[a-zA-Z0-9]*$/)"
     else:
         raise UnsupportedConstruct()
 
@@ -245,12 +259,18 @@ def compile_function(name, args, ctx):
         return "await " + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
+    elif name == "str":
+        assert len(args) == 1
+        return args_js[0] + ".toString()"
     elif name == "len":
         assert len(args) == 1
         return args_js[0] + ".length"
     elif name == "isinstance":
         assert len(args) == 2
         return args_js[0] + " instanceof " + args_js[1]
+    elif name == "sorted":
+        assert len(args) == 2
+        return args_js[0] + ".splice().sort(" + args_js[1] + ")"
     elif name == "sum":
         assert len(args) == 1
         return args_js[0] + ".reduce((a, v) => a + v, 0)"
@@ -273,6 +293,9 @@ def compile_function(name, args, ctx):
     elif name == "repr":
         assert len(args) == 1
         return args_js[0] + ".toString()"
+    elif name == "open":
+        assert len(args) == 1
+        return "filesystem.open(" + args_js[0] + ")"
     else:
         raise UnsupportedConstruct()
 
@@ -374,25 +397,26 @@ def compile_expr(tree, ctx):
         assert len(tree.comparators) == 1
         lhs = compile_expr(tree.left, ctx)
         rhs = compile_expr(tree.comparators[0], ctx)
-        if (isinstance(tree.ops[0], ast.In) or isinstance(tree.ops[0], ast.NotIn)) and \
-           isinstance(tree.comparators[0], ast.List):
+        if (isinstance(tree.ops[0], ast.In) or isinstance(tree.ops[0], ast.NotIn)):
             negate = isinstance(tree.ops[0], ast.NotIn)
-            # pure expressions
-            assert isinstance(tree.left, ast.Name) or \
-                (isinstance(tree.left, ast.Subscript) and isinstance(tree.left.value, ast.Name)), \
-                ast.dump(tree)
-            op = " !== " if negate else " === "
-            parts = [lhs + op + compile_expr(v, ctx) for v in tree.comparators[0].elts]
-            return "(" + (" && " if negate else " || ").join(parts) + ")"
-        elif isinstance(tree.ops[0], ast.In) or isinstance(tree.ops[0], ast.NotIn):
-            t = find_hint(tree, "type")
-            negate = isinstance(tree.ops[0], ast.NotIn)
-            assert t in ["str", "dict", "list"]
-            cmp = "===" if negate else "!=="
-            if t in ["str", "list"]:
+            if isinstance(tree.comparators[0], ast.Str):
+                cmp = "===" if negate else "!=="
                 return "(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)"
-            elif t == "dict":
-                return "(" + rhs + "[" + lhs + "] " + cmp + " \"undefined\")"
+            elif isinstance(tree.comparators[0], ast.List):
+                assert isinstance(tree.left, ast.Name) or \
+                    (isinstance(tree.left, ast.Subscript) and
+                     isinstance(tree.left.value, ast.Name))
+                op = " !== " if negate else " === "
+                parts = [lhs + op + compile_expr(v, ctx) for v in tree.comparators[0].elts]
+                return "(" + (" && " if negate else " || ").join(parts) + ")"
+            else:
+                t = find_hint(tree, "type")
+                assert t in ["str", "dict", "list"]
+                cmp = "===" if negate else "!=="
+                if t in ["str", "list"]:
+                    return "(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)"
+                elif t == "dict":
+                    return "(typeof " + rhs + "[" + lhs + "] " + cmp + " \"undefined\")"
         elif isinstance(tree.ops[0], ast.Eq) and \
              (isinstance(tree.comparators[0], ast.List) or isinstance(tree.left, ast.List)):
             return "(JSON.stringify(" + lhs + ") === JSON.stringify(" + rhs + "))"
@@ -406,13 +430,16 @@ def compile_expr(tree, ctx):
     elif isinstance(tree, ast.ListComp):
         assert len(tree.generators) == 1
         gen = tree.generators[0]
-        iterator = compile_expr(gen.iter, ctx)
+        out = compile_expr(gen.iter, ctx)
         ctx2 = Context("expr", ctx)
         arg = compile_lhs(gen.target, ctx2)
         assert not gen.is_async
-        assert not gen.ifs
+        for if_clause in gen.ifs:
+            e = compile_expr(if_clause, ctx2)
+            out += ".filter((" + arg + ") => " + e + ")"
         e = compile_expr(tree.elt, ctx2)
-        return iterator + ".map((" + arg + ") => " + e + ")"
+        out += ".map((" + arg + ") => " + e + ")"
+        return out
     elif isinstance(tree, ast.Attribute):
         base = compile_expr(tree.value, ctx)
         return base + "." + tree.attr
@@ -478,6 +505,7 @@ def compile(tree, ctx, indent=0):
         assert not tree.returns
         args = check_args(tree.args, ctx)
 
+        ctx[tree.name] = True
         ctx2 = Context("function", ctx)
         for arg in tree.args.args:
             ctx2[arg.arg] = True
@@ -606,6 +634,36 @@ def compile(tree, ctx, indent=0):
                 out += " " * indent + "}"
 
             return out
+    elif isinstance(tree, ast.Try):
+        assert not tree.orelse
+        assert not tree.finalbody
+        assert len(tree.handlers) == 1
+        out = " " * indent + "try {"
+        ctx2 = Context(ctx.type, ctx)
+        body_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
+        out += body_js + "\n"
+        out += " " * indent + "} catch(_err) {"
+        handler = tree.handlers[0]
+        assert not handler.name
+        ctx3 = Context(ctx.type, ctx)
+        if handler.type:
+            assert isinstance(handler.type, ast.Name)
+            assert handler.type.id.endswith("Error")
+        catch_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx3) for line in handler.body])
+        out += catch_js + "\n"
+        out += " " * indent + "}"
+        return out
+    elif isinstance(tree, ast.With):
+        assert not tree.type_comment
+        assert len(tree.items) == 1
+        item = tree.items[0]
+        var = item.optional_vars if item.optional_vars else ast.Name("_ctx")
+        assert isinstance(var, ast.Name)
+        out = compile(ast.Assign([var], item.context_expr), indent=indent, ctx=ctx)
+        out += "\n".join([compile(line, indent=indent, ctx=ctx) for line in tree.body])
+        out += compile(ast.Expr(ast.Call(ast.Attribute(var, "close"), [], [])),
+                       indent=indent, ctx=ctx)
+        return out
     elif isinstance(tree, ast.Continue):
         return " " * indent + "continue;"
     elif isinstance(tree, ast.Break):
@@ -631,6 +689,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compiles each chapter's Python code to JavaScript")
     parser.add_argument("--hints", default=None, type=argparse.FileType())
     parser.add_argument("--indent", default=2, type=int)
+    parser.add_argument("--file", type=argparse.FileType(), nargs="+")
     parser.add_argument("python", type=argparse.FileType())
     parser.add_argument("javascript", type=argparse.FileType("w"))
     args = parser.parse_args()
