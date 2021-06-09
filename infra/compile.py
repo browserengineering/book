@@ -159,6 +159,8 @@ OUR_CLASSES = []
 OUR_CONSTANTS = []
 OUR_METHODS = []
 
+FILES = []
+
 def load_outline(ol):
     for item in ol:
         if isinstance(item, outlines.IfMain): continue
@@ -295,6 +297,8 @@ def compile_function(name, args, ctx):
         return args_js[0] + ".toString()"
     elif name == "open":
         assert len(args) == 1
+        assert isinstance(args[0], ast.Str)
+        FILES.append(args[0].s)
         return "filesystem.open(" + args_js[0] + ")"
     else:
         raise UnsupportedConstruct()
@@ -701,6 +705,12 @@ if __name__ == "__main__":
     tree = AST39.parse(args.python.read(), args.python.name)
     load_outline(outlines.outline(tree))
     js = compile_module(tree, name[:-len(".py")])
+
+    for fn in FILES:
+        path = os.path.join(os.path.dirname(args.python.name), fn)
+        with open(path) as f:
+            js += "\nfilesystem.register(" + repr(fn) + ", " + json.dumps(f.read()) + ");\n"
+            
     args.javascript.write(js)
 
     issues = 0
