@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+% from datetime import datetime
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+
+<title>Feedback on Web Browser Engineering</title>
+<atom:link href="https://browser.engineering/feedback.rss" rel="self" type="application/rss+xml" />
+<link>https://browser.engineering/feedback.rss</link>
+<description>Unprocessed user feedback on Web Browser Engineering</description>
+<language>en</language>
+<lastBuildDate>{{datetime.now().strftime("%a, %d %b %Y %H:%M:%S %z")}}</lastBuildDate>
+<webMaster>author@browser.engineering (Pavel Panchekha & Chris Harrelson)</webMaster>
+  
+%for obj in new:
+<item>
+  %if obj['status'] == 'new':
+    <title> in <code>{{obj['url']}}</code>:</title>
+    <link>https://browser.engineering/feedback</link>
+    %if 'name' in obj:
+    <author>{{obj['name']}}</author>
+    %end
+    %if 'time' in obj:
+    <pubDate>{{datetime.fromtimestamp(obj['time'].strftime("%a, %d %b %Y %H:%M:%S %z"))}}</pubDate>
+    %end
+
+    <description>
+    %if obj['type'] == 'typo':
+      <blockquote>{{!obj['diff']}}</blockquote>
+    %elif obj['type'] == 'comment':
+      <blockquote>{{obj['text']}}</blockquote>
+      <p>{{obj['comment']}}</p>
+    %else:
+      <p>Overall comment:</p>
+      <p>{{obj['comment']}}</p>
+    %end
+    </description>
+  %end
+</item>
+%end
+</channel>
+</rss>

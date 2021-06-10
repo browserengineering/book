@@ -43,6 +43,9 @@ wc:
 publish:
 	rsync -rtu --exclude=*.pickle --exclude=*.hash www/ server:/home/www/browseng/
 	ssh server chmod -Rf a+r /home/www/browseng/ || true
+
+restart:
+	rsync infra/api.py server:/home/www/browseng/
 	ssh server sudo systemctl restart browser-engineering.service
 
 download:
