@@ -84,6 +84,7 @@ static ssl() {
         wrap_socket(s, host) {
             console.assert(s.host == host, "Invalid SSL server name, does not match socket host");
             s.scheme = "https";
+            return s;
         }
     }
     return { create_default_context: wrap_class(context) };
