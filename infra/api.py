@@ -163,6 +163,12 @@ def feedback():
             saved.setdefault(page, []).append(prettify(o))
     return { 'new': new, 'saved': saved }
 
+@bottle.route("/feedback.rss")
+@bottle.view("feedback_rss.view")
+def feedback():
+    new = [prettify(o) for o in DATA if o['status'] == "new"]
+    return { 'new': new }
+
 @bottle.route("/api/status", method=["POST", "OPTIONS"])
 def status():
     data = json.load(bottle.request.body)
