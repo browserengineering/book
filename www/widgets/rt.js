@@ -115,7 +115,6 @@ static tkinter(options) {
         bind(key, fn) {
             if (['<Up>', '<Down>', '<Left>', '<Right>'].indexOf(key) !== -1) {
                 window.addEventListener("keydown", function(e) {
-                    console.log(e.key, 'Arrow' + key.substr(1, key.length-2))
                     if (e.key == 'Arrow' + key.substr(1, key.length-2)) fn({});
                 });
             } else if (key == '<Return>') {
