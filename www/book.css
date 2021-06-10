@@ -96,9 +96,10 @@ body { counter-reset: fn; }
 .note-container:before { content: " [" counter(fn); color: #a86; }
 .note-container.open:before { content: " ["; color: #a86; }
 .note { font-style: italic; white-space: normal; color: #a86; }
+/* Assume no footnotes on main page, but margin numbers */
+body.main { padding: 0 4ex; }
 @media only screen and (min-width: 1150px) {
     body { width: 65ex; padding: 0 17ex 0 0; }
-    body.main { padding: 0; } /* Assume no footnotes on main page */
     .note {
         float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
         font-size: 110%; vertical-align: reset; text-align: left; color: currentColor;
