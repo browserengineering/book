@@ -29,11 +29,14 @@
     <button type='button' class='denied'>Deny</button>
     <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
     %if obj['type'] == 'typo':
+      <a target=_blank href="https://github.com/pavpanchekha/emberfox/issues/new?title=Feedback%20on%20{{obj['url']}}&body={{obj['diff']}}">File a new issue on github</a>
       <blockquote>{{!obj['diff']}}</blockquote>
     %elif obj['type'] == 'comment':
+      <a target=_blank href="https://github.com/pavpanchekha/emberfox/issues/new?title=Feedback%20on%20{{obj['url']}}&body={{obj['comment']}}">File a new issue on github</a>
       <blockquote>{{obj['text']}}</blockquote>
       <p>{{obj['comment']}}</p>
     %else:
+      <a target=_blank href="https://github.com/pavpanchekha/emberfox/issues/new?title=Feedback%20on%20{{obj['url']}}&body={{obj['comment']}}">File a new issue on github</a>
       <p>Overall comment:</p>
       <p>{{obj['comment']}}</p>
     %end
@@ -56,11 +59,16 @@
     <button type='button' class='archived'>Archive</button>
     <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
     %if obj['type'] == 'typo':
+      <a target=_blank href="https://github.com/pavpanchekha/emberfox/issues/new?title=Feedback%20on%20{{obj['url']}}&body={{obj['diff']}}">File a new issue on github</a>
       <blockquote>{{!obj['diff']}}</blockquote>
-    %else:
+    %elif obj['type'] == 'comment':
+      <a target=_blank href="https://github.com/pavpanchekha/emberfox/issues/new?title=Feedback%20on%20{{obj['url']}}&body={{obj['comment']}}">File a new issue on github</a>
       <blockquote>{{obj['text']}}</blockquote>
       <p>{{obj['comment']}}</p>
-    %end
+    %else:
+      <a target=_blank href="https://github.com/pavpanchekha/emberfox/issues/new?title=Feedback%20on%20{{obj['url']}}&body={{obj['comment']}}">File a new issue on github</a>
+      <p>Overall comment:</p>
+      <p>{{obj['comment']}}</p>
     </div>
   %end
   %end
