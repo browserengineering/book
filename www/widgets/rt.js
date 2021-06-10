@@ -40,22 +40,35 @@ static socket(URLS) {
         send(text) {
             this.input += text;
         }
-        makefile(mode, encoding, newline) {
+        async makefile(mode, encoding, newline) {
             console.assert(encoding == "utf8" && newline == "\r\n", "Unknown socket encoding or line ending");
             console.assert(mode == "r", "Unknown socket makefile mode");
 
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            this.output = URLS[this.url];
-            if (!this.output) {
-                throw Error("Unknown URL " + this.url);               
-            } else if (typeof this.output === "function") {
-                this.output = this.output();
+            if (typeof URLS[this.url] == "undefined" && this.host == "browser.engineering") {
+                let response = await fetch(path);
+                this.output = "HTTP/1.0 " + response.status + " " + response.statusText + "\r\n";
+                for (let [header, value] of response.headers.entries()) {
+                    this.output += header + ": " + value + "\r\n";
+                }
+                this.output += "\r\n";
+                this.output += await response.text();
+                this.closed = false;
+                this.idx = 0;
+                return this;
+            } else {
+                this.output = URLS[this.url];
+                if (!this.output) {
+                    throw Error("Unknown URL " + this.url);               
+                } else if (typeof this.output === "function") {
+                    this.output = this.output();
+                }
+                this.idx = 0;
+                this.closed = false;
+                return this;
             }
-            this.idx = 0;
-            this.closed = false;
-            return this;
         }
         readline() {
             console.assert(!this.closed, "Attempt to read from a closed socket")
@@ -100,7 +113,34 @@ static tkinter(options) {
         }
 
         bind(key, fn) {
-            // this.tk.addEventListener(...)
+            if (['<Up>', '<Down>', '<Left>', '<Right>'].indexOf(key) !== -1) {
+                window.addEventListener("keydown", function(e) {
+                    console.log(e.key, 'Arrow' + key.substr(1, key.length-2))
+                    if (e.key == 'Arrow' + key.substr(1, key.length-2)) fn({});
+                });
+            } else if (key == '<Return>') {
+                window.addEventListener("keydown", function({}) {
+                    if (e.key == 'Enter') fn({});
+                });
+            } else if (['<Button-1>', '<Button-2>', '<Button-3>'].indexOf(key) !== -1) {
+                window.addEventListener("mousedown", function(e) {
+                    if (e.button == key.substr(8, 1) - 1) fn({ x: e.offsetX, y: e.offsetY });
+                });
+            } else if (key == '<Configure>') {
+                window.addEventListener("resize", function(e) {
+                    fn({});
+                });
+            } else if (key == '<Key>') {
+                TKELEMENT.addEventListener("keydown", function(e) {
+                    if (e.key.length == 1) fn({ char: e.key });
+                });
+            } else if (key.length == 1) {
+                TKELEMENT.addEventListener("keydown", function(e) {
+                    if (e.key == key) fn({ char: e.key });
+                });
+            } else {
+                console.error("Trying to bind unsupported event", key);
+            }
         }
     }
 
