@@ -191,7 +191,13 @@ def load_outline(ol):
 def compile_method(base, name, args, ctx):
     base_js = compile_expr(base, ctx)
     args_js = [compile_expr(arg, ctx) for arg in args]
-    if name in LIBRARY_METHODS:
+    if name == "bind": # Needs special handling due to "this"
+        assert len(args) == 2
+        return base_js + ".bind(" + args_js[0] + ", (e) => " + args_js[1] + "(e))"
+    elif name == "makefile":
+        assert len(args) == 3
+        return "await " + base_js + ".makefile(" + ", ".join(args_js) + ")"
+    elif name in LIBRARY_METHODS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_METHODS:
         return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"

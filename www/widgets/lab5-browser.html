@@ -5,36 +5,32 @@
 
 <form id="controls">
   <fieldset id="step-controls">
-    <h1>Character-by-character Rendering</h1>
+    <h1>The Chapter 5 Browser</h1>
     <button class="reset left" disabled><span>Restart</span></button>
     <button class="stepb left" disabled><span>Back</span></button>
     <button class="stepf right"><span>Next</span></button>
     <button class="play right"><span>Animate</span></button>
   </fieldset>
   <fieldset id="input-controls">
-    <textarea id="input" rows="4">第一回 灵根育孕源流出 心性修持大道生</textarea>
+    <kbd id="url">https://browser.engineering/layout.html</kbd>
   </fieldset>
 </form>
 <figure id="widget">
   <canvas id="canvas" width="352" height="160"></canvas>
 </figure>
 
-<script src="lab2.js"></script>
+<script src="lab5.js"></script>
 <script src="rt.js"></script>
 <script>
-const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
-const ssl = lib.ssl();
-const tkinter = lib.tkinter({ canvas: document.querySelector("#canvas"), zoom: 2.0 });
+socket = lib.socket({});
+ssl = lib.ssl();
+tkinter = lib.tkinter({ canvas: document.querySelector("#canvas") });
 
+let url = document.getElementById("url").textContent;
 let widget = new Widget(document.querySelector("#controls"));
-widget.pause("draw");
 widget.run(async function() {
-    WIDTH = 16 * 11;
-    HEIGHT = 20 * 4;
-    HSTEP = 16;
-    VSTEP = 20;
-
     let b = await (new Browser()).init();
-    await b.load("http://input/")
+    await b.load(url)
 });
+widget.next();
 </script>

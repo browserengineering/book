@@ -84,9 +84,9 @@ class Browser:
 ```
 
 ::: {.quirk}
-Your computer might not have "Times" installed. The
-`tkinter.font.families()` command lists the fonts available on your
-machine; and pick something other than `Times` if you need to.
+Your computer might not have "Times" installed; you can list the
+available fonts with `tkinter.font.families()` and pick something
+else.
 :::
 
 Font objects can be passed to `create_text`'s `font` argument:
