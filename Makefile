@@ -12,6 +12,7 @@ widgets: $(patsubst %,www/widgets/%,$(WIDGET_LAB_CODE))
 
 lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json
+	python3 -m doctest infra/compiler.txt
 
 PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
 
