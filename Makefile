@@ -33,8 +33,8 @@ www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 
 # This is not quite right in that each widget goes to the graphics chapter.
 # Unfortunately I don't have a fix for this ATM
-www/widgets/lab%-browser.html: infra/labN-browser.html
-	pandoc --variable chapter=$* --variable name=graphics --template $< book/graphics.md -o $@
+www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json
+	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/graphics.md -o $@
 
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
