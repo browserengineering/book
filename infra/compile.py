@@ -615,7 +615,7 @@ def compile(tree, ctx, indent=0):
         assert s == "__main__"
         assert len(test.ops) == 1
         assert isinstance(test.ops[0], ast.Eq)
-        return " " * indent + "// Requires a test harness\n"
+        return " " * indent + "// Requires a test harness"
     elif isinstance(tree, ast.If):
         if not tree.orelse and tree.test.lineno == tree.body[0].lineno:
             assert len(tree.body) == 1
@@ -662,7 +662,7 @@ def compile(tree, ctx, indent=0):
         ctx2 = Context(ctx.type, ctx)
         body_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         out += body_js + "\n"
-        out += " " * indent + "} catch(_err) {\n"
+        out += " " * indent + "} catch {\n"
         handler = tree.handlers[0]
         assert not handler.name
         ctx3 = Context(ctx.type, ctx)
@@ -671,7 +671,7 @@ def compile(tree, ctx, indent=0):
             assert handler.type.id.endswith("Error")
         catch_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx3) for line in handler.body])
         out += catch_js + "\n"
-        out += " " * indent + "}\n"
+        out += " " * indent + "}"
         return out
     elif isinstance(tree, ast.With):
         assert not tree.type_comment
