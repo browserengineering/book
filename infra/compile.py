@@ -88,7 +88,7 @@ def read_hints(f):
     
 def find_hint(t, key):
     for h in HINTS:
-        if h["line"] != t.lineno: continue
+        if "line" in h and h["line"] != t.lineno: continue
         if ast.dump(h["ast"]) != ast.dump(t): continue
         if key not in h: continue
         break
