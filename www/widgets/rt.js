@@ -40,22 +40,35 @@ static socket(URLS) {
         send(text) {
             this.input += text;
         }
-        makefile(mode, encoding, newline) {
+        async makefile(mode, encoding, newline) {
             console.assert(encoding == "utf8" && newline == "\r\n", "Unknown socket encoding or line ending");
             console.assert(mode == "r", "Unknown socket makefile mode");
 
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            this.output = URLS[this.url];
-            if (!this.output) {
-                throw Error("Unknown URL " + this.url);               
-            } else if (typeof this.output === "function") {
-                this.output = this.output();
+            if (typeof URLS[this.url] == "undefined" && this.host == "browser.engineering") {
+                let response = await fetch(path);
+                this.output = "HTTP/1.0 " + response.status + " " + response.statusText + "\r\n";
+                for (let [header, value] of response.headers.entries()) {
+                    this.output += header + ": " + value + "\r\n";
+                }
+                this.output += "\r\n";
+                this.output += await response.text();
+                this.closed = false;
+                this.idx = 0;
+                return this;
+            } else {
+                this.output = URLS[this.url];
+                if (!this.output) {
+                    throw Error("Unknown URL " + this.url);               
+                } else if (typeof this.output === "function") {
+                    this.output = this.output();
+                }
+                this.idx = 0;
+                this.closed = false;
+                return this;
             }
-            this.idx = 0;
-            this.closed = false;
-            return this;
         }
         readline() {
             console.assert(!this.closed, "Attempt to read from a closed socket")
@@ -84,6 +97,7 @@ static ssl() {
         wrap_socket(s, host) {
             console.assert(s.host == host, "Invalid SSL server name, does not match socket host");
             s.scheme = "https";
+            return s;
         }
     }
     return { create_default_context: wrap_class(context) };
@@ -99,7 +113,33 @@ static tkinter(options) {
         }
 
         bind(key, fn) {
-            // this.tk.addEventListener(...)
+            if (['<Up>', '<Down>', '<Left>', '<Right>'].indexOf(key) !== -1) {
+                window.addEventListener("keydown", function(e) {
+                    if (e.key == 'Arrow' + key.substr(1, key.length-2)) fn({});
+                });
+            } else if (key == '<Return>') {
+                window.addEventListener("keydown", function({}) {
+                    if (e.key == 'Enter') fn({});
+                });
+            } else if (['<Button-1>', '<Button-2>', '<Button-3>'].indexOf(key) !== -1) {
+                window.addEventListener("mousedown", function(e) {
+                    if (e.button == key.substr(8, 1) - 1) fn({ x: e.offsetX, y: e.offsetY });
+                });
+            } else if (key == '<Configure>') {
+                window.addEventListener("resize", function(e) {
+                    fn({});
+                });
+            } else if (key == '<Key>') {
+                TKELEMENT.addEventListener("keydown", function(e) {
+                    if (e.key.length == 1) fn({ char: e.key });
+                });
+            } else if (key.length == 1) {
+                TKELEMENT.addEventListener("keydown", function(e) {
+                    if (e.key == key) fn({ char: e.key });
+                });
+            } else {
+                console.error("Trying to bind unsupported event", key);
+            }
         }
     }
 
@@ -119,7 +159,19 @@ static tkinter(options) {
             this.ctx.clearRect(0, 0, this.tk.elt.width, this.tk.elt.height);
         }
 
-        create_text(x, y, txt, font, anchor) {
+        create_rectangle(x1, y1, x2, y2, w, fill) {
+            console.assert(w == 0, "Invalid rectangle stroke width " + w);
+            this.ctx.fillStyle = fill ?? "transparent";
+            this.ctx.fillRect(x1 * ZOOM, y1 * ZOOM, (x2 - x1) * ZOOM, (y2 - y1) * ZOOM);
+        }
+
+        create_line(x1, y1, x2, y2) {
+            this.ctx.moveTo(x1 * ZOOM, y1 * ZOOM);
+            this.ctx.lineTo(x2 * ZOOM, y2 * ZOOM);
+            this.ctx.stroke();
+        }
+
+        create_text(x, y, txt, font, anchor, fill) {
             if (anchor == "nw") {
                 this.ctx.textAlign = "left";
                 this.ctx.textBaseline = "top";
@@ -128,6 +180,8 @@ static tkinter(options) {
                 this.ctx.textBaseline = "middle";
             }
             if (font) this.ctx.font = font.string;
+            this.ctx.lineWidth = 0;
+            this.ctx.fillStyle = fill ?? "black";
             this.ctx.fillText(txt, x * ZOOM, y * ZOOM);
         }
     }
@@ -255,12 +309,12 @@ class Widget {
         this.k = this.runner;
         if (this.timer) clearInterval(this.timer);
         this.timer = null;
-        this.controls.reset.disabled = true;
-        this.controls.back.disabled = true;
-        this.controls.input.disabled = false;
-        this.controls.next.disabled = false;
-        this.controls.animate.disabled = false;
-        this.controls.next.children[0].textContent = "Start";
+        if (this.controls.reset) this.controls.reset.disabled = true;
+        if (this.controls.back) this.controls.back.disabled = true;
+        if (this.controls.input) this.controls.input.disabled = false;
+        if (this.controls.next) this.controls.next.disabled = false;
+        if (this.controls.animate) this.controls.animate.disabled = false;
+        if (this.controls.next) this.controls.next.children[0].textContent = "Start";
         if (e) e.preventDefault();
     }
 
@@ -280,10 +334,10 @@ class Widget {
     next(e) {
         this.elt.classList.add("running");
         console.assert(this.k, "Tried to step forward but no next state available");
-        this.controls.next.children[0].textContent = "Next";
-        this.controls.input.disabled = true;
-        this.controls.reset.disabled = false;
-        this.controls.back.disabled = false;
+        if (this.controls.next) this.controls.next.children[0].textContent = "Next";
+        if (this.controls.input) this.controls.input.disabled = true;
+        if (this.controls.reset) this.controls.reset.disabled = false;
+        if (this.controls.back) this.controls.back.disabled = false;
         this.k();
         if (e) e.preventDefault();
     }
@@ -300,8 +354,8 @@ class Widget {
         this.stop = -1;
         if (this.timer) clearInterval(this.timer);
         this.timer = null;
-        this.controls.next.disabled = true;
-        this.controls.animate.disabled = true;
+        if (this.controls.next) this.controls.next.disabled = true;
+        if (this.controls.animate) this.controls.animate.disabled = true;
     }
 
     run(k) {
@@ -336,15 +390,45 @@ function truthy(x) {
 }
 
 function pysplit(x, sep, cnt) {
-    let i = 0;
-    let out = [];
-    while (cnt > 0) {
-        let next = x.indexOf(sep, i);
-        if (next == 0) continue;
-        out.push(x.substring(i, next));
-        i = next + sep.length;
-        cnt--;
-    }
-    out.push(x.substring(i));
-    return out;
+    let parts = x.split(sep)
+    return parts.slice(0, cnt).concat([parts.slice(cnt).join(sep)])
 }
+
+function pyrsplit(x, sep, cnt) {
+    let parts = x.split(sep)
+    return [parts.slice(0, -cnt).join(sep)].concat(parts.slice(-cnt))
+}
+
+function comparator(f) {
+    return function(a, b) {
+        let fa = f(a), fb = f(b);
+        if (fa < fb) return -1;
+        else if (fb < fa) return 1;
+        else return 0;
+    }
+}
+
+class File {
+    constructor(contents) {
+        this.contents = contents;
+    }
+    read() {
+        return this.contents;
+    }
+    close() {}
+}
+
+class FileSystem {
+    constructor() {
+        this.files = {};
+    }
+    register(name, contents) {
+        this.files[name] = contents;
+    }
+    open(name) {
+        return new File(this.files[name]);
+    }
+}
+
+
+const filesystem = new FileSystem();

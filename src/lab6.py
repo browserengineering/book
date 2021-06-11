@@ -19,7 +19,6 @@ def request(url):
     else:
         host, path = url, ""
 
-
     path = "/" + path
     port = 80 if scheme == "http" else 443
 
@@ -334,11 +333,11 @@ def compute_style(node, property, value):
 
 def style(node, rules):
     node.style = {}
-    for property, default in INHERITED_PROPERTIES.items():
+    for property, default_value in INHERITED_PROPERTIES.items():
         if node.parent:
             node.style[property] = node.parent.style[property]
         else:
-            node.style[property] = default
+            node.style[property] = default_value
     for selector, body in rules:
         if not selector.matches(node): continue
         for property, value in body.items():
@@ -357,12 +356,18 @@ def cascade_priority(rule):
     selector, body = rule
     return selector.priority
 
+WIDTH, HEIGHT = 800, 600
+HSTEP, VSTEP = 13, 18
+
+SCROLL_STEP = 100
+
 BLOCK_ELEMENTS = [
     "html", "body", "article", "section", "nav", "aside",
     "h1", "h2", "h3", "h4", "h5", "h6", "hgroup", "header",
-    "footer", "address", "p", "hr", "ol", "ul", "menu", "li",
-    "dl", "dt", "dd", "figure", "figcaption", "main", "div",
-    "table", "form", "fieldset", "legend", "details", "summary",
+    "footer", "address", "p", "hr", "pre", "blockquote",
+    "ol", "ul", "menu", "li", "dl", "dt", "dd", "figure",
+    "figcaption", "main", "div", "table", "form", "fieldset",
+    "legend", "details", "summary"
 ]
 
 def layout_mode(node):
@@ -409,12 +414,6 @@ class BlockLayout:
 
 
     def paint(self, display_list):
-        bgcolor = self.node.style.get("background-color",
-                                      "transparent")
-        if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
         for child in self.children:
             child.paint(display_list)
 
@@ -481,7 +480,8 @@ class InlineLayout:
         self.cursor_y = baseline + 1.2 * max_descent
 
     def paint(self, display_list):
-        bgcolor = self.node.style.get("background-color", "transparent")
+        bgcolor = self.node.style.get("background-color",
+                                      "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
@@ -543,11 +543,6 @@ class DrawRect:
             width=0,
             fill=self.color,
         )
-
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
-
-SCROLL_STEP = 100
 
 class Browser:
     def __init__(self):

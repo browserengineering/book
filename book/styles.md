@@ -234,7 +234,7 @@ With the `style` information stored on each element, the browser can
 consult it for styling information:
 
 ``` {.python}
-class BlockLayout:
+class InlineLayout:
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
@@ -245,10 +245,8 @@ class BlockLayout:
         # ...
 ```
 
-Copy these lines of code to `InlineLayout` as well, so that paragraphs
-and list items and so on can have configurable backgrounds as well.
-(I've removed the default gray background from `pre` elements for now,
-but we'll put it back soon.)
+I've removed the default gray background from `pre` elements for now,
+but we'll put it back soon.
 
 Open up this chapter up in your browser to test your code: the code
 block right after this paragraph should now have a light blue
@@ -761,11 +759,11 @@ override inheritance:
 ``` {.python}
 def style(node, rules):
     # ...
-    for property, default in INHERITED_PROPERTIES.items():
+    for property, default_value in INHERITED_PROPERTIES.items():
         if node.parent:
             node.style[property] = node.parent.style[property]
         else:
-            node.style[property] = default
+            node.style[property] = default_value
     # ...
 ```
 
