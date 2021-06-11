@@ -1,8 +1,8 @@
 [
-{"line":  25, "code": "':' in host", "type": "str"},
-{"line": 113, "code": "'=' in attrpair", "type": "str"},
-{"line": 144, "code": "tag in self.SELF_CLOSING_TAGS", "type": "list"},
-{"line": 165, "code": "tag in self.HEAD_TAGS", "type": "list"},
-{"line": 170, "code": "tag not in ['/head'] + self.HEAD_TAGS", "type": "list"},
-{"line": 203, "code": "child.tag in BLOCK_ELEMENTS", "type": "list"}
+{"code": "':' in host", "type": "str"},
+{"code": "'=' in attrpair", "type": "str"},
+{"code": "tag in self.SELF_CLOSING_TAGS", "type": "list"},
+{"code": "tag in self.HEAD_TAGS", "type": "list"},
+{"code": "tag not in ['/head'] + self.HEAD_TAGS", "type": "list"},
+{"code": "child.tag in BLOCK_ELEMENTS", "type": "list"}
 ]

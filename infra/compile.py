@@ -75,8 +75,7 @@ def read_hints(f):
     global HINTS
     hints = json.load(f)
     for h in hints:
-        assert "line" in h
-        assert isinstance(h["line"], int)
+        assert "line" not in h or isinstance(h["line"], int)
         assert "code" in h
         s = AST39.parse(h["code"])
         assert isinstance(s, ast.Module)
