@@ -7,6 +7,6 @@
 {"line": 191, "code": "tag not in ['/head'] + self.HEAD_TAGS", "type": "list"},
 {"line": 236, "code": "self.s[self.i] in chars", "type": "list"},
 {"line": 347, "code": "'style' in node.attributes", "type": "dict"},
-{"line": 378, "code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
-{"line": 577, "code": "'href' in node.attributes", "type": "dict"}
+{"line": 379, "code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
+{"line": 573, "code": "'href' in node.attributes", "type": "dict"}
 ]
