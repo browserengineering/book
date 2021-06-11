@@ -27,8 +27,13 @@ www/draft/%.html: book/%.md infra/template.html infra/signup.html infra/filter.l
 www/rss.xml: news.yaml infra/rss-template.xml
 	pandoc --template infra/rss-template.xml  -f markdown -t html $< -o $@
 
-www/widgets/%.js: src/%.py src/%.hints infra/compile.py
-	python3 infra/compile.py $< $@ --hints src/$*.hints
+www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
+	python3 infra/compile.py $< $@ --hints src/lab$*.hints
+
+# This is not quite right in that each widget goes to the graphics chapter.
+# Unfortunately I don't have a fix for this ATM
+www/widgets/lab%-browser.html: infra/labN-browser.html
+	pandoc --variable chapter=$* --variable name=graphics --template $< book/graphics.md -o $@
 
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
