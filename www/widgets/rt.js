@@ -295,12 +295,12 @@ class Widget {
         this.k = this.runner;
         if (this.timer) clearInterval(this.timer);
         this.timer = null;
-        this.controls.reset.disabled = true;
-        this.controls.back.disabled = true;
-        this.controls.input.disabled = false;
-        this.controls.next.disabled = false;
-        this.controls.animate.disabled = false;
-        this.controls.next.children[0].textContent = "Start";
+        if (this.controls.reset) this.controls.reset.disabled = true;
+        if (this.controls.back) this.controls.back.disabled = true;
+        if (this.controls.input) this.controls.input.disabled = false;
+        if (this.controls.next) this.controls.next.disabled = false;
+        if (this.controls.animate) this.controls.animate.disabled = false;
+        if (this.controls.next) this.controls.next.children[0].textContent = "Start";
         if (e) e.preventDefault();
     }
 
@@ -320,10 +320,10 @@ class Widget {
     next(e) {
         this.elt.classList.add("running");
         console.assert(this.k, "Tried to step forward but no next state available");
-        this.controls.next.children[0].textContent = "Next";
-        this.controls.input.disabled = true;
-        this.controls.reset.disabled = false;
-        this.controls.back.disabled = false;
+        if (this.controls.next) this.controls.next.children[0].textContent = "Next";
+        if (this.controls.input) this.controls.input.disabled = true;
+        if (this.controls.reset) this.controls.reset.disabled = false;
+        if (this.controls.back) this.controls.back.disabled = false;
         this.k();
         if (e) e.preventDefault();
     }
@@ -340,8 +340,8 @@ class Widget {
         this.stop = -1;
         if (this.timer) clearInterval(this.timer);
         this.timer = null;
-        this.controls.next.disabled = true;
-        this.controls.animate.disabled = true;
+        if (this.controls.next) this.controls.next.disabled = true;
+        if (this.controls.animate) this.controls.animate.disabled = true;
     }
 
     run(k) {
