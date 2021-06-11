@@ -5,12 +5,12 @@
 
 <form id="controls">
   <fieldset id="step-controls">
-    <h1>The Chapter 2 Browser</h1>
+    <h1>The Chapter $chapter$ Browser</h1>
     <button class="reset left" disabled><span>Restart</span></button>
     <button class="stepf right"><span>Go</span></button>
   </fieldset>
   <fieldset id="input-controls">
-    <kbd>https://browser.engineering/<input id="input" class="continue" type="url" value="graphics.html" /></kbd>
+    <kbd>https://browser.engineering/<input id="input" class="continue" type="url" value="$name$.html" /></kbd>
   </fieldset>
 </form>
 <figure id="widget">
@@ -18,7 +18,7 @@
 </figure>
 
 <script src="rt.js"></script>
-<script src="lab2.js"></script>
+<script src="lab$chapter$.js"></script>
 <script>
 socket = lib.socket({});
 ssl = lib.ssl();

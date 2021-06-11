@@ -319,8 +319,8 @@ def op2str(op):
     elif isinstance(op, ast.LtE): return "<="
     elif isinstance(op, ast.Eq): return "==="
     elif isinstance(op, ast.NotEq): return "!=="
-    elif isinstance(op, ast.And): return " && "
-    elif isinstance(op, ast.Or): return " || "
+    elif isinstance(op, ast.And): return "&&"
+    elif isinstance(op, ast.Or): return "||"
     else:
         raise UnsupportedConstruct()
 
@@ -456,12 +456,13 @@ def compile_expr(tree, ctx):
         base = compile_expr(tree.value, ctx)
         return base + "." + tree.attr
     elif isinstance(tree, ast.Dict):
+        assert all(isinstance(k, ast.Str) for k in tree.keys)
         pairs = [compile_expr(k, ctx) + ": " + compile_expr(v, ctx) for k, v in zip(tree.keys, tree.values)]
         return "{" + ", ".join(pairs) + "}"
     elif isinstance(tree, ast.Tuple) or isinstance(tree, ast.List):
         return "[" + ", ".join([compile_expr(a, ctx) for a in tree.elts]) + "]"
     elif isinstance(tree, ast.Name):
-        assert tree.id in ctx, f"Could not find variable {tree.id}"
+        assert tree.id == "self" or tree.id in ctx, f"Could not find variable {tree.id}"
         return "this" if tree.id == "self" else tree.id
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
@@ -679,6 +680,8 @@ def compile(tree, ctx, indent=0):
         return " " * indent + "continue;"
     elif isinstance(tree, ast.Break):
         return " " * indent + "break;"
+    elif isinstance(tree, ast.Pass):
+        return ""
     else:
         raise UnsupportedConstruct()
     
