@@ -5,7 +5,6 @@ This file is mostly unit tests, but you could pretend it is
 documentation if you were so inclined.
 
 ```
-
 This is some helper code for tests. First, import the compiler:
 
 >>> import sys
@@ -35,6 +34,7 @@ Finally, this has some helper methods:
 ...         assert isinstance(mod, ast.Module) and len(mod.body) == 1
 ...         print(compile(mod.body[0], ctx=FakeCtx()))
 
+That's all the helper code we need
 ```
 
 Compiling methods 
