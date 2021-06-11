@@ -49,14 +49,22 @@ class MissingHint(Exception):
 
 ISSUES = []
 
+WRAP_DISABLED = False
+
+def test_mode():
+    global WRAP_DISABLED
+    WRAP_DISABLED = True
+
 def catch_issues(f):
     def wrapped(tree, *args, **kwargs):
         try:
             try:
                 return f(tree, *args, **kwargs)
             except AssertionError as e:
+                if WRAP_DISABLED: raise e
                 return find_hint(tree, "js")
         except MissingHint as e:
+            if WRAP_DISABLED: raise e
             ISSUES.append(e)
             return "/* " + AST39.unparse(tree) + " */"
     return wrapped
@@ -231,7 +239,10 @@ def compile_method(base, name, args, ctx):
         return args_js[0] + ".join(" + base_js + ")"
     elif name == "isspace":
         assert len(args) == 0
-        return base_js + ".match(/^\s*$/)"
+        return "/^\s*$/.test(" + base_js + ")"
+    elif name == "isalnum":
+        assert len(args) == 0
+        return "/^[a-zA-Z0-9]+$/.test(" + base_js + ")"
     elif name == "items":
         assert len(args) == 0
         return "Object.entries(" + base_js + ")"
@@ -252,10 +263,7 @@ def compile_method(base, name, args, ctx):
         return "pyrsplit(" + base_js + ", " + args_js[0] + ", " + args_js[1] + ")"
     elif name == "count":
         assert len(args) == 1
-        return base_js + ".split(" + args_js[0] + ").length"
-    elif name == "isalnum":
-        assert len(args) == 0
-        return "/^[a-zA-Z0-9]+$/.test(" + base_js + ")"
+        return base_js + ".split(" + args_js[0] + ").length - 1"
     else:
         raise UnsupportedConstruct()
 
@@ -703,7 +711,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compiles each chapter's Python code to JavaScript")
     parser.add_argument("--hints", default=None, type=argparse.FileType())
     parser.add_argument("--indent", default=2, type=int)
-    parser.add_argument("--file", type=argparse.FileType(), nargs="+")
     parser.add_argument("python", type=argparse.FileType())
     parser.add_argument("javascript", type=argparse.FileType("w"))
     args = parser.parse_args()

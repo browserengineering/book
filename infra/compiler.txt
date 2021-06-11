@@ -11,6 +11,7 @@ This is some helper code for tests. First, import the compiler:
 >>> import sys
 >>> sys.path.append("infra")
 >>> from compile import *
+>>> test_mode()
 
 Then, this pretends all variables are in scope:
 
@@ -81,11 +82,19 @@ And then there's a lot of special cases
     >>> Test.expr("', '.join(fields)")
     (fields.join(", "))
     >>> Test.expr("text.isspace()")
-    (text.match(/^\s*$/))
+    (/^\s*$/.test(text))
+    >>> Test.expr("text.isalnum()")
+    (/^[a-zA-Z0-9]+$/.test(text))
     >>> Test.expr("node.attributes.items()")
     (Object.entries(node.attributes))
     >>> Test.expr("self.window.bind('<Down>', self.scrolldown)")
     (this.window.bind("<Down>", (e) => this.scrolldown(e)))
+    >>> Test.expr("rules.extend(more_rules)")
+    (Array.prototype.push.apply(rules, more_rules))
+    >>> Test.expr("node.attributes.get('background', 'transparent')")
+    ((node.attributes?.["background"] ?? "transparent"))
+    >>> Test.expr("url.count('/')")
+    (url.split("/").length - 1)
 
 The Python `str.split` function is especially tricky, because its
 cases don't map neatly to JavaScript. There's a `pysplit` function for
@@ -97,6 +106,8 @@ the hard case:
     (attrpair.split("="))
     >>> Test.expr("hostpath.split('/', 1)")
     (pysplit(hostpath, "/", 1))
+    >>> Test.expr("hostpath.rsplit('/', 1)")
+    (pyrsplit(hostpath, "/", 1))
 
 Compiling Functions
 -------------------
@@ -134,6 +145,21 @@ translations:
     (ascents.reduce((a, v) => Math.min(a, v)))
     >>> Test.expr("repr(node)")
     (node.toString())
+    >>> Test.expr("str(node)")
+    (node.toString())
+
+The `open` function works in a weird way---it has to record all read
+files, which must be constants:
+
+    >>> Test.expr("open('browser.css')")
+    (filesystem.open("browser.css"))
+    >>> assert 'browser.css' in FILES
+
+The `sorted` function is similarly weird because we need to convert
+key functions to a comparator:
+
+    >>> Test.expr("sorted(rules, key=cascade_priority)")
+    (rules.slice().sort(comparator(cascade_priority)))
 
 Finally there is the special `breakpoint` builtin, which we use for
 pausing widgets. It compiles to a `breakpoint.event` function, which
@@ -184,10 +210,12 @@ Comparisons in Python can chain, but we don't support that:
     AssertionError
 
 The `in` operator is handled unusually, since there's no equivalent in
-JS. For finding in a fixed list we automatically use `or`:
+JS. For a fixed list or for a fixed string we can express it directly:
 
     >>> Test.expr("x in ['a', 'b']")
     (x === "a" || x === "b")
+    >>> Test.expr("x in 'asdf'")
+    ("asdf".indexOf(x) !== -1)
 
 But otherwise you need a hint. Also, there's a special case for
 comparing to an array (arrays in JS compare by identity):
@@ -200,11 +228,12 @@ Conditional expressions are also supported:
     >>> Test.expr("x if y else z")
     (y ? x : z)
 
-One weird case is list comprehensions. We compile those to `map`, with
-no support (yet) for `filter`s:
+One weird case is list comprehensions. We compile those to `map` and `filter`:
 
     >>> Test.expr("[x for x, y in v.items()]")
     (Object.entries(v)).map(([x, y]) => x)
+    >>> Test.expr("[x for x, y in v.items() if y > 0]")
+    (Object.entries(v)).filter(([x, y]) => (y > 0)).map(([x, y]) => x)
 
 The remaining expressions are pretty much direct translations:
 
@@ -303,6 +332,13 @@ Return, continue, and break all do the obvious:
     >>> Test.stmt("break")
     break;
 
+Assertions raise a generic `Error`; we need this for parsing CSS:
+
+    >>> Test.stmt("assert len(x) > 0")
+    if (!truthy(((x.length) > 0))) throw Error();
+    >>> Test.stmt("assert len(x) > 0, 'asdf'")
+    if (!truthy(((x.length) > 0))) throw Error("asdf");
+
 The `while` and `for` loops translate pretty directly:
 
     >>> OUR_FNS.append("foo")
@@ -315,6 +351,10 @@ The `while` and `for` loops translate pretty directly:
     for (let x of (await foo())) {
       (await bar(x));
     }
+
+The `try` statement ...
+
+The `with` statement ...
 
 But `if` statements are weird. First, there's the top-level `if`
 statement, which we elide. But then also there are one-line `if`
