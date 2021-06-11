@@ -31,8 +31,6 @@ www/rss.xml: news.yaml infra/rss-template.xml
 www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 	python3 infra/compile.py $< $@ --hints src/lab$*.hints
 
-# This is not quite right in that each widget goes to the graphics chapter.
-# Unfortunately I don't have a fix for this ATM
 www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json
 	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/graphics.md -o $@
 
