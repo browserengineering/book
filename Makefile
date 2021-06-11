@@ -32,7 +32,7 @@ www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 	python3 infra/compile.py $< $@ --hints src/lab$*.hints
 
 www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json
-	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/graphics.md -o $@
+	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/index.md -o $@
 
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
