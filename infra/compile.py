@@ -121,8 +121,8 @@ RENAME_METHODS = {
 }
 
 RENAME_FNS = {
-    "int": "Math.parseInt",
-    "float": "Math.parseFloat",
+    "int": "parseInt",
+    "float": "parseFloat",
     "print": "console.log",
 }
 
@@ -238,7 +238,7 @@ def compile_method(base, name, args, ctx):
     elif name == "get":
         assert 1 <= len(args) <= 2
         default = args_js[1] if len(args) == 2 else "null"
-        return "(" + base_js + "." + args_js[0] + " ?? " + default + ")"
+        return "(" + base_js + "?.[" + args_js[0] + "] ?? " + default + ")"
     elif name == "split":
         assert 0 <= len(args) <= 2
         if len(args) == 0:
@@ -255,7 +255,7 @@ def compile_method(base, name, args, ctx):
         return base_js + ".split(" + args_js[0] + ").length"
     elif name == "isalnum":
         assert len(args) == 0
-        return base_js + ".test(/^[a-zA-Z0-9]*$/)"
+        return "/^[a-zA-Z0-9]+$/.test(" + base_js + ")"
     else:
         raise UnsupportedConstruct()
 
@@ -276,9 +276,6 @@ def compile_function(name, args, ctx):
     elif name == "isinstance":
         assert len(args) == 2
         return args_js[0] + " instanceof " + args_js[1]
-    elif name == "sorted":
-        assert len(args) == 2
-        return args_js[0] + ".splice().sort(" + args_js[1] + ")"
     elif name == "sum":
         assert len(args) == 1
         return args_js[0] + ".reduce((a, v) => a + v, 0)"
@@ -387,6 +384,11 @@ def compile_expr(tree, ctx):
         args = tree.args + [kv.value for kv in tree.keywords]
         if isinstance(tree.func, ast.Attribute):
             return "(" + compile_method(tree.func.value, tree.func.attr, args, ctx) + ")"
+        elif isinstance(tree.func, ast.Name) and tree.func.id == "sorted":
+            assert len(args) == 2
+            assert isinstance(args[1], ast.Name)
+            base = compile_expr(args[0], ctx)
+            return "(" + base + ".slice().sort(comparator(" + args[1].id + ")))"
         elif isinstance(tree.func, ast.Name):
             return "(" + compile_function(tree.func.id, args, ctx) + ")"
         else:
@@ -515,7 +517,6 @@ def compile(tree, ctx, indent=0):
         assert not tree.returns
         args = check_args(tree.args, ctx)
 
-        ctx[tree.name] = True
         ctx2 = Context("function", ctx)
         for arg in tree.args.args:
             ctx2[arg.arg] = True
@@ -570,8 +571,8 @@ def compile(tree, ctx, indent=0):
         return " " * indent + lhs + " " + op2str(tree.op) + "= " + rhs + ";"
     elif isinstance(tree, ast.Assert):
         test = compile_expr(tree.test, ctx)
-        msg = compile_expr(tree.msg, ctx) if tree.msg else None
-        return " " * indent + "console.assert(" + test + (", " + msg if msg else "") + ");"
+        msg = compile_expr(tree.msg, ctx) if tree.msg else ""
+        return " " * indent + "if (!truthy(" + test + ")) throw Error(" + msg + ");"
     elif isinstance(tree, ast.Return):
         ret = compile_expr(tree.value, ctx) if tree.value else None
         return " " * indent + "return" + (" " + ret if ret else "") + ";"
@@ -648,11 +649,11 @@ def compile(tree, ctx, indent=0):
         assert not tree.orelse
         assert not tree.finalbody
         assert len(tree.handlers) == 1
-        out = " " * indent + "try {"
+        out = " " * indent + "try {\n"
         ctx2 = Context(ctx.type, ctx)
         body_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         out += body_js + "\n"
-        out += " " * indent + "} catch(_err) {"
+        out += " " * indent + "} catch(_err) {\n"
         handler = tree.handlers[0]
         assert not handler.name
         ctx3 = Context(ctx.type, ctx)
@@ -661,7 +662,7 @@ def compile(tree, ctx, indent=0):
             assert handler.type.id.endswith("Error")
         catch_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx3) for line in handler.body])
         out += catch_js + "\n"
-        out += " " * indent + "}"
+        out += " " * indent + "}\n"
         return out
     elif isinstance(tree, ast.With):
         assert not tree.type_comment
@@ -669,8 +670,8 @@ def compile(tree, ctx, indent=0):
         item = tree.items[0]
         var = item.optional_vars if item.optional_vars else ast.Name("_ctx")
         assert isinstance(var, ast.Name)
-        out = compile(ast.Assign([var], item.context_expr), indent=indent, ctx=ctx)
-        out += "\n".join([compile(line, indent=indent, ctx=ctx) for line in tree.body])
+        out = compile(ast.Assign([var], item.context_expr), indent=indent, ctx=ctx) + "\n"
+        out += "\n".join([compile(line, indent=indent, ctx=ctx) for line in tree.body]) + "\n"
         out += compile(ast.Expr(ast.Call(ast.Attribute(var, "close"), [], [])),
                        indent=indent, ctx=ctx)
         return out
