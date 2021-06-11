@@ -159,7 +159,19 @@ static tkinter(options) {
             this.ctx.clearRect(0, 0, this.tk.elt.width, this.tk.elt.height);
         }
 
-        create_text(x, y, txt, font, anchor) {
+        create_rectangle(x1, y1, x2, y2, w, fill) {
+            console.assert(w == 0, "Invalid rectangle stroke width " + w);
+            this.ctx.fillStyle = fill ?? "transparent";
+            this.ctx.fillRect(x1 * ZOOM, y1 * ZOOM, (x2 - x1) * ZOOM, (y2 - y1) * ZOOM);
+        }
+
+        create_line(x1, y1, x2, y2) {
+            this.ctx.moveTo(x1 * ZOOM, y1 * ZOOM);
+            this.ctx.lineTo(x2 * ZOOM, y2 * ZOOM);
+            this.ctx.stroke();
+        }
+
+        create_text(x, y, txt, font, anchor, fill) {
             if (anchor == "nw") {
                 this.ctx.textAlign = "left";
                 this.ctx.textBaseline = "top";
@@ -168,6 +180,8 @@ static tkinter(options) {
                 this.ctx.textBaseline = "middle";
             }
             if (font) this.ctx.font = font.string;
+            this.ctx.lineWidth = 0;
+            this.ctx.fillStyle = fill ?? "black";
             this.ctx.fillText(txt, x * ZOOM, y * ZOOM);
         }
     }
@@ -385,16 +399,26 @@ function pyrsplit(x, sep, cnt) {
     return [parts.slice(0, -cnt).join(sep)].concat(parts.slice(-cnt))
 }
 
-class FileSystem {
-    class File {
-        constructor(contents) {
-            this.contents = contents;
-        }
-        read() {
-            return this.contents;
-        }
+function comparator(f) {
+    return function(a, b) {
+        let fa = f(a), fb = f(b);
+        if (fa < fb) return -1;
+        else if (fb < fa) return 1;
+        else return 0;
     }
+}
 
+class File {
+    constructor(contents) {
+        this.contents = contents;
+    }
+    read() {
+        return this.contents;
+    }
+    close() {}
+}
+
+class FileSystem {
     constructor() {
         this.files = {};
     }
@@ -402,8 +426,9 @@ class FileSystem {
         this.files[name] = contents;
     }
     open(name) {
-        return File(this.files[name]);
+        return new File(this.files[name]);
     }
 }
 
-const filesystem = FileSystem();
+
+const filesystem = new FileSystem();

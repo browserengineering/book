@@ -333,11 +333,11 @@ def compute_style(node, property, value):
 
 def style(node, rules):
     node.style = {}
-    for property, default in INHERITED_PROPERTIES.items():
+    for property, default_value in INHERITED_PROPERTIES.items():
         if node.parent:
             node.style[property] = node.parent.style[property]
         else:
-            node.style[property] = default
+            node.style[property] = default_value
     for selector, body in rules:
         if not selector.matches(node): continue
         for property, value in body.items():

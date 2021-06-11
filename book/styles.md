@@ -761,11 +761,11 @@ override inheritance:
 ``` {.python}
 def style(node, rules):
     # ...
-    for property, default in INHERITED_PROPERTIES.items():
+    for property, default_value in INHERITED_PROPERTIES.items():
         if node.parent:
             node.style[property] = node.parent.style[property]
         else:
-            node.style[property] = default
+            node.style[property] = default_value
     # ...
 ```
 
