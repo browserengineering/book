@@ -224,3 +224,12 @@ form.states.s-success #signup-close { display: block; }
 .outline code { break-inside: avoid; display: block; }
 .outline > code { margin: .33em 0; }
 .outline code > code { margin-left: 2ch; }
+
+@media print {
+    html { font-size: 12px; }
+    #signup, nav.links { display: none;}
+    .note-container:before { content: " ["; }
+    .note-container, .note-container:before, .note-container:after { color: navy; }
+    pre { font-size: 10px; }
+    #toc a { text-decoration: none; color: black; }
+}
