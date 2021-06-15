@@ -20,7 +20,7 @@
     <author>{{obj['name']}}</author>
     %end
     %if 'time' in obj:
-    <pubDate>{{datetime.fromtimestamp(obj['time'].strftime("%a, %d %b %Y %H:%M:%S %z"))}}</pubDate>
+    <pubDate>{{datetime.fromtimestamp(obj['time']).strftime("%a, %d %b %Y %H:%M:%S %z")}}</pubDate>
     %end
 
     <description>
