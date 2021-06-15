@@ -166,6 +166,7 @@ def feedback():
 @bottle.route("/feedback.rss")
 @bottle.view("feedback_rss.view")
 def feedback():
+    bottle.response.content_type = 'application/rss+xml'
     new = [prettify(o) for o in DATA if o['status'] == "new"]
     return { 'new': new }
 

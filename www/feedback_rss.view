@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-% from datetime import datetime
+% from datetime import datetime, timezone
+% tz = datetime.now(timezone.utc).astimezone().tzinfo
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
 
@@ -8,22 +9,23 @@
 <link>https://browser.engineering/feedback.rss</link>
 <description>Unprocessed user feedback on Web Browser Engineering</description>
 <language>en</language>
-<lastBuildDate>{{datetime.now().strftime("%a, %d %b %Y %H:%M:%S %z")}}</lastBuildDate>
-<webMaster>author@browser.engineering (Pavel Panchekha & Chris Harrelson)</webMaster>
+<lastBuildDate>{{datetime.now(tz).strftime("%a, %d %b %Y %H:%M:%S %z")}}</lastBuildDate>
+<webMaster>author@browser.engineering (Pavel Panchekha &amp; Chris Harrelson)</webMaster>
   
 %for obj in new:
 <item>
   %if obj['status'] == 'new':
-    <title> in <code>{{obj['url']}}</code>:</title>
+    <title>{{obj.get('name', "anon")}} in {{obj['url']}}:</title>
     <link>https://browser.engineering/feedback</link>
     %if 'name' in obj:
     <author>{{obj['name']}}</author>
     %end
     %if 'time' in obj:
-    <pubDate>{{datetime.fromtimestamp(obj['time']).strftime("%a, %d %b %Y %H:%M:%S %z")}}</pubDate>
+    <pubDate>{{datetime.fromtimestamp(obj['time'], tz).strftime("%a, %d %b %Y %H:%M:%S %z")}}</pubDate>
     %end
 
     <description>
+      <![CDATA[
     %if obj['type'] == 'typo':
       <blockquote>{{!obj['diff']}}</blockquote>
     %elif obj['type'] == 'comment':
@@ -33,6 +35,7 @@
       <p>Overall comment:</p>
       <p>{{obj['comment']}}</p>
     %end
+      ]]>
     </description>
   %end
 </item>
