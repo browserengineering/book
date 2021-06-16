@@ -554,7 +554,11 @@ class Browser:
         )
         self.canvas.pack()
 
+        self.history = []
+        self.focus = None
+        self.address_bar = ""
         self.scroll = 0
+
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
         self.display_list = []
@@ -564,7 +568,7 @@ class Browser:
 
     def load(self, url):
         self.url = url
-        self.addressbar = url
+        self.address_bar = url
         self.history.append(url)
         headers, body = request(url)
         nodes = HTMLParser(body).parse()
@@ -605,12 +609,12 @@ class Browser:
         x, y = e.x, e.y + self.scroll - 60
         objs = [obj
                 for obj in tree_to_list(self.document, [])
-                if obj.x <= x < obj.x + tree.w
-                and obj.y <= y <= obj.y + obj.h]
+                if obj.x <= x < obj.x + obj.width
+                and obj.y <= y <= obj.y + obj.height]
         if not objs: return
         elt = objs[-1].node
         while elt:
-            if isinstance(node, TextNode):
+            if isinstance(elt, Text):
                 pass
             elif elt.tag == "a" and "href" in node.attributes:
                 url = relative_url(elt.attributes["href"], self.url)
@@ -641,10 +645,11 @@ class Browser:
             if cmd.top > self.scroll + HEIGHT - 60: continue
             if cmd.bottom < self.scroll: continue
             cmd.execute(self.scroll - 60, self.canvas)
+
         font = tkinter.font.Font(family="Courier", size=30)
-        self.canvas.create_text(55, 15, anchor='nw', text=self.address_bar, font=font)
         self.canvas.create_rectangle(10, 10, 35, 50)
         self.canvas.create_polygon(15, 30, 30, 15, 30, 45, fill='black')
+        self.canvas.create_text(55, 15, anchor='nw', text=self.address_bar, font=font)
         if self.focus == "address bar":
             w = font.measure(self.address_bar)
             self.canvas.create_line(55 + w, 15, 55 + w, 45)
