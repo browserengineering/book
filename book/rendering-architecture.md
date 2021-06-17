@@ -855,7 +855,7 @@ Other tasks
 Next up we'll move browser tasks such as loading to the main thread. Now that
 we have `MainThreadRunner`, this is super easy! Whenever the compositor thread
 needs to schedule a task on the main thread event loop, we just call
-`main_thread_runner.schedule_browser_task`:
+`schedule_browser_task`:
 
 ``` {.python}
     # Runs on the compositor thread
@@ -871,14 +871,17 @@ needs to schedule a task on the main thread event loop, we just call
 
 We can do the same for input event handlers, but there are a few additional
 subtleties. Let's look closely at each of them in turn, starting with
-`handle_click`. In most cases, we will need to [hit test](chrome.md#hit-testing)
-for which DOM element receives the click event, and also fire an event that
-JavaScript can listen to. In this case, it seems clear we should just send the
-click event to the main thread for processing. But if the click was *not* within
-the web page window, we can handle it right there in the compositor thread, and
-leave the main thread none the wiser:
+`handle_click`. In most cases, we will need to [hit test]
+(chrome.md#hit-testing) for which DOM element receives the click event, and
+also fire an event that JavaScript can listen to. Since DOM computations and
+JavaScript can only be run on the main thread, it seems we should just send the
+click event to the main thread for processing. But if the click was *not*
+within the web page window, we can handle it right there in the compositor
+thread, and leave the main thread none the wiser:
 
 ``` {.python}
+    def __init__(self):
+        # ...
         self.window.bind("<Button-1>", self.compositor_handle_click)
 
     # Runs on the compositor thread
@@ -904,11 +907,12 @@ leave the main thread none the wiser:
 
 The same logic holds for `keypress`:
 
-```
+``` {.python}
+    def __init__(self):
+        # ...
         self.window.bind("<Key>", self.compositor_keypress)
-        self.window.bind("<Return>", self.press_enter)
 
-        # Runs on the compositor thread
+    # Runs on the compositor thread
     def compositor_keypress(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
@@ -920,7 +924,7 @@ The same logic holds for `keypress`:
             self.set_needs_animation_frame()
         else:
             self.main_thread_runner.schedule_browser_task(
-                functools.partial(self.keypress, e))
+                Task(self.keypress, e))
 
     # Runs on the main thread
     def keypress(self, e):
@@ -933,10 +937,17 @@ The same logic holds for `keypress`:
 As it turns out, the return key and scrolling have no use at all for the main
 thread:
 
-```
+``` {.python}
+    def __init__(self):
+        # ...
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Return>", self.press_enter)
 
+    # Runs on the compositor thread
+    def press_enter(self, e):
+        if self.focus == "address bar":
+            self.focus = None
+            self.schedule_load(self.address_bar)
 
     # Runs on the compositor thread
     def scrolldown(self, e):
@@ -947,11 +958,6 @@ thread:
         self.compositor_lock.release()
         self.set_needs_animation_frame()
 
-    # Runs on the compositor thread
-    def press_enter(self, e):
-        if self.focus == "address bar":
-            self.focus = None
-            self.schedule_load(self.address_bar)
 ```
 
 And we're done! Now we can reap the benefits of two threads working in parallel.
@@ -960,9 +966,9 @@ Here are the results:
     Average total compositor thread time (Draw and Draw Chrome): 4.8ms
     Average total main thread time: 4.4ms
 
-This means that we've been able to save about half of the of main-thread time,
-in which we can do other work, such as more JavaScript tasks, while in parallel
-the draw operations happen. This kind of optimization is called 
+This means that we've been able to save about half of the of main thread time.
+With that time we can do other work, such as more JavaScript tasks, while in
+parallel the draw operations happen. This kind of optimization is called 
 *pipeline parallelization*.
 
 Threaded interactions
@@ -978,26 +984,26 @@ not involved at all:
 * Interactions with browser chrome (if the click or keyboard event is not
 targeted at the web page)
 
-* Scrolling (never involves the main thread)
+* Scrolling
 
-These are  *threaded interactions*---ones that don't need to run any code at all
-on the main thread. No matter how slow the main-thread rendering pipeline is, or
-how slow JavaScript is (even if it's in an infinite loop!), we can still
-smoothly scroll the parts of it that we've already put into `draw_display_list`;
-likewise, we can type in the browser URL box smoothly in the same situation.
+These are *threaded interactions*---ones that don't need to run any code at all
+on the main thread. No matter how slow the main thread rendering pipeline is, or
+how slow JavaScript is (even if it's stuck in an infinite loop!), we can still
+smoothly scroll the parts of it that are already in `draw_display_list`, and
+type in the browser URL box.
 
 In real browsers, the two examples listed above are *extremely* important
 optimizations. Think how annoying it would be to type in the name of a new
 website if the old one was getting in the way of your keystrokes because it was
-doing a lot of very slow work. Likewise, scrolling a web page with a lot of slow
-JavaScript is sometimes painful unless the scrolling is threaded, even for
-relatively good sites.
+dslow. Likewise, scrolling a web page with a lot of slow JavaScript is
+sometimes painful unless the scrolling is threaded, even for relatively good
+sites.
 
 Unfortunately, threaded scrolling is not always possible or feasible. In the
 best browsers today, there are two primary reasons why threaded scrolling may
-fail:
+fail to occur:
 
-* There are JavaScript events for listening to a scroll; if the event handler
+* Javascript events listening to a scroll. If the event handler
 for the [`scroll`][scroll-event] event calls `preventDefault` on the first such
 event (or via [`touchstart`][touchstart-event] on mobile devices), the scroll
 will not be threaded in most browsers. Our browser has not implemented these
@@ -1006,56 +1012,65 @@ events, and so can avoid this situation.[^real-browser-threaded-scroll]
 [scroll-event]: https://developer.mozilla.org/en-US/docs/Web/API/Document/scroll_event
 [touchstart-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/touchstart_event
 
-[^real-browser-threaded-scroll]: A real browser would have an optimization to disable
-threaded scrolling only if there was such an event listener, and transition back
-to threaded as soon as it doens't see `preventDefault` called. This situation is
-so important that there is also a special kind of event listener [designed just
-for it][designed-for].
+[^real-browser-threaded-scroll]: A real browser would also have an optimization
+to disable threaded scrolling only if there was such an event listener, and
+transition back to threaded as soon as it doens't see `preventDefault` called.
+This situation is so important that there is also a special kind of event
+listener [designed just for it][designed-for].
 
-* Certain advanced (and thankfully uncommon) rendering situations, such as
+* Certain advanced (and thankfully uncommon) rendering features, such as
 [`background-attachment:
-fixed`](https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment),
-that make it difficult to perform threaded scrolling. In these situations,
-browser scrolling is at the mercy of the web page's script performance, and the
-only way to get back threaded scrolling is to not use these features on the
-website, or for the browser to not support those features.[^not-supported]
+fixed`](https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment).
+These features are complex and uncommon enough that that browsers disable
+threaded scrolling when they are present. Sometimes browsers simply
+disallow these features.[^not-supported]
 
 [designed-for]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#improving_scrolling_performance_with_passive_listeners
 
 [^not-supported]: Until 2020, Chromium-based browsers on Android did just this,
-and did not support `backround-attachment: fixed`.
+and did not support `background-attachment: fixed`.
 
 Threaded style and layout
 =========================
 
-You might have wondered: does the rendering pipeline---style, layout and paint
-have to run on the main thread? The answer is: in principle, no. The only thing
-browsers have to do is implement all the web APIs "correctly", and draw to the
-screen what the web page wanted once scripts and `requestAnimationFrame` ("rAF",
-for short) callbacks have completed. The specification spells this out in detail
-in what it calls the [update-the-rendering] steps. Go look at that link and come
-back. Notice anything missing? That's right, it doesn't mention style or layout
-at all! All it says is "update the rendering or user interface" at the very end.
+You may have wondered: does the earlier part of the rendering pipeline---style,
+layout and paint---have to run on the main thread? The answer is: in principle,
+no. The only thing browsers *have* to do is implement all the web API
+specifications correctly, and draw to the screen after scripts and
+`requestAnimationFrame` callbacks have completed. The
+specification spells this out in detail in what it calls the
+[update-the-rendering] steps. Go look at that link and come back. Notice
+anything missing? That's right, it doesn't mention style or layout at all! All
+it says is "update the rendering or user interface" at the very end.
 
 [update-the-rendering]: https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering
 
 How can that be? Aren't style and layout crucial parts of the way HTML and CSS
 work? Yes they are---but note the spec doesn't mention paint, draw or raster
-either. And just like those parts of the pipeline, style recalc and layout are
-considered pure implementation details of a browser. The spec simply says
-that if rendering "opportunities" arise, then the update-the-rendering steps
-are the sequence of *JavaScript-observable* things that have to happen before
-drawing to the screen.
+either. And just like those parts of the pipeline, style and layout are
+considered pure implementation details of a browser. The spec simply says that
+if rendering "opportunities" arise, then the update-the-rendering steps are the
+sequence of *JavaScript-observable* things that have to happen before drawing
+to the screen.
+
+
 
 Nevertheless, no current modern browser runs style or layout on another thread
 than the main thread.[^servo] The reason is simple: there are many JavaScript
-APIs that can query style or layout state. For example, there is
-[`getComputedStyle`](https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle)
-that requires style to have been computed, and `Element.getBoundingClientRect`,
-which returns the box model of a DOM element.[^nothing-later] These are called
-*forced style recalc* or *forced layout*. Here the world "forced" refers to
-forcing the computation to happen synchronously, as opposed to possibly 16ms in
-the future if it didn't happen to be already computed.
+APIs that can query style or layout state. For example, [`getComputedStyle`](https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle)
+can't be implemented without the browser first computing style, and
+`getBoundingClientRect` needs layout.[^nothing-later] If a web page calls
+one of these APIs, and style or layout is not up-to-date, then is has to be
+computed synchronously, then and there. These computations are called
+*forced style* or *forced layout*. The world "forced" refers to forcing the
+ computation to happen right away, as opposed to possibly 16ms in the future if
+ it didn't happen to be already computed. Because there are forced style and
+ layout situations, browsers have to be able to do that work on the main thread
+ if necessary.[^or-stall]
+
+ [^or-stall]: Or stall the compositor thread and ask it to do it synchronously.
+
+
 
 [^servo]: The [Servo] rendering engine is sort of an exception. However, in that
 case it's not that style and layout run on a different thread, but that they
@@ -1073,21 +1088,23 @@ By analogy with web pages that don't `preventDefault` a scroll, is it a good
 idea to try to optimistically move style and layout off the main thread for
 cases when JavaScript doesn't force it to be done otherwise? Maybe, but even
 setting aside this problem there are unfortunately other sources of forced
-style+layout. One example is our current implementation of `innerHTML`. Look
+style and layout. One example is our current implementation of `innerHTML`. Look
 closely at the code, can you see the forced layout?
 
 ``` {.python}
     def js_innerHTML(self, handle, s):
         try:
             self.run_rendering_pipeline()
-            doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
+            doc = parse(lex("<!doctype><html><body>" +
+                            s + "</body></html>"))
             new_nodes = doc.children[0].children
             elt = self.handle_to_node[handle]
             elt.children = new_nodes
             for child in elt.children:
                 child.parent = elt
             if self.document:
-                self.set_needs_reflow(layout_for_node(self.document, elt))
+                self.set_needs_reflow(
+                    layout_for_node(self.document, elt))
             else:
                 self.set_needs_layout_tree_rebuild()
         except:
@@ -1096,26 +1113,16 @@ closely at the code, can you see the forced layout?
             raise
 ```
 
-In this case, a forced layout is needed because we need to call
-`layout_for_node` in order to perform an optimized reflow. This could of course
-be fixed. One way---one that's employed by real browsers---is to store a pointer
-from each DOM element to its layout object, rather than searching for it by
-walking the layout tree.
+The call to `run_rendering_pipeline` is a forced layout. It's needed because
+`layout_for_node` needs an up-to-date layout tree in order to find the right
+node. Luckily, this forced layout can be avoided. One way---employed
+by real browsers---is to store a pointer from each DOM element to its layout
+object, rather than searching for it by walking the layout tree.
 
 However, even if we fix that there are yet more reasons why forced layouts are
-needed. The most tricky such one is hit testing. When a click event happens,
-looking at positions of layout objects is how the browser knows which element
-was clicked on. This is implemented in `find_layout`:
-
-```
-def find_layout(x, y, tree):
-    for child in reversed(tree.children):
-        result = find_layout(x, y, child)
-        if result: return result
-    if tree.x <= x < tree.x + tree.w and \
-       tree.y <= y < tree.y + tree.h:
-        return tree
-```
+needed. A tricky one is hit testing. When a click event happens, looking at
+positions of layout objects is how the browser knows which element was clicked
+on. This is implemented in `find_layout`.
 
 However, `handle_click` doesn't call `run_rendering_pipeline` like
 `js_innerHTML` does; why not? In a real browser, this would be a bug, but in
@@ -1123,7 +1130,7 @@ our current browser it's really difficult to cause a situation to happen where
 a click event happens but the rendering pipeline is not up-to-date. That's
 because currently the only way to schedule a script task is via
 `requestAnimationFrame`. In a real browser there is also `setTimeout`, for
-example. But for completeness, let's implement it by adding a call to 
+example. For completeness, let's implement it by adding a call to 
 `update_rendering_pipeline` before `find_layout`:
 
 ``` {.python}
@@ -1189,7 +1196,7 @@ via `Date.now`. How consistent are the cadences?
 [setInterval]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setInterval
 [clearInterval]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/clearInterval
 
-*Clock-based frame timing*: Right now our browser schedules the next
+* *Clock-based frame timing*: Right now our browser schedules the next
 animation frame to happen exactly 16ms later than the first time
 `set_needs_animation_frame` is called. However, this actually leads to a slower
 animation frame rate cadence than 16ms, for example if `run_rendering_pipeline`
