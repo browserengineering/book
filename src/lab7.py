@@ -435,13 +435,13 @@ class InlineLayout:
 
         self.display_list = []
 
-        self.cursor_x = self.x
-        self.cursor_y = self.y
-        self.line = []
-        self.recurse(self.node)
         self.flush()
+        self.recurse(self.node)
+        
+        for line in self.children:
+            line.layout()
 
-        self.height = self.cursor_y - self.y
+        self.height = sum([line.height for line in self.children])
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -452,8 +452,13 @@ class InlineLayout:
             for child in node.children:
                 self.recurse(child)
 
+    def flush(self):
+        self.previous_word = None
+        self.cursor_x = self.x
+        last_line = self.children[-1] if self.children else None
+        self.children.append(LineLayout(self.node, self, last_line))
+
     def text(self, node):
-        color = node.style["color"]
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
@@ -463,21 +468,11 @@ class InlineLayout:
             w = font.measure(word)
             if self.cursor_x + w > WIDTH - HSTEP:
                 self.flush()
-            self.line.append((self.cursor_x, word, font, color))
+            line = self.children[-1]
+            text = TextLayout(node, word, line, self.previous_word)
+            line.children.append(text)
+            self.previous_word = text
             self.cursor_x += w + font.measure(" ")
-
-    def flush(self):
-        if not self.line: return
-        metrics = [font.metrics() for x, word, font, color in self.line]
-        max_ascent = max([metric["ascent"] for metric in metrics])
-        baseline = self.cursor_y + 1.2 * max_ascent
-        for x, word, font, color in self.line:
-            y = baseline - font.metrics("ascent")
-            self.display_list.append((x, y, word, font, color))
-        self.cursor_x = self.x
-        self.line = []
-        max_descent = max([metric["descent"] for metric in metrics])
-        self.cursor_y = baseline + 1.2 * max_descent
 
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",
@@ -486,8 +481,74 @@ class InlineLayout:
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
             display_list.append(rect)
-        for x, y, word, font, color in self.display_list:
-            display_list.append(DrawText(x, y, word, font, color))
+        for child in self.children:
+            child.paint(display_list)
+
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+
+    def layout(self):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        if not self.children:
+            self.height = 0
+            return
+
+        for word in self.children:
+            word.layout()
+
+        max_ascent = max([word.metrics("ascent") for word in self.children])
+        baseline = self.y + 1.2 * max_ascent
+        for word in self.children:
+            word.y = baseline - word.metrics("ascent")
+        max_descent = max([word.metrics("descent") for word in self.children])
+        self.height = 1.2 * (max_ascent + max_descent)
+
+    def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+            
+class TextLayout:
+    def __init__(self, node, word, parent, previous):
+        self.node = node
+        self.word = word
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(float(self.node.style["font-size"][:-2]) * .75)
+        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
+
+        self.width = self.font.measure(self.word)
+
+        if self.previous:
+            self.x = self.previous.x + self.previous.font.measure(" ") + self.previous.width
+        else:
+            self.x = self.parent.x
+
+        # Do not set self.y!!!
+        self.height = self.font.metrics("linespace")
+
+    def metrics(self, param):
+        return self.font.metrics(param)
+
+    def paint(self, display_list):
+        color = self.node.style["color"]
+        display_list.append(DrawText(self.x, self.y, self.word, self.font, color))
 
 class DocumentLayout:
     def __init__(self, node):
@@ -561,6 +622,8 @@ class Browser:
 
         self.window.bind("<Down>", self.scrolldown)
         self.window.bind("<Button-1>", self.handle_click)
+        self.window.bind("<Key>", self.keypress)
+        self.window.bind("<Return>", self.pressenter)
         self.display_list = []
 
         with open("browser6.css") as f:
@@ -616,7 +679,7 @@ class Browser:
         while elt:
             if isinstance(elt, Text):
                 pass
-            elif elt.tag == "a" and "href" in node.attributes:
+            elif elt.tag == "a" and "href" in elt.attributes:
                 url = relative_url(elt.attributes["href"], self.url)
                 return self.load(url)
             elt = elt.parent
