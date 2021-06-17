@@ -505,11 +505,11 @@ class LineLayout:
         for word in self.children:
             word.layout()
 
-        max_ascent = max([word.metrics("ascent") for word in self.children])
+        max_ascent = max([word.get_metric("ascent") for word in self.children])
         baseline = self.y + 1.2 * max_ascent
         for word in self.children:
-            word.y = baseline - word.metrics("ascent")
-        max_descent = max([word.metrics("descent") for word in self.children])
+            word.y = baseline - word.get_metric("ascent")
+        max_descent = max([word.get_metric("descent") for word in self.children])
         self.height = 1.2 * (max_ascent + max_descent)
 
     def paint(self, display_list):
@@ -541,7 +541,7 @@ class TextLayout:
         # Do not set self.y!!!
         self.height = self.font.metrics("linespace")
 
-    def metrics(self, param):
+    def get_metric(self, param):
         return self.font.metrics(param)
 
     def paint(self, display_list):
@@ -604,6 +604,7 @@ class DrawRect:
         )
 
 SCROLL_STEP = 100
+CHROME_PX = 100
 
 class Page:
     def __init__(self):
@@ -653,7 +654,7 @@ class Page:
         max_y = self.document.height - HEIGHT
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 
-    def handle_click(self, x, y):
+    def click(self, x, y):
         y += self.scroll
         objs = [obj
                 for obj in tree_to_list(self.document, [])
@@ -674,8 +675,6 @@ class Page:
             self.history.pop()
             back = self.history.pop()
             self.load(back)
-
-CHROME_PX = 100
 
 class Browser:
     def __init__(self):
@@ -701,28 +700,31 @@ class Browser:
         self.draw()
 
     def handle_click(self, e):
+        self.address_bar = None
         if e.y < CHROME_PX:
             if 10 <= e.x < 35 and 40 <= e.y < 90:
                 self.tabs[self.active_tab].go_back()
             elif 50 <= e.x < 790 and 40 <= e.y < 90:
                 self.address_bar = "https://"
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.new_tab("https://browser.engineering/")
+                self.load("https://browser.engineering/")
             elif 40 < e.x and 10 <= e.y < 40:
-                self.active_tab = (e.x - 40) // 80
+                i = (e.x - 40) // 80
+                if i < len(self.tabs):
+                    self.active_tab = i
         else:
-            self.tabs[self.active_tab].handle_click(e.x, e.y - CHROME_PX)
+            self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
         self.draw()
 
     def handle_key(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
-        if self.address_bar is not None:
+        if self.address_bar:
             self.address_bar += e.char
             self.draw()
 
     def handle_enter(self, e):
-        if self.address_bar is not None:
+        if self.address_bar:
             self.tabs[self.active_tab].load(self.address_bar)
             self.address_bar = None
             self.draw()
@@ -739,19 +741,19 @@ class Browser:
                 self.canvas.create_line(x, 0, x, 40)
             self.canvas.create_text(x + 10, 10, text=text, font=font, anchor="nw")
 
-        url = self.address_bar or self.tabs[self.active_tab].url
+        url = self.address_bar if self.address_bar else self.tabs[self.active_tab].url
         font = tkinter.font.Font(family="Courier", size=30)
         self.canvas.create_text(55, 55, anchor='nw', text=url, font=font)
-        if self.address_bar is not None:
+        if self.address_bar:
             w = font.measure(url)
             self.canvas.create_line(55 + w, 55, 55 + w, 85)
 
-        self.canvas.create_rectangle(10, 10, 30, 30)
+        self.canvas.create_rectangle(10, 10, 30, 30, width=1)
         self.canvas.create_text(12, 6, font=font, text="+", anchor="nw")
-        self.canvas.create_rectangle(10, 50, 35, 90)
+        self.canvas.create_rectangle(10, 50, 35, 90, width=1)
         self.canvas.create_polygon(15, 70, 30, 55, 30, 85, fill='black')
 
-    def new_tab(self, url):
+    def load(self, url):
         page = Page()
         self.active_tab = len(self.tabs)
         self.tabs.append(page)
@@ -761,5 +763,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    Browser().new_tab(sys.argv[1])
+    Browser().load(sys.argv[1])
     tkinter.mainloop()
