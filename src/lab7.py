@@ -359,8 +359,6 @@ def cascade_priority(rule):
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
-SCROLL_STEP = 100
-
 BLOCK_ELEMENTS = [
     "html", "body", "article", "section", "nav", "aside",
     "h1", "h2", "h3", "h4", "h5", "h6", "hgroup", "header",
@@ -605,33 +603,21 @@ class DrawRect:
             fill=self.color,
         )
 
-class Browser:
-    def __init__(self):
-        self.window = tkinter.Tk()
-        self.canvas = tkinter.Canvas(
-            self.window,
-            width=WIDTH,
-            height=HEIGHT
-        )
-        self.canvas.pack()
+SCROLL_STEP = 100
 
+class Page:
+    def __init__(self):
         self.history = []
         self.focus = None
-        self.address_bar = ""
         self.scroll = 0
 
-        self.window.bind("<Down>", self.scrolldown)
-        self.window.bind("<Button-1>", self.handle_click)
-        self.window.bind("<Key>", self.keypress)
-        self.window.bind("<Return>", self.pressenter)
         self.display_list = []
-
         with open("browser6.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def load(self, url):
+        self.scroll = 0
         self.url = url
-        self.address_bar = url
         self.history.append(url)
         headers, body = request(url)
         nodes = HTMLParser(body).parse()
@@ -655,21 +641,20 @@ class Browser:
         self.document.layout()
         self.display_list = []
         self.document.paint(self.display_list)
-        self.draw()
 
-    def handle_click_chrome(self, x, y):
-        if 10 <= x < 35 and 10 <= y < 50:
-            self.go_back()
-        elif 50 <= x < 790 and 10 <= y < 50:
-            self.focus = "address bar"
-            self.address_bar = ""
-            self.draw()
+    def draw(self, canvas):
+        canvas.delete("all")
+        for cmd in self.display_list:
+            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
+            if cmd.bottom < self.scroll: continue
+            cmd.execute(self.scroll - CHROME_PX, canvas)
 
-    def handle_click(self, e):
-        self.focus = None
-        if e.y < 60:
-            return self.handle_click_chrome(e.x, e.y)
-        x, y = e.x, e.y + self.scroll - 60
+    def scrolldown(self):
+        max_y = self.document.height - HEIGHT
+        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
+
+    def handle_click(self, x, y):
+        y += self.scroll
         objs = [obj
                 for obj in tree_to_list(self.document, [])
                 if obj.x <= x < obj.x + obj.width
@@ -684,45 +669,97 @@ class Browser:
                 return self.load(url)
             elt = elt.parent
 
-    def keypress(self, e):
-        if len(e.char) == 0: return
-        if not (0x20 <= ord(e.char) < 0x7f): return
-        if self.focus == "address bar":
-            self.address_bar += e.char
-            self.draw()
-
-    def pressenter(self, e):
-        if self.focus == "address bar":
-            self.focus = None
-            self.load(self.address_bar)
-
     def go_back(self):
         if len(self.history) > 1:
             self.history.pop()
             back = self.history.pop()
             self.load(back)
 
-    def draw(self):
-        self.canvas.delete("all")
-        for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - 60: continue
-            if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - 60, self.canvas)
+CHROME_PX = 100
 
-        font = tkinter.font.Font(family="Courier", size=30)
-        self.canvas.create_rectangle(10, 10, 35, 50)
-        self.canvas.create_polygon(15, 30, 30, 15, 30, 45, fill='black')
-        self.canvas.create_text(55, 15, anchor='nw', text=self.address_bar, font=font)
-        if self.focus == "address bar":
-            w = font.measure(self.address_bar)
-            self.canvas.create_line(55 + w, 15, 55 + w, 45)
+class Browser:
+    def __init__(self):
+        self.window = tkinter.Tk()
+        self.canvas = tkinter.Canvas(
+            self.window,
+            width=WIDTH,
+            height=HEIGHT
+        )
+        self.canvas.pack()
 
-    def scrolldown(self, e):
-        max_y = self.document.height - HEIGHT
-        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
+        self.window.bind("<Down>", self.handle_down)
+        self.window.bind("<Button-1>", self.handle_click)
+        self.window.bind("<Key>", self.handle_key)
+        self.window.bind("<Return>", self.handle_enter)
+
+        self.tabs = []
+        self.active_tab = None
+        self.address_bar = None
+
+    def handle_down(self, e):
+        self.tabs[self.active_tab].scrolldown()
         self.draw()
+
+    def handle_click(self, e):
+        if e.y < CHROME_PX:
+            if 10 <= e.x < 35 and 40 <= e.y < 90:
+                self.tabs[self.active_tab].go_back()
+            elif 50 <= e.x < 790 and 40 <= e.y < 90:
+                self.address_bar = "https://"
+            elif 10 <= e.x < 30 and 10 <= e.y < 30:
+                self.new_tab("https://browser.engineering/")
+            elif 40 < e.x and 10 <= e.y < 40:
+                self.active_tab = (e.x - 40) // 80
+        else:
+            self.tabs[self.active_tab].handle_click(e.x, e.y - CHROME_PX)
+        self.draw()
+
+    def handle_key(self, e):
+        if len(e.char) == 0: return
+        if not (0x20 <= ord(e.char) < 0x7f): return
+        if self.address_bar is not None:
+            self.address_bar += e.char
+            self.draw()
+
+    def handle_enter(self, e):
+        if self.address_bar is not None:
+            self.tabs[self.active_tab].load(self.address_bar)
+            self.address_bar = None
+            self.draw()
+
+    def draw(self):
+        self.tabs[self.active_tab].draw(self.canvas)
+
+        for i, tab in enumerate(self.tabs):
+            x = 40 + i * 80
+            weight = 'bold' if i == self.active_tab else 'normal'
+            text = "Tab {}".format(i)
+            font = tkinter.font.Font(size=20, weight=weight)
+            if i != 0:
+                self.canvas.create_line(x, 0, x, 40)
+            self.canvas.create_text(x + 10, 10, text=text, font=font, anchor="nw")
+
+        url = self.address_bar or self.tabs[self.active_tab].url
+        font = tkinter.font.Font(family="Courier", size=30)
+        self.canvas.create_text(55, 55, anchor='nw', text=url, font=font)
+        if self.address_bar is not None:
+            w = font.measure(url)
+            self.canvas.create_line(55 + w, 55, 55 + w, 85)
+
+        self.canvas.create_rectangle(10, 10, 30, 30)
+        self.canvas.create_text(12, 6, font=font, text="+", anchor="nw")
+        self.canvas.create_rectangle(10, 50, 35, 90)
+        self.canvas.create_polygon(15, 70, 30, 55, 30, 85, fill='black')
+
+    def new_tab(self, url):
+        page = Page()
+        self.active_tab = len(self.tabs)
+        self.tabs.append(page)
+        page.load(url)
+        self.draw()
+
 
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+    Browser().new_tab(sys.argv[1])
     tkinter.mainloop()
