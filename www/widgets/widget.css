@@ -22,6 +22,7 @@ html, body, #widget, fieldset { border: none; margin: 0; padding: 0; }
 #input-controls textarea {
     box-sizing: border-box; display: block; width: 100%; font: 1em monospace; margin: 0;
 }
+kbd input.continue { font: 1em monospace; }
 @media (max-width: 600px) { #controls { font-size: 16px; } }
 @media (max-width: 450px) {
   #controls { padding: .5ex; font-size: 14px; }
@@ -37,11 +38,11 @@ html, body, #widget, fieldset { border: none; margin: 0; padding: 0; }
   #step-controls .play::before { content: "Play"; }
 }
 
-button, textarea { border: none; }
+button, textarea, input { border: none; }
 #step-controls button:hover { cursor: pointer; }
-#step-controls button, textarea { background: darkslateblue; color: white; }
-#step-controls button:hover, textarea:focus { background: slateblue; }
-#step-controls button:disabled, textarea:disabled {
+#step-controls button, textarea, input { background: darkslateblue; color: white; }
+#step-controls button:hover, textarea:focus, input:focus { background: slateblue; }
+#step-controls button:disabled, textarea:disabled, input:disabled {
     background: transparent; color: mediumpurple; cursor: default; }
 
 #input-controls button { float: right; }

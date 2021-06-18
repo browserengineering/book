@@ -378,11 +378,12 @@ Elements like `<meta>` and `<link>` are what are called self-closing:
 these tags don't surround content, so you don't ever write `</meta>`
 or `</link>`. Our parser needs special support for them. In HTML,
 there's a [specific list][html5-void-elements] of these self-closing
-tags:[^void-elements]
+tags (the spec calls them "void" tags):[^void-elements]
 
 [html5-void-elements]: https://html.spec.whatwg.org/multipage/syntax.html#void-elements
 
-[^void-elements]: A lot of these tags are obscure or obsolete.
+[^void-elements]: A lot of these tags are obscure. There are additional
+tags not listed here that are obsolete.
 
 ``` {.python}
 SELF_CLOSING_TAGS = [
@@ -398,7 +399,7 @@ def add_tag(self, tag):
     # ...
     elif tag in self.SELF_CLOSING_TAGS:
         parent = self.unfinished[-1]
-        node = Element(text, parent)
+        node = Element(tag, parent)
         parent.children.append(node)
 ```
 
@@ -470,6 +471,7 @@ stripped out:[^for-ws]
 
 ``` {.python indent=12}
 if "=" in attrpair:
+    # ...
     if len(value) > 2 and value[0] in ["'", "\""]:
         value = value[1:-1]
     # ...
@@ -559,7 +561,7 @@ Now we need the `Layout` object to walk the node tree, calling `open_tag`,
 ``` {.python indent=4}
 def recurse(self, tree):
     if isinstance(tree, Text):
-        self.text(tree.text)
+        self.text(tree)
     else:
         self.open_tag(tree.tag)
         for child in tree.children:

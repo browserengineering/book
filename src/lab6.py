@@ -19,7 +19,6 @@ def request(url):
     else:
         host, path = url, ""
 
-
     path = "/" + path
     port = 80 if scheme == "http" else 443
 
@@ -64,12 +63,13 @@ def relative_url(url, current):
     elif url.startswith("/"):
         scheme, hostpath = current.split("://", 1)
         host, oldpath = hostpath.split("/", 1)
-        return host + url
+        return scheme + "://" + host + url
     else:
         dir, _ = current.rsplit("/", 1)
         while url.startswith("../"):
-            dir, _ = dir.rsplit("/", 1)
             url = url[3:]
+            if dir.count("/") == 2: continue
+            dir, _ = dir.rsplit("/", 1)
         return dir + "/" + url
 
 class Text:
@@ -88,12 +88,6 @@ class Element:
         self.children = []
         self.parent = parent
 
-        self.style = {}
-        for pair in attributes.get("style", "").split(";"):
-            if ":" not in pair: continue
-            prop, val = pair.split(":")
-            self.style[prop.strip().lower()] = val.strip()
-
     def __repr__(self):
         attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
         return "<" + self.tag + "".join(attrs) + ">"
@@ -102,6 +96,12 @@ def print_tree(node, indent=0):
     print(" " * indent, node)
     for child in node.children:
         print_tree(child, indent + 2)
+
+def tree_to_list(tree, list):
+    list.append(tree)
+    for child in tree.children:
+        tree_to_list(child, list)
+    return list
 
 class HTMLParser:
     def __init__(self, body):
@@ -210,8 +210,8 @@ class CSSParser:
             self.i += 1
 
     def literal(self, literal):
-        assert self.s[self.i:self.i+len(literal)] == literal
-        self.i += len(literal)
+        assert self.i < len(self.s) and self.s[self.i] == literal
+        self.i += 1
 
     def word(self):
         start = self.i
@@ -240,12 +240,10 @@ class CSSParser:
 
     def body(self):
         pairs = {}
-        self.literal("{")
-        self.whitespace()
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair()
-                pairs[prop] = val
+                pairs[prop.lower()] = val
                 self.whitespace()
                 self.literal(";")
                 self.whitespace()
@@ -256,25 +254,28 @@ class CSSParser:
                     self.whitespace()
                 else:
                     break
-        self.literal("}")
         return pairs
 
     def selector(self):
         out = TagSelector(self.word().lower())
         self.whitespace()
         while self.i < len(self.s) and self.s[self.i] != "{":
-            descendant = TagSelector(self.word().lower())
+            tag = self.word()
+            descendant = TagSelector(tag.lower())
             out = DescendantSelector(out, descendant)
             self.whitespace()
         return out
 
     def parse(self):
         rules = []
-        self.whitespace()
         while self.i < len(self.s):
             try:
+                self.whitespace()
                 selector = self.selector()
+                self.literal("{")
+                self.whitespace()
                 body = self.body()
+                self.literal("}")
                 rules.append((selector, body))
             except AssertionError:
                 why = self.ignore_until(["}"])
@@ -291,7 +292,7 @@ class TagSelector:
         self.priority = 1
 
     def matches(self, node):
-        return self.tag == node.tag
+        return isinstance(node, Element) and self.tag == node.tag
 
 class DescendantSelector:
     def __init__(self, ancestor, descendant):
@@ -306,46 +307,67 @@ class DescendantSelector:
             node = node.parent
         return False
 
-def tree_to_list(tree, list):
-    list.append(tree)
-    for child in tree.children:
-        tree_to_list(child, list)
-    return list
-
 INHERITED_PROPERTIES = {
+    "font-size": "16px",
     "font-style": "normal",
     "font-weight": "normal",
     "color": "black",
 }
 
-def style(node, rules):
-    if isinstance(node, TextNode):
-        node.style = node.parent.style
-    else:
-        node.style = {}
-        for selector, body in rules:
-            if not selector.matches(node): continue
-            for property, value in body.items():
-                node.style[property] = value
-        for property, default in INHERITED_PROPERTIES.items():
-            if property in node.style: continue
+def compute_style(node, property, value):
+    if property == "font-size":
+        if value.endswith("px"):
+            return value
+        elif value.endswith("%"):
             if node.parent:
-                node.style[property] = node.parent.style[property]
+                parent_font_size = node.parent.style["font-size"]
             else:
-                node.style[property] = default
-        for child in node.children:
-            style(child, rules)
+                parent_font_size = INHERITED_PROPERTIES["font-size"]
+            node_pct = float(value[:-1]) / 100
+            parent_px = float(parent_font_size[:-2])
+            return str(node_pct * parent_px) + "px"
+        else:
+            return None
+    else:
+        return value
+
+def style(node, rules):
+    node.style = {}
+    for property, default_value in INHERITED_PROPERTIES.items():
+        if node.parent:
+            node.style[property] = node.parent.style[property]
+        else:
+            node.style[property] = default_value
+    for selector, body in rules:
+        if not selector.matches(node): continue
+        for property, value in body.items():
+            computed_value = compute_style(node, property, value)
+            if not computed_value: continue
+            node.style[property] = computed_value
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        for property, value in pairs.items():
+            computed_value = compute_style(node, property, value)
+            node.style[property] = computed_value
+    for child in node.children:
+        style(child, rules)
 
 def cascade_priority(rule):
     selector, body = rule
     return selector.priority
 
+WIDTH, HEIGHT = 800, 600
+HSTEP, VSTEP = 13, 18
+
+SCROLL_STEP = 100
+
 BLOCK_ELEMENTS = [
     "html", "body", "article", "section", "nav", "aside",
     "h1", "h2", "h3", "h4", "h5", "h6", "hgroup", "header",
-    "footer", "address", "p", "hr", "ol", "ul", "menu", "li",
-    "dl", "dt", "dd", "figure", "figcaption", "main", "div",
-    "table", "form", "fieldset", "legend", "details", "summary",
+    "footer", "address", "p", "hr", "pre", "blockquote",
+    "ol", "ul", "menu", "li", "dl", "dt", "dd", "figure",
+    "figcaption", "main", "div", "table", "form", "fieldset",
+    "legend", "details", "summary"
 ]
 
 def layout_mode(node):
@@ -368,7 +390,6 @@ class BlockLayout:
         self.children = []
 
     def layout(self):
-        breakpoint("layout_pre", self)
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
@@ -391,15 +412,8 @@ class BlockLayout:
 
         self.height = sum([child.height for child in self.children])
 
-        breakpoint("layout_post", self)
 
     def paint(self, display_list):
-        bgcolor = self.node.style.get("background-color",
-                                      "transparent")
-        if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
         for child in self.children:
             child.paint(display_list)
 
@@ -411,7 +425,6 @@ class InlineLayout:
         self.children = []
 
     def layout(self):
-        breakpoint("layout_pre", self)
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -429,13 +442,12 @@ class InlineLayout:
         self.flush()
 
         self.height = self.cursor_y - self.y
-        breakpoint("layout_post", self)
 
     def recurse(self, node):
         if isinstance(node, Text):
             self.text(node)
         else:
-            if self.tag == "br":
+            if node.tag == "br":
                 self.flush()
             for child in node.children:
                 self.recurse(child)
@@ -445,8 +457,8 @@ class InlineLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
-        size = node.style["font-size"] * .75 # ???
-        font = tkinter.font.Font(size=style, weight=weight, slant=style)
+        size = int(float(node.style["font-size"][:-2]) * .75)
+        font = tkinter.font.Font(size=size, weight=weight, slant=style)
         for word in node.text.split():
             w = font.measure(word)
             if self.cursor_x + w > WIDTH - HSTEP:
@@ -468,7 +480,8 @@ class InlineLayout:
         self.cursor_y = baseline + 1.2 * max_descent
 
     def paint(self, display_list):
-        bgcolor = self.node.style.get("background-color", "transparent")
+        bgcolor = self.node.style.get("background-color",
+                                      "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
@@ -484,7 +497,6 @@ class DocumentLayout:
         self.children = []
 
     def layout(self):
-        breakpoint("layout_pre", self)
         child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
@@ -493,7 +505,6 @@ class DocumentLayout:
         self.y = VSTEP
         child.layout()
         self.height = child.height + 2*VSTEP
-        breakpoint("layout_post", self)
 
     def paint(self, display_list):
         self.children[0].paint(display_list)
@@ -514,7 +525,7 @@ class DrawText:
             text=self.text,
             font=self.font,
             anchor='nw',
-            color=self.color,
+            fill=self.color,
         )
 
 class DrawRect:
@@ -533,11 +544,6 @@ class DrawRect:
             fill=self.color,
         )
 
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
-
-SCROLL_STEP = 100
-
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -552,25 +558,27 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
         self.display_list = []
 
+        with open("browser6.css") as f:
+            self.default_style_sheet = CSSParser(f.read()).parse()
+
     def load(self, url):
         headers, body = request(url)
         nodes = HTMLParser(body).parse()
 
-        rules = []
-        with open("browser6.css") as f:
-            rules.extend(CSSParser(f.read()).parse())
+        rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(nodes, [])
-                 if node.tag == "link"
+                 if isinstance(node, Element)
+                 and node.tag == "link"
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
                 header, body = request(relative_url(link, url))
-                rules.extend(CSSParser(body).parse())
             except:
                 continue
-        style(nodes, reversed(sorted(rules, cascade_priority)))
+            rules.extend(CSSParser(body).parse())
+        style(nodes, sorted(rules, key=cascade_priority))
 
         self.document = DocumentLayout(nodes)
         self.document.layout()

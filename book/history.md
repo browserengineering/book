@@ -335,12 +335,21 @@ contrary---browsers worked hard to carefully reproduce each other's undocumented
 behaviors---even bugs---to make sure they continued supporting the whole web.
 
 There never really was a point where any browser openly attempted to break away
-from the standard, despite fears that that might happen. Instead, intense
+from the standard, despite fears that that might happen.[^dhtml] Instead, intense
 competition for market share was channeled into very fast innovation and an
 ever-expanding set of APIs and capabilities for the web, which we nowadays refer
 to as _the web platform,_ not just the “World Wide Web”. This recognizes the
 fact that the web is no longer a document viewing mechanism, but has evolved
 into a fully realized computing platform and ecosystem.[^web-os]
+
+[^dhtml]: Perhaps the closest the web came to fragmenting was with the late-90s
+introduction of features for
+[DHTML](https://en.wikipedia.org/wiki/Dynamic_HTML)---early versions of the Document
+Object Model you'll learn about in this book. Netscape and Internet Explorer at
+first had incompatible implementations of these features, and it took years,
+development of a common specification, and significant pressure campaigns on
+the browsers before standardization was achieved. You can read about this story in
+much more depth [here](https://css-tricks.com/chapter-7-standards/).
 
 [^web-os]: There have even been operating systems built around the web! Examples
 include [webOS](https://en.wikipedia.org/wiki/WebOS), which powered some Palm

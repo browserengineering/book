@@ -225,9 +225,10 @@ Here's a list of block elements:[^from-the-spec]
 BLOCK_ELEMENTS = [
     "html", "body", "article", "section", "nav", "aside",
     "h1", "h2", "h3", "h4", "h5", "h6", "hgroup", "header",
-    "footer", "address", "p", "hr", "ol", "ul", "menu", "li",
-    "dl", "dt", "dd", "figure", "figcaption", "main", "div",
-    "table", "form", "fieldset", "legend", "details", "summary",
+    "footer", "address", "p", "hr", "pre", "blockquote",
+    "ol", "ul", "menu", "li", "dl", "dt", "dd", "figure",
+    "figcaption", "main", "div", "table", "form", "fieldset",
+    "legend", "details", "summary"
 ]
 ```
 
@@ -529,12 +530,11 @@ class InlineLayout:
             display_list.append(DrawText(x, y, word, font))
 ```
 
-Meanwhile `BlockLayout` can add `DrawRect` commands for backgrounds.
-Let's add a gray background to `pre` tags (which are used for code
-examples):
+But it can add also add `DrawRect` commands for backgrounds. Let's add
+a gray background to `pre` tags (which are used for code examples):
 
 ``` {.python}
-class BlockLayout:
+class InlineLayout:
     def paint(self, display_list):
         if self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
@@ -543,9 +543,9 @@ class BlockLayout:
         # ...
 ```
 
-Make sure this code comes *before* the recursive `paint` call on child
-layout objects: the background has to be drawn *below* and therefore
-*before* the text inside the source block.
+Make sure this code comes *before* the loop that adds `DrawText`
+objects: the background has to be drawn *below* and therefore *before*
+the text inside the source block.
 
 With the display list filled out, we need the `paint` method to run
 each graphics command. Let's add an `execute` method for this. On
@@ -652,6 +652,9 @@ This chapter was a dramatic rewrite of your browser's layout engine:
 Tree-based layout makes it possible to dramatically expand our
 browser's styling capabilities. We'll work on that in the [next
 chapter](styles.md).
+
+::: {.signup}
+:::
 
 Outline
 =======

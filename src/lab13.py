@@ -1124,14 +1124,16 @@ class Browser:
     def js_innerHTML(self, handle, s):
         try:
             self.run_rendering_pipeline()
-            doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
+            doc = parse(lex("<!doctype><html><body>" +
+                            s + "</body></html>"))
             new_nodes = doc.children[0].children
             elt = self.handle_to_node[handle]
             elt.children = new_nodes
             for child in elt.children:
                 child.parent = elt
             if self.document:
-                self.set_needs_reflow(layout_for_node(self.document, elt))
+                self.set_needs_reflow(
+                    layout_for_node(self.document, elt))
             else:
                 self.set_needs_layout_tree_rebuild()
         except:

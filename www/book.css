@@ -8,7 +8,7 @@ body {
 }
 
 pre, code { hyphens: none; -webkit-hyphens: none; }
-pre { font-size: 18px; overflow: auto; }
+pre { font-size: 18px; overflow: auto; padding-left: 2ex; }
 
 dt { margin-top: 1em; }
 dd { margin-bottom: 1em; }
@@ -96,9 +96,10 @@ body { counter-reset: fn; }
 .note-container:before { content: " [" counter(fn); color: #a86; }
 .note-container.open:before { content: " ["; color: #a86; }
 .note { font-style: italic; white-space: normal; color: #a86; }
+/* Assume no footnotes on main page, but margin numbers */
+body.main { padding: 0 4ex; }
 @media only screen and (min-width: 1150px) {
     body { width: 65ex; padding: 0 17ex 0 0; }
-    body.main { padding: 0; } /* Assume no footnotes on main page */
     .note {
         float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
         font-size: 110%; vertical-align: reset; text-align: left; color: currentColor;
@@ -125,8 +126,6 @@ body { counter-reset: fn; }
     font-weight: bold; font-family: 'Vollkorn', 'Garamond', serif;
     text-align: center;
 }
-
-pre { margin-left: 2ex; }
 
 figure { text-align: center; }
 .grid figure { margin: .5em; }
@@ -225,3 +224,12 @@ form.states.s-success #signup-close { display: block; }
 .outline code { break-inside: avoid; display: block; }
 .outline > code { margin: .33em 0; }
 .outline code > code { margin-left: 2ch; }
+
+@media print {
+    html { font-size: 12px; }
+    #signup, nav.links { display: none;}
+    .note-container:before { content: " ["; }
+    .note-container, .note-container:before, .note-container:after { color: navy; }
+    pre { font-size: 10px; }
+    #toc a { text-decoration: none; color: black; }
+}

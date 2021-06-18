@@ -188,9 +188,10 @@ SCROLL_STEP = 100
 BLOCK_ELEMENTS = [
     "html", "body", "article", "section", "nav", "aside",
     "h1", "h2", "h3", "h4", "h5", "h6", "hgroup", "header",
-    "footer", "address", "p", "hr", "ol", "ul", "menu", "li",
-    "dl", "dt", "dd", "figure", "figcaption", "main", "div",
-    "table", "form", "fieldset", "legend", "details", "summary",
+    "footer", "address", "p", "hr", "pre", "blockquote",
+    "ol", "ul", "menu", "li", "dl", "dt", "dd", "figure",
+    "figcaption", "main", "div", "table", "form", "fieldset",
+    "legend", "details", "summary"
 ]
 
 def layout_mode(node):
@@ -239,10 +240,6 @@ class BlockLayout:
         breakpoint("layout_post", self)
 
     def paint(self, display_list):
-        if self.node.tag == "pre":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, "gray")
-            display_list.append(rect)
         for child in self.children:
             child.paint(display_list)
 
@@ -279,7 +276,7 @@ class InlineLayout:
 
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node.text)
+            self.text(node)
         else:
             self.open_tag(node.tag)
             for child in node.children:
@@ -311,13 +308,13 @@ class InlineLayout:
             self.flush()
             self.cursor_y += VSTEP
         
-    def text(self, text):
+    def text(self, node):
         font = tkinter.font.Font(
             size=self.size,
             weight=self.weight,
             slant=self.style,
         )
-        for word in text.split():
+        for word in node.text.split():
             w = font.measure(word)
             if self.cursor_x + w > WIDTH - HSTEP:
                 self.flush()
@@ -338,6 +335,10 @@ class InlineLayout:
         self.cursor_y = baseline + 1.2 * max_descent
 
     def paint(self, display_list):
+        if self.node.tag == "pre":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, "gray")
+            display_list.append(rect)
         for x, y, word, font in self.display_list:
             display_list.append(DrawText(x, y, word, font))
 
