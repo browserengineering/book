@@ -65,11 +65,9 @@ def show(body):
             in_angle = False
         elif not in_angle:
             print(c, end="")
-    # return out
 
 def load(url):
     headers, body = request(url)
-    print(body)
     show(body)
 
 if __name__ == "__main__":
