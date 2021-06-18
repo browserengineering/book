@@ -58,8 +58,10 @@ But "our" methods are async:
 One exception: `makefile` is async to allow for downloading external
 pages:
 
-     >>> Test.expr("s.makefile('r', encoding='utf8', newline='foo')")
-     (await s.makefile("r", "utf8", "foo"))
+    >>> Test.expr("s.makefile('r', encoding='utf8', newline='foo')")
+    (await s.makefile("r", {"encoding": "utf8", "newline": "foo"}))
+
+Note that keyword arguments become dictionary arguments at the end.
 
 Some library methods need to be renamed:
 
@@ -147,6 +149,10 @@ translations:
     (node.toString())
     >>> Test.expr("str(node)")
     (node.toString())
+    >>> Test.expr("ord(e.char)")
+    (e.char.charCodeAt(0))
+    >>> Test.expr("enumerate(self.tabs)")
+    (this.tabs.entries())
 
 The `open` function works in a weird way---it has to record all read
 files, which must be constants:
@@ -191,6 +197,8 @@ Math operations work as expected:
     (a + b)
     >>> Test.expr("a / b")
     (a / b)
+    >>> Test.expr("a // b")
+    Math.trunc(a / b)
 
 But some boolean operations use the `truthy` wrapper to handle
 truthiness of arrays (in JS, empty arrays are true):
@@ -200,14 +208,12 @@ truthiness of arrays (in JS, empty arrays are true):
     >>> Test.expr("a or b")
     (truthy(a) || truthy(b))
 
-Comparisons in Python can chain, but we don't support that:
+Comparisons in Python can chain, which we turn into conjunctions:
 
     >>> Test.expr("a < b")
     (a < b)
-    >>> Test.expr("a < b < c")
-    Traceback (most recent call last):
-        ...
-    AssertionError
+    >>> Test.expr("a < b <= c")
+    ((a < b) && (b <= c))
 
 The `in` operator is handled unusually, since there's no equivalent in
 JS. For a fixed list or for a fixed string we can express it directly:
@@ -294,11 +300,18 @@ becomes a special `init` function:
     }
 
 Meanwhile `__repr__` becomes `toString` and it cannot be async---so
-basically don't call any functions for a `__repr__` function:
+basically don't call any functions for a `__repr__` function. The same
+goes for the special-cased `get_metric` function:
 
     >>> Test.stmt("class foo:\n def __repr__(self):\n  return 'foo'")
     class foo {
       toString() {
+        return "foo";
+      }
+    }
+    >>> Test.stmt("class foo:\n def get_metric(self):\n  return 'foo'")
+    class foo {
+      get_metric() {
         return "foo";
       }
     }

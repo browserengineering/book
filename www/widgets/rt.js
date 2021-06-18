@@ -26,8 +26,10 @@ class lib {
 
 static socket(URLS) {
     class socket {
-        constructor(af, sock, proto) {
-            console.assert(af == "inet" && sock == "stream" && proto == "tcp", "Unknown socket triple");
+        constructor(params) {
+            console.assert(params.family == "inet", "socket family must be inet")
+            console.assert(params.type == "stream", "socket type must be stream")
+            console.assert(params.proto == "tcp", "socket proto must be tcp")
         }
         connect(pair) {
             let [host, port] = pair
@@ -40,8 +42,8 @@ static socket(URLS) {
         send(text) {
             this.input += text;
         }
-        async makefile(mode, encoding, newline) {
-            console.assert(encoding == "utf8" && newline == "\r\n", "Unknown socket encoding or line ending");
+        async makefile(mode, params) {
+            console.assert(params.encoding == "utf8" && params.newline == "\r\n", "Unknown socket encoding or line ending");
             console.assert(mode == "r", "Unknown socket makefile mode");
 
             let [line1] = this.input.split("\r\n", 1);
@@ -94,8 +96,8 @@ static socket(URLS) {
 
 static ssl() {
     class context {
-        wrap_socket(s, host) {
-            console.assert(s.host == host, "Invalid SSL server name, does not match socket host");
+        wrap_socket(s, params) {
+            console.assert(s.host == params.server_hostname, "Invalid SSL server name, does not match socket host");
             s.scheme = "https";
             return s;
         }
@@ -118,7 +120,7 @@ static tkinter(options) {
                     if (e.key == 'Arrow' + key.substr(1, key.length-2)) fn({});
                 });
             } else if (key == '<Return>') {
-                window.addEventListener("keydown", function({}) {
+                window.addEventListener("keydown", function(e) {
                     if (e.key == 'Enter') fn({});
                 });
             } else if (['<Button-1>', '<Button-2>', '<Button-3>'].indexOf(key) !== -1) {
@@ -130,11 +132,11 @@ static tkinter(options) {
                     fn({});
                 });
             } else if (key == '<Key>') {
-                TKELEMENT.addEventListener("keydown", function(e) {
+                window.addEventListener("keydown", function(e) {
                     if (e.key.length == 1) fn({ char: e.key });
                 });
             } else if (key.length == 1) {
-                TKELEMENT.addEventListener("keydown", function(e) {
+                window.addEventListener("keydown", function(e) {
                     if (e.key == key) fn({ char: e.key });
                 });
             } else {
@@ -144,10 +146,10 @@ static tkinter(options) {
     }
 
     class Canvas {
-        constructor(tk, w, h) {
+        constructor(tk, params) {
             this.tk = tk;
-            this.tk.elt.width = w * ZOOM;
-            this.tk.elt.height = h * ZOOM;
+            this.tk.elt.width = params.width * ZOOM;
+            this.tk.elt.height = params.height * ZOOM;
             this.ctx = tk.elt.getContext('2d');
             this.ctx.font = "normal normal " + 16 * ZOOM + "px serif"
         }
@@ -159,38 +161,56 @@ static tkinter(options) {
             this.ctx.clearRect(0, 0, this.tk.elt.width, this.tk.elt.height);
         }
 
-        create_rectangle(x1, y1, x2, y2, w, fill) {
-            console.assert(w == 0, "Invalid rectangle stroke width " + w);
-            this.ctx.fillStyle = fill ?? "transparent";
+        create_rectangle(x1, y1, x2, y2, params) {
+            this.ctx.fillStyle = params.fill ?? "transparent";
             this.ctx.fillRect(x1 * ZOOM, y1 * ZOOM, (x2 - x1) * ZOOM, (y2 - y1) * ZOOM);
+            if ((params.w ?? 0) != 0) {
+                this.ctx.strokeWidth = params.w;
+                this.ctx.stroke()
+            }
         }
 
         create_line(x1, y1, x2, y2) {
+            this.ctx.beginPath();
             this.ctx.moveTo(x1 * ZOOM, y1 * ZOOM);
             this.ctx.lineTo(x2 * ZOOM, y2 * ZOOM);
+            this.ctx.strokeWidth = 1;
             this.ctx.stroke();
         }
 
-        create_text(x, y, txt, font, anchor, fill) {
-            if (anchor == "nw") {
+        create_polygon(... args) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(args[0] * ZOOM, args[1] * ZOOM);
+            let i;
+            for (i = 2; i < args.length - 1; i += 2) {
+                this.ctx.lineTo(args[i] * ZOOM, args[i + 1] * ZOOM);
+            }
+            this.ctx.fillStyle = args[i].fill ?? "transparent";
+            this.ctx.fill();
+            this.ctx.strokeWidth = 1;
+            this.ctx.stroke();
+        }
+
+        create_text(x, y, params) {
+            if (params.anchor == "nw") {
                 this.ctx.textAlign = "left";
                 this.ctx.textBaseline = "top";
             } else {
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "middle";
             }
-            if (font) this.ctx.font = font.string;
+            if (params.font) this.ctx.font = params.font.string;
             this.ctx.lineWidth = 0;
-            this.ctx.fillStyle = fill ?? "black";
-            this.ctx.fillText(txt, x * ZOOM, y * ZOOM);
+            this.ctx.fillStyle = params.fill ?? "black";
+            if (params.text) this.ctx.fillText(params.text, x * ZOOM, y * ZOOM);
         }
     }
     
     class Font {
-        constructor(size, weight, style) {
-            this.size = size;
-            this.weight = weight;
-            this.style = style;
+        constructor(params) {
+            this.size = params.size ?? 16;
+            this.weight = params.weight ?? "normal";
+            this.style = params.style ?? "normal";
             this.string = (this.style == "roman" ? "normal" : this.style) + 
                 " " + this.weight + " " + this.size * ZOOM + "px serif";
         }
