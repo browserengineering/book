@@ -11,6 +11,7 @@ def request(url):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
+    print("url: " + url)
     host = ''
     path = ''
     if ("/" in url):
