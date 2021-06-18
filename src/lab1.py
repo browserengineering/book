@@ -56,8 +56,7 @@ def request(url):
 
     return headers, body
 
-def get_text(body):
-    out = ''
+def show(body):
     in_angle = False
     for c in body:
         if c == "<":
@@ -65,13 +64,13 @@ def get_text(body):
         elif c == ">":
             in_angle = False
         elif not in_angle:
-            out = out + c
-    return out
+            print(c, end="")
+    # return out
 
 def load(url):
     headers, body = request(url)
     print(body)
-    print(get_text(body))
+    show(body)
 
 if __name__ == "__main__":
     import sys

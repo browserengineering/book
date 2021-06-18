@@ -467,7 +467,6 @@ So, to create our very, very simple web browser, let's take the page
 HTML and print all the text, but not the tags, in it:[^23]
 
 ``` {.python}
-out = ''
 in_angle = False
 for c in body:
     if c == "<":
@@ -475,7 +474,7 @@ for c in body:
     elif c == ">":
         in_angle = False
     elif not in_angle:
-        out = out + c
+        print(c, end="")
 ```
 
 This code is pretty complex. It goes through the request body character
@@ -487,7 +486,7 @@ normal characters not inside a tag, are printed.[^24]
 Let's put this code into a new function, `show`:
 
 ``` {.python}
-def get_text(body):
+def show(body):
     # ...
 ```
 
@@ -497,7 +496,7 @@ We can now load a web page just by stringing together `request` and
 ``` {.python}
 def load(url):
     headers, body = request(url)
-    print(get_text(body))
+    show(body)
 ```
 
 Add the following code to run `load` from the command line:
