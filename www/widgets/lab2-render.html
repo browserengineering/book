@@ -22,8 +22,8 @@
 <script type="module" src="lab2.js"></script>
 <script type="module" src="rt.js"></script>
 <script type="module">
-import { http_textarea, lib, Widget } from "./rt.js";
-import { set_width, set_height, set_vstep, set_hstep, Browser }
+import { http_textarea, lib, Widget } from "./rt-module.js";
+import { Browser }
   from "./lab2.js";
 
 export { tkinter };
@@ -35,12 +35,11 @@ const tkinter = lib.tkinter({ canvas: document.querySelector("#canvas"), zoom: 2
 let widget = new Widget(document.querySelector("#controls"));
 widget.pause("draw");
 widget.run(async function() {
-    set_width(16 * 11);
-    set_height(20 * 4);
-    set_hstep(16);
-    set_vstep(20);
-
-    let b = await (new Browser()).init(socket, tkinter);
-    await b.load("http://input/")
+    let width = 16 * 11;
+    let height = 20 * 4;
+    let hstep = 16;
+    let vstep = 20;
+    let b = await (new Browser()).init(socket, tkinter, width, height, hstep, vstep);
+    await b.load("http://input/");
 });
 </script>

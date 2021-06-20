@@ -169,7 +169,6 @@ OUR_METHODS = []
 FILES = []
 
 EXPORTS = []
-print('intialize exports')
 
 def load_outline(ol):
     for item in ol:
@@ -177,7 +176,6 @@ def load_outline(ol):
         elif isinstance(item, outlines.Const):
             OUR_CONSTANTS.extend(item.names)
         elif isinstance(item, outlines.Function):
-            print("outilne for: " + item.name)
             OUR_FNS.append(item.name)
         elif isinstance(item, outlines.Class):
             OUR_CLASSES.append(item.name)
@@ -271,12 +269,10 @@ def compile_method(base, name, args, ctx):
         raise UnsupportedConstruct()
 
 def compile_function(name, args, ctx):
-    print("compile_function: " + name)
     args_js = [compile_expr(arg, ctx) for arg in args]
     if name in RENAME_FNS:
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
     elif name in OUR_FNS:
-        print("adding: "  + name)
         EXPORTS.append(name)
         return "await " + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_CLASSES:
@@ -700,20 +696,20 @@ def compile(tree, ctx, indent=0):
     else:
         raise UnsupportedConstruct()
     
-def compile_module(tree, name):
+def compile_module(tree, name, use_js_modules):
     assert isinstance(tree, ast.Module)
     ctx = Context("module", {})
 
     items = [compile(item, indent=0, ctx=ctx) for item in tree.body]
 
-    print("Exports:")
-    print(EXPORTS)
-    exports = ''
-    if len(EXPORTS) > 0:
-        exports = "export {{ {} }};\n\n".format(",".join(EXPORTS))
+    exports = ""
+    imports = ""
+    if use_js_modules:
+        if len(EXPORTS) > 0:
+            exports = "export {{ {} }};\n\n".format(",".join(EXPORTS))
 
-    import_arr = [ 'breakpoint', 'pysplit', 'truthy' ]
-    imports = "import {{ {} }} from \"./rt.js\";".format(",".join(import_arr))
+        import_arr = [ 'breakpoint', 'pysplit', 'truthy' ]
+        imports = "import {{ {} }} from \"./rt-module.js\";".format(",".join(import_arr))
 
     return "{}\n{}\n{}".format(
         exports, imports, "\n\n".join(items))
@@ -729,6 +725,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compiles each chapter's Python code to JavaScript")
     parser.add_argument("--hints", default=None, type=argparse.FileType())
     parser.add_argument("--indent", default=2, type=int)
+    parser.add_argument("--use_js_modules", default=False, type=bool)
     parser.add_argument("python", type=argparse.FileType())
     parser.add_argument("javascript", type=argparse.FileType("w"))
     args = parser.parse_args()
@@ -739,7 +736,7 @@ if __name__ == "__main__":
     INDENT = args.indent
     tree = AST39.parse(args.python.read(), args.python.name)
     load_outline(outlines.outline(tree))
-    js = compile_module(tree, name[:-len(".py")])
+    js = compile_module(tree, name[:-len(".py")], args.use_js_modules)
 
     for fn in FILES:
         path = os.path.join(os.path.dirname(args.python.name), fn)

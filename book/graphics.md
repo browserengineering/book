@@ -123,9 +123,9 @@ browser won't use them: we will need finer-grained control over
 appearance, which a canvas provides:[^7]
 
 ``` {.python expected=False}
-WIDTH, HEIGHT = 800, 600
+width, height = 800, 600
 window = tkinter.Tk()
-canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
+canvas = tkinter.Canvas(window, width=width, height=height)
 canvas.pack()
 ```
 
@@ -141,13 +141,18 @@ so to keep it all organized let's make an object:
 
 ``` {.python}
 class Browser:
-    def __init__(self):
+    def __init__(self, socket, tkinter, width, height, hstep, vstep):
+        self.socket = socket
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
             self.window, 
-            width=WIDTH,
-            height=HEIGHT
-        )
+            width=width,
+            height=height)
+        self.width = width
+        self.height = height
+        self.hstep = hstep
+        self.vstep = vstep
+
         self.canvas.pack()
 ```
 
@@ -170,7 +175,11 @@ the Tk `mainloop`:
 ``` {.python}
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+    width = 800
+    height = 600
+    hstep = 13
+    vstep = 18
+    Browser(socket, tkinter, width, height, hstep, vstep).load(sys.argv[1])
     tkinter.mainloop()
 ```
 
@@ -241,11 +250,11 @@ Why a blob instead of letters? Well, of course, because we are drawing
 every letter in the same place, so they all overlap! Let's fix that:
 
 ``` {.python expected=False}
-HSTEP, VSTEP = 13, 18
-cursor_x, cursor_y = HSTEP, VSTEP
+hstep, vstep = 13, 18
+cursor_x, cursor_y = hstep, vstep
 for c in text:
     self.canvas.create_text(cursor_x, cursor_y, text=c)
-    cursor_x += HSTEP
+    cursor_x += hstep
 ```
 
 The variables `cursor_x` and `cursor_y` point to where the next
@@ -263,9 +272,9 @@ to *wrap* the text once we reach the edge of the screen:
 ``` {.python indent=8}
 for c in text:
     # ...
-    if cursor_x >= WIDTH - HSTEP:
-        cursor_y += VSTEP
-        cursor_x = HSTEP
+    if cursor_x >= width - hstep:
+        cursor_y += vstep
+        cursor_x = hstep
 ```
 
 The code increases `cursor_y` and resets `cursor_x`[^crlf] once
@@ -336,9 +345,9 @@ Since `layout` doesn't need to access anything in `Browser`, it can be
 a standalone function:
 
 ``` {.python}
-def layout(text):
+def layout(text, width, hstep, vstep):
     display_list = []
-    cursor_x, cursor_y = HSTEP, VSTEP
+    cursor_x, cursor_y = hstep, vstep
     for c in text:
         display_list.append((cursor_x, cursor_y, c))
         # ...
@@ -378,7 +387,7 @@ scrolled:
 
 ``` {.python}
 class Browser:
-    def __init__(self):
+    def __init__(self, socket, tkinter, width, height, hstep, vstep):
         # ...
         self.scroll = 0
 ```
@@ -416,7 +425,7 @@ call that function when the key is pressed. For example, to bind to
 the down arrow key, write:
 
 ``` {.python}
-def __init__(self):
+def __init__(self, socket, tkinter, width, height, hstep, vstep):
     # ...
     self.window.bind("<Down>", self.scrolldown)
 ```
@@ -471,8 +480,8 @@ window, and we can skip drawing them in `render`:
 
 ``` {.python}
 for x, y, c in self.display_list:
-    if y > self.scroll + HEIGHT: continue
-    if y + VSTEP < self.scroll: continue
+    if y > self.scroll + self.height: continue
+    if y + self.vstep < self.scroll: continue
     # ...
 ```
 

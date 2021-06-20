@@ -65,44 +65,32 @@ def lex(body):
         breakpoint("lex", text)
     return text
 
-def set_width(width):
-    WIDTH = width
-
-def set_height(height):
-    HEIGHT = height
-
-def set_hstep(hstep):
-    HSTEP = hstep
-
-def set_vstep(vstep):
-    VSTEP = vstep
-
-WIDTH, HEIGHT = 0, 0
-HSTEP, VSTEP = 0, 0
-
 SCROLL_STEP = 100
 
-def layout(text):
+def layout(text, width, hstep, vstep):
     display_list = []
-    cursor_x, cursor_y = HSTEP, VSTEP
+    cursor_x, cursor_y = hstep, vstep
     for c in text:
         display_list.append((cursor_x, cursor_y, c))
-        cursor_x += HSTEP
-        if cursor_x >= WIDTH - HSTEP:
-            cursor_y += VSTEP
-            cursor_x = HSTEP
+        cursor_x += hstep
+        if cursor_x >= width - hstep:
+            cursor_y += vstep
+            cursor_x = hstep
         breakpoint("layout", display_list)
     return display_list
 
 class Browser:
-    def __init__(self, socket, window, canvas):
+    def __init__(self, socket, tkinter, width, height, hstep, vstep):
         self.socket = socket
-        self.window = window
-        self.canvas = canvas
-        set_width(WIDTH)
-        set_height(HEIGHT)
-        set_hstep(HSTEP)
-        set_vstep(VSTEP)
+        self.window = tkinter.Tk()
+        self.canvas = tkinter.Canvas(
+            self.window,
+            width=width,
+            height=height)
+        self.width = width
+        self.height = height
+        self.hstep = hstep
+        self.vstep = vstep
 
         self.canvas.pack()
 
@@ -112,33 +100,32 @@ class Browser:
     def load(self, url):
         headers, body = request(self.socket, url)
         text = lex(body)
-        self.display_list = layout(text)
+        self.display_list = layout(text, self.width, self.hstep, self.vstep)
         self.draw()
 
     def draw(self):
         self.canvas.delete("all")
         for x, y, c in self.display_list:
             breakpoint("draw")
-            if y > self.scroll + HEIGHT: continue
-            if y + VSTEP < self.scroll: continue
+            if y > self.scroll + self.height: continue
+            if y + self.vstep < self.scroll: continue
             self.canvas.create_text(x, y - self.scroll, text=c)
 
     def scrolldown(self, e):
         self.scroll += SCROLL_STEP
         self.draw()
 
+def my_breakpoint(arg1=None, arg2=None):
+    return ""
+
 if __name__ == "__main__":
     import sys
 
-    set_width(800)
-    set_height(600)
-    set_hstep(13)
-    set_vstep(18)
+    breakpoint = my_breakpoint
 
-    window = tkinter.Tk();
-    Browser(socket, window, tkinter.Canvas(
-            window,
-            width=WIDTH,
-            height=HEIGHT
-        )).load(sys.argv[1])
+    width = 800
+    height = 600
+    hstep = 13
+    vstep = 18
+    Browser(socket, tkinter, width, height, hstep, vstep).load(sys.argv[1])
     tkinter.mainloop()
