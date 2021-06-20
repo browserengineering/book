@@ -1,5 +1,7 @@
 /* This file simulates Python packages used by the WBE browser */
 
+export { breakpoint, http_textarea, lib, pysplit, truthy, Widget };
+
 window.TKELEMENT = null;
 
 function wrap_class(cls) {

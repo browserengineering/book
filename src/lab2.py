@@ -8,7 +8,7 @@ import socket
 import ssl
 import tkinter
 
-def request(url):
+def request(socket, url):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
@@ -65,8 +65,20 @@ def lex(body):
         breakpoint("lex", text)
     return text
 
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
+def set_width(width):
+    WIDTH = width
+
+def set_height(height):
+    HEIGHT = height
+
+def set_hstep(hstep):
+    HSTEP = hstep
+
+def set_vstep(vstep):
+    VSTEP = vstep
+
+WIDTH, HEIGHT = 0, 0
+HSTEP, VSTEP = 0, 0
 
 SCROLL_STEP = 100
 
@@ -83,20 +95,26 @@ def layout(text):
     return display_list
 
 class Browser:
-    def __init__(self):
+    def __init__(self, socket, tkinter):
+        self.socket = socket
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
             self.window,
             width=WIDTH,
             height=HEIGHT
         )
+        set_width(WIDTH)
+        set_height(HEIGHT)
+        set_hstep(HSTEP)
+        set_vstep(VSTEP)
+
         self.canvas.pack()
 
         self.scroll = 0
         self.window.bind("<Down>", self.scrolldown)
 
     def load(self, url):
-        headers, body = request(url)
+        headers, body = request(self.socket, url)
         text = lex(body)
         self.display_list = layout(text)
         self.draw()
@@ -115,5 +133,11 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+
+    set_width(800)
+    set_height(600)
+    set_hstep(13)
+    set_vstep(18)
+
+    Browser(socket, tkinter).load(sys.argv[1])
     tkinter.mainloop()

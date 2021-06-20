@@ -168,12 +168,16 @@ OUR_METHODS = []
 
 FILES = []
 
+EXPORTS = []
+print('intialize exports')
+
 def load_outline(ol):
     for item in ol:
         if isinstance(item, outlines.IfMain): continue
         elif isinstance(item, outlines.Const):
             OUR_CONSTANTS.extend(item.names)
         elif isinstance(item, outlines.Function):
+            print("outilne for: " + item.name)
             OUR_FNS.append(item.name)
         elif isinstance(item, outlines.Class):
             OUR_CLASSES.append(item.name)
@@ -267,10 +271,13 @@ def compile_method(base, name, args, ctx):
         raise UnsupportedConstruct()
 
 def compile_function(name, args, ctx):
+    print("compile_function: " + name)
     args_js = [compile_expr(arg, ctx) for arg in args]
     if name in RENAME_FNS:
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
     elif name in OUR_FNS:
+        print("adding: "  + name)
+        EXPORTS.append(name)
         return "await " + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
@@ -519,6 +526,7 @@ def compile(tree, ctx, indent=0):
         ctx[tree.name] = True
         ctx2 = Context("class", ctx)
         parts = [compile(part, indent=indent + INDENT, ctx=ctx2) for part in tree.body]
+        EXPORTS.append(tree.name)
         return " " * indent + "class " + tree.name + " {\n" + "\n\n".join(parts) + "\n}"
     elif isinstance(tree, ast.FunctionDef):
         assert not tree.decorator_list
@@ -697,7 +705,18 @@ def compile_module(tree, name):
     ctx = Context("module", {})
 
     items = [compile(item, indent=0, ctx=ctx) for item in tree.body]
-    return "\n\n".join(items)
+
+    print("Exports:")
+    print(EXPORTS)
+    exports = ''
+    if len(EXPORTS) > 0:
+        exports = "export {{ {} }};\n\n".format(",".join(EXPORTS))
+
+    import_arr = [ 'breakpoint', 'pysplit', 'truthy' ]
+    imports = "import {{ {} }} from \"./rt.js\";".format(",".join(import_arr))
+
+    return "{}\n{}\n{}".format(
+        exports, imports, "\n\n".join(items))
 
 if __name__ == "__main__":
     import sys, os

@@ -19,9 +19,15 @@
   <canvas id="canvas" width="352" height="160"></canvas>
 </figure>
 
-<script src="lab2.js"></script>
-<script src="rt.js"></script>
-<script>
+<script type="module" src="lab2.js"></script>
+<script type="module" src="rt.js"></script>
+<script type="module">
+import { http_textarea, lib, Widget } from "./rt.js";
+import { set_width, set_height, set_vstep, set_hstep, Browser }
+  from "./lab2.js";
+
+export { tkinter };
+
 const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
 const ssl = lib.ssl();
 const tkinter = lib.tkinter({ canvas: document.querySelector("#canvas"), zoom: 2.0 });
@@ -29,12 +35,12 @@ const tkinter = lib.tkinter({ canvas: document.querySelector("#canvas"), zoom: 2
 let widget = new Widget(document.querySelector("#controls"));
 widget.pause("draw");
 widget.run(async function() {
-    WIDTH = 16 * 11;
-    HEIGHT = 20 * 4;
-    HSTEP = 16;
-    VSTEP = 20;
+    set_width(16 * 11);
+    set_height(20 * 4);
+    set_hstep(16);
+    set_vstep(20);
 
-    let b = await (new Browser()).init();
+    let b = await (new Browser()).init(socket, tkinter);
     await b.load("http://input/")
 });
 </script>
