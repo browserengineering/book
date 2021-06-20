@@ -95,14 +95,10 @@ def layout(text):
     return display_list
 
 class Browser:
-    def __init__(self, socket, tkinter):
+    def __init__(self, socket, window, canvas):
         self.socket = socket
-        self.window = tkinter.Tk()
-        self.canvas = tkinter.Canvas(
-            self.window,
-            width=WIDTH,
-            height=HEIGHT
-        )
+        self.window = window
+        self.canvas = canvas
         set_width(WIDTH)
         set_height(HEIGHT)
         set_hstep(HSTEP)
@@ -139,5 +135,10 @@ if __name__ == "__main__":
     set_hstep(13)
     set_vstep(18)
 
-    Browser(socket, tkinter).load(sys.argv[1])
+    window = tkinter.Tk();
+    Browser(socket, window, tkinter.Canvas(
+            window,
+            width=WIDTH,
+            height=HEIGHT
+        )).load(sys.argv[1])
     tkinter.mainloop()
