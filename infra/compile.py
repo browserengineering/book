@@ -703,16 +703,22 @@ def compile_module(tree, name, use_js_modules):
     items = [compile(item, indent=0, ctx=ctx) for item in tree.body]
 
     exports = ""
-    imports = ""
+    rt_imports = ""
+    render_imports = ""
     if use_js_modules:
         if len(EXPORTS) > 0:
             exports = "export {{ {} }};\n\n".format(",".join(EXPORTS))
 
-        import_arr = [ 'breakpoint', 'pysplit', 'truthy' ]
-        imports = "import {{ {} }} from \"./rt-module.js\";".format(",".join(import_arr))
+        imports_str = "import {{ {} }} from \"./{}\";"
 
-    return "{}\n{}\n{}".format(
-        exports, imports, "\n\n".join(items))
+        rt_imports_arr = [ 'breakpoint', 'pysplit', 'truthy' ]
+        rt_imports = imports_str.format(",".join(rt_imports_arr), "rt-module.js")
+
+        render_imports_array = [ 'tkinter', 'socket' ]
+        render_imports = imports_str.format(",".join(render_imports_array), "render.js")
+
+    return "{}\n{}\n{}\n\n{}".format(
+        exports, rt_imports, render_imports, "\n\n".join(items))
 
 if __name__ == "__main__":
     import sys, os

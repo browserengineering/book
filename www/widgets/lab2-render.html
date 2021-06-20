@@ -22,15 +22,9 @@
 <script type="module" src="lab2.js"></script>
 <script type="module" src="rt.js"></script>
 <script type="module">
-import { http_textarea, lib, Widget } from "./rt-module.js";
+import { Widget } from "./rt-module.js";
 import { Browser }
   from "./lab2.js";
-
-export { tkinter };
-
-const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
-const ssl = lib.ssl();
-const tkinter = lib.tkinter({ canvas: document.querySelector("#canvas"), zoom: 2.0 });
 
 let widget = new Widget(document.querySelector("#controls"));
 widget.pause("draw");
@@ -39,7 +33,7 @@ widget.run(async function() {
     let height = 20 * 4;
     let hstep = 16;
     let vstep = 20;
-    let b = await (new Browser()).init(socket, tkinter, width, height, hstep, vstep);
+    let b = await (new Browser()).init(width, height, hstep, vstep);
     await b.load("http://input/");
 });
 </script>

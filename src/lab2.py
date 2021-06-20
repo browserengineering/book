@@ -8,7 +8,7 @@ import socket
 import ssl
 import tkinter
 
-def request(socket, url):
+def request(url):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
@@ -80,8 +80,7 @@ def layout(text, width, hstep, vstep):
     return display_list
 
 class Browser:
-    def __init__(self, socket, tkinter, width, height, hstep, vstep):
-        self.socket = socket
+    def __init__(self, width, height, hstep, vstep):
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
             self.window,
@@ -98,7 +97,7 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
 
     def load(self, url):
-        headers, body = request(self.socket, url)
+        headers, body = request(url)
         text = lex(body)
         self.display_list = layout(text, self.width, self.hstep, self.vstep)
         self.draw()
@@ -127,5 +126,5 @@ if __name__ == "__main__":
     height = 600
     hstep = 13
     vstep = 18
-    Browser(socket, tkinter, width, height, hstep, vstep).load(sys.argv[1])
+    Browser(width, height, hstep, vstep).load(sys.argv[1])
     tkinter.mainloop()
