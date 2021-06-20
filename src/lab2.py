@@ -116,7 +116,7 @@ class Browser:
         self.draw()
 
 def my_breakpoint(arg1=None, arg2=None):
-    return ""
+    pass
 
 if __name__ == "__main__":
     import sys
