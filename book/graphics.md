@@ -141,8 +141,7 @@ so to keep it all organized let's make an object:
 
 ``` {.python}
 class Browser:
-    def __init__(self, socket, tkinter, width, height, hstep, vstep):
-        self.socket = socket
+    def __init__(self, width, height, hstep, vstep):
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
             self.window, 
@@ -179,7 +178,7 @@ if __name__ == "__main__":
     height = 600
     hstep = 13
     vstep = 18
-    Browser(socket, tkinter, width, height, hstep, vstep).load(sys.argv[1])
+    Browser(width, height, hstep, vstep).load(sys.argv[1])
     tkinter.mainloop()
 ```
 
@@ -387,7 +386,7 @@ scrolled:
 
 ``` {.python}
 class Browser:
-    def __init__(self, socket, tkinter, width, height, hstep, vstep):
+    def __init__(self, width, height, hstep, vstep):
         # ...
         self.scroll = 0
 ```
@@ -425,7 +424,7 @@ call that function when the key is pressed. For example, to bind to
 the down arrow key, write:
 
 ``` {.python}
-def __init__(self, socket, tkinter, width, height, hstep, vstep):
+def __init__(self, width, height, hstep, vstep):
     # ...
     self.window.bind("<Down>", self.scrolldown)
 ```
