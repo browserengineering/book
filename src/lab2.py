@@ -114,13 +114,8 @@ class Browser:
         self.scroll += SCROLL_STEP
         self.draw()
 
-def my_breakpoint(arg1=None, arg2=None):
-    pass
-
 if __name__ == "__main__":
     import sys
-
-    breakpoint = my_breakpoint
 
     width = 800
     height = 600
