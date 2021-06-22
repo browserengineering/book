@@ -929,8 +929,9 @@ class Browser:
         if self.needs_quit:
             sys.exit()
         if self.needs_animation_frame and not self.display_scheduled:
-            self.canvas.after(REFRESH_RATE_MS,
-                              self.main_thread_runner.schedule_animation_frame)
+            self.canvas.after(
+                REFRESH_RATE_MS,
+                self.main_thread_runner.schedule_animation_frame)
             self.display_scheduled = True
 
         if self.needs_draw:
