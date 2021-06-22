@@ -8,10 +8,252 @@ next: forms
 Our toy browser draws web pages, but it is still missing the key
 insight of *hypertext*: pages linked together into a web of
 information. We can watch the waves, but cannot yet surf the web. We
-need to implement hyperlinks, and we might as well add an address bar
-and a back button while we're at it.
+need to implement hyperlinks, an address bar, and the rest of the
+browser interface.
 
 <a name="hit-testing">
+
+Where are the links?
+====================
+
+Before we can quite get to _clicking_ on links, we first need to
+answer a more fundamental question: where on the screen are the links?
+The reason this is tricky is that while paragraphs and headings
+have corresponding objects in the layout tree with sizes and positions
+attached, formatted text (like links) do not. We need to fix that.
+
+The big idea is to introduce two new types of layout objects,
+`LineLayout` and `TextLayout`, that go inside an `InlineLayout`
+objects. `LineLayout`s represent a line of text and stack one after
+another vertically. `TextLayout`s represent individual words and are
+arranged on the line left to right. We'll need `InlineLayout` to
+create both objects, and then we'll need to write layout methods for
+them.
+
+Let's start by defining our two new types of layout objects. A
+`LineLayout` object is straightforward:
+
+``` {.python}
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+```
+
+However, a `TextLayout` object needs to refer not just to a single
+text node but also to a specific word in that text node. After all, a
+single text node might be split over multiple lines, and so might need
+multiple `TextLayout` objects:
+
+``` {.python}
+class TextLayout:
+    def __init__(self, node, word, parent, previous):
+        self.node = node
+        self.word = word
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+```
+
+Right now, the `InlineLayout` object breaks text into lines using its
+`line` field, computes the position of each line and each word in its
+`flush` method, and stores the words in its `display_list` field. We
+want to change this up.
+
+It's going to be a lot of work to refactor this code, but the end
+result will be cleaner and simpler, and more importantly it will
+provide us with a layout object for every piece of text, which we'll
+use to determine where links are and ultimately to enable clicking on
+links.
+ 
+Let's start in the very middle of things, the `text` method that lays
+out text into lines. This one line corresponds to placing a word in a
+line of text:
+
+``` {.python.lab6 indent=12}
+self.line.append((self.cursor_x, word, font, color))
+```
+
+An `InlineLayout` object will now have lots of lines in it, so there
+won't be a `line` field. And each line will be a `LineLayout` object,
+now an array. And each word in the line will be a `TextLayout` object,
+not just an unweidly four-tuple. So it should look like this:
+
+``` {.python indent=12}
+line = self.children[-1]
+text = TextLayout(node, word, line, self.previous_word)
+line.children.append(text)
+self.previous_word = text
+```
+
+Note that I've added a new field here, `previous_word`, for the
+previous word in that same line. So let's think about when the code
+starts a new line---it's when it calls `flush`. Now, `flush` does a
+lot of stuff, like positioning text and clearing the `line` field. We
+don't want to do all that---we just want to create a new `LineLayout`
+object:
+
+``` {.python indent=12}
+if self.cursor_x + w > WIDTH - HSTEP:
+    self.new_line()
+```
+
+This `new_line` method is pretty simple, since it isn't doing any
+layout stuff:
+
+``` {.python indent=4}
+def new_line(self):
+    self.previous_word = None
+    self.cursor_x = self.x
+    last_line = self.children[-1] if self.children else None
+    new_line = LineLayout(self.node, self, last_line)
+    self.children.append(new_line)
+```
+
+Now that we have the core `text` method updated, there are just a few
+more cleanups to do. In the core `layout` method, we don't need to
+initialize the `display_list` or `cursor_y` or `line` fields. But we
+do need to lay out each line:
+
+``` {.python indent=4}
+def layout(self):
+    # ...
+    self.new_line()
+    self.recurse(self.node)
+    for line in self.children:
+        line.layout()
+    self.height = sum([line.height for line in self.children])
+```
+
+With the `display_list` gone, we do need to change the `paint` method.
+instead of copying from the `display_list`, it just needs to
+recursively paint each line:
+
+``` {.python indent=4}
+def paint(self, display_list):
+    # ...
+    for child in self.children:
+        child.paint(display_list)
+```
+
+The `flush` method now isn't called from anywhere, but keep it around,
+because we now need to write the `layout` method for lines and text
+objects.
+
+Let's start with lines. Lines stack vertically and take up their
+parent's full width, so computing `x` and `y` and `width` looks the
+same as for our other boxes:[^mixins]
+
+[^mixins]: You could reduce the duplication with some helper methods
+    (or even something more elaborate, like mixin classes), but in a
+    real browser these code snippets would look more different, due to
+    supporting all kinds of extra features.
+
+``` {.python}
+class LineLayout:
+    def layout(self):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+        
+        # ...
+```
+
+Computing height, though, is different---this is where all that logic
+to compute maximum ascents, maximum descents, and so on from the old
+`flush` method comes in. First, let's lay out each word:
+
+``` {.python}
+class LineLayout:
+    def layout(self):
+        # ...
+        for word in self.children:
+            word.layout()
+```
+
+When each word is laid out, it can compute its `font`, using code
+basically identical to what's in `InlineLayout`:
+
+``` {.python}
+class TextLayout:
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(float(self.node.style["font-size"][:-2]) * .75)
+        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
+```
+
+Now when we're laying out a `LineLayout` object, we can use this
+`font` field to compute maximum ascents and descents:
+
+``` {.python}
+class LineLayout:
+    def layout(self):
+        # ...
+        max_ascent = max([word.font.metrics("ascent")
+                          for word in self.children])
+        baseline = self.y + 1.2 * max_ascent
+        for word in self.children:
+            word.y = baseline - word.font.metrics("ascent")
+        max_descent = max([word.font.metrics("descent")
+                           for word in self.children])
+        self.height = 1.2 * (max_ascent + max_descent)
+```
+
+Note that we're also setting the `y` field on each word in the line!
+That means that inside `TextLayout`'s `layout` method, we only need to
+compute `x`, `width`, and `height`:
+
+``` {.python}
+class TextLayout:
+    def layout(self):
+        # ...
+
+        # Do not set self.y!!!
+        self.width = self.font.measure(self.word)
+
+        if self.previous:
+            space = self.previous.font.measure(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+        self.height = self.font.metrics("linespace")
+```
+
+Finally, now that we have all of the `LineLayout` and `TextLayout`
+objects created and laid out, painting them is pretty easy. For
+`LineLayout` we just recurse:
+
+``` {.python}
+class LineLayout:
+    def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+```
+
+For `TextLayout` we just create a single `DrawText` call:
+
+``` {.python}
+class TextLayout:
+    def paint(self, display_list):
+        color = self.node.style["color"]
+        display_list.append(DrawText(self.x, self.y, self.word, self.font, color))
+```
+
+Oof, well, this was quite a bit of refactoring. It was tricky, and
+probably exhausting. So take a moment to test everything---it should
+look exactly identical to how it did before we started this refactor.
+But while you can't see it, there's a crucial difference: each blue
+link on the page now has an associated layout object, with its own
+width and height.
 
 Click handling
 ==============
