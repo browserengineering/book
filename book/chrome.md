@@ -258,12 +258,11 @@ width and height.
 Click handling
 ==============
 
-To implement links, the browser UI, and so on, we need to start
-with clicks. We already handle key presses; clicks work similarly in
-Tk: an event handler bound to a certain event. For scrolling, we
-defined `scroll_down` and bound it to `<Down>`; for click handling we
-will define `handle_click` and bind it to `<Button-1>`, button number
-1 being the left button on the mouse.[^1]
+So now let's start to implement links, the browser UI, and so on. We
+need to start with clicks. In Tk, clicks work just like key presses:
+you bind an event handler to a certain event. For click handling that
+event is `<Button-1>`, button number 1 being the left button on the
+mouse.[^1]
 
 [^1]: Button 2 is the middle button; button 3 is the right hand button.
 
@@ -276,246 +275,91 @@ class Browser:
 ```
 
 Inside `handle_click`, we want to figure out what link the user has
-clicked on. We'll need to look at the `e` argument, which contains an
-"event object". This object has `x` and `y` fields, which refer to
-where the click happened, relative to the corner of the browser
-window. Since the canvas is in the top-left corner of the window,
-those are also the *x* and *y* coordinates relative to the canvas. To
-get coordinates relative to the web page, we need to account for
-scrolling:
+clicked on. Luckily, the event handler is passed an "event object",
+whose `x` and `y` fields refer to where the click happened:
+
+Now, here, we have to be careful with coordinate systems. Those *x*
+and *y* coordinates are relative to the browser window. Since the
+canvas is in the top-left corner of the window, those are also the *x*
+and *y* coordinates relative to the canvas. We want the coordinates
+relative to the web page, so we need to account for scrolling:
 
 ``` {.python expected=False}
-def handle_click(self, e):
-    x, y = e.x, e.y + self.scroll
+class Browser:
+    def handle_click(self, e):
+        x, y = e.x, e.y + self.scroll
 ```
 
 The next step is to figure out what links or other elements are at
-that location. To do that, we need to keep the tree of layout objects
-(which right now we create and then throw away) available as a field
-on the `Browser` class:
-
-``` {.python}
-def layout(self, tree):
-    self.document = DocumentLayout(tree)
-    # ...
-```
-
-Now `handle_click` can walk this tree, checking each layout object's
-size and position to find the element clicked on:
+that location. To do that, we need search through the tree of layout
+objects:
 
 ``` {.python}
 def handle_click(self, e):
     # ...
-    obj = find_layout(x, y, self.document)
-    if not obj: return
-    elt = obj.node
+    objs = [obj for obj in tree_to_list(self.document, [])
+            if obj.x <= x < obj.x + obj.width
+            and obj.y <= y < obj.y + obj.height]
+    if not objs: return
 ```
 
-Here the `find_layout` function is a straightforward variant of code
-we've already written a few times:
+Now, normally you click on lots of layout objects at once: some text,
+and also the paragraph it's in, and the section that that paragraph is
+in, and so on. We want the one that's "on top", so the last object in
+the list:[^overlap]
+
+[^overlap]: In a real browser you can also have a dialog that overlaps
+some text, or something like that. And real browsers can control which
+element is on top using the `z-index` property. So real browsers use
+*stacking contexts* to resolve what exactly you actually clicked on.
 
 ``` {.python}
-def find_layout(x, y, tree):
-    for child in reversed(tree.children):
-        result = find_layout(x, y, child)
-        if result: return result
-    if tree.x <= x < tree.x + tree.w and \
-       tree.y <= y < tree.y + tree.h:
-        return tree
+def handle_click(self, e):
+    # ...
+    elt = objs[-1].node
 ```
 
-In this code snippet, I am checking the children of a given node
-before checking the node itself. That's because you want the most
-specific element: if you click on a link, you want to click on the
-link, not the page `<body>`. I search the children in reverse order in
-case children overlap; the last one would be "on top".[^2]
-
-[^2]: Real browsers use what are called *stacking contexts* to resolve
-    the overlapping-elements question while allowing the order to be
-    controlled with the `z-index` property.
-
-Let's test it---but actually, first, let's handle a silly omission:
-we don't have any special style for links! Let's quickly add support
-for text color, which is controlled by the `color` property:
-
-- First, add `color` to `INHERITED_PROPERTIES` with the default
-  value `black`.
-- Next, add `a { color: blue; }` to the browser style sheet so that
-  links (`<a>` tags) are colored blue.
-- Add a `color` field to `DrawText` and modify `DrawText.draw` to
-  use it for the `fill` parameter of `create_text`.
-- In `InlineLayout` pass the color from the `text` method, through the
-  `line` field, then into the `display_list` in `flush`, and finally
-  into the `DrawText` constructor.
-
-Once links have colors, you can actually *find* them on the page. So
-add a print statement to `handle_click` and try clicking on them!
-
-Adding line and text layout
-===========================
-
-Unfortunately, if you click on a link you won't see `a` printed in the
-console. That's because there is no layout object corresponding to a
-link. The link text is laid out by `InlineLayout`, but each
-`InlineLayout` handles a whole paragraph of text, not a single link.
-We'll need to do some surgery on `InlineLayout` to fix this.
-
-Here's how I want inline layout to work, at a high level:
-
--   `InlineLayout`'s children are a list of `LineLayout` objects. This
-    list replaces `InlineLayout` keeping track of a `y` cursor position.
--   `LineLayout`'s children are a list of `TextLayout` objects, one per
-    word. Each `TextLayout` object has a `node`, which is always a
-    `TextNode`. This replaces the `x` cursor position
--   Both `TextLayout` and `LineLayout` objects have a `w` and an `h` fields.
--   `InlineLayout` will create the `LineLayout` and `TextLayout`
-    objects, then call `layout` on each `LineLayout`
--   `LineLayout.layout` will compute an `h` and an `x` and a `y`
-    position and call `layout` on each `TextLayout`
--   `TextLayout.layout` will compute an `x` and a `y` position as well
-
-To begin with, we'll need to create two new data structures:
+Now `node` refers to the specific node in the HTML tree that you
+clicked on. With a link, that's usually going to be a text node. But
+since we want to know the actual URL the user clicked on, we need to
+climb back up the HTML tree to find the link element:
 
 ``` {.python}
-class LineLayout:
-    def __init__(self, node, parent):
-        self.node = node
-        self.parent = parent
-        self.children = []
-        self.cx = 0
-
-class TextLayout:
-    def __init__(self, node, word):
-        self.node = node
-        self.children = []
-        self.word = word
+def handle_click(self, e):
+    # ...
+    while elt:
+        if isinstance(elt, Text):
+            pass
+        elif elt.tag == "a" and "href" in elt.attributes:
+            # ???
+        elt = elt.parent
 ```
 
-`LineLayout` is pretty run-of-the-mill, but `TextLayout` is unusual.
-First, its `children` field will always be an empty list; that's just
-for convenience.[^4] Second, it has both a `node` and a `word`
-argument. That's because a single `TextNode` contains multiple words,
-and I want each `TextLayout` to be a single word.[^5] Finally,
-`TextLayout` does not take a `parent` argument. That's because we'll
-decide the parent later, in a separate `append` method, which I'll
-define below.
-
-[^4]: You may want to use inheritance to group all the `Layout`
-    classes into a hierarchy, but I'm trying to stick to some kind of
-    easily-translatable subset of Python.
-
-[^5]: Because of line breaking.
-
-Next, since each `TextLayout` corresponds to a particular `TextNode`,
-we can compute its font based on its width and height:[^6]
-
-[^6]: Make sure you measure `word`, not `node.text`, which contains
-    multiple words! That's an easy-to-make and confusing bug.
+I wrote this in a kind of curious way because this way it's easier to
+add other types of clickable things later---like text boxes and
+buttons in the [next chapter](forms.md). Finally, now that we've found
+the link element itself, we need to extract the URL and direct the
+browser to it. This URL might be a relative URL:
 
 ``` {.python}
-class TextLayout:
-    def layout(self):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = int(px(self.node.style["font-size"]) * .75)
-        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
-
-        self.w = self.font.measure(self.word)
-        self.h = self.font.metrics("linespace")
+# ...
+elif elt.tag == "a" and "href" in elt.attributes:
+    url = relative_url(elt.attributes["href"], self.url)
+    self.load(url)
 ```
 
-With `TextLayout` and `LineLayout` in place, we can start surgery on
-`InlineLayout`. First, let's create that list of lines, and initialize
-it with a blank line:
+Since this needs to know the browser's current URL, we need to store
+it in `load`:
 
 ``` {.python}
-class InlineLayout:
-    def __init__(self, node, parent):
+class Browser:
+    def load(self, url):
+        self.url = url
         # ...
-        self.children = [LineLayout(self.node, self)]
 ```
 
-We'll need to create `LineLayout` and `TextLayout` objects as we lay
-out text in `InlineLayout`'s `text` and `flush` methods. Let's look at
-them in turn.
-
-The `text` function adds each word to the `line` field and then
-increments `x`. It should add the word to the last open line instead.
-At a high level, it should look something like this:
-
-``` {.python indent=4}
-def text(self, node):
-    for word in node.text.split():
-        child = TextLayout(node, word)
-        child.layout()
-        if self.children[-1].cx + child.w > self.w:
-            self.flush()
-        self.children[-1].append(child)
-```
-
-Where the `append` call on `LineLayout`s is pretty simple:
-
-``` {.python}
-class LineLayout:
-    def append(self, child):
-        self.children.append(child)
-        child.parent = self
-        self.cx += child.w + child.font.measure(" ")
-```
-
-Meanwhile, `flush` now needs to do two things: lay out the current
-line and then create a new one. Laying out the current line is what
-all the existing code does; we'll move that to `LineLayout` as a new
-`layout` method, so that `flush` is just:
-
-``` {.python}
-class InlineLayout:
-    def flush(self):
-        child = self.children[-1]
-        child.x = self.x
-        child.y = self.cy
-        child.layout()
-        self.cy += child.h
-        self.children.append(LineLayout(self.node, self))
-```
-
-Meanwhile the new `layout` method for `LineLayout`s is nearly the same
-as the old `flush` method, except:
-
-1. It needs to compute a `w` field, via `parent.w`
-2. It must loop over its children, instead of a `line` field.
-2. It needs to compute `x` and `y` fields on each child instead of
-   adding them to a display list
-3. Instead of updating the `cy` field, it must compute an `h` field.
-
-One annoyance is that, since `InlineLayout` always adds a new line in
-`flush`, the last flush call will add a new, unwanted line to the end.
-Let's just throw it away:
-
-``` {.python}
-class InlineLayout:
-    def layout(self):
-        # ...
-        self.children.pop()
-```
-
-Now that words and lines lay themselves out, a lot of stuff disappears
-from`InlineLayout`. The `style`, `size`, `weight` fields are no longer
-needed. Neither is `line` or `cx`. And the display list variable is no
-longer needed: instead of an `InlineLayout` drawing all the words in a
-paragraph, each word can now be drawn by its corresponding a
-`TextLayout` object:
-
-``` {.python}
-class TextLayout:
-    def paint(self, to):
-        color = self.node.style["color"]
-        to.append(DrawText(self.x, self.y, self.word, self.font, color))
-```
-
-The `InlineLayout` and `LineLayout` versions of the `draw` method
-now don't need to do anything but recurse on their children.
+Try it! You should now be able to click on links and navigate to new
+web pages.
 
 Navigating between pages
 ========================

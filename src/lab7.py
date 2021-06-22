@@ -607,9 +607,7 @@ class Page:
     def __init__(self):
         self.history = []
         self.focus = None
-        self.scroll = 0
 
-        self.display_list = []
         with open("browser6.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
