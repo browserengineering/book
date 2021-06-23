@@ -133,13 +133,7 @@ RENAME_FNS = {
     "print": "console.log",
 }
 
-IMPORTS = []
-
-LIBRARIES = [
-    "ssl",
-    "socket",
-    "tkinter"
-]
+IMPORTS = [] # Filled in as import statements are read
 
 LIBRARY_METHODS = [
     # socket
@@ -489,7 +483,7 @@ def compile_expr(tree, ctx):
         assert tree.id == "self" or tree.id in ctx, f"Could not find variable {tree.id}"
         if tree.id == "self":
             return "this"
-        elif tree.id in LIBRARIES:
+        elif tree.id in IMPORTS:
             return tree.id
         elif ctx.is_global(tree.id):
             return "constants.{}".format(tree.id)
@@ -753,7 +747,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compiles each chapter's Python code to JavaScript")
     parser.add_argument("--hints", default=None, type=argparse.FileType())
     parser.add_argument("--indent", default=2, type=int)
-    parser.add_argument("--use_js_modules", default=False, type=bool)
+    parser.add_argument("--use-js-modules", action="store_true", default=False)
     parser.add_argument("python", type=argparse.FileType())
     parser.add_argument("javascript", type=argparse.FileType("w"))
     args = parser.parse_args()
