@@ -65,31 +65,29 @@ def lex(body):
         breakpoint("lex", text)
     return text
 
+WIDTH, HEIGHT = 800, 600
+HSTEP, VSTEP = 13, 18
 SCROLL_STEP = 100
 
-def layout(text, width, hstep, vstep):
+def layout(text):
     display_list = []
-    cursor_x, cursor_y = hstep, vstep
+    cursor_x, cursor_y = HSTEP, VSTEP
     for c in text:
         display_list.append((cursor_x, cursor_y, c))
-        cursor_x += hstep
-        if cursor_x >= width - hstep:
-            cursor_y += vstep
-            cursor_x = hstep
+        cursor_x += HSTEP
+        if cursor_x >= WIDTH - HSTEP:
+            cursor_y += VSTEP
+            cursor_x = HSTEP
         breakpoint("layout", display_list)
     return display_list
 
 class Browser:
-    def __init__(self, width, height, hstep, vstep):
+    def __init__(self):
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
             self.window,
-            width=width,
-            height=height)
-        self.width = width
-        self.height = height
-        self.hstep = hstep
-        self.vstep = vstep
+            width=WIDTH,
+            height=HEIGHT)
 
         self.canvas.pack()
 
@@ -99,15 +97,15 @@ class Browser:
     def load(self, url):
         headers, body = request(url)
         text = lex(body)
-        self.display_list = layout(text, self.width, self.hstep, self.vstep)
+        self.display_list = layout(text)
         self.draw()
 
     def draw(self):
         self.canvas.delete("all")
         for x, y, c in self.display_list:
             breakpoint("draw")
-            if y > self.scroll + self.height: continue
-            if y + self.vstep < self.scroll: continue
+            if y > self.scroll + HEIGHT: continue
+            if y + VSTEP < self.scroll: continue
             self.canvas.create_text(x, y - self.scroll, text=c)
 
     def scrolldown(self, e):
@@ -117,9 +115,5 @@ class Browser:
 if __name__ == "__main__":
     import sys
 
-    width = 800
-    height = 600
-    hstep = 13
-    vstep = 18
-    Browser(width, height, hstep, vstep).load(sys.argv[1])
+    Browser().load(sys.argv[1])
     tkinter.mainloop()

@@ -135,6 +135,12 @@ RENAME_FNS = {
 
 IMPORTS = []
 
+LIBRARIES = [
+    "ssl",
+    "socket",
+    "tkinter"
+]
+
 LIBRARY_METHODS = [
     # socket
     "connect",
@@ -367,6 +373,16 @@ class Context(dict):
             return super().__getitem__(i)
         else:
             return self.parent[i]
+
+    def is_global(self, i):
+        if self.type == "module":
+            return True
+        else:
+            if super().__contains__(i):
+                return False
+            else:
+                return self.parent.is_global(i)
+
     
 @catch_issues
 def compile_expr(tree, ctx):
@@ -473,7 +489,14 @@ def compile_expr(tree, ctx):
         return "[" + ", ".join([compile_expr(a, ctx) for a in tree.elts]) + "]"
     elif isinstance(tree, ast.Name):
         assert tree.id == "self" or tree.id in ctx, f"Could not find variable {tree.id}"
-        return "this" if tree.id == "self" else tree.id
+        if tree.id == "self":
+            return "this"
+        elif tree.id in LIBRARIES:
+            return tree.id
+        elif ctx.is_global(tree.id):
+            return "constants.{}".format(tree.id)
+        else:
+            return tree.id
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
             return compile_str(tree.value)
@@ -568,7 +591,8 @@ def compile(tree, ctx, indent=0):
         if True in ins and False in ins:
             kw = "let " + ", ".join([target for target in targets if target not in ctx]) + "; "
         elif ctx.type in ["class"]: kw = ""
-        elif False in ins: kw = "let "
+        elif False in ins and ctx.type != "module":
+            kw = "let "
         else: kw = ""
 
         lhs = compile_lhs(tree.targets[0], ctx)
@@ -707,7 +731,7 @@ def compile_module(tree, name, use_js_modules):
     render_imports = ""
     if use_js_modules:
         if len(EXPORTS) > 0:
-            exports = "export {{ {} }};\n\n".format(",".join(EXPORTS))
+            exports = "export {{ {} }};".format(",".join(EXPORTS))
 
         imports_str = "import {{ {} }} from \"./{}\";"
 
@@ -717,8 +741,8 @@ def compile_module(tree, name, use_js_modules):
         render_imports_array = [ 'tkinter', 'socket' ]
         render_imports = imports_str.format(",".join(render_imports_array), "render.js")
 
-    return "{}\n{}\n{}\n\n{}".format(
-        exports, rt_imports, render_imports, "\n\n".join(items))
+    return "{}\n{}\n{}\n{}\n\n{}".format(
+        exports, rt_imports, render_imports, "export const constants = {};", "\n\n".join(items))
 
 if __name__ == "__main__":
     import sys, os

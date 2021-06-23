@@ -23,17 +23,17 @@
 <script type="module" src="rt.js"></script>
 <script type="module">
 import { Widget } from "./rt-module.js";
-import { Browser }
+import { Browser, constants }
   from "./lab2.js";
 
 let widget = new Widget(document.querySelector("#controls"));
 widget.pause("draw");
 widget.run(async function() {
-    let width = 16 * 11;
-    let height = 20 * 4;
-    let hstep = 16;
-    let vstep = 20;
-    let b = await (new Browser()).init(width, height, hstep, vstep);
+    constants.WIDTH = 16 * 11;
+    constants.HEIGHT = 20 * 4;
+    constants.HSTEP = 16;
+    constants.VSTEP = 20;
+    let b = await (new Browser()).init();
     await b.load("http://input/");
 });
 </script>
