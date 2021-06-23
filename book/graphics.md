@@ -148,7 +148,6 @@ class Browser:
             width=WIDTH,
             height=HEIGHT
         )
-
         self.canvas.pack()
 ```
 

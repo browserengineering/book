@@ -12,7 +12,6 @@ widgets: $(patsubst %,www/widgets/%,$(WIDGET_LAB_CODE)) www/widgets/rt-module.js
 
 lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json
-	python3 -m doctest infra/compiler.md
 
 PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
 
@@ -67,3 +66,4 @@ backup:
 
 test:
 	(cd src/ && python3 -m doctest lab1-tests.md)
+	python3 -m doctest infra/compiler.md

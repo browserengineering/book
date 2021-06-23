@@ -621,7 +621,7 @@ def compile(tree, ctx, indent=0):
         return out
     elif isinstance(tree, ast.For):
         assert not tree.orelse
-        ctx2 = Context(ctx.type, ctx)
+        ctx2 = Context("for", ctx)
         lhs = compile_lhs(tree.target, ctx2)
         rhs = compile_expr(tree.iter, ctx)
         body = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])

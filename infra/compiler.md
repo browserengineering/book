@@ -18,6 +18,7 @@ Then, this pretends all variables are in scope:
 ...    type = "module"
 ...    def __getitem__(self, i): return True
 ...    def __contains__(self, i): return True
+...    def is_global(self, i): return False
 
 Finally, this has some helper methods:
 
@@ -34,7 +35,7 @@ Finally, this has some helper methods:
 ...         assert isinstance(mod, ast.Module) and len(mod.body) == 1
 ...         print(compile(mod.body[0], ctx=FakeCtx()))
 
-That's all the helper code we need
+That's all the helper code we need.
 ```
 
 Compiling methods 
