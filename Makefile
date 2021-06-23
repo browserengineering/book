@@ -64,3 +64,6 @@ download:
 
 backup:
 	rsync server:/home/www/browseng/db.pickle infra/db.$(shell date +%Y-%m-%d).pickle
+
+test:
+	(cd src/ && python3 -m doctest lab1-tests.md)
