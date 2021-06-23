@@ -146,7 +146,8 @@ class Browser:
         self.canvas = tkinter.Canvas(
             self.window, 
             width=WIDTH,
-            height=HEIGHT)
+            height=HEIGHT
+        )
 
         self.canvas.pack()
 ```

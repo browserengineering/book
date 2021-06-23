@@ -67,6 +67,7 @@ def lex(body):
 
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
+
 SCROLL_STEP = 100
 
 def layout(text):
@@ -87,7 +88,8 @@ class Browser:
         self.canvas = tkinter.Canvas(
             self.window,
             width=WIDTH,
-            height=HEIGHT)
+            height=HEIGHT
+        )
 
         self.canvas.pack()
 
