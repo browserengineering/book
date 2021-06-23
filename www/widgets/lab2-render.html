@@ -19,22 +19,21 @@
   <canvas id="canvas" width="352" height="160"></canvas>
 </figure>
 
-<script src="lab2.js"></script>
-<script src="rt.js"></script>
-<script>
-const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
-const ssl = lib.ssl();
-const tkinter = lib.tkinter({ canvas: document.querySelector("#canvas"), zoom: 2.0 });
+<script type="module" src="lab2.js"></script>
+<script type="module" src="rt.js"></script>
+<script type="module">
+import { Widget } from "./rt-module.js";
+import { Browser, constants }
+  from "./lab2.js";
 
 let widget = new Widget(document.querySelector("#controls"));
 widget.pause("draw");
 widget.run(async function() {
-    WIDTH = 16 * 11;
-    HEIGHT = 20 * 4;
-    HSTEP = 16;
-    VSTEP = 20;
-
+    constants.WIDTH = 16 * 11;
+    constants.HEIGHT = 20 * 4;
+    constants.HSTEP = 16;
+    constants.VSTEP = 20;
     let b = await (new Browser()).init();
-    await b.load("http://input/")
+    await b.load("http://input/");
 });
 </script>
