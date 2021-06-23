@@ -377,13 +377,11 @@ class Context(dict):
     def is_global(self, i):
         if self.type == "module":
             return True
+        elif super().__contains__(i):
+            return False
         else:
-            if super().__contains__(i):
-                return False
-            else:
-                return self.parent.is_global(i)
+            return self.parent.is_global(i)
 
-    
 @catch_issues
 def compile_expr(tree, ctx):
     if isinstance(tree, ast.Subscript):
