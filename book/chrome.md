@@ -271,10 +271,10 @@ mouse.[^1]
 class Browser:
     def __init__(self):
         # ...
-        self.window.bind("<Button-1>", self.handle_click)
+        self.window.bind("<Button-1>", self.click)
 ```
 
-Inside `handle_click`, we want to figure out what link the user has
+Inside `click`, we want to figure out what link the user has
 clicked on. Luckily, the event handler is passed an "event object",
 whose `x` and `y` fields refer to where the click happened:
 
@@ -286,7 +286,7 @@ relative to the web page, so we need to account for scrolling:
 
 ``` {.python expected=False}
 class Browser:
-    def handle_click(self, e):
+    def click(self, e):
         x, y = e.x, e.y + self.scroll
 ```
 
@@ -295,7 +295,7 @@ that location. To do that, we need search through the tree of layout
 objects:
 
 ``` {.python}
-def handle_click(self, e):
+def click(self, e):
     # ...
     objs = [obj for obj in tree_to_list(self.document, [])
             if obj.x <= x < obj.x + obj.width
@@ -314,7 +314,7 @@ element is on top using the `z-index` property. So real browsers use
 *stacking contexts* to resolve what exactly you actually clicked on.
 
 ``` {.python}
-def handle_click(self, e):
+def click(self, e):
     # ...
     elt = objs[-1].node
 ```
@@ -325,7 +325,7 @@ since we want to know the actual URL the user clicked on, we need to
 climb back up the HTML tree to find the link element:
 
 ``` {.python}
-def handle_click(self, e):
+def click(self, e):
     # ...
     while elt:
         if isinstance(elt, Text):
@@ -335,11 +335,11 @@ def handle_click(self, e):
         elt = elt.parent
 ```
 
-I wrote this in a kind of curious way because this way it's easier to
-add other types of clickable things later---like text boxes and
-buttons in the [next chapter](forms.md). Finally, now that we've found
-the link element itself, we need to extract the URL and direct the
-browser to it. This URL might be a relative URL:
+I wrote this in a kind of curious way, but this way it's easier to add
+other types of clickable things later---like text boxes and buttons in
+the [next chapter](forms.md). Finally, now that we've found the link
+element itself, we need to extract the URL and direct the browser to
+it. This URL might be a relative URL:
 
 ``` {.python}
 # ...
@@ -361,184 +361,361 @@ class Browser:
 Try it! You should now be able to click on links and navigate to new
 web pages.
 
-Navigating between pages
-========================
-
-*Phew*. That was a lot of surgery to `InlineLayout`. But as a result,
-`InlineLayout` should now look a lot like the other layout classes,
-and we now have an individual layout object corresponding to each word in
-the document. Test clicks in your browser again: when you click on a
-link `find_layout` should now return the exact `TextNode` that you
-clicked on, from which you could get a link:
-
-``` {.python}
-def is_link(node):
-    return isinstance(node, ElementNode) \
-        and node.tag == "a" and "href" in node.attributes
-
-def handle_click(self, e):
-    # ...
-    while elt and not is_link(elt):
-        elt = elt.parent
-    if elt:
-        # ...
-```
-
-Note the `while` loop. That's because the most specific thing the user
-clicked on is a `TextNode`; we need to walk up the HTML tree to find
-an `ElementNode` that is a link.
-
-Once we've found the link, we need to navigate to that page. That
-would mean:
-
--   Parsing the new URL
--   Requesting that page
--   Lexing and parsing it
--   Downloading its rules and styling the page nodes
--   Generating a display list
--   Drawing that display list to the canvas
--   Waiting for events like scrolling the page and clicking on links
-
-We do all of that already, so it's just a matter of hooking it all up.
-First, in `Browser.load`, let's store the current URL of the browser:
-
-``` {.python}
-def load(self, url):
-    self.url = url
-    # ...
-```
-
-Now, inside `handle_click`, we can convert the link we clicked on to a
-new URL:
-
-``` {.python}
-def handle_click(self, e):
-    # ...
-    if elt:
-        url = relative_url(elt.attributes["href"], self.url)
-        self.load(url)
-```
-
-Note that relative URLs are relative to the page the browser is
-currently looking at.
-
-Try the code out, say on this page---you could use the links at the
-top of the page, for example. Our toy browser now suffices to read
-not just a chapter, but the whole book.
-
-Browser chrome
+Multiple pages
 ==============
 
-Now that we are navigating between pages all the time, it's easy to
-get a little lost and forget what web page you're looking at.
-Browsers solve this issue with an address bar that shows the URL.
-Let's implement a little address bar ourselves.
+If you're anything like me, the next thing you tried after clicking on
+links is middle-clicking them to open in a new tab. Every browser now
+has tabbed browsing, and honestly it's a little embarrasing that our
+little toy browser doesn't.
 
-The idea is to reserve the top 60 pixels of the canvas and then draw
-the address bar there. That 60 pixels is called the browser
-*chrome*.[^10]
+Fundamentally tabbed browsing means we need to distinguish between the
+browser itself and individual tabs that browse some specific web page.
+Right now the `Browser` class stores both information about the
+browser (like the canvas it draws to) and information about a single
+tab (like the layout tree and display list). We need to tease the two
+apart.
 
-[^10]: Yep, that predates and inspired the name of Google's Chrome
-    browser.
+Here's the plan: the `Browser` class will store the window and canvas,
+plus the list of tabs. Everything else goes into a new `Page` class.
+Since the `Browser` stores the window and canvas, it handles all of
+the events, sometimes forwarding it to the active tab.
 
-To do that, we first have to move the page content itself further down.
-I'm going to reserve 60 pixels for the browser chrome, which we need
-to subtract in `draw`:
-
-``` {.python}
-def draw(self):
-    self.canvas.delete("all")
-    for cmd in self.display_list:
-        if cmd.y1 > self.scroll + HEIGHT - 60: continue
-        if cmd.y2 < self.scroll: continue
-        cmd.draw(self.scroll - 60, self.canvas)
-```
-
-We need to make a similar change in `handle_click` to subtract that 60
-pixels off when we convert back from screen to page coordinates. Next,
-we need to cover up[^11] any actual page contents that got drawn to that top
-60 pixels:
+So the `Tab` constructor looks like this:
 
 ``` {.python}
-def draw(self):
-    # ...
-    self.canvas.create_rectangle(0, 0, 800, 60, width=0, fill='light gray')
+class Tab:
+    def __init__(self):
+        with open("browser6.css") as f:
+            self.default_style_sheet = CSSParser(f.read()).parse()
 ```
 
-[^11]: Of course a real browser wouldn't draw that content in the
-    first place, but in Tk that's a little tricky to do, and covering
-    it up later is easier.
+The `load`, `scrolldown`, `click`, and `draw` methods all move to
+`Tab`, since that's now where all web-page-specific data lives. But
+there's a change here too.
 
-The browser chrome area is now our playbox. Let's add an address bar:
+Since the `Browser` controls the canvas and handles events, it decides
+when rendering happens and which tab does the drawing. After all, you
+only want one tab drawing its contents at a time! So let's remove the
+`draw` calls from the `load` and `scrolldown` methods.
 
-``` {.python replace=url/address_bar}
-self.canvas.create_rectangle(50, 10, 790, 50)
-font = tkinter.font.Font(family="Courier", size=30)
-self.canvas.create_text(55, 15, anchor='nw', text=self.url, font=font)
-```
-
-The back button is another classic browser feature our browser really
-needs. I'll start by drawing the back button itself:
+Meanwhile, in `draw`, let's pass the canvas in as an argument:
 
 ``` {.python}
-self.canvas.create_rectangle(10, 10, 35, 50)
-self.canvas.create_polygon(15, 30, 30, 15, 30, 45, fill='black')
-```
-
-In Tk, `create_polygon` takes a list of coordinates and connects them
-into a shape. Here I've got three points that form a simple triangle
-evocative of a back button. You'll need to shrink the address bar so
-that it doesn't overlap this new back button.
-
-Now we need to detect when that button is clicked on. This will go in
-`handle_click`, which must now have two cases, for clicks in the chrome
-and clicks in the page:
-
-``` {.python expected=False}
-def handle_click(self, e):
-    if e.y < 60: # Browser chrome
-        if 10 <= e.x < 35 and 10 <= e.y < 50:
-            self.go_back()
-    else: # Page content
+class Tab:
+    def draw(self, canvas):
         # ...
 ```
 
-How should `self.go_back()` work? Well, to begin with, we'll need to
-store the *history* of the browser got to the current page. I'll add
-a `history` field to `Browser`, and have `browse` append to it when
-navigating to a page:
+Now let's turn our attention to the `Browser` class. Basically, the
+`Tab` is now passive, just a collection of methods you can call to
+manipulate the tab. The `Browser`'s job is to call those methods. In
+the `Browser` class let's create a list of tabs and an index into it
+for the active tab:
 
 ``` {.python}
 class Browser:
     def __init__(self):
         # ...
-        self.history = []
+        self.tabs = []
+        self.active_tab = None
+```
 
+As the "active party", the `Browser` needs to handle all of the
+events. So let's bind the down key and the mouse click:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        self.window.bind("<Down>", self.handle_down)
+        self.window.bind("<Button-1>", self.handle_click)
+```
+
+These methods just unpack the event and forward it to the active tab:
+
+``` {.python}
+class Browser:
+    def handle_down(self, e):
+        self.tabs[self.active_tab].scrolldown()
+        self.draw()
+
+    def handle_click(self, e):
+        self.tabs[self.active_tab].click(e.x, e.y)
+        self.draw()
+```
+
+You'll need to modify the arguments `Tab`'s `scrolldown` and `click`
+methods expect. Finally, that `draw` call also just forwards to the
+active tab:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        self.tabs[self.active_tab].draw(self.canvas)
+```
+
+This is all basically done now, with one small oversight: we need to
+actually create some tabs! Let's start with a method that creates a
+new tab:
+
+``` {.python}
+class Browser:
     def load(self, url):
-        self.url = url
+        new_tab = Tab()
+        new_tab.load(url)
+        self.active_tab = len(self.tabs)
+        self.tabs.append(new_tab)
+        self.draw()
+```
+
+So this works---try it, debug it---but we're still missing a user
+interface for the tabs feature. We need a way for the user to switch
+tabs, create new ones, and so on. Let's turn to that next.
+
+Browser chrome
+==============
+
+Real web browsers don't just show web page contents---they've got
+labels and icons and buttons.[^ohmy] This is called the browser
+"chrome";[^chrome] right now creating and listing and switching tabs
+is most interesting. All of this stuff is drawn by the browser to the
+same canvas as the page contents, and it requires information about
+the browser as a whole (like the list of all tabs), so it has to
+happen in the `Browser` class.
+
+[^ohmy]: Oh my!
+
+[^chrome]: Yep, that predates and inspired the name of Google's Chrome
+    browser.
+
+So let's add some code to draw a set of tabs at the top of the browser
+window. Let's try to keep it simple, because this is going to require
+some tedious and mildly tricky geometry. Let's have each tab be 80
+pixels wide and 40 pixels tall. We'll label each tab something like
+"Tab 4" so we don't have to deal with long tab titles overlapping. And
+let's leave 40 pixels on the left for a button that adds a new tab.
+
+We'll draw the tabs in the `draw` method, after the page contents are
+drawn:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        tabfont = tkinter.font.Font(size=20)
+        for i, tab in enumerate(self.tabs):
+            # ...
+```
+
+Python's `enumerate` function lets you iterate over both the indices
+and the contents of an array at the same time. Now, the `i`th tab
+starts at *x* position `40 + 80*i` and ends at `120 + 80*i`:
+
+``` {.python}
+for i, tab in enumerate(self.tabs):
+    name = "Tab {}".format(i)
+    x1, x2 = 40 + 80 * i, 120 + 80 * i
+```
+
+For each tab, we need to create a border on the left and right and
+then draw the tab name:
+
+``` {.python}
+for i, tab in enumerate(self.tabs):
+    # ...
+    self.canvas.create_line(x1, 0, x1, 40)
+    self.canvas.create_line(x2, 0, x2, 40)
+    self.canvas.create_text(x1 + 10, 10, text=name, font=tabfont, anchor="nw")
+```
+
+Finally, we want to identify which tab is the active tab. To do that
+let's draw a file folder shape with the current tab sticking up:
+
+``` {.python}
+for i, tab in enumerate(self.tabs):
+    # ...
+    if i == self.active_tab:
+        self.canvas.create_line(0, 40, x1, 40)
+        self.canvas.create_line(x2, 40, WIDTH, 40)
+```
+
+We'll also want a button to create a new tab. Let's put that on the
+left, with a big plus in the middle:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        
+        buttonfont = tkinter.font.Font(size=30)
+        self.canvas.create_rectangle(10, 10, 30, 30, width=1)
+        self.canvas.create_text(11, 0, font=buttonfont, text="+", anchor="nw")
+```
+
+If you run this code, you'll see a small problem: the page contents
+and the tab bar are drawn on top of each other, and it's impossible to
+read. We need the top of the browser window, where all the browser
+chrome goes, to not have page contents rendered to it.
+
+Let's reserve some space for the browser chrome---100 pixels of space,
+to leave room for some more buttons later this chapter:
+
+``` {.python}
+CHROME_PX = 100
+```
+
+Each tab needs to make sure not to draw to those pixels:
+
+``` {.python}
+class Tab:
+    def draw(self, canvas):
+        canvas.delete("all")
+        for cmd in self.display_list:
+            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
+            if cmd.bottom < self.scroll: continue
+            cmd.execute(self.scroll - CHROME_PX, canvas)
+```
+
+Now you can see the tab bar fine. The next step is clicking on tabs to
+switch between them. That has to happen in the `Browser` class, since
+it's the `Browser` that can change which tab is active. So let's go to
+the `handle_click` method:
+
+``` {.python}
+class Browser:
+    def handle_click(self, e):
+        if e.y < CHROME_PX:
+            # ...
+        else:
+            self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
+        self.draw()
+```
+
+The `if` branch of the conditional handles clicks in the browser
+chrome; the `else` branch handles clicks on the web page content. Note
+that when the user clicks on the content, we subtract `CHROME_PX` so
+that the click coordinates are relative to the "page content" portion
+of the browser.
+
+When the user clicks on the browser chrome, the browser can react:
+
+``` {.python}
+if e.y < CHROME_PX:
+    if 40 < e.x < 40 + 80 * len(self.tabs) and 10 <= e.y < 40:
+        self.active_tab = (e.x - 40) // 80
+```
+
+In Python, the `//` operator divides two numbers and casts the result
+to an integer---in this case, the index of the tab the user clicked
+on. So this code switches tabs. To try it, we'll also need to handle
+the button that adds new tabs:
+
+``` {.python}
+if e.y < CHROME_PX:
+    # ...
+    elif 10 <= e.x < 30 and 10 <= e.y < 30:
+        self.load("https://browser.engineering/")
+```
+
+Now you should be able to load multiple tabs, scroll and click around
+them independently, and switch tabs whenever you want.
+
+Navigation history
+==================
+
+Now that we are navigating between pages all the time, it's easy to
+get a little lost and forget what web page you're looking at.
+Browsers solve this issue with an address bar that shows the URL.
+Let's implement a little address bar ourselves. The URL it shows is
+the URL for the currently-active tab:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        url = self.tabs[self.active_tab].url
+        self.create_rectangle(40, 50, 790, 90, width=1)
+        self.canvas.create_text(45, 55, anchor='nw', text=url, font=buttonfont)
+```
+
+If we've got an address bar, we need to have a "back" button too. I'll
+start by drawing the back button itself:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        self.canvas.create_rectangle(10, 50, 35, 90, width=1)
+        self.canvas.create_polygon(15, 70, 30, 55, 30, 85, fill='black')
+```
+
+In Tk, `create_polygon` takes a list of coordinates and connects them
+into a shape. Here I've got three points that form a simple triangle
+evocative of a back button.
+
+So what happens when that button is clicked on? Well, before we jump
+to the `handle_click` method, let's think this through. To go back, we
+need to store a "history" of which pages we've visited before. And
+different tabs have different histories, so the history has to be
+stored on each tab:
+
+``` {.python}
+class Tab:
+    def __init__(self):
+        # ...
+        self.history = []
+```
+
+We'll add to the history every time we go to a new page:
+
+``` {.python}
+class Tab:
+    def load(self, url):
         self.history.append(url)
         # ...
 ```
 
-Now `self.go_back()` knows where to go:
+Now a tab can go back just by looking in that history. You might write
+that code like this:
 
 ``` {.python expected=False}
-def go_back(self):
-    if len(self.history) > 1:
-        self.load(self.history[-2])
+class Tab:
+    def go_back(self):
+        if len(self.history) > 1:
+            self.load(self.history[-2])
 ```
 
-This is almost correct, but if you click the back button twice, you'll
+That's almost correct, but if you click the back button twice, you'll
 go forward instead, because `load` has appended to the history.
 Instead, we need to do something more like:
 
-``` {.python}
-def go_back(self):
-    if len(self.history) > 1:
-        self.history.pop()
-        back = self.history.pop()
-        self.load(back)
+``` {.python indent=4}
+class Tab:
+    def go_back(self):
+        if len(self.history) > 1:
+            self.history.pop()
+            back = self.history.pop()
+            self.load(back)
 ```
+
+So now that an individual tab can go back, we can make pressing the
+back button do the right thing:
+
+``` {.python}
+class Browser:
+    def handle_click(self, e):
+        if e.y < CHROME_PX:
+            # ...
+            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+                self.tabs[self.active_tab].go_back()
+            # ...
+```
+
+So we've now got a pretty good web browser for reading this very book:
+you can click links, browse around, and even have multiple chapters
+open simultaneously for cross-referencing things. But it's a little
+annoying that the only way to get to a new website is by following
+links. Let's fix that.
 
 Editing the URL
 ===============
@@ -547,21 +724,20 @@ One way to go to another page is by clicking on a link. But most
 browsers also allow you to type into the address bar to visit a new
 URL, if you happen to know the URL off-hand.
 
-But take a moment to notice the complex ritual involved in typing in a
-new address:
+Take a moment to notice the complex ritual of typing in an address:
 
 - First, you have to click on the address bar to "focus" on it
 - That also selects the full address, so that it's all deleted when
   you start typing
 - Then, letters you type go into the address bar
-- The address bar updates itself, but the browser doesn't yet navigate
-  to the new page
+- The address bar updates as you type, but the browser doesn't yet
+  navigate to the new page
 - Finally, you type the "Enter" key which navigates to a new page.
 
-This ritual suggests that the browser stores a boolean for whether or
-not you've clicked on the address bar and a string with the contents
-of the address bar, separate from the `url` field. Let's call that
-boolean `focus` and the string `address_bar`:
+This ritual suggests that the browser stores a string with the
+contents of the address bar, separate from the `url` field, and also a
+boolean to know if you're currently typing into the address bar. Let's
+call that string `address_bar` and that boolean `focus`:
 
 ``` {.python}
 class Browser:
@@ -569,56 +745,62 @@ class Browser:
         # ...
         self.focus = None
         self.address_bar = ""
-
-    def load(self, url):
-        self.address_bar = url
-        # ...
 ```
 
-Clicking on the address bar should set `focus` and clear the
-`address_bar` variable:[^why-not-select]
+Clicking outside the address bar should "unselect" the address bar by
+clearing `focus`; clicking on the address bar should set instead set
+`focus`:[^why-not-select]
 
-[^why-not-select]: I'm not going to implement the selection bit, since
-    text selection is actually quite hard.
+[^why-not-select]: I'm not going to implement the selection bit,
+    because it would add even more states to the system.
 
 ``` {.python}
-def handle_click(self, e):
-    self.focus = None
-    if e.y < 60: # Browser chrome
+class Browser:
+    def handle_click(self, e):
+        self.focus = None
+        if e.y < 60: # Browser chrome
+            # ...
+            elif 50 <= e.x < 790 and 40 <= e.y < 90:
+                self.focus = "address bar"
+                self.address_bar = ""
         # ...
-        elif 50 <= e.x < 790 and 10 <= e.y < 50:
-            self.focus = "address bar"
-            self.address_bar = ""
-            self.draw()
-    # ...
 ```
 
-The click method now resets the text focus by default, and only
-focuses on the address bar when it is clicked on. Note that I call
-`draw()` to make sure the screen is redrawn with the new address bar
-content. Make sure to modify `draw` to use `address_bar` as the text
-in the address bar. If the address bar is focused let's also draw a
-cursor:
+Now, when we draw the address bar, we need to check whether to draw
+the current URL or the currently-typed text:
 
-``` {.python indent=4}
-def draw(self):
-    # ...
-    if self.focus == "address bar":
-        w = font.measure(self.address_bar)
-        self.canvas.create_line(55 + w, 15, 55 + w, 45)
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        if self.focus == "address_bar":
+            self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=font)
+        else:
+            url = self.tabs[self.active_tab].url
+            self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=font)
 ```
 
-Next, when the address bar is focused, typing letters should add them
-to the address bar. In Tk, you can bind to `<Key>` and access the
-letter typed with the event object's `char` field:
+Just to clearly show the user that they're now typing in the address
+bar, let's also draw a cursor:
+
+``` {.python}
+if self.focus == "address_bar":
+    # ...
+    w = font.measure(self.address_bar)
+    self.canvas.create_line(55 + w, 55, 55 + w, 85)
+```
+
+Next, when the address bar is focused, you should be able to type in a
+URL. In Tk, you can bind to `<Key>` and access the letter typed with
+the event object's `char` field:
 
 ``` {.python}
 class Browser:
     def __init__(self):
         # ...
-        self.window.bind("<Key>", self.keypress)
+        self.window.bind("<Key>", self.handle_key)
 
-    def keypress(self, e):
+    def handle_key(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
 
@@ -627,7 +809,7 @@ class Browser:
             self.draw()
 ```
 
-This `keypress` handler starts with some conditions: `<Key>` is Tk's
+This `handle_key` handler starts with some conditions: `<Key>` is Tk's
 catchall event handler for keys, and fires for every key press, not
 just regular letters. So the handler ignores cases where no character
 is typed (a modifier key is pressed) or the character is outside the
@@ -635,125 +817,26 @@ ASCII range (the arrow keys and function keys correspond to larger key
 codes).
 
 Because we modify `address_bar`, we want the browser chrome redrawn,
-so we need to call `draw()`. So now you can type into the address
-bar. Our last step is to handle the "Enter" key, which Tk calls
-`<Return>`, so that you can navigate to a new address:
+so we need to call `draw()`. Thus, when the user types into the
+address bar, new letters appear in the browser.
+
+The last step is to handle the "Enter" key, which Tk calls `<Return>`,
+to actually direct the browser to the new address:
 
 ``` {.python}
 class Browser:
     def __init__(self):
         # ...
-        self.window.bind("<Return>", self.pressenter)
+        self.window.bind("<Return>", self.handle_enter)
 
-    def pressenter(self, e):
+    def handle_enter(self, e):
         if self.focus == "address bar":
+            self.tabs[self.active_tab].load(self.address_bar)
             self.focus = None
-            self.load(self.address_bar)
+            self.draw()
 ```
 
-In this case, `load` calls `draw` so we don't need to do so directly.
-
-Prettier pages
-==============
-
-Let's add support for *margins*, *borders*, and *padding*, which
-change the position of block layout objects. Here's how those work. In
-effect, every block has four rectangles associated with it: the
-*margin rectangle*, the *border rectangle*, the *padding rectangle*,
-and the *content rectangle*:
-
-![](https://www.w3.org/TR/CSS2/images/boxdim.png)
-
-So far, our block layout objects have had just one size and position;
-these will refer to the border rectangle (so that the `x` and `y`
-fields point to the top-left corner of the outside of the layout
-object's border). To track the margin, border, and padding, we'll also
-store the margin, border, and padding widths on each side of the
-layout object in the variables `mt`, `mr`, `mb,` and `ml`; `bt`, `br`,
-`bb`, and `bl`; and `pt`, `pr`, `pb`, and `pl`. The naming convention
-here is that the first letter stands for margin, border, or padding,
-while the second letter stands for top, right, bottom, or left.
-
-Since each block layout object now has more variables, we'll need to
-add code to `layout` to compute them:
-
-``` {.python}
-def px(s):
-    if s.endswith("px"):
-        return int(s[:-2])
-    else:
-        return 0
-
-class BlockLayout:
-    def layout(self):
-        self.mt = px(self.node.style.get("margin-top", "0px"))
-        self.bt = px(self.node.style.get("border-top-width", "0px"))
-        self.pt = px(self.node.style.get("padding-top", "0px"))
-        # ... repeat for the right, bottom, and left edges
-```
-
-Remember to write out the code to access the other 9 properties, and
-don't forget that the border one is called `border-X-width`, not
-`border-X`.[^because-colors]
-
-[^because-colors]: Because borders have not only widths but also
-    colors and styles, while paddings and margins are thought of as
-    whitespace, not something you draw.
-
-You'll also want to add these twelve variables to `DocumentLayout` and
-`InlineLayout` objects. Set them all to zero.
-
-With their values now loaded, we can use these fields to drive layout.
-First of all, when we compute width, we need to account for the space
-taken up by the parent's border and padding; and likewise we'll need
-to adjust each layout object's `x` and `y` based on its margins:[^backslash-continue]
-
-[^backslash-continue]: In Python, if you end a line with a backslash,
-    the newline is ignored by the parser, letting you split a logical
-    line of code across two actual lines in your file.
-
-``` {.python}
-def layout(self):
-    # ...
-    self.w = self.parent.w - self.parent.pl - self.parent.pr \
-        - self.parent.bl - self.parent.br \
-        - self.ml - self.mr
-    self.y += self.mt
-    self.x += self.ml
-    # ...
-```
-
-Similarly, when we position child layout objects, we'll need to
-account for our their parent's border and padding:
-
-``` {.python indent=4}
-def layout(self):
-    # ...
-    y = self.y
-    for child in self.children:
-        child.x = self.x + self.pl + self.bl
-        child.y = y
-        child.layout()
-        y += child.mt + child.h + child.mb
-    self.h = y - self.y
-```
-
-Likewise, in `InlineLayout` we'll need to account for the parent's
-padding and border:
-
-``` {.python}
-class InlineLayout:
-    def layout(self):
-        self.w = self.parent.w - self.parent.pl - self.parent.pr \
-            - self.parent.bl - self.parent.br
-```
-
-It's now possible to indent a single element by giving it a `style`
-attribute that adds a `margin-left`. But while that's good for one-off
-changes, it is a tedious way to change the style of, say, every
-paragraph on the page. And if you have a site with many pages, you'll
-need to remember to add the same `style` attributes to every web page
-to achieve a measure of consistency. CSS provides a better way.
+So there---after a long day of prep work, you can now go surf the web.
 
 
 Summary

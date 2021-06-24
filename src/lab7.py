@@ -603,10 +603,9 @@ class DrawRect:
 SCROLL_STEP = 100
 CHROME_PX = 100
 
-class Page:
+class Tab:
     def __init__(self):
         self.history = []
-        self.focus = None
 
         with open("browser6.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -688,25 +687,25 @@ class Browser:
 
         self.tabs = []
         self.active_tab = None
-        self.address_bar = None
+        self.focus = None
+        self.address_bar = ""
 
     def handle_down(self, e):
         self.tabs[self.active_tab].scrolldown()
         self.draw()
 
     def handle_click(self, e):
-        self.address_bar = None
+        self.focus = None
         if e.y < CHROME_PX:
-            if 10 <= e.x < 35 and 40 <= e.y < 90:
-                self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < 790 and 40 <= e.y < 90:
-                self.address_bar = "https://"
+            if 40 < e.x < 40 + 80 * len(self.tabs) and 10 <= e.y < 40:
+                self.active_tab = (e.x - 40) // 80
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
-            elif 40 < e.x and 10 <= e.y < 40:
-                i = (e.x - 40) // 80
-                if i < len(self.tabs):
-                    self.active_tab = i
+            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+                self.tabs[self.active_tab].go_back()
+            elif 50 <= e.x < 790 and 40 <= e.y < 90:
+                self.focus = "address bar"
+                self.address_bar = ""
         else:
             self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
         self.draw()
@@ -714,45 +713,50 @@ class Browser:
     def handle_key(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
-        if self.address_bar:
+        if self.focus == "address bar":
             self.address_bar += e.char
             self.draw()
 
     def handle_enter(self, e):
         if self.address_bar:
             self.tabs[self.active_tab].load(self.address_bar)
-            self.address_bar = None
+            self.focus = None
             self.draw()
 
     def draw(self):
         self.tabs[self.active_tab].draw(self.canvas)
 
+        tabfont = tkinter.font.Font(size=20)
         for i, tab in enumerate(self.tabs):
-            x = 40 + i * 80
-            weight = 'bold' if i == self.active_tab else 'normal'
-            text = "Tab {}".format(i)
-            font = tkinter.font.Font(size=20, weight=weight)
-            if i != 0:
-                self.canvas.create_line(x, 0, x, 40)
-            self.canvas.create_text(x + 10, 10, text=text, font=font, anchor="nw")
+            name = "Tab {}".format(i)
+            x1, x2 = 40 + 80 * i, 120 + 80 * i
+            self.canvas.create_line(x1, 0, x1, 40)
+            self.canvas.create_line(x2, 0, x2, 40)
+            self.canvas.create_text(x1 + 10, 10, text=name, font=tabfont, anchor="nw")
+            if i == self.active_tab:
+                self.canvas.create_line(0, 40, x1, 40)
+                self.canvas.create_line(x2, 40, WIDTH, 40)
 
-        url = self.address_bar if self.address_bar else self.tabs[self.active_tab].url
-        font = tkinter.font.Font(family="Courier", size=30)
-        self.canvas.create_text(55, 55, anchor='nw', text=url, font=font)
-        if self.address_bar:
-            w = font.measure(url)
-            self.canvas.create_line(55 + w, 55, 55 + w, 85)
-
+        buttonfont = tkinter.font.Font(size=30)
         self.canvas.create_rectangle(10, 10, 30, 30, width=1)
-        self.canvas.create_text(12, 6, font=font, text="+", anchor="nw")
+        self.canvas.create_text(11, 0, font=buttonfont, text="+", anchor="nw")
+
+        if self.focus == "address bar":
+            self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=font)
+            w = font.measure(self.address_bar)
+            self.canvas.create_line(55 + w, 55, 55 + w, 85)
+        else:
+            url = self.tabs[self.active_tab].url
+            self.canvas.create_text(55, 55, anchor='nw', text=url, font=font)
+
         self.canvas.create_rectangle(10, 50, 35, 90, width=1)
         self.canvas.create_polygon(15, 70, 30, 55, 30, 85, fill='black')
 
     def load(self, url):
-        page = Page()
+        new_tab = Tab()
         self.active_tab = len(self.tabs)
-        self.tabs.append(page)
-        page.load(url)
+        self.tabs.append(new_tab)
+        new_tab.load(url)
         self.draw()
 
 
