@@ -380,6 +380,72 @@ def layout_mode(node):
     else:
         return "block"
 
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+
+    def layout(self):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for word in self.children:
+            word.layout()
+
+        if not self.children:
+            self.height = 0
+            return
+
+        max_ascent = max([word.font.metrics("ascent") 
+                          for word in self.children])
+        baseline = self.y + 1.2 * max_ascent
+        for word in self.children:
+            word.y = baseline - word.font.metrics("ascent")
+        max_descent = max([word.font.metrics("descent")
+                           for word in self.children])
+        self.height = 1.2 * (max_ascent + max_descent)
+
+    def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+            
+class TextLayout:
+    def __init__(self, node, word, parent, previous):
+        self.node = node
+        self.word = word
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(float(self.node.style["font-size"][:-2]) * .75)
+        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
+
+        # Do not set self.y!!!
+        self.width = self.font.measure(self.word)
+
+        if self.previous:
+            space = self.previous.font.measure(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+        self.height = self.font.metrics("linespace")
+
+    def paint(self, display_list):
+        color = self.node.style["color"]
+        display_list.append(DrawText(self.x, self.y, self.word, self.font, color))
+
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -409,7 +475,6 @@ class BlockLayout:
             child.layout()
 
         self.height = sum([child.height for child in self.children])
-
 
     def paint(self, display_list):
         for child in self.children:
@@ -480,70 +545,6 @@ class InlineLayout:
             display_list.append(rect)
         for child in self.children:
             child.paint(display_list)
-
-class LineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-
-    def layout(self):
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        for word in self.children:
-            word.layout()
-
-        if not self.children:
-            self.height = 0
-            return
-
-        max_ascent = max([word.font.metrics("ascent") for word in self.children])
-        baseline = self.y + 1.2 * max_ascent
-        for word in self.children:
-            word.y = baseline - word.font.metrics("ascent")
-        max_descent = max([word.font.metrics("descent") for word in self.children])
-        self.height = 1.2 * (max_ascent + max_descent)
-
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
-            
-class TextLayout:
-    def __init__(self, node, word, parent, previous):
-        self.node = node
-        self.word = word
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-
-    def layout(self):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = int(float(self.node.style["font-size"][:-2]) * .75)
-        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
-
-        # Do not set self.y!!!
-        self.width = self.font.measure(self.word)
-
-        if self.previous:
-            space = self.previous.font.measure(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-
-        self.height = self.font.metrics("linespace")
-
-    def paint(self, display_list):
-        color = self.node.style["color"]
-        display_list.append(DrawText(self.x, self.y, self.word, self.font, color))
 
 class DocumentLayout:
     def __init__(self, node):
@@ -650,10 +651,9 @@ class Tab:
 
     def click(self, x, y):
         y += self.scroll
-        objs = [obj
-                for obj in tree_to_list(self.document, [])
+        objs = [obj for obj in tree_to_list(self.document, [])
                 if obj.x <= x < obj.x + obj.width
-                and obj.y <= y <= obj.y + obj.height]
+                and obj.y <= y < obj.y + obj.height]
         if not objs: return
         elt = objs[-1].node
         while elt:
@@ -718,7 +718,7 @@ class Browser:
             self.draw()
 
     def handle_enter(self, e):
-        if self.address_bar:
+        if self.focus == "address bar":
             self.tabs[self.active_tab].load(self.address_bar)
             self.focus = None
             self.draw()
@@ -741,22 +741,23 @@ class Browser:
         self.canvas.create_rectangle(10, 10, 30, 30, width=1)
         self.canvas.create_text(11, 0, font=buttonfont, text="+", anchor="nw")
 
+        self.create_rectangle(40, 50, 790, 90, width=1)
         if self.focus == "address bar":
-            self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=font)
+            self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=buttonfont)
             w = font.measure(self.address_bar)
             self.canvas.create_line(55 + w, 55, 55 + w, 85)
         else:
             url = self.tabs[self.active_tab].url
-            self.canvas.create_text(55, 55, anchor='nw', text=url, font=font)
+            self.canvas.create_text(55, 55, anchor='nw', text=url, font=buttonfont)
 
         self.canvas.create_rectangle(10, 50, 35, 90, width=1)
         self.canvas.create_polygon(15, 70, 30, 55, 30, 85, fill='black')
 
     def load(self, url):
         new_tab = Tab()
+        new_tab.load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)
-        new_tab.load(url)
         self.draw()
 
 

@@ -267,7 +267,7 @@ mouse.[^1]
 [^1]: Button 2 is the middle button; button 3 is the right hand button.
 
 
-``` {.python}
+``` {.python replace=self.click/self.handle_click}
 class Browser:
     def __init__(self):
         # ...
@@ -287,20 +287,21 @@ relative to the web page, so we need to account for scrolling:
 ``` {.python expected=False}
 class Browser:
     def click(self, e):
-        x, y = e.x, e.y + self.scroll
+        x, y = e.x, e.y
+        y += self.scroll
+        # ...
 ```
 
 The next step is to figure out what links or other elements are at
 that location. To do that, we need search through the tree of layout
 objects:
 
-``` {.python}
-def click(self, e):
-    # ...
-    objs = [obj for obj in tree_to_list(self.document, [])
-            if obj.x <= x < obj.x + obj.width
-            and obj.y <= y < obj.y + obj.height]
-    if not objs: return
+``` {.python indent=8}
+# ...
+objs = [obj for obj in tree_to_list(self.document, [])
+        if obj.x <= x < obj.x + obj.width
+        and obj.y <= y < obj.y + obj.height]
+if not objs: return
 ```
 
 Now, normally you click on lots of layout objects at once: some text,
@@ -313,10 +314,9 @@ some text, or something like that. And real browsers can control which
 element is on top using the `z-index` property. So real browsers use
 *stacking contexts* to resolve what exactly you actually clicked on.
 
-``` {.python}
-def click(self, e):
-    # ...
-    elt = objs[-1].node
+``` {.python indent=8}
+# ...
+elt = objs[-1].node
 ```
 
 Now `node` refers to the specific node in the HTML tree that you
@@ -324,15 +324,14 @@ clicked on. With a link, that's usually going to be a text node. But
 since we want to know the actual URL the user clicked on, we need to
 climb back up the HTML tree to find the link element:
 
-``` {.python}
-def click(self, e):
-    # ...
-    while elt:
-        if isinstance(elt, Text):
-            pass
-        elif elt.tag == "a" and "href" in elt.attributes:
-            # ???
-        elt = elt.parent
+``` {.python indent=8}
+# ...
+while elt:
+    if isinstance(elt, Text):
+        pass
+    elif elt.tag == "a" and "href" in elt.attributes:
+        # ...
+    elt = elt.parent
 ```
 
 I wrote this in a kind of curious way, but this way it's easier to add
@@ -341,17 +340,17 @@ the [next chapter](forms.md). Finally, now that we've found the link
 element itself, we need to extract the URL and direct the browser to
 it. This URL might be a relative URL:
 
-``` {.python}
+``` {.python indent=12}
 # ...
 elif elt.tag == "a" and "href" in elt.attributes:
     url = relative_url(elt.attributes["href"], self.url)
-    self.load(url)
+    return self.load(url)
 ```
 
 Since this needs to know the browser's current URL, we need to store
 it in `load`:
 
-``` {.python}
+``` {.python replace=Browser/Tab}
 class Browser:
     def load(self, url):
         self.url = url
@@ -433,7 +432,7 @@ class Browser:
 
 These methods just unpack the event and forward it to the active tab:
 
-``` {.python}
+``` {.python replace=e.y/e.y%20-%20CHROME_PX}
 class Browser:
     def handle_down(self, e):
         self.tabs[self.active_tab].scrolldown()
@@ -546,7 +545,6 @@ left, with a big plus in the middle:
 class Browser:
     def draw(self):
         # ...
-        
         buttonfont = tkinter.font.Font(size=30)
         self.canvas.create_rectangle(10, 10, 30, 30, width=1)
         self.canvas.create_text(11, 0, font=buttonfont, text="+", anchor="nw")
@@ -633,9 +631,9 @@ the URL for the currently-active tab:
 class Browser:
     def draw(self):
         # ...
-        url = self.tabs[self.active_tab].url
         self.create_rectangle(40, 50, 790, 90, width=1)
-        self.canvas.create_text(45, 55, anchor='nw', text=url, font=buttonfont)
+        url = self.tabs[self.active_tab].url
+        self.canvas.create_text(55, 55, anchor='nw', text=url, font=buttonfont)
 ```
 
 If we've got an address bar, we need to have a "back" button too. I'll
@@ -758,7 +756,7 @@ clearing `focus`; clicking on the address bar should set instead set
 class Browser:
     def handle_click(self, e):
         self.focus = None
-        if e.y < 60: # Browser chrome
+        if e.y < CHROME_PX:
             # ...
             elif 50 <= e.x < 790 and 40 <= e.y < 90:
                 self.focus = "address bar"
@@ -773,18 +771,18 @@ the current URL or the currently-typed text:
 class Browser:
     def draw(self):
         # ...
-        if self.focus == "address_bar":
-            self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=font)
+        if self.focus == "address bar":
+            self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=buttonfont)
         else:
             url = self.tabs[self.active_tab].url
-            self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=font)
+            self.canvas.create_text(55, 55, anchor='nw', text=url, font=buttonfont)
 ```
 
 Just to clearly show the user that they're now typing in the address
 bar, let's also draw a cursor:
 
-``` {.python}
-if self.focus == "address_bar":
+``` {.python indent=8}
+if self.focus == "address bar":
     # ...
     w = font.measure(self.address_bar)
     self.canvas.create_line(55 + w, 55, 55 + w, 85)
