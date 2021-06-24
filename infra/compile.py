@@ -41,8 +41,11 @@ class AST39(ast.NodeTransformer):
 class UnsupportedConstruct(AssertionError): pass
 
 class MissingHint(Exception):
-    def __init__(self, tree, key, hint):
-        self.message = f"Could not find {key} key for `{AST39.unparse(tree)}`"
+    def __init__(self, tree, key, hint, error=None):
+        if not error:
+            self.message = f"Could not find {key} key for `{AST39.unparse(tree)}`"
+        else:
+            self.message = error
         self.key = key
         self.tree = tree
         self.hint = hint
@@ -62,7 +65,7 @@ def catch_issues(f):
                 return f(tree, *args, **kwargs)
             except AssertionError as e:
                 if WRAP_DISABLED: raise e
-                return find_hint(tree, "js")
+                return find_hint(tree, "js", error=e)
         except MissingHint as e:
             if WRAP_DISABLED: raise e
             ISSUES.append(e)
@@ -85,7 +88,7 @@ def read_hints(f):
         h["used"] = False
     HINTS = hints
     
-def find_hint(t, key):
+def find_hint(t, key, error=None):
     for h in HINTS:
         if "line" in h and h["line"] != t.lineno: continue
         if ast.dump(h["ast"]) != ast.dump(t): continue
@@ -93,7 +96,7 @@ def find_hint(t, key):
         break
     else:
         hint = {"line": t.lineno, "code": AST39.unparse(t, explain=True), key: "???"}
-        raise MissingHint(t, key, hint)
+        raise MissingHint(t, key, hint, error=error)
     h["used"] = True
     return h[key]
 
