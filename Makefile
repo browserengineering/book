@@ -8,11 +8,10 @@ WIDGET_LAB_CODE=lab2.js lab3.js lab5.js
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
-widgets: $(patsubst %,www/widgets/%,$(WIDGET_LAB_CODE))
+widgets: $(patsubst %,www/widgets/%,$(WIDGET_LAB_CODE)) www/widgets/rt-module.js
 
 lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json
-	python3 -m doctest infra/compiler.md
 
 PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
 
@@ -28,8 +27,15 @@ www/draft/%.html: book/%.md infra/template.html infra/signup.html infra/filter.l
 www/rss.xml: news.yaml infra/rss-template.xml
 	pandoc --template infra/rss-template.xml  -f markdown -t html $< -o $@
 
+www/widgets/lab2.js: src/lab2.py src/lab2.hints infra/compile.py
+	python3 infra/compile.py $< $@ --hints src/lab2.hints --use-js-modules
+
 www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 	python3 infra/compile.py $< $@ --hints src/lab$*.hints
+
+www/widgets/rt-module.js: www/widgets/rt.js
+	echo "export { breakpoint, http_textarea, lib, pysplit, truthy, Widget }" > www/widgets/rt-module.js
+	cat www/widgets/rt.js >> www/widgets/rt-module.js
 
 www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json www/widgets/lab%.js
 	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/index.md -o $@
@@ -57,3 +63,7 @@ download:
 
 backup:
 	rsync server:/home/www/browseng/db.pickle infra/db.$(shell date +%Y-%m-%d).pickle
+
+test:
+	(cd src/ && python3 -m doctest lab1-tests.md)
+	python3 -m doctest infra/compiler.md

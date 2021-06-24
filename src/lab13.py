@@ -929,8 +929,9 @@ class Browser:
         if self.needs_quit:
             sys.exit()
         if self.needs_animation_frame and not self.display_scheduled:
-            self.canvas.after(REFRESH_RATE_MS,
-                              self.main_thread_runner.schedule_animation_frame)
+            self.canvas.after(
+                REFRESH_RATE_MS,
+                self.main_thread_runner.schedule_animation_frame)
             self.display_scheduled = True
 
         if self.needs_draw:
@@ -1124,14 +1125,16 @@ class Browser:
     def js_innerHTML(self, handle, s):
         try:
             self.run_rendering_pipeline()
-            doc = parse(lex("<!doctype><html><body>" + s + "</body></html>"))
+            doc = parse(lex("<!doctype><html><body>" +
+                            s + "</body></html>"))
             new_nodes = doc.children[0].children
             elt = self.handle_to_node[handle]
             elt.children = new_nodes
             for child in elt.children:
                 child.parent = elt
             if self.document:
-                self.set_needs_reflow(layout_for_node(self.document, elt))
+                self.set_needs_reflow(
+                    layout_for_node(self.document, elt))
             else:
                 self.set_needs_layout_tree_rebuild()
         except:

@@ -90,6 +90,7 @@ class Browser:
             width=WIDTH,
             height=HEIGHT
         )
+
         self.canvas.pack()
 
         self.scroll = 0
@@ -115,5 +116,6 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
+
     Browser().load(sys.argv[1])
     tkinter.mainloop()

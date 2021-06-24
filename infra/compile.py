@@ -136,7 +136,7 @@ RENAME_FNS = {
     "print": "console.log",
 }
 
-IMPORTS = []
+IMPORTS = [] # Filled in as import statements are read
 
 LIBRARY_METHODS = [
     # socket
@@ -171,9 +171,11 @@ OUR_CLASSES = []
 OUR_CONSTANTS = []
 OUR_METHODS = []
 
+OUR_SYNC_METHODS = ["__repr__", "__init__"]
+
 FILES = []
 
-OUR_SYNC_METHODS = ["get_metric", "__repr__", "__init__"]
+EXPORTS = []
 
 def load_outline(ol):
     for item in ol:
@@ -281,6 +283,7 @@ def compile_function(name, args, ctx):
     if name in RENAME_FNS:
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
     elif name in OUR_FNS:
+        EXPORTS.append(name)
         return "await " + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
@@ -380,7 +383,15 @@ class Context(dict):
             return super().__getitem__(i)
         else:
             return self.parent[i]
-    
+
+    def is_global(self, i):
+        if self.type == "module":
+            return True
+        elif super().__contains__(i):
+            return False
+        else:
+            return self.parent.is_global(i)
+
 @catch_issues
 def compile_expr(tree, ctx):
     if isinstance(tree, ast.Subscript):
@@ -505,7 +516,14 @@ def compile_expr(tree, ctx):
         return "[" + ", ".join([compile_expr(a, ctx) for a in tree.elts]) + "]"
     elif isinstance(tree, ast.Name):
         assert tree.id == "self" or tree.id in ctx, f"Could not find variable {tree.id}"
-        return "this" if tree.id == "self" else tree.id
+        if tree.id == "self":
+            return "this"
+        elif tree.id in IMPORTS:
+            return tree.id
+        elif ctx.is_global(tree.id):
+            return "constants.{}".format(tree.id)
+        else:
+            return tree.id
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
             return compile_str(tree.value)
@@ -554,6 +572,7 @@ def compile(tree, ctx, indent=0):
         ctx[tree.name] = True
         ctx2 = Context("class", ctx)
         parts = [compile(part, indent=indent + INDENT, ctx=ctx2) for part in tree.body]
+        EXPORTS.append(tree.name)
         return " " * indent + "class " + tree.name + " {\n" + "\n\n".join(parts) + "\n}"
     elif isinstance(tree, ast.FunctionDef):
         assert not tree.decorator_list
@@ -599,7 +618,8 @@ def compile(tree, ctx, indent=0):
         if True in ins and False in ins:
             kw = "let " + ", ".join([target for target in targets if target not in ctx]) + "; "
         elif ctx.type in ["class"]: kw = ""
-        elif False in ins: kw = "let "
+        elif False in ins and ctx.type != "module":
+            kw = "let "
         else: kw = ""
 
         lhs = compile_lhs(tree.targets[0], ctx)
@@ -628,7 +648,7 @@ def compile(tree, ctx, indent=0):
         return out
     elif isinstance(tree, ast.For):
         assert not tree.orelse
-        ctx2 = Context(ctx.type, ctx)
+        ctx2 = Context("for", ctx)
         lhs = compile_lhs(tree.target, ctx2)
         rhs = compile_expr(tree.iter, ctx)
         body = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
@@ -727,12 +747,29 @@ def compile(tree, ctx, indent=0):
     else:
         raise UnsupportedConstruct()
     
-def compile_module(tree, name):
+def compile_module(tree, name, use_js_modules):
     assert isinstance(tree, ast.Module)
     ctx = Context("module", {})
 
     items = [compile(item, indent=0, ctx=ctx) for item in tree.body]
-    return "\n\n".join(items)
+
+    exports = ""
+    rt_imports = ""
+    render_imports = ""
+    if use_js_modules:
+        if len(EXPORTS) > 0:
+            exports = "export {{ {} }};".format(",".join(EXPORTS))
+
+        imports_str = "import {{ {} }} from \"./{}\";"
+
+        rt_imports_arr = [ 'breakpoint', 'pysplit', 'truthy' ]
+        rt_imports = imports_str.format(",".join(rt_imports_arr), "rt-module.js")
+
+        render_imports_array = [ 'tkinter', 'socket' ]
+        render_imports = imports_str.format(",".join(render_imports_array), "render.js")
+
+    return "{}\n{}\n{}\n{}\n\n{}".format(
+        exports, rt_imports, render_imports, "export const constants = {};", "\n\n".join(items))
 
 if __name__ == "__main__":
     import sys, os
@@ -745,6 +782,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compiles each chapter's Python code to JavaScript")
     parser.add_argument("--hints", default=None, type=argparse.FileType())
     parser.add_argument("--indent", default=2, type=int)
+    parser.add_argument("--use-js-modules", action="store_true", default=False)
     parser.add_argument("python", type=argparse.FileType())
     parser.add_argument("javascript", type=argparse.FileType("w"))
     args = parser.parse_args()
@@ -755,7 +793,7 @@ if __name__ == "__main__":
     INDENT = args.indent
     tree = AST39.parse(args.python.read(), args.python.name)
     load_outline(outlines.outline(tree))
-    js = compile_module(tree, name[:-len(".py")])
+    js = compile_module(tree, name[:-len(".py")], args.use_js_modules)
 
     for fn in FILES:
         path = os.path.join(os.path.dirname(args.python.name), fn)

@@ -10,7 +10,7 @@ function callback() {
       " time elapsed since last frame: " + 
       since_last_frame + "ms" +
       " total time elapsed: " + total_elapsed + "ms";
-	if (count <= 100)
+	if (count < 100)
 		requestAnimationFrame(callback);
 	cur_frame_time = Date.now()
 }

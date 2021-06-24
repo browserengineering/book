@@ -5,6 +5,7 @@ www/blog/*.html
 www/onepage/*.html
 www/widgets/lab*.js
 www/widgets/lab*-browser.html
+www/widgets/rt-module.js
 www/rss.xml
 .DS_Store
 slides
