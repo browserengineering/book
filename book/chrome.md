@@ -784,7 +784,7 @@ bar, let's also draw a cursor:
 ``` {.python indent=8}
 if self.focus == "address bar":
     # ...
-    w = font.measure(self.address_bar)
+    w = buttonfont.measure(self.address_bar)
     self.canvas.create_line(55 + w, 55, 55 + w, 85)
 ```
 
