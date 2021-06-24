@@ -18,7 +18,7 @@ Then, this pretends all variables are in scope:
 ...    type = "module"
 ...    def __getitem__(self, i): return True
 ...    def __contains__(self, i): return True
-...    def is_global(self, i): return False
+...    def is_global_constant(self, i): return False
 
 Finally, this has some helper methods:
 

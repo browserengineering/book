@@ -350,7 +350,7 @@ def compile_lhs(tree, ctx):
     targets = lhs_targets(tree)
     for target in targets:
         if target not in ctx:
-            ctx[target] = True
+            ctx[target] = {"is_class": False}
     return compile_expr(tree, ctx)
 
 class Context(dict):
@@ -368,13 +368,15 @@ class Context(dict):
         else:
             return self.parent[i]
 
-    def is_global(self, i):
+    def is_global_constant(self, i):
         if self.type == "module":
+            if super().__contains__(i):
+                return not super().__getitem__(i)["is_class"]
             return True
         elif super().__contains__(i):
             return False
         else:
-            return self.parent.is_global(i)
+            return self.parent.is_global_constant(i)
 
 @catch_issues
 def compile_expr(tree, ctx):
@@ -485,7 +487,7 @@ def compile_expr(tree, ctx):
             return "this"
         elif tree.id in IMPORTS:
             return tree.id
-        elif ctx.is_global(tree.id):
+        elif ctx.is_global_constant(tree.id):
             return "constants.{}".format(tree.id)
         else:
             return tree.id
@@ -526,7 +528,7 @@ def compile(tree, ctx, indent=0):
         assert len(tree.names) == 1
         assert not tree.names[0].asname
         name = tree.names[0].name
-        ctx[name] = True
+        ctx[name] = {"is_class": False}
         IMPORTS.append(name)
 
         return " " * indent + "// Please configure the '" + name + "' module"
@@ -534,7 +536,7 @@ def compile(tree, ctx, indent=0):
         assert not tree.bases
         assert not tree.keywords
         assert not tree.decorator_list
-        ctx[tree.name] = True
+        ctx[tree.name] = {"is_class": True}
         ctx2 = Context("class", ctx)
         parts = [compile(part, indent=indent + INDENT, ctx=ctx2) for part in tree.body]
         EXPORTS.append(tree.name)
@@ -655,7 +657,7 @@ def compile(tree, ctx, indent=0):
 
             intros = set.intersection(*[set(ctx2) for ctx2 in ctxs]) - set(ctx)
             if intros:
-                for name in intros: ctx[name] = True
+                for name in intros: ctx[name] =   {"is_class": False}
                 out += "let " + ",".join(intros) + ";\n" + " " * indent
 
             for i, (test, body) in enumerate(parts):
@@ -721,6 +723,7 @@ def compile_module(tree, name, use_js_modules):
     exports = ""
     rt_imports = ""
     render_imports = ""
+    constants_export = "const constants = {};"
     if use_js_modules:
         if len(EXPORTS) > 0:
             exports = "export {{ {} }};".format(",".join(EXPORTS))
@@ -732,9 +735,10 @@ def compile_module(tree, name, use_js_modules):
 
         render_imports_array = [ 'tkinter', 'socket' ]
         render_imports = imports_str.format(",".join(render_imports_array), "render.js")
+        constants_export = "export " + constants_export
 
     return "{}\n{}\n{}\n{}\n\n{}".format(
-        exports, rt_imports, render_imports, "export const constants = {};", "\n\n".join(items))
+        exports, rt_imports, render_imports, constants_export, "\n\n".join(items))
 
 if __name__ == "__main__":
     import sys, os

@@ -178,7 +178,7 @@ function draw_widget() {
         g1.appendChild(svg("line", { x1: 0, y1: tmargin, x2: width, y2: tmargin }));
         for (let [x, word, font] of STATE.line) {
             g1.appendChild(svg("text", {
-                x: 5 + (x - HSTEP) * ZOOM, y: tmargin,
+                x: 5 + (x - constants.HSTEP) * ZOOM, y: tmargin,
                 style: "font: " + font.string,
                 class: "drawn",
             }, word));
@@ -190,12 +190,12 @@ function draw_widget() {
             let metric = STATE.metrics[i];
             let dy = (y - STATE.initial_y) * ZOOM;
             g2.appendChild(svg("text", {
-                x: 10 + (x - HSTEP) * ZOOM, y: dy + y1,
+                x: 10 + (x - constants.HSTEP) * ZOOM, y: dy + y1,
                 style: "font: " + font.string,
                 class: "drawn",
             }, word));
             g2.appendChild(svg("rect", {
-                x: 4 + (x - HSTEP) * ZOOM, y: b - metric.ascent * ZOOM,
+                x: 4 + (x - constants.HSTEP) * ZOOM, y: b - metric.ascent * ZOOM,
                 width: 5, height: metric.ascent * ZOOM,
                 class: "areg",
             }))
@@ -206,12 +206,12 @@ function draw_widget() {
         STATE.line.forEach(function ([x, word, font], i){
             let metric = STATE.metrics[i];
             g1.appendChild(svg("rect", {
-                x: (x - HSTEP) * ZOOM, y: tmargin,
+                x: (x - constants.HSTEP) * ZOOM, y: tmargin,
                 width: 5, height: metric.ascent * ZOOM,
                 class: metric.ascent === STATE.max_asc ? "amax" : "areg",
             }))
             g1.appendChild(svg("rect", {
-                x: (x - HSTEP) * ZOOM, y: tmargin + metric.ascent * ZOOM,
+                x: (x - constants.HSTEP) * ZOOM, y: tmargin + metric.ascent * ZOOM,
                 width: 5, height: metric.descent * ZOOM,
                 class: metric.ascent === STATE.max_asc ? "dmax" : "dreg",
             }))
