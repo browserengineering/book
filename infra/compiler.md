@@ -301,18 +301,11 @@ becomes a special `init` function:
     }
 
 Meanwhile `__repr__` becomes `toString` and it cannot be async---so
-basically don't call any functions for a `__repr__` function. The same
-goes for the special-cased `get_metric` function:
+basically don't call any functions for a `__repr__`:
 
     >>> Test.stmt("class foo:\n def __repr__(self):\n  return 'foo'")
     class foo {
       toString() {
-        return "foo";
-      }
-    }
-    >>> Test.stmt("class foo:\n def get_metric(self):\n  return 'foo'")
-    class foo {
-      get_metric() {
         return "foo";
       }
     }
