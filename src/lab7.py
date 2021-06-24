@@ -703,7 +703,7 @@ class Browser:
                 self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
                 self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < 790 and 40 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
         else:
@@ -741,7 +741,7 @@ class Browser:
         self.canvas.create_rectangle(10, 10, 30, 30, width=1)
         self.canvas.create_text(11, 0, font=buttonfont, text="+", anchor="nw")
 
-        self.create_rectangle(40, 50, 790, 90, width=1)
+        self.canvas.create_rectangle(40, 50, WIDTH - 10, 90, width=1)
         if self.focus == "address bar":
             self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=buttonfont)
             w = buttonfont.measure(self.address_bar)

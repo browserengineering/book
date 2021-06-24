@@ -162,10 +162,13 @@ static tkinter(options) {
         }
 
         create_rectangle(x1, y1, x2, y2, params) {
+            this.ctx.beginPath();
+            this.ctx.rect(x1 * ZOOM, y1 * ZOOM, (x2 - x1) * ZOOM, (y2 - y1) * ZOOM);
             this.ctx.fillStyle = params.fill ?? "transparent";
-            this.ctx.fillRect(x1 * ZOOM, y1 * ZOOM, (x2 - x1) * ZOOM, (y2 - y1) * ZOOM);
-            if ((params.w ?? 0) != 0) {
-                this.ctx.strokeWidth = params.w;
+            this.ctx.fill();
+            if ((params.width ?? 0) != 0) {
+                this.ctx.lineWidth = params.width;
+                this.ctx.strokeStyle = "black";
                 this.ctx.stroke()
             }
         }
@@ -174,7 +177,8 @@ static tkinter(options) {
             this.ctx.beginPath();
             this.ctx.moveTo(x1 * ZOOM, y1 * ZOOM);
             this.ctx.lineTo(x2 * ZOOM, y2 * ZOOM);
-            this.ctx.strokeWidth = 1;
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeStyle = "black";
             this.ctx.stroke();
         }
 

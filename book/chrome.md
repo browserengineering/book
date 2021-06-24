@@ -631,7 +631,7 @@ the URL for the currently-active tab:
 class Browser:
     def draw(self):
         # ...
-        self.create_rectangle(40, 50, 790, 90, width=1)
+        self.canvas.create_rectangle(40, 50, WIDTH - 10, 90, width=1)
         url = self.tabs[self.active_tab].url
         self.canvas.create_text(55, 55, anchor='nw', text=url, font=buttonfont)
 ```
@@ -758,7 +758,7 @@ class Browser:
         self.focus = None
         if e.y < CHROME_PX:
             # ...
-            elif 50 <= e.x < 790 and 40 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
         # ...
