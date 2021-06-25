@@ -37,7 +37,7 @@ www/widgets/rt-module.js: www/widgets/rt.js
 	echo "export { breakpoint, http_textarea, lib, pysplit, truthy, Widget }" > www/widgets/rt-module.js
 	cat www/widgets/rt.js >> www/widgets/rt-module.js
 
-www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json
+www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json www/widgets/lab%.js
 	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/index.md -o $@
 
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json

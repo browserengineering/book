@@ -41,8 +41,11 @@ class AST39(ast.NodeTransformer):
 class UnsupportedConstruct(AssertionError): pass
 
 class MissingHint(Exception):
-    def __init__(self, tree, key, hint):
-        self.message = f"Could not find {key} key for `{AST39.unparse(tree)}`"
+    def __init__(self, tree, key, hint, error=None):
+        if not error:
+            self.message = f"Could not find {key} key for `{AST39.unparse(tree)}`"
+        else:
+            self.message = error
         self.key = key
         self.tree = tree
         self.hint = hint
@@ -62,7 +65,7 @@ def catch_issues(f):
                 return f(tree, *args, **kwargs)
             except AssertionError as e:
                 if WRAP_DISABLED: raise e
-                return find_hint(tree, "js")
+                return find_hint(tree, "js", error=e)
         except MissingHint as e:
             if WRAP_DISABLED: raise e
             ISSUES.append(e)
@@ -85,7 +88,7 @@ def read_hints(f):
         h["used"] = False
     HINTS = hints
     
-def find_hint(t, key):
+def find_hint(t, key, error=None):
     for h in HINTS:
         if "line" in h and h["line"] != t.lineno: continue
         if ast.dump(h["ast"]) != ast.dump(t): continue
@@ -93,7 +96,7 @@ def find_hint(t, key):
         break
     else:
         hint = {"line": t.lineno, "code": AST39.unparse(t, explain=True), key: "???"}
-        raise MissingHint(t, key, hint)
+        raise MissingHint(t, key, hint, error=error)
     h["used"] = True
     return h[key]
 
@@ -151,6 +154,8 @@ LIBRARY_METHODS = [
     "delete",
     "create_text",
     "create_rectangle",
+    "create_line",
+    "create_polygon",
 
     # tkinter.font
     "metrics",
@@ -165,6 +170,8 @@ OUR_FNS = []
 OUR_CLASSES = []
 OUR_CONSTANTS = []
 OUR_METHODS = []
+
+OUR_SYNC_METHODS = ["__repr__", "__init__"]
 
 FILES = []
 
@@ -204,12 +211,15 @@ def compile_method(base, name, args, ctx):
         assert len(args) == 2
         return base_js + ".bind(" + args_js[0] + ", (e) => " + args_js[1] + "(e))"
     elif name == "makefile":
-        assert len(args) == 3
+        assert len(args) == 2
         return "await " + base_js + ".makefile(" + ", ".join(args_js) + ")"
     elif name in LIBRARY_METHODS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_METHODS:
-        return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
+        if name in OUR_SYNC_METHODS:
+            return base_js + "." + name + "(" + ", ".join(args_js) + ")"
+        else:
+            return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in RENAME_METHODS:
         return base_js + "." + RENAME_METHODS[name] + "(" + ", ".join(args_js) + ")"
     elif isinstance(base, ast.Name) and base.id == "self":
@@ -283,6 +293,9 @@ def compile_function(name, args, ctx):
     elif name == "len":
         assert len(args) == 1
         return args_js[0] + ".length"
+    elif name == "ord":
+        assert len(args) == 1
+        return args_js[0] + ".charCodeAt(0)"
     elif name == "isinstance":
         assert len(args) == 2
         return args_js[0] + " instanceof " + args_js[1]
@@ -313,6 +326,9 @@ def compile_function(name, args, ctx):
         assert isinstance(args[0], ast.Str)
         FILES.append(args[0].s)
         return "filesystem.open(" + args_js[0] + ")"
+    elif name == "enumerate":
+        assert len(args) == 1
+        return args_js[0] + ".entries()"
     else:
         raise UnsupportedConstruct()
 
@@ -401,14 +417,25 @@ def compile_expr(tree, ctx):
             else:
                 return lhs + "[" + rhs + "]"
     elif isinstance(tree, ast.Call):
-        args = tree.args + [kv.value for kv in tree.keywords]
+        args = tree.args[:]
+        if tree.keywords:
+            names = []
+            vals = []
+            for kwarg in tree.keywords:
+                assert kwarg.arg
+                names.append(ast.Constant(kwarg.arg))
+                vals.append(kwarg.value)
+            args += [ast.Dict(names, vals)]
+
         if isinstance(tree.func, ast.Attribute):
             return "(" + compile_method(tree.func.value, tree.func.attr, args, ctx) + ")"
         elif isinstance(tree.func, ast.Name) and tree.func.id == "sorted":
-            assert len(args) == 2
-            assert isinstance(args[1], ast.Name)
+            assert len(tree.args) == 1
+            assert len(tree.keywords) == 1
+            assert tree.keywords[0].arg == 'key'
+            assert isinstance(tree.keywords[0].value, ast.Name)
             base = compile_expr(args[0], ctx)
-            return "(" + base + ".slice().sort(comparator(" + args[1].id + ")))"
+            return "(" + base + ".slice().sort(comparator(" + tree.keywords[0].value.id + ")))"
         elif isinstance(tree.func, ast.Name):
             return "(" + compile_function(tree.func.id, args, ctx) + ")"
         else:
@@ -420,40 +447,48 @@ def compile_expr(tree, ctx):
     elif isinstance(tree, ast.BinOp):
         lhs = compile_expr(tree.left, ctx)
         rhs = compile_expr(tree.right, ctx)
-        return "(" + lhs + " " + op2str(tree.op) + " " + rhs + ")"
+        if isinstance(tree.op, ast.FloorDiv):
+            return "Math.trunc(" + lhs + " / " + rhs + ")"
+        else:
+            return "(" + lhs + " " + op2str(tree.op) + " " + rhs + ")"
     elif isinstance(tree, ast.BoolOp):
         parts = ["truthy("+compile_expr(val, ctx)+")" for val in tree.values]
         return "(" + (" " + op2str(tree.op) + " ").join(parts) + ")"
     elif isinstance(tree, ast.Compare):
-        assert len(tree.ops) == 1
-        assert len(tree.comparators) == 1
         lhs = compile_expr(tree.left, ctx)
-        rhs = compile_expr(tree.comparators[0], ctx)
-        if (isinstance(tree.ops[0], ast.In) or isinstance(tree.ops[0], ast.NotIn)):
-            negate = isinstance(tree.ops[0], ast.NotIn)
-            if isinstance(tree.comparators[0], ast.Str):
-                cmp = "===" if negate else "!=="
-                return "(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)"
-            elif isinstance(tree.comparators[0], ast.List):
-                assert isinstance(tree.left, ast.Name) or \
-                    (isinstance(tree.left, ast.Subscript) and
-                     isinstance(tree.left.value, ast.Name))
-                op = " !== " if negate else " === "
-                parts = [lhs + op + compile_expr(v, ctx) for v in tree.comparators[0].elts]
-                return "(" + (" && " if negate else " || ").join(parts) + ")"
+        conjuncts = []
+        for op, comp in zip(tree.ops, tree.comparators):
+            rhs = compile_expr(comp, ctx)
+            if (isinstance(op, ast.In) or isinstance(op, ast.NotIn)):
+                negate = isinstance(op, ast.NotIn)
+                if isinstance(comp, ast.Str):
+                    cmp = "===" if negate else "!=="
+                    conjuncts.append("(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)")
+                elif isinstance(comp, ast.List):
+                    assert isinstance(tree.left, ast.Name) or \
+                        (isinstance(tree.left, ast.Subscript) and
+                         isinstance(tree.left.value, ast.Name))
+                    op = " !== " if negate else " === "
+                    parts = [lhs + op + compile_expr(v, ctx) for v in comp.elts]
+                    conjuncts.append("(" + (" && " if negate else " || ").join(parts) + ")")
+                else:
+                    t = find_hint(tree, "type")
+                    assert t in ["str", "dict", "list"]
+                    cmp = "===" if negate else "!=="
+                    if t in ["str", "list"]:
+                        conjuncts.append("(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)")
+                    elif t == "dict":
+                        conjuncts.append("(typeof " + rhs + "[" + lhs + "] " + cmp + " \"undefined\")")
+            elif isinstance(op, ast.Eq) and \
+                 (isinstance(comp, ast.List) or isinstance(tree.left, ast.List)):
+                conjuncts.append("(JSON.stringify(" + lhs + ") === JSON.stringify(" + rhs + "))")
             else:
-                t = find_hint(tree, "type")
-                assert t in ["str", "dict", "list"]
-                cmp = "===" if negate else "!=="
-                if t in ["str", "list"]:
-                    return "(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)"
-                elif t == "dict":
-                    return "(typeof " + rhs + "[" + lhs + "] " + cmp + " \"undefined\")"
-        elif isinstance(tree.ops[0], ast.Eq) and \
-             (isinstance(tree.comparators[0], ast.List) or isinstance(tree.left, ast.List)):
-            return "(JSON.stringify(" + lhs + ") === JSON.stringify(" + rhs + "))"
+                conjuncts.append("(" + lhs + " " + op2str(op) + " " + rhs + ")")
+            lhs = rhs
+        if len(conjuncts) == 1:
+            return conjuncts[0]
         else:
-            return "(" + lhs + " " + op2str(tree.ops[0]) + " " + rhs + ")"
+            return "(" + " && ".join(conjuncts) + ")"
     elif isinstance(tree, ast.IfExp):
         test = compile_expr(tree.test, ctx)
         ift = compile_expr(tree.body, ctx)
@@ -567,7 +602,7 @@ def compile(tree, ctx, indent=0):
         else:
             kw = "" if ctx.type == "class" else "function "
             def_line = kw + tree.name + "(" + ", ".join(args) + ") {\n"
-            if not tree.name.startswith("__"):
+            if ctx.type != "class" or tree.name not in OUR_SYNC_METHODS:
                 def_line = "async " + def_line
             last_line = "\n" + " " * indent + "}"
             return " " * indent + def_line + body + last_line

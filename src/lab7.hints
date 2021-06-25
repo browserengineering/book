@@ -1,0 +1,13 @@
+[
+{"code": "':' in host", "type": "str"},
+{"code": "'://' in url", "type": "str"},
+{"code": "'=' in attrpair", "type": "str"},
+{"code": "tag in self.SELF_CLOSING_TAGS", "type": "list"},
+{"code": "tag in self.HEAD_TAGS", "type": "list"},
+{"code": "tag not in ['/head'] + self.HEAD_TAGS", "type": "list"},
+{"code": "self.s[self.i] in chars", "type": "list"},
+{"code": "'style' in node.attributes", "type": "dict"},
+{"code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
+{"code": "'href' in node.attributes", "type": "dict"},
+{"code": "'href' in elt.attributes", "type": "dict"}
+]
