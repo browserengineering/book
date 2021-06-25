@@ -23,12 +23,11 @@ have corresponding objects in the layout tree with sizes and positions
 attached, formatted text (like links) do not. We need to fix that.
 
 The big idea is to introduce two new types of layout objects,
-`LineLayout` and `TextLayout`, that go inside an `InlineLayout`
-objects. `LineLayout`s represent a line of text and stack one after
-another vertically. `TextLayout`s represent individual words and are
-arranged on the line left to right. We'll need `InlineLayout` to
-create both objects, and then we'll need to write layout methods for
-them.
+`LineLayout` and `TextLayout`, that go inside `InlineLayout` objects.
+`LineLayout`s represent a line of text and stack one after another
+vertically. `TextLayout`s represent individual words and are arranged
+on the line left to right. We'll need `InlineLayout` to create both
+objects, and then we'll need to write layout methods for them.
 
 Let's start by defining our two new types of layout objects. A
 `LineLayout` object is straightforward:
@@ -59,14 +58,11 @@ class TextLayout:
 
 Right now, the `InlineLayout` object breaks text into lines using its
 `line` field, computes the position of each line and each word in its
-`flush` method, and stores the words in its `display_list` field. We
-want to change this up.
-
-It's going to be a lot of work to refactor this code, but the end
-result will be cleaner and simpler, and more importantly it will
-provide us with a layout object for every piece of text, which we'll
-use to determine where links are and ultimately to enable clicking on
-links.
+`flush` method, and stores the words in its `display_list` field. It's
+going to be a lot of work to refactor this code, but the end result
+will be cleaner and simpler. More importantly, it will provide a
+layout object for every piece of text, which we'll use to determine
+where links are and ultimately to enable clicking on links.
  
 Let's start in the very middle of things, the `text` method that lays
 out text into lines. This one line corresponds to placing a word in a
@@ -127,9 +123,8 @@ def layout(self):
     self.height = sum([line.height for line in self.children])
 ```
 
-With the `display_list` gone, we do need to change the `paint` method.
-instead of copying from the `display_list`, it just needs to
-recursively paint each line:
+With the `display_list` gone, we do need to change the `paint` method
+to recursively paint each line:
 
 ``` {.python indent=4}
 def paint(self, display_list):
@@ -138,9 +133,9 @@ def paint(self, display_list):
         child.paint(display_list)
 ```
 
-The `flush` method now isn't called from anywhere, but keep it around,
-because we now need to write the `layout` method for lines and text
-objects.
+The `flush` method is no longer called from anywhere, but keep it
+around, because we now need to write the `layout` method for lines and
+text objects.
 
 Let's start with lines. Lines stack vertically and take up their
 parent's full width, so computing `x` and `y` and `width` looks the
@@ -248,21 +243,19 @@ class TextLayout:
         display_list.append(DrawText(self.x, self.y, self.word, self.font, color))
 ```
 
-Oof, well, this was quite a bit of refactoring. It was tricky, and
-probably exhausting. So take a moment to test everything---it should
-look exactly identical to how it did before we started this refactor.
-But while you can't see it, there's a crucial difference: each blue
-link on the page now has an associated layout object, with its own
-width and height.
+Oof, well, this was quite a bit of refactoring. So take a moment to
+test everything---it should look exactly identical to how it did
+before we started this refactor. But while you can't see it, there's a
+crucial difference: each blue link on the page now has an associated
+layout object, with its own width and height.
 
 Click handling
 ==============
 
-So now let's start to implement links, the browser UI, and so on. We
-need to start with clicks. In Tk, clicks work just like key presses:
-you bind an event handler to a certain event. For click handling that
-event is `<Button-1>`, button number 1 being the left button on the
-mouse.[^1]
+Now let's start to implement links and the browser UI. We need to
+start with clicks. In Tk, clicks work just like key presses: you bind
+an event handler to a certain event. For click handling that event is
+`<Button-1>`, button number 1 being the left button on the mouse.[^1]
 
 [^1]: Button 2 is the middle button; button 3 is the right hand button.
 
@@ -274,9 +267,9 @@ class Browser:
         self.window.bind("<Button-1>", self.click)
 ```
 
-Inside `click`, we want to figure out what link the user has
-clicked on. Luckily, the event handler is passed an "event object",
-whose `x` and `y` fields refer to where the click happened:
+Inside `click`, we want to figure out what link the user has clicked
+on. Luckily, the event handler is passed an event object, whose `x`
+and `y` fields refer to where the click happened:
 
 Now, here, we have to be careful with coordinate systems. Those *x*
 and *y* coordinates are relative to the browser window. Since the
@@ -309,10 +302,13 @@ and also the paragraph it's in, and the section that that paragraph is
 in, and so on. We want the one that's "on top", so the last object in
 the list:[^overlap]
 
-[^overlap]: In a real browser you can also have a dialog that overlaps
-some text, or something like that. And real browsers can control which
-element is on top using the `z-index` property. So real browsers use
-*stacking contexts* to resolve what exactly you actually clicked on.
+[^overlap]: In a real browser you can also sibling elements that
+overlap each other, like a dialog that overlaps some text. Web pages
+control which element is on top using the `z-index` property. So real
+browsers use [stacking contexts][stack-ctx] to resolve what exactly you
+actually clicked on.
+
+[stack-ctx]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
 ``` {.python indent=8}
 # ...
@@ -335,8 +331,8 @@ while elt:
 ```
 
 I wrote this in a kind of curious way, but this way it's easier to add
-other types of clickable things later---like text boxes and buttons in
-the [next chapter](forms.md). Finally, now that we've found the link
+other types of clickable things---like text boxes and buttons---in the
+[next chapter](forms.md). Finally, now that we've found the link
 element itself, we need to extract the URL and direct the browser to
 it. This URL might be a relative URL:
 
@@ -376,11 +372,12 @@ tab (like the layout tree and display list). We need to tease the two
 apart.
 
 Here's the plan: the `Browser` class will store the window and canvas,
-plus the list of tabs. Everything else goes into a new `Page` class.
-Since the `Browser` stores the window and canvas, it handles all of
-the events, sometimes forwarding it to the active tab.
+plus a list of `Tab` objects, one per browser tab. Everything else
+goes into a new `Page` class. Since the `Browser` stores the window
+and canvas, it handles all of the events, sometimes forwarding it to
+the active tab.
 
-So the `Tab` constructor looks like this:
+The `Tab` constructor looks like this:
 
 ``` {.python}
 class Tab:
@@ -395,8 +392,11 @@ there's a change here too.
 
 Since the `Browser` controls the canvas and handles events, it decides
 when rendering happens and which tab does the drawing. After all, you
-only want one tab drawing its contents at a time! So let's remove the
-`draw` calls from the `load` and `scrolldown` methods.
+only want one tab drawing its contents at a time![^unless-windows] So
+let's remove the `draw` calls from the `load` and `scrolldown`
+methods.
+
+[^unless-windows]: Unless the browser implements multiple windows!
 
 Meanwhile, in `draw`, let's pass the canvas in as an argument:
 
@@ -444,8 +444,12 @@ class Browser:
 ```
 
 You'll need to modify the arguments `Tab`'s `scrolldown` and `click`
-methods expect. Finally, that `draw` call also just forwards to the
-active tab:
+methods expect, since it's the `Browser` that handles events:
+
+- `scrolldown` should take no arguments (instead of an event object)
+- `click` should take two coordinates (instead of an event object)
+
+Finally, that `draw` call also just forwards to the active tab:
 
 ``` {.python}
 class Browser:
@@ -488,8 +492,8 @@ happen in the `Browser` class.
     browser.
 
 So let's add some code to draw a set of tabs at the top of the browser
-window. Let's try to keep it simple, because this is going to require
-some tedious and mildly tricky geometry. Let's have each tab be 80
+window (and let's keep it simple, because this is going to require
+some tedious and mildly tricky geometry). Let's have each tab be 80
 pixels wide and 40 pixels tall. We'll label each tab something like
 "Tab 4" so we don't have to deal with long tab titles overlapping. And
 let's leave 40 pixels on the left for a button that adds a new tab.
@@ -625,7 +629,7 @@ Now that we are navigating between pages all the time, it's easy to
 get a little lost and forget what web page you're looking at.
 Browsers solve this issue with an address bar that shows the URL.
 Let's implement a little address bar ourselves. The URL it shows is
-the URL for the currently-active tab:
+the one for the currently-active tab:
 
 ``` {.python}
 class Browser:
