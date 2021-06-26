@@ -429,7 +429,8 @@ class TextLayout:
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(self.node.style["font-size"][:-2]) * .75)
-        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
+        self.font = tkinter.font.Font(
+            size=size, weight=weight, slant=style)
 
         # Do not set self.y!!!
         self.width = self.font.measure(self.word)
@@ -444,7 +445,8 @@ class TextLayout:
 
     def paint(self, display_list):
         color = self.node.style["color"]
-        display_list.append(DrawText(self.x, self.y, self.word, self.font, color))
+        display_list.append(
+            DrawText(self.x, self.y, self.word, self.font, color))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -732,26 +734,32 @@ class Browser:
             x1, x2 = 40 + 80 * i, 120 + 80 * i
             self.canvas.create_line(x1, 0, x1, 40)
             self.canvas.create_line(x2, 0, x2, 40)
-            self.canvas.create_text(x1 + 10, 10, text=name, font=tabfont, anchor="nw")
+            self.canvas.create_text(
+                x1 + 10, 10, text=name, font=tabfont, anchor="nw")
             if i == self.active_tab:
                 self.canvas.create_line(0, 40, x1, 40)
                 self.canvas.create_line(x2, 40, WIDTH, 40)
 
         buttonfont = tkinter.font.Font(size=30)
         self.canvas.create_rectangle(10, 10, 30, 30, width=1)
-        self.canvas.create_text(11, 0, font=buttonfont, text="+", anchor="nw")
+        self.canvas.create_text(
+            11, 0, font=buttonfont, text="+", anchor="nw")
 
         self.canvas.create_rectangle(40, 50, WIDTH - 10, 90, width=1)
         if self.focus == "address bar":
-            self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=buttonfont)
+            self.canvas.create_text(
+                55, 55, anchor='nw', text=self.address_bar,
+                font=buttonfont)
             w = buttonfont.measure(self.address_bar)
             self.canvas.create_line(55 + w, 55, 55 + w, 85)
         else:
             url = self.tabs[self.active_tab].url
-            self.canvas.create_text(55, 55, anchor='nw', text=url, font=buttonfont)
+            self.canvas.create_text(
+                55, 55, anchor='nw', text=url, font=buttonfont)
 
         self.canvas.create_rectangle(10, 50, 35, 90, width=1)
-        self.canvas.create_polygon(15, 70, 30, 55, 30, 85, fill='black')
+        self.canvas.create_polygon(
+            15, 70, 30, 55, 30, 85, fill='black')
 
     def load(self, url):
         new_tab = Tab()
