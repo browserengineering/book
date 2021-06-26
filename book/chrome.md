@@ -381,7 +381,7 @@ it. This URL might be a relative URL:
 ``` {.python indent=12}
 # ...
 elif elt.tag == "a" and "href" in elt.attributes:
-    url = relative_url(elt.attributes["href"], self.url)
+    url = resolve_url(elt.attributes["href"], self.url)
     return self.load(url)
 ```
 

@@ -57,7 +57,7 @@ def request(url):
 
     return headers, body
 
-def relative_url(url, current):
+def resolve_url(url, current):
     if "://" in url:
         return url
     elif url.startswith("/"):
@@ -574,7 +574,7 @@ class Browser:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = request(relative_url(link, url))
+                header, body = request(resolve_url(link, url))
             except:
                 continue
             rules.extend(CSSParser(body).parse())
