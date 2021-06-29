@@ -402,7 +402,7 @@ Multiple pages
 
 If you're anything like me, the next thing you tried after clicking on
 links is middle-clicking them to open in a new tab. Every browser now
-has tabbed browsing, and honestly it's a little embarrasing that our
+has tabbed browsing, and honestly it's a little embarrassing that our
 little toy browser doesn't.
 
 Fundamentally tabbed browsing means we need to distinguish between the
