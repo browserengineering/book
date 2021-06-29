@@ -29,9 +29,9 @@ vertically. `TextLayout`s represent individual words and are arranged
 on the line left to right. We'll need `InlineLayout` to create both
 objects, and then we'll need to write layout methods for them.
 
-These new classes are surprisingly confusing in practice, mostly because
-they are an area where the layout tree looks quite different than
-the HTML tree. Before starting code surgery, let's go through an simple example:[^br-tag]
+These new classes are surprisingly confusing in practice, mostly because they
+are an area where the layout tree looks quite different than the HTML tree.
+Before starting code surgery, let's go through a simple example:[^br-tag]
 
 [^br-tag]: If you haven't already, I recommend you go back and add support for
 the `<br>` tag---it's in an exercise in [Chapter 3](text.md).
