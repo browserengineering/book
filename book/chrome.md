@@ -964,16 +964,17 @@ current page and allows the user to navigate back and forth.
 Exercises
 =========
 
+*Backspace*: Add support for the backspace key when typing in the
+address bar. Honestly, do this exercise just for your sanity.
+
 *Middle-click*: Add support for middle-clicking on a link (`Button-2`)
 to open it in a new tab. You might need a mouse to test this easily.
 
-*Backspace*: Add support for the backspace key when typing in the
-address bar.
-
-*Forward*: Add a forward button, which should "undo" the back button.
-If the most recent navigation action wasn't a back button, the forward
+*Forward*: Add a forward button, which should undo the back button. If
+the most recent navigation action wasn't a back button, the forward
 button shouldn't do anything. Draw it in gray in that case, so the
-user isn't stuck wondering why it doesn't work.
+user isn't stuck wondering why it doesn't work. Also draw the back
+button in gray if there's nowhere to go back to.
 
 *Fragments*: URLs can contain a *fragment*, which comes at the end of
 a URL and is separated from the path by a hash sign `#`. When the
@@ -985,33 +986,38 @@ identifier to the top of the screen. The table of contents on this
 page uses fragment links.
 
 *Search*: If the user types something that's *not* a URL into the
-address bar, make your browser automatically search for that query in
-a search engine. For example, you can search Google by going to
+address bar, make your browser automatically search for it with a
+search engine. This usually means going to a special URL. For example,
+you can search Google by going to
 
     https://google.com/search?q=QUERY
 
 where `QUERY` is the search query with every space replaced by a `+`
 sign.[^more-escapes]
 
-[^more-escapes]: Actually you need to escape many different
-    punctuation characters, but don't worry about it for now.
+[^more-escapes]: Actually, you need to escape [lots of punctuation
+characters][query-escape] in these "query strings", but that's kind of
+orthogonal to this address bar search feature.
 
-*Visited Links*: In real browsers, links are a different color when
-you've visited them before---usually purple. Implement that feature by
-storing the set of all visited pages and checking them when you lay
-out links. Link color is currently driven by CSS: you need to work
-with that somehow. I recommend adding the `visited` class to all links
-that have been visited, right after parsing and before styling. Then
-you could add a browser style that uses that class. (Or you could add a
-[*pseudo*-class](https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes)
-feature to your CSS parser, which is what real browsers do.)
+[query-escape]: https://en.wikipedia.org/wiki/Query_string#URL_encoding
+
+*Visited Links*: In real browsers, links you've visited before are
+usually purple. Implement that feature. You'll need to store the set
+of visited URLs, annotate the corresponding HTML elements, and check
+those annotations when drawing the text.[^pseudo-class]
+
+[^pseudo-class]: Real browsers support special [pseudo-class]
+selectors that select all visited links, which you could implement if
+you want.
+
+[pseudo-class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
 
 *Bookmarks*: Implement basic *bookmarks*. Add a button to the browser
 chrome; clicking it should bookmark the page. When you're looking at a
-bookmarked page, that bookmark button should look different to remind
-the user that the page is bookmarked, and clicking it should
-un-bookmark it. Add a special web page, `about:bookmarks`, for viewing
-the list of bookmarks, and make `Ctrl+B` navigate to that page.
+bookmarked page, that bookmark button should look different (maybe
+yellow?) to remind the user that the page is bookmarked, and clicking
+it should un-bookmark it. Add a special web page, `about:bookmarks`,
+for viewing the list of bookmarks.
 
 *Cursor*: Make the left and right arrow keys move the text cursor
 around the address bar when it is focused. Pressing the backspace key
