@@ -30,7 +30,7 @@ on the line left to right. We'll need `InlineLayout` to create both
 objects, and then we'll need to write layout methods for them.
 
 These new classes are surprisingly confusing in practice, mostly because they
-are an area where the layout tree looks quite different than the HTML tree.
+cause the layout tree to look quite different than the HTML tree.
 Before starting code surgery, let's go through a simple example:
 
 ```
@@ -107,7 +107,7 @@ self.line.append((self.cursor_x, word, font, color))
 An `InlineLayout` object will now have lots of lines in it, so there
 won't be a `line` field. And each line will be a `LineLayout` object,
 now an array. And each word in the line will be a `TextLayout` object,
-not just an unweidly four-tuple. So it should look like this:
+not just an unwieldy four-tuple. So it should look like this:
 
 ``` {.python indent=12}
 line = self.children[-1]
@@ -175,7 +175,7 @@ same as for our other boxes:[^mixins]
 
 [^mixins]: You could reduce the duplication with some helper methods
     (or even something more elaborate, like mixin classes), but in a
-    real browser these code snippets would look more different, due to
+    real browser these code snippets would end up looking different, due to
     supporting all kinds of extra features.
 
 ``` {.python}
@@ -239,7 +239,7 @@ Note that we're also setting the `y` field on each word in the line.[^why-no-y]
 That means that inside `TextLayout`'s `layout` method, we only need to
 compute `x`, `width`, and `height`:
 
-[^why-no-y]: it could have been computed in ``TextLayout``, of course, but
+[^why-no-y]: It could have been computed in ``TextLayout``, of course, but
 that would have required storing the baseline on each `LineLayout`, or
 re-computing it in each `TextLayout`. As we'll see in later chapters, there
 are many considerations and optimizations of this kind that are needed to make
@@ -298,7 +298,7 @@ start with clicks. In Tk, clicks work just like key presses: you bind
 an event handler to a certain event. For click handling that event is
 `<Button-1>`, button number 1 being the left button on the mouse.[^1]
 
-[^1]: Button 2 is the middle button; button 3 is the right hand button.
+[^1]: Button 2 is the middle button; button 3 is the right-hand button.
 
 
 ``` {.python replace=self.click/self.handle_click}
@@ -344,7 +344,7 @@ the list:[^overlap]
 
 [^overlap]: In a real browser, sibling elements can also 
 overlap each other---for example, a dialog that overlaps some text. Web pages
-control which element is on top using the `z-index` property. So real
+can also control which element is on top using the `z-index` property. So real
 browsers have to compute [stacking contexts][stack-ctx] to resolve what you
 actually clicked on.
 
@@ -372,9 +372,10 @@ while elt:
 
 I wrote this in a kind of curious way, but this way it's easier to add
 other types of clickable things---like text boxes and buttons---in the
-[next chapter](forms.md). Finally, now that we've found the link
-element itself, we need to extract the URL and direct the browser to
-it. This URL might be a relative URL:
+[next chapter](forms.md).
+
+Finally, now that we've found the link element itself, we need to extract the
+URL and direct the browser to it. This URL might be a relative URL:
 
 ``` {.python indent=12}
 # ...
@@ -901,6 +902,9 @@ current page and allows the user to navigate back and forth.
 Exercises
 =========
 
+*Middle-click*: Add support for middle-clicking on a link (`Button-2`)
+to open it in a new tab.
+
 *Forward*: Add a forward button, which should "undo" the back button.
 If the most recent navigation action wasn't a back button, the forward
 button shouldn't do anything. Draw it in gray in that case, so the
@@ -920,9 +924,9 @@ storing the set of all visited pages and checking them when you lay
 out links. Link color is currently driven by CSS: you need to work
 with that somehow. I recommend adding the `visited` class to all links
 that have been visited, right after parsing and before styling. Then
-you could add a browser style that uses that class. You could add a
+you could add a browser style that uses that class. (Or you could add a
 [*pseudo*-class](https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes)
-feature to your CSS parser, which is what real browsers do.
+feature to your CSS parser, which is what real browsers do.)
 
 *Bookmarks*: Implement basic *bookmarks*. Add a button to the browser
 chrome; clicking it should bookmark the page. When you're looking at a
@@ -934,8 +938,8 @@ the list of bookmarks, and make `Ctrl+B` navigate to that page.
 *Cursor*: Make the left and right arrow keys move the text cursor
 around the address bar when it is focused. Pressing the backspace key
 should delete the character before the cursor, and typing other keys
-should add characters at the cursor. Remember that the cursor can be
-before the first character or after the last.
+should add characters at the cursor. (Remember that the cursor can be
+before the first character or after the last!)
 
 *Multiple windows* Add support for multiple browser windows in addition to tabs.
 This will require not only grouping tabs by their containing window, but some way
