@@ -6,6 +6,7 @@ webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
   - title: Applying User Styles
     link: https://browser.engineering/styles.html
+    pubDate: Sun, 6 Jun 2021 18:49:00 -0600
     description:
       Today we’re releasing a chapter on Applying User Styles. I hope
       you’ll find that building a simple CSS parser and implementing
@@ -13,12 +14,14 @@ item:
       and fun!
   - title: Why Widgets?
     link: https://browser.engineering/blog/why-widgets.html
+    pubDate: Mon, 10 May 2021 11:05:00 -0600
     description:
       We're working interactive widgets to Web Browser Engineering to
       better explain the concepts and to make room for discoveries.
       But it's not easy!
   - title: History of the Web
     link: https://browser.engineering/history.html
+    pubDate: Mon, 3 May 2021 12:12:00 -0600
     description:
       Today we’re releasing a new chapter on the History of the Web.
       The rest of the book is about how web browsers work, but this
@@ -26,6 +29,7 @@ item:
       the web and for web browsers, which shape the way they work.
   - title: Laying Out Pages
     link: https://browser.engineering/layout.html
+    pubDate: Mon, 5 Apr 2021 15:08:00 -0600
     description:
       We’re releasing Chapter 5. It introduces layout trees, the data
       structure at the center of layout. Building, laying out, and
@@ -33,6 +37,7 @@ item:
       rendered!
   - title: Browsers and the Web
     link: https://browser.engineering/intro.html
+    pubDate: Sat, 6 Mar 2021 14:44:00 -0700
     description:
       The intro chapter is here! Now you get to find out why this book
       was worth writing, mostly in Chris’s words. Plus you’ll learn a
@@ -40,30 +45,35 @@ item:
       made.
   - title: Constructing the Document Tree
     link: https://browser.engineering/html.html
+    pubDate: Thu, 4 Feb 2021 12:49:00 -0700
     description:
       Chapter 4 is out! It’s decked out with HTML parsing and error
       handling, and starts building out the core data structures of
       the browser. Plus, it has tips for leveraging implicit tags to
       make your HTML cleaner and simpler!
-  - title: Code Outlines (blog post)
+  - title: Code Outlines
     link: https://browser.engineering/blog/outlines.html
+    pubDate: Tue, 5 Jan 2021 12:28:00 -0700
     description:
       I've added a code outline tool to help you see the
       intermediate-level structure of a web browser. As Chris and I
       write more chapters, it'll become more and more useful.
   - title: Formatting Text
     link: https://browser.engineering/text.html
+    pubDate: Fri, 11 Dec 2020 16:47:00 -0700
     description:
       Chapter 3 is ready. Read about typography, baselines, and tags!
       Our browser lines up text with style! My favorite aside is the
       Michigan Supreme Court case on font sizes.
-  - title: Why Python? (blog post)
+  - title: Why Python?
     link: https://browser.engineering/blog/why-python.html
+    pubDate: Fri, 18 Sept 2020 10:30:00 -0600
     description:
       Why is Web Browser Engineering in Python? In short, Python is
       popular, readable, and has access to standard system APIs.
   - title: Introducing Chris Harrelson
     link: https://browser.engineering
+    pubDate: Sun, 30 Aug 2020 11:06:00 -0600
     description:
       Have you noticed that the byline on https://browser.engineering
       has changed? Chris Harrelson will be joining Web Browser
@@ -72,22 +82,26 @@ item:
       team.
   - title: Drawing to the Screen
     link: https://browser.engineering/graphics.html
+    pubDate: Thu, 13 Aug 2020 09:43:00 -0600
     description:
       Chapter 2 is ready. Read about window handles, display lists,
       and events. Our browser creates a window, draws text to it, and
       tells a story about a monkey. (My favorite part is the aside on
       Chinese line layout.)
-  - title: Typos and Comments (blog post)
+  - title: Typos and Comments
     link: https://browser.engineering/blog/feedback.html
+    pubDate: Wed, 5 Aug 2020 12:33:00 -0600
     description:
       I've written some code to crowdsource typo corrections and
       comments from readers. Looking forward to seeing your feedback!
-  - title: The Beginning (blog post)
+  - title: The Beginning
     link: https://browser.engineering/blog/beginning.html
+    pubDate: Fri, 24 Jul 2020 17:26:00 -0600
     description:
       A quick backstory behind the book, and my plan for writing it.
   - title: Downloading Web Pages
     link: https://browser.engineering/http.html
+    pubDate: Fri, 24 Jul 2020 17:25:00 -0600
     description:
       Chapter 1 is about URLs, sockets, and HTTP requests. Read about
       how a browser creates a network connection, what the OS does to
