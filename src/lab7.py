@@ -699,8 +699,8 @@ class Browser:
     def handle_click(self, e):
         self.focus = None
         if e.y < CHROME_PX:
-            if 40 < e.x < 40 + 80 * len(self.tabs) and 10 <= e.y < 40:
-                self.active_tab = (e.x - 40) // 80
+            if 40 <= e.x < 40 + 80 * len(self.tabs) and 10 <= e.y < 40:
+                self.active_tab = int((e.x - 40) / 80)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
@@ -727,6 +727,7 @@ class Browser:
 
     def draw(self):
         self.tabs[self.active_tab].draw(self.canvas)
+        self.canvas.create_rectangle(0, 0, WIDTH, CHROME_PX, fill="white")
 
         tabfont = tkinter.font.Font(size=20)
         for i, tab in enumerate(self.tabs):
