@@ -105,5 +105,5 @@ A final note
 This book is, and will remain, a work in progress. Please leave
 comments and mark typos; the book has built-in feedback tools, which
 you can enable with `Ctrl+E`. The full source code is also available
-[on GitHub](https://github.com/pavpanchekha/emberfox), though we
+[on GitHub](https://github.com/browserengineering/book), though we
 prefer to receive comments through the built-in tools.
