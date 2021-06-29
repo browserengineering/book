@@ -775,7 +775,6 @@ should look something like this:
 Exercises
 =========
 
-
 *Centered Text:* This book's page titles are centered: find them
 between `<h1 class="title">` and `</h1>`. Make your browser center the
 text in these titles. Each line has to be centered individually,
