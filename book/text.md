@@ -775,8 +775,6 @@ should look something like this:
 Exercises
 =========
 
-*Forced line breaks*: Add support for the `<br>` tag, which simply
-causes a line break of a run of text.
 
 *Centered Text:* This book's page titles are centered: find them
 between `<h1 class="title">` and `</h1>`. Make your browser center the
