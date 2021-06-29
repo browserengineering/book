@@ -5,38 +5,42 @@ prev: styles
 next: forms
 ...
 
-Our toy browser draws web pages, but it's still missing the key
-insight of *hypertext*: pages linked together into a web of
-information. We can watch the waves, but cannot yet surf the web. We
-need to implement hyperlinks, an address bar, and the rest of the
-browser interface.
+Our toy browser is still missing the key insight of *hypertext*:
+documents linked together by hyperlinks. Our browser lets us watch the
+waves, but not surf the web. So in this chapter, we'll implement
+hyperlinks, an address bar, and the rest of the browser
+interface---the part of the browser that decides *which* page we are
+looking at.
 
 <a name="hit-testing">
 
 Where are the links?
 ====================
 
-Before we can quite get to _clicking_ on links, we first need to
-answer a more fundamental question: where on the screen are the links?
-The reason this is tricky is that while paragraphs and headings
-have corresponding objects in the layout tree with sizes and positions
-attached, formatted text (like links) do not. We need to fix that.
+The core of the web is the link, so the most important part of the
+browser interface is clicking on links. Before we can quite get to
+_clicking_ on links, we first need to answer a more fundamental
+question: where on the screen _are_ the links?
 
-The big idea is to introduce two new types of layout objects,
-`LineLayout` and `TextLayout`, that go inside `InlineLayout` objects.
-`LineLayout`s represent a line of text and stack one after another
-vertically. `TextLayout`s represent individual words and are arranged
-on the line left to right. We'll need `InlineLayout` to create both
-objects, and then we'll need to write layout methods for them.
+But even though paragraphs and headings have their sizes and positions
+recorded in the layout tree, formatted text (like links) does not. We
+need to fix that.
 
-These new classes are surprisingly confusing in practice, mostly because they
-cause the layout tree to look quite different than the HTML tree.
-Before starting code surgery, let's go through a simple example:
+The big idea is to introduce two new types of layout objects:
+`LineLayout`s represent a line of text, and `TextLayout`s represent
+individual words in those lines. We'll have `InlineLayout` create
+these objects.
+
+These new classes can be surprising in practice because they make the
+layout tree look different from the HTML tree. Before starting code
+surgery, let's go through a simple example:
 
 ```
 <html>
   <body>
-    Here is some text that is<br>spread across multiple lines
+    Here is some text that is
+    <br>
+    spread across multiple lines
   </body>
 </html>
 ```
@@ -61,8 +65,11 @@ DocumentLayout
         TextLayout ("lines")
 ```
 
-Let's start by defining our two new types of layout objects. A
-`LineLayout` object is straightforward:
+Note how one `body` element corresponds to two `LineLayout`s, and how
+two text nodes turn into a total of ten `TextLayout`s!
+
+Defining these layout modes is straightforward. `LineLayout` is
+totally standard:
 
 ``` {.python}
 class LineLayout:
@@ -73,10 +80,9 @@ class LineLayout:
         self.children = []
 ```
 
-However, a `TextLayout` object needs to refer not just to a single HTML `Text`
-node but also to a specific word in that node. After all, a single `Text` node
-might be split over multiple lines, and so might need multiple `TextLayout`
-objects:
+`TextLayout` is only a little more tricky. A single `TextLayout`
+refers not to a whole HTML node but to a specific word. That means
+`TextLayout` needs an extra argument to know which word that is:
 
 ``` {.python}
 class TextLayout:
@@ -88,26 +94,31 @@ class TextLayout:
         self.previous = previous
 ```
 
-Right now, the `InlineLayout` object breaks text into lines using its
-`line` field, computes the position of each line and each word in its
-`flush` method, and stores the words in its `display_list` field. It's
-going to be a lot of work to refactor this code, but the end result
-will be cleaner and simpler. More importantly, it will provide a
-layout object for every piece of text, which we'll use to determine
-where links are and ultimately to enable clicking on links.
- 
-Let's start in the very middle of things, the `text` method that lays
-out text into lines. This one line corresponds to placing a word in a
-line of text:
+Like the other layout modes, `LineLayout` and `TextLayout` will need
+their own `layout` and `paint` methods, but before we get to those we
+need to think about how the `LineLayout` and `TextLayout` objects will
+be created. That happens during word wrapping.
+
+Let's review [how word wrapping works](text.md) right now. Word
+wrapping happens inside `InlineLayout`'s `text` method. That method
+updates a `line` field, which stores all the words in the current
+line. When it's time to go to the next line, it calls `flush`, which
+computes the location of the line and each word in it, and adds all
+the words to a `display_list` field, which stores all the words in the
+whole heading or paragraph or whatever.
+
+We'll start our changes in the very middle of things, the `text`
+method that lays out text into lines. This key line adds a word to the
+current line of text:
 
 ``` {.python.lab6 indent=12}
 self.line.append((self.cursor_x, word, font, color))
 ```
 
-An `InlineLayout` object will now have lots of lines in it, so there
-won't be a `line` field. And each line will be a `LineLayout` object,
-now an array. And each word in the line will be a `TextLayout` object,
-not just an unwieldy four-tuple. So it should look like this:
+Now, we want this line to create a `TextLayout` object and add it to a
+`LineLayout` object. The `LineLayout`s are children of the
+`InlineLayout`, so the current line can be found at the end of the
+`children` array:
 
 ``` {.python indent=12}
 line = self.children[-1]
@@ -116,19 +127,21 @@ line.children.append(text)
 self.previous_word = text
 ```
 
-Note that I've added a new field here, `previous_word`, for the
-previous word in that same line. So let's think about when the code
-starts a new line---it's when it calls `flush`. Currently, `flush` does a
-lot of stuff, like positioning text and clearing the `line` field. We
-don't want to do all that---we just want to create a new `LineLayout`
-object:
+Note that I've added a new field here, `previous_word`, to keep track
+of the previous word in the current line.
+
+Now let's think about what happens when we reach the end of the line.
+The current code calls `flush`, which does a lot of stuff, like
+positioning text and clearing the `line` field. We don't want to do
+all that---we just want to create a new `LineLayout` object. So let's
+use a different method for that:
 
 ``` {.python indent=12}
 if self.cursor_x + w > WIDTH - HSTEP:
     self.new_line()
 ```
 
-This `new_line` method is pretty simple, since it isn't doing any
+This `new_line` method can be pretty simple, since it isn't doing any
 layout stuff:
 
 ``` {.python indent=4}
@@ -140,10 +153,11 @@ def new_line(self):
     self.children.append(new_line)
 ```
 
-Now that we have the core `text` method updated, there are just a few
-more cleanups to do. In the core `layout` method, we don't need to
-initialize the `display_list` or `cursor_y` or `line` fields. But we
-do need to lay out each line:
+We more or less have the code in place to create `LineLayout` and
+`TextLayout` objects---there's just some cleanup to do. In the core
+`layout` method, we don't need to initialize the `display_list` or
+`cursor_y` or `line` fields, since we won't be using any of those any
+more. But we do need to lay out each line:
 
 ``` {.python indent=4}
 def layout(self):
@@ -155,7 +169,7 @@ def layout(self):
     self.height = sum([line.height for line in self.children])
 ```
 
-With the `display_list` gone, we do need to change the `paint` method
+With the `display_list` gone, we also need to change the `paint` method
 to recursively paint each line:
 
 ``` {.python indent=4}
@@ -165,18 +179,23 @@ def paint(self, display_list):
         child.paint(display_list)
 ```
 
-The `flush` method is no longer called from anywhere, but keep it
-around, because we now need to write the `layout` method for lines and
-text objects.
+We can also delete the `flush` method, since it's no longer called
+from anywhere, but keep a copy of it around for when write the
+`layout` method for lines and text objects.
 
-Let's start with lines. Lines stack vertically and take up their
-parent's full width, so computing `x` and `y` and `width` looks the
-same as for our other boxes:[^mixins]
+Line layout, redux
+==================
+
+Alright, we're now creating line and text objects, but we still need
+to lay them out. Let's start with lines. Lines stack vertically and
+take up their parent's full width, so computing `x` and `y` and
+`width` looks the same as for our other boxes:[^mixins]
 
 [^mixins]: You could reduce the duplication with some helper methods
     (or even something more elaborate, like mixin classes), but in a
-    real browser these code snippets would end up looking different, due to
-    supporting all kinds of extra features.
+    real browser different layout modes support different kinds of
+    extra features (like text direction or margins) and the code looks
+    quite different.
 
 ``` {.python}
 class LineLayout:
@@ -204,22 +223,9 @@ class LineLayout:
             word.layout()
 ```
 
-When each word is laid out, it can compute its `font`, using code
-basically identical to what's in `InlineLayout`:
-
-``` {.python}
-class TextLayout:
-    def layout(self):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = int(float(self.node.style["font-size"][:-2]) * .75)
-        self.font = tkinter.font.Font(
-            size=size, weight=weight, slant=style)
-```
-
-Now when we're laying out a `LineLayout` object, we can use this
-`font` field to compute maximum ascents and descents:
+Next, we need to compute the line's baseline based on the maximum
+ascent and descent, using basically the same code as the old `flush`
+method:
 
 ``` {.python}
 class LineLayout:
@@ -232,19 +238,55 @@ class LineLayout:
             word.y = baseline - word.font.metrics("ascent")
         max_descent = max([word.font.metrics("descent")
                            for word in self.children])
+```
+
+Note that this code is reading from a `font` field on each word and
+writing to each word's `y` field.[^why-no-y] That means that inside
+`TextLayout`'s `layout` method, we need to compute `x`, `width`,
+and `height`, but also `font`, and not `y`. Remember that for later.
+
+[^why-no-y]: The `y` position could have been computed in
+`TextLayout`'s `layout` method---but then that layout method would
+have to come *after* the baseline computation, not *before*. Yet the
+font computation has to come *before* the baseline computation. A real
+browser might resolve this paradox with multi-phase layout, which
+we'll [meet later](reflow.md). There are many considerations and
+optimizations of this kind that are needed to make text layout super
+fast.
+
+Finally, now that each line is a standalone layout object, we need to
+compute the line's height. We can do that using the maximum ascent and
+descent:
+
+``` {.python}
+class LineLayout:
+    def layout(self):
+        # ...
         self.height = 1.2 * (max_ascent + max_descent)
 ```
 
-Note that we're also setting the `y` field on each word in the line.[^why-no-y]
-That means that inside `TextLayout`'s `layout` method, we only need to
-compute `x`, `width`, and `height`:
+Ok, so that's line layout. Now let's think about laying out each word
+in a line. Recall that there's a few quirks to `layout` for
+`TextLayout` objects: it needs to compute a `font` field, and it does
+not need to compute a `y` field.
 
-[^why-no-y]: It could have been computed in ``TextLayout``, of course, but
-that would have required storing the baseline on each `LineLayout`, or
-re-computing it in each `TextLayout`. As we'll see in later chapters, there
-are many considerations and optimizations of this kind that are needed to make
-text layout super fast.
+Let's start with `font`, using code based on the font-construction
+code in `InlineLayout`:
 
+``` {.python}
+class TextLayout:
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(float(self.node.style["font-size"][:-2]) * .75)
+        self.font = tkinter.font.Font(
+            size=size, weight=weight, slant=style)
+```
+
+Next, we need to compute word's size and `x` position. We use the font
+metrics to compute size, and stack words left to right to compute
+position.
 
 ``` {.python}
 class TextLayout:
@@ -263,9 +305,9 @@ class TextLayout:
         self.height = self.font.metrics("linespace")
 ```
 
-Finally, now that we have all of the `LineLayout` and `TextLayout`
-objects created and laid out, painting them is pretty easy. For
-`LineLayout` we just recurse:
+Alright---we have the `LineLayout` and `TextLayout` objects created
+and laid out. All that's left is painting them. For `LineLayout` we
+just recurse:
 
 ``` {.python}
 class LineLayout:
@@ -274,7 +316,7 @@ class LineLayout:
             child.paint(display_list)
 ```
 
-For `TextLayout` we just create a single `DrawText` call:
+And each `TextLayout` creates a single `DrawText` call:
 
 ``` {.python}
 class TextLayout:
@@ -284,7 +326,7 @@ class TextLayout:
             DrawText(self.x, self.y, self.word, self.font, color))
 ```
 
-Oof, well, this was quite a bit of refactoring. So take a moment to
+So, oof, well, this was quite a bit of refactoring. Take a moment to
 test everything---it should look exactly identical to how it did
 before we started this refactor. But while you can't see it, there's a
 crucial difference: each blue link on the page now has an associated

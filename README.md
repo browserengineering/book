@@ -21,5 +21,5 @@ The source code contains:
 We prefer to receive typos and small comments on the text using the
 book's built-in feedback tools, which you can enable with `Ctrl+E`.
 
-IWeam always happy to hear from readers and from educators who want to
+We're always happy to hear from readers and from educators who want to
 use the book. Please [email us](mailto:author@browser.engineering)!
