@@ -47,20 +47,21 @@ the `<br>` tag---it's in an exercise in [Chapter 3](text.md).
 The layout tree will have this structure:
 
 ```
-BlockLayout (html element)
-  InlineLayout (body element)
-    LineLayout (first line of text)
-      TextLayout ("Here")
-      TextLayout ("is")
-      TextLayout ("some")
-      TextLayout ("text")
-      TextLayout ("that")
-      TextLayout ("is")
-    LineLayout (second line of text)
-      TextLayout ("spread")
-      TextLayout ("across")
-      TextLayout ("multiple")
-      TextLayout ("lines")
+DocumentLayout
+  BlockLayout (html element)
+    InlineLayout (body element)
+      LineLayout (first line of text)
+        TextLayout ("Here")
+        TextLayout ("is")
+        TextLayout ("some")
+        TextLayout ("text")
+        TextLayout ("that")
+        TextLayout ("is")
+      LineLayout (second line of text)
+        TextLayout ("spread")
+        TextLayout ("across")
+        TextLayout ("multiple")
+        TextLayout ("lines")
 ```
 
 Let's start by defining our two new types of layout objects. A
