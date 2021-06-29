@@ -18,8 +18,8 @@ The source code contains:
 - The book's built-in feedback system, in `www/`, including JavaScript
   and the Python backend.
 
-I prefer to receive typos and small comments on the text using the
+We prefer to receive typos and small comments on the text using the
 book's built-in feedback tools, which you can enable with `Ctrl+E`.
 
-I am always happy to hear from readers and from educators who want to
-use the book. Please [email me](mailto:me@pavpanchekha.com)!
+IWeam always happy to hear from readers and from educators who want to
+use the book. Please [email us](mailto:author@browser.engineering)!

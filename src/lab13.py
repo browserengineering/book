@@ -717,7 +717,7 @@ def find_links(node, lst):
         find_links(child, lst)
     return lst
 
-def relative_url(url, current):
+def resolve_url(url, current):
     if "://" in url:
         return url
     elif url.startswith("/"):
@@ -971,7 +971,7 @@ class Browser:
             if isinstance(elt, TextNode):
                 pass
             elif is_link(elt):
-                url = relative_url(elt.attributes["href"], self.url)
+                url = resolve_url(elt.attributes["href"], self.url)
                 return self.schedule_load(url)
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
@@ -1013,7 +1013,7 @@ class Browser:
             value = input.attributes.get("value", "")
             body += "&" + name + "=" + value.replace(" ", "%20")
         body = body[1:]
-        url = relative_url(elt.attributes["action"], self.url)
+        url = resolve_url(elt.attributes["action"], self.url)
         self.schedule_load(url, body)
 
     # Runs on the compositor thread
@@ -1065,7 +1065,7 @@ class Browser:
             self.rules = CSSParser(f.read()).parse()
 
         for link in find_links(self.nodes, []):
-            header, body = request(relative_url(link, url), headers=req_headers)
+            header, body = request(resolve_url(link, url), headers=req_headers)
             self.rules.extend(CSSParser(body).parse())
 
         self.rules.sort(key=lambda x: x[0].priority())
@@ -1078,7 +1078,7 @@ class Browser:
         req_headers = { "Cookie": self.cookie_string() }
         for script in find_scripts(self.nodes, []):
             header, body = request(
-                relative_url(script, self.history[-1]), headers=req_headers)
+                resolve_url(script, self.history[-1]), headers=req_headers)
             scripts.append([header, body])
 
     def script_run_wrapper(self, script_text):

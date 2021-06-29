@@ -5,7 +5,7 @@ prev: styles
 next: forms
 ...
 
-Our toy browser draws web pages, but it is still missing the key
+Our toy browser draws web pages, but it's still missing the key
 insight of *hypertext*: pages linked together into a web of
 information. We can watch the waves, but cannot yet surf the web. We
 need to implement hyperlinks, an address bar, and the rest of the
@@ -29,6 +29,38 @@ vertically. `TextLayout`s represent individual words and are arranged
 on the line left to right. We'll need `InlineLayout` to create both
 objects, and then we'll need to write layout methods for them.
 
+These new classes are surprisingly confusing in practice, mostly because they
+cause the layout tree to look quite different than the HTML tree.
+Before starting code surgery, let's go through a simple example:
+
+```
+<html>
+  <body>
+    Here is some text that is<br>spread across multiple lines
+  </body>
+</html>
+```
+
+The layout tree will have this structure:
+
+```
+DocumentLayout
+  BlockLayout (html element)
+    InlineLayout (body element)
+      LineLayout (first line of text)
+        TextLayout ("Here")
+        TextLayout ("is")
+        TextLayout ("some")
+        TextLayout ("text")
+        TextLayout ("that")
+        TextLayout ("is")
+      LineLayout (second line of text)
+        TextLayout ("spread")
+        TextLayout ("across")
+        TextLayout ("multiple")
+        TextLayout ("lines")
+```
+
 Let's start by defining our two new types of layout objects. A
 `LineLayout` object is straightforward:
 
@@ -41,10 +73,10 @@ class LineLayout:
         self.children = []
 ```
 
-However, a `TextLayout` object needs to refer not just to a single
-text node but also to a specific word in that text node. After all, a
-single text node might be split over multiple lines, and so might need
-multiple `TextLayout` objects:
+However, a `TextLayout` object needs to refer not just to a single HTML `Text`
+node but also to a specific word in that node. After all, a single `Text` node
+might be split over multiple lines, and so might need multiple `TextLayout`
+objects:
 
 ``` {.python}
 class TextLayout:
@@ -75,7 +107,7 @@ self.line.append((self.cursor_x, word, font, color))
 An `InlineLayout` object will now have lots of lines in it, so there
 won't be a `line` field. And each line will be a `LineLayout` object,
 now an array. And each word in the line will be a `TextLayout` object,
-not just an unweidly four-tuple. So it should look like this:
+not just an unwieldy four-tuple. So it should look like this:
 
 ``` {.python indent=12}
 line = self.children[-1]
@@ -86,7 +118,7 @@ self.previous_word = text
 
 Note that I've added a new field here, `previous_word`, for the
 previous word in that same line. So let's think about when the code
-starts a new line---it's when it calls `flush`. Now, `flush` does a
+starts a new line---it's when it calls `flush`. Currently, `flush` does a
 lot of stuff, like positioning text and clearing the `line` field. We
 don't want to do all that---we just want to create a new `LineLayout`
 object:
@@ -143,7 +175,7 @@ same as for our other boxes:[^mixins]
 
 [^mixins]: You could reduce the duplication with some helper methods
     (or even something more elaborate, like mixin classes), but in a
-    real browser these code snippets would look more different, due to
+    real browser these code snippets would end up looking different, due to
     supporting all kinds of extra features.
 
 ``` {.python}
@@ -182,7 +214,8 @@ class TextLayout:
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(self.node.style["font-size"][:-2]) * .75)
-        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
+        self.font = tkinter.font.Font(
+            size=size, weight=weight, slant=style)
 ```
 
 Now when we're laying out a `LineLayout` object, we can use this
@@ -202,9 +235,16 @@ class LineLayout:
         self.height = 1.2 * (max_ascent + max_descent)
 ```
 
-Note that we're also setting the `y` field on each word in the line!
+Note that we're also setting the `y` field on each word in the line.[^why-no-y]
 That means that inside `TextLayout`'s `layout` method, we only need to
 compute `x`, `width`, and `height`:
+
+[^why-no-y]: It could have been computed in ``TextLayout``, of course, but
+that would have required storing the baseline on each `LineLayout`, or
+re-computing it in each `TextLayout`. As we'll see in later chapters, there
+are many considerations and optimizations of this kind that are needed to make
+text layout super fast.
+
 
 ``` {.python}
 class TextLayout:
@@ -240,7 +280,8 @@ For `TextLayout` we just create a single `DrawText` call:
 class TextLayout:
     def paint(self, display_list):
         color = self.node.style["color"]
-        display_list.append(DrawText(self.x, self.y, self.word, self.font, color))
+        display_list.append(
+            DrawText(self.x, self.y, self.word, self.font, color))
 ```
 
 Oof, well, this was quite a bit of refactoring. So take a moment to
@@ -257,7 +298,7 @@ start with clicks. In Tk, clicks work just like key presses: you bind
 an event handler to a certain event. For click handling that event is
 `<Button-1>`, button number 1 being the left button on the mouse.[^1]
 
-[^1]: Button 2 is the middle button; button 3 is the right hand button.
+[^1]: Button 2 is the middle button; button 3 is the right-hand button.
 
 
 ``` {.python replace=self.click/self.handle_click}
@@ -285,9 +326,8 @@ class Browser:
         # ...
 ```
 
-The next step is to figure out what links or other elements are at
-that location. To do that, we need search through the tree of layout
-objects:
+The next step is to figure out what links or other elements are at that
+location. To do that, we need to search through the tree of layout objects:
 
 ``` {.python indent=8}
 # ...
@@ -302,10 +342,10 @@ and also the paragraph it's in, and the section that that paragraph is
 in, and so on. We want the one that's "on top", so the last object in
 the list:[^overlap]
 
-[^overlap]: In a real browser you can also sibling elements that
-overlap each other, like a dialog that overlaps some text. Web pages
-control which element is on top using the `z-index` property. So real
-browsers use [stacking contexts][stack-ctx] to resolve what exactly you
+[^overlap]: In a real browser, sibling elements can also 
+overlap each other---for example, a dialog that overlaps some text. Web pages
+can also control which element is on top using the `z-index` property. So real
+browsers have to compute [stacking contexts][stack-ctx] to resolve what you
 actually clicked on.
 
 [stack-ctx]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
@@ -332,14 +372,15 @@ while elt:
 
 I wrote this in a kind of curious way, but this way it's easier to add
 other types of clickable things---like text boxes and buttons---in the
-[next chapter](forms.md). Finally, now that we've found the link
-element itself, we need to extract the URL and direct the browser to
-it. This URL might be a relative URL:
+[next chapter](forms.md).
+
+Finally, now that we've found the link element itself, we need to extract the
+URL and direct the browser to it. This URL might be a relative URL:
 
 ``` {.python indent=12}
 # ...
 elif elt.tag == "a" and "href" in elt.attributes:
-    url = relative_url(elt.attributes["href"], self.url)
+    url = resolve_url(elt.attributes["href"], self.url)
     return self.load(url)
 ```
 
@@ -361,11 +402,11 @@ Multiple pages
 
 If you're anything like me, the next thing you tried after clicking on
 links is middle-clicking them to open in a new tab. Every browser now
-has tabbed browsing, and honestly it's a little embarrasing that our
+has tabbed browsing, and honestly it's a little embarrassing that our
 little toy browser doesn't.
 
 Fundamentally tabbed browsing means we need to distinguish between the
-browser itself and individual tabs that browse some specific web page.
+browser itself and individual tabs that show specific web pages.
 Right now the `Browser` class stores both information about the
 browser (like the canvas it draws to) and information about a single
 tab (like the layout tree and display list). We need to tease the two
@@ -396,7 +437,7 @@ only want one tab drawing its contents at a time![^unless-windows] So
 let's remove the `draw` calls from the `load` and `scrolldown`
 methods.
 
-[^unless-windows]: Unless the browser implements multiple windows!
+[^unless-windows]: Unless the browser implements multiple windows, of course.
 
 Meanwhile, in `draw`, let's pass the canvas in as an argument:
 
@@ -528,7 +569,8 @@ for i, tab in enumerate(self.tabs):
     # ...
     self.canvas.create_line(x1, 0, x1, 40)
     self.canvas.create_line(x2, 0, x2, 40)
-    self.canvas.create_text(x1 + 10, 10, text=name, font=tabfont, anchor="nw")
+    self.canvas.create_text(
+        x1 + 10, 10, text=name, font=tabfont, anchor="nw")
 ```
 
 Finally, we want to identify which tab is the active tab. To do that
@@ -551,7 +593,8 @@ class Browser:
         # ...
         buttonfont = tkinter.font.Font(size=30)
         self.canvas.create_rectangle(10, 10, 30, 30, width=1)
-        self.canvas.create_text(11, 0, font=buttonfont, text="+", anchor="nw")
+        self.canvas.create_text(
+            11, 0, font=buttonfont, text="+", anchor="nw")
 ```
 
 If you run this code, you'll see a small problem: the page contents
@@ -637,7 +680,8 @@ class Browser:
         # ...
         self.canvas.create_rectangle(40, 50, WIDTH - 10, 90, width=1)
         url = self.tabs[self.active_tab].url
-        self.canvas.create_text(55, 55, anchor='nw', text=url, font=buttonfont)
+        self.canvas.create_text(
+            55, 55, anchor='nw', text=url, font=buttonfont)
 ```
 
 If we've got an address bar, we need to have a "back" button too. I'll
@@ -648,7 +692,8 @@ class Browser:
     def draw(self):
         # ...
         self.canvas.create_rectangle(10, 50, 35, 90, width=1)
-        self.canvas.create_polygon(15, 70, 30, 55, 30, 85, fill='black')
+        self.canvas.create_polygon(
+            15, 70, 30, 55, 30, 85, fill='black')
 ```
 
 In Tk, `create_polygon` takes a list of coordinates and connects them
@@ -776,10 +821,13 @@ class Browser:
     def draw(self):
         # ...
         if self.focus == "address bar":
-            self.canvas.create_text(55, 55, anchor='nw', text=self.address_bar, font=buttonfont)
+            self.canvas.create_text(
+                55, 55, anchor='nw', text=self.address_bar,
+                font=buttonfont)
         else:
             url = self.tabs[self.active_tab].url
-            self.canvas.create_text(55, 55, anchor='nw', text=url, font=buttonfont)
+            self.canvas.create_text(
+                55, 55, anchor='nw', text=url, font=buttonfont)
 ```
 
 Just to clearly show the user that they're now typing in the address
@@ -854,6 +902,9 @@ current page and allows the user to navigate back and forth.
 Exercises
 =========
 
+*Middle-click*: Add support for middle-clicking on a link (`Button-2`)
+to open it in a new tab.
+
 *Forward*: Add a forward button, which should "undo" the back button.
 If the most recent navigation action wasn't a back button, the forward
 button shouldn't do anything. Draw it in gray in that case, so the
@@ -873,9 +924,9 @@ storing the set of all visited pages and checking them when you lay
 out links. Link color is currently driven by CSS: you need to work
 with that somehow. I recommend adding the `visited` class to all links
 that have been visited, right after parsing and before styling. Then
-you could add a browser style that uses that class. You could add a
+you could add a browser style that uses that class. (Or you could add a
 [*pseudo*-class](https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes)
-feature to your CSS parser, which is what real browsers do.
+feature to your CSS parser, which is what real browsers do.)
 
 *Bookmarks*: Implement basic *bookmarks*. Add a button to the browser
 chrome; clicking it should bookmark the page. When you're looking at a
@@ -887,5 +938,10 @@ the list of bookmarks, and make `Ctrl+B` navigate to that page.
 *Cursor*: Make the left and right arrow keys move the text cursor
 around the address bar when it is focused. Pressing the backspace key
 should delete the character before the cursor, and typing other keys
-should add characters at the cursor. Remember that the cursor can be
-before the first character or after the last.
+should add characters at the cursor. (Remember that the cursor can be
+before the first character or after the last!)
+
+*Multiple windows* Add support for multiple browser windows in addition to tabs.
+This will require not only grouping tabs by their containing window, but some way
+to create a new window (perhaps with a keypress such as `ctrl-n`), and a notion
+of which window is focused (and therefore drawn on top).

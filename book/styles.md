@@ -601,7 +601,7 @@ To download the style sheets, we'll need to convert each relative URL
 into a full URL:
 
 ``` {.python}
-def relative_url(url, current):
+def resolve_url(url, current):
     if "://" in url:
         return url
     elif url.startswith("/"):
@@ -629,7 +629,7 @@ def load(self, url):
     # ...
     for link in links:
         try:
-            header, body = request(relative_url(link, url))
+            header, body = request(resolve_url(link, url))
         except:
             continue
         rules.extend(CSSParser(body).parse())

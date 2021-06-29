@@ -625,7 +625,7 @@ def find_links(node, lst):
         find_links(child, lst)
     return lst
 
-def relative_url(url, current):
+def resolve_url(url, current):
     if "://" in url:
         return url
     elif url.startswith("/"):
@@ -692,7 +692,7 @@ class Browser:
                 if isinstance(elt, TextNode):
                     pass
                 elif is_link(elt):
-                    url = relative_url(elt.attributes["href"], self.url)
+                    url = resolve_url(elt.attributes["href"], self.url)
                     return self.load(url)
                 elif elt.tag == "input":
                     elt.attributes["value"] = ""
@@ -726,7 +726,7 @@ class Browser:
             value = input.attributes.get("value", "")
             body += "&" + name + "=" + value.replace(" ", "%20")
         body = body[1:]
-        url = relative_url(elt.attributes["action"], self.url)
+        url = resolve_url(elt.attributes["action"], self.url)
         self.load(url, body)
 
     def pressenter(self, e):
@@ -751,7 +751,7 @@ class Browser:
             rules = CSSParser(f.read()).parse()
 
         for link in find_links(nodes, []):
-            header, body = request(relative_url(link, url))
+            header, body = request(resolve_url(link, url))
             rules.extend(CSSParser(body).parse())
 
         rules.sort(key=lambda x: x[0].priority())

@@ -394,7 +394,7 @@ Finally, we need to submit this form-encoded data in a POST request:
 ``` {.python}
 def submit_form(self, elt):
     # ...
-    url = relative_url(elt.attributes["action"], self.url)
+    url = resolve_url(elt.attributes["action"], self.url)
     self.load(url, body)
 ```
 
