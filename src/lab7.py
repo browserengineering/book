@@ -724,6 +724,13 @@ class Browser:
             self.focus = None
             self.draw()
 
+    def load(self, url):
+        new_tab = Tab()
+        new_tab.load(url)
+        self.active_tab = len(self.tabs)
+        self.tabs.append(new_tab)
+        self.draw()
+
     def draw(self):
         self.canvas.delete("all")
         self.tabs[self.active_tab].draw(self.canvas)
@@ -762,13 +769,6 @@ class Browser:
         self.canvas.create_rectangle(10, 50, 35, 90, width=1)
         self.canvas.create_polygon(
             15, 70, 30, 55, 30, 85, fill='black')
-
-    def load(self, url):
-        new_tab = Tab()
-        new_tab.load(url)
-        self.active_tab = len(self.tabs)
-        self.tabs.append(new_tab)
-        self.draw()
 
 
 if __name__ == "__main__":

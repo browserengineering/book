@@ -1027,12 +1027,29 @@ somewhat][idn-spoof] for security reasons.
 Summary
 =======
 
-It's been a lot of work just to handle links! We have totally re-done
-line and text layout. That's allowed us to determine which piece of
-text a user clicked on, which allows us to determine what link they've
-clicked on and where that links goes. And as a cherry on top, we've
-implemented a simple browser chrome, which displays the URL of the
-current page and allows the user to navigate back and forth.
+It's been a lot of work just to handle links! We had to:
+
+- Give each word had a clear size and position;
+- Determine which piece of text a user clicked on;
+- Split per-page from browser-wide information;
+- Draw a tab bar, an address bar, and a back button;
+- And even implement text editing!
+
+Now just imagine all the features you can add to your browser!
+
+::: {.signup}
+:::
+
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab7.py
+:::
+
 
 Exercises
 =========
