@@ -1050,6 +1050,9 @@ should now look something like this:
     python3 infra/outlines.py --html src/lab7.py
 :::
 
+If you run it, it should look something like this:
+
+<iframe class="widget" src="widgets/lab7-browser.html" height=691></iframe>
 
 Exercises
 =========
