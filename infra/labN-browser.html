@@ -26,6 +26,7 @@ tkinter = lib.tkinter({ canvas: document.querySelector("#canvas") });
 
 let widget = new Widget(document.querySelector("#controls"));
 widget.run(async function() {
+    constants.WIDTH = window.innerWidth;
     let url = "https://browser.engineering/" + document.getElementById("input").value;
     let b = await (new Browser()).init();
     await b.load(url)

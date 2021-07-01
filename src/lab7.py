@@ -641,7 +641,6 @@ class Tab:
         self.document.paint(self.display_list)
 
     def draw(self, canvas):
-        canvas.delete("all")
         for cmd in self.display_list:
             if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
             if cmd.bottom < self.scroll: continue
@@ -699,8 +698,8 @@ class Browser:
     def handle_click(self, e):
         self.focus = None
         if e.y < CHROME_PX:
-            if 40 < e.x < 40 + 80 * len(self.tabs) and 10 <= e.y < 40:
-                self.active_tab = (e.x - 40) // 80
+            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
+                self.active_tab = int((e.x - 40) / 80)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
@@ -725,8 +724,18 @@ class Browser:
             self.focus = None
             self.draw()
 
+    def load(self, url):
+        new_tab = Tab()
+        new_tab.load(url)
+        self.active_tab = len(self.tabs)
+        self.tabs.append(new_tab)
+        self.draw()
+
     def draw(self):
+        self.canvas.delete("all")
         self.tabs[self.active_tab].draw(self.canvas)
+        self.canvas.create_rectangle(
+            0, 0, WIDTH, CHROME_PX, fill="white")
 
         tabfont = tkinter.font.Font(size=20)
         for i, tab in enumerate(self.tabs):
@@ -760,13 +769,6 @@ class Browser:
         self.canvas.create_rectangle(10, 50, 35, 90, width=1)
         self.canvas.create_polygon(
             15, 70, 30, 55, 30, 85, fill='black')
-
-    def load(self, url):
-        new_tab = Tab()
-        new_tab.load(url)
-        self.active_tab = len(self.tabs)
-        self.tabs.append(new_tab)
-        self.draw()
 
 
 if __name__ == "__main__":
