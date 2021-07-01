@@ -222,29 +222,25 @@ to compute maximum ascents, maximum descents, and so on from the old
 comes in. We'll want to pilfer the code from the old `flush` method.
 First, let's lay out each word:
 
-``` {.python}
-class LineLayout:
-    def layout(self):
-        # ...
-        for word in self.children:
-            word.layout()
+``` {.python indent=8}
+# ...
+for word in self.children:
+    word.layout()
 ```
 
 Next, we need to compute the line's baseline based on the maximum
 ascent and descent, using basically the same code as the old `flush`
 method:
 
-``` {.python}
-class LineLayout:
-    def layout(self):
-        # ...
-        max_ascent = max([word.font.metrics("ascent")
-                          for word in self.children])
-        baseline = self.y + 1.2 * max_ascent
-        for word in self.children:
-            word.y = baseline - word.font.metrics("ascent")
-        max_descent = max([word.font.metrics("descent")
-                           for word in self.children])
+``` {.python indent=8}
+# ...
+max_ascent = max([word.font.metrics("ascent")
+                  for word in self.children])
+baseline = self.y + 1.2 * max_ascent
+for word in self.children:
+    word.y = baseline - word.font.metrics("ascent")
+max_descent = max([word.font.metrics("descent")
+                   for word in self.children])
 ```
 
 Note that this code is reading from a `font` field on each word and
@@ -264,11 +260,9 @@ fast.
 Finally, since each line is now a standalone layout object, it needs
 to have a height. We compuate it from the maximum ascent and descent:
 
-``` {.python}
-class LineLayout:
-    def layout(self):
-        # ...
-        self.height = 1.2 * (max_ascent + max_descent)
+``` {.python indent=8}
+# ...
+self.height = 1.2 * (max_ascent + max_descent)
 ```
 
 Ok, so that's line layout. Now let's think about laying out each word.
@@ -311,8 +305,8 @@ class TextLayout:
         self.height = self.font.metrics("linespace")
 ```
 
-So that's `layout` for the `LineLayout` and `TextLayout` objects. All
-that's left is painting them. For `LineLayout` we just recurse:
+So that's `layout` for `LineLayout` and `TextLayout`. All that's left
+is painting. For `LineLayout` we just recurse:
 
 ``` {.python}
 class LineLayout:
@@ -389,21 +383,20 @@ class Browser:
         y += self.scroll
 ```
 
-The next step is to figure out what links or other elements are at that
-location. To do that, we need to search through the tree of layout objects:
+The next step is to figure out what links or other elements are at
+that location. To do that, search through the tree of layout objects:
 
 ``` {.python indent=8}
 # ...
 objs = [obj for obj in tree_to_list(self.document, [])
         if obj.x <= x < obj.x + obj.width
         and obj.y <= y < obj.y + obj.height]
-if not objs: return
 ```
 
-Now, normally you click on lots of layout objects at once: some text,
-and also the paragraph it's in, and the section that that paragraph is
-in, and so on. We want the one that's "on top", so the last object in
-the list:[^overlap]
+Now, normally when you click on some text, you're also clicking on the
+paragraph it's in, and the section that that paragraph is in, and so
+on. We want the one that's "on top", which is the last object in the
+list:[^overlap]
 
 [^overlap]: In a real browser, sibling elements can also overlap each
 other, like a dialog that overlaps some text. Web pages can control
@@ -415,13 +408,14 @@ actually clicked on.
 
 ``` {.python indent=8}
 # ...
+if not objs: return
 elt = objs[-1].node
 ```
 
-This `elt` node is the specific node in the HTML tree that was
-clicked. With a link, that's usually going to be a text node. But
-since we want to know the actual URL the user clicked on, we need to
-climb back up the HTML tree to find the link element:
+This `elt` node is the most specific node that was clicked. With a
+link, that's usually going to be a text node. But since we want to
+know the actual URL the user clicked on, we need to climb back up the
+HTML tree to find the link element:
 
 ``` {.python indent=8}
 # ...
@@ -447,9 +441,8 @@ elif elt.tag == "a" and "href" in elt.attributes:
     return self.load(url)
 ```
 
-Note that links can have relative URLs, which are resolved relative to
-the current page. That means we need to store the current URL in
-`load`:
+Note that when a link has a relative URL, that URL is resolved
+relative to the current page, so store the current URL in `load`:
 
 ``` {.python replace=Browser/Tab}
 class Browser:
@@ -484,10 +477,10 @@ little toy browser doesn't.[^ffx]
     convince friends and relatives to switch from IE 6 to Firefox.
 
 Fundamentally, tabbed browsing means distinguishing between the
-browser itself and tabs that show individual web pages. Right now the
-`Browser` class stores both information about the browser (like the
-canvas it draws to) and information about a single tab (like the
-layout tree and display list). We need to tease the two apart.
+browser itself and tabs that show individual web pages. The canvas the
+browser draws to, for example, is shared by all web pages, but the
+layout tree and display list are specific to one page. We need to
+tease these two types of things apart.
 
 Here's the plan: the `Browser` class will store the window and canvas,
 plus a list of `Tab` objects, one per browser tab. Everything else
@@ -495,7 +488,8 @@ goes into a new `Tab` class. Since the `Browser` stores the window
 and canvas, it handles all of the events, sometimes forwarding it to
 the active tab.
 
-The `Tab` constructor looks like this:
+Since the `Tab` class is responsible for layout, styling, and
+painting, the default style sheet moves to the `Tab` constructor:
 
 ``` {.python}
 class Tab:
@@ -504,16 +498,17 @@ class Tab:
             self.default_style_sheet = CSSParser(f.read()).parse()
 ```
 
-The `load`, `scrolldown`, `click`, and `draw` methods all move to
-`Tab`, since that's now where all web-page-specific data lives. But
-since the `Browser` controls the canvas and handles events, it decides
-when rendering happens and which tab does the drawing. After all, you
-only want one tab drawing its contents at a time![^unless-windows]
+The `load`, `scrolldown`, `click`, and `draw` methods also move to
+`Tab`, since that's now where all web-page-specific data lives.
+
+But since the `Browser` controls the canvas and handles events, it
+decides when rendering happens and which tab does the drawing. After
+all, you only want one tab drawing its contents at a
+time![^unless-windows] So let's remove the `draw` calls from the
+`load` and `scrolldown` methods, and in `draw`, let's pass the canvas
+in as an argument:
 
 [^unless-windows]: Unless the browser implements multiple windows, of course.
-
-So let's remove the `draw` calls from the `load` and `scrolldown`
-methods, and in `draw`, let's pass the canvas in as an argument:
 
 ``` {.python}
 class Tab:
@@ -521,8 +516,11 @@ class Tab:
         # ...
 ```
 
-Now let's turn to the `Browser` class. Let's store a list of tabs and
-an index into it for the active tab:
+Let's also make `draw` not clear the screen. That should be the
+`Browser`'s job.
+
+Now let's turn to the `Browser` class. It has to store a list of tabs
+and an index into that list for the active tab:
 
 ``` {.python}
 class Browser:
@@ -532,8 +530,9 @@ class Browser:
         self.active_tab = None
 ```
 
-Each tab is "passive", and the job of the `Browser` is to call into it
-as appropriate. So the `Browser` handles all of the events:
+When it comes to user interaction, think of the `Browser` as "active"
+and the `Tab` as "passive". It's the job of the `Browser` is to call
+into the tabs as appropriate. So the `Browser` handles all events:
 
 ``` {.python}
 class Browser:
@@ -542,7 +541,8 @@ class Browser:
         self.window.bind("<Button-1>", self.handle_click)
 ```
 
-These methods just unpack the event and forward it to the active tab:
+Since these events need page-specific information to resolve, these
+handler methods just forward the event to the active tab:
 
 ``` {.python replace=e.y/e.y%20-%20CHROME_PX}
 class Browser:
@@ -557,19 +557,24 @@ class Browser:
 
 You'll need to tweak the `Tab`'s `scrolldown` and `click` methods:
 
-- `scrolldown` should take no arguments (instead of an event object)
-- `click` should take two coordinates (instead of an event object)
+- `scrolldown` now takes no arguments (instead of an event object)
+- `click` now take two coordinates (instead of an event object)
 
-Finally, the `Browser`'s `draw` call also just invokes the active tab:
+Finally, the `Browser`'s `draw` call also calls into the active tab:
 
 ``` {.python}
 class Browser:
     def draw(self):
+        self.canvas.delete("all")
         self.tabs[self.active_tab].draw(self.canvas)
 ```
 
-The `Browser`/`Tab` split is basically done now, so next we need to
-actually create some tabs! It looks like this:
+This only draws the active tab, which is how tabs are supposed to
+work.
+
+We're basically done splitting `Tab` from `Browser`, and after a
+refactor like this we need to test things. To do that, we'll need to
+create at least one tab, like this:
 
 ``` {.python}
 class Browser:
@@ -581,7 +586,7 @@ class Browser:
         self.draw()
 ```
 
-Likewise, we need a way for *the user* to switch tabs, create new
+Of course, we need a way for *the user* to switch tabs, create new
 ones, and so on. Let's turn to that next.
 
 ::: {.further}
@@ -601,7 +606,7 @@ Browser chrome
 Real web browsers don't just show web page contents---they've got
 labels and icons and buttons.[^ohmy] This is called the browser
 "chrome";[^chrome] all of this stuff is drawn by the browser to the
-same canvas as the page contents, and it requires information about
+same window as the page contents, and it requires information about
 the browser as a whole (like the list of all tabs), so it has to
 happen in the `Browser` class.
 
@@ -611,9 +616,9 @@ happen in the `Browser` class.
     browser.
 
 Since we're interested in multiple tabs, let's add some code to draw a
-set of tabs at the top of the browser window---and let's keep it
-simple, because this is going to require some tedious and mildly
-tricky geometry.
+tab bar at the top of the browser window---and let's keep it simple,
+because this is going to require some tedious and mildly tricky
+geometry.
 
 We'll draw the tabs in the `draw` method, after the page contents are
 drawn:
@@ -664,8 +669,9 @@ for i, tab in enumerate(self.tabs):
         self.canvas.create_line(x2, 40, WIDTH, 40)
 ```
 
-We need a button to create a new tab. Let's put that on the left, with
-a big plus in the middle:
+The whole point of tab support is to have more than one tab around,
+and for that we we need a button that creates a new tab. Let's put
+that on the left of the tab bar, with a big plus in the middle:
 
 ``` {.python}
 class Browser:
@@ -677,13 +683,13 @@ class Browser:
             11, 0, font=buttonfont, text="+", anchor="nw")
 ```
 
-Run this code, and you'll see a small problem: the page contents and
-the tab bar are drawn on top of each other. It's impossible to read!
-We need the top of the browser window, where all the browser chrome
-goes, to not have page contents rendered to it.
+If you run this code, you'll see a small problem: the page contents
+and the tab bar are drawn on top of each other. It's impossible to
+read! We need to avoid drawing page contents to the part of the
+browser window where the tab bar goes.
 
-Let's reserve some space for the browser chrome---100 pixels of space,
-to leave room for some more buttons later this chapter:
+Let's reserve some space for the browser chrome---100 pixels, say,
+leaving room for some more buttons later this chapter:
 
 ``` {.python}
 CHROME_PX = 100
@@ -694,7 +700,6 @@ Each tab needs to make sure not to draw to those pixels:
 ``` {.python}
 class Tab:
     def draw(self, canvas):
-        canvas.delete("all")
         for cmd in self.display_list:
             if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
             if cmd.bottom < self.scroll: continue
@@ -709,7 +714,8 @@ them:
 class Browser:
     def draw(self):
         self.tabs[self.active_tab].draw(self.canvas)
-        self.canvas.create_rectangle(0, 0, WIDTH, CHROME_PX, fill="white")
+        self.canvas.create_rectangle(
+            0, 0, WIDTH, CHROME_PX, fill="white")
         # ...
 ```
 
@@ -717,7 +723,8 @@ Now you can see the tab bar fine.
 
 The next step is clicking on tabs to switch between them. That has to
 happen in the `Browser` class, since it's the `Browser` that stores
-which tab is active. So let's go to the `handle_click` method:
+which tab is active. So let's go to the `handle_click` method and add
+a branch for clicking on the browser chrome:
 
 ``` {.python}
 class Browser:
@@ -729,29 +736,30 @@ class Browser:
         self.draw()
 ```
 
-The `if` branch of the conditional handles clicks in the browser
-chrome; the `else` branch handles clicks on the web page content. When
-the user clicks in the browser chrome, it doesn't go to the active
-tab---the browser handles it directly. Also note that we subtract
-`CHROME_PX` before forwarding a click to the active tab.
+When the user clicks on the browser chrome (the `if` branch), the
+browser handles it directly, but clicks on the page content (the
+`else` branch) are still forwarded to the active tab, subtracting
+`CHROME_PX` to fix up the coordinates.
 
-When the user clicks to switch tabs, we need to figure out what tab
-they clicked on. Remember that the `i`th tab has `x1 = 40 + 80*i`; we
-need to solve that equation for `i`:
+Within the browser chrome, the tab bar takes up the top 40 pixels,
+starting 40 pixels from the left. Remember that the `i`th tab has `x1
+= 40 + 80*i`; we need to solve that equation for `i` to figure out
+which tab the user clicked on:
 
 ``` {.python}
 if e.y < CHROME_PX:
-    if 40 <= e.x < 40 + 80 * len(self.tabs) and 10 <= e.y < 40:
+    if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
         self.active_tab = int((e.x - 40) / 80)
 ```
 
-Note the condition on the `if` statement: it makes sure that if there
-are only two active tabs, the user can't switch to the "third tab" by
-clicking in the blank space where that tab would go. That would be
-bad, because later references to "the active tab" would error out.
+Note the first condition on the `if` statement: it makes sure that if
+there are only two active tabs, the user can't switch to the "third
+tab" by clicking in the blank space where that tab would go. That
+would be bad, because then later references to "the active tab" would
+error out.
 
-We need multiple tabs to test this out, so let's implement the button
-that adds new tabs:
+Let's also implement the button that adds a new tab. We need it to
+test tab switching, anyway:
 
 ``` {.python}
 if e.y < CHROME_PX:
@@ -778,9 +786,8 @@ Navigation history
 ==================
 
 Now that we are navigating between pages all the time, it's easy to
-get a little lost and forget what web page you're looking at. Browsers
-solve this issue with an address bar that shows the current URL. Let's
-implement a little address bar ourselves:
+get a little lost and forget what web page you're looking at. An
+address bar that shows the current URL would help a lot.
 
 ``` {.python}
 class Browser:
@@ -841,8 +848,7 @@ class Tab:
         # ...
 ```
 
-To go back we just look at that history. You might write that code
-like this:
+Go back uses that history. You might think to write this:
 
 ``` {.python expected=False}
 class Tab:
@@ -851,9 +857,9 @@ class Tab:
             self.load(self.history[-2])
 ```
 
-That's almost correct, but if you click the back button twice, you'll
-go forward instead, because `load` has appended to the history.
-Instead, we need to do something more like this:
+That's almost correct, but it does work if you click the back button
+twice, because `load` adds to the history. Instead, we need to do
+something more like this:
 
 ``` {.python indent=4}
 class Tab:
@@ -873,11 +879,11 @@ open simultaneously for cross-referencing things. But it's a little
 hard to visit *any other website*...
 
 ::: {.further}
-A browser's navigation history can contain sensitive information, so
-keeping it secure is important. Surprisingly, this is pretty hard,
-because CSS features like the [`:visited` selector][visited-selector]
-can be used to [check][history-sniffing] whether a URL has been
-visited before.
+A browser's navigation history can contain sensitive information about
+which websites a user likes visiting, so keeping it secure is
+important. Surprisingly, this is pretty hard, because CSS features
+like the [`:visited` selector][visited-selector] can be used to
+[check][history-sniffing] whether a URL has been visited before.
 :::
 
 [visited-selector]: https://developer.mozilla.org/en-US/docs/Web/CSS/:visited
@@ -894,19 +900,16 @@ Take a moment to notice the complex ritual of typing in an address:
 
 - First, you have to click on the address bar to "focus" on it.
 - That also selects the full address, so that it's all deleted when
-  you start typing.[^why-not-select]
+  you start typing.
 - Then, letters you type go into the address bar.
 - The address bar updates as you type, but the browser doesn't yet
   navigate to the new page.
 - Finally, you type the "Enter" key which navigates to a new page.
 
-[^why-not-select]: I'm not going to implement the selection bit,
-    because it would add even more states to the system.
-
-This ritual suggests that the browser stores a string with the
-contents of the address bar, separate from the `url` field, and also a
-boolean to know if you're currently typing into the address bar. Let's
-call that string `address_bar` and that boolean `focus`:
+These steps suggest that the browser stores the contents of the
+address bar separately from the `url` field, and also that there's
+some state to say whether you're currently typing into the address
+bar. Let's call the contents `address_bar` and the state `focus`:
 
 ``` {.python}
 class Browser:
@@ -931,6 +934,10 @@ class Browser:
         # ...
 ```
 
+Note that clicking on the address bar also clears the address bar
+contents. That's not quite what a browser does, but it's pretty close,
+and lets us skip adding text selection.
+
 Now, when we draw the address bar, we need to check whether to draw
 the current URL or the currently-typed text:
 
@@ -948,7 +955,9 @@ class Browser:
                 55, 55, anchor='nw', text=url, font=buttonfont)
 ```
 
-When the user is typing in the address bar, let's draw a cursor:
+When the user is typing in the address bar, let's also draw a cursor.
+Making states (like focus) visible on the screen (like with the
+cursor) makes the software easier to use:
 
 ``` {.python indent=8}
 if self.focus == "address bar":
@@ -957,9 +966,9 @@ if self.focus == "address bar":
     self.canvas.create_line(55 + w, 55, 55 + w, 85)
 ```
 
-Next, when the address bar is focused, you should be able to type in a
-URL. In Tk, you can bind to `<Key>` and access the letter typed with
-the event object's `char` field:
+Next, when the address bar is focused, we need to support typing in a
+URL. In Tk, you can bind to `<Key>` to capture all key presses. The
+event object's `char` field contains the character the user typed:
 
 ``` {.python}
 class Browser:
@@ -976,19 +985,16 @@ class Browser:
             self.draw()
 ```
 
-This `handle_key` handler starts with some conditions: `<Key>` is Tk's
-catchall event handler for keys, and fires for every key press, not
-just regular letters. So the handler ignores cases where no character
-is typed (a modifier key is pressed) or the character is outside the
-ASCII range (the arrow keys and function keys correspond to larger key
-codes).
+This `handle_key` handler starts with some conditions: `<Key>` and
+fires for every key press, not just regular letters, so we want to
+ignore cases where no character is typed (a modifier key is pressed)
+or the character is outside the ASCII range (which can represent the
+arrow keys or function keys). After we modify `address_bar` we also
+need to call `draw()` so that the new letters actually show up.
 
-Because we modify `address_bar`, we want the browser chrome redrawn,
-so we need to call `draw()`. Thus, when the user types, new letters
-appear in the address bar.
-
-The last step is to handle the "Enter" key, which Tk calls `<Return>`,
-to actually direct the browser to the new address:
+Finally, once the new URL is entered, we need to handle the "Enter"
+key, which Tk calls `<Return>`, and actually send the browser to the
+new address:
 
 ``` {.python}
 class Browser:
@@ -1003,7 +1009,8 @@ class Browser:
             self.draw()
 ```
 
-So there---after a long day of work, unwind a bit by surfing the web.
+So there---after a long chapter, you can now unwind a bit by surfing
+the web.
 
 ::: {.further}
 Text editing is [surprisingly complex][editing-hates], and can be
@@ -1054,10 +1061,7 @@ page uses fragment links.
 *Search*: If the user types something that's *not* a URL into the
 address bar, make your browser automatically search for it with a
 search engine. This usually means going to a special URL. For example,
-you can search Google by going to
-
-    https://google.com/search?q=QUERY
-
+you can search Google by going to `https://google.com/search?q=QUERY`,
 where `QUERY` is the search query with every space replaced by a `+`
 sign.[^more-escapes]
 
