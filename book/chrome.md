@@ -6,7 +6,7 @@ next: forms
 ...
 
 Our toy browser is still missing the key insight of *hypertext*:
-documents linked together by hyperlinks. Our browser lets us watch the
+documents linked together by hyperlinks. It lets us watch the
 waves, but not surf the web. So in this chapter, we'll implement
 hyperlinks, an address bar, and the rest of the browser
 interface---the part of the browser that decides *which* page we are
@@ -18,22 +18,18 @@ Where are the links?
 ====================
 
 The core of the web is the link, so the most important part of the
-browser interface is clicking on links. Before we can quite get to
+browser interface is clicking on links. But before we can quite get to
 _clicking_ on links, we first need to answer a more fundamental
-question: where on the screen _are_ the links?
-
-But even though paragraphs and headings have their sizes and positions
-recorded in the layout tree, formatted text (like links) does not. We
-need to fix that.
+question: where on the screen _are_ the links? Though paragraphs and
+headings have their sizes and positions recorded in the layout tree,
+formatted text (like links) does not. We need to fix that.
 
 The big idea is to introduce two new types of layout objects:
-`LineLayout`s represent a line of text, and `TextLayout`s represent
-individual words in those lines. We'll have `InlineLayout` create
-these objects.
-
-These new classes can be surprising in practice because they make the
-layout tree look different from the HTML tree. Before starting code
-surgery, let's go through a simple example:
+`LineLayout`and `TextLayout`. `InlineLayout` will now have
+`LineLayout` children for each line of text, which themselves will
+contain a `TextLayout` for each word in that line. These new classes
+can make the layout tree look different from the HTML tree. So to
+avoid surprises, let's look at a simple example:
 
 ```
 <html>
@@ -45,7 +41,8 @@ surgery, let's go through a simple example:
 </html>
 ```
 
-The layout tree will have this structure:
+The text in the `body` element wraps across two lines (because of the
+`br` element), so the layout tree will have this structure:
 
 ```
 DocumentLayout
@@ -68,8 +65,7 @@ DocumentLayout
 Note how one `body` element corresponds to two `LineLayout`s, and how
 two text nodes turn into a total of ten `TextLayout`s!
 
-Defining these layout modes is straightforward. `LineLayout` is
-totally standard:
+Let's get started. Defining `LineLayout` is straightforward:
 
 ``` {.python}
 class LineLayout:
@@ -99,23 +95,22 @@ their own `layout` and `paint` methods, but before we get to those we
 need to think about how the `LineLayout` and `TextLayout` objects will
 be created. That happens during word wrapping.
 
-Let's review [how word wrapping works](text.md) right now. Word
-wrapping happens inside `InlineLayout`'s `text` method. That method
-updates a `line` field, which stores all the words in the current
-line. When it's time to go to the next line, it calls `flush`, which
-computes the location of the line and each word in it, and adds all
-the words to a `display_list` field, which stores all the words in the
-whole heading or paragraph or whatever.
+Let's review [how word wrapping works](text.md) right now.
+`InlineLayout` is responsible for word wrapping, inside its `text`
+method. That method updates a `line` field, which stores all the words
+in the current line. When it's time to go to the next line, it calls
+`flush`, which computes the location of the line and each word in it,
+and adds all the words to a `display_list` field, which stores all the
+words in the whole inline element.
 
-We'll start our changes in the very middle of things, the `text`
-method that lays out text into lines. This key line adds a word to the
-current line of text:
+Inside the `text` method, this key line adds a word to the current
+line of text:
 
 ``` {.python.lab6 indent=12}
 self.line.append((self.cursor_x, word, font, color))
 ```
 
-Now, we want this line to create a `TextLayout` object and add it to a
+We now want to create a `TextLayout` object and add it to a
 `LineLayout` object. The `LineLayout`s are children of the
 `InlineLayout`, so the current line can be found at the end of the
 `children` array:
@@ -127,22 +122,22 @@ line.children.append(text)
 self.previous_word = text
 ```
 
-Note that I've added a new field here, `previous_word`, to keep track
-of the previous word in the current line.
+Note that I needed a new field here, `previous_word`, to keep track of
+the previous word in the current line. So we'll need to initialize it
+later.
 
 Now let's think about what happens when we reach the end of the line.
-The current code calls `flush`, which does a lot of stuff, like
-positioning text and clearing the `line` field. We don't want to do
-all that---we just want to create a new `LineLayout` object. So let's
-use a different method for that:
+The current code calls `flush`, which does stuff like positioning text
+and clearing the `line` field. We don't want to do all that---we just
+want to create a new `LineLayout` object. So let's use a different
+method for that:
 
 ``` {.python indent=12}
 if self.cursor_x + w > WIDTH - HSTEP:
     self.new_line()
 ```
 
-This `new_line` method can be pretty simple, since it isn't doing any
-layout stuff:
+This `new_line` method just creates a new line and resets some fields:
 
 ``` {.python indent=4}
 def new_line(self):
@@ -153,11 +148,10 @@ def new_line(self):
     self.children.append(new_line)
 ```
 
-We more or less have the code in place to create `LineLayout` and
-`TextLayout` objects---there's just some cleanup to do. In the core
-`layout` method, we don't need to initialize the `display_list` or
-`cursor_y` or `line` fields, since we won't be using any of those any
-more. But we do need to lay out each line:
+Now there's a lot of fields we're not using. Let's clean them up. In
+the core `layout` method, we don't need to initialize the
+`display_list` or `cursor_y` or `line` fields, since we won't be using
+any of those any more. But we do need to recurse to lay out each line:
 
 ``` {.python indent=4}
 def layout(self):
@@ -180,16 +174,28 @@ def paint(self, display_list):
 ```
 
 We can also delete the `flush` method, since it's no longer called
-from anywhere, but keep a copy of it around for when write the
-`layout` method for lines and text objects.
+from anywhere. But keep a copy around somewhere---we'll need it in a
+moment when write the `layout` method for line and text objects.
+
+::: {.further}
+The layout objects generated by a text node need not even be
+consecutive. English containing a Farsi quotation, for example, can
+flip from left-to-right to right-to-left in the middle of a line. The
+text layout objects end up in a [surprising order][unicode-bidi].
+And then there are languages laid out [vertically][mongolian]...
+:::
+
+[unicode-bidi]: https://www.w3.org/International/articles/inline-bidi-markup/uba-basics
+[mongolian]: https://en.wikipedia.org/wiki/Mongolian_script
+
 
 Line layout, redux
 ==================
 
-Alright, we're now creating line and text objects, but we still need
-to lay them out. Let's start with lines. Lines stack vertically and
-take up their parent's full width, so computing `x` and `y` and
-`width` looks the same as for our other boxes:[^mixins]
+We're now creating line and text objects, but we still need to lay
+them out. Let's start with lines. Lines stack vertically and take up
+their parent's full width, so computing `x` and `y` and `width` looks
+the same as for our other boxes:[^mixins]
 
 [^mixins]: You could reduce the duplication with some helper methods
     (or even something more elaborate, like mixin classes), but in a
@@ -213,7 +219,8 @@ class LineLayout:
 
 Computing height, though, is different---this is where all that logic
 to compute maximum ascents, maximum descents, and so on from the old
-`flush` method comes in. First, let's lay out each word:
+comes in. We'll want to pilfer the code from the old `flush` method.
+First, let's lay out each word:
 
 ``` {.python}
 class LineLayout:
@@ -247,16 +254,15 @@ and `height`, but also `font`, and not `y`. Remember that for later.
 
 [^why-no-y]: The `y` position could have been computed in
 `TextLayout`'s `layout` method---but then that layout method would
-have to come *after* the baseline computation, not *before*. Yet the
-font computation has to come *before* the baseline computation. A real
+have to come *after* the baseline computation, not *before*. Yet
+`font` must be computed *before* the baseline computation. A real
 browser might resolve this paradox with multi-phase layout, which
 we'll [meet later](reflow.md). There are many considerations and
 optimizations of this kind that are needed to make text layout super
 fast.
 
-Finally, now that each line is a standalone layout object, we need to
-compute the line's height. We can do that using the maximum ascent and
-descent:
+Finally, since each line is now a standalone layout object, it needs
+to have a height. We compuate it from the maximum ascent and descent:
 
 ``` {.python}
 class LineLayout:
@@ -265,13 +271,13 @@ class LineLayout:
         self.height = 1.2 * (max_ascent + max_descent)
 ```
 
-Ok, so that's line layout. Now let's think about laying out each word
-in a line. Recall that there's a few quirks to `layout` for
-`TextLayout` objects: it needs to compute a `font` field, and it does
-not need to compute a `y` field.
+Ok, so that's line layout. Now let's think about laying out each word.
+Recall that there's a few quirks here: we needs to compute a `font`
+field for each `TextLayout`, but we do not need to compute a `y`
+field.
 
-Let's start with `font`, using code based on the font-construction
-code in `InlineLayout`:
+We can compute `font` using the same font-construction code as in
+`InlineLayout`:
 
 ``` {.python}
 class TextLayout:
@@ -305,9 +311,8 @@ class TextLayout:
         self.height = self.font.metrics("linespace")
 ```
 
-Alright---we have the `LineLayout` and `TextLayout` objects created
-and laid out. All that's left is painting them. For `LineLayout` we
-just recurse:
+So that's `layout` for the `LineLayout` and `TextLayout` objects. All
+that's left is painting them. For `LineLayout` we just recurse:
 
 ``` {.python}
 class LineLayout:
@@ -330,14 +335,25 @@ So, oof, well, this was quite a bit of refactoring. Take a moment to
 test everything---it should look exactly identical to how it did
 before we started this refactor. But while you can't see it, there's a
 crucial difference: each blue link on the page now has an associated
-layout object, with its own width and height.
+layout object and its own size and position.
+
+::: {.further}
+Actually, text rendering is [*way* more complex][rendering-hates] than
+this. [Letters][morx] can transform and overlap, and the user might
+want to color certain letters---or parts of letters---a different
+color. All of this is possible in HTML, and browsers implement support
+for it.
+:::
+
+[rendering-hates]: https://gankra.github.io/blah/text-hates-you/
+[morx]: https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6morx.html
 
 Click handling
 ==============
 
-Now that the browser knows where the links are, we can start to work
-on clicking them. In Tk, clicks work just like key presses: you bind
-an event handler to a certain event. For click handling that event is
+Now that the browser knows where the links are, we start work on
+clicking them. In Tk, clicks work just like key presses: you bind an
+event handler to a certain event. For click handling that event is
 `<Button-1>`, button number 1 being the left button on the mouse.[^1]
 
 [^1]: Button 2 is the middle button; button 3 is the right-hand button.
@@ -445,6 +461,17 @@ class Browser:
 Try it out! You should now be able to click on links and navigate to
 new web pages.
 
+::: {.further}
+On mobile devices, a "click" happens over an area, not just at a
+single point. Since mobile "taps" are often pretty inaccurate, click
+should [use the area information][rect-based] for "hit testing". This
+can happen even with a [normal mouse click][hit-test] when the click
+is on a rotated or scaled element.
+:::
+
+[rect-based]: http://www.chromium.org/developers/design-documents/views-rect-based-targeting
+[hit-test]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/layout/hit_test_location.h
+
 Multiple pages
 ==============
 
@@ -453,12 +480,8 @@ links is middle-clicking them to open in a new tab. Every browser now
 has tabbed browsing, and honestly it's a little embarrassing that our
 little toy browser doesn't.[^ffx]
 
-[^ffx]: Back in they day, browser tabs were how I'd convince friends
-    and relatives to switch from IE 6 to Firefox. Though interestingly
-    enough, browser tabs first appeared in [SimulBrowse][simulbrowse],
-    which was based on the IE engine.
-    
-[simulbrowse]: https://en.wikipedia.org/wiki/NetCaptor
+[^ffx]: Back in the day, browser tabs were the feature that would
+    convince friends and relatives to switch from IE 6 to Firefox.
 
 Fundamentally, tabbed browsing means distinguishing between the
 browser itself and tabs that show individual web pages. Right now the
@@ -545,7 +568,7 @@ class Browser:
         self.tabs[self.active_tab].draw(self.canvas)
 ```
 
-The `Browser`/`Tab` split is basically done now, so we need to
+The `Browser`/`Tab` split is basically done now, so next we need to
 actually create some tabs! It looks like this:
 
 ``` {.python}
@@ -558,9 +581,19 @@ class Browser:
         self.draw()
 ```
 
-The core methods behind tabbed browsing are done. But we need a way
-for *the user* to switch tabs, create new ones, and so on. Let's turn
-to that next.
+Likewise, we need a way for *the user* to switch tabs, create new
+ones, and so on. Let's turn to that next.
+
+::: {.further}
+Browser tabs first appeared in [SimulBrowse][simulbrowse], which was
+a kind of custom UI for the Internet Explorer engine. SimulBrowse
+(later renamed to NetCaptor) also had ad blocking and a private
+browsing mode. The [old advertisements][netcaptor-ad] are a great
+read!
+:::
+
+[simulbrowse]: https://en.wikipedia.org/wiki/NetCaptor
+[netcaptor-ad]: https://web.archive.org/web/20050701001923/http://www.netcaptor.com/
 
 Browser chrome
 ==============
@@ -731,6 +764,16 @@ That's an appropriate "new tab" page, don't you think? Anyway, you
 should now be able to load multiple tabs, scroll and click around them
 independently, and switch tabs by clicking on them.
 
+::: {.further}
+Google Chrome 1.0 was accompanied by a [comic book][chrome-comic] to
+pitch its features. There's a whole [chapter][chrome-comic-tabs] about
+its design ideas and user interface features, many of which stuck
+around. Even this book's browser has tabs on top, for example!
+:::
+
+[chrome-comic]: https://www.google.com/googlebooks/chrome/
+[chrome-comic-tabs]: https://www.google.com/googlebooks/chrome/big_18.html
+
 Navigation history
 ==================
 
@@ -828,6 +871,17 @@ So we've now got a pretty good web browser for reading this very book:
 you can click links, browse around, and even have multiple chapters
 open simultaneously for cross-referencing things. But it's a little
 hard to visit *any other website*...
+
+::: {.further}
+A browser's navigation history can contain sensitive information, so
+keeping it secure is important. Surprisingly, this is pretty hard,
+because CSS features like the [`:visited` selector][visited-selector]
+can be used to [check][history-sniffing] whether a URL has been
+visited before.
+:::
+
+[visited-selector]: https://developer.mozilla.org/en-US/docs/Web/CSS/:visited
+[history-sniffing]: https://blog.mozilla.org/security/2010/03/31/plugging-the-css-history-leak/
 
 Editing the URL
 ===============
@@ -950,6 +1004,18 @@ class Browser:
 ```
 
 So there---after a long day of work, unwind a bit by surfing the web.
+
+::: {.further}
+Text editing is [surprisingly complex][editing-hates], and can be
+pretty tricky to implement well, especially for languages other than
+English. And nowadays URLs can be written in [any
+language][i18n-urls], though modern browsers [restrict this
+somewhat][idn-spoof] for security reasons.
+:::
+
+[editing-hates]: https://lord.io/text-editing-hates-you-too/
+[i18n-urls]: https://en.wikipedia.org/wiki/Internationalized_domain_name
+[idn-spoof]: https://en.wikipedia.org/wiki/IDN_homograph_attack
 
 Summary
 =======
