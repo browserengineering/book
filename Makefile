@@ -3,12 +3,12 @@
 FLAGS=
 
 CHAPTERS=$(patsubst book/%.md,%,$(wildcard book/*.md))
-WIDGET_LAB_CODE=lab2.js lab3.js lab5.js
+WIDGET_LAB_CODE=lab2 lab3 lab5 lab7
 
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
-widgets: $(patsubst %,www/widgets/%,$(WIDGET_LAB_CODE)) www/widgets/rt-module.js
+widgets: $(patsubst lab%,www/widgets/lab%-browser.html,$(WIDGET_LAB_CODE)) www/widgets/rt-module.js
 
 lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json

@@ -4,6 +4,13 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Handling Buttons and Links
+    link: https://browser.engineering/chrome.html
+    pubDate: Thu, 1 Jul 2021, 18:14:00 -0600
+    description:
+      Today we’re releasing a chapter on Handling Buttons and Links.
+      This is the chapter when the browser really starts surfing the
+      web. It also becomes a pretty good way to read this book!
   - title: Applying User Styles
     link: https://browser.engineering/styles.html
     pubDate: Sun, 6 Jun 2021 18:49:00 -0600
