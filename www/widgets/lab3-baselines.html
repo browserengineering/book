@@ -74,9 +74,13 @@ line.baseline { stroke-dasharray: 5, 5; }
   </svg>
 </figure>
 
-<script src="lab3.js"></script>
-<script src="rt.js"></script>
-<script>
+<script type="module" src="lab3.js"></script>
+<script type="module" src="rt-module.js"></script>
+<script type="module">
+import { http_textarea, lib, Widget } from "./rt-module.js";
+import { Browser, constants }
+  from "./lab2.js";
+
 const ZOOM = 1.5;
 const colors = { a: "pink", A: "darkred", d: "lightblue", D: "darkblue" };
 
@@ -233,9 +237,12 @@ widget.pause("aligned", record("display_list"));
 widget.pause("max_descent", record("max_desc"));
 widget.pause("final_y", record("final_y"));
 
+console.log('here');
 widget.run(async function() {
+console.log('here2');
     STATE = {};
     let b = await (new Browser()).init();
+    console.log('loaded..');
     await b.load("http://input/")
 });
 </script>

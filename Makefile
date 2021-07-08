@@ -30,6 +30,9 @@ www/rss.xml: news.yaml infra/rss-template.xml
 www/widgets/lab2.js: src/lab2.py src/lab2.hints infra/compile.py
 	python3 infra/compile.py $< $@ --hints src/lab2.hints --use-js-modules
 
+www/widgets/lab3.js: src/lab3.py src/lab2.hints infra/compile.py
+	python3 infra/compile.py $< $@ --hints src/lab3.hints --use-js-modules
+
 www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 	python3 infra/compile.py $< $@ --hints src/lab$*.hints
 
