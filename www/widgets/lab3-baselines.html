@@ -208,6 +208,9 @@ function draw_widget() {
     }
 
     if (STATE.metrics) {
+        console.log('metrics');
+        console.log(constants.HSTEP)
+        console.log(constants.VSTEP)
         STATE.line.forEach(function ([x, word, font], i){
             let metric = STATE.metrics[i];
             g1.appendChild(svg("rect", {
