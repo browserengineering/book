@@ -79,7 +79,7 @@ line.baseline { stroke-dasharray: 5, 5; }
 <script type="module">
 import { http_textarea, lib, Widget } from "./rt-module.js";
 import { Browser, constants }
-  from "./lab2.js";
+  from "./lab3.js";
 
 const ZOOM = 1.5;
 const colors = { a: "pink", A: "darkred", d: "lightblue", D: "darkblue" };
@@ -113,6 +113,7 @@ function svg(tag, attrs, children) {
 }
   
 function draw_widget() {
+    console.log('draw_widget')
     let g1 = document.querySelector("#g1");
     let g2 = document.querySelector("#g2");
     while (g1.children.length) g1.removeChild(g1.children[0]);
@@ -224,6 +225,7 @@ function draw_widget() {
 }
 
 function record(... names) {
+    console.log('record')
     return function(... values) {
         names.forEach((n, i) => (STATE[n] = values[i]));
         draw_widget();
@@ -239,10 +241,8 @@ widget.pause("final_y", record("final_y"));
 
 console.log('here');
 widget.run(async function() {
-console.log('here2');
     STATE = {};
     let b = await (new Browser()).init();
-    console.log('loaded..');
     await b.load("http://input/")
 });
 </script>
