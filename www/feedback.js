@@ -225,7 +225,7 @@ function setup_chapter_feedback() {
                 Element("input", { name: "name", autofocus: "", required: "" }, []),
             ]),
             Element("div", { className: "inputs" }, [
-                Element("label", { "for": "email" }, "Your email (optional, so we can contact you with any followup): "),
+                Element("label", { "for": "email" }, "Your email (optional, so we can contact you with any followup questions): "),
             ]),
             Element("div", { className: "inputs" }, [
                 Element("input", { name: "email"}, []),
