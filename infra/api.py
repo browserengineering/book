@@ -109,7 +109,6 @@ def text_comment():
 
 @bottle.post("/api/chapter_comment")
 def comment():
-    print('add chapter comment')
     data = json.load(bottle.request.body)
     DATA.chapter_comment(**data)
 
