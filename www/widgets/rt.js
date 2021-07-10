@@ -459,5 +459,10 @@ class FileSystem {
     }
 }
 
-
 const filesystem = new FileSystem();
+
+export { socket, ssl, tkinter };
+
+const socket = lib.socket();
+const ssl = lib.ssl();
+const tkinter = lib.tkinter();

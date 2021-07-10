@@ -767,15 +767,14 @@ def compile_module(tree, name, use_js_modules):
 
         imports_str = "import {{ {} }} from \"./{}\";"
 
-        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit', 'truthy' ]
+        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit',
+        'socket', 'ssl', 'tkinter', 'truthy' ]
         rt_imports = imports_str.format(",".join(rt_imports_arr), "rt.js")
 
-        render_imports_array = [ 'socket', 'ssl', 'tkinter' ]
-        render_imports = imports_str.format(",".join(render_imports_array), "render.js")
         constants_export = "export " + constants_export
 
-    return "{}\n{}\n{}\n{}\n\n{}".format(
-        exports, rt_imports, render_imports, constants_export, "\n\n".join(items))
+    return "{}\n{}\n{}\n\n{}".format(
+        exports, rt_imports, constants_export, "\n\n".join(items))
 
 if __name__ == "__main__":
     import sys, os
