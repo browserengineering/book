@@ -283,7 +283,6 @@ def compile_function(name, args, ctx):
     if name in RENAME_FNS:
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
     elif name in OUR_FNS:
-     #   EXPORTS.append(name)
         return "await " + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"

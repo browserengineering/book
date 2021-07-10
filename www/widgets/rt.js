@@ -1,7 +1,8 @@
 /* This file simulates Python packages used by the WBE browser */
 
 
-export { breakpoint, comparator, filesystem, http_textarea, lib, pysplit, rt_constants, truthy, Widget };
+export { breakpoint, comparator, filesystem, http_textarea, lib, pysplit,
+    rt_constants, socket, ssl, tkinter, truthy, Widget };
 
 window.TKELEMENT = null;
 
@@ -460,8 +461,6 @@ class FileSystem {
 }
 
 const filesystem = new FileSystem();
-
-export { socket, ssl, tkinter };
 
 const socket = lib.socket();
 const ssl = lib.ssl();
