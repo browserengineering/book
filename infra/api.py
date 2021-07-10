@@ -68,7 +68,7 @@ class Data:
         })
         self.save()
 
-    def chapter_comment(self, url, comment, name):
+    def chapter_comment(self, url, comment, name, email):
         if any(obj['type'] == 'chapter_comment' and
                obj['url'] == url and
                obj['comment'] == comment for obj in self.data):
@@ -80,6 +80,7 @@ class Data:
             'url': url,
             'comment': comment,
             'name': name,
+            'email': email,
             'status': 'new',
         })
         self.save()
@@ -108,6 +109,7 @@ def text_comment():
 
 @bottle.post("/api/chapter_comment")
 def comment():
+    print('add chapter comment')
     data = json.load(bottle.request.body)
     DATA.chapter_comment(**data)
 
