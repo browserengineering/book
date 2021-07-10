@@ -1,5 +1,8 @@
 /* This file simulates Python packages used by the WBE browser */
 
+
+export { breakpoint, comparator, filesystem, http_textarea, lib, pysplit, rt_constants, truthy, Widget };
+
 window.TKELEMENT = null;
 
 function wrap_class(cls) {
@@ -24,6 +27,8 @@ function http_textarea(elt) {
 
 const rt_constants = {};
 rt_constants.ZOOM = 1.0;
+rt_constants.TKELEMENT = null;
+rt_constants.URLS = {};
 
 class lib {
 
@@ -52,7 +57,7 @@ static socket(URLS) {
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            if (typeof URLS[this.url] == "undefined" && this.host == "browser.engineering") {
+            if (typeof rt_constants.URLS[this.url] == "undefined" && this.host == "browser.engineering") {
                 let response = await fetch(path);
                 this.output = "HTTP/1.0 " + response.status + " " + response.statusText + "\r\n";
                 for (let [header, value] of response.headers.entries()) {
@@ -64,7 +69,7 @@ static socket(URLS) {
                 this.idx = 0;
                 return this;
             } else {
-                this.output = URLS[this.url];
+                this.output = rt_constants.URLS[this.url];
                 if (!this.output) {
                     throw Error("Unknown URL " + this.url);               
                 } else if (typeof this.output === "function") {
@@ -108,12 +113,10 @@ static ssl() {
     return { create_default_context: wrap_class(context) };
 }
 
-static tkinter(options) {
-    let TKELEMENT = options?.canvas ?? document.createElement("canvas");
- 
+static tkinter(options) { 
     class Tk {
         constructor() {
-            this.elt = TKELEMENT;
+            this.elt = rt_constants.TKELEMENT;
         }
 
         bind(key, fn) {
@@ -222,13 +225,13 @@ static tkinter(options) {
         }
 
         measure(text) {
-            let ctx = TKELEMENT.getContext('2d');
+            let ctx = rt_constants.TKELEMENT.getContext('2d');
             ctx.font = this.string;
             return ctx.measureText(text).width / rt_constants.ZOOM;
         }
 
         metrics(field) {
-            let ctx = TKELEMENT.getContext('2d');
+            let ctx = rt_constants.TKELEMENT.getContext('2d');
             ctx.textBaseline = "alphabetic";
             ctx.font = this.string;
             let m = ctx.measureText("Hxy");

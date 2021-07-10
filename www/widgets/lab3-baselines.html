@@ -75,12 +75,17 @@ line.baseline { stroke-dasharray: 5, 5; }
 </figure>
 
 <script type="module" src="lab3.js"></script>
-<script type="module" src="rt-module.js"></script>
+<script type="module" src="rt.js"></script>
 <script type="module">
-import { rt_constants, Widget } from "./rt-module.js";
+import { http_textarea, rt_constants, Widget } from "./rt.js";
 import { Browser, constants } from "./lab3.js";
 
 rt_constants.ZOOM = 1.5;
+rt_constants.TKELEMENT = document.createElement("canvas");
+rt_constants.URLS = {
+  "http://input/": http_textarea(document.querySelector("#input"))
+};
+
 const colors = { a: "pink", A: "darkred", d: "lightblue", D: "darkblue" };
 
 let widget = new Widget(document.querySelector("#controls"));

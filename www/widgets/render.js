@@ -1,6 +1,7 @@
-import { http_textarea, lib } from "./rt-module.js";
+import { http_textarea, lib } from "./rt.js";
 
-export { socket, tkinter };
+export { socket, ssl, tkinter };
 
-const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
-const tkinter = lib.tkinter({ canvas: document.querySelector("#canvas"), zoom: 2.0 });
+const socket = lib.socket();
+const ssl = lib.ssl();
+const tkinter = lib.tkinter();

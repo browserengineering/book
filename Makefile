@@ -8,7 +8,7 @@ WIDGET_LAB_CODE=lab2 lab3 lab5 lab7
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
-widgets: $(patsubst lab%,www/widgets/lab%-browser.html,$(WIDGET_LAB_CODE)) www/widgets/rt-module.js
+widgets: $(patsubst lab%,www/widgets/lab%-browser.html,$(WIDGET_LAB_CODE)) $(patsubst lab%,www/widgets/lab%.js,$(WIDGET_LAB_CODE))
 
 lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json
@@ -27,18 +27,8 @@ www/draft/%.html: book/%.md infra/template.html infra/signup.html infra/filter.l
 www/rss.xml: news.yaml infra/rss-template.xml
 	pandoc --template infra/rss-template.xml  -f markdown -t html $< -o $@
 
-www/widgets/lab2.js: src/lab2.py src/lab2.hints infra/compile.py
-	python3 infra/compile.py $< $@ --hints src/lab2.hints --use-js-modules
-
-www/widgets/lab3.js: src/lab3.py src/lab2.hints infra/compile.py
-	python3 infra/compile.py $< $@ --hints src/lab3.hints --use-js-modules
-
 www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
-	python3 infra/compile.py $< $@ --hints src/lab$*.hints
-
-www/widgets/rt-module.js: www/widgets/rt.js
-	echo "export { breakpoint, http_textarea, lib, pysplit, rt_constants, truthy, Widget };" > www/widgets/rt-module.js
-	cat www/widgets/rt.js >> www/widgets/rt-module.js
+	python3 infra/compile.py $< $@ --hints src/lab$*.hints --use-js-modules
 
 www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json www/widgets/lab%.js
 	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/index.md -o $@
