@@ -220,9 +220,7 @@ function draw_widget() {
 
 function record(... names) {
     return function(... values) {
-        names.forEach((n, i) => {
-          (STATE[n] = values[i]);  
-        } );
+        names.forEach((n, i) => (STATE[n] = values[i]));
         draw_widget();
     }
 }
