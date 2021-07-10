@@ -37,7 +37,7 @@ www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 	python3 infra/compile.py $< $@ --hints src/lab$*.hints
 
 www/widgets/rt-module.js: www/widgets/rt.js
-	echo "export { breakpoint, http_textarea, lib, pysplit, truthy, Widget }" > www/widgets/rt-module.js
+	echo "export { breakpoint, http_textarea, lib, pysplit, rt_constants, truthy, Widget };" > www/widgets/rt-module.js
 	cat www/widgets/rt.js >> www/widgets/rt-module.js
 
 www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json www/widgets/lab%.js
