@@ -108,7 +108,6 @@ function svg(tag, attrs, children) {
 }
   
 function draw_widget() {
-    console.log('draw_widget')
     let g1 = document.querySelector("#g1");
     let g2 = document.querySelector("#g2");
     while (g1.children.length) g1.removeChild(g1.children[0]);
@@ -203,9 +202,6 @@ function draw_widget() {
     }
 
     if (STATE.metrics) {
-        console.log('metrics');
-        console.log(constants.HSTEP)
-        console.log(constants.VSTEP)
         STATE.line.forEach(function ([x, word, font], i){
             let metric = STATE.metrics[i];
             g1.appendChild(svg("rect", {
@@ -223,11 +219,8 @@ function draw_widget() {
 }
 
 function record(... names) {
-    console.log('record')
     return function(... values) {
         names.forEach((n, i) => {
-            console.log(n);
-            //debugger;
           (STATE[n] = values[i]);  
         } );
         draw_widget();
@@ -241,7 +234,6 @@ widget.pause("aligned", record("display_list"));
 widget.pause("max_descent", record("max_desc"));
 widget.pause("final_y", record("final_y"));
 
-console.log('here');
 widget.run(async function() {
     STATE = {};
     let b = await (new Browser()).init();
