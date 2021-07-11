@@ -163,7 +163,9 @@ canvas:
 >>> lab2.SCROLL_STEP = lab2.VSTEP + 2
 >>> browser.scrolldown({})
 
->>> url = 'http://test.test/example1'
+Now let's load a different URL that provides three lines of text:
+
+>>> url = 'http://test.test/example2'
 >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
 ... b"Header1: Value1\r\n\r\n" +
 ... b"Body text that is longer")
@@ -194,6 +196,8 @@ create_text: x=3 y=3 text=n
 create_text: x=4 y=3 text=g
 create_text: x=5 y=3 text=e
 create_text: x=6 y=3 text=r
+
+Scrolling down will now still show some of the text on-screen:
 
 >>> browser.scrolldown({})
 create_text: x=1 y=-1 text= 
