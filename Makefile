@@ -66,4 +66,5 @@ backup:
 
 test:
 	(cd src/ && python3 -m doctest lab1-tests.md)
+	(cd src/ && python3 -m doctest lab2-tests.md)
 	python3 -m doctest infra/compiler.md
