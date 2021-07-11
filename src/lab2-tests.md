@@ -46,12 +46,12 @@ Breakpoints can be set after each character:
 Testing `layout`
 ----------------
 
-The layout function takes in text and outputs a display list. It
-uses WIDTH to determine the maximum length of a line, HSTEP for the
-horizontal distance between letters, and VSTEP for the distance between lines.
-Each entry in the display list is of the form (x, y, c), where x is the
-horizontal offset to the right, y is the vertical offset downward, and c is the
-character to draw.
+The layout function takes in text and outputs a display list. It uses WIDTH to
+determine the maximum length of a line, HSTEP for the horizontal distance
+between letters, and VSTEP for the vertical distance between lines. Each entry
+in the display list is of the form (x, y, c), where x is the horizontal offset
+to the right, y is the vertical offset downward, and c is the character to
+draw.
 
 Let's override those values to convenient ones that make it easy to do math
 when testing:
@@ -71,7 +71,7 @@ This does not though (notice that the 's' has a 2 in the y coordinate):
 >>> lab2.layout("hello moms")
 [(1, 1, 'h'), (2, 1, 'e'), (3, 1, 'l'), (4, 1, 'l'), (5, 1, 'o'), (6, 1, ' '), (7, 1, 'm'), (8, 1, 'o'), (9, 1, 'm'), (1, 2, 's')]
 
-Layout also supporst breakpoints after each addition to the display list:
+Layout also supports breakpoints after each addition to the display list:
 
 >>> test.patch_breakpoint()
 
@@ -86,8 +86,8 @@ breakpoint: name=layout value=[(1, 1, 'a'), (2, 1, 'b'), (3, 1, 'c')]
 Testing `Browser`
 -----------------
 
-The Browser class defines a simple web browser, with methods to load and
-draw to the screen.
+The Browser class defines a simple web browser, with methods to load,
+draw to the screen, and scroll down.
 
 Testing `Browser.load`
 ----------------------
@@ -144,6 +144,9 @@ breakpoint: name=draw value=None
 Testing `Browser.scrolldown`
 ----------------------------
 
+Let's install a mock canvas that prints out the x and y coordinates, plus
+the text drawn:
+
 >>> test.patch_canvas()
 >>> browser = lab2.Browser()
 >>> browser.load(url)
@@ -157,10 +160,14 @@ create_text: x=7 y=1 text=e
 create_text: x=8 y=1 text=x
 create_text: x=9 y=1 text=t
 
+SCROLL_STEP configures how much to scroll by each time. Let's set it to
+a convenient value:
+
+>>> lab2.SCROLL_STEP = lab2.VSTEP + 2
+
 After scrolling, all of the text is offscreen, so no text is output to the
 canvas:
 
->>> lab2.SCROLL_STEP = lab2.VSTEP + 2
 >>> browser.scrolldown({})
 
 Now let's load a different URL that provides three lines of text:
@@ -197,7 +204,8 @@ create_text: x=4 y=3 text=g
 create_text: x=5 y=3 text=e
 create_text: x=6 y=3 text=r
 
-Scrolling down will now still show some of the text on-screen:
+Scrolling down will now still show some of the text on-screen, because it took
+up three lines, not just one:
 
 >>> browser.scrolldown({})
 create_text: x=1 y=-1 text= 
