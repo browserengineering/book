@@ -1,7 +1,7 @@
 Tests for WBE Chapter 2
 =======================
 
-Chapter 2 (Drawing to the Screen) is about how to get some simple data laid out
+Chapter 2 (Drawing to the Screen) is about how to get text parsed, laid out
 and drawn on the screen, plus a very simple implementation of scrolling. This
 file contains tests for this functionality.
 
@@ -89,6 +89,9 @@ Testing `Browser`
 The Browser class defines a simple web browser, with methods to load and
 draw to the screen.
 
+Testing `Browser.load`
+----------------------
+
 Let's first mock a URL to load:
 
 >>> url = 'http://test.test/example1'
@@ -137,3 +140,74 @@ breakpoint: name=draw value=None
 breakpoint: name=draw value=None
 
 >>> test.unpatch_breakpoint()
+
+Testing `Browser.scrolldown`
+----------------------------
+
+>>> test.patch_canvas()
+>>> browser = lab2.Browser()
+>>> browser.load(url)
+create_text: x=1 y=1 text=B
+create_text: x=2 y=1 text=o
+create_text: x=3 y=1 text=d
+create_text: x=4 y=1 text=y
+create_text: x=5 y=1 text= 
+create_text: x=6 y=1 text=t
+create_text: x=7 y=1 text=e
+create_text: x=8 y=1 text=x
+create_text: x=9 y=1 text=t
+
+After scrolling, all of the text is offscreen, so no text is output to the
+canvas:
+
+>>> lab2.SCROLL_STEP = lab2.VSTEP + 2
+>>> browser.scrolldown({})
+
+>>> url = 'http://test.test/example1'
+>>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
+... b"Header1: Value1\r\n\r\n" +
+... b"Body text that is longer")
+
+>>> browser = lab2.Browser()
+>>> browser.load(url)
+create_text: x=1 y=1 text=B
+create_text: x=2 y=1 text=o
+create_text: x=3 y=1 text=d
+create_text: x=4 y=1 text=y
+create_text: x=5 y=1 text= 
+create_text: x=6 y=1 text=t
+create_text: x=7 y=1 text=e
+create_text: x=8 y=1 text=x
+create_text: x=9 y=1 text=t
+create_text: x=1 y=2 text= 
+create_text: x=2 y=2 text=t
+create_text: x=3 y=2 text=h
+create_text: x=4 y=2 text=a
+create_text: x=5 y=2 text=t
+create_text: x=6 y=2 text= 
+create_text: x=7 y=2 text=i
+create_text: x=8 y=2 text=s
+create_text: x=9 y=2 text= 
+create_text: x=1 y=3 text=l
+create_text: x=2 y=3 text=o
+create_text: x=3 y=3 text=n
+create_text: x=4 y=3 text=g
+create_text: x=5 y=3 text=e
+create_text: x=6 y=3 text=r
+
+>>> browser.scrolldown({})
+create_text: x=1 y=-1 text= 
+create_text: x=2 y=-1 text=t
+create_text: x=3 y=-1 text=h
+create_text: x=4 y=-1 text=a
+create_text: x=5 y=-1 text=t
+create_text: x=6 y=-1 text= 
+create_text: x=7 y=-1 text=i
+create_text: x=8 y=-1 text=s
+create_text: x=9 y=-1 text= 
+create_text: x=1 y=0 text=l
+create_text: x=2 y=0 text=o
+create_text: x=3 y=0 text=n
+create_text: x=4 y=0 text=g
+create_text: x=5 y=0 text=e
+create_text: x=6 y=0 text=r

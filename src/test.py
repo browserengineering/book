@@ -6,6 +6,7 @@ import builtins
 import lab1
 import io
 import sys
+import tkinter
 import unittest
 from unittest import mock
 
@@ -62,6 +63,27 @@ class ssl:
     @classmethod
     def patch(cls):
         return mock.patch("ssl.create_default_context", wraps=cls)
+
+class MockCanvas:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def create_text(self, x, y, text):
+        print("create_text: x={} y={} text={}".format(x, y, text))
+
+    def pack(self):
+        pass
+
+    def delete(self, v):
+        pass
+
+original_tkinter_canvas = tkinter.Canvas
+
+def patch_canvas():
+    tkinter.Canvas = MockCanvas
+
+def unpatch_canvas():
+    tkinter.Canvas = original_tkinter_canvas
 
 def errors(f, *args, **kwargs):
     try:

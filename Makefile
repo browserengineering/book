@@ -65,6 +65,6 @@ backup:
 	rsync server:/home/www/browseng/db.pickle infra/db.$(shell date +%Y-%m-%d).pickle
 
 test:
-	(cd src/ && python3 -m doctest lab1-tests.md)
-	(cd src/ && python3 -m doctest lab2-tests.md)
+	(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest lab1-tests.md)
+	(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest lab2-tests.md)
 	python3 -m doctest infra/compiler.md
