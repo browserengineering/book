@@ -2,6 +2,7 @@
 This file contains unittests for chapter 1
 """
 
+import builtins
 import lab1
 import io
 import sys
@@ -69,3 +70,14 @@ def errors(f, *args, **kwargs):
         return True
     else:
         return False
+
+def breakpoint(name, value=None):
+    print('breakpoint: name={} value={}'.format(name, value))
+
+builtin_breakpoint = builtins.breakpoint
+
+def patch_breakpoint():
+    builtins.breakpoint = breakpoint
+
+def unpatch_breakpoint():
+    builtins.breakpoint = builtin_breakpoint
