@@ -64,6 +64,27 @@ class ssl:
     def patch(cls):
         return mock.patch("ssl.create_default_context", wraps=cls)
 
+class SilentTk:
+    def bind(self, event, callback):
+        pass
+
+tkinter.Tk = SilentTk
+
+class SilentCanvas:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def create_text(self, x, y, text):
+        pass
+
+    def pack(self):
+        pass
+
+    def delete(self, v):
+        pass
+
+tkinter.Canvas = SilentCanvas
+
 class MockCanvas:
     def __init__(self, *args, **kwargs):
         pass
