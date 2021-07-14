@@ -7,6 +7,7 @@ import lab1
 import io
 import sys
 import tkinter
+import tkinter.font
 import unittest
 from unittest import mock
 
@@ -74,7 +75,7 @@ class SilentCanvas:
     def __init__(self, *args, **kwargs):
         pass
 
-    def create_text(self, x, y, text):
+    def create_text(self, x, y, text, font, anchor):
         pass
 
     def pack(self):
@@ -89,8 +90,9 @@ class MockCanvas:
     def __init__(self, *args, **kwargs):
         pass
 
-    def create_text(self, x, y, text):
-        print("create_text: x={} y={} text={}".format(x, y, text))
+    def create_text(self, x, y, text, font, anchor):
+        print("create_text: x={} y={} text={} font={} anchor={}".format(
+            x, y, text, font, anchor))
 
     def pack(self):
         pass
@@ -105,6 +107,29 @@ def patch_canvas():
 
 def unpatch_canvas():
     tkinter.Canvas = original_tkinter_canvas
+
+class MockFont:
+    def __init__(self, size=None, weight=None, slant=None, style=None):
+        self.size = size
+        self.weight = weight
+        self.slant = slant
+        self.style = style
+
+    def measure(self, word):
+        return self.size * len(word)
+
+    def metrics(self, name=None):
+        all = {"ascent" : self.size / 2, "descent": self.size / 2,
+            "linespace": self.size * 2}
+        if name:
+            return all[name]
+        return all
+
+    def __repr__(self):
+            return "Font size={} weight={} slant={} style={}".format(
+                self.size, self.weight, self.slant, self.style)
+
+tkinter.font.Font = MockFont
 
 def errors(f, *args, **kwargs):
     try:

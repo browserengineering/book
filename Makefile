@@ -5,7 +5,7 @@ FLAGS=
 CHAPTERS=$(patsubst book/%.md,%,$(wildcard book/*.md))
 WIDGET_LAB_CODE=lab2 lab3 lab5 lab7
 
-TESTS=lab1-tests.md lab2-tests.md
+TESTS=lab1-tests.md lab2-tests.md lab3-tests.md
 
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
