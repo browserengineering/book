@@ -35,9 +35,9 @@ Breakpoints can be set after each character:
     >>> test.patch_breakpoint()
 
     >>> lab2.lex('abc')
-    breakpoint: name=lex value=a
-    breakpoint: name=lex value=ab
-    breakpoint: name=lex value=abc
+    breakpoint: name=lex value1=a
+    breakpoint: name=lex value1=ab
+    breakpoint: name=lex value1=abc
     'abc'
 
     >>> test.unpatch_breakpoint()
@@ -77,9 +77,9 @@ Layout also supports breakpoints after each addition to the display list:
     >>> test.patch_breakpoint()
 
     >>> lab2.layout("abc")
-    breakpoint: name=layout value=[(1, 1, 'a')]
-    breakpoint: name=layout value=[(1, 1, 'a'), (2, 1, 'b')]
-    breakpoint: name=layout value=[(1, 1, 'a'), (2, 1, 'b'), (3, 1, 'c')]
+    breakpoint: name=layout value1=[(1, 1, 'a')]
+    breakpoint: name=layout value1=[(1, 1, 'a'), (2, 1, 'b')]
+    breakpoint: name=layout value1=[(1, 1, 'a'), (2, 1, 'b'), (3, 1, 'c')]
     [(1, 1, 'a'), (2, 1, 'b'), (3, 1, 'c')]
 
     >>> test.unpatch_breakpoint()
@@ -112,33 +112,33 @@ And with breakpoints:
     >>> test.patch_breakpoint()
 
     >>> browser.load(url)
-    breakpoint: name=lex value=B
-    breakpoint: name=lex value=Bo
-    breakpoint: name=lex value=Bod
-    breakpoint: name=lex value=Body
-    breakpoint: name=lex value=Body 
-    breakpoint: name=lex value=Body t
-    breakpoint: name=lex value=Body te
-    breakpoint: name=lex value=Body tex
-    breakpoint: name=lex value=Body text
-    breakpoint: name=layout value=[(1, 1, 'B')]
-    breakpoint: name=layout value=[(1, 1, 'B'), (2, 1, 'o')]
-    breakpoint: name=layout value=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd')]
-    breakpoint: name=layout value=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y')]
-    breakpoint: name=layout value=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' ')]
-    breakpoint: name=layout value=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't')]
-    breakpoint: name=layout value=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e')]
-    breakpoint: name=layout value=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e'), (8, 1, 'x')]
-    breakpoint: name=layout value=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e'), (8, 1, 'x'), (9, 1, 't')]
-    breakpoint: name=draw value=None
-    breakpoint: name=draw value=None
-    breakpoint: name=draw value=None
-    breakpoint: name=draw value=None
-    breakpoint: name=draw value=None
-    breakpoint: name=draw value=None
-    breakpoint: name=draw value=None
-    breakpoint: name=draw value=None
-    breakpoint: name=draw value=None
+    breakpoint: name=lex value1=B
+    breakpoint: name=lex value1=Bo
+    breakpoint: name=lex value1=Bod
+    breakpoint: name=lex value1=Body
+    breakpoint: name=lex value1=Body 
+    breakpoint: name=lex value1=Body t
+    breakpoint: name=lex value1=Body te
+    breakpoint: name=lex value1=Body tex
+    breakpoint: name=lex value1=Body text
+    breakpoint: name=layout value1=[(1, 1, 'B')]
+    breakpoint: name=layout value1=[(1, 1, 'B'), (2, 1, 'o')]
+    breakpoint: name=layout value1=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd')]
+    breakpoint: name=layout value1=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y')]
+    breakpoint: name=layout value1=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' ')]
+    breakpoint: name=layout value1=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't')]
+    breakpoint: name=layout value1=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e')]
+    breakpoint: name=layout value1=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e'), (8, 1, 'x')]
+    breakpoint: name=layout value1=[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e'), (8, 1, 'x'), (9, 1, 't')]
+    breakpoint: name=draw
+    breakpoint: name=draw
+    breakpoint: name=draw
+    breakpoint: name=draw
+    breakpoint: name=draw
+    breakpoint: name=draw
+    breakpoint: name=draw
+    breakpoint: name=draw
+    breakpoint: name=draw
 
     >>> test.unpatch_breakpoint()
 

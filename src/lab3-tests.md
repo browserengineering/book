@@ -57,6 +57,20 @@ rather an mock font that has faked metrics.
     >>> lab3.Layout(lab3.lex("<big><big><i>abc</i></big>def</big>")).display_list
     [(13, 20.4, 'abc', Font size=24 weight=normal slant=italic style=None), (109, 22.4, 'def', Font size=20 weight=normal slant=roman style=None)]
 
+Breakpoints can be set after each layout:
+
+    >>> test.patch_breakpoint()
+
+    >>> layout = lab3.Layout(lab3.lex("abc"))
+    breakpoint: name=initial_y value1=18 value2=[(13, 'abc', Font size=16 weight=normal slant=roman style=None)] value3=None
+    breakpoint: name=metrics value1=[{'ascent': 8.0, 'descent': 8.0, 'linespace': 32}] value2=None value3=None
+    breakpoint: name=max_ascent value1=8.0 value2=None value3=None
+    breakpoint: name=aligned value1=[(13, 19.6, 'abc', Font size=16 weight=normal slant=roman style=None)] value2=None value3=None
+    breakpoint: name=max_descent value1=8.0 value2=None value3=None
+    breakpoint: name=final_y value1=37.2 value2=None value3=None
+    
+    >>> test.unpatch_breakpoint()
+
 Testing `Browser`
 -----------------
 

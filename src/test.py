@@ -75,7 +75,7 @@ class SilentCanvas:
     def __init__(self, *args, **kwargs):
         pass
 
-    def create_text(self, x, y, text, font, anchor):
+    def create_text(self, x, y, text, font=None, anchor=None):
         pass
 
     def pack(self):
@@ -90,9 +90,13 @@ class MockCanvas:
     def __init__(self, *args, **kwargs):
         pass
 
-    def create_text(self, x, y, text, font, anchor):
-        print("create_text: x={} y={} text={} font={} anchor={}".format(
-            x, y, text, font, anchor))
+    def create_text(self, x, y, text, font=None, anchor=None):
+        if font or anchor:
+            print("create_text: x={} y={} text={} font={} anchor={}".format(
+                x, y, text, font, anchor))
+        else:
+            print("create_text: x={} y={} text={}".format(
+                x, y, text))
 
     def pack(self):
         pass
@@ -139,8 +143,22 @@ def errors(f, *args, **kwargs):
     else:
         return False
 
-def breakpoint(name, value=None):
-    print('breakpoint: name={} value={}'.format(name, value))
+def breakpoint(name, value1=None, value2=None, value3=None):
+    if value3:
+        print('breakpoint: name={} value1={} value2={} value3={}'.format(
+            name, value1, value2, value3))
+        return
+
+    if value2:
+        print('breakpoint: name={} value1={} value2={}'.format(
+            name, value1, value2))
+        return
+
+    if value1:
+        print('breakpoint: name={} value1={}'.format(name, value1))
+        return
+
+    print('breakpoint: name={}'.format(name))
 
 builtin_breakpoint = builtins.breakpoint
 
