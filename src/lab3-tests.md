@@ -62,12 +62,12 @@ Breakpoints can be set after each layout:
     >>> test.patch_breakpoint()
 
     >>> layout = lab3.Layout(lab3.lex("abc"))
-    breakpoint: name=initial_y value1=18 value2=[(13, 'abc', Font size=16 weight=normal slant=roman style=None)] value3=None
-    breakpoint: name=metrics value1=[{'ascent': 8.0, 'descent': 8.0, 'linespace': 32}] value2=None value3=None
-    breakpoint: name=max_ascent value1=8.0 value2=None value3=None
-    breakpoint: name=aligned value1=[(13, 19.6, 'abc', Font size=16 weight=normal slant=roman style=None)] value2=None value3=None
-    breakpoint: name=max_descent value1=8.0 value2=None value3=None
-    breakpoint: name=final_y value1=37.2 value2=None value3=None
+    breakpoint: name=initial_y value1=18 value2=[(13, 'abc', Font size=16 weight=normal slant=roman style=None)]
+    breakpoint: name=metrics value1=[{'ascent': 8.0, 'descent': 8.0, 'linespace': 32}]
+    breakpoint: name=max_ascent value1=8.0
+    breakpoint: name=aligned value1=[(13, 19.6, 'abc', Font size=16 weight=normal slant=roman style=None)]
+    breakpoint: name=max_descent value1=8.0
+    breakpoint: name=final_y value1=37.2
     
     >>> test.unpatch_breakpoint()
 
@@ -96,3 +96,20 @@ And the canvas:
     create_text: x=13 y=19.4 text=abc font=Font size=14 weight=normal slant=roman style=None anchor=nw
     create_text: x=69 y=19.4 text=def font=Font size=14 weight=normal slant=italic style=None anchor=nw
     >>> test.unpatch_canvas()
+
+And with breakpoints:
+
+    >>> test.patch_breakpoint()
+
+    >>> browser.load(url)
+    breakpoint: name=initial_y value1=18 value2=[(13, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 'def', Font size=14 weight=normal slant=italic style=None)]
+    breakpoint: name=metrics value1=[{'ascent': 7.0, 'descent': 7.0, 'linespace': 28}, {'ascent': 7.0, 'descent': 7.0, 'linespace': 28}]
+    breakpoint: name=max_ascent value1=7.0
+    breakpoint: name=aligned value1=[(13, 19.4, 'abc', Font size=14 weight=normal slant=roman style=None)]
+    breakpoint: name=aligned value1=[(13, 19.4, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 19.4, 'def', Font size=14 weight=normal slant=italic style=None)]
+    breakpoint: name=max_descent value1=7.0
+    breakpoint: name=final_y value1=34.8
+    create_text: x=13 y=19.4 text=abc font=Font size=14 weight=normal slant=roman style=None anchor=nw
+    create_text: x=69 y=19.4 text=def font=Font size=14 weight=normal slant=italic style=None anchor=nw
+
+    >>> test.unpatch_breakpoint()
