@@ -37,7 +37,7 @@ Testing `Layout`
 
 This chapter also creates a Layout class to output a display list that can
 format text. However, note that this test doesn't use real tkinter fonts, but
-rather an mock font that has faked metrics.
+rather a mock font that has faked metrics.
 
     >>> lab3.Layout(lab3.lex("abc")).display_list
     [(13, 19.6, 'abc', Font size=16 weight=normal slant=roman style=None)]
