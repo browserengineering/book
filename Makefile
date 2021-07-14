@@ -5,6 +5,8 @@ FLAGS=
 CHAPTERS=$(patsubst book/%.md,%,$(wildcard book/*.md))
 WIDGET_LAB_CODE=lab2 lab3 lab5 lab7
 
+TESTS=lab1-tests.md lab2-tests.md
+
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
@@ -65,6 +67,7 @@ backup:
 	rsync server:/home/www/browseng/db.pickle infra/db.$(shell date +%Y-%m-%d).pickle
 
 test:
-	(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest lab1-tests.md)
-	(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest lab2-tests.md)
+	for test in ${TESTS}; do \
+		(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest $$test); \
+	done
 	python3 -m doctest infra/compiler.md
