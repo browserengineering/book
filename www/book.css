@@ -163,11 +163,12 @@ input[type=checkbox][disabled] { display: none; }
 }
 .popup h1 { text-align: center; }
 .popup .inputs { font-size: 30px; }
+.popup .inputs label { font-size: 24px; }
 .popup input { font-size: 30px; width: 400px; }
 .popup .legalese { font-size: 60%; }
 .popup button { font-size: 24px; }
 
-.popup textarea { width: 400px; height: 300px; }
+.popup textarea { width: 500px; height: 250px; }
 
 .confirm-feedback { display: none; }
 .confirm-feedback.active { display: block; }

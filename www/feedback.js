@@ -193,7 +193,7 @@ function submit_text_comment(elt, text, comment) {
     }));
 }
 
-function submit_chapter_comment(comment) {
+function submit_chapter_comment(comment, email) {
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", bad_request);
     xhr.open("POST", "/api/chapter_comment");
@@ -201,6 +201,7 @@ function submit_chapter_comment(comment) {
         'comment': comment,
         'url': location.pathname,
         'name': window.localStorage["name"],
+        'email': email
     }));
 }
 
@@ -223,6 +224,12 @@ function setup_chapter_feedback() {
             Element("div", { className: "inputs" }, [
                 Element("input", { name: "name", autofocus: "", required: "" }, []),
             ]),
+            Element("div", { className: "inputs" }, [
+                Element("label", { "for": "email" }, "Your email (optional, so we can contact you with any followup questions): "),
+            ]),
+            Element("div", { className: "inputs" }, [
+                Element("input", { name: "email"}, []),
+            ]),
             Element("div", { className: "inputs"}, [
                 Element("label", { "for": "feedback" }, "Your feedback: "),
             ]),
@@ -244,8 +251,9 @@ function setup_chapter_feedback() {
     chapter_overlay = Element("div", { id: "overlay" }, [form]);
 
     function do_submit(e) {
-        window.localStorage["name"] = this.querySelector("input").value;
-        submit_chapter_comment(this.querySelector("textarea").value)
+        window.localStorage["name"] = this.querySelector("input[name='name']").value;
+        submit_chapter_comment(this.querySelector("textarea").value,
+            this.querySelector("input[name='email']").value)
         e.preventDefault();
         this.querySelector(".confirm-feedback").classList.add("active");
         setTimeout(() => chapter_overlay.remove(), 2000);
@@ -298,7 +306,7 @@ function setup_text_feedback() {
 
     function do_submit(e) {
         window.localStorage["edit"] = "true";
-        window.localStorage["name"] = this.querySelector("input").value;
+        window.localStorage["name"] = this.querySelector("input[name='name']").value;
         e.preventDefault();
         typo_mode();
         overlay.remove();
