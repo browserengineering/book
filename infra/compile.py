@@ -766,8 +766,8 @@ def compile_module(tree, name, use_js_modules):
 
         imports_str = "import {{ {} }} from \"./{}\";"
 
-        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit',
-        'socket', 'ssl', 'tkinter', 'truthy' ]
+        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit', 'truthy' ]
+        rt_imports_arr += IMPORTS
         rt_imports = imports_str.format(",".join(rt_imports_arr), "rt.js")
 
         constants_export = "export " + constants_export
