@@ -762,13 +762,13 @@ def compile_module(tree, name, use_js_modules):
     constants_export = "const constants = {};"
     if use_js_modules:
         if len(EXPORTS) > 0:
-            exports = "export {{ {} }};".format(",".join(EXPORTS))
+            exports = "export {{ {} }};".format(", ".join(EXPORTS))
 
         imports_str = "import {{ {} }} from \"./{}\";"
 
         rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit', 'truthy' ]
-        rt_imports_arr += IMPORTS
-        rt_imports = imports_str.format(",".join(rt_imports_arr), "rt.js")
+        rt_imports_arr += set([ mod.split(".")[0] for mod in IMPORTS])
+        rt_imports = imports_str.format(", ".join(rt_imports_arr), "rt.js")
 
         constants_export = "export " + constants_export
 
