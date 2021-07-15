@@ -1,5 +1,9 @@
 /* This file simulates Python packages used by the WBE browser */
 
+
+export { breakpoint, comparator, filesystem, http_textarea, lib, pysplit,
+    rt_constants, socket, ssl, tkinter, truthy, Widget };
+
 window.TKELEMENT = null;
 
 function wrap_class(cls) {
@@ -21,6 +25,11 @@ function http_textarea(elt) {
         return http_ok(elt.value);
     }
 }
+
+const rt_constants = {};
+rt_constants.ZOOM = 1.0;
+rt_constants.TKELEMENT = null;
+rt_constants.URLS = {};
 
 class lib {
 
@@ -49,7 +58,7 @@ static socket(URLS) {
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            if (typeof URLS[this.url] == "undefined" && this.host == "browser.engineering") {
+            if (typeof rt_constants.URLS[this.url] == "undefined" && this.host == "browser.engineering") {
                 let response = await fetch(path);
                 this.output = "HTTP/1.0 " + response.status + " " + response.statusText + "\r\n";
                 for (let [header, value] of response.headers.entries()) {
@@ -61,7 +70,7 @@ static socket(URLS) {
                 this.idx = 0;
                 return this;
             } else {
-                this.output = URLS[this.url];
+                this.output = rt_constants.URLS[this.url];
                 if (!this.output) {
                     throw Error("Unknown URL " + this.url);               
                 } else if (typeof this.output === "function") {
@@ -105,13 +114,10 @@ static ssl() {
     return { create_default_context: wrap_class(context) };
 }
 
-static tkinter(options) {
-    let TKELEMENT = options?.canvas ?? document.createElement("canvas");
-    let ZOOM = options?.zoom ?? 1.0;
-
+static tkinter(options) { 
     class Tk {
         constructor() {
-            this.elt = TKELEMENT;
+            this.elt = rt_constants.TKELEMENT;
         }
 
         bind(key, fn) {
@@ -148,10 +154,10 @@ static tkinter(options) {
     class Canvas {
         constructor(tk, params) {
             this.tk = tk;
-            this.tk.elt.width = params.width * ZOOM;
-            this.tk.elt.height = params.height * ZOOM;
+            this.tk.elt.width = params.width * rt_constants.ZOOM;
+            this.tk.elt.height = params.height * rt_constants.ZOOM;
             this.ctx = tk.elt.getContext('2d');
-            this.ctx.font = "normal normal " + 16 * ZOOM + "px serif"
+            this.ctx.font = "normal normal " + 16 * rt_constants.ZOOM + "px serif"
         }
 
         pack() {}
@@ -163,7 +169,7 @@ static tkinter(options) {
 
         create_rectangle(x1, y1, x2, y2, params) {
             this.ctx.beginPath();
-            this.ctx.rect(x1 * ZOOM, y1 * ZOOM, (x2 - x1) * ZOOM, (y2 - y1) * ZOOM);
+            this.ctx.rect(x1 * rt_constants.ZOOM, y1 * rt_constants.ZOOM, (x2 - x1) * rt_constants.ZOOM, (y2 - y1) * rt_constants.ZOOM);
             this.ctx.fillStyle = params.fill ?? "transparent";
             this.ctx.fill();
             if ((params.width ?? 0) != 0) {
@@ -175,8 +181,8 @@ static tkinter(options) {
 
         create_line(x1, y1, x2, y2) {
             this.ctx.beginPath();
-            this.ctx.moveTo(x1 * ZOOM, y1 * ZOOM);
-            this.ctx.lineTo(x2 * ZOOM, y2 * ZOOM);
+            this.ctx.moveTo(x1 * rt_constants.ZOOM, y1 * rt_constants.ZOOM);
+            this.ctx.lineTo(x2 * rt_constants.ZOOM, y2 * rt_constants.ZOOM);
             this.ctx.lineWidth = 1;
             this.ctx.strokeStyle = "black";
             this.ctx.stroke();
@@ -184,10 +190,10 @@ static tkinter(options) {
 
         create_polygon(... args) {
             this.ctx.beginPath();
-            this.ctx.moveTo(args[0] * ZOOM, args[1] * ZOOM);
+            this.ctx.moveTo(args[0] * rt_constants.ZOOM, args[1] * rt_constants.ZOOM);
             let i;
             for (i = 2; i < args.length - 1; i += 2) {
-                this.ctx.lineTo(args[i] * ZOOM, args[i + 1] * ZOOM);
+                this.ctx.lineTo(args[i] * rt_constants.ZOOM, args[i + 1] * rt_constants.ZOOM);
             }
             this.ctx.fillStyle = args[i].fill ?? "transparent";
             this.ctx.fill();
@@ -206,7 +212,7 @@ static tkinter(options) {
             if (params.font) this.ctx.font = params.font.string;
             this.ctx.lineWidth = 0;
             this.ctx.fillStyle = params.fill ?? "black";
-            if (params.text) this.ctx.fillText(params.text, x * ZOOM, y * ZOOM);
+            if (params.text) this.ctx.fillText(params.text, x * rt_constants.ZOOM, y * rt_constants.ZOOM);
         }
     }
     
@@ -216,17 +222,17 @@ static tkinter(options) {
             this.weight = params.weight ?? "normal";
             this.style = params.style ?? "normal";
             this.string = (this.style == "roman" ? "normal" : this.style) + 
-                " " + this.weight + " " + this.size * ZOOM + "px serif";
+                " " + this.weight + " " + this.size * rt_constants.ZOOM + "px serif";
         }
 
         measure(text) {
-            let ctx = TKELEMENT.getContext('2d');
+            let ctx = rt_constants.TKELEMENT.getContext('2d');
             ctx.font = this.string;
-            return ctx.measureText(text).width / ZOOM;
+            return ctx.measureText(text).width / rt_constants.ZOOM;
         }
 
         metrics(field) {
-            let ctx = TKELEMENT.getContext('2d');
+            let ctx = rt_constants.TKELEMENT.getContext('2d');
             ctx.textBaseline = "alphabetic";
             ctx.font = this.string;
             let m = ctx.measureText("Hxy");
@@ -236,11 +242,11 @@ static tkinter(options) {
             // We fake them in the other browsers by guessing that emHeight = font.size
             // This is not quite right but is close enough for many fonts...
             if (m.emHeightAscent && m.emHeightDescent) {
-                asc = ctx.measureText("Hxy").emHeightAscent / ZOOM;
-                desc = ctx.measureText("Hxy").emHeightDescent / ZOOM;
+                asc = ctx.measureText("Hxy").emHeightAscent / rt_constants.ZOOM;
+                desc = ctx.measureText("Hxy").emHeightDescent / rt_constants.ZOOM;
             } else {
-                asc = ctx.measureText("Hxy").actualBoundingBoxAscent / ZOOM;
-                desc = ctx.measureText("Hxy").actualBoundingBoxDescent / ZOOM;
+                asc = ctx.measureText("Hxy").actualBoundingBoxAscent / rt_constants.ZOOM;
+                desc = ctx.measureText("Hxy").actualBoundingBoxDescent / rt_constants.ZOOM;
                 let gap = this.size - (asc + desc)
                 asc += gap / 2;
                 desc += gap / 2;
@@ -454,5 +460,8 @@ class FileSystem {
     }
 }
 
-
 const filesystem = new FileSystem();
+
+const socket = lib.socket();
+const ssl = lib.ssl();
+const tkinter = lib.tkinter();

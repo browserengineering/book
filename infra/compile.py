@@ -283,7 +283,6 @@ def compile_function(name, args, ctx):
     if name in RENAME_FNS:
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
     elif name in OUR_FNS:
-        EXPORTS.append(name)
         return "await " + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
@@ -600,6 +599,8 @@ def compile(tree, ctx, indent=0):
             last_line = "\n" + " " * indent + "}"
             return def_line + body + last_line
         else:
+            if ctx.type == "module":
+                EXPORTS.append(tree.name)
             kw = "" if ctx.type == "class" else "function "
             def_line = kw + tree.name + "(" + ", ".join(args) + ") {\n"
             if ctx.type != "class" or tree.name not in OUR_SYNC_METHODS:
@@ -761,19 +762,18 @@ def compile_module(tree, name, use_js_modules):
     constants_export = "const constants = {};"
     if use_js_modules:
         if len(EXPORTS) > 0:
-            exports = "export {{ {} }};".format(",".join(EXPORTS))
+            exports = "export {{ {} }};".format(", ".join(EXPORTS))
 
         imports_str = "import {{ {} }} from \"./{}\";"
 
-        rt_imports_arr = [ 'breakpoint', 'pysplit', 'truthy' ]
-        rt_imports = imports_str.format(",".join(rt_imports_arr), "rt-module.js")
+        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit', 'truthy' ]
+        rt_imports_arr += set([ mod.split(".")[0] for mod in IMPORTS])
+        rt_imports = imports_str.format(", ".join(rt_imports_arr), "rt.js")
 
-        render_imports_array = [ 'tkinter', 'socket' ]
-        render_imports = imports_str.format(",".join(render_imports_array), "render.js")
         constants_export = "export " + constants_export
 
-    return "{}\n{}\n{}\n{}\n\n{}".format(
-        exports, rt_imports, render_imports, constants_export, "\n\n".join(items))
+    return "{}\n{}\n{}\n\n{}".format(
+        exports, rt_imports, constants_export, "\n\n".join(items))
 
 if __name__ == "__main__":
     import sys, os

@@ -17,12 +17,13 @@
   <canvas id="canvas" width="352" height="160"></canvas>
 </figure>
 
-<script src="rt.js"></script>
-<script src="lab$chapter$.js"></script>
-<script>
-socket = lib.socket({});
-ssl = lib.ssl();
-tkinter = lib.tkinter({ canvas: document.querySelector("#canvas") });
+<script type="module" src="rt.js"></script>
+<script type="module" src="lab$chapter$.js"></script>
+<script type="module">
+import { rt_constants, Widget } from "./rt.js";
+import { Browser, constants } from "./lab$chapter$.js";
+
+rt_constants.TKELEMENT = document.querySelector("#canvas");
 
 let widget = new Widget(document.querySelector("#controls"));
 widget.run(async function() {
