@@ -82,7 +82,7 @@ function Div(el)
        el.content[1].t ~= "CodeBlock" then
       error("`widget` block does not contain a code block")
     end
-    local url = (config.base[1].text or "") .. "widgets/" .. el.content[1].text
+    local url = (config.base and config.base[1].text or "") .. "widgets/" .. el.content[1].text
     local src = "<iframe class=\"widget\" src=\"" .. url .. "\""
     if el.attributes["height"] then
        src = src .. " height=\"" .. el.attributes["height"] .. "\""
