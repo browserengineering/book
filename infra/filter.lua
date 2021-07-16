@@ -1,5 +1,18 @@
 -- Pass 1: Load configuration data
 
+function dump(o)
+   if type(o) == 'table' then
+      local s = '{ '
+      for k,v in pairs(o) do
+         if type(k) ~= 'number' then k = '"'..k..'"' end
+         s = s .. '['..k..'] = ' .. dump(v) .. ','
+      end
+      return s .. '} '
+   else
+      return tostring(o)
+   end
+end
+
 local config = nil
 local chapters = nil
 
@@ -64,6 +77,18 @@ function Div(el)
   elseif config.show_signup and el.classes[1] == "signup" then
     local signup = assert(io.open("infra/signup.html")):read("*all")
     return pandoc.RawBlock("html", signup)
+  elseif el.classes[1] == "widget" then
+    if #el.content ~= 1 or
+       el.content[1].t ~= "CodeBlock" then
+      error("`widget` block does not contain a code block")
+    end
+    local url = (config.base[1].text or "") .. "widgets/" .. el.content[1].text
+    local src = "<iframe class=\"widget\" src=\"" .. url .. "\""
+    if el.attributes["height"] then
+       src = src .. " height=\"" .. el.attributes["height"] .. "\""
+    end
+    src = src .. "></iframe>"
+    return pandoc.RawBlock("html", src)
   elseif el.classes[1] == "cmd" then
     if #el.content ~= 1 or
        el.content[1].t ~= "CodeBlock" then

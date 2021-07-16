@@ -272,7 +272,9 @@ The code increases `cursor_y` and resets `cursor_x`[^crlf] once
 `cursor_x` goes past 787 pixels.[^not-800] Wrapping the text this way
 makes it possible to read more than a single line:
 
-<iframe class="widget" src="widgets/lab2-render.html" height=204></iframe>
+::: {.widget height=204}
+    lab2-render.html
+:::
 
 [^crlf]: In the olden days of typewriters, increasing *y* meant
     *feed*ing in a new *line*, and resetting *x* meant *return*ing the
