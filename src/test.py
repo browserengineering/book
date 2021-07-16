@@ -143,9 +143,9 @@ def errors(f, *args, **kwargs):
     else:
         return False
 
-def breakpoint(name, **kwargs):
-    kwstr = (", " + ", ".join(["{}={}".format(k, v) for k, v in kwargs.items()]) if kwargs else ""
-    print('breakpoint: name={}{}'.format(name, kwstr))
+def breakpoint(name, *args):
+    args_str = (", " + ", ".join(["'{}'".format(v) for v in args]) if args else "")
+    print("breakpoint(name='{}'{})".format(name, args_str))
 
 builtin_breakpoint = builtins.breakpoint
 

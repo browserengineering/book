@@ -62,12 +62,12 @@ Breakpoints can be set after each layout:
     >>> test.patch_breakpoint()
 
     >>> layout = lab3.Layout(lab3.lex("abc"))
-    breakpoint: name=initial_y value1=18 value2=[(13, 'abc', Font size=16 weight=normal slant=roman style=None)]
-    breakpoint: name=metrics value1=[{'ascent': 12.0, 'descent': 4.0, 'linespace': 16}]
-    breakpoint: name=max_ascent value1=12.0
-    breakpoint: name=aligned value1=[(13, 20.4, 'abc', Font size=16 weight=normal slant=roman style=None)]
-    breakpoint: name=max_descent value1=4.0
-    breakpoint: name=final_y value1=37.199999999999996
+    breakpoint(name='initial_y', '18', '[(13, 'abc', Font size=16 weight=normal slant=roman style=None)]')
+    breakpoint(name='metrics', '[{'ascent': 12.0, 'descent': 4.0, 'linespace': 16}]')
+    breakpoint(name='max_ascent', '12.0')
+    breakpoint(name='aligned', '[(13, 20.4, 'abc', Font size=16 weight=normal slant=roman style=None)]')
+    breakpoint(name='max_descent', '4.0')
+    breakpoint(name='final_y', '37.199999999999996')
     
     >>> test.unpatch_breakpoint()
 
@@ -102,13 +102,13 @@ And with breakpoints:
     >>> test.patch_breakpoint()
 
     >>> browser.load(url)
-    breakpoint: name=initial_y value1=18 value2=[(13, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 'def', Font size=14 weight=normal slant=italic style=None)]
-    breakpoint: name=metrics value1=[{'ascent': 10.5, 'descent': 3.5, 'linespace': 14}, {'ascent': 10.5, 'descent': 3.5, 'linespace': 14}]
-    breakpoint: name=max_ascent value1=10.5
-    breakpoint: name=aligned value1=[(13, 20.1, 'abc', Font size=14 weight=normal slant=roman style=None)]
-    breakpoint: name=aligned value1=[(13, 20.1, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 20.1, 'def', Font size=14 weight=normal slant=italic style=None)]
-    breakpoint: name=max_descent value1=3.5
-    breakpoint: name=final_y value1=34.800000000000004
+    breakpoint(name='initial_y', '18', '[(13, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 'def', Font size=14 weight=normal slant=italic style=None)]')
+    breakpoint(name='metrics', '[{'ascent': 10.5, 'descent': 3.5, 'linespace': 14}, {'ascent': 10.5, 'descent': 3.5, 'linespace': 14}]')
+    breakpoint(name='max_ascent', '10.5')
+    breakpoint(name='aligned', '[(13, 20.1, 'abc', Font size=14 weight=normal slant=roman style=None)]')
+    breakpoint(name='aligned', '[(13, 20.1, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 20.1, 'def', Font size=14 weight=normal slant=italic style=None)]')
+    breakpoint(name='max_descent', '3.5')
+    breakpoint(name='final_y', '34.800000000000004')
     create_text: x=13 y=20.1 text=abc font=Font size=14 weight=normal slant=roman style=None anchor=nw
     create_text: x=69 y=20.1 text=def font=Font size=14 weight=normal slant=italic style=None anchor=nw
 
