@@ -17,20 +17,20 @@ of `Tag` or `Text` objects, rather than just the stream of characters from the
 input.
 
     >>> lab3.lex('<body>hello</body>')
-    [Tag: body, Text: hello, Tag: /body]
+    [Tag('body'), Text('hello''), Tag('/body')]
     >>> lab3.lex('he<body>llo</body>')
-    [Text: he, Tag: body, Text: llo, Tag: /body]
+    [Text('he''), Tag('body'), Text('llo''), Tag('/body')]
     >>> lab3.lex('he<body>l</body>lo')
-    [Text: he, Tag: body, Text: l, Tag: /body, Text: lo]
+    [Text('he''), Tag('body'), Text('l''), Tag('/body'), Text('lo'')]
     >>> lab3.lex('he<body>l<div>l</div>o</body>')
-    [Text: he, Tag: body, Text: l, Tag: div, Text: l, Tag: /div, Text: o, Tag: /body]
+    [Text('he''), Tag('body'), Text('l''), Tag('div'), Text('l''), Tag('/div'), Text('o''), Tag('/body')]
 
 Note that the tags do not have to match:
 
     >>> lab3.lex('he<body>l</div>lo')
-    [Text: he, Tag: body, Text: l, Tag: /div, Text: lo]
+    [Text('he''), Tag('body'), Text('l''), Tag('/div'), Text('lo'')]
     >>> lab3.lex('he<body>l<div>l</body>o</div>')
-    [Text: he, Tag: body, Text: l, Tag: div, Text: l, Tag: /body, Text: o, Tag: /div]
+    [Text('he''), Tag('body'), Text('l''), Tag('div'), Text('l''), Tag('/body'), Text('o''), Tag('/div')]
 
 Testing `Layout`
 ----------------
