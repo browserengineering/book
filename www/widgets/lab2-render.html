@@ -22,9 +22,13 @@
 <script type="module" src="lab2.js"></script>
 <script type="module" src="rt.js"></script>
 <script type="module">
-import { Widget } from "./rt-module.js";
-import { Browser, constants }
-  from "./lab2.js";
+import { http_textarea, rt_constants, Widget } from "./rt.js";
+import { Browser, constants } from "./lab2.js";
+
+rt_constants.TKELEMENT = document.querySelector("#canvas");
+rt_constants.URLS = {
+  "http://input/": http_textarea(document.querySelector("#input"))
+};
 
 let widget = new Widget(document.querySelector("#controls"));
 widget.pause("draw");

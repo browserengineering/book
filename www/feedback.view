@@ -38,8 +38,11 @@
       <p>{{obj['comment']}}</p>
     %else:
       <a target=_blank href="https://github.com/browserengineering/book/issues/new?title=Feedback%20on%20{{obj['url']}}&body={{quote(obj['comment'])}}">File a new issue on github</a>
-      <p>Overall comment:</p>
+      <p><b>Overall comment:</b></p>
       <p>{{obj['comment']}}</p>
+      %if obj['email']:
+        <p><b>Email:</b> {{obj['email']}}</p>
+      %end
     %end
     </div>
   %end

@@ -74,15 +74,19 @@ line.baseline { stroke-dasharray: 5, 5; }
   </svg>
 </figure>
 
-<script src="lab3.js"></script>
-<script src="rt.js"></script>
-<script>
-const ZOOM = 1.5;
-const colors = { a: "pink", A: "darkred", d: "lightblue", D: "darkblue" };
+<script type="module" src="lab3.js"></script>
+<script type="module" src="rt.js"></script>
+<script type="module">
+import { http_textarea, rt_constants, Widget } from "./rt.js";
+import { Browser, constants } from "./lab3.js";
 
-const socket = lib.socket({ "http://input/": http_textarea(document.querySelector("#input")) });
-const ssl = lib.ssl();
-const tkinter = lib.tkinter({ zoom: ZOOM });
+rt_constants.ZOOM = 1.5;
+rt_constants.TKELEMENT = document.createElement("canvas");
+rt_constants.URLS = {
+  "http://input/": http_textarea(document.querySelector("#input"))
+};
+
+const colors = { a: "pink", A: "darkred", d: "lightblue", D: "darkblue" };
 
 let widget = new Widget(document.querySelector("#controls"));
   
@@ -117,8 +121,8 @@ function draw_widget() {
     let width = 220;
     let tmargin = 30;
     let y1 = tmargin;
-    let b = y1 + 1.2 * STATE.max_asc * ZOOM;
-    let y2 = y1 + ZOOM * (STATE.final_y - STATE.initial_y);
+    let b = y1 + 1.2 * STATE.max_asc * rt_constants.ZOOM;
+    let y2 = y1 + rt_constants.ZOOM * (STATE.final_y - STATE.initial_y);
 
     if (STATE.initial_y || STATE.final_y) {
         g2.appendChild(svg("text", { x: 0, y: 20, class: "title" }, "Phase 2"));
@@ -146,7 +150,7 @@ function draw_widget() {
             x2: width, y2: b,
             class: "baseline",
         }));
-        let h = STATE.max_asc * ZOOM;
+        let h = STATE.max_asc * rt_constants.ZOOM;
         g2.appendChild(svg("rect", {
             x: -5, y: b - h,
             width: 5, height: h,
@@ -159,7 +163,7 @@ function draw_widget() {
         }));
     }
     if (STATE.max_desc) {
-        let h = STATE.max_desc * ZOOM;
+        let h = STATE.max_desc * rt_constants.ZOOM;
         g2.appendChild(svg("rect", {
             x: -5, y: b,
             width: 5, height: h,
@@ -178,7 +182,7 @@ function draw_widget() {
         g1.appendChild(svg("line", { x1: 0, y1: tmargin, x2: width, y2: tmargin }));
         for (let [x, word, font] of STATE.line) {
             g1.appendChild(svg("text", {
-                x: 5 + (x - constants.HSTEP) * ZOOM, y: tmargin,
+                x: 5 + (x - constants.HSTEP) * rt_constants.ZOOM, y: tmargin,
                 style: "font: " + font.string,
                 class: "drawn",
             }, word));
@@ -188,15 +192,15 @@ function draw_widget() {
     if (STATE.display_list) {
         STATE.display_list.forEach(function ([x, y, word, font], i) {
             let metric = STATE.metrics[i];
-            let dy = (y - STATE.initial_y) * ZOOM;
+            let dy = (y - STATE.initial_y) * rt_constants.ZOOM;
             g2.appendChild(svg("text", {
-                x: 10 + (x - constants.HSTEP) * ZOOM, y: dy + y1,
+                x: 10 + (x - constants.HSTEP) * rt_constants.ZOOM, y: dy + y1,
                 style: "font: " + font.string,
                 class: "drawn",
             }, word));
             g2.appendChild(svg("rect", {
-                x: 4 + (x - constants.HSTEP) * ZOOM, y: b - metric.ascent * ZOOM,
-                width: 5, height: metric.ascent * ZOOM,
+                x: 4 + (x - constants.HSTEP) * rt_constants.ZOOM, y: b - metric.ascent * rt_constants.ZOOM,
+                width: 5, height: metric.ascent * rt_constants.ZOOM,
                 class: "areg",
             }))
         });
@@ -206,13 +210,13 @@ function draw_widget() {
         STATE.line.forEach(function ([x, word, font], i){
             let metric = STATE.metrics[i];
             g1.appendChild(svg("rect", {
-                x: (x - constants.HSTEP) * ZOOM, y: tmargin,
-                width: 5, height: metric.ascent * ZOOM,
+                x: (x - constants.HSTEP) * rt_constants.ZOOM, y: tmargin,
+                width: 5, height: metric.ascent * rt_constants.ZOOM,
                 class: metric.ascent === STATE.max_asc ? "amax" : "areg",
             }))
             g1.appendChild(svg("rect", {
-                x: (x - constants.HSTEP) * ZOOM, y: tmargin + metric.ascent * ZOOM,
-                width: 5, height: metric.descent * ZOOM,
+                x: (x - constants.HSTEP) * rt_constants.ZOOM, y: tmargin + metric.ascent * rt_constants.ZOOM,
+                width: 5, height: metric.descent * rt_constants.ZOOM,
                 class: metric.ascent === STATE.max_asc ? "dmax" : "dreg",
             }))
         });
