@@ -3,7 +3,6 @@
 import bottle
 import json
 import os, sys
-import pickle
 import time
 import difflib
 import html
@@ -15,14 +14,14 @@ class Data:
     def __init__(self, filename):
         self.filename = filename
         if os.path.exists(filename):
-            with open(filename, "rb") as f:
-                self.data = pickle.load(f)
+            with open(filename, "r") as f:
+                self.data = json.load(f)
         else:
             self.data = []
 
     def save(self):
-        with open(self.filename, "wb") as f:
-            pickle.dump(self.data, f)
+        with open(self.filename, "w") as f:
+            json.dump(self.data, f)
 
     def safe_tag(self, tag):
         if tag.lower() in [ "p", "li", "pre", "span" ]:
@@ -95,7 +94,7 @@ class Data:
     def __iter__(self):
         return iter(self.data)
 
-DATA = Data("db.pickle")
+DATA = Data("db.json")
 
 @bottle.post("/api/typo")
 def typo():
