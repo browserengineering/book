@@ -123,8 +123,8 @@ class MockFont:
         return self.size * len(word)
 
     def metrics(self, name=None):
-        all = {"ascent" : self.size / 2, "descent": self.size / 2,
-            "linespace": self.size * 2}
+        all = {"ascent" : self.size * 0.75, "descent": self.size * 0.25,
+            "linespace": self.size}
         if name:
             return all[name]
         return all
