@@ -143,22 +143,9 @@ def errors(f, *args, **kwargs):
     else:
         return False
 
-def breakpoint(name, value1=None, value2=None, value3=None):
-    if value3:
-        print('breakpoint: name={} value1={} value2={} value3={}'.format(
-            name, value1, value2, value3))
-        return
-
-    if value2:
-        print('breakpoint: name={} value1={} value2={}'.format(
-            name, value1, value2))
-        return
-
-    if value1:
-        print('breakpoint: name={} value1={}'.format(name, value1))
-        return
-
-    print('breakpoint: name={}'.format(name))
+def breakpoint(name, **kwargs):
+    kwstr = (", " + ", ".join(["{}={}".format(k, v) for k, v in kwargs.items()]) if kwargs else ""
+    print('breakpoint: name={}{}'.format(name, kwstr))
 
 builtin_breakpoint = builtins.breakpoint
 
