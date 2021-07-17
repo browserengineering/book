@@ -138,7 +138,6 @@ RENAME_FNS = {
 
 # These are filled in as import statements are read
 RT_IMPORTS = [] 
-LAB_IMPORTS = {}
 LAB_FNS = []
 
 LIBRARY_METHODS = [

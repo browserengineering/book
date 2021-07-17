@@ -3,7 +3,7 @@ This file contains unittests for chapter 1
 """
 
 import builtins
-from lab1 import request
+import lab1
 import io
 import sys
 import tkinter
