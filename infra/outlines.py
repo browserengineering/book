@@ -108,6 +108,8 @@ def to_item(cmd):
         return
     elif isinstance(cmd, ast.Import):
         return
+    elif isinstance(cmd, ast.ImportFrom):
+        return
     elif isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
          isinstance(cmd.test.left, ast.Name) and cmd.test.left.id == "__name__" and \
          len(cmd.test.comparators) == 1 and isinstance(cmd.test.comparators[0], ast.Constant) and \

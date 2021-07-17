@@ -3,7 +3,7 @@ This file contains unittests for chapter 1
 """
 
 import builtins
-import lab1
+from lab1 import request
 import io
 import sys
 import tkinter
@@ -144,7 +144,7 @@ def errors(f, *args, **kwargs):
         return False
 
 def breakpoint(name, *args):
-    args_str = (", " + ", ".join(["'{}'".format(v) for v in args]) if args else "")
+    args_str = (", " + ", ".join(["'{}'".format(arg) for arg in args]) if args else "")
     print("breakpoint(name='{}'{})".format(name, args_str))
 
 builtin_breakpoint = builtins.breakpoint
