@@ -46,7 +46,7 @@ When compiling methods, the key distinction is between "our" and
 
     >>> Test.expr("s.connect((host, port))")
     (s.connect([host, port]))
-    >>> IMPORTS.append("socket")
+    >>> RT_IMPORTS.append("socket")
     >>> Test.expr("socket.socket()")
     (socket.socket())
 
@@ -274,7 +274,7 @@ compiler state:
 
     >>> Test.stmt("import ssl")
     // Please configure the 'ssl' module
-    >>> assert "ssl" in IMPORTS
+    >>> assert "ssl" in RT_IMPORTS
 
 Functions become function definitions:
 
