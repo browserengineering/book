@@ -9,7 +9,7 @@ import ssl
 import tkinter
 import tkinter.font
 import dukpy
-from lab1 import request
+from lab8 import request
 
 class Text:
     def __init__(self, text):

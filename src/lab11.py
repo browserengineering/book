@@ -10,7 +10,7 @@ import tkinter
 import tkinter.font
 import dukpy
 import time
-from lab1 import request
+from lab8 import request
 
 class Timer:
     def __init__(self):
