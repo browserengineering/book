@@ -13,7 +13,7 @@ import time
 import threading
 import tkinter
 import tkinter.font
-from lab8 import request
+from lab10 import request
 
 class Timer:
     def __init__(self):
