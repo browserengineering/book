@@ -7,9 +7,9 @@ next: scripts
 
 Modern browsers not only allow reading but also writing content:
 making social media posts, filling out online forms, searching for
-content, and so on. The next few labs implement these features. To
-start, this lab implements *web forms*, which allow the user to fill
-out form information and then send that form to the server. Web forms
+content, and so on. The next few chapters explore these features. To
+start, this chapter focuses on *web forms*, which allow the user to fill
+out information into forms and send them to the server. Web forms
 are used almost everywhere: you fill one out to post on Facebook, to
 register to vote, or to search Google.
 
@@ -17,23 +17,23 @@ Rendering widgets
 =================
 
 When your browser sends information to a web server, that is usually
-information that you've typed into some kind of input area, or a
-check-box of some sort that you've checked. So the first step in
-communicating with other servers is going to be to draw input areas on
-the screen and then allow the user to fill them out.
+information that you've entered into some collection of input areas,
+such as textboxes, dropdowns or checkboxes. So the first step in
+implementing forms is going to be to draw input areas on the screen and
+then allow the user to fill them out.
 
-On the web, there are two kinds of input areas: `<input>` elements,
-which are for short, one-line inputs, and `<textarea>` elements, which
-are for long, multi-line text. I'll implement `<input>` only, because
-`<textarea>` has a lot of strange properties.[^sig-ws] Applications
-usually want input areas look the same as in other applications, so
-they use operating-system libraries to draw an input area
-directly.[^ttk] But browsers need a lot of control over application
-styling, so our browser will be drawing input areas itself.
+On the web, there are two kinds of text input elements: `<input>`, which
+is for short, one-line inputs, and `<textarea>`, which is for long,
+multi-line text. I'll implement `<input>` only, because `<textarea>`
+has a lot of strange properties.[^sig-ws] Applications usually want
+their input areas to look the same as in other applications on the same
+OS, so they use OS libraries to draw an input area directly.[^ttk] But
+browsers need a lot of control over application styling, so our browser
+will be drawing input areas itself.
 
 [^sig-ws]: Whitespace inside a text area is significant, but text
-    still wraps, an unsual combination. But ultimately the
-    implementation is similar to `<input>` elements.
+    still wraps, an unsual combination. But other than quirks like that, the implementation is similar to `<input>` elements.
+
 [^ttk]: For Python's Tk library, that's possible with the `ttk` library.
 
 `<input>` elements are inline content, like text, laid out in lines.
@@ -60,7 +60,8 @@ class InputLayout:
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(px(self.node.style["font-size"]) * .75)
-        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
+        self.font = tkinter.font.Font(size=size, weight=weight,
+            slant=style)
         self.w = 200
         self.h = 20
 ```
@@ -68,12 +69,11 @@ class InputLayout:
 Finally, we'll need to add a `draw` method for input elements, which
 needs to both draw the text contents and make the input area noticably
 distinct, so the user can find and click on it. For `<input>`, the
-text in the input area is the element's `value` attribute, like this:
+initial text in the input area is the element's `value` attribute, like this:
 
 ``` {.example}
 Name: <input value="Pavel Panchekha">
 ```
-
 
 For simplicity, I'll make input elements have a light gray background:
 
@@ -125,9 +125,7 @@ Interacting with widgets
 ========================
 
 We've now got input elements rendering, but only as empty rectangles.
-We need the *input* part! Let's 1) draw the content of input elements;
-and 2) allow the user to change that content. I'll start with the
-second, since until we do that there's no content to draw.
+We need the *input* part! Let's 1) allow the user to change that content, and 2) draw the content when it changes.
 
 In this toy browser, I'm going to require the user to click on an
 input element to change its content. We detect the click in
@@ -242,11 +240,9 @@ following form, on the web page `http://my-domain.com/form`:
 </form>
 ```
 
-This is the same as the little example web page above, except there's
-now a `<form>` element and also the two text areas now have `name`
-attributes, plus I've added a new `<button>` element. That element,
-naturally, draws a button, and clicking on that button causes the form
-to be submitted.
+This example has two text input areas with `name` attributes, plus a
+`<button>` element. That element, naturally, draws a button, and
+clicking on that button causes the form to be submitted.
 
 When this form is submitted, the browser will first determine that it
 is making a POST request to `http://my-domain.com/submit` (using the
@@ -279,7 +275,7 @@ which the browser will render.
 Implementing forms
 ==================
 
-We're going to need to implement a couple of different things:
+We're going to need to implement a few different things:
 
 -   Buttons
 -   Handling button clicks
@@ -287,8 +283,6 @@ We're going to need to implement a couple of different things:
 -   Finding all the input areas in a form
 -   Form-encoding their data
 -   Making POST requests
-
-We'll go in order.
 
 First, buttons. Buttons are a bit like `<input>` elements, in that
 they are little rectangles placed in lines. Unlike `<input>` elements,
@@ -304,7 +298,8 @@ First, let's give buttons a different color:
 class InputLayout:
     def paint(self, to):
         # ...
-        bgcolor = "light gray" if self.node.tag == "input" else "yellow"
+        bgcolor = \
+            "light gray" if self.node.tag == "input" else "yellow"
         to.append(DrawRect(x1, y1, x2, y2, bgcolor))
         # ...
 ```
@@ -593,7 +588,8 @@ the resulting HTML web page. We need to send it back to the browser:
 def handle_connection(conx):
     # ...
     response = "HTTP/1.0 200 OK\r\n"
-    response += "Content-Length: {}\r\n".format(len(body.encode("utf8")))
+    response += "Content-Length: {}\r\n".format(
+        len(body.encode("utf8")))
     response += "\r\n" + body
     conx.send(response.encode('utf8'))
     conx.close()
@@ -601,11 +597,10 @@ def handle_connection(conx):
 
 This is a bare-bones server: it doesn't check that the browser is
 using HTTP 1.0 to talk to it, it doesn't send back any headers at all
-except `Content-Length`, and so on. But look: it's a toy web server
-that talks to a toy web browser. Cut it some slack.
+except `Content-Length`, and so on.
 
-All that's left is implementing `handle_request`. We want some kind of
-guest book, so let's create a list to store guest book entries:
+Now all that's left is implementing `handle_request`. We want some kind
+of guest book, so let's create a list to store guest book entries:
 
 ``` {.python file=server}
 ENTRIES = [ 'Pavel was here' ]
