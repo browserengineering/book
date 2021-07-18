@@ -68,7 +68,7 @@ Part 4: Modern Browsers
     Two-phase layout and fast rendering
 (@) [Adding Visual Effects](visual-effects.md)\
     Filters and transformations 
-(@) [Browser Rendering Architecture Concepts](rendering-architecture.md)\
+(@) [Scheduling and Threading](scheduling-and-threading.md)\
     The Rendering Event Loop and Pipeline
 
 Conclusion

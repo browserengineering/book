@@ -1,5 +1,5 @@
 ---
-title: The Rendering Architecture
+title: Scheduling and Threading
 chapter: 13
 prev: visual-effects
 next: skipped
