@@ -20,7 +20,7 @@ main: true
 - [Running Interactive Scripts](#scripts)
 - [Keeping Data Private](#security)
 - [Adding Visual Effects](#visual-effects)
-- [Browser Rendering Architecture Concepts](#rendering-architecture)
+- [Scheduling and Threading](#scheduling-and-threading)
 - [Saving Partial Layouts](#reflow)
 - [What Wasn’t Covered](#skipped)
 - [A Changing Landscape](#change)
@@ -45,7 +45,7 @@ main: true
     cat www/onepage/security.html
 
     cat www/onepage/visual-effects.html
-    cat www/onepage/rendering-architecture.html
+    cat www/onepage/scheduling-and-threading.html
 
     cat www/onepage/skipped.html
     cat www/onepage/change.html

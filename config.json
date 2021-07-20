@@ -19,7 +19,7 @@
 
         "reflow.md": { "disabled": true, "lab": "lab11.py" },
         "visual-effects.md": { "disabled": true },
-        "rendering-architecture.md": { "disabled": true, "lab": "lab13.py" },
+        "scheduling-and-threading.md": { "disabled": true, "lab": "lab13.py" },
 
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
