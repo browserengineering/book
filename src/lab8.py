@@ -404,14 +404,16 @@ class InputLayout:
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(px(self.node.style["font-size"]) * .75)
-        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
+        self.font = tkinter.font.Font(size=size, weight=weight,
+            slant=style)
         self.w = 200
         self.h = 20
 
     def paint(self, to):
         x1, x2 = self.x, self.x + self.w
         y1, y2 = self.y, self.y + self.h
-        bgcolor = "light gray" if self.node.tag == "input" else "yellow"
+        bgcolor = \
+            "light gray" if self.node.tag == "input" else "yellow"
         to.append(DrawRect(x1, y1, x2, y2, bgcolor))
 
         if self.node.tag == "input":
