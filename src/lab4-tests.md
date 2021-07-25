@@ -15,15 +15,55 @@ Testing HTMLParser
 HTMLParser is a class whose constructor takes HTML body text as an argument, and
 can parse it.
 
-		>>> parser = lab4.HTMLParser("test")
-		>>> lab4.print_tree(parser.parse())
-		 <html>
-		   <body>
-		     'test'
+The implicit ``html` and `body` (and `head` when needed) tags are added:
 
-		>>> parser = lab4.HTMLParser("<div>text</div>")
-		>>> lab4.print_tree(parser.parse())
-		 <html>
-		   <body>
-		     <div>
-		       'text'
+	>>> parser = lab4.HTMLParser("<html><body>test</body></html")
+	>>> lab4.print_tree(parser.parse())
+	 <html>
+	   <body>
+	     'test'
+
+Missing tags are added in:
+
+	>>> parser = lab4.HTMLParser("test")
+	>>> lab4.print_tree(parser.parse())
+	 <html>
+	   <body>
+	     'test'
+
+	>>> parser = lab4.HTMLParser("<body>test")
+	>>> lab4.print_tree(parser.parse())
+	 <html>
+	   <body>
+	     'test'
+
+Head tags are put in the head, and other tags, such as `div`, are put in the body.
+Also, tags such as `base` are self-closing:
+
+	>>> parser = lab4.HTMLParser("<base><basefont></basefont><title></title><div></div>")
+	>>> lab4.print_tree(parser.parse())
+	 <html>
+	   <head>
+	     <base>
+	     <basefont>
+	     <title>
+ 	   <body>
+ 	     <div>
+
+	Missing end tags are added:
+
+	>>> parser = lab4.HTMLParser("<div>text")
+	>>> lab4.print_tree(parser.parse())
+	 <html>
+	   <body>
+	     <div>
+	       'text'
+
+Attributes can be set on tags:
+
+	>>> parser = lab4.HTMLParser("<div name1=value1 name2=value2>text</div")
+	>>> lab4.print_tree(parser.parse())
+	 <html>
+	   <body>
+	     <div name1="value1" name2="value2">
+	       'text'
