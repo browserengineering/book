@@ -109,3 +109,23 @@ Testing the layout tree
            BlockLayout(x=13, y=56.39999999999999, width=774, height=0
            InlineLayout(x=13, y=56.39999999999999, width=774, height=19.19999999999999 display_list=[(13, 58.79999999999998, 'text', Font size=16 weight=normal slant=roman style=None)]
 
+Testing background painting
+===========================
+
+`<pre>` elements have a gray background.
+
+    >>> url = 'http://test.test/example2'
+    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"Header1: Value1\r\n\r\n" +
+    ... b"<pre>pre text</pre>")
+
+    >>> browser = lab5.Browser()
+    >>> browser.load(url)
+    >>> lab5.print_tree(browser.nodes)
+     <html>
+       <body>
+         <pre>
+           'pre text'
+
+    >>> lab5.print_tree(browser.document)
+    
