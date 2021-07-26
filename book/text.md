@@ -645,7 +645,9 @@ This new `flush` function has three responsibilities:
 
 Here's what it looks like, step by step:
 
-<iframe class="widget" src="widgets/lab3-baselines.html" height=204></iframe>
+::: {.widget height=204}
+    lab3-baselines.html
+:::
 
 Since we want words to line up "on the line", let's start by computing
 where that line should be. That depends on the metrics for all the

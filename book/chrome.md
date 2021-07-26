@@ -1052,7 +1052,9 @@ should now look something like this:
 
 If you run it, it should look something like this:
 
-<iframe class="widget" src="widgets/lab7-browser.html" height=691></iframe>
+::: {.widget height=691}
+    lab7-browser.html
+:::
 
 Exercises
 =========

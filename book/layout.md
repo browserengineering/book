@@ -381,7 +381,9 @@ run into the very edge of the window and get cut off.
 For all three types of layout object, the order of the steps in the
 `layout` method should be the same:
 
-<iframe class="widget" src="widgets/lab5-propagate.html" height=204></iframe>
+::: {.widget height=204}
+    lab5-propagate.html
+:::
 
 + When `layout` is called, it first creates a child layout object for
   each child element.
