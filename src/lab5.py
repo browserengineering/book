@@ -372,6 +372,9 @@ class DocumentLayout:
     def paint(self, display_list):
         self.children[0].paint(display_list)
 
+    def __repr__(self):
+        return "DocumentLayout"
+
 class DrawText:
     def __init__(self, x1, y1, text, font):
         self.top = y1
