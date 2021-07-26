@@ -78,6 +78,9 @@ class SilentCanvas:
     def create_text(self, x, y, text, font=None, anchor=None):
         pass
 
+    def create_rectangle(x1, y1, x2, y2, width, fill):
+        pass
+
     def pack(self):
         pass
 
