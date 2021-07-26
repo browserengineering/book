@@ -109,6 +109,9 @@ Testing the layout tree
            BlockLayout(x=13, y=56.39999999999999, width=774, height=0
            InlineLayout(x=13, y=56.39999999999999, width=774, height=19.19999999999999 display_list=[(13, 58.79999999999998, 'text', Font size=16 weight=normal slant=roman style=None)]
 
+    >>> browser.display_list
+    [DrawText(top=20.4 left=13 bottom=36.4 text=text font=Font size=16 weight=normal slant=roman style=None), DrawText(top=39.599999999999994 left=13 bottom=55.599999999999994 text=text font=Font size=16 weight=normal slant=roman style=None), DrawText(top=58.79999999999998 left=13 bottom=74.79999999999998 text=text font=Font size=16 weight=normal slant=roman style=None)]
+
 Testing background painting
 ===========================
 
@@ -128,4 +131,12 @@ Testing background painting
            'pre text'
 
     >>> lab5.print_tree(browser.document)
-    
+     DocumentLayout
+       BlockLayout(x=13, y=18, width=774, height=19.199999999999996
+         BlockLayout(x=13, y=18, width=774, height=19.199999999999996
+           InlineLayout(x=13, y=18, width=774, height=19.199999999999996 display_list=[(13, 20.4, 'pre', Font size=16 weight=normal slant=roman style=None), (77, 20.4, 'text', Font size=16 weight=normal slant=roman style=None)]
+
+The first display list entry is now gray rect, since it's for a `<pre>` element:
+
+    >>> browser.display_list[0]
+    DrawRect(top=18 left=13 bottom=37.199999999999996 right=787 color=gray)

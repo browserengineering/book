@@ -392,6 +392,11 @@ class DrawText:
             anchor='nw',
         )
 
+    def __repr__(self):
+        return "DrawText(top={} left={} bottom={} text={} font={})".format(
+            self.top, self.left, self.bottom, self.text, self.font)
+
+
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
         self.top = y1
@@ -407,6 +412,10 @@ class DrawRect:
             width=0,
             fill=self.color,
         )
+
+    def __repr__(self):
+        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
+            self.top, self.left, self.bottom, self.right, self.color)
 
 class Browser:
     def __init__(self):
