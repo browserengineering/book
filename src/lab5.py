@@ -212,7 +212,10 @@ class BlockLayout:
         self.parent = parent
         self.previous = previous
         self.children = []
-        self.x = self.y = self.width = self.height = None
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
 
     def layout(self):
         breakpoint("layout_pre", self)
@@ -254,7 +257,11 @@ class InlineLayout:
         self.parent = parent
         self.previous = previous
         self.children = []
-        self.x = self.y = self.width = self.height = self.display_list = None
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.display_list = None
 
     def layout(self):
         breakpoint("layout_pre", self)
