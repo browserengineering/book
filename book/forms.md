@@ -33,11 +33,11 @@ form might look like this:
 </form>
 ```
 
-This form contains two inputs called `name` and `comment`. When the
-user goes to this page, they can click on those inputs to edit their
-values. Then, when they click the button, the browser collects all of
-the name/value pairs and bundles them into a format that looks like
-this:
+This form contains two text entry boxes called `name` and `comment`.
+When the user goes to this page, they can click on those boxes to edit
+their values. Then, when they click the button at the end of the form,
+the browser collects all of the name/value pairs and bundles them into
+a format that looks like this:
 
 ``` {.example}
 name=1&comment=2
@@ -45,13 +45,10 @@ name=1&comment=2
 
 This data is then sent to the server in an HTTP `POST` request,
 specifically to the URL given by the `form` element's `action`
-attribute and the usual rules of relative URLs.
-
-That `POST` request looks a lot like the `GET` requests our browser
-has been making so far, except that it has a `Content-Length` header
-and after all of the headers it has a body---you've already seen HTTP
-responses with bodies, but requests can have them too. So the overall
-`POST` request looks like this:
+attribute and the usual rules of relative URLs. That `POST` request
+looks a lot like a regular request, except that it has a body---you've
+already seen HTTP responses with bodies, but requests can have them
+too. So the overall `POST` request looks like this:
 
 ``` {.example}
 POST /submit HTTP/1.0
@@ -61,11 +58,14 @@ Content-Length: 16
 name=1&comment=2
 ```
 
-The server then responds to the POST request with a normal web page,
-which the browser renders. Forms require extensions across the whole
-browser to function properly, from implementing HTTP `POST` through
-new layout objects that draw `<input>` elements to handling buttons
-clicks. Let's get started.
+Note the `Content-Length` header; it's mandatory for `POST` requests.
+The server then responds to this request with a web page, just like
+normal, and the browser then does everything it normally does.
+
+Forms require extensions across the whole browser to function
+properly, from implementing HTTP `POST` through new layout objects
+that draw `<input>` elements to handling buttons clicks. Let's get
+started.
 
 
 Rendering widgets
@@ -75,10 +75,9 @@ Let's start with drawing input areas on the screen for the user to
 fill out. Normally, applications want their input areas to look the
 same as in other applications on the same OS, so they use OS libraries
 to draw an input area directly.[^ttk] But browsers need a lot of
-control over application styling, so we'll draw our input areas from
-scratch.
+control over application styling, so they often draw input areas
+directly.
 
-[^sig-ws]: Whitespace inside a text area is significant, but text
 [^ttk]: For Python's Tk library, that's possible with the `ttk` library.
 
 `<input>` elements are inline content, like text, laid out in lines.
