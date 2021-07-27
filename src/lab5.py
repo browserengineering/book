@@ -212,6 +212,10 @@ class BlockLayout:
         self.parent = parent
         self.previous = previous
         self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
 
     def layout(self):
         breakpoint("layout_pre", self)
@@ -243,12 +247,21 @@ class BlockLayout:
         for child in self.children:
             child.paint(display_list)
 
+    def __repr__(self):
+        return "BlockLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 class InlineLayout:
     def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
         self.previous = previous
         self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.display_list = None
 
     def layout(self):
         breakpoint("layout_pre", self)
@@ -335,12 +348,16 @@ class InlineLayout:
         self.cursor_y = baseline + 1.2 * max_descent
 
     def paint(self, display_list):
-        if self.node.tag == "pre":
+        if isinstance(self.node, Element) and self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
             display_list.append(rect)
         for x, y, word, font in self.display_list:
             display_list.append(DrawText(x, y, word, font))
+
+    def __repr__(self):
+        return "InlineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
 
 class DocumentLayout:
     def __init__(self, node):
@@ -364,6 +381,9 @@ class DocumentLayout:
     def paint(self, display_list):
         self.children[0].paint(display_list)
 
+    def __repr__(self):
+        return "DocumentLayout"
+
 class DrawText:
     def __init__(self, x1, y1, text, font):
         self.top = y1
@@ -381,6 +401,11 @@ class DrawText:
             anchor='nw',
         )
 
+    def __repr__(self):
+        return "DrawText(top={} left={} bottom={} text={} font={})".format(
+            self.top, self.left, self.bottom, self.text, self.font)
+
+
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
         self.top = y1
@@ -396,6 +421,10 @@ class DrawRect:
             width=0,
             fill=self.color,
         )
+
+    def __repr__(self):
+        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
+            self.top, self.left, self.bottom, self.right, self.color)
 
 class Browser:
     def __init__(self):
@@ -413,8 +442,8 @@ class Browser:
 
     def load(self, url):
         headers, body = request(url)
-        nodes = HTMLParser(body).parse()
-        self.document = DocumentLayout(nodes)
+        self.nodes = HTMLParser(body).parse()
+        self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
         self.document.paint(self.display_list)
