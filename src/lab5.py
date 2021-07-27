@@ -248,7 +248,7 @@ class BlockLayout:
             child.paint(display_list)
 
     def __repr__(self):
-        return "BlockLayout(x={}, y={}, width={}, height={}".format(
+        return "BlockLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
 class InlineLayout:
@@ -356,8 +356,8 @@ class InlineLayout:
             display_list.append(DrawText(x, y, word, font))
 
     def __repr__(self):
-        return "InlineLayout(x={}, y={}, width={}, height={} display_list={}".format(
-            self.x, self.y, self.width, self.height, self.display_list)
+        return "InlineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
 
 class DocumentLayout:
     def __init__(self, node):

@@ -26,10 +26,11 @@ or has all inline children, and otherwise returns "block".
     'block'
     >>> lab5.layout_mode(document_tree.children[0])
     'inline'
+    
+Here's some tests on a bigger, more complex document
 
     >>> sample_html = "<div></div><div>text</div><div><div></div>text</div><span></span><span>text</span>"
-    >>> parser = lab5.HTMLParser(
-    ... sample_html)
+    >>> parser = lab5.HTMLParser(sample_html)
     >>> document_tree = parser.parse()
     >>> lab5.print_tree(document_tree)
      <html>
@@ -98,16 +99,16 @@ Testing the layout tree
            'text'
 
     >>> lab5.print_tree(browser.document)
-     DocumentLayout
-       BlockLayout(x=13, y=18, width=774, height=57.59999999999998
-         BlockLayout(x=13, y=18, width=774, height=57.59999999999998
-           BlockLayout(x=13, y=18, width=774, height=0
-           InlineLayout(x=13, y=18, width=774, height=19.199999999999996 display_list=[(13, 20.4, 'text', Font size=16 weight=normal slant=roman style=None)]
-           BlockLayout(x=13, y=37.199999999999996, width=774, height=19.199999999999996
-             BlockLayout(x=13, y=37.199999999999996, width=774, height=0
-             InlineLayout(x=13, y=37.199999999999996, width=774, height=19.199999999999996 display_list=[(13, 39.599999999999994, 'text', Font size=16 weight=normal slant=roman style=None)]
-           BlockLayout(x=13, y=56.39999999999999, width=774, height=0
-           InlineLayout(x=13, y=56.39999999999999, width=774, height=19.19999999999999 display_list=[(13, 58.79999999999998, 'text', Font size=16 weight=normal slant=roman style=None)]
+     DocumentLayout()
+       BlockLayout(x=13, y=18, width=774, height=57.59999999999998)
+         BlockLayout(x=13, y=18, width=774, height=57.59999999999998)
+           BlockLayout(x=13, y=18, width=774, height=0)
+           InlineLayout(x=13, y=18, width=774, height=19.199999999999996)
+           BlockLayout(x=13, y=37.199999999999996, width=774, height=19.199999999999996)
+             BlockLayout(x=13, y=37.199999999999996, width=774, height=0)
+             InlineLayout(x=13, y=37.199999999999996, width=774, height=19.199999999999996)
+           BlockLayout(x=13, y=56.39999999999999, width=774, height=0)
+           InlineLayout(x=13, y=56.39999999999999, width=774, height=19.19999999999999)
 
     >>> browser.display_list
     [DrawText(top=20.4 left=13 bottom=36.4 text=text font=Font size=16 weight=normal slant=roman style=None), DrawText(top=39.599999999999994 left=13 bottom=55.599999999999994 text=text font=Font size=16 weight=normal slant=roman style=None), DrawText(top=58.79999999999998 left=13 bottom=74.79999999999998 text=text font=Font size=16 weight=normal slant=roman style=None)]
@@ -131,10 +132,10 @@ Testing background painting
            'pre text'
 
     >>> lab5.print_tree(browser.document)
-     DocumentLayout
-       BlockLayout(x=13, y=18, width=774, height=19.199999999999996
-         BlockLayout(x=13, y=18, width=774, height=19.199999999999996
-           InlineLayout(x=13, y=18, width=774, height=19.199999999999996 display_list=[(13, 20.4, 'pre', Font size=16 weight=normal slant=roman style=None), (77, 20.4, 'text', Font size=16 weight=normal slant=roman style=None)]
+     DocumentLayout()
+       BlockLayout(x=13, y=18, width=774, height=19.199999999999996)
+         BlockLayout(x=13, y=18, width=774, height=19.199999999999996)
+           InlineLayout(x=13, y=18, width=774, height=19.199999999999996)
 
 The first display list entry is now a gray rect, since it's for a `<pre>` element:
 
@@ -152,10 +153,10 @@ Tree-based layout also supports debugging breakpoints.
     >>> browser = lab5.Browser()
     >>> browser.load(url)
     breakpoint(name='layout_pre', 'DocumentLayout')
-    breakpoint(name='layout_pre', 'BlockLayout(x=None, y=None, width=None, height=None')
-    breakpoint(name='layout_pre', 'BlockLayout(x=None, y=None, width=None, height=None')
-    breakpoint(name='layout_pre', 'InlineLayout(x=None, y=None, width=None, height=None display_list=None')
-    breakpoint(name='layout_post', 'InlineLayout(x=13, y=18, width=774, height=19.199999999999996 display_list=[(13, 20.4, 'pre', Font size=16 weight=normal slant=roman style=None), (77, 20.4, 'text', Font size=16 weight=normal slant=roman style=None)]')
-    breakpoint(name='layout_post', 'BlockLayout(x=13, y=18, width=774, height=19.199999999999996')
-    breakpoint(name='layout_post', 'BlockLayout(x=13, y=18, width=774, height=19.199999999999996')
-    breakpoint(name='layout_post', 'DocumentLayout')
+    breakpoint(name='layout_pre', 'BlockLayout(x=None, y=None, width=None, height=None)')
+    breakpoint(name='layout_pre', 'BlockLayout(x=None, y=None, width=None, height=None)')
+    breakpoint(name='layout_pre', 'InlineLayout(x=None, y=None, width=None, height=None)')
+    breakpoint(name='layout_post', 'InlineLayout(x=13, y=18, width=774, height=19.199999999999996)')
+    breakpoint(name='layout_post', 'BlockLayout(x=13, y=18, width=774, height=19.199999999999996)')
+    breakpoint(name='layout_post', 'BlockLayout(x=13, y=18, width=774, height=19.199999999999996)')
+    breakpoint(name='layout_post', 'DocumentLayout()')
