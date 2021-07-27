@@ -6,14 +6,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes" />
 $for(author-meta)$  <meta name="author" content="$author-meta$" />$endfor$
 
-$if(base)$  <base href="$base$" />$endif$
-
-$if(prev)$  <link rel="prev" href="$rel$/$prev$.html" />$endif$
-$if(next)$  <link rel="next" href="$rel$/$next$.html" />$endif$
-$for(css)$  <link rel="stylesheet" href="$css$" />$endfor$
+$if(prev)$  <link rel="prev" href="$prev$.html" />$endif$
+$if(next)$  <link rel="next" href="$next$.html" />$endif$
+$for(css)$  <link rel="stylesheet" href="$base$$css$" />$endfor$
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn%7CLora&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn:400i%7CLora:400i&display=swap" />
-  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="Web Browser Engineering">
+  <link rel="alternate" type="application/rss+xml" href="$base$rss.xml" title="Web Browser Engineering">
 
   <title>$if(main)$$else$$title$ | $endif$Web Browser Engineering</title>
 $for(header-includes)$  $header-includes$$endfor$
@@ -31,28 +29,30 @@ $if(title)$
 $for(author)$
 <p class="author">$author$</p>
 $endfor$
+<a href="https://twitter.com/browserbook">Twitter</a> · <a href="/blog/">Blog</a> ·
+<a href="https://patreon.com/browserengineering">Patreon</a>
 </header>
 $endif$
 
 $if(chapter)$
 <nav class="links">
-  Chapter $chapter$ of <a href="$rel$/index.html" title="Table of Contents">Web Browser Engineering</a>.
-  $if(prev)$<a rel="prev" title="Previous chapter" href="$rel$/$prev$.html">&lt;</a>$endif$
-  $if(next)$<a rel="next" title="Next chapter" href="$rel$/$next$.html">&gt;</a>$endif$
+  Chapter $chapter$ of <a href="index.html" title="Table of Contents">Web Browser Engineering</a>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
 </nav>
 $endif$
 $if(type)$
 <nav class="links">
-  The $type$ to <a href="$rel$/index.html" title="Table of Contents">Web Browser Engineering</a>.
-  $if(prev)$<a rel="prev" title="Previous chapter" href="$rel$/$prev$.html">&lt;</a>$endif$
-  $if(next)$<a rel="next" title="Next chapter" href="$rel$/$next$.html">&gt;</a>$endif$
+  The $type$ to <a href="index.html" title="Table of Contents">Web Browser Engineering</a>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
 </nav>
 $endif$
 $if(date)$
 <nav class="links">
-  The <a href="$rel$/../index.html" title="Table of Contents">Web Browser Engineering</a> blog, dated <time>$date$</time>.
-  $if(prev)$<a rel="prev" title="Previous chapter" href="$rel$/$prev$.html">&lt;</a>$endif$
-  $if(next)$<a rel="next" title="Next chapter" href="$rel$/$next$.html">&gt;</a>$endif$
+  The <a href="../index.html" title="Table of Contents">Web Browser Engineering</a> blog, dated <time>$date$</time>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
 </nav>
 $endif$
 
@@ -66,7 +66,7 @@ $body$
 
 $if(draft)$
 $if(main)$
-<a id=onepage href="$rel$/onepage.html">One-page version of this book</a>
+<a id=onepage href="onepage.html">One-page version of this book</a>
 $endif$
 $endif$
 
@@ -76,16 +76,16 @@ $endfor$
 
 $if(chapter)$
 <nav class="links">
-  Chapter $chapter$ of <a href="$rel$/index.html" title="Table of Contents">Web Browser Engineering</a>.
-  $if(prev)$<a rel="prev" title="Previous chapter" href="$rel$/$prev$.html">&lt;</a>$endif$
-  $if(next)$<a rel="next" title="Next chapter" href="$rel$/$next$.html">&gt;</a>$endif$
+  Chapter $chapter$ of <a href="index.html" title="Table of Contents">Web Browser Engineering</a>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
 </nav>
 $endif$
 $if(type)$
 <nav class="links">
-  The $type$ of <a href="$rel$/index.html" title="Table of Contents">Web Browser Engineering</a>.
-  $if(prev)$<a rel="prev" title="Previous chapter" href="$rel$/$prev$.html">&lt;</a>$endif$
-  $if(next)$<a rel="next" title="Next chapter" href="$rel$/$next$.html">&gt;</a>$endif$
+  The $type$ of <a href="index.html" title="Table of Contents">Web Browser Engineering</a>.
+  $if(prev)$<a rel="prev" title="Previous chapter" href="$prev$.html">&lt;</a>$endif$
+  $if(next)$<a rel="next" title="Next chapter" href="$next$.html">&gt;</a>$endif$
 </nav>
 $endif$
 
@@ -95,7 +95,7 @@ $endif$
   &copy; 2018&ndash;2021 <a href="https://pavpanchekha.com">Pavel Panchekha</a> &amp; <a href="https://github.com/chrishtr">Chris Harrelson</a>
 </footer>
 
-<script type="text/javascript" src="feedback.js"></script>
-<script type="text/javascript" src="book.js"></script>
+<script type="text/javascript" src="$base$feedback.js"></script>
+<script type="text/javascript" src="$base$book.js"></script>
 </body>
 </html>
