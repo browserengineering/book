@@ -5,35 +5,80 @@ prev: chrome
 next: scripts
 ...
 
-Modern browsers not only allow reading but also writing content:
-making social media posts, filling out online forms, searching for
-content, and so on. The next few chapters explore these features. To
-start, this chapter focuses on *web forms*, which allow the user to fill
-out information into forms and send them to the server. Web forms
-are used almost everywhere: you fill one out to post on Facebook, to
-register to vote, or to search Google.
+So far, our browser has seen the web as read only---but when you post
+on Facebook, fill our a survey, or search Google, you're sending
+information *to* servers as well as receiving information from them.
+In this chapter, we'll build out support for HTML forms to understand
+how the browser writes as well as reads the web.
+
+How forms work
+==============
+
+HTML forms have a couple of moving pieces.
+
+First, in HTML, there is a `form` element, which contains `input`
+elements,[^or-others] which in turn can be edited by the user. So a
+form might look like this:
+
+[^or-others]: There are other elements similar to `input`, such as
+    `select` or `textarea`. They work similarly enough; they just
+    represent different kinds of user controls, like dropdowns and
+    multi-line inputs.
+
+``` {.html}
+<form action="/submit">
+    <p>Name: <input name=name value=1></p>
+    <p>Comment: <input name=comment value=2></p>
+    <p><button>Submit!</button></p>
+</form>
+```
+
+This form contains two inputs called `name` and `comment`. When the
+user goes to this page, they can click on those inputs to edit their
+values. Then, when they click the button, the browser collects all of
+the name/value pairs and bundles them into a format that looks like
+this:
+
+``` {.example}
+name=1&comment=2
+```
+
+This data is then sent to the server in an HTTP `POST` request,
+specifically to the URL given by the `form` element's `action`
+attribute and the usual rules of relative URLs.
+
+That `POST` request looks a lot like the `GET` requests our browser
+has been making so far, except that it has a `Content-Length` header
+and after all of the headers it has a body---you've already seen HTTP
+responses with bodies, but requests can have them too. So the overall
+`POST` request looks like this:
+
+``` {.example}
+POST /submit HTTP/1.0
+Host: example.org
+Content-Length: 16
+
+name=1&comment=2
+```
+
+The server then responds to the POST request with a normal web page,
+which the browser renders. Forms require extensions across the whole
+browser to function properly, from implementing HTTP `POST` through
+new layout objects that draw `<input>` elements to handling buttons
+clicks. Let's get started.
+
 
 Rendering widgets
 =================
 
-When your browser sends information to a web server, that is usually
-information that you've entered into some collection of input areas,
-such as textboxes, dropdowns or checkboxes. So the first step in
-implementing forms is going to be to draw input areas on the screen and
-then allow the user to fill them out.
-
-On the web, there are two kinds of text input elements: `<input>`, which
-is for short, one-line inputs, and `<textarea>`, which is for long,
-multi-line text. I'll implement `<input>` only, because `<textarea>`
-has a lot of strange properties.[^sig-ws] Applications usually want
-their input areas to look the same as in other applications on the same
-OS, so they use OS libraries to draw an input area directly.[^ttk] But
-browsers need a lot of control over application styling, so our browser
-will be drawing input areas itself.
+Let's start with drawing input areas on the screen for the user to
+fill out. Normally, applications want their input areas to look the
+same as in other applications on the same OS, so they use OS libraries
+to draw an input area directly.[^ttk] But browsers need a lot of
+control over application styling, so we'll draw our input areas from
+scratch.
 
 [^sig-ws]: Whitespace inside a text area is significant, but text
-    still wraps, an unsual combination. But other than quirks like that, the implementation is similar to `<input>` elements.
-
 [^ttk]: For Python's Tk library, that's possible with the `ttk` library.
 
 `<input>` elements are inline content, like text, laid out in lines.
@@ -217,60 +262,6 @@ the input means changing the HTML. Most likely, `layout` is now quite
 slow in your browser, so typing into input forms is actually going to
 be quite painful. We'll return to this in [Chapter 10](reflow.md) and
 implement incremental layout to resolve this issue.
-
-How forms work
-==============
-
-HTML forms have a couple of moving pieces.
-
-First, in HTML, there is a `<form>` element, which describes how to
-submit all the input elements it contains through its `action` and
-`method` attributes. The `method` attribute is either `get` or `post`,
-and refers to an HTTP method; the `action` attribute is a relative
-URL. The browser generates an HTTP request by combining the two.
-
-Let's focus on POST submissions (the default). Suppose you have the
-following form, on the web page `http://my-domain.com/form`:
-
-``` {.html}
-<form action=submit method=post>
-    <p>Name: <input name=name value=1></p>
-    <p>Comment: <input name=comment value=2></p>
-    <p><button>Submit!</button></p>
-</form>
-```
-
-This example has two text input areas with `name` attributes, plus a
-`<button>` element. That element, naturally, draws a button, and
-clicking on that button causes the form to be submitted.
-
-When this form is submitted, the browser will first determine that it
-is making a POST request to `http://my-domain.com/submit` (using the
-normal rules of relative URLs). Then, it will gather up all of the
-input areas inside that form and create a *form-encoded* string
-containing those input area names and values, which in this case will
-look like this:
-
-``` {.example}
-name=1&comment=2
-```
-
-This form-encoded string will be the *body* of the HTTP POST request
-the browser is going to send. Bodies are allowed on HTTP requests just
-like they are in responses, even though up until now we've been
-sending requests without bodies. The only caveat is that if you send a
-body, you must send the `Content-Length` header, so that the server
-knows how much of the request to wait for. So the overall request is:
-
-``` {.example}
-POST /submit HTTP/1.0
-Content-Length: 16
-
-name=1&comment=2
-```
-
-The server will then respond to the POST request with a normal web page,
-which the browser will render.
 
 Implementing forms
 ==================
