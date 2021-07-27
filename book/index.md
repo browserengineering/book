@@ -19,6 +19,7 @@ misbehave. Read them at your own risk.
 
 Follow this book's [blog](blog/) or
 [Twitter](https://twitter.com/browserbook) for updates.
+If you are enjoying the book, consider supporting us on [Patreon](https://patreon.com/browserengineering).
 
 Introduction
 ============
