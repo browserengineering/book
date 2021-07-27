@@ -774,7 +774,7 @@ def compile_module(tree, name, use_js_modules):
 
         imports_str = "import {{ {} }} from \"./{}.js\";"
 
-        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit', 'truthy' ]
+        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit', 'pyrsplit', 'truthy' ]
         rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
         rt_imports = imports_str.format(", ".join(rt_imports_arr), "rt")
 
