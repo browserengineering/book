@@ -142,10 +142,13 @@ The first display list entry is now a gray rect, since it's for a `<pre>` elemen
     DrawRect(top=18 left=13 bottom=37.199999999999996 right=787 color=gray)
 
 
-Testing breakpoints
-===================
+Testing breakpoints in layout
+=============================
+
+Tree-based layout also supports debugging breakpoints.
 
     >>> test.patch_breakpoint()
+
     >>> browser = lab5.Browser()
     >>> browser.load(url)
     breakpoint(name='layout_pre', 'DocumentLayout')
