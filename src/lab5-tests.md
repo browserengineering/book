@@ -152,7 +152,7 @@ Tree-based layout also supports debugging breakpoints.
 
     >>> browser = lab5.Browser()
     >>> browser.load(url)
-    breakpoint(name='layout_pre', 'DocumentLayout')
+    breakpoint(name='layout_pre', 'DocumentLayout()')
     breakpoint(name='layout_pre', 'BlockLayout(x=None, y=None, width=None, height=None)')
     breakpoint(name='layout_pre', 'BlockLayout(x=None, y=None, width=None, height=None)')
     breakpoint(name='layout_pre', 'InlineLayout(x=None, y=None, width=None, height=None)')
