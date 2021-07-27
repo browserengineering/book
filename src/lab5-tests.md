@@ -136,7 +136,23 @@ Testing background painting
          BlockLayout(x=13, y=18, width=774, height=19.199999999999996
            InlineLayout(x=13, y=18, width=774, height=19.199999999999996 display_list=[(13, 20.4, 'pre', Font size=16 weight=normal slant=roman style=None), (77, 20.4, 'text', Font size=16 weight=normal slant=roman style=None)]
 
-The first display list entry is now gray rect, since it's for a `<pre>` element:
+The first display list entry is now a gray rect, since it's for a `<pre>` element:
 
     >>> browser.display_list[0]
     DrawRect(top=18 left=13 bottom=37.199999999999996 right=787 color=gray)
+
+
+Testing breakpoints
+===================
+
+    >>> test.patch_breakpoint()
+    >>> browser = lab5.Browser()
+    >>> browser.load(url)
+    breakpoint(name='layout_pre', 'DocumentLayout')
+    breakpoint(name='layout_pre', 'BlockLayout(x=None, y=None, width=None, height=None')
+    breakpoint(name='layout_pre', 'BlockLayout(x=None, y=None, width=None, height=None')
+    breakpoint(name='layout_pre', 'InlineLayout(x=None, y=None, width=None, height=None display_list=None')
+    breakpoint(name='layout_post', 'InlineLayout(x=13, y=18, width=774, height=19.199999999999996 display_list=[(13, 20.4, 'pre', Font size=16 weight=normal slant=roman style=None), (77, 20.4, 'text', Font size=16 weight=normal slant=roman style=None)]')
+    breakpoint(name='layout_post', 'BlockLayout(x=13, y=18, width=774, height=19.199999999999996')
+    breakpoint(name='layout_post', 'BlockLayout(x=13, y=18, width=774, height=19.199999999999996')
+    breakpoint(name='layout_post', 'DocumentLayout')
