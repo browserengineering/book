@@ -13,6 +13,7 @@ import time
 import threading
 import tkinter
 import tkinter.font
+from lab10 import request
 
 class Timer:
     def __init__(self):
@@ -39,58 +40,6 @@ class Timer:
 
 def url_origin(url):
     return "/".join(url.split("/")[:3])
-
-def request(url, headers={}, payload=None):
-    scheme, url = url.split("://", 1)
-    assert scheme in ["http", "https"], \
-        "Unknown scheme {}".format(scheme)
-
-    host, path = url.split("/", 1)
-    path = "/" + path
-    port = 80 if scheme == "http" else 443
-
-    if ":" in host:
-        host, port = host.split(":", 1)
-        port = int(port)
-
-    s = socket.socket(
-        family=socket.AF_INET,
-        type=socket.SOCK_STREAM,
-        proto=socket.IPPROTO_TCP,
-    )
-    s.connect((host, port))
-
-    if scheme == "https":
-        ctx = ssl.create_default_context()
-        s = ctx.wrap_socket(s, server_hostname=host)
-
-    method = "POST" if payload else "GET"
-    body = "{} {} HTTP/1.0\r\n".format(method, path)
-    body += "Host: {}\r\n".format(host)
-    for header, value in headers.items():
-        body += "{}: {}\r\n".format(header, value)
-    if payload:
-        content_length = len(payload.encode("utf8"))
-        body += "Content-Length: {}\r\n".format(content_length)
-    body += "\r\n" + (payload or "")
-    s.send(body.encode("utf8"))
-    response = s.makefile("r", encoding="utf8", newline="\r\n")
-
-    statusline = response.readline()
-    version, status, explanation = statusline.split(" ", 2)
-    assert status == "200", "{}: {}".format(status, explanation)
-
-    headers = {}
-    while True:
-        line = response.readline()
-        if line == "\r\n": break
-        header, value = line.split(":", 1)
-        headers[header.lower()] = value.strip()
-
-    body = response.read()
-    s.close()
-
-    return headers, body
 
 class Text:
     def __init__(self, text):

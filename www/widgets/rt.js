@@ -2,7 +2,7 @@
 
 
 export { breakpoint, comparator, filesystem, http_textarea, lib, pysplit,
-    rt_constants, socket, ssl, tkinter, truthy, Widget };
+    pyrsplit, rt_constants, socket, ssl, tkinter, truthy, Widget };
 
 window.TKELEMENT = null;
 

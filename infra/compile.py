@@ -136,7 +136,9 @@ RENAME_FNS = {
     "print": "console.log",
 }
 
-IMPORTS = [] # Filled in as import statements are read
+# These are filled in as import statements are read
+RT_IMPORTS = [] 
+LAB_FNS = []
 
 LIBRARY_METHODS = [
     # socket
@@ -224,7 +226,7 @@ def compile_method(base, name, args, ctx):
         return base_js + "." + RENAME_METHODS[name] + "(" + ", ".join(args_js) + ")"
     elif isinstance(base, ast.Name) and base.id == "self":
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
-    elif base_js in IMPORTS:
+    elif base_js in RT_IMPORTS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name == "format":
         assert isinstance(base, ast.Constant)
@@ -282,7 +284,7 @@ def compile_function(name, args, ctx):
     args_js = [compile_expr(arg, ctx) for arg in args]
     if name in RENAME_FNS:
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
-    elif name in OUR_FNS:
+    elif name in OUR_FNS or name in LAB_FNS:
         return "await " + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
@@ -517,9 +519,10 @@ def compile_expr(tree, ctx):
         return "[" + ", ".join([compile_expr(a, ctx) for a in tree.elts]) + "]"
     elif isinstance(tree, ast.Name):
         assert tree.id == "self" or tree.id in ctx, f"Could not find variable {tree.id}"
+#        print("tree id: " + tree.id)
         if tree.id == "self":
             return "this"
-        elif tree.id in IMPORTS:
+        elif tree.id in RT_IMPORTS:
             return tree.id
         elif ctx.is_global_constant(tree.id):
             return "constants.{}".format(tree.id)
@@ -563,9 +566,14 @@ def compile(tree, ctx, indent=0):
         assert not tree.names[0].asname
         name = tree.names[0].name
         ctx[name] = {"is_class": False}
-        IMPORTS.append(name)
-
+        RT_IMPORTS.append(name)
         return " " * indent + "// Please configure the '" + name + "' module"
+    elif isinstance(tree, ast.ImportFrom):
+        assert len(tree.names) == 1
+        name = tree.names[0].name
+        module = tree.module
+        LAB_FNS.append(name)
+        return " " * indent + "import {{ {} }} from \"./{}.js\"".format(name, module)
     elif isinstance(tree, ast.ClassDef):
         assert not tree.bases
         assert not tree.keywords
@@ -764,11 +772,11 @@ def compile_module(tree, name, use_js_modules):
         if len(EXPORTS) > 0:
             exports = "export {{ {} }};".format(", ".join(EXPORTS))
 
-        imports_str = "import {{ {} }} from \"./{}\";"
+        imports_str = "import {{ {} }} from \"./{}.js\";"
 
-        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit', 'truthy' ]
-        rt_imports_arr += set([ mod.split(".")[0] for mod in IMPORTS])
-        rt_imports = imports_str.format(", ".join(rt_imports_arr), "rt.js")
+        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit', 'pyrsplit', 'truthy' ]
+        rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
+        rt_imports = imports_str.format(", ".join(rt_imports_arr), "rt")
 
         constants_export = "export " + constants_export
 

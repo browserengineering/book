@@ -1,0 +1,3 @@
+[{"code": "'/' in url", "type": "str"},
+ {"code": "':' in host", "type": "str"}
+]
