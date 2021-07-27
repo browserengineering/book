@@ -273,8 +273,8 @@ class Browser:
 
     def load(self, url):
         headers, body = request(url)
-        tree = HTMLParser(body).parse()
-        self.display_list = Layout(tree).display_list
+        self.nodes = HTMLParser(body).parse()
+        self.display_list = Layout(self.nodes).display_list
         self.draw()
 
     def draw(self):
