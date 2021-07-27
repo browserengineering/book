@@ -416,8 +416,8 @@ we need to run layout in the browser's `load` method:
 class Browser:
     def load(self, url):
         headers, body = request(url)
-        nodes = HTMLParser(body).parse()
-        self.document = DocumentLayout(nodes)
+        self.nodes = HTMLParser(body).parse()
+        self.document = DocumentLayout(self.nodes)
         self.document.layout()
 ```
 
@@ -536,7 +536,7 @@ a gray background to `pre` tags (which are used for code examples):
 ``` {.python}
 class InlineLayout:
     def paint(self, display_list):
-        if self.node.tag == "pre":
+        if isinstance(self.node, Element) and self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
             display_list.append(rect)
