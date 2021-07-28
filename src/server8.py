@@ -1,11 +1,4 @@
 import socket
-s = socket.socket(
-    family=socket.AF_INET,
-    type=socket.SOCK_STREAM,
-    proto=socket.IPPROTO_TCP,
-)
-s.bind(('', 8000))
-s.listen()
 
 def handle_connection(conx):
     req = conx.makefile("rb")
@@ -24,8 +17,8 @@ def handle_connection(conx):
     else:
         body = None
 
-    body = handle_request(method, url, headers, body)
-    response = "HTTP/1.0 200 OK\r\n"
+    status, body = handle_request(method, url, headers, body)
+    response = "HTTP/1.0 {}\r\n".format(status)
     response += "Content-Length: {}\r\n".format(
         len(body.encode("utf8")))
     response += "\r\n" + body
@@ -35,14 +28,13 @@ def handle_connection(conx):
 ENTRIES = [ 'Pavel was here' ]
 
 def handle_request(method, url, headers, body):
-    if method == 'POST':
+    if method == "POST" and url == "/add":
         params = form_decode(body)
-        if url == '/add':
-            return add_entry(params)
-        else:
-            return show_comments()
+        return "200 OK", add_entry(params)
+    elif method == "GET" and url == "/":
+        return "200 OK", show_comments()
     else:
-        return show_comments()
+        raise "404 Not Found", not_found(url, method)
 
 def show_comments():
     out = "<!doctype html>"
@@ -54,6 +46,11 @@ def show_comments():
         out += "<p>" + entry + "</p>"
     return out
 
+def not_found(url, method):
+    out = "<!doctype html>"
+    out += "<h1>{} {} not found!</h1>".format(method, url)
+    return out
+
 def add_entry(params):
     if 'guest' in params:
         ENTRIES.append(params['guest'])
@@ -63,10 +60,32 @@ def form_decode(body):
     params = {}
     for field in body.split("&"):
         name, value = field.split("=", 1)
-        params[name] = value.replace("%20", " ")
+        params[name] = percent_decode(value)
     return params
 
-while True:
-    conx, addr = s.accept()
-    print("Received connection from", addr)
-    handle_connection(conx)
+def percent_decode(s):
+    parts = s.split("%")
+    out = parts[0]
+    for part in parts[1:]:
+        if part[0] in "0123456789abcdef" and \
+           part[1] in "0123456789abcdef":
+            out += chr(int(part[0:2], 16))
+            out += part[2:]
+        else:
+            out += part
+    return out
+
+if __name__ == "__main__":
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(('', 8000))
+    s.listen()
+    
+    while True:
+        conx, addr = s.accept()
+        print("Received connection from", addr)
+        handle_connection(conx)
