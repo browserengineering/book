@@ -164,102 +164,147 @@ def input(self, node):
 Try it out: you should now be able to see basic input elements as
 light gray rectangles.
 
+
 Interacting with widgets
 ========================
 
-We've now got input elements rendering, but only as empty rectangles.
-We need the *input* part! Let's 1) allow the user to change that content, and 2) draw the content when it changes.
+We've now got input elements rendering, but when you click on them
+they don't yet do anything! We need to allow the user to type stuff
+into an `input`. Let's make it work the same way the address bar
+does---clicking on an input element will clear it, and then you can
+type into it.
 
-In this toy browser, I'm going to require the user to click on an
-input element to change its content. We detect the click in
-`Browser.handle_click`:
+The clearing part is easy: we need another case inside `Tab`'s `click`
+method:
+
+``` {.python}
+class Tab:
+    def click(self, x, y):
+        while elt:
+            # ...
+            elif elt.tag == "input":
+                elt.attributes["value"] = ""
+            # ...
+```
+
+But keyboard input is harder. Think back to how we [implemented the
+address bar](chrome.md): we added a `focus` field that remembered what
+we clicked on and sent it key presses. We'll want something like that
+for text entries---a `focus` field---but it's going to be more complex
+because text entries live inside a `Tab`, not inside the `Browser`.
+
+Naturally, we will need a `focus` field on each `Tab`, to remember
+which text entry (if any) we've recently clicked on:
+
+``` {.python}
+class Tab:
+    def __init__(self):
+        # ...
+        self.focus = None
+```
+
+Now when we click on an input element, we need to set `focus`:
+
+``` {.python}
+class Tab:
+    def click(self, x, y):
+        while elt:
+            elif elt.tag == "input":
+                # ...
+                self.focus = elt
+                return
+```
+
+But remember that keyboard input isn't handled by the `Tab`---it is
+handled by the `Browser`. So how does the `Browser` even know that the
+`Tab` should handle a certain keyboard event? Well, the answer is that
+the `Browser` has to remember that the `Tab` is in focus!
+
+So, when you click on the web page, the `Browser` updates its focus as
+well:
+
+``` {.python}
+class Browser:
+    def handle_click(self, e):
+        if e.y < CHROME_PX:
+            self.focus = None
+            # ...
+        else:
+            self.focus = "content"
+            # ...
+        self.draw()
+```
+
+Now when a key press happens, the `Browser` can either send it to the
+address bar or the active tab:
+
+``` {.python}
+class Browser:
+    def handle_key(self, e):
+        # ...
+        elif self.focus == "content":
+            self.tabs[self.active_tab].keypress(e.char)
+            self.draw()
+```
+
+Each tab's `keypress` method would then use the tab's `focus` field to
+add the character to the right text entry:
+
+``` {.python}
+class Tab:
+    def keypress(self, char):
+        if self.focus:
+            self.focus.attributes["value"] += char
+```
+
+This hierarchical focus handling is an important pattern for combining
+graphical widgets; in a real browser, where web pages can be embedded
+into one another with `iframe`s, the focus tree can be arbitrarily deep.
+
+So now we have user input working with `input` elements. Before we
+move on, just one last tweak that we need to make: drawing the text
+cursor. We can do that in the `Tab`'s `draw` method:
+
+``` {.python}
+class Tab:
+    def draw(self, canvas):
+        # ...
+        if self.focus:
+            # ...
+```
+
+We'll first need to figure out where the text entry is located,
+onscreen, by finding its layout object:
 
 ``` {.python indent=8}
-elt = obj.node
-while elt:
-    if isinstance(elt, TextNode):
-        pass
-    elif is_link(elt):
-        # ...
-    elif elt.tag == "input":
-        # ...
-    elt = elt.parent
+if self.focus:
+    obj = [obj for obj in tree_to_list(self.document)
+           if obj.node == self.focus][0]
 ```
 
-Once we find an input element, we need to edit it. First of all, like
-with the address bar, clicking on an input should clear its
-content:[^unless-cursor]
+Then using that layout object we can find the coordinates where the
+cursor starts:
 
-[^unless-cursor]: Unless you've implemented some basic editing
-    controls, like the "Cursor" exercise in [Chapter 7](chrome.md).
-
-``` {.python indent=12}
-elif elt.tag == "input":
-    elt.attributes["value"] = ""
-```
-
-Next, typing on the keyboard needs to change the value, and in order
-to do that, we need to set the `focus` to point to this element:
-
-``` {.python indent=12}
-elif elt.tag == "input":
+``` {.python indent=8}
+if self.focus:
     # ...
-    self.focus = obj
+    text = self.focus.attributes.get("value", "")
+    x = obj.x + obj.font.measure(text)
+    y = obj.y - self.scroll + CHROME_PX
 ```
 
-Until now, the `focus` field was either `None` (nothing has been
-clicked on) or `"address bar"` (the address bar has been clicked on).
-Now we're adding the additional possibility that it is a layout object
-that the user is typing into.
+And finally draw the cursor itself:
 
-Finally, since we've changed the content of the input element (by
-clearing it) we need to redraw the screen. But unlike before, where a
-simple `draw` call was enough, we're now changing the web page HTML
-itself! This means we must change the layout tree, and to do that, we
-must call `layout`:
-
-``` {.python indent=12}
-elif elt.tag == "input":
+``` {.python indent=8}
+if self.focus:
     # ...
-    self.layout(self.document.node)
+    self.canvas.create_line(x, y, x, y + obj.height)
 ```
 
-Once focus has been moved to an input element, typing on the keyboard
-has to change the input's contents:
+Excellent: you can now click on a text entry to type into it and
+modify its value. So with the form now filled out, we need to turn to
+submitting it.
 
-``` {.python indent=4}
-def keypress(self, e):
-    # ...
-
-    if not self.focus:
-        return
-    elif self.focus == "address bar":
-        # ...
-    else:
-        self.focus.node.attributes["value"] += e.char
-        self.layout(self.document.node)
-```
-
-While we're at it, let's modify `draw` to draw a cursor into the
-focused input area:
-
-``` {.python indent=4}
-def draw(self):
-    # ...
-    if self.focus == "address bar":
-        # ...
-    elif isinstance(self.focus, InputLayout):
-        text = self.focus.node.attributes.get("value", "")
-        x = self.focus.x + self.focus.font.measure(text)
-        y = self.focus.y - self.scroll + 60
-        self.canvas.create_line(x, y, x, y + self.focus.h)
-```
-
-Note that again, `layout` needs to be called because adding text into
-the input means changing the HTML. Most likely, `layout` is now quite
-slow in your browser, so typing into input forms is actually going to
-be quite painful. We'll return to this in [Chapter 10](reflow.md) and
-implement incremental layout to resolve this issue.
 
 Implementing forms
 ==================
