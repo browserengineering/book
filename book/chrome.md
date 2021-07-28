@@ -25,7 +25,7 @@ headings have their sizes and positions recorded in the layout tree,
 formatted text (like links) does not. We need to fix that.
 
 The big idea is to introduce two new types of layout objects:
-`LineLayout`and `TextLayout`. `InlineLayout` will now have
+`LineLayout` and `TextLayout`. `InlineLayout` will now have
 `LineLayout` children for each line of text, which themselves will
 contain a `TextLayout` for each word in that line. These new classes
 can make the layout tree look different from the HTML tree. So to

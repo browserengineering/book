@@ -414,7 +414,7 @@ class InlineLayout:
         font = tkinter.font.Font(size=size, weight=weight, slant=style)
         for word in node.text.split():
             w = font.measure(word)
-            if self.cursor_x + w > WIDTH - HSTEP:
+            if self.cursor_x + w > self.width - HSTEP:
                 self.flush()
             self.line.append((self.cursor_x, word, font, color))
             self.cursor_x += w + font.measure(" ")

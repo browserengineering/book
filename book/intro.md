@@ -256,7 +256,7 @@ subsequent API calls or because the page has to be displayed to the
 user.[^style-calculation]
 
 [inversion]: https://en.wikipedia.org/wiki/Inversion_of_control
-[constraints]: https://en.wikipedia.org/wiki/Constraint_programming.
+[constraints]: https://en.wikipedia.org/wiki/Constraint_programming
 [declarative]: https://en.wikipedia.org/wiki/Declarative_programming
 [lazy]: https://en.wikipedia.org/wiki/Lazy_evaluation
 

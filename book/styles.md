@@ -214,8 +214,11 @@ def style(node):
     node.style = {}
     # ...
     for child in node.children:
-        style(child, rules)
+        style(child)
 ```
+
+Call `style` in the browser's `load` method, after parsing the HTML
+but before doing layout.
 
 This `style` function will also fill in the `style` field by parsing
 the element's `style` attribute:
@@ -248,9 +251,8 @@ class InlineLayout:
 I've removed the default gray background from `pre` elements for now,
 but we'll put it back soon.
 
-Open up this chapter up in your browser to test your code: the code
-block right after this paragraph should now have a light blue
-background:
+Open this chapter up in your browser to test your code: the code block
+right after this paragraph should now have a light blue background.
 
 ``` {.example style=background-color:lightblue}
 <div style="background-color:lightblue"> ... </div>
@@ -519,7 +521,7 @@ read it when it starts:
 class Browser:
     def __init__(self):
         # ...
-        with open("browser6.css") as f:
+        with open("browser.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 ```
 
@@ -530,7 +532,7 @@ style sheet to set up its default styling for each element:
 def load(self, url):
     # ...
     rules = self.default_style_sheet.copy()
-    style(nodes, rules)
+    style(self.nodes, rules)
     # ...
 ```
 
@@ -579,7 +581,7 @@ comprehension[^crazy] to grab the URL of each linked style sheet:
 def load(self, url):
     # ...
     links = [node.attributes["href"]
-             for node in tree_to_list(nodes, [])
+             for node in tree_to_list(self.nodes, [])
              if isinstance(node, Element)
              and node.tag == "link"
              and "href" in node.attributes
@@ -701,7 +703,7 @@ Now when we call `style`, we need to sort the rules, like this:
 ``` {.python indent=4}
 def load(self, url):
     # ...
-    style(nodes, sorted(rules, key=cascade_priority))
+    style(self.nodes, sorted(rules, key=cascade_priority))
     # ...
 ```
 

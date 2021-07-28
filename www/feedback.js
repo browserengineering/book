@@ -214,7 +214,7 @@ function setup_chapter_feedback() {
             Element("p", [
                 "Let us know what you got out of this chapter--",
                 "what you liked, and what you didn't like. ",
-                "If you'd aldo like to provide feedback about particular ",
+                "If you'd also like to provide feedback about particular ",
                 "pieces of text, press ",
                  Element("kbd", "Ctrl+E"), "." 
             ]),
