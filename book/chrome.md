@@ -133,7 +133,7 @@ want to create a new `LineLayout` object. So let's use a different
 method for that:
 
 ``` {.python indent=12}
-if self.cursor_x + w > WIDTH - HSTEP:
+if self.cursor_x + w > self.width - HSTEP:
     self.new_line()
 ```
 

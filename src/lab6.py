@@ -516,11 +516,11 @@ class Browser:
 
     def load(self, url):
         headers, body = request(url)
-        nodes = HTMLParser(body).parse()
+        self.nodes = HTMLParser(body).parse()
 
         rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
-                 for node in tree_to_list(nodes, [])
+                 for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
                  and "href" in node.attributes
@@ -531,7 +531,7 @@ class Browser:
             except:
                 continue
             rules.extend(CSSParser(body).parse())
-        style(nodes, sorted(rules, key=cascade_priority))
+        style(self.nodes, sorted(rules, key=cascade_priority))
 
         self.document = DocumentLayout(nodes)
         self.document.layout()

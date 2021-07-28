@@ -209,7 +209,7 @@ Now that the `style` attribute is parsed, we can use that parsed
 information in the rest of the browser. We'll store the parsed
 information in a `style` field on each node:
 
-``` {.python replace=(node)/(node%2C%20rules)}
+``` {.python replace=(node)/(node%2C%20rules),(child)/(child%2C%20rules)}
 def style(node):
     node.style = {}
     # ...
