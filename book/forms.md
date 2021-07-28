@@ -65,18 +65,17 @@ normal, and the browser then does everything it normally does.
 Forms require extensions across the whole browser to function
 properly, from implementing HTTP `POST` through new layout objects
 that draw `<input>` elements to handling buttons clicks. Let's get
-started.
+started implementing all that!
 
 
 Rendering widgets
 =================
 
-Let's start with drawing input areas on the screen for the user to
-fill out. Normally, applications want their input areas to look the
-same as in other applications on the same OS, so they use OS libraries
-to draw an input area directly.[^ttk] But browsers need a lot of
-control over application styling, so they often draw input areas
-directly.
+First, let's draw the input areas that the user will fill out.
+Normally, applications want their input areas to look the same as in
+other applications on the same OS, so they use OS libraries to draw an
+input area directly.[^ttk] But browsers need a lot of control over
+application styling, so they often draw input areas directly.
 
 [^ttk]: For Python's Tk library, that's possible with the `ttk` library.
 
