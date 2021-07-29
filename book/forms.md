@@ -215,7 +215,7 @@ class Tab:
                 return
 ```
 
-But remember that keyboard input isn't handled by the `Tab`---it is
+But remember that keyboard input isn't handled by the `Tab`---it's
 handled by the `Browser`. So how does the `Browser` even know that the
 `Tab` should handle a certain keyboard event? Well, the answer is that
 the `Browser` has to remember that the `Tab` is in focus!
@@ -262,8 +262,8 @@ graphical widgets; in a real browser, where web pages can be embedded
 into one another with `iframe`s, the focus tree can be arbitrarily deep.
 
 So now we have user input working with `input` elements. Before we
-move on, just one last tweak that we need to make: drawing the text
-cursor. We can do that in the `Tab`'s `draw` method:
+move on, there is one last tweak that we need to make: drawing the
+text cursor. We can do that in the `Tab`'s `draw` method:
 
 ``` {.python}
 class Tab:
