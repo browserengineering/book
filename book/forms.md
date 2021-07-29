@@ -449,11 +449,11 @@ simple forms!
 Receiving POST requests
 =======================
 
-We need to test our browser's forms functionality. Let's test with
-our own simple web server. This server will show a simple form with a
-single text entry and remember anything submitted through that form.
-Then, it'll show you all of the things that it remembers. Call it a
-guest book.^[Online guest books... so 90s...]
+Let's test our web browser by making our own simple web server. This
+server will show a simple form with a single text entry and remember
+anything submitted through that form. Then, it'll show you all of the
+things that it remembers. Call it a guest book.^[Online guest books...
+so 90s...]
 
 A web server is a different program from a web browser, so let's start
 a new file. The server will need to:
@@ -462,8 +462,10 @@ a new file. The server will need to:
 -   Parse HTTP requests it receives
 -   Respond to those requests with an HTML web page
 
-I should note that the server I am building will be exceedingly simple,
-because this is, after all, a book on web *browser* engineering.
+Now, this is a book on web *browser* engineering, so I won't focus too
+much on the implementation choices. But it's valuable to know how the
+other side of the connection works, as we start diving deeper into how
+browsers help run full-fledged web applications.
 
 Let's start by opening a socket. Like for the browser, we need to
 create an internet streaming socket using TCP:
@@ -482,35 +484,36 @@ connect to some other server), we'll call `bind`, which opens a port
 waits for other computers to connect to it:
 
 ``` {.python file=server}
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.bind(('', 8000))
+s.listen()
 ```
 
-Here, the first argument to `bind`, the address, is set to the empty
-string, which means that the socket will accept connections from any
-other computer. The second argument is the port on *your* machine that
-you want the server to listen on. I've chosen `8000` here, since
-that's probably open and, being larger than 1024, doesn't require
-administrator privileges. But you can pick a different number if, for
-whatever reason, port 8000 is taken on your machine.
+Let's look at the `bind` call first. Its first argument is says who
+should be allowed to make connections *to* the server. The empty
+string means that anyone can. The second argument is the port on
+*your* machine that you want the server to listen on. I've chosen
+`8000` here. `8000` is similar to 80, the default port, but because
+it's larger than 1024 it doesn't require administrator privileges. You
+can pick a different number if, for whatever reason, port 8000 is
+taken on your machine.
 
-::: {.quirk}
-A note about debugging servers. If a server crashes with a connection
-open on some port, your OS prevents the port from being
-reused[^why-wait] for a few seconds. So if your server crashes, you
-might need to wait about a minute before you restart it, or you'll
-get errors about addresses being in use.
-:::
+Now, before the `bind` call is a `setsockopt` call. If a server
+crashes with a connection open on some port, your OS prevents the port
+from being reused[^why-wait] for a few seconds. So if your server
+crashes, normally you need to wait about a minute before you restart
+it, or you'll get errors about addresses being in use. By calling
+`setsockopt` with the `SO_REUSEADDR` option we change that default and
+allow the OS to immediately reuse the port---which makes debugging our
+server a lot easier.
 
 [^why-wait]: When your process crashes, the computer on the end of the
     connection won't be informed immediately; if some other process
     opens the same port, it could receive data meant for the old,
     now-dead process.
 
-Now, we tell the socket we're ready to accept connections:
-
-``` {.python file=server}
-s.listen()
-```
+Finally, after bind, the `listen` call tells the OS that we're ready
+to accept connections.
 
 To actually accept those connections, we enter a loop that runs once
 per connection. At the top of the loop we call `s.accept` to wait for
@@ -567,7 +570,7 @@ def handle_connection(conx):
     else:
         body = None
 
-    body = handle_request(method, url, headers, body)
+    status, body = handle_request(method, url, headers, body)
 ```
 
 Let's fill in `handle_request` later; it returns a string containing
@@ -576,7 +579,7 @@ the resulting HTML web page. We need to send it back to the browser:
 ``` {.python file=server}
 def handle_connection(conx):
     # ...
-    response = "HTTP/1.0 200 OK\r\n"
+    response = "HTTP/1.0 {}\r\n".format(status)
     response += "Content-Length: {}\r\n".format(
         len(body.encode("utf8")))
     response += "\r\n" + body
@@ -586,7 +589,8 @@ def handle_connection(conx):
 
 This is a bare-bones server: it doesn't check that the browser is
 using HTTP 1.0 to talk to it, it doesn't send back any headers at all
-except `Content-Length`, and so on.
+except `Content-Length`, and so on. Again---this is a web *browser*
+book. But it'll do.
 
 Now all that's left is implementing `handle_request`. We want some kind
 of guest book, so let's create a list to store guest book entries:
@@ -602,20 +606,22 @@ def handle_request(method, url, headers, body):
     out = "<!doctype html>"
     for entry in ENTRIES:
         out += "<p>" + entry + "</p>"
-    return out
+    return "200 OK", out
 ```
 
 This is---let's call it "minimal"---HTML, so it's a good thing our
 browser will insert implicit tags and so on. For now, I'm ignoring the
 method, the URL, the headers, and the body entirely.
 
-You should be able to run this minimal core of a web server and then
-direct your browser to `http://localhost:8000/`, `localhost` being
-what your computer calls itself and `8000` being the port we chose
-earlier. You should see a list of (one) guest book entry.
+Run this minimal web server and then open a browser to
+`http://localhost:8000/`, `localhost` being what your computer calls
+itself and `8000` being the port we chose earlier. You should see a
+list of (one) guest book entry. As you debug this web server, it's
+probably easier to use a real web browser instead of the one you're
+writing. That way you don't have to worry about browser bugs.
 
-Let's now make it possible to add to the guest book. First, let's
-add a form to the top of the page:
+Now, let's make it possible to add to the guest book. First, let's add
+a form to the top of the page:
 
 ``` {.python file=server}
 def handle_request(method, url, headers, body):
@@ -636,15 +642,34 @@ def form_decode(body):
     params = {}
     for field in body.split("&"):
         name, value = field.split("=", 1)
-        params[name] = value.replace("%20", " ")
+        params[percent_decode(name)] = percent_decode(value)
     return params
 ```
 
-To handle submissions, `handle_request` will first need to figure out
-what kind of request this is (browsing or form submission), then get
-the guest book comment, add it to `ENTRIES`, and then draw the page
-with the new comment shown. To keep this organized, let's rename
-`handle_request` to `show_comments`:
+Here the percent-decoding is just the inverse of percent-encoding:
+
+``` {.python file=server}
+def percent_decode(s):
+    parts = s.split("%")
+    out = parts[0]
+    for part in parts[1:]:
+        if part[0] in "0123456789abcdef" and \
+           part[1] in "0123456789abcdef":
+            out += chr(int(part[0:2], 16))
+            out += part[2:]
+        else:
+            out += part
+    return out
+```
+
+This code is a little weird, using `split` to find and operate on all
+the percent-encoded bits, but it does work. An alternative would be
+a state machine much like our lexer in [Chapter 2](graphics.md).
+
+Now that we have form submissions, `handle_request` will field two
+kinds of requests: regular browsing and form submissions. Let's
+separate the two kinds of requests into different functions. Rename
+the current `handle_request` to `show_comments`:
 
 ``` {.python file=server}
 def show_comments():
@@ -652,7 +677,7 @@ def show_comments():
     return out
 ```
 
-We can have a `add_entry` function to handle form submissions:
+A new `add_entry` function can handle form submissions:
 
 ``` {.python file=server}
 def add_entry(params):
@@ -666,14 +691,23 @@ of these two functions to call:
 
 ``` {.python file=server}
 def handle_request(method, url, headers, body):
-    if method == 'POST':
+    if method == "POST" and url == "/add":
         params = form_decode(body)
-        if url == '/add':
-            return add_entry(params)
-        else:
-            return show_comments()
+        return "200 OK", add_entry(params)
+    elif method == "GET" and url == "/":
+        return "200 OK", show_comments()
     else:
-        return show_comments()
+        return "404 Not Found", not_found(url, method)
+```
+
+Now that the browser request matters, I've added a "404" response.
+Fitting the austere stylings of our web page, here's the 404 page:
+
+``` {.python file=server}
+def not_found(url, method):
+    out = "<!doctype html>"
+    out += "<h1>{} {} not found!</h1>".format(method, url)
+    return out
 ```
 
 Try it! You should be able to restart the server, open it in your
