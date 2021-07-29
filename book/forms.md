@@ -465,7 +465,7 @@ a new file. The server will need to:
 Now, this is a book on web *browser* engineering, so I won't focus too
 much on the implementation choices. But it's valuable to know how the
 other side of the connection works, as we start diving deeper into how
-browser help run full-fledged web applications.
+browsers help run full-fledged web applications.
 
 Let's start by opening a socket. Like for the browser, we need to
 create an internet streaming socket using TCP:
@@ -505,7 +505,7 @@ crashes, normally you need to wait about a minute before you restart
 it, or you'll get errors about addresses being in use. By calling
 `setsockopt` with the `SO_REUSEADDR` option we change that default and
 allow the OS to immediately reuse the port---which makes debugging our
-server a lot nicer.
+server a lot easier.
 
 [^why-wait]: When your process crashes, the computer on the end of the
     connection won't be informed immediately; if some other process
@@ -662,7 +662,7 @@ def percent_decode(s):
     return out
 ```
 
-This code is a little weird, using `split` to find an operate on all
+This code is a little weird, using `split` to find and operate on all
 the percent-encoded bits, but it does work. An alternative would be
 a state machine much like our lexer in [Chapter 2](graphics.md).
 
