@@ -82,7 +82,8 @@ application styling, so they often draw input areas directly.
 `<input>` elements are inline content, like text, laid out in lines.
 So to support inputs we'll need a new kind of layout object, which
 I'll call `InputLayout`. Let's start by copying `TextLayout` and
-renaming it to `InputLayout`. We'll need to make some quick edits.
+renaming it to `InputLayout`. We'll then need to make some quick
+edits.
 
 First, there's no `word` argument to `InputLayout`s:
 
