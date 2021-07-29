@@ -81,88 +81,128 @@ application styling, so they often draw input areas directly.
 
 `<input>` elements are inline content, like text, laid out in lines.
 So to support inputs we'll need a new kind of layout object, which
-I'll call `InputLayout`, implemented much like `TextLayout`:
+I'll call `InputLayout`. Let's start by copying `TextLayout` and
+renaming it to `InputLayout`. We'll then need to make some quick
+edits.
+
+First, there's no `word` argument to `InputLayout`s:
 
 ``` {.python}
 class InputLayout:
-    def __init__(self, node):
+    def __init__(self, node, parent, previous):
         self.node = node
         self.children = []
+        self.parent = parent
+        self.previous = previous
 ```
 
-These `InputLayout` objects need a `layout` method to compute
-their size, which for simplicity I'll hard-code:[^2]
+Second, let's give `InputLayout` objects a fixed width:
 
-[^2]: In real browsers, the `width` and `height` CSS properties can
-    change the size of input elements.
+``` {.python}
+INPUT_WIDTH_PX = 200
+
+class InputLayout:
+    def layout(self):
+        # ...
+        self.width = INPUT_WIDTH_PX
+        # ...
+```
+
+These `input` and `button` elements need to be visually distinct so
+the user can easily find them. With our browser's limited styling
+capabilities, let's go with a style like this:
+
+``` {.css}
+input {
+    font-size: 16px; font-weight: normal; font-style: normal;
+    background-color: lightblue;
+}
+button {
+    font-size: 16px; font-weight: normal; font-style: normal;
+    background-color: orange;
+}
+```
+
+So when the browser paints an `InputLayout` it needs to draw both a
+background:
 
 ``` {.python}
 class InputLayout:
-    def layout(self):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = int(px(self.node.style["font-size"]) * .75)
-        self.font = tkinter.font.Font(size=size, weight=weight,
-            slant=style)
-        self.w = 200
-        self.h = 20
+    def paint(self, display_list):
+        bgcolor = self.node.style.get("background-color",
+                                      "transparent")
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            display_list.append(rect)
 ```
 
-Finally, we'll need to add a `draw` method for input elements, which
-needs to both draw the text contents and make the input area noticably
-distinct, so the user can find and click on it. For `<input>`, the
-initial text in the input area is the element's `value` attribute, like this:
+And also the text inside:
 
-``` {.example}
-Name: <input value="Pavel Panchekha">
-```
-
-For simplicity, I'll make input elements have a light gray background:
-
-``` {.python replace=%22light%20gray%22/bgcolor }
+``` {.python}
 class InputLayout:
-    def paint(self, to):
-        x1, x2 = self.x, self.x + self.w
-        y1, y2 = self.y, self.y + self.h
-        to.append(DrawRect(x1, y1, x2, y2, "light gray"))
+    def paint(self, display_list):
+        # ...
+        if self.node.tag == "input":
+            text = self.node.attributes.get("value", "")
+        elif self.node.tag == "button":
+            text = self.node.children[0].text
 
-        text = self.node.attributes.get("value", "")
         color = self.node.style["color"]
-        to.append(DrawText(self.x, self.y, text, self.font, color))
+        display_list.append(
+            DrawText(self.x, self.y, text, self.font, color))
 ```
 
-Note that the background has to come before the text, lest the text be
-obscured!
+By this point in the book, you've seen new layout objects plenty of
+times. So I'm not describing this code in detail; new layout objects
+is just one of the standard ways you extend the browser.
 
-Finally, we need to create these `InputLayout` objects; we can do that
-in `InlineLayout.recurse`:
+With `InputLayout` written we now need to create some of these layout
+objects. We'll do so in `InlineLayout`:
 
-``` {.python indent=4}
-def recurse(self, node):
-    if isinstance(node, TextNode):
-        self.text(node)
-    elif node.tag == "input":
-        self.input(node)
-    else:
-        for child in node.children:
-            self.recurse(child)
+``` {.python}
+class InlineLayout:
+    def recurse(self, node):
+        if isinstance(node, Text):
+            self.text(node)
+        else:
+            if node.tag == "br":
+                self.new_line()
+            elif node.tag == "input" or node.tag == "button":
+                self.input(node)
+            for child in node.children:
+                self.recurse(child)
 ```
 
-The new `input` function is similar to `text`, except that input areas
-don't need to be split into multiple words:
+The new `input` element is based on how the `text` method handles each
+word:
 
-``` {.python indent=4}
-def input(self, node):
-    child = InputLayout(node)
-    child.layout()
-    if self.children[-1].cx + child.w > self.w:
-        self.flush()
-    self.children[-1].append(child)
+``` {.python}
+class InlineLayout:
+    def input(self, node):
+        w = INPUT_WIDTH_PX
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = InputLayout(node, line, self.previous_word)
+        line.children.append(input)
+        self.previous_word = input
+        self.cursor_x += w + font.measure(" ")
 ```
 
-Try it out: you should now be able to see basic input elements as
-light gray rectangles.
+With all of this done, you should be able to open a web page with
+`input` and `button` elements, and see them show up as blue and orange
+rectangles.
+
+::: {.further}
+The real reason buttons surround their contents is because a button
+might contain an image, or styled text, or something like that---this
+code doesn't support that, which in real browsers relies on something
+called the `inline-block` display mode. You could implement that by
+having the `InputLayout` have a child `BlockLayout`, but I'm skipping
+it here for simplicity.
+:::
+
 
 Interacting with widgets
 ========================
