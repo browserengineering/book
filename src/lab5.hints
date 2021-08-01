@@ -1,7 +1,3 @@
 [
-{"code": "'=' in attrpair", "type": "str"},
-{"code": "tag in self.SELF_CLOSING_TAGS", "type": "list"},
-{"code": "tag in self.HEAD_TAGS", "type": "list"},
-{"code": "tag not in ['/head'] + self.HEAD_TAGS", "type": "list"},
 {"code": "child.tag in BLOCK_ELEMENTS", "type": "list"}
 ]
