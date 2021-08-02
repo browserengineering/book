@@ -339,23 +339,12 @@ for input in inputs:
 ```
 
 This "percent encoding" replaces all special characters with a percent
-sign followed by those characters' hex codes:
-
-``` {.python}
-def percent_encode(s):
-    out = ""
-    for c in s:
-        if c.isalnum():
-            out += c
-        else:
-            out += "%" + hex(ord(c))[2:]
-    return s
-```
-
-Here the `ord` function in Python gets the character's numeric value,
-`hex` converts it to a hexadecimal string like `0x25`, and then the
-code strips off the first two characters (the `0x`) and replaces them
-with a percent sign.
+sign followed by those characters' hex codes; for example, a space
+becomes `%20` and a period becomes `%2e`. Python provides a
+percent-encoding function as `quote` in the `urllib` module, or you
+can write your own. (You can even skip percent encoding, but then you
+browser won't handle requests with equal signs, percent signs, or
+ampersands correctly.)
 
 Now that `submit_form` has built the request body, it needs to finally
 send that request:
