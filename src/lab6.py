@@ -10,10 +10,11 @@ import tkinter
 import tkinter.font
 from lab4 import print_tree
 from lab1 import request
-from lab5 import DrawRect
 from lab4 import Element
 from lab4 import HTMLParser
 from lab4 import Text
+from lab5 import BlockLayout
+from lab5 import DrawRect
 
 def resolve_url(url, current):
     if "://" in url:
@@ -218,40 +219,6 @@ def layout_mode(node):
     else:
         return "block"
 
-class BlockLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-
-    def layout(self):
-        previous = None
-        for child in self.node.children:
-            if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous)
-            else:
-                next = BlockLayout(child, self, previous)
-            self.children.append(next)
-            previous = next
-
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        for child in self.children:
-            child.layout()
-
-        self.height = sum([child.height for child in self.children])
-
-
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
