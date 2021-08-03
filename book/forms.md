@@ -332,23 +332,31 @@ fact, there is special handling for special characters: "percent
 encoding" replaces all special characters with a percent sign followed
 by those characters' hex codes. For example, a space becomes `%20` and
 a period becomes `%2e`. Python provides a percent-encoding function as
-`quote` in the `urllib` module:
+`quote` in the `urllib.parse` module:
 
 
 ``` {.python indent=8}
 for input in inputs:
     # ...
-    name = urllib.quote(name)
-    value = urllib.quote(value)
+    name = urllib.parse.quote(name)
+    value = urllib.parse.quote(value)
     # ...
 ```
 
 You can write your own `percent_encode` function using Python's `ord`
-and `hex` functions instead if you'd like, but here we're using the
-standard function for expediency; it's not a particularly interesting
-funciton, but it is necessary (if you skip percent encoding, your
-browser won't handle requests with equal signs, percent signs, or
-ampersands correctly).
+and `hex` functions instead if you'd like,[^why-use-library] but here
+we're using the standard function for expediency; it's not a
+particularly interesting funciton, but it is necessary (if you skip
+percent encoding, your browser won't handle requests with equal signs,
+percent signs, or ampersands correctly).
+
+[^why-use-library]: Why use the `urllib` library here, but not
+    elsewhere in our browser? Why, for example, use its `quote` method
+    here but not its `parse` method in [Chapter 1](http.md)?
+    Basically, because while percent encoding is necessary, it is
+    not conceptually interesting, and in these later chapters my goal
+    is to show how conceptual extensions to the browser get built.
+    Some details are necessarily elided.
 
 Now that `submit_form` has built the request body, it needs to finally
 send that request:
