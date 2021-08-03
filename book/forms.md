@@ -327,24 +327,28 @@ class Tab:
 ```
 
 Now, any time you see something like this, you've got to ask: what if
-the name or the value has an equal sign or an ampersand in it? So form
-encoding has special handling for special characters:
+the name or the value has an equal sign or an ampersand in it? In
+fact, there is special handling for special characters: "percent
+encoding" replaces all special characters with a percent sign followed
+by those characters' hex codes. For example, a space becomes `%20` and
+a period becomes `%2e`. Python provides a percent-encoding function as
+`quote` in the `urllib` module:
+
 
 ``` {.python indent=8}
 for input in inputs:
     # ...
-    name = percent_encode(name)
-    value = percent_encode(value)
+    name = urllib.quote(name)
+    value = urllib.quote(value)
     # ...
 ```
 
-This "percent encoding" replaces all special characters with a percent
-sign followed by those characters' hex codes; for example, a space
-becomes `%20` and a period becomes `%2e`. Python provides a
-percent-encoding function as `quote` in the `urllib` module, or you
-can write your own. (You can even skip percent encoding, but then you
+You can write your own `percent_encode` function using Python's `ord`
+and `hex` functions instead if you'd like, but here we're using the
+standard function for expediency; it's not a particularly interesting
+funciton, but it is necessary (if you skip percent encoding, your
 browser won't handle requests with equal signs, percent signs, or
-ampersands correctly.)
+ampersands correctly).
 
 Now that `submit_form` has built the request body, it needs to finally
 send that request:
