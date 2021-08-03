@@ -679,7 +679,7 @@ it is checked. Its key is its `name` and its value is the empty string.
 *Blurring*: Right now, if you click inside a text entry, and then
 inside the address bar, two cursors will appear on the screen. To fix
 this, add a `blur` method to each `Tab` which unfocuses anything that
-is focused, and call it whenever focus leaves that tab.
+is focused, and call it before changing focus.
 
 *GET forms*: Forms can be submitted via GET requests as well as POST
 requests. In GET requests, the form-encoded data is pasted onto the
