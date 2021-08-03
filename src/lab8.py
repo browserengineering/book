@@ -8,6 +8,7 @@ import socket
 import ssl
 import tkinter
 import tkinter.font
+import urllib.parse
 
 def request(url, payload=None):
     scheme, url = url.split("://", 1)
@@ -767,8 +768,8 @@ class Tab:
         for input in inputs:
             name = input.attributes["name"]
             value = input.attributes.get("value", "")
-            name = percent_encode(name)
-            value = percent_encode(value)
+            name = urllib.parse.quote(name)
+            value = urllib.parse.quote(value)
             body += "&" + name + "=" + value
         body = body [1:]
 
