@@ -10,9 +10,10 @@ import tkinter
 import tkinter.font
 from lab4 import print_tree
 from lab1 import request
-from lab4 import Text
+from lab5 import DrawRect
 from lab4 import Element
 from lab4 import HTMLParser
+from lab4 import Text
 
 def resolve_url(url, current):
     if "://" in url:
@@ -360,22 +361,6 @@ class DrawText:
             text=self.text,
             font=self.font,
             anchor='nw',
-            fill=self.color,
-        )
-
-class DrawRect:
-    def __init__(self, x1, y1, x2, y2, color):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
-        self.color = color
-
-    def execute(self, scroll, canvas):
-        canvas.create_rectangle(
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
-            width=0,
             fill=self.color,
         )
 
