@@ -380,7 +380,6 @@ class BlockLayout:
         return "BlockLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
-
 class InlineLayout:
     def __init__(self, node, parent, previous):
         self.node = node
