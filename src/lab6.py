@@ -341,8 +341,13 @@ class BlockLayout:
         self.parent = parent
         self.previous = previous
         self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
 
     def layout(self):
+        breakpoint("layout_pre", self)
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
@@ -365,10 +370,16 @@ class BlockLayout:
 
         self.height = sum([child.height for child in self.children])
 
+        breakpoint("layout_post", self)
 
     def paint(self, display_list):
         for child in self.children:
             child.paint(display_list)
+
+    def __repr__(self):
+        return "BlockLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
@@ -442,6 +453,10 @@ class InlineLayout:
         for x, y, word, font, color in self.display_list:
             display_list.append(DrawText(x, y, word, font, color))
 
+    def __repr__(self):
+        return "InlineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
@@ -461,6 +476,9 @@ class DocumentLayout:
 
     def paint(self, display_list):
         self.children[0].paint(display_list)
+
+    def __repr__(self):
+        return "DocumentLayout()"
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
