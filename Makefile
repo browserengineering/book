@@ -3,7 +3,7 @@
 FLAGS=
 
 CHAPTERS=$(patsubst book/%.md,%,$(wildcard book/*.md))
-WIDGET_LAB_CODE=lab1 lab2 lab3 lab5 lab7
+WIDGET_LAB_CODE=lab1 lab2 lab3 lab4 lab5 lab7
 
 TESTS=lab1-tests.md lab2-tests.md lab3-tests.md lab4-tests.md lab5-tests.md
 

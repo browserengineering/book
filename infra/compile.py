@@ -137,8 +137,9 @@ RENAME_FNS = {
 }
 
 # These are filled in as import statements are read
-RT_IMPORTS = [] 
-LAB_FNS = []
+RT_IMPORTS = []
+LAB_IMPORT_FNS = []
+LAB_IMPORT_CLASSES = []
 
 LIBRARY_METHODS = [
     # socket
@@ -178,6 +179,19 @@ OUR_SYNC_METHODS = ["__repr__", "__init__"]
 FILES = []
 
 EXPORTS = []
+
+def load_outline_for_class(ol, class_name):
+    for item in ol:
+        if isinstance(item, outlines.Class):
+            if not item.name == class_name:
+                continue
+            OUR_CLASSES.append(item.name)
+            for subitem in item.fns:
+                if isinstance(subitem, outlines.Const): continue
+                elif isinstance(subitem, outlines.Function):
+                    OUR_METHODS.append(subitem.name)
+                else:
+                    raise ValueError(subitem)
 
 def load_outline(ol):
     for item in ol:
@@ -284,7 +298,7 @@ def compile_function(name, args, ctx):
     args_js = [compile_expr(arg, ctx) for arg in args]
     if name in RENAME_FNS:
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
-    elif name in OUR_FNS or name in LAB_FNS:
+    elif name in OUR_FNS or name in LAB_IMPORT_FNS:
         return "await " + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
@@ -518,11 +532,10 @@ def compile_expr(tree, ctx):
     elif isinstance(tree, ast.Tuple) or isinstance(tree, ast.List):
         return "[" + ", ".join([compile_expr(a, ctx) for a in tree.elts]) + "]"
     elif isinstance(tree, ast.Name):
-        assert tree.id == "self" or tree.id in ctx, f"Could not find variable {tree.id}"
-#        print("tree id: " + tree.id)
+        assert tree.id == "self" or tree.id in ctx or tree.id in LAB_IMPORT_CLASSES, f"Could not find variable {tree.id}"
         if tree.id == "self":
             return "this"
-        elif tree.id in RT_IMPORTS:
+        elif tree.id in RT_IMPORTS or tree.id in LAB_IMPORT_CLASSES:
             return tree.id
         elif ctx.is_global_constant(tree.id):
             return "constants.{}".format(tree.id)
@@ -572,7 +585,17 @@ def compile(tree, ctx, indent=0):
         assert len(tree.names) == 1
         name = tree.names[0].name
         module = tree.module
-        LAB_FNS.append(name)
+
+        # If the import is for a class name, load its class anme into
+        # OUR_CLASSES and its methods into OUR_METHODS.
+        if name[0].upper() == name[0]:
+            LAB_IMPORT_CLASSES.append(name)
+            filename = "src/{}.py".format(module)
+            file = open(filename)
+            tree = AST39.parse(file.read(), filename)
+            load_outline_for_class(outlines.outline(tree), name)
+        else:
+            LAB_IMPORT_FNS.append(name)
         return " " * indent + "import {{ {} }} from \"./{}.js\"".format(name, module)
     elif isinstance(tree, ast.ClassDef):
         assert not tree.bases
