@@ -346,119 +346,105 @@ modify its value. So with the form now filled out, we need to turn to
 submitting it.
 
 
+
 Implementing forms
 ==================
 
-We're going to need to implement a few different things:
-
--   Buttons
--   Handling button clicks
--   Finding the form containing a button
--   Finding all the input areas in a form
--   Form-encoding their data
--   Making POST requests
-
-First, buttons. Buttons are a bit like `<input>` elements, in that
-they are little rectangles placed in lines. Unlike `<input>` elements,
-`<button>` elements aren't self-closing, and the contents of that
-`<button>` element is what text goes inside the button. Modify
-`InlineLayout` to create `InputLayout` objects for `<button>`
-elements; now, we need to make `InputLayout` do something different in
-its `draw` call.
-
-First, let's give buttons a different color:
+You submit a form by clicking on a `button`. So let's add another
+condition to the big `while` loop in `click`:
 
 ``` {.python}
-class InputLayout:
-    def paint(self, to):
-        # ...
-        bgcolor = \
-            "light gray" if self.node.tag == "input" else "yellow"
-        to.append(DrawRect(x1, y1, x2, y2, bgcolor))
-        # ...
+class Tab:
+    def click(self, x, y):
+        while elt:
+            # ...
+            elif elt.tag == "button":
+                # ...
+            # ...
 ```
 
-Then, buttons should get text from their contents instead of their
-attributes:
-
-``` {.python}
-class InputLayout:
-    def paint(self, to):
-        # ...
-        if self.node.tag == "input":
-            text = self.node.attributes.get("value", "")
-        else:
-            text = self.node.children[0].text
-        # ...
-```
-
-The real reason buttons surround their contents is because a button
-might contain an image, or styled text, or something like that---this
-code doesn't support that, which in real browsers relies on something
-called the `inline-block` display mode. You could implement that by
-having the `InputLayout` have a child `BlockLayout`, but I'm skipping
-it here for simplicity.
-
-Ok, next up, button clicks. We need to extend `handle_click` with
-button support. That requires modifying the condition in the big
-`while` loop and then adding a new case to the big `if` statement:
-
-``` {.python indent=16}
-# ...
-elif elt.tag == "button":
-    self.submit_form(elt)
-# ...
-```
-
-Third, we need to find the form containing our button. That can happen
-inside `submit_form`:[^3]
+Once we've found the button, we need to find the form that it's in, by
+walking up the HTML tree:[^3]
 
 [^3]: Fun fact: HTML standardizes the `form` attribute for _input
     elements_, which in principle allows an input element to be
     outside the form it is supposed to be submitted with. But no
     browser implements that.
 
-``` {.python}
-def submit_form(self, elt):
-    while elt and elt.tag != "form":
+``` {.python indent=12}
+elif elt.tag == "button":
+    while elt:
+        if elt.tag == "form" and "action" in elt.attributes:
+            return self.submit_form(elt)
         elt = elt.parent
-    if not elt: return
 ```
 
-Fourth, we need to find all of the input elements inside this form:
+The `submit_form` method is then in charge of finding all of the input
+elements, encoding them in the right way, and sending the `POST`
+request. First, we look through all the descendents of the `form` to
+find `input` elements:
 
 ``` {.python}
-def find_inputs(elt, out):
-    if not isinstance(elt, ElementNode): return
-    if elt.tag == "input" and "name" in elt.attributes:
-        out.append(elt)
-    for child in elt.children:
-        find_inputs(child, out)
-    return out
+class Tab:
+    def submit_form(self, elt):
+        inputs = [node for node in tree_to_list(elt)
+                  if isinstance(node, Element)
+                  and node.tag == "input"
+                  and "name" in node.attributes]
 ```
 
-Fifth, we can form-encode the resulting parameters:
-
+For each of those `input` elements, we need to extract the `name`
+attribute and the `value` attribute, and _form-encode_ both of them.
+Form encoding is how the name/value pairs are formatted in the HTTP
+`POST` request. Basically: name, then equal sign, then value; and
+name-value pairs are separated by ampersands:
 
 ``` {.python}
-def submit_form(self, elt):
+class Tab:
+    def submit_form(self, elt):
+        # ...
+        body = ""
+        for input in inputs:
+            name = input.attributes["name"]
+            value = input.attributes.get("value", "")
+            body += "&" + name + "=" + value
+        body = body [1:]
+```
+
+Now, any time you see something like this, you've got to ask: what if
+the name or the value has an equal sign or an ampersand in it? In
+fact, there is special handling for special characters: "percent
+encoding" replaces all special characters with a percent sign followed
+by those characters' hex codes. For example, a space becomes `%20` and
+a period becomes `%2e`. Python provides a percent-encoding function as
+`quote` in the `urllib.parse` module:
+
+
+``` {.python indent=8}
+for input in inputs:
     # ...
-    inputs = find_inputs(elt, [])
-    body = ""
-    for input in inputs:
-        name = input.attributes["name"]
-        value = input.attributes.get("value", "")
-        body += "&" + name + "=" + value.replace(" ", "%20")
-    body = body[1:]
+    name = urllib.parse.quote(name)
+    value = urllib.parse.quote(value)
+    # ...
 ```
 
-This isn't real form-encoding; this just replaces spaces by `"%20"`,
-while real form-encoding escapes characters like the equal sign, the
-ampersand, and so on. But our browser is a toy anyway, so for now
-let's just try to avoid typing equal signs, ampersands, and so on into
-forms.
+You can write your own `percent_encode` function using Python's `ord`
+and `hex` functions instead if you'd like,[^why-use-library] but here
+we're using the standard function for expediency; it's not a
+particularly interesting funciton, but it is necessary (if you skip
+percent encoding, your browser won't handle requests with equal signs,
+percent signs, or ampersands correctly).
 
-Finally, we need to submit this form-encoded data in a POST request:
+[^why-use-library]: Why use the `urllib` library here, but not
+    elsewhere in our browser? Why, for example, use its `quote` method
+    here but not its `parse` method in [Chapter 1](http.md)?
+    Basically, because while percent encoding is necessary, it is
+    not conceptually interesting, and in these later chapters my goal
+    is to show how conceptual extensions to the browser get built.
+    Some details are necessarily elided.
+
+Now that `submit_form` has built the request body, it needs to finally
+send that request:
 
 ``` {.python}
 def submit_form(self, elt):
@@ -467,69 +453,56 @@ def submit_form(self, elt):
     self.load(url, body)
 ```
 
-This adds a new parameter to the browser's `load` method, which we can
-pass to `request`:
+This uses a new parameter to the browser's `load` method for the
+request body. Let's pass that through to `request`:
 
-``` {.python}
+``` {.python indent=4}
 def load(self, url, body=None):
     # ...
-    header, body = request(url, body)
+    headers, body = request(url, body)
 ```
 
-Sixth and finally, to actually send a POST request, we need to modify
-the `request` function to support the new argument. First, the method
-needs to be configurable:
+Then `request` can send the that request body. That requires a few
+changes to `request`. First, it needs to use `POST`, not `GET`:
 
 ``` {.python}
 def request(url, payload=None):
     # ...
     method = "POST" if payload else "GET"
-```
-
-We need to use this method:
-
-``` {.python}
-def request(url, payload=None):
     # ...
     body = "{} {} HTTP/1.0\r\n".format(method, path)
-    body += "Host: {}\r\n".format(host)
-    body += "\r\n" + (payload or "")
-    s.send(body.encode("utf8"))
 ```
 
-Also, when you send a payload like this in the request, you need to
-send the `Content-Length` header. That's because the server, which is
-receiving the POST request, needs to know how much content to read
-before responding. So let's add another header, after `Host` and
-before the payload itself:
+Then we need to send the `Content-Length` header, which is mandatory
+on `POST` requests:
 
 ``` {.python}
 def request(url, payload=None):
     # ...
-    content_length = len(payload.encode("utf8"))
-    body += "Content-Length: {}\r\n".format(content_length)
+    if payload:
+        length = len(payload.encode("utf8"))
+        body += "Content-Length: {}\r\n".format(length)
+    # ...
 ```
 
 Note that I grab the length of the payload in bytes, not the length in
-letters.
+letters. Finally, we need to add the actual payload and send it:
 
-By the way, here we have form submissions when you click on the form
-button---but browsers usually also submit forms if you press the
-"Enter" key inside a form input field.[^mac-return] Implement that by
-calling `submit_form` inside `pressenter` when a input element is in
-focus.
+``` {.python}
+def request(url, payload=None):
+    # ...
+    body += "\r\n" + payload
+    s.send(body.encode("utf8"))
+    # ...
+```
 
-[^mac-return]: Which macOS calls "Return", in homage to old type
-    writers and referencing the fact that very old Mac operating
-    systems used the carriage return character (instead of the line
-    feed character) for new lines.
+So---now we've sent the `POST` request. From the point of view of the
+browser, that's about it: the server will respond with a web page and
+the browser will render it in the totally normal way. But to better
+understand the whole cycle---and also to make it easier to test our
+browser's form support---let's take a small detour out of the browser
+and look at how the server will handle these requests.
 
-Once we've made the POST request, the server will send back a new web
-page to render, which our browser needs to lex, parse, style, and lay
-that page out. That all happens in `load` in the same way.
-
-With these changes we should now have a browser capable of submitting
-simple forms!
 
 Receiving POST requests
 =======================
@@ -811,12 +784,21 @@ is better with friends!
 Exercises
 =========
 
+*Enter key*: In most browsers, if you hit the "Enter" or "Return" key
+while inside a text entry, that submits the form that the text entry
+was in. Add this feature to your browser.
+
 *Check boxes*: Add checkboxes. In HTML, checkbox `<input>`
 elements with the `type` attribute set to `checkbox`. The checkbox is
 checked if it has the `checked` attribute set, and unchecked
 otherwise. Submitting checkboxes in a form is a little tricky,
 though. A checkbox named `foo` only appears in the form encoding if
 it is checked. Its key is its `name` and its value is the empty string.
+
+*Blurring*: Right now, if you click inside a text entry, and then
+inside the address bar, two cursors will appear on the screen. To fix
+this, add a `blur` method to each `Tab` which unfocuses anything that
+is focused, and call it before changing focus.
 
 *GET forms*: Forms can be submitted via GET requests as well as POST
 requests. In GET requests, the form-encoded data is pasted onto the
