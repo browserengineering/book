@@ -1,5 +1,5 @@
 `Tests for WBE Chapter 6
-=======================
+=======================+
 
 Chapter 6 (Applying User Styles) introduces a 
 
