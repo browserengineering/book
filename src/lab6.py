@@ -247,6 +247,10 @@ class TagSelector:
     def matches(self, node):
         return isinstance(node, Element) and self.tag == node.tag
 
+    def __repr__(self):
+        return "TagSelector(tag={}, priority={})".format(
+            self.tag, self.priority)
+
 class DescendantSelector:
     def __init__(self, ancestor, descendant):
         self.ancestor = ancestor
@@ -259,6 +263,11 @@ class DescendantSelector:
             if self.ancestor.matches(node.parent): return True
             node = node.parent
         return False
+
+    def __repr__(self):
+        return ("DescendantSelector(ancestor={}, " +
+            "descendant={}, priority={}").format(
+            self.ancestor, self.descendant, self.priority)
 
 INHERITED_PROPERTIES = {
     "font-size": "16px",
