@@ -1,4 +1,4 @@
-`Tests for WBE Chapter 6
+Tests for WBE Chapter 6
 =======================+
 
 Chapter 6 (Applying User Styles) introduces a CSS parser for the style attribute
