@@ -1,5 +1,5 @@
 Tests for WBE Chapter 6
-=======================+
+=======================
 
 Chapter 6 (Applying User Styles) introduces a CSS parser for the style attribute
 and style sheets, and adds support for inherited properties, tag selectors, and
