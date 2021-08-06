@@ -704,10 +704,6 @@ def form_decode(body):
     return params
 ```
 
-This code is a little weird, using `split` to find and operate on all
-the percent-encoded bits, but it does work. An alternative would be
-a state machine much like our lexer in [Chapter 2](graphics.md).
-
 Now that we have form submissions, `handle_request` will field two
 kinds of requests: regular browsing and form submissions. Let's
 separate the two kinds of requests into different functions. Rename
