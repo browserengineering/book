@@ -114,7 +114,7 @@ multiple documents. And just like those original systems, the web has linking
 within documents as well as between them. For example, the url
 "http://example.com/doc.html#link" refers to a document called "`doc.html`",
 specifically to the element with the name "`link`" within it. Clicking on a link
-to tha URL will load `doc.html` and scroll to the `link` element.
+to that URL will load `doc.html` and scroll to the `link` element.
 
 This work also formed and inspired one of the key parts of Douglas Engelbart's
 [mother of all demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos),
