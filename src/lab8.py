@@ -80,15 +80,6 @@ def resolve_url(url, current):
             dir, _ = dir.rsplit("/", 1)
         return dir + "/" + url
 
-def percent_encode(s):
-    out = ""
-    for c in s:
-        if c.isalnum():
-            out += c
-        else:
-            out += "%" + hex(ord(c))[2:]
-    return s
-
 class Text:
     def __init__(self, text, parent):
         self.text = text
