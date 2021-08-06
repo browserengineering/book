@@ -364,12 +364,8 @@ class Tab:
 ```
 
 Once we've found the button, we need to find the form that it's in, by
-walking up the HTML tree:[^3]
+walking up the HTML tree:
 
-[^3]: Fun fact: HTML standardizes the `form` attribute for _input
-    elements_, and in principle allows an input element to be
-    outside the form it is supposed to be submitted with. But no
-    browser implements that.
 
 ``` {.python indent=12}
 elif elt.tag == "button":
