@@ -704,6 +704,26 @@ def form_decode(body):
     return params
 ```
 
+Here the percent-decoding is just the inverse of percent-encoding:
+
+``` {.python file=server}
+def percent_decode(s):
+    parts = s.split("%")
+    out = parts[0]
+    for part in parts[1:]:
+        if part[0] in "0123456789abcdef" and \
+           part[1] in "0123456789abcdef":
+            out += chr(int(part[0:2], 16))
+            out += part[2:]
+        else:
+            out += part
+    return out
+```
+
+This code is a little weird, using `split` to find and operate on all
+the percent-encoded bits, but it does work. An alternative would be
+a state machine much like our lexer in [Chapter 2](graphics.md).
+
 Now that we have form submissions, `handle_request` will field two
 kinds of requests: regular browsing and form submissions. Let's
 separate the two kinds of requests into different functions. Rename
