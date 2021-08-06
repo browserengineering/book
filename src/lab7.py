@@ -624,6 +624,9 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
+    def __repr__(self):
+        return "Tab(history={})".format(self.history)
+
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
