@@ -21,7 +21,7 @@ elements,[^or-others] which in turn can be edited by the user. So a
 form might look like this:
 
 [^or-others]: There are other elements similar to `input`, such as
-    `select` or `textarea`. They work similarly enough; they just
+    `select` and `textarea`. They work similarly enough; they just
     represent different kinds of user controls, like dropdowns and
     multi-line inputs.
 
@@ -196,7 +196,7 @@ rectangles.
 
 ::: {.further}
 The real reason buttons surround their contents is because a button
-might contain an image, or styled text, or something like that---this
+might contain an image, styled text, or other content. This
 code doesn't support that, which in real browsers relies on something
 called the `inline-block` display mode. You could implement that by
 having the `InputLayout` have a child `BlockLayout`, but I'm skipping
@@ -367,7 +367,7 @@ Once we've found the button, we need to find the form that it's in, by
 walking up the HTML tree:[^3]
 
 [^3]: Fun fact: HTML standardizes the `form` attribute for _input
-    elements_, which in principle allows an input element to be
+    elements_, and in principle allows an input element to be
     outside the form it is supposed to be submitted with. But no
     browser implements that.
 
@@ -431,7 +431,7 @@ for input in inputs:
 You can write your own `percent_encode` function using Python's `ord`
 and `hex` functions instead if you'd like,[^why-use-library] but here
 we're using the standard function for expediency; it's not a
-particularly interesting funciton, but it is necessary (if you skip
+particularly interesting funciton, but it is necessary. (If you skip
 percent encoding, your browser won't handle requests with equal signs,
 percent signs, or ampersands correctly).
 
@@ -462,7 +462,7 @@ def load(self, url, body=None):
     headers, body = request(url, body)
 ```
 
-Then `request` can send the that request body. That requires a few
+Then `request` can send that request body. That requires a few
 changes to `request`. First, it needs to use `POST`, not `GET`:
 
 ``` {.python}
@@ -558,7 +558,7 @@ taken on your machine.
 
 Now, before the `bind` call is a `setsockopt` call. If a server
 crashes with a connection open on some port, your OS prevents the port
-from being reused[^why-wait] for a few seconds. So if your server
+from being reused[^why-wait] for a short period. So if your server
 crashes, normally you need to wait about a minute before you restart
 it, or you'll get errors about addresses being in use. By calling
 `setsockopt` with the `SO_REUSEADDR` option we change that default and
@@ -700,24 +700,8 @@ def form_decode(body):
     params = {}
     for field in body.split("&"):
         name, value = field.split("=", 1)
-        params[percent_decode(name)] = percent_decode(value)
+        params[urllib.unquote(name)] = urllib.unquote(value)
     return params
-```
-
-Here the percent-decoding is just the inverse of percent-encoding:
-
-``` {.python file=server}
-def percent_decode(s):
-    parts = s.split("%")
-    out = parts[0]
-    for part in parts[1:]:
-        if part[0] in "0123456789abcdef" and \
-           part[1] in "0123456789abcdef":
-            out += chr(int(part[0:2], 16))
-            out += part[2:]
-        else:
-            out += part
-    return out
 ```
 
 This code is a little weird, using `split` to find and operate on all
