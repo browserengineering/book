@@ -35,7 +35,7 @@ def handle_request(method, url, headers, body):
     elif method == "GET" and url == "/":
         return "200 OK", show_comments()
     else:
-        raise "404 Not Found", not_found(url, method)
+        return "404 Not Found", not_found(url, method)
 
 def show_comments():
     out = "<!doctype html>"
