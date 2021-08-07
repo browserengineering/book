@@ -456,9 +456,6 @@ class TextLayout:
         display_list.append(
             DrawText(self.x, self.y, self.word, self.font, color))
 
-    def __repr__(self):
-        return "TextLayout({})".format(self.word)
-
 INPUT_WIDTH_PX = 200
 
 class InputLayout:
