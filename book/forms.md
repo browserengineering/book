@@ -114,10 +114,12 @@ capabilities, let's go with a style like this:
 
 ``` {.css}
 input {
+    display: inline;
     font-size: 16px; font-weight: normal; font-style: normal;
     background-color: lightblue;
 }
 button {
+    display: inline;
     font-size: 16px; font-weight: normal; font-style: normal;
     background-color: orange;
 }
@@ -318,7 +320,7 @@ onscreen, by finding its layout object:
 
 ``` {.python indent=8}
 if self.focus:
-    obj = [obj for obj in tree_to_list(self.document)
+    obj = [obj for obj in tree_to_list(self.document, [])
            if obj.node == self.focus][0]
 ```
 
@@ -338,7 +340,7 @@ And finally draw the cursor itself:
 ``` {.python indent=8}
 if self.focus:
     # ...
-    self.canvas.create_line(x, y, x, y + obj.height)
+    canvas.create_line(x, y, x, y + obj.height)
 ```
 
 Excellent: you can now click on a text entry to type into it and
@@ -383,7 +385,7 @@ find `input` elements:
 ``` {.python}
 class Tab:
     def submit_form(self, elt):
-        inputs = [node for node in tree_to_list(elt)
+        inputs = [node for node in tree_to_list(elt, [])
                   if isinstance(node, Element)
                   and node.tag == "input"
                   and "name" in node.attributes]
@@ -487,7 +489,7 @@ letters. Finally, we need to add the actual payload and send it:
 ``` {.python}
 def request(url, payload=None):
     # ...
-    body += "\r\n" + payload
+    body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
     # ...
 ```
