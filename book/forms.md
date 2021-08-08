@@ -172,11 +172,18 @@ class InlineLayout:
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node)
-            for child in node.children:
-                self.recurse(child)
+            if node.tag != "button":
+                for child in node.children:
+                    self.recurse(child)
 ```
 
-The new `input` element is based on how the `text` method handles each
+Note that text children of `button` elements are ignored. This is because
+the text contains the content of the button, not text to go after it.
+Text `input` elements, on the other hand, use the `value` attribute to draw
+their contents, and any text children are laid out next to the `input` as if
+they were sibligs in the document tree.
+
+The new `input` method is based on how the `text` method handles each
 word:
 
 ``` {.python}
@@ -197,15 +204,17 @@ With all of this done, you should be able to open a web page with
 rectangles.
 
 ::: {.further}
-The real reason buttons surround their contents is because a button
-might contain an image, styled text, or other content. This
-code doesn't support that, which in real browsers relies on something
-called the `inline-block` display mode. You could implement that by
-having the `InputLayout` have a child `BlockLayout`, but I'm skipping
-it here for simplicity.
+The reason buttons surround their contents (instead of using an attribute) is
+that a button might contain an image, styled text, or other content. Our
+browser doesn't support that situation, which in real browsers relies on
+something called the `inline-block` display mode - a way of putting a block
+element within an inline. You could implement that by having the `InputLayout`
+have a child `BlockLayout`, but I'm skipping it here for simplicity.
+
+Real browsers can also nest inline layout objects. Inline layout objects in
+general form a tree of their own. This tree is needed for styling and hit
+testing parts of this tree.
 :::
-
-
 
 Interacting with widgets
 ========================

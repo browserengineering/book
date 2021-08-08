@@ -567,8 +567,6 @@ class InlineLayout:
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node)
-            # Don't recurse for buttons - they have special handling of text
-            # children.
             if node.tag != "button":
                 for child in node.children:
                     self.recurse(child)
