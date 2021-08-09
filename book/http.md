@@ -15,7 +15,7 @@ Connecting to a server
 To display a web page, the browser first needs to get a copy of it.
 So, it asks the OS to put it in touch with a *server* somewhere on the
 internet; the first part of the web page's URL (before the first `/`)
-tells it the server's *host name*. The OS then talks to a *DNS server*
+tells it the server's *host name*. The OS then talks to a *DNS* server
 which converts[^5] a host name like `example.org` into a *destination
 IP address* like `93.184.216.34`.[^6] Then the OS decides which
 hardware is best for communicating with that destination IP address
@@ -57,8 +57,7 @@ You'll get output that looks like this:
 
     Trying 93.184.216.34...
     Connected to example.org.
-    Escape character is '^]
-    '.
+    Escape character is '^]'.
 
 This means that the OS converted the host name `example.org` into the
 IP address `93.184.216.34` and was able to connect to it.[^10] You can
@@ -78,13 +77,14 @@ Requesting information
 ======================
 
 Once it's connected, the browser requests information from the server
-by giving its path, the path being the part of a URL that comes after
+by giving its *path*, the path being the part of a URL that comes after
 the host name, like `/index.html`. The request looks like this; you
 should type it into `telnet`:
 
 ``` {.example}
 GET /index.html HTTP/1.0
 Host: example.org
+
 ```
 
 Here, the word `GET` means that the browser would like to receive
@@ -145,7 +145,7 @@ and that it found your request to be "OK" (which has a numeric code of
 200). You may be familiar with `404 Not Found`; that's another numeric
 code and response, as are `403 Forbidden` or `500 Server Error`. There
 are lots of these codes,^[As any look at a [flow
-chart](https://github.com/for-GET/http-decision-diagram) will show]
+chart](https://github.com/for-GET/http-decision-diagram) will show.]
 and they have a pretty neat organization scheme:^[The status text like
 `OK` can actually be anything and is just there for humans, not for
 machines.]
@@ -288,7 +288,7 @@ on the type of server you're connecting to; for now it should be 80.
 s.connect(("example.org", 80))
 ```
 
-This talks to `example.org` do set up the connection and ready both
+This talks to `example.org` to set up the connection and ready both
 computers to exchange data.
 
 ::: {.quirk}

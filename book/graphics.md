@@ -5,8 +5,8 @@ prev: http
 next: text
 ...
 
-A web browser doesn't just download web page; it also has to show that
-page to the user. In the 21^st^ century, that means a graphical
+A web browser doesn't just download a web page; it also has to show
+that page to the user. In the 21^st^ century, that means a graphical
 application. How does that work? In this chapter we'll equip the toy
 browser with a graphical user interface.[^1]
 
@@ -576,8 +576,10 @@ project](https://openmoji.org), download the emoji for ["grinning
 face"](https://openmoji.org/library/#search=smiley%20face&emoji=1F600)
 as a PNG file, convert to GIF, resize it to 16×16 pixels, and save it
 to the same folder as the browser. Use Tk's `PhotoImage` class to load
-the image and then `canvas.create_image` to draw it to the screen. You
-can add other emojis if you'd like!
+the image and then the `create_image` method to draw it to the canvas.
+In fact, download the whole OpenMoji library (look for the "Get
+OpenMojis" button at the top right)---then your browser can look up
+whatever emoji is used in the page.
 
 *Resizing*: Make the browser resizable. To do so, pass the `fill` and
 `expand` arguments to `canvas.pack`, call and bind to the
