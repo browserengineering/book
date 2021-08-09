@@ -21,5 +21,4 @@ Testing LineLayout
     >>> browser.load(url)
     >>> browser.tabs
     [Tab(history=['http://test.test/example'])]
-    >>> browser.tabs[0].document
-    DocumentLayout()
+    >>> lab7.print_tree(browser.tabs[0].document)
