@@ -20,4 +20,6 @@ Testing LineLayout
     >>> browser = lab7.Browser()
     >>> browser.load(url)
     >>> browser.tabs
+    [Tab(history=['http://test.test/example'])]
     >>> browser.tabs[0].document
+    DocumentLayout()
