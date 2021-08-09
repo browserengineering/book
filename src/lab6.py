@@ -131,6 +131,10 @@ class TagSelector:
     def matches(self, node):
         return isinstance(node, Element) and self.tag == node.tag
 
+    def __repr__(self):
+        return "TagSelector(tag={}, priority={})".format(
+            self.tag, self.priority)
+
 class DescendantSelector:
     def __init__(self, ancestor, descendant):
         self.ancestor = ancestor
@@ -143,6 +147,11 @@ class DescendantSelector:
             if self.ancestor.matches(node.parent): return True
             node = node.parent
         return False
+
+    def __repr__(self):
+        return ("DescendantSelector(ancestor={}, " +
+            "descendant={}, priority={}").format(
+            self.ancestor, self.descendant, self.priority)
 
 INHERITED_PROPERTIES = {
     "font-size": "16px",
@@ -219,6 +228,9 @@ def layout_mode(node):
     else:
         return "block"
 
+    def __repr__(self):
+        return "BlockLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
@@ -292,6 +304,10 @@ class InlineLayout:
         for x, y, word, font, color in self.display_list:
             display_list.append(DrawText(x, y, word, font, color))
 
+    def __repr__(self):
+        return "InlineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
@@ -311,6 +327,9 @@ class DocumentLayout:
 
     def paint(self, display_list):
         self.children[0].paint(display_list)
+
+    def __repr__(self):
+        return "DocumentLayout()"
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -367,7 +386,7 @@ class Browser:
             rules.extend(CSSParser(body).parse())
         style(self.nodes, sorted(rules, key=cascade_priority))
 
-        self.document = DocumentLayout(nodes)
+        self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
         self.document.paint(self.display_list)
