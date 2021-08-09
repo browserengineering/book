@@ -8,7 +8,13 @@ import socket
 import ssl
 import tkinter
 import tkinter.font
+from lab4 import print_tree
 from lab1 import request
+from lab4 import Element
+from lab4 import HTMLParser
+from lab4 import Text
+from lab5 import BlockLayout
+from lab5 import DrawRect
 
 def resolve_url(url, current):
     if "://" in url:
@@ -25,133 +31,11 @@ def resolve_url(url, current):
             dir, _ = dir.rsplit("/", 1)
         return dir + "/" + url
 
-class Text:
-    def __init__(self, text, parent):
-        self.text = text
-        self.children = []
-        self.parent = parent
-
-    def __repr__(self):
-        return repr(self.text)
-
-class Element:
-    def __init__(self, tag, attributes, parent):
-        self.tag = tag
-        self.attributes = attributes
-        self.children = []
-        self.parent = parent
-
-    def __repr__(self):
-        attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
-        return "<" + self.tag + "".join(attrs) + ">"
-
-def print_tree(node, indent=0):
-    print(" " * indent, node)
-    for child in node.children:
-        print_tree(child, indent + 2)
-
 def tree_to_list(tree, list):
     list.append(tree)
     for child in tree.children:
         tree_to_list(child, list)
     return list
-
-class HTMLParser:
-    def __init__(self, body):
-        self.body = body
-        self.unfinished = []
-
-    def parse(self):
-        text = ""
-        in_tag = False
-        for c in self.body:
-            if c == "<":
-                in_tag = True
-                if text: self.add_text(text)
-                text = ""
-            elif c == ">":
-                in_tag = False
-                self.add_tag(text)
-                text = ""
-            else:
-                text += c
-        if not in_tag and text:
-            self.add_text(text)
-        return self.finish()
-
-    def get_attributes(self, text):
-        parts = text.split()
-        tag = parts[0].lower()
-        attributes = {}
-        for attrpair in parts[1:]:
-            if "=" in attrpair:
-                key, value = attrpair.split("=", 1)
-                if len(value) > 2 and value[0] in ["'", "\""]:
-                    value = value[1:-1]
-                attributes[key.lower()] = value
-            else:
-                attributes[attrpair.lower()] = ""
-        return tag, attributes
-
-    def add_text(self, text):
-        if text.isspace(): return
-        self.implicit_tags(None)
-        parent = self.unfinished[-1]
-        node = Text(text, parent)
-        parent.children.append(node)
-
-    SELF_CLOSING_TAGS = [
-        "area", "base", "br", "col", "embed", "hr", "img", "input",
-        "link", "meta", "param", "source", "track", "wbr",
-    ]
-
-    def add_tag(self, tag):
-        tag, attributes = self.get_attributes(tag)
-        if tag.startswith("!"): return
-        self.implicit_tags(tag)
-
-        if tag.startswith("/"):
-            if len(self.unfinished) == 1: return
-            node = self.unfinished.pop()
-            parent = self.unfinished[-1]
-            parent.children.append(node)
-        elif tag in self.SELF_CLOSING_TAGS:
-            parent = self.unfinished[-1]
-            node = Element(tag, attributes, parent)
-            parent.children.append(node)
-        else:
-            parent = self.unfinished[-1] if self.unfinished else None
-            node = Element(tag, attributes, parent)
-            self.unfinished.append(node)
-
-    HEAD_TAGS = [
-        "base", "basefont", "bgsound", "noscript",
-        "link", "meta", "title", "style", "script",
-    ]
-
-    def implicit_tags(self, tag):
-        while True:
-            open_tags = [node.tag for node in self.unfinished]
-            if open_tags == [] and tag != "html":
-                self.add_tag("html")
-            elif open_tags == ["html"] \
-                 and tag not in ["head", "body", "/html"]:
-                if tag in self.HEAD_TAGS:
-                    self.add_tag("head")
-                else:
-                    self.add_tag("body")
-            elif open_tags == ["html", "head"] and \
-                 tag not in ["/head"] + self.HEAD_TAGS:
-                self.add_tag("/head")
-            else:
-                break
-
-    def finish(self):
-        while len(self.unfinished) > 1:
-            node = self.unfinished.pop()
-            parent = self.unfinished[-1]
-            parent.children.append(node)
-        return self.unfinished.pop()
 
 class CSSParser:
     def __init__(self, s):
@@ -344,47 +228,6 @@ def layout_mode(node):
     else:
         return "block"
 
-class BlockLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-    def layout(self):
-        breakpoint("layout_pre", self)
-        previous = None
-        for child in self.node.children:
-            if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous)
-            else:
-                next = BlockLayout(child, self, previous)
-            self.children.append(next)
-            previous = next
-
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        for child in self.children:
-            child.layout()
-
-        self.height = sum([child.height for child in self.children])
-
-        breakpoint("layout_post", self)
-
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
-
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
@@ -433,7 +276,7 @@ class InlineLayout:
         font = tkinter.font.Font(size=size, weight=weight, slant=style)
         for word in node.text.split():
             w = font.measure(word)
-            if self.cursor_x + w > WIDTH - HSTEP:
+            if self.cursor_x + w > self.width - HSTEP:
                 self.flush()
             self.line.append((self.cursor_x, word, font, color))
             self.cursor_x += w + font.measure(" ")
@@ -507,22 +350,6 @@ class DrawText:
             fill=self.color,
         )
 
-class DrawRect:
-    def __init__(self, x1, y1, x2, y2, color):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
-        self.color = color
-
-    def execute(self, scroll, canvas):
-        canvas.create_rectangle(
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
-            width=0,
-            fill=self.color,
-        )
-
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -542,11 +369,11 @@ class Browser:
 
     def load(self, url):
         headers, body = request(url)
-        nodes = HTMLParser(body).parse()
+        self.nodes = HTMLParser(body).parse()
 
         rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
-                 for node in tree_to_list(nodes, [])
+                 for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
                  and "href" in node.attributes
@@ -557,9 +384,9 @@ class Browser:
             except:
                 continue
             rules.extend(CSSParser(body).parse())
-        style(nodes, sorted(rules, key=cascade_priority))
+        style(self.nodes, sorted(rules, key=cascade_priority))
 
-        self.document = DocumentLayout(nodes)
+        self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
         self.document.paint(self.display_list)

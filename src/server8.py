@@ -1,4 +1,5 @@
 import socket
+import urllib.parse
 
 def handle_connection(conx):
     req = conx.makefile("rb")
@@ -34,7 +35,7 @@ def handle_request(method, url, headers, body):
     elif method == "GET" and url == "/":
         return "200 OK", show_comments()
     else:
-        raise "404 Not Found", not_found(url, method)
+        return "404 Not Found", not_found(url, method)
 
 def show_comments():
     out = "<!doctype html>"
@@ -60,20 +61,8 @@ def form_decode(body):
     params = {}
     for field in body.split("&"):
         name, value = field.split("=", 1)
-        params[name] = percent_decode(value)
+        params[name] = urlllib.parse.unquote(value)
     return params
-
-def percent_decode(s):
-    parts = s.split("%")
-    out = parts[0]
-    for part in parts[1:]:
-        if part[0] in "0123456789abcdef" and \
-           part[1] in "0123456789abcdef":
-            out += chr(int(part[0:2], 16))
-            out += part[2:]
-        else:
-            out += part
-    return out
 
 if __name__ == "__main__":
     s = socket.socket(

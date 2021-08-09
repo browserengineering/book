@@ -48,6 +48,10 @@ class Element:
         self.parent = parent
 ```
 
+I added a `children` field to both `Text` and `Element`, even though
+text nodes never have children. That's for consistency, to avoid
+`isinstance` calls throughout the code.
+
 Constructing a tree of nodes from source code is called parsing. A
 parser builds a tree one element or text node at a time. But that
 means the parser needs to store an *incomplete* tree. For example,

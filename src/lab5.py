@@ -163,7 +163,7 @@ class InlineLayout:
         )
         for word in node.text.split():
             w = font.measure(word)
-            if self.cursor_x + w > WIDTH - HSTEP:
+            if self.cursor_x + w > self.width - HSTEP:
                 self.flush()
             self.line.append((self.cursor_x, word, font))
             self.cursor_x += w + font.measure(" ")

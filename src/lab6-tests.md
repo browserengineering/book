@@ -38,7 +38,7 @@ Testing tree_to_list
     >>> list = []
     >>> retval = lab6.tree_to_list(browser.document, list)
     >>> retval
-    [DocumentLayout(), BlockLayout(x=13, y=18, width=774, height=14.399999999999999), BlockLayout(x=13, y=18, width=774, height=14.399999999999999), InlineLayout(x=13, y=18, width=774, height=14.399999999999999)]
+    [DocumentLayout(), BlockLayout(x=13, y=18, width=774, height=19.199999999999996), BlockLayout(x=13, y=18, width=774, height=19.199999999999996), InlineLayout(x=13, y=18, width=774, height=19.199999999999996)]
     >>> retval == list
     True
 
