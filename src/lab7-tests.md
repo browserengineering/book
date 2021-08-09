@@ -22,3 +22,7 @@ Testing LineLayout
     >>> browser.tabs
     [Tab(history=['http://test.test/example'])]
     >>> lab7.print_tree(browser.tabs[0].document)
+     DocumentLayout()
+       BlockLayout(x=13, y=18, width=774, height=57.59999999999998)
+         BlockLayout(x=13, y=18, width=774, height=57.59999999999998)
+           InlineLayout(x=13, y=18, width=774, height=57.59999999999998)
