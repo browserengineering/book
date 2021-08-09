@@ -166,3 +166,9 @@ def patch_breakpoint():
 
 def unpatch_breakpoint():
     builtins.breakpoint = builtin_breakpoint
+
+class Event:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+

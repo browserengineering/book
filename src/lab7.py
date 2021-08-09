@@ -13,7 +13,6 @@ from lab1 import request
 from lab4 import HTMLParser
 from lab4 import Text
 from lab4 import Element
-from lab5 import BlockLayout
 from lab5 import DocumentLayout
 from lab5 import DrawRect
 from lab6 import cascade_priority
@@ -30,12 +29,86 @@ from lab6 import CSSParser
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
+class DocumentLayout:
+    def __init__(self, node):
+        self.node = node
+        self.parent = None
+        self.previous = None
+        self.children = []
+
+    def layout(self):
+        breakpoint("layout_pre", self)
+        child = BlockLayout(self.node, self, None)
+        self.children.append(child)
+
+        self.width = WIDTH - 2*HSTEP
+        self.x = HSTEP
+        self.y = VSTEP
+        child.layout()
+        self.height = child.height + 2*VSTEP
+        breakpoint("layout_post", self)
+
+    def paint(self, display_list):
+        self.children[0].paint(display_list)
+
+    def __repr__(self):
+        return "DocumentLayout()"
+
+class BlockLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def layout(self):
+        breakpoint("layout_pre", self)
+        previous = None
+        for child in self.node.children:
+            if layout_mode(child) == "inline":
+                next = InlineLayout(child, self, previous)
+            else:
+                next = BlockLayout(child, self, previous)
+            self.children.append(next)
+            previous = next
+
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for child in self.children:
+            child.layout()
+
+        self.height = sum([child.height for child in self.children])
+
+        breakpoint("layout_post", self)
+
+    def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
+    def __repr__(self):
+        return "BlockLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 class LineLayout:
     def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
         self.previous = previous
         self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
 
     def layout(self):
         self.width = self.parent.width
@@ -65,7 +138,11 @@ class LineLayout:
     def paint(self, display_list):
         for child in self.children:
             child.paint(display_list)
-            
+
+    def __repr__(self):
+        return "LineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 class TextLayout:
     def __init__(self, node, word, parent, previous):
         self.node = node
@@ -73,6 +150,11 @@ class TextLayout:
         self.children = []
         self.parent = parent
         self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
 
     def layout(self):
         weight = self.node.style["font-weight"]
@@ -97,6 +179,10 @@ class TextLayout:
         color = self.node.style["color"]
         display_list.append(
             DrawText(self.x, self.y, self.word, self.font, color))
+    
+    def __repr__(self):
+        return "TextLayout(x={}, y={}, width={}, height={}, font={}".format(
+            self.x, self.y, self.width, self.height, self.font)
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
@@ -163,6 +249,10 @@ class InlineLayout:
             display_list.append(rect)
         for child in self.children:
             child.paint(display_list)
+
+    def __repr__(self):
+        return "LineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
 
 SCROLL_STEP = 100
 CHROME_PX = 100
