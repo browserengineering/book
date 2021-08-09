@@ -14,7 +14,6 @@ from lab4 import Element
 from lab4 import HTMLParser
 from lab4 import Text
 from lab5 import BlockLayout
-from lab5 import DocumentLayout
 from lab5 import DrawRect
 
 def resolve_url(url, current):
