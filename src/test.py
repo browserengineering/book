@@ -81,6 +81,15 @@ class SilentCanvas:
     def create_rectangle(self, x1, y1, x2, y2, width=None, fill=None):
         pass
 
+    def create_line(self, x1, y1, x2, y2):
+        pass
+
+    def create_line(self, x1, y1, x2, y2):
+        pass
+
+    def create_polygon(self, *args, **kwargs):
+        pass
+
     def pack(self):
         pass
 
@@ -157,3 +166,9 @@ def patch_breakpoint():
 
 def unpatch_breakpoint():
     builtins.breakpoint = builtin_breakpoint
+
+class Event:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
