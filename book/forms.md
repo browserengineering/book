@@ -817,11 +817,19 @@ able to use the guest book from a real web browser.
 Summary
 =======
 
-We've added an important new capability, form submission, to our web
-browser. It is a humble beginning, but our toy web browser is no
-longer just for reading pages: it is becoming an application platform.
-Plus, we now have a little web server for our browser to talk to. Life
-is better with friends!
+With this chapter we're starting to transform our browser into an
+application platform. We've added:
+
+- Layout objects for input areas and buttons;
+- Code to click on buttons and type into input areas;
+- Hierarchical focus handling;
+- Code to submit forms and send them to a server;
+
+Plus, our browser now has a little web server friend. That's going to
+be handy as we add more interactive features to the browser.
+
+::: {.signup}
+:::
 
 Outline
 =======
