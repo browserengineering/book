@@ -765,6 +765,22 @@ longer just for reading pages: it is becoming an application platform.
 Plus, we now have a little web server for our browser to talk to. Life
 is better with friends!
 
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab8.py
+:::
+
+There's also a server now, but it is much simpler:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/server8.py
+:::
+
 Exercises
 =========
 

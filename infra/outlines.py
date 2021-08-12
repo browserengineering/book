@@ -16,7 +16,10 @@ class Function(Item):
     args: List[str]
     
     def str(self):
-        args = self.args if self.args[0] != "self" else self.args[1:]
+        if len(self.args) > 0 and self.args[0] == "self":
+            args = self.args[1:]
+        else:
+            args = self.args
         return "def {}({})".format(self.name, ", ".join(args))
 
     def html(self):
