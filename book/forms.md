@@ -6,10 +6,11 @@ next: scripts
 ...
 
 So far, our browser has seen the web as read only---but when you post
-on Facebook, fill our a survey, or search Google, you're sending
+on Facebook, fill out a survey, or search Google, you're sending
 information *to* servers as well as receiving information from them.
-In this chapter, we'll build out support for HTML forms to understand
-how the browser writes as well as reads the web.
+In this chapter, we'll start to transform our browser into a platform
+for web applications by building out support for HTML forms, the
+simplest way for a browser to send information to a server.
 
 How forms work
 ==============
@@ -64,26 +65,25 @@ normal, and the browser then does everything it normally does.
 
 Forms require extensions across the whole browser to function
 properly, from implementing HTTP `POST` through new layout objects
-that draw `<input>` elements to handling buttons clicks. Let's get
+that draw `input` elements to handling buttons clicks. That makes it
+a great starting point for transforming our toy browser into an
+application platform---our goal for these next few chapters. Let's get
 started implementing all that!
 
 
 Rendering widgets
 =================
 
-First, let's draw the input areas that the user will fill out.
-Normally, applications want their input areas to look the same as in
-other applications on the same OS, so they use OS libraries to draw an
-input area directly.[^ttk] But browsers need a lot of control over
-application styling, so they often draw input areas directly.
+First, let's draw the input areas that the user will fill
+out.[^styled-widgets] Input areas are inline content, laid out in
+lines next to text. So to support inputs we'll need a new kind of
+layout object, which I'll call `InputLayout`. We can copy `TextLayout`
+and use it as a template, but need to make some quick edits.
 
-[^ttk]: For Python's Tk library, that's possible with the `ttk` library.
-
-`<input>` elements are inline content, like text, laid out in lines.
-So to support inputs we'll need a new kind of layout object, which
-I'll call `InputLayout`. Let's start by copying `TextLayout` and
-renaming it to `InputLayout`. We'll then need to make some quick
-edits.
+[^styled-widgets]: Most applications use OS libraries to draw input
+areas, so that those input areas look like other applications on that
+OS. But browsers need a lot of control over application styling, so
+they often draw their own input areas.
 
 First, there's no `word` argument to `InputLayout`s:
 
@@ -96,7 +96,7 @@ class InputLayout:
         self.previous = previous
 ```
 
-Second, let's give `InputLayout` objects a fixed width:
+Second, `input` elements usually have a fixed width:
 
 ``` {.python}
 INPUT_WIDTH_PX = 200
@@ -108,9 +108,9 @@ class InputLayout:
         # ...
 ```
 
-These `input` and `button` elements need to be visually distinct so
-the user can easily find them. With our browser's limited styling
-capabilities, let's go with a style like this:
+The `input` and `button` elements need to be visually distinct so the
+user can find them easily. Our browser's styling capabilities are
+limited, so let's use background color to do that:
 
 ``` {.css}
 input {
@@ -123,7 +123,7 @@ button {
 }
 ```
 
-So when the browser paints an `InputLayout` it needs to draw both a
+When the browser paints an `InputLayout` it needs to draw the
 background:
 
 ``` {.python}
@@ -137,7 +137,7 @@ class InputLayout:
             display_list.append(rect)
 ```
 
-And also the text inside:
+It also needs to draw the text inside:
 
 ``` {.python}
 class InputLayout:
@@ -154,8 +154,8 @@ class InputLayout:
 ```
 
 By this point in the book, you've seen new layout objects plenty of
-times. So I'm not describing this code in detail; new layout objects
-is just one of the standard ways you extend the browser.
+times. So I'm glossing over details; the point is that new layout
+objects are one standard place to extend the browser.
 
 With `InputLayout` written we now need to create some of these layout
 objects. We'll do so in `InlineLayout`:
@@ -170,19 +170,17 @@ class InlineLayout:
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node)
-            if node.tag != "button":
+            else:
                 for child in node.children:
                     self.recurse(child)
 ```
 
-Note that text children of `button` elements are ignored. This is because
-the text contains the content of the button, not text to go after it.
-Text `input` elements, on the other hand, use the `value` attribute to draw
-their contents, and any text children are laid out next to the `input` as if
-they were sibligs in the document tree.
+Note we don't recurse into `button` elements, because the button
+element is reponsible for drawing its contents. Meanwhile `input`
+elements are self-closing, so they never have children.
 
-The new `input` method is based on how the `text` method handles each
-word:
+Finally, this new `input` method is similar to the `text` method,
+creating a new layout object and adding it to the current line:
 
 ``` {.python}
 class InlineLayout:
@@ -197,21 +195,14 @@ class InlineLayout:
         self.cursor_x += w + font.measure(" ")
 ```
 
-With all of this done, you should be able to open a web page with
-`input` and `button` elements, and see them show up as blue and orange
-rectangles.
+With these changes the browser should now draw with `input` and
+`button` elements as blue and orange rectangles.
 
 ::: {.further}
-The reason buttons surround their contents (instead of using an attribute) is
-that a button might contain an image, styled text, or other content. Our
-browser doesn't support that situation, which in real browsers relies on
-something called the `inline-block` display mode - a way of putting a block
-element within an inline. You could implement that by having the `InputLayout`
-have a child `BlockLayout`, but I'm skipping it here for simplicity.
-
-Real browsers can also nest inline layout objects. Inline layout objects in
-general form a tree of their own. This tree is needed for styling and hit
-testing parts of this tree.
+The reason buttons surround their contents but input areas don't is
+that a buttons can contain images, styled text, or other content. In a
+real browser, that relies on the `inline-block` display mode: a way of
+putting a block element within an inline.
 :::
 
 Interacting with widgets
@@ -814,3 +805,10 @@ page, from `/`, show links to each topic's page.
 field to the next. Implement this behavior in your browser. The "tab
 order" of input elements should be the same as the order of `<input>`
 elements on the page.
+
+*Rich buttons*: Make it possible for a button to contain arbitrary
+elements as children, and render them correctly. The children should
+be contained inside button instead of spilling out---this can make a
+button really tall. Think about edge cases, like a button that
+contains another button, an input area, or a link, and test real
+browsers to see what they do.

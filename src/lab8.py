@@ -567,7 +567,7 @@ class InlineLayout:
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node)
-            if node.tag != "button":
+            else:
                 for child in node.children:
                     self.recurse(child)
 
