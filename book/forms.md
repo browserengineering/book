@@ -632,10 +632,10 @@ def handle_connection(conx):
     else:
         body = None
 
-    status, body = handle_request(method, url, headers, body)
+    status, body = do_request(method, url, headers, body)
 ```
 
-Let's fill in `handle_request` later; it returns a string containing
+Let's fill in `do_request` later; it returns a string containing
 the resulting HTML web page. We need to send it back to the browser:
 
 ``` {.python file=server}
@@ -654,17 +654,17 @@ using HTTP 1.0 to talk to it, it doesn't send back any headers at all
 except `Content-Length`, and so on. Again---this is a web *browser*
 book. But it'll do.
 
-Now all that's left is implementing `handle_request`. We want some kind
+Now all that's left is implementing `do_request`. We want some kind
 of guest book, so let's create a list to store guest book entries:
 
 ``` {.python file=server}
 ENTRIES = [ 'Pavel was here' ]
 ```
 
-The `handle_request` function outputs a little HTML page with those entries:
+The `do_request` function outputs a little HTML page with those entries:
 
 ``` {.python file=server}
-def handle_request(method, url, headers, body):
+def do_request(method, url, headers, body):
     out = "<!doctype html>"
     for entry in ENTRIES:
         out += "<p>" + entry + "</p>"
@@ -686,7 +686,7 @@ Now, let's make it possible to add to the guest book. First, let's add
 a form to the top of the page:
 
 ``` {.python file=server}
-def handle_request(method, url, headers, body):
+def do_request(method, url, headers, body):
     # ...
     out += "<form action=add method=post>"
     out +=   "<p><input name=guest></p>"
@@ -708,10 +708,10 @@ def form_decode(body):
     return params
 ```
 
-Now that we have form submissions, `handle_request` will field two
+Now that we have form submissions, `do_request` will field two
 kinds of requests: regular browsing and form submissions. Let's
 separate the two kinds of requests into different functions. Rename
-the current `handle_request` to `show_comments`:
+the current `do_request` to `show_comments`:
 
 ``` {.python file=server}
 def show_comments():
@@ -728,11 +728,11 @@ def add_entry(params):
     return show_comments()
 ```
 
-This frees up the `handle_request` function to just figure out which
+This frees up the `do_request` function to just figure out which
 of these two functions to call:
 
 ``` {.python file=server}
-def handle_request(method, url, headers, body):
+def do_request(method, url, headers, body):
     if method == "POST" and url == "/add":
         params = form_decode(body)
         return "200 OK", add_entry(params)

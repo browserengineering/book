@@ -18,7 +18,7 @@ def handle_connection(conx):
     else:
         body = None
 
-    status, body = handle_request(method, url, headers, body)
+    status, body = do_request(method, url, headers, body)
     response = "HTTP/1.0 {}\r\n".format(status)
     response += "Content-Length: {}\r\n".format(
         len(body.encode("utf8")))
@@ -26,9 +26,7 @@ def handle_connection(conx):
     conx.send(response.encode('utf8'))
     conx.close()
 
-ENTRIES = [ 'Pavel was here' ]
-
-def handle_request(method, url, headers, body):
+def do_request(method, url, headers, body):
     if method == "POST" and url == "/add":
         params = form_decode(body)
         return "200 OK", add_entry(params)
@@ -36,6 +34,15 @@ def handle_request(method, url, headers, body):
         return "200 OK", show_comments()
     else:
         return "404 Not Found", not_found(url, method)
+
+def form_decode(body):
+    params = {}
+    for field in body.split("&"):
+        name, value = field.split("=", 1)
+        params[name] = urllib.parse.unquote(value)
+    return params
+
+ENTRIES = [ 'Pavel was here' ]
 
 def show_comments():
     out = "<!doctype html>"
@@ -56,13 +63,6 @@ def add_entry(params):
     if 'guest' in params:
         ENTRIES.append(params['guest'])
     return show_comments()
-
-def form_decode(body):
-    params = {}
-    for field in body.split("&"):
-        name, value = field.split("=", 1)
-        params[name] = urllib.parse.unquote(value)
-    return params
 
 if __name__ == "__main__":
     s = socket.socket(
