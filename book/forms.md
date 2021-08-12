@@ -502,13 +502,49 @@ build browser applications.
 Something about event dispatching
 :::
 
+How web applications work
+=========================
+
+So... How do forms support web applications? When you use an
+application from your browser---whether you are registering to vote,
+looking at pictures of your baby cousin, or checking your
+email---there are typically[^exceptions] two components involved: a
+front-end that runs in your browser, and a back-end that runs on the
+server. As you use an application, the front- and back-ends send data
+to each other over HTTP requests.
+
+[^exceptions]: Here's I'm talking in general terms. There are some
+    browser applications without a backend, and others where the
+    front-end is very simple and almost all the logic is in the
+    backend.
+
+For example, imagine a simple message board application. The server
+stores the state of the message board---who has posted what---and has
+logic for updating that state. But all the actual interaction with the
+page---drawing the posts, letting the user enter new ones---happens in
+the browser. Both components are necessary.
+
+The browser and the server interact over HTTP. The browser first makes
+a `GET` request to the server to load the current message board. You
+can think of this as downloading and starting the front-end in the
+browser. The user interacts with the browser to type a new post, and
+submits it to the server (say, via a form). That causes the browser to
+make a `POST` request to the server, which instructs the server to
+update the message board state.
+
+All considered, forms are a simplistic, old-fashioned implementation
+of this paradigm. But they are a simple, minimal introduction to this
+cycle of request and response and to how browser applications work.
+Modern applications, which use asynchronous requests and Javascript
+code and complex styling---all of which appear in later chapters---are
+based on the same principles.
+
+To better understand the request/response cycle---and also to give us
+a way to test our browser's form support---let's take a small detour
+and write a simple web server.
+
 Receiving POST requests
 =======================
-
-But to better understand the whole cycle---and also to make it
-easier to test our browser's form support---let's take a small detour
-out of the browser and look at how the server will handle these
-requests.
 
 Let's test our web browser by making our own simple web server. This
 server will show a simple form with a single text entry and remember
