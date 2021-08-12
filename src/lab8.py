@@ -90,6 +90,10 @@ class InputLayout:
         self.children = []
         self.parent = parent
         self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
 
     def layout(self):
         weight = self.node.style["font-weight"]
@@ -126,12 +130,20 @@ class InputLayout:
         display_list.append(
             DrawText(self.x, self.y, text, self.font, color))
 
+    def __repr__(self):
+        return "InputLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
         self.previous = previous
         self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
 
     def layout(self):
         previous = None
@@ -160,12 +172,21 @@ class BlockLayout:
         for child in self.children:
             child.paint(display_list)
 
+    def __repr__(self):
+        return "BlockLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 class InlineLayout:
     def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
         self.previous = previous
         self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.display_list = None
 
     def layout(self):
         self.width = self.parent.width
@@ -244,6 +265,10 @@ class InlineLayout:
         for child in self.children:
             child.paint(display_list)
 
+    def __repr__(self):
+        return "InlineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
@@ -263,6 +288,9 @@ class DocumentLayout:
 
     def paint(self, display_list):
         self.children[0].paint(display_list)
+
+    def __repr__(self):
+        return "DocumentLayout()"
 
 SCROLL_STEP = 100
 CHROME_PX = 100

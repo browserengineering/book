@@ -27,6 +27,14 @@ class socket:
     def send(self, text):
         self.request += text
         self.method, self.path, _ = self.request.decode("latin1").split(" ", 2)
+        
+        if self.method == "POST":
+            beginning, self.body = self.request.decode("latin1").split("\r\n\r\n")
+            headers = [item.split(": ") for item in beginning.split("\r\n")[1:]]
+            assert headers[0][0] == "Content-Length"
+            content_length = headers[0][1]
+
+            assert len(self.body) == int(content_length), len(self.body)
 
     def makefile(self, mode, encoding, newline):
         assert self.connected and self.host and self.port
@@ -37,7 +45,10 @@ class socket:
         else:
             url = self.scheme + "://" + self.host + ":" + str(self.port) + self.path
         self.Requests.setdefault(url, []).append(self.request)
-        output = self.URLs[url]
+        assert self.method == self.URLs[url][0]
+        output = self.URLs[url][1]
+        if self.URLs[url][2]:
+            assert self.body == self.URLs[url][2], (self.body, self.URLs[url][2])
         return io.StringIO(output.decode(encoding).replace(newline, "\n"), newline)
 
     def close(self):
@@ -48,8 +59,8 @@ class socket:
         return mock.patch("socket.socket", wraps=cls)
 
     @classmethod
-    def respond(cls, url, response):
-        cls.URLs[url] = response
+    def respond(cls, url, response, method="GET", body=None):
+        cls.URLs[url] = [method, response, body]
 
     @classmethod
     def last_request(cls, url):
