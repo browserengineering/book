@@ -854,12 +854,16 @@ Exercises
 while inside a text entry, that submits the form that the text entry
 was in. Add this feature to your browser.
 
-*Check boxes*: Add checkboxes. In HTML, checkbox `<input>`
-elements with the `type` attribute set to `checkbox`. The checkbox is
-checked if it has the `checked` attribute set, and unchecked
-otherwise. Submitting checkboxes in a form is a little tricky,
-though. A checkbox named `foo` only appears in the form encoding if
-it is checked. Its key is its `name` and its value is the empty string.
+*Check boxes*: In HTML, `input` elements have a `type` attribute. When
+set to `checkbox`, the `input` element looks like a checkbox; it's
+checked if the `checked` attribute is set, and unchecked otherwise.
+Checkboxes are only included in the form submission when they're
+checked.
+
+*Tab*: In most browsers, the `<Tab>` key moves focus from one input
+field to the next. Implement this behavior in your browser. The "tab
+order" of input elements should be the same as the order of `<input>`
+elements on the page.
 
 *Blurring*: Right now, if you click inside a text entry, and then
 inside the address bar, two cursors will appear on the screen. To fix
@@ -889,12 +893,11 @@ Each topic should have its own URL and its own list of messages. So,
 for example, `/cooking` should be a page of posts (about cooking) and
 comments submitted through the form on that page should only show up
 when you go to `/cooking`, not when you go to `/cars`. Make the home
-page, from `/`, show links to each topic's page.
+page, from `/`, list the available topics with a link to each topic's
+page. Make it possible for users to add new topics.
 
-*Tab*: In most browsers, the `<Tab>` key moves focus from one input
-field to the next. Implement this behavior in your browser. The "tab
-order" of input elements should be the same as the order of `<input>`
-elements on the page.
+*Persistence*: Back the server's list of guest book entries with a
+file, so that when the server is restarted it doesn't lose data.
 
 *Rich buttons*: Make it possible for a button to contain arbitrary
 elements as children, and render them correctly. The children should
