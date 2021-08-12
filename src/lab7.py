@@ -10,21 +10,18 @@ import tkinter
 import tkinter.font
 from lab4 import print_tree
 from lab1 import request
+from lab4 import Element
 from lab4 import HTMLParser
 from lab4 import Text
-from lab4 import Element
 from lab5 import DocumentLayout
 from lab5 import DrawRect
 from lab6 import cascade_priority
-from lab6 import compute_style
 from lab6 import layout_mode
 from lab6 import resolve_url
 from lab6 import style
 from lab6 import tree_to_list
-from lab6 import TagSelector
-from lab6 import DescendantSelector
-from lab6 import DrawText
 from lab6 import CSSParser
+from lab6 import DrawText
 
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
@@ -158,7 +155,6 @@ class BlockLayout:
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
-
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
