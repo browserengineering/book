@@ -491,10 +491,10 @@ the active tab.
 Since the `Tab` class is responsible for layout, styling, and
 painting, the default style sheet moves to the `Tab` constructor:
 
-``` {.python}
+``` {.python replace=browser.css/browser6.css}
 class Tab:
     def __init__(self):
-        with open("browser6.css") as f:
+        with open("browser.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 ```
 
