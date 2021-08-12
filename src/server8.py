@@ -27,11 +27,11 @@ def handle_connection(conx):
     conx.close()
 
 def do_request(method, url, headers, body):
-    if method == "POST" and url == "/add":
+    if method == "GET" and url == "/":
+        return "200 OK", show_comments()
+    elif method == "POST" and url == "/add":
         params = form_decode(body)
         return "200 OK", add_entry(params)
-    elif method == "GET" and url == "/":
-        return "200 OK", show_comments()
     else:
         return "404 Not Found", not_found(url, method)
 

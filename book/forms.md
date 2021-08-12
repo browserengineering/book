@@ -541,17 +541,23 @@ based on the same principles.
 
 To better understand the request/response cycle---and also to give us
 a way to test our browser's form support---let's take a small detour
-and write a simple web server.
+and write a simple web server. Now, this is a book on web *browser*
+engineering, so I won't be too thorough regarding implementation
+choices. But it's valuable to know how the other side of the
+connection works, as we start diving deeper into how browsers help run
+full-fledged web applications.
+
+::: {.further}
+PUT and DELETE requests
+:::
 
 Receiving POST requests
 =======================
 
-Let's test our web browser by making our own simple web server. This
-server will show a simple form with a single text entry and remember
-anything submitted through that form. Then, it'll show you all of the
-things that it remembers. Call it a guest book.^[Online guest books
-were very hip in the 90s. They were comment threads from before there
-was anything to comment on.]
+Our simple web server will implement an online guest book:^[They were
+very hip in the 90s---comment threads from before there was anything
+to comment on.] anyone can leave a comment in the guest book, and
+anyone who visits the guest book page can see all previous comments.
 
 A web server is a different program from a web browser, so let's start
 a new file. The server will need to:
@@ -559,11 +565,6 @@ a new file. The server will need to:
 -   Open a socket and listen for connections
 -   Parse HTTP requests it receives
 -   Respond to those requests with an HTML web page
-
-Now, this is a book on web *browser* engineering, so I won't focus too
-much on the implementation choices. But it's valuable to know how the
-other side of the connection works, as we start diving deeper into how
-browsers help run full-fledged web applications.
 
 Let's start by opening a socket. Like for the browser, we need to
 create an internet streaming socket using TCP:
@@ -575,43 +576,39 @@ s = socket.socket(
     type=socket.SOCK_STREAM,
     proto=socket.IPPROTO_TCP,
 )
-```
-
-Now, instead of calling `connect` on this socket (which causes it to
-connect to some other server), we'll call `bind`, which opens a port
-waits for other computers to connect to it:
-
-``` {.python file=server}
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(('', 8000))
-s.listen()
 ```
 
-Let's look at the `bind` call first. Its first argument is says who
-should be allowed to make connections *to* the server. The empty
-string means that anyone can. The second argument is the port on
-*your* machine that you want the server to listen on. I've chosen
-`8000` here. `8000` is similar to 80, the default port, but because
-it's larger than 1024 it doesn't require administrator privileges. You
-can pick a different number if, for whatever reason, port 8000 is
-taken on your machine.
-
-Now, before the `bind` call is a `setsockopt` call. If a server
-crashes with a connection open on some port, your OS prevents the port
-from being reused[^why-wait] for a short period. So if your server
-crashes, normally you need to wait about a minute before you restart
-it, or you'll get errors about addresses being in use. By calling
-`setsockopt` with the `SO_REUSEADDR` option we change that default and
-allow the OS to immediately reuse the port---which makes debugging our
-server a lot easier.
+The `setsockopt` call is optional. Normally, when a program has a
+socket open and it crashes, your OS prevents that port from being
+reused[^why-wait] for a short period. That's annoying when developing
+a server, and calling `setsockopt` with the `SO_REUSEADDR` option
+allows the OS to immediately reuse the port.
 
 [^why-wait]: When your process crashes, the computer on the end of the
     connection won't be informed immediately; if some other process
     opens the same port, it could receive data meant for the old,
     now-dead process.
 
-Finally, after bind, the `listen` call tells the OS that we're ready
-to accept connections.
+Now, with this socket, instead of calling `connect` (to connect to
+some other server), we'll call `bind`, which waits for other computers
+to connect:
+
+``` {.python file=server}
+s.bind(('', 8000))
+s.listen()
+```
+
+Let's look at the `bind` call first. Its first argument is says who
+should be allowed to make connections *to* the server. The empty
+string means that anyone can. The second argument is the port others
+will need to connect to to talk to our server; I've chosen `8000`. I
+can't use 80, because ports below 1024 require administrator
+privileges. But you can pick something other than 8000 if, for
+whatever reason, port 8000 is taken on your machine.
+
+Finally, after the `bind` call, the `listen` call tells the OS that
+we're ready to accept connections.
 
 To actually accept those connections, we enter a loop that runs once
 per connection. At the top of the loop we call `s.accept` to wait for
@@ -626,11 +623,11 @@ while True:
 That connection object is, confusingly, also a socket: it is the
 socket corresponding to that one connection. We know what to do with
 those: we read the contents and parse the HTTP message. But it's a
-little trickier to do this in the server than in the browser, because
-the browser waits for the server, and that means the server can't just
-read from the socket until the connection closes.
+little trickier in the server than in the browser, because the server
+can't just read from the socket until the connection closes---the
+browser is waiting for the server and won't close the connection.
 
-Instead, we'll read from the socket line-by-line. First, we read the
+So we've got to read from the socket line-by-line. First, we read the
 request line:
 
 ``` {.python file=server}
@@ -667,12 +664,19 @@ def handle_connection(conx):
         body = req.read(length).decode('utf8')
     else:
         body = None
+```
 
+Now the server needs to generate a web page in response. We'll get to
+that later; for now, just abstract that away behind a `do_request`
+call:
+
+``` {.python file=server}
+def handle_connection(conx):
+    # ...
     status, body = do_request(method, url, headers, body)
 ```
 
-Let's fill in `do_request` later; it returns a string containing
-the resulting HTML web page. We need to send it back to the browser:
+The server then sends this page back to the browser:
 
 ``` {.python file=server}
 def handle_connection(conx):
@@ -685,19 +689,31 @@ def handle_connection(conx):
     conx.close()
 ```
 
-This is a bare-bones server: it doesn't check that the browser is
-using HTTP 1.0 to talk to it, it doesn't send back any headers at all
-except `Content-Length`, and so on. Again---this is a web *browser*
-book. But it'll do.
+This is all pretty bare-bones: our server doesn't check that the
+browser is using HTTP 1.0 to talk to it, it doesn't send back any
+headers at all except `Content-Length`, it doesn't support TLS, and so
+on. Again---this is a web *browser* book. But it'll do.
 
-Now all that's left is implementing `do_request`. We want some kind
-of guest book, so let's create a list to store guest book entries:
+Generating web pages
+====================
+
+So far all of this server code is "boilerplate"---any web application
+will have similar code. What makes our server a guest book, on the
+other hand, depends on what happens inside `do_request`. It needs to
+store the guest book state, generate HTML pages, and respond to `POST`
+requests.
+
+Let's store guest book entries in a list:
 
 ``` {.python file=server}
 ENTRIES = [ 'Pavel was here' ]
 ```
 
-The `do_request` function outputs a little HTML page with those entries:
+Usually web applications use *persistent* state, like a database, so
+that the server can be restarted without losing state, but our guest
+book need not be that resilient.
+
+Next, `do_request` has to output HTML that shows those entries:
 
 ``` {.python file=server}
 def do_request(method, url, headers, body):
@@ -707,19 +723,22 @@ def do_request(method, url, headers, body):
     return "200 OK", out
 ```
 
-This is---let's call it "minimal"---HTML, so it's a good thing our
-browser will insert implicit tags and so on. For now, I'm ignoring the
-method, the URL, the headers, and the body entirely.
+This is definitely "minimal" HTML, so it's a good thing our browser
+will inserts implicit tags and has some default styles. You can test
+it out by run this minimal web server and, while it's running, direct
+your browser to `http://localhost:8000/`, `localhost` being what your
+computer calls itself and `8000` being the port we chose earlier. You
+should see one guest book entry.
 
-Run this minimal web server and then open a browser to
-`http://localhost:8000/`, `localhost` being what your computer calls
-itself and `8000` being the port we chose earlier. You should see a
-list of (one) guest book entry. As you debug this web server, it's
-probably easier to use a real web browser instead of the one you're
-writing. That way you don't have to worry about browser bugs.
+Note that as you debug debug this web server, it's probably easier to
+use a real web browser instead of the toy one you're writing. That way
+you don't have to worry about browser bugs. But this server should
+support both real and toy browsers.
 
-Now, let's make it possible to add to the guest book. First, let's add
-a form to the top of the page:
+It should be possible for visitors to write in the guest book. That's
+going to require the browser sending the server a `POST` request, and
+forms are the easiest way to do that. So, let's add a form to the top
+of the page:
 
 ``` {.python file=server}
 def do_request(method, url, headers, body):
@@ -731,9 +750,36 @@ def do_request(method, url, headers, body):
     # ...
 ```
 
-This form tells the browser to submit data to
-`http://localhost:8000/add`; the server needs to react to such
-submissions. First, we will need to undo the form-encoding:
+When this form is submitted, the browser will send a `POST` request to
+`http://localhost:8000/add`. So the server needs to react to these
+submissions. That means `do_request` will field two kinds of requests:
+regular browsing and form submissions. Let's separate the two kinds of
+requests into different functions.
+
+Rename the current `do_request` to `show_comments`:
+
+``` {.python file=server}
+def show_comments():
+    # ...
+    return out
+```
+
+This frees up the `do_request` function to figure out which function
+to call:
+
+``` {.python file=server}
+def do_request(method, url, headers, body):
+    if method == "GET" and url == "/":
+        return "200 OK", show_comments()
+    elif method == "POST" and url == "/add":
+        params = form_decode(body)
+        return "200 OK", add_entry(params)
+    else:
+        return "404 Not Found", not_found(url, method)
+```
+
+When a `POST` request to `/add` comes in, the first step is to decode
+the request body:
 
 ``` {.python file=server}
 def form_decode(body):
@@ -744,18 +790,8 @@ def form_decode(body):
     return params
 ```
 
-Now that we have form submissions, `do_request` will field two
-kinds of requests: regular browsing and form submissions. Let's
-separate the two kinds of requests into different functions. Rename
-the current `do_request` to `show_comments`:
-
-``` {.python file=server}
-def show_comments():
-    # ...
-    return out
-```
-
-A new `add_entry` function can handle form submissions:
+The `add_entry` function just adds new guest book entries from the
+form:
 
 ``` {.python file=server}
 def add_entry(params):
@@ -764,22 +800,8 @@ def add_entry(params):
     return show_comments()
 ```
 
-This frees up the `do_request` function to just figure out which
-of these two functions to call:
-
-``` {.python file=server}
-def do_request(method, url, headers, body):
-    if method == "POST" and url == "/add":
-        params = form_decode(body)
-        return "200 OK", add_entry(params)
-    elif method == "GET" and url == "/":
-        return "200 OK", show_comments()
-    else:
-        return "404 Not Found", not_found(url, method)
-```
-
-Now that the browser request matters, I've added a "404" response.
-Fitting the austere stylings of our web page, here's the 404 page:
+Finally, I've added a "404" response. Fitting the austere stylings of
+our web page, here's the 404 page:
 
 ``` {.python file=server}
 def not_found(url, method):
