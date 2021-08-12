@@ -418,13 +418,12 @@ class Tab:
 ```
 
 Now, any time you see something like this, you've got to ask: what if
-the name or the value has an equal sign or an ampersand in it? In
-fact, there is special handling for special characters: "percent
-encoding" replaces all special characters with a percent sign followed
-by those characters' hex codes. For example, a space becomes `%20` and
-a period becomes `%2e`. Python provides a percent-encoding function as
-`quote` in the `urllib.parse` module:
-
+the name or the value has an equal sign or an ampersand in it? So in
+fact, "percent encoding" replaces all special characters with a
+percent sign followed by those characters' hex codes. For example, a
+space becomes `%20` and a period becomes `%2e`. Python provides a
+percent-encoding function as `quote` in the `urllib.parse`
+module:[^why-use-library]
 
 ``` {.python indent=8}
 for input in inputs:
@@ -434,23 +433,16 @@ for input in inputs:
     # ...
 ```
 
-You can write your own `percent_encode` function using Python's `ord`
-and `hex` functions instead if you'd like,[^why-use-library] but here
-we're using the standard function for expediency; it's not a
-particularly interesting funciton, but it is necessary. (If you skip
-percent encoding, your browser won't handle requests with equal signs,
-percent signs, or ampersands correctly).
+[^why-use-library]: You can write your own `percent_encode` function
+using Python's `ord` and `hex` functions if you'd like. I'm using the
+standard function for expediency. [Earlier in the book](http.md),
+using these library functions would have obscured key concepts, but by
+this point percent encoding is necessary but not conceptually
+interesting.
 
-[^why-use-library]: Why use the `urllib` library here, but not
-    elsewhere in our browser? Why, for example, use its `quote` method
-    here but not its `parse` method in [Chapter 1](http.md)?
-    Basically, because while percent encoding is necessary, it is
-    not conceptually interesting, and in these later chapters my goal
-    is to show how conceptual extensions to the browser get built.
-    Some details are necessarily elided.
-
-Now that `submit_form` has built the request body, it needs to finally
-send that request:
+Now that `submit_form` has built a request body, it needs make a
+`POST` request. I'm going to defer that responsibility to the `load`
+function, which handles making requests:
 
 ``` {.python}
 def submit_form(self, elt):
@@ -459,8 +451,7 @@ def submit_form(self, elt):
     self.load(url, body)
 ```
 
-This uses a new parameter to the browser's `load` method for the
-request body. Let's pass that through to `request`:
+The new argument `load` is then passed through to `request`:
 
 ``` {.python indent=4}
 def load(self, url, body=None):
@@ -468,8 +459,8 @@ def load(self, url, body=None):
     headers, body = request(url, body)
 ```
 
-Then `request` can send that request body. That requires a few
-changes to `request`. First, it needs to use `POST`, not `GET`:
+In `request`, this new argument is used to decide between a `GET` and
+a `POST` request:
 
 ``` {.python}
 def request(url, payload=None):
@@ -479,8 +470,7 @@ def request(url, payload=None):
     body = "{} {} HTTP/1.0\r\n".format(method, path)
 ```
 
-Then we need to send the `Content-Length` header, which is mandatory
-on `POST` requests:
+If there it's a `POST` request, the `Content-Length` header is mandatory:
 
 ``` {.python}
 def request(url, payload=None):
@@ -492,7 +482,7 @@ def request(url, payload=None):
 ```
 
 Note that I grab the length of the payload in bytes, not the length in
-letters. Finally, we need to add the actual payload and send it:
+letters. Finally, we need send the payload itself:
 
 ``` {.python}
 def request(url, payload=None):
@@ -502,22 +492,30 @@ def request(url, payload=None):
     # ...
 ```
 
-So---now we've sent the `POST` request. From the point of view of the
-browser, that's about it: the server will respond with a web page and
-the browser will render it in the totally normal way. But to better
-understand the whole cycle---and also to make it easier to test our
-browser's form support---let's take a small detour out of the browser
-and look at how the server will handle these requests.
+So that's how the `POST` request gets sent. Then the server responds
+with an HTML page and the browser will render it in the totally normal
+way. That's basically it for forms on the browser side. But before we
+move on to the next chapter, let me explain how forms are used to
+build browser applications.
 
+::: {.further}
+Something about event dispatching
+:::
 
 Receiving POST requests
 =======================
 
+But to better understand the whole cycle---and also to make it
+easier to test our browser's form support---let's take a small detour
+out of the browser and look at how the server will handle these
+requests.
+
 Let's test our web browser by making our own simple web server. This
 server will show a simple form with a single text entry and remember
 anything submitted through that form. Then, it'll show you all of the
-things that it remembers. Call it a guest book.^[Online guest books...
-so 90s...]
+things that it remembers. Call it a guest book.^[Online guest books
+were very hip in the 90s. They were comment threads from before there
+was anything to comment on.]
 
 A web server is a different program from a web browser, so let's start
 a new file. The server will need to:
