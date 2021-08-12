@@ -208,11 +208,10 @@ putting a block element within an inline.
 Interacting with widgets
 ========================
 
-We've now got input elements rendering, but when you click on them
-they don't yet do anything! We need to allow the user to type stuff
-into an `input`. Let's make it work the same way the address bar
-does---clicking on an input element will clear it, and then you can
-type into it.
+We've got `input` elements rendering, but you can't edit their contents
+yet. That's the whole point! Let's make `input` elements work like the
+address bar does---clicking on one will clear it and let you type into
+it.
 
 The clearing part is easy: we need another case inside `Tab`'s `click`
 method:
@@ -229,9 +228,10 @@ class Tab:
 
 But keyboard input is harder. Think back to how we [implemented the
 address bar](chrome.md): we added a `focus` field that remembered what
-we clicked on and sent it key presses. We'll want something like that
-for text entries---a `focus` field---but it's going to be more complex
-because text entries live inside a `Tab`, not inside the `Browser`.
+we clicked on so we could send it our key presses. We need something
+like that `focus` field for input areas, but it's going to be more
+complex because the input areas live inside a `Tab`, not inside the
+`Browser`.
 
 Naturally, we will need a `focus` field on each `Tab`, to remember
 which text entry (if any) we've recently clicked on:
@@ -256,12 +256,13 @@ class Tab:
 ```
 
 But remember that keyboard input isn't handled by the `Tab`---it's
-handled by the `Browser`. So how does the `Browser` even know that the
-`Tab` should handle a certain keyboard event? Well, the answer is that
-the `Browser` has to remember that the `Tab` is in focus!
+handled by the `Browser`. So how does the `Browser` even know when
+keyboard events should be sent to the `Tab`? The `Browser` has to
+remember that in its own `focus` field!
 
-So, when you click on the web page, the `Browser` updates its focus as
-well:
+In other words, when you click on the web page, the `Browser` updates
+its `focus` field to remember that the user is interacting with the
+page, not the browser interface:
 
 ``` {.python}
 class Browser:
@@ -275,8 +276,13 @@ class Browser:
         self.draw()
 ```
 
-Now when a key press happens, the `Browser` can either send it to the
-address bar or the active tab:
+Note that the `if` branch above, which corresponds to the user
+clicking in the browser interface, unsets `focus` by default, but then
+some existing code in that branch will set `focus` to `address bar` if
+the user actually clicked in the address bar.
+
+When a key press happens, the `Browser` sends it either to the address
+bar or to the active tab `keypress` method:
 
 ``` {.python}
 class Browser:
@@ -303,23 +309,17 @@ into one another with `iframe`s, the focus tree can be arbitrarily deep.
 
 So now we have user input working with `input` elements. Before we
 move on, there is one last tweak that we need to make: drawing the
-text cursor. We can do that in the `Tab`'s `draw` method:
+text cursor in the `Tab`'s `draw` method. We'll first need to figure
+out where the text entry is located, onscreen, by finding its layout
+object:
 
-``` {.python}
+``` {.python indent=8}
 class Tab:
     def draw(self, canvas):
         # ...
         if self.focus:
-            # ...
-```
-
-We'll first need to figure out where the text entry is located,
-onscreen, by finding its layout object:
-
-``` {.python indent=8}
-if self.focus:
-    obj = [obj for obj in tree_to_list(self.document, [])
-           if obj.node == self.focus][0]
+            obj = [obj for obj in tree_to_list(self.document, [])
+                   if obj.node == self.focus][0]
 ```
 
 Then using that layout object we can find the coordinates where the
@@ -341,10 +341,20 @@ if self.focus:
     canvas.create_line(x, y, x, y + obj.height)
 ```
 
-Excellent: you can now click on a text entry to type into it and
-modify its value. So with the form now filled out, we need to turn to
-submitting it.
+Now you can click on a text entry, type into it, and modify its value.
+So the next step is submitting the now-filled-out form.
 
+::: {.further}
+The code that draws the text cursor here is kind of clunky---you could
+imagine each layout object knowing if it's focused and then being
+responsible for drawing the cursor. That's the more traditional
+approach in GUI frameworks, but Chrome uses [the design presented
+here][focused-element] to make sure the cursor can be [globally
+styled][frame-caret].
+:::
+
+[focused-element]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/dom/document.h;l=881;drc=80def040657db16e79f59e7e3b27857014c0f58d
+[frame-caret]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/editing/frame_caret.h?q=framecaret&ss=chromium
 
 
 Implementing forms
