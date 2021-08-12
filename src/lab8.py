@@ -45,7 +45,7 @@ def request(url, payload=None):
         length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(length)
     body += "Host: {}\r\n".format(host)
-    body += "\r\n" + payload
+    body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
     response = s.makefile("r", encoding="utf8", newline="\r\n")
 
@@ -567,8 +567,9 @@ class InlineLayout:
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node)
-            for child in node.children:
-                self.recurse(child)
+            if node.tag != "button":
+                for child in node.children:
+                    self.recurse(child)
 
     def new_line(self):
         self.previous_word = None
@@ -577,12 +578,15 @@ class InlineLayout:
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def text(self, node):
+    def get_font(self, node):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(node.style["font-size"][:-2]) * .75)
-        font = tkinter.font.Font(size=size, weight=weight, slant=style)
+        return tkinter.font.Font(size=size, weight=weight, slant=style)
+
+    def text(self, node):
+        font = self.get_font(node)
         for word in node.text.split():
             w = font.measure(word)
             if self.cursor_x + w > self.x + self.width:
@@ -601,6 +605,8 @@ class InlineLayout:
         input = InputLayout(node, line, self.previous_word)
         line.children.append(input)
         self.previous_word = input
+        size = int(float(node.style["font-size"][:-2]) * .75)
+        font = self.get_font(node)
         self.cursor_x += w + font.measure(" ")
 
     def paint(self, display_list):
@@ -713,12 +719,12 @@ class Tab:
             cmd.execute(self.scroll - CHROME_PX, canvas)
 
         if self.focus:
-            obj = [obj for obj in tree_to_list(self.document)
+            obj = [obj for obj in tree_to_list(self.document, [])
                    if obj.node == self.focus][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measure(text)
             y = obj.y - self.scroll + CHROME_PX
-            self.canvas.create_line(x, y, x, y + obj.height)
+            canvas.create_line(x, y, x, y + obj.height)
 
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
@@ -750,7 +756,7 @@ class Tab:
             elt = elt.parent
 
     def submit_form(self, elt):
-        inputs = [node for node in tree_to_list(elt)
+        inputs = [node for node in tree_to_list(elt, [])
                   if isinstance(node, Element)
                   and node.tag == "input"
                   and "name" in node.attributes]
@@ -770,6 +776,7 @@ class Tab:
     def keypress(self, char):
         if self.focus:
             self.focus.attributes["value"] += char
+        self.document.paint(self.display_list)
 
     def go_back(self):
         if len(self.history) > 1:

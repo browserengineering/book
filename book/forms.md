@@ -114,10 +114,12 @@ capabilities, let's go with a style like this:
 
 ``` {.css}
 input {
+    display: inline;
     font-size: 16px; font-weight: normal; font-style: normal;
     background-color: lightblue;
 }
 button {
+    display: inline;
     font-size: 16px; font-weight: normal; font-style: normal;
     background-color: orange;
 }
@@ -170,11 +172,18 @@ class InlineLayout:
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node)
-            for child in node.children:
-                self.recurse(child)
+            if node.tag != "button":
+                for child in node.children:
+                    self.recurse(child)
 ```
 
-The new `input` element is based on how the `text` method handles each
+Note that text children of `button` elements are ignored. This is because
+the text contains the content of the button, not text to go after it.
+Text `input` elements, on the other hand, use the `value` attribute to draw
+their contents, and any text children are laid out next to the `input` as if
+they were sibligs in the document tree.
+
+The new `input` method is based on how the `text` method handles each
 word:
 
 ``` {.python}
@@ -195,15 +204,17 @@ With all of this done, you should be able to open a web page with
 rectangles.
 
 ::: {.further}
-The real reason buttons surround their contents is because a button
-might contain an image, styled text, or other content. This
-code doesn't support that, which in real browsers relies on something
-called the `inline-block` display mode. You could implement that by
-having the `InputLayout` have a child `BlockLayout`, but I'm skipping
-it here for simplicity.
+The reason buttons surround their contents (instead of using an attribute) is
+that a button might contain an image, styled text, or other content. Our
+browser doesn't support that situation, which in real browsers relies on
+something called the `inline-block` display mode - a way of putting a block
+element within an inline. You could implement that by having the `InputLayout`
+have a child `BlockLayout`, but I'm skipping it here for simplicity.
+
+Real browsers can also nest inline layout objects. Inline layout objects in
+general form a tree of their own. This tree is needed for styling and hit
+testing parts of this tree.
 :::
-
-
 
 Interacting with widgets
 ========================
@@ -318,7 +329,7 @@ onscreen, by finding its layout object:
 
 ``` {.python indent=8}
 if self.focus:
-    obj = [obj for obj in tree_to_list(self.document)
+    obj = [obj for obj in tree_to_list(self.document, [])
            if obj.node == self.focus][0]
 ```
 
@@ -338,7 +349,7 @@ And finally draw the cursor itself:
 ``` {.python indent=8}
 if self.focus:
     # ...
-    self.canvas.create_line(x, y, x, y + obj.height)
+    canvas.create_line(x, y, x, y + obj.height)
 ```
 
 Excellent: you can now click on a text entry to type into it and
@@ -383,7 +394,7 @@ find `input` elements:
 ``` {.python}
 class Tab:
     def submit_form(self, elt):
-        inputs = [node for node in tree_to_list(elt)
+        inputs = [node for node in tree_to_list(elt, [])
                   if isinstance(node, Element)
                   and node.tag == "input"
                   and "name" in node.attributes]
@@ -487,7 +498,7 @@ letters. Finally, we need to add the actual payload and send it:
 ``` {.python}
 def request(url, payload=None):
     # ...
-    body += "\r\n" + payload
+    body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
     # ...
 ```

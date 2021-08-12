@@ -51,3 +51,17 @@ big { display: inline; }
 
 input { display: inline; }
 button { display: inline; }
+input {
+    display: inline;
+    font-size: 16px;
+    font-weight: normal;
+    font-style: normal;
+    background-color: lightblue;
+}
+button {
+    display: inline;
+    font-size: 16px;
+    font-weight: normal;
+    font-style: normal;
+    background-color: orange;
+}

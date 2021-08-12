@@ -35,7 +35,7 @@ def handle_request(method, url, headers, body):
     elif method == "GET" and url == "/":
         return "200 OK", show_comments()
     else:
-        raise "404 Not Found", not_found(url, method)
+        return "404 Not Found", not_found(url, method)
 
 def show_comments():
     out = "<!doctype html>"
@@ -61,7 +61,7 @@ def form_decode(body):
     params = {}
     for field in body.split("&"):
         name, value = field.split("=", 1)
-        params[name] = urlllib.parse.unquote(value)
+        params[name] = urllib.parse.unquote(value)
     return params
 
 if __name__ == "__main__":
