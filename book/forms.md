@@ -313,7 +313,7 @@ text cursor in the `Tab`'s `draw` method. We'll first need to figure
 out where the text entry is located, onscreen, by finding its layout
 object:
 
-``` {.python indent=8}
+``` {.python}
 class Tab:
     def draw(self, canvas):
         # ...
