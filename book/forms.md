@@ -114,12 +114,10 @@ capabilities, let's go with a style like this:
 
 ``` {.css}
 input {
-    display: inline;
     font-size: 16px; font-weight: normal; font-style: normal;
     background-color: lightblue;
 }
 button {
-    display: inline;
     font-size: 16px; font-weight: normal; font-style: normal;
     background-color: orange;
 }
