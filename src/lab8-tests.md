@@ -21,7 +21,7 @@ one.
     >>> request_body = "name=1&comment=2%3D3"
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
     ... b"Header1: Value1\r\n\r\n" +
-    ... b"<div>Test</div>", method="POST", body=request_body)
+    ... b"<div>Form submitted</div>", method="POST", body=request_body)
 
     >>> headers, body = lab8.request(url, request_body)
 
@@ -68,9 +68,29 @@ Testing InputLayout
                LineLayout(x=13, y=46.8, width=774, height=14.399999999999999)
                  InputLayout(x=13, y=48.599999999999994, width=200, height=12)
 
+The display list of a button should include its contents, and the display list
+of a text input should be its `value` attribute:
+
+    >>> form = browser.tabs[0].document.children[0].children[0].children[0]
+    >>> text_input = form.children[0].children[0].children[1]
+    >>> button = form.children[2].children[0].children[0]
+    >>> display_list = []
+    >>> text_input.paint(display_list)
+    >>> display_list
+    [DrawRect(top=19.799999999999997 left=85 bottom=31.799999999999997 right=285 color=lightblue), DrawText(text=1)]
+    >>> display_list = []
+    >>> button.paint(display_list)
+    >>> display_list
+    [DrawRect(top=48.599999999999994 left=13 bottom=60.599999999999994 right=213 color=orange), DrawText(text=Submit!)]
+
 Testing form submission
 =======================
 
 Forms are submitted via a click on the submit button.
 
     >>> browser.handle_click(test.Event(14, 50 + 100))
+    >>> lab8.print_tree(browser.tabs[0].document.node)
+     <html>
+       <body>
+         <div>
+           'Form submitted'
