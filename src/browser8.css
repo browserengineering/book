@@ -6,22 +6,13 @@ b { font-weight: bold; }
 small { font-size: 90%; }
 big { font-size: 110%; }
 
-span { display: inline; }
-br { display: inline; }
-wbr { display: inline; }
-big { display: inline; }
-
-input { display: inline; }
-button { display: inline; }
 input {
-    display: inline;
     font-size: 16px;
     font-weight: normal;
     font-style: normal;
     background-color: lightblue;
 }
 button {
-    display: inline;
     font-size: 16px;
     font-weight: normal;
     font-style: normal;
