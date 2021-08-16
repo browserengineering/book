@@ -508,16 +508,16 @@ How web applications work
 So... How do forms support web applications? When you use an
 application from your browser---whether you are registering to vote,
 looking at pictures of your baby cousin, or checking your
-email---there are typically[^exceptions] two programs involved:
-front-end code that runs in the browser, and back-end code that runs
-on the server. When you click on things or take actions in the
-application, you're running front-end code, which sends data to the
-back-end via HTTP requests.
+email---there are typically[^exceptions] two programs involved: client
+code that runs in the browser, and server code that runs on the
+server. When you click on things or take actions in the application,
+that runs client code, which sends then data to the server via
+HTTP requests.
 
 [^exceptions]: Here's I'm talking in general terms. There are some
-    browser applications without a back-end, and others where the
-    front-end is very simple and almost all the logic is in the
-    back-end.
+    browser applications without a server, and others where the client
+    code is exceptionally simple and almost all the code is on the
+    server.
 
 For example, imagine a simple message board application. The server
 stores the state of the message board---who has posted what---and has
@@ -527,7 +527,7 @@ the browser. Both components are necessary.
 
 The browser and the server interact over HTTP. The browser first makes
 a `GET` request to the server to load the current message board. You
-can think of this as downloading and starting the front-end in the
+can think of this as downloading and running the client code in the
 browser. The user interacts with the browser to type a new post, and
 submits it to the server (say, via a form). That causes the browser to
 make a `POST` request to the server, which instructs the server to
@@ -563,7 +563,7 @@ on.] kind of like an open, anonymous comment thread. Now, this is a
 book on web *browser* engineering, so I won't be too thorough in
 discussing web server implementation choices. But I want you to see
 how the other side of the connection works and give you a concrete
-sense of how work is divided between front- and back-end.
+sense of how work is divided between client and server.
 
 A web server is a separate program from the web browser, so let's
 start a new file. The server will need to:
