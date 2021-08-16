@@ -508,10 +508,11 @@ How web applications work
 So... How do forms support web applications? When you use an
 application from your browser---whether you are registering to vote,
 looking at pictures of your baby cousin, or checking your
-email---there are typically[^exceptions] two components involved: a
-front-end that runs in your browser, and a back-end that runs on the
-server. As you use an application, the front- and back-ends send data
-to each other via HTTP requests.
+email---there are typically[^exceptions] two programs involved:
+front-end code that runs in the browser, and back-end code that runs
+on the server. When you click on things or take actions in the
+application, you're running front-end code, which sends data to the
+back-end via HTTP requests.
 
 [^exceptions]: Here's I'm talking in general terms. There are some
     browser applications without a back-end, and others where the
