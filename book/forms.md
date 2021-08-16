@@ -195,15 +195,17 @@ class InlineLayout:
         self.cursor_x += w + font.measure(" ")
 ```
 
-With these changes the browser should now draw with `input` and
-`button` elements as blue and orange rectangles.
+With these changes the browser should now draw `input` and `button`
+elements as blue and orange rectangles.
 
 ::: {.further}
 The reason buttons surround their contents but input areas don't is
-that a buttons can contain images, styled text, or other content. In a
-real browser, that relies on the `inline-block` display mode: a way of
-putting a block element within an inline.
+that a button can contain images, styled text, or other content. In a
+real browser, that relies on the [`inline-block`][inline-block]
+display mode: a way of putting a block element within an inline.
 :::
+
+[inline-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
 
 Interacting with widgets
 ========================
@@ -440,7 +442,7 @@ using these library functions would have obscured key concepts, but by
 this point percent encoding is necessary but not conceptually
 interesting.
 
-Now that `submit_form` has built a request body, it needs make a
+Now that `submit_form` has built a request body, it needs to make a
 `POST` request. I'm going to defer that responsibility to the `load`
 function, which handles making requests:
 
@@ -494,9 +496,7 @@ def request(url, payload=None):
 
 So that's how the `POST` request gets sent. Then the server responds
 with an HTML page and the browser will render it in the totally normal
-way. That's basically it for forms on the browser side. But before we
-move on to the next chapter, let me explain how forms are used to
-build browser applications.
+way. That's basically it for forms!
 
 ::: {.further}
 Something about event dispatching
@@ -540,12 +540,16 @@ response and make a good introduction to how browser applications
 work. They're also implemented in every browser and have been around
 for decades. These days web applications still use the form elements,
 but replace synchronous POST requests with asynchronous ones driven by
-Javascript[^ajax]---but are based on the same principles.
+Javascript,[^ajax] which makes application snappier by hiding the time
+to make the HTTP request. In return for that snappiness, error
+handling, validation, and loading indicators must now be handled in
+JavaScript instead of by the browser. In any case, both synchronous
+and asynchronous uses of forms are based on the same principles.
 
 [^ajax]: Asynchronous requests make for snappier, smoother, and
     responsive applications. In the early 2000s, the adoption of
-    asynchronous HTTP requests was called [Web 2.0][web20] and sparked
-    a wave of innovative new web applications.
+    asynchronous HTTP requests sparked the wave of innovative new web
+    applications called [Web 2.0][web20].
     
 [web20]: https://en.wikipedia.org/wiki/Web_2.0
 
@@ -826,10 +830,10 @@ Summary
 With this chapter we're starting to transform our browser into an
 application platform. We've added:
 
-- Layout objects for input areas and buttons;
-- Code to click on buttons and type into input areas;
-- Hierarchical focus handling;
-- Code to submit forms and send them to a server;
+- Layout objects for input areas and buttons.
+- Code to click on buttons and type into input areas.
+- Hierarchical focus handling.
+- Code to submit forms and send them to a server.
 
 Plus, our browser now has a little web server friend. That's going to
 be handy later, when we add more interactive features to the browser.
