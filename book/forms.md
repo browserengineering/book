@@ -548,14 +548,6 @@ Javascript[^ajax]---but are based on the same principles.
     
 [web20]: https://en.wikipedia.org/wiki/Web_2.0
 
-To better understand the request/response cycle---and also to give us
-a way to test our browser's form support---let's take a small detour
-and write a simple web server. Now, this is a book on web *browser*
-engineering, so I won't be too thorough regarding implementation
-choices. But it's valuable to know how the other side of the
-connection works, as we start diving deeper into how browsers help run
-full-fledged web applications.
-
 ::: {.further}
 PUT and DELETE requests
 :::
@@ -563,13 +555,17 @@ PUT and DELETE requests
 Receiving POST requests
 =======================
 
-Our simple web server will implement an online guest book:^[They were
-very hip in the 90s---comment threads from before there was anything
-to comment on.] anyone can leave a comment in the guest book, and
-anyone who visits the guest book page can see all previous comments.
+To better understand the request/response cycle write a simple web
+server. It'll implement an online guest book,^[They were very hip in
+the 90s---comment threads from before there was anything to comment
+on.] kind of like an open, anonymous comment thread. Now, this is a
+book on web *browser* engineering, so I won't be too thorough in
+discussing web server implementation choices. But I want you to see
+how the other side of the connection works and give you a concrete
+sense of how work is divided between front- and back-end.
 
-A web server is a different program from a web browser, so let's start
-a new file. The server will need to:
+A web server is a separate program from the web browser, so let's
+start a new file. The server will need to:
 
 -   Open a socket and listen for connections
 -   Parse HTTP requests it receives
@@ -733,8 +729,8 @@ def do_request(method, url, headers, body):
 ```
 
 This is definitely "minimal" HTML, so it's a good thing our browser
-will inserts implicit tags and has some default styles. You can test
-it out by run this minimal web server and, while it's running, direct
+will insert implicit tags and has some default styles! You can test it
+out by running this minimal web server and, while it's running, direct
 your browser to `http://localhost:8000/`, `localhost` being what your
 computer calls itself and `8000` being the port we chose earlier. You
 should see one guest book entry.
@@ -835,7 +831,7 @@ application platform. We've added:
 - Code to submit forms and send them to a server;
 
 Plus, our browser now has a little web server friend. That's going to
-be handy as we add more interactive features to the browser.
+be handy later, when we add more interactive features to the browser.
 
 ::: {.signup}
 :::
@@ -850,7 +846,7 @@ should now look something like this:
     python3 infra/outlines.py --html src/lab8.py
 :::
 
-There's also a server now, but it is much simpler:
+There's also a server now, but it's much simpler:
 
 ::: {.cmd .python .outline html=True}
     python3 infra/outlines.py --html src/server8.py
@@ -869,10 +865,14 @@ checked if the `checked` attribute is set, and unchecked otherwise.
 Checkboxes are only included in the form submission when they're
 checked.
 
-*Tab*: In most browsers, the `<Tab>` key moves focus from one input
-field to the next. Implement this behavior in your browser. The "tab
-order" of input elements should be the same as the order of `<input>`
-elements on the page.
+*Tab*: In most browsers, the `<Tab>` key (on your keyboard) moves
+focus from one input field to the next. Implement this behavior in
+your browser. The "tab order" of input elements should be the same as
+the order of `<input>` elements on the page. You can also add support
+for the [`tabindex`][tabindex] property, which lets a web page change
+this tab order.
+
+[tabindex]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex
 
 *Blurring*: Right now, if you click inside a text entry, and then
 inside the address bar, two cursors will appear on the screen. To fix
