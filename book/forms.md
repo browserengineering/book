@@ -530,14 +530,23 @@ can think of this as downloading and starting the front-end in the
 browser. The user interacts with the browser to type a new post, and
 submits it to the server (say, via a form). That causes the browser to
 make a `POST` request to the server, which instructs the server to
-update the message board state.
+update the message board state. The response to this request is a new
+HTML page with the new state of the message board, taking into account
+the requested changes.
 
-All considered, forms are a simplistic, old-fashioned implementation
-of this paradigm. But they are a simple, minimal introduction to this
-cycle of request and response and to how browser applications work.
-Modern applications, which use asynchronous requests and Javascript
-code and complex styling---all of which appear in later chapters---are
-based on the same principles.
+Forms are a simple, minimal introduction to this cycle of request and
+response and make a good introduction to how browser applications
+work. They're also implemented in every browser and have been around
+for decades. These days web applications still use the form elements,
+but replace synchronous POST requests with asynchronous ones driven by
+Javascript[^ajax]---but are based on the same principles.
+
+[^ajax]: Asynchronous requests make for snappier, smoother, and
+    responsive applications. In the early 2000s, the adoption of
+    asynchronous HTTP requests was called [Web 2.0][web20] and sparked
+    a wave of innovative new web applications.
+    
+[web20]: https://en.wikipedia.org/wiki/Web_2.0
 
 To better understand the request/response cycle---and also to give us
 a way to test our browser's form support---let's take a small detour
