@@ -208,10 +208,10 @@ putting a block element within an inline.
 Interacting with widgets
 ========================
 
-We've got `input` elements rendering, but you can't edit their contents
-yet. That's the whole point! Let's make `input` elements work like the
-address bar does---clicking on one will clear it and let you type into
-it.
+We've got `input` elements rendering, but you can't edit their
+contents yet. But of course that's the whole point! So let's make
+`input` elements work like the address bar does---clicking on one will
+clear it and let you type into it.
 
 The clearing part is easy: we need another case inside `Tab`'s `click`
 method:
@@ -342,7 +342,7 @@ if self.focus:
 ```
 
 Now you can click on a text entry, type into it, and modify its value.
-So the next step is submitting the now-filled-out form.
+The next step is submitting the now-filled-out form.
 
 ::: {.further}
 The code that draws the text cursor here is kind of clunky---you could
@@ -511,12 +511,12 @@ looking at pictures of your baby cousin, or checking your
 email---there are typically[^exceptions] two components involved: a
 front-end that runs in your browser, and a back-end that runs on the
 server. As you use an application, the front- and back-ends send data
-to each other over HTTP requests.
+to each other via HTTP requests.
 
 [^exceptions]: Here's I'm talking in general terms. There are some
-    browser applications without a backend, and others where the
+    browser applications without a back-end, and others where the
     front-end is very simple and almost all the logic is in the
-    backend.
+    back-end.
 
 For example, imagine a simple message board application. The server
 stores the state of the message board---who has posted what---and has
