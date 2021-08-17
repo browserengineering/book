@@ -6,10 +6,11 @@ next: scripts
 ...
 
 So far, our browser has seen the web as read only---but when you post
-on Facebook, fill our a survey, or search Google, you're sending
+on Facebook, fill out a survey, or search Google, you're sending
 information *to* servers as well as receiving information from them.
-In this chapter, we'll build out support for HTML forms to understand
-how the browser writes as well as reads the web.
+In this chapter, we'll start to transform our browser into a platform
+for web applications by building out support for HTML forms, the
+simplest way for a browser to send information to a server.
 
 How forms work
 ==============
@@ -64,26 +65,25 @@ normal, and the browser then does everything it normally does.
 
 Forms require extensions across the whole browser to function
 properly, from implementing HTTP `POST` through new layout objects
-that draw `<input>` elements to handling buttons clicks. Let's get
+that draw `input` elements to handling buttons clicks. That makes it
+a great starting point for transforming our toy browser into an
+application platform---our goal for these next few chapters. Let's get
 started implementing all that!
 
 
 Rendering widgets
 =================
 
-First, let's draw the input areas that the user will fill out.
-Normally, applications want their input areas to look the same as in
-other applications on the same OS, so they use OS libraries to draw an
-input area directly.[^ttk] But browsers need a lot of control over
-application styling, so they often draw input areas directly.
+First, let's draw the input areas that the user will fill
+out.[^styled-widgets] Input areas are inline content, laid out in
+lines next to text. So to support inputs we'll need a new kind of
+layout object, which I'll call `InputLayout`. We can copy `TextLayout`
+and use it as a template, but need to make some quick edits.
 
-[^ttk]: For Python's Tk library, that's possible with the `ttk` library.
-
-`<input>` elements are inline content, like text, laid out in lines.
-So to support inputs we'll need a new kind of layout object, which
-I'll call `InputLayout`. Let's start by copying `TextLayout` and
-renaming it to `InputLayout`. We'll then need to make some quick
-edits.
+[^styled-widgets]: Most applications use OS libraries to draw input
+areas, so that those input areas look like other applications on that
+OS. But browsers need a lot of control over application styling, so
+they often draw their own input areas.
 
 First, there's no `word` argument to `InputLayout`s:
 
@@ -96,7 +96,7 @@ class InputLayout:
         self.previous = previous
 ```
 
-Second, let's give `InputLayout` objects a fixed width:
+Second, `input` elements usually have a fixed width:
 
 ``` {.python}
 INPUT_WIDTH_PX = 200
@@ -108,9 +108,9 @@ class InputLayout:
         # ...
 ```
 
-These `input` and `button` elements need to be visually distinct so
-the user can easily find them. With our browser's limited styling
-capabilities, let's go with a style like this:
+The `input` and `button` elements need to be visually distinct so the
+user can find them easily. Our browser's styling capabilities are
+limited, so let's use background color to do that:
 
 ``` {.css}
 input {
@@ -123,7 +123,7 @@ button {
 }
 ```
 
-So when the browser paints an `InputLayout` it needs to draw both a
+When the browser paints an `InputLayout` it needs to draw the
 background:
 
 ``` {.python}
@@ -137,7 +137,7 @@ class InputLayout:
             display_list.append(rect)
 ```
 
-And also the text inside:
+It also needs to draw the text inside:
 
 ``` {.python}
 class InputLayout:
@@ -154,8 +154,8 @@ class InputLayout:
 ```
 
 By this point in the book, you've seen new layout objects plenty of
-times. So I'm not describing this code in detail; new layout objects
-is just one of the standard ways you extend the browser.
+times. So I'm glossing over details; the point is that new layout
+objects are one standard place to extend the browser.
 
 With `InputLayout` written we now need to create some of these layout
 objects. We'll do so in `InlineLayout`:
@@ -170,19 +170,17 @@ class InlineLayout:
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node)
-            if node.tag != "button":
+            else:
                 for child in node.children:
                     self.recurse(child)
 ```
 
-Note that text children of `button` elements are ignored. This is because
-the text contains the content of the button, not text to go after it.
-Text `input` elements, on the other hand, use the `value` attribute to draw
-their contents, and any text children are laid out next to the `input` as if
-they were sibligs in the document tree.
+Note we don't recurse into `button` elements, because the button
+element is reponsible for drawing its contents. Meanwhile `input`
+elements are self-closing, so they never have children.
 
-The new `input` method is based on how the `text` method handles each
-word:
+Finally, this new `input` method is similar to the `text` method,
+creating a new layout object and adding it to the current line:
 
 ``` {.python}
 class InlineLayout:
@@ -197,31 +195,25 @@ class InlineLayout:
         self.cursor_x += w + font.measure(" ")
 ```
 
-With all of this done, you should be able to open a web page with
-`input` and `button` elements, and see them show up as blue and orange
-rectangles.
+With these changes the browser should now draw `input` and `button`
+elements as blue and orange rectangles.
 
 ::: {.further}
-The reason buttons surround their contents (instead of using an attribute) is
-that a button might contain an image, styled text, or other content. Our
-browser doesn't support that situation, which in real browsers relies on
-something called the `inline-block` display mode - a way of putting a block
-element within an inline. You could implement that by having the `InputLayout`
-have a child `BlockLayout`, but I'm skipping it here for simplicity.
-
-Real browsers can also nest inline layout objects. Inline layout objects in
-general form a tree of their own. This tree is needed for styling and hit
-testing parts of this tree.
+The reason buttons surround their contents but input areas don't is
+that a button can contain images, styled text, or other content. In a
+real browser, that relies on the [`inline-block`][inline-block]
+display mode: a way of putting a block element within an inline.
 :::
+
+[inline-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
 
 Interacting with widgets
 ========================
 
-We've now got input elements rendering, but when you click on them
-they don't yet do anything! We need to allow the user to type stuff
-into an `input`. Let's make it work the same way the address bar
-does---clicking on an input element will clear it, and then you can
-type into it.
+We've got `input` elements rendering, but you can't edit their
+contents yet. But of course that's the whole point! So let's make
+`input` elements work like the address bar does---clicking on one will
+clear it and let you type into it.
 
 The clearing part is easy: we need another case inside `Tab`'s `click`
 method:
@@ -238,9 +230,10 @@ class Tab:
 
 But keyboard input is harder. Think back to how we [implemented the
 address bar](chrome.md): we added a `focus` field that remembered what
-we clicked on and sent it key presses. We'll want something like that
-for text entries---a `focus` field---but it's going to be more complex
-because text entries live inside a `Tab`, not inside the `Browser`.
+we clicked on so we could send it our key presses. We need something
+like that `focus` field for input areas, but it's going to be more
+complex because the input areas live inside a `Tab`, not inside the
+`Browser`.
 
 Naturally, we will need a `focus` field on each `Tab`, to remember
 which text entry (if any) we've recently clicked on:
@@ -265,12 +258,13 @@ class Tab:
 ```
 
 But remember that keyboard input isn't handled by the `Tab`---it's
-handled by the `Browser`. So how does the `Browser` even know that the
-`Tab` should handle a certain keyboard event? Well, the answer is that
-the `Browser` has to remember that the `Tab` is in focus!
+handled by the `Browser`. So how does the `Browser` even know when
+keyboard events should be sent to the `Tab`? The `Browser` has to
+remember that in its own `focus` field!
 
-So, when you click on the web page, the `Browser` updates its focus as
-well:
+In other words, when you click on the web page, the `Browser` updates
+its `focus` field to remember that the user is interacting with the
+page, not the browser interface:
 
 ``` {.python}
 class Browser:
@@ -284,8 +278,13 @@ class Browser:
         self.draw()
 ```
 
-Now when a key press happens, the `Browser` can either send it to the
-address bar or the active tab:
+Note that the `if` branch above, which corresponds to the user
+clicking in the browser interface, unsets `focus` by default, but then
+some existing code in that branch will set `focus` to `address bar` if
+the user actually clicked in the address bar.
+
+When a key press happens, the `Browser` sends it either to the address
+bar or to the active tab `keypress` method:
 
 ``` {.python}
 class Browser:
@@ -312,23 +311,17 @@ into one another with `iframe`s, the focus tree can be arbitrarily deep.
 
 So now we have user input working with `input` elements. Before we
 move on, there is one last tweak that we need to make: drawing the
-text cursor. We can do that in the `Tab`'s `draw` method:
+text cursor in the `Tab`'s `draw` method. We'll first need to figure
+out where the text entry is located, onscreen, by finding its layout
+object:
 
 ``` {.python}
 class Tab:
     def draw(self, canvas):
         # ...
         if self.focus:
-            # ...
-```
-
-We'll first need to figure out where the text entry is located,
-onscreen, by finding its layout object:
-
-``` {.python indent=8}
-if self.focus:
-    obj = [obj for obj in tree_to_list(self.document, [])
-           if obj.node == self.focus][0]
+            obj = [obj for obj in tree_to_list(self.document, [])
+                   if obj.node == self.focus][0]
 ```
 
 Then using that layout object we can find the coordinates where the
@@ -350,10 +343,20 @@ if self.focus:
     canvas.create_line(x, y, x, y + obj.height)
 ```
 
-Excellent: you can now click on a text entry to type into it and
-modify its value. So with the form now filled out, we need to turn to
-submitting it.
+Now you can click on a text entry, type into it, and modify its value.
+The next step is submitting the now-filled-out form.
 
+::: {.further}
+The code that draws the text cursor here is kind of clunky---you could
+imagine each layout object knowing if it's focused and then being
+responsible for drawing the cursor. That's the more traditional
+approach in GUI frameworks, but Chrome uses [the design presented
+here][focused-element] to make sure the cursor can be [globally
+styled][frame-caret].
+:::
+
+[focused-element]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/dom/document.h;l=881;drc=80def040657db16e79f59e7e3b27857014c0f58d
+[frame-caret]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/editing/frame_caret.h?q=framecaret&ss=chromium
 
 
 Implementing forms
@@ -417,13 +420,12 @@ class Tab:
 ```
 
 Now, any time you see something like this, you've got to ask: what if
-the name or the value has an equal sign or an ampersand in it? In
-fact, there is special handling for special characters: "percent
-encoding" replaces all special characters with a percent sign followed
-by those characters' hex codes. For example, a space becomes `%20` and
-a period becomes `%2e`. Python provides a percent-encoding function as
-`quote` in the `urllib.parse` module:
-
+the name or the value has an equal sign or an ampersand in it? So in
+fact, "percent encoding" replaces all special characters with a
+percent sign followed by those characters' hex codes. For example, a
+space becomes `%20` and a period becomes `%2e`. Python provides a
+percent-encoding function as `quote` in the `urllib.parse`
+module:[^why-use-library]
 
 ``` {.python indent=8}
 for input in inputs:
@@ -433,23 +435,16 @@ for input in inputs:
     # ...
 ```
 
-You can write your own `percent_encode` function using Python's `ord`
-and `hex` functions instead if you'd like,[^why-use-library] but here
-we're using the standard function for expediency; it's not a
-particularly interesting funciton, but it is necessary. (If you skip
-percent encoding, your browser won't handle requests with equal signs,
-percent signs, or ampersands correctly).
+[^why-use-library]: You can write your own `percent_encode` function
+using Python's `ord` and `hex` functions if you'd like. I'm using the
+standard function for expediency. [Earlier in the book](http.md),
+using these library functions would have obscured key concepts, but by
+this point percent encoding is necessary but not conceptually
+interesting.
 
-[^why-use-library]: Why use the `urllib` library here, but not
-    elsewhere in our browser? Why, for example, use its `quote` method
-    here but not its `parse` method in [Chapter 1](http.md)?
-    Basically, because while percent encoding is necessary, it is
-    not conceptually interesting, and in these later chapters my goal
-    is to show how conceptual extensions to the browser get built.
-    Some details are necessarily elided.
-
-Now that `submit_form` has built the request body, it needs to finally
-send that request:
+Now that `submit_form` has built a request body, it needs to make a
+`POST` request. I'm going to defer that responsibility to the `load`
+function, which handles making requests:
 
 ``` {.python}
 def submit_form(self, elt):
@@ -458,8 +453,7 @@ def submit_form(self, elt):
     self.load(url, body)
 ```
 
-This uses a new parameter to the browser's `load` method for the
-request body. Let's pass that through to `request`:
+The new argument `load` is then passed through to `request`:
 
 ``` {.python indent=4}
 def load(self, url, body=None):
@@ -467,8 +461,8 @@ def load(self, url, body=None):
     headers, body = request(url, body)
 ```
 
-Then `request` can send that request body. That requires a few
-changes to `request`. First, it needs to use `POST`, not `GET`:
+In `request`, this new argument is used to decide between a `GET` and
+a `POST` request:
 
 ``` {.python}
 def request(url, payload=None):
@@ -478,8 +472,7 @@ def request(url, payload=None):
     body = "{} {} HTTP/1.0\r\n".format(method, path)
 ```
 
-Then we need to send the `Content-Length` header, which is mandatory
-on `POST` requests:
+If there it's a `POST` request, the `Content-Length` header is mandatory:
 
 ``` {.python}
 def request(url, payload=None):
@@ -491,7 +484,7 @@ def request(url, payload=None):
 ```
 
 Note that I grab the length of the payload in bytes, not the length in
-letters. Finally, we need to add the actual payload and send it:
+letters. Finally, we need send the payload itself:
 
 ``` {.python}
 def request(url, payload=None):
@@ -501,34 +494,86 @@ def request(url, payload=None):
     # ...
 ```
 
-So---now we've sent the `POST` request. From the point of view of the
-browser, that's about it: the server will respond with a web page and
-the browser will render it in the totally normal way. But to better
-understand the whole cycle---and also to make it easier to test our
-browser's form support---let's take a small detour out of the browser
-and look at how the server will handle these requests.
+So that's how the `POST` request gets sent. Then the server responds
+with an HTML page and the browser will render it in the totally normal
+way. That's basically it for forms!
 
+::: {.further}
+Something about event dispatching
+:::
+
+How web applications work
+=========================
+
+So... How do forms support web applications? When you use an
+application from your browser---whether you are registering to vote,
+looking at pictures of your baby cousin, or checking your
+email---there are typically[^exceptions] two programs involved: client
+code that runs in the browser, and server code that runs on the
+server. When you click on things or take actions in the application,
+that runs client code, which sends then data to the server via
+HTTP requests.
+
+[^exceptions]: Here's I'm talking in general terms. There are some
+    browser applications without a server, and others where the client
+    code is exceptionally simple and almost all the code is on the
+    server.
+
+For example, imagine a simple message board application. The server
+stores the state of the message board---who has posted what---and has
+logic for updating that state. But all the actual interaction with the
+page---drawing the posts, letting the user enter new ones---happens in
+the browser. Both components are necessary.
+
+The browser and the server interact over HTTP. The browser first makes
+a `GET` request to the server to load the current message board. You
+can think of this as downloading and running the client code in the
+browser. The user interacts with the browser to type a new post, and
+submits it to the server (say, via a form). That causes the browser to
+make a `POST` request to the server, which instructs the server to
+update the message board state. The response to this request is a new
+HTML page with the new state of the message board, taking into account
+the requested changes.
+
+Forms are a simple, minimal introduction to this cycle of request and
+response and make a good introduction to how browser applications
+work. They're also implemented in every browser and have been around
+for decades. These days web applications still use the form elements,
+but replace synchronous POST requests with asynchronous ones driven by
+Javascript,[^ajax] which makes application snappier by hiding the time
+to make the HTTP request. In return for that snappiness, error
+handling, validation, and loading indicators must now be handled in
+JavaScript instead of by the browser. In any case, both synchronous
+and asynchronous uses of forms are based on the same principles.
+
+[^ajax]: In the early 2000s, the adoption of asynchronous HTTP
+    requests sparked the wave of innovative new web applications
+    called [Web 2.0][web20].
+    
+[web20]: https://en.wikipedia.org/wiki/Web_2.0
+
+::: {.further}
+PUT and DELETE requests
+:::
 
 Receiving POST requests
 =======================
 
-Let's test our web browser by making our own simple web server. This
-server will show a simple form with a single text entry and remember
-anything submitted through that form. Then, it'll show you all of the
-things that it remembers. Call it a guest book.^[Online guest books...
-so 90s...]
+To better understand the request/response cycle write a simple web
+server. It'll implement an online guest book,^[They were very hip in
+the 90s---comment threads from before there was anything to comment
+on.] kind of like an open, anonymous comment thread. Now, this is a
+book on web *browser* engineering, so I won't be too thorough in
+discussing web server implementation choices. But I want you to see
+how the other side of the connection works and give you a concrete
+sense of how work is divided between client and server.
 
-A web server is a different program from a web browser, so let's start
-a new file. The server will need to:
+A web server is a separate program from the web browser, so let's
+start a new file. The server will need to:
 
 -   Open a socket and listen for connections
 -   Parse HTTP requests it receives
 -   Respond to those requests with an HTML web page
-
-Now, this is a book on web *browser* engineering, so I won't focus too
-much on the implementation choices. But it's valuable to know how the
-other side of the connection works, as we start diving deeper into how
-browsers help run full-fledged web applications.
 
 Let's start by opening a socket. Like for the browser, we need to
 create an internet streaming socket using TCP:
@@ -540,43 +585,39 @@ s = socket.socket(
     type=socket.SOCK_STREAM,
     proto=socket.IPPROTO_TCP,
 )
-```
-
-Now, instead of calling `connect` on this socket (which causes it to
-connect to some other server), we'll call `bind`, which opens a port
-waits for other computers to connect to it:
-
-``` {.python file=server}
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(('', 8000))
-s.listen()
 ```
 
-Let's look at the `bind` call first. Its first argument is says who
-should be allowed to make connections *to* the server. The empty
-string means that anyone can. The second argument is the port on
-*your* machine that you want the server to listen on. I've chosen
-`8000` here. `8000` is similar to 80, the default port, but because
-it's larger than 1024 it doesn't require administrator privileges. You
-can pick a different number if, for whatever reason, port 8000 is
-taken on your machine.
-
-Now, before the `bind` call is a `setsockopt` call. If a server
-crashes with a connection open on some port, your OS prevents the port
-from being reused[^why-wait] for a short period. So if your server
-crashes, normally you need to wait about a minute before you restart
-it, or you'll get errors about addresses being in use. By calling
-`setsockopt` with the `SO_REUSEADDR` option we change that default and
-allow the OS to immediately reuse the port---which makes debugging our
-server a lot easier.
+The `setsockopt` call is optional. Normally, when a program has a
+socket open and it crashes, your OS prevents that port from being
+reused[^why-wait] for a short period. That's annoying when developing
+a server, and calling `setsockopt` with the `SO_REUSEADDR` option
+allows the OS to immediately reuse the port.
 
 [^why-wait]: When your process crashes, the computer on the end of the
     connection won't be informed immediately; if some other process
     opens the same port, it could receive data meant for the old,
     now-dead process.
 
-Finally, after bind, the `listen` call tells the OS that we're ready
-to accept connections.
+Now, with this socket, instead of calling `connect` (to connect to
+some other server), we'll call `bind`, which waits for other computers
+to connect:
+
+``` {.python file=server}
+s.bind(('', 8000))
+s.listen()
+```
+
+Let's look at the `bind` call first. Its first argument is says who
+should be allowed to make connections *to* the server. The empty
+string means that anyone can. The second argument is the port others
+will need to connect to to talk to our server; I've chosen `8000`. I
+can't use 80, because ports below 1024 require administrator
+privileges. But you can pick something other than 8000 if, for
+whatever reason, port 8000 is taken on your machine.
+
+Finally, after the `bind` call, the `listen` call tells the OS that
+we're ready to accept connections.
 
 To actually accept those connections, we enter a loop that runs once
 per connection. At the top of the loop we call `s.accept` to wait for
@@ -591,11 +632,11 @@ while True:
 That connection object is, confusingly, also a socket: it is the
 socket corresponding to that one connection. We know what to do with
 those: we read the contents and parse the HTTP message. But it's a
-little trickier to do this in the server than in the browser, because
-the browser waits for the server, and that means the server can't just
-read from the socket until the connection closes.
+little trickier in the server than in the browser, because the server
+can't just read from the socket until the connection closes---the
+browser is waiting for the server and won't close the connection.
 
-Instead, we'll read from the socket line-by-line. First, we read the
+So we've got to read from the socket line-by-line. First, we read the
 request line:
 
 ``` {.python file=server}
@@ -632,12 +673,19 @@ def handle_connection(conx):
         body = req.read(length).decode('utf8')
     else:
         body = None
-
-    status, body = handle_request(method, url, headers, body)
 ```
 
-Let's fill in `handle_request` later; it returns a string containing
-the resulting HTML web page. We need to send it back to the browser:
+Now the server needs to generate a web page in response. We'll get to
+that later; for now, just abstract that away behind a `do_request`
+call:
+
+``` {.python file=server}
+def handle_connection(conx):
+    # ...
+    status, body = do_request(method, url, headers, body)
+```
+
+The server then sends this page back to the browser:
 
 ``` {.python file=server}
 def handle_connection(conx):
@@ -650,44 +698,59 @@ def handle_connection(conx):
     conx.close()
 ```
 
-This is a bare-bones server: it doesn't check that the browser is
-using HTTP 1.0 to talk to it, it doesn't send back any headers at all
-except `Content-Length`, and so on. Again---this is a web *browser*
-book. But it'll do.
+This is all pretty bare-bones: our server doesn't check that the
+browser is using HTTP 1.0 to talk to it, it doesn't send back any
+headers at all except `Content-Length`, it doesn't support TLS, and so
+on. Again---this is a web *browser* book. But it'll do.
 
-Now all that's left is implementing `handle_request`. We want some kind
-of guest book, so let's create a list to store guest book entries:
+Generating web pages
+====================
+
+So far all of this server code is "boilerplate"---any web application
+will have similar code. What makes our server a guest book, on the
+other hand, depends on what happens inside `do_request`. It needs to
+store the guest book state, generate HTML pages, and respond to `POST`
+requests.
+
+Let's store guest book entries in a list:
 
 ``` {.python file=server}
 ENTRIES = [ 'Pavel was here' ]
 ```
 
-The `handle_request` function outputs a little HTML page with those entries:
+Usually web applications use *persistent* state, like a database, so
+that the server can be restarted without losing state, but our guest
+book need not be that resilient.
+
+Next, `do_request` has to output HTML that shows those entries:
 
 ``` {.python file=server}
-def handle_request(method, url, headers, body):
+def do_request(method, url, headers, body):
     out = "<!doctype html>"
     for entry in ENTRIES:
         out += "<p>" + entry + "</p>"
     return "200 OK", out
 ```
 
-This is---let's call it "minimal"---HTML, so it's a good thing our
-browser will insert implicit tags and so on. For now, I'm ignoring the
-method, the URL, the headers, and the body entirely.
+This is definitely "minimal" HTML, so it's a good thing our browser
+will insert implicit tags and has some default styles! You can test it
+out by running this minimal web server and, while it's running, direct
+your browser to `http://localhost:8000/`, `localhost` being what your
+computer calls itself and `8000` being the port we chose earlier. You
+should see one guest book entry.
 
-Run this minimal web server and then open a browser to
-`http://localhost:8000/`, `localhost` being what your computer calls
-itself and `8000` being the port we chose earlier. You should see a
-list of (one) guest book entry. As you debug this web server, it's
-probably easier to use a real web browser instead of the one you're
-writing. That way you don't have to worry about browser bugs.
+Note that as you debug debug this web server, it's probably easier to
+use a real web browser instead of the toy one you're writing. That way
+you don't have to worry about browser bugs. But this server should
+support both real and toy browsers.
 
-Now, let's make it possible to add to the guest book. First, let's add
-a form to the top of the page:
+It should be possible for visitors to write in the guest book. That's
+going to require the browser sending the server a `POST` request, and
+forms are the easiest way to do that. So, let's add a form to the top
+of the page:
 
 ``` {.python file=server}
-def handle_request(method, url, headers, body):
+def do_request(method, url, headers, body):
     # ...
     out += "<form action=add method=post>"
     out +=   "<p><input name=guest></p>"
@@ -696,9 +759,36 @@ def handle_request(method, url, headers, body):
     # ...
 ```
 
-This form tells the browser to submit data to
-`http://localhost:8000/add`; the server needs to react to such
-submissions. First, we will need to undo the form-encoding:
+When this form is submitted, the browser will send a `POST` request to
+`http://localhost:8000/add`. So the server needs to react to these
+submissions. That means `do_request` will field two kinds of requests:
+regular browsing and form submissions. Let's separate the two kinds of
+requests into different functions.
+
+Rename the current `do_request` to `show_comments`:
+
+``` {.python file=server}
+def show_comments():
+    # ...
+    return out
+```
+
+This frees up the `do_request` function to figure out which function
+to call:
+
+``` {.python file=server}
+def do_request(method, url, headers, body):
+    if method == "GET" and url == "/":
+        return "200 OK", show_comments()
+    elif method == "POST" and url == "/add":
+        params = form_decode(body)
+        return "200 OK", add_entry(params)
+    else:
+        return "404 Not Found", not_found(url, method)
+```
+
+When a `POST` request to `/add` comes in, the first step is to decode
+the request body:
 
 ``` {.python file=server}
 def form_decode(body):
@@ -709,18 +799,8 @@ def form_decode(body):
     return params
 ```
 
-Now that we have form submissions, `handle_request` will field two
-kinds of requests: regular browsing and form submissions. Let's
-separate the two kinds of requests into different functions. Rename
-the current `handle_request` to `show_comments`:
-
-``` {.python file=server}
-def show_comments():
-    # ...
-    return out
-```
-
-A new `add_entry` function can handle form submissions:
+The `add_entry` function just adds new guest book entries from the
+form:
 
 ``` {.python file=server}
 def add_entry(params):
@@ -729,22 +809,8 @@ def add_entry(params):
     return show_comments()
 ```
 
-This frees up the `handle_request` function to just figure out which
-of these two functions to call:
-
-``` {.python file=server}
-def handle_request(method, url, headers, body):
-    if method == "POST" and url == "/add":
-        params = form_decode(body)
-        return "200 OK", add_entry(params)
-    elif method == "GET" and url == "/":
-        return "200 OK", show_comments()
-    else:
-        return "404 Not Found", not_found(url, method)
-```
-
-Now that the browser request matters, I've added a "404" response.
-Fitting the austere stylings of our web page, here's the 404 page:
+Finally, I've added a "404" response. Fitting the austere stylings of
+our web page, here's the 404 page:
 
 ``` {.python file=server}
 def not_found(url, method):
@@ -760,11 +826,35 @@ able to use the guest book from a real web browser.
 Summary
 =======
 
-We've added an important new capability, form submission, to our web
-browser. It is a humble beginning, but our toy web browser is no
-longer just for reading pages: it is becoming an application platform.
-Plus, we now have a little web server for our browser to talk to. Life
-is better with friends!
+With this chapter we're starting to transform our browser into an
+application platform. We've added:
+
+- Layout objects for input areas and buttons.
+- Code to click on buttons and type into input areas.
+- Hierarchical focus handling.
+- Code to submit forms and send them to a server.
+
+Plus, our browser now has a little web server friend. That's going to
+be handy later, when we add more interactive features to the browser.
+
+::: {.signup}
+:::
+
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab8.py
+:::
+
+There's also a server now, but it's much simpler:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/server8.py
+:::
 
 Exercises
 =========
@@ -773,12 +863,20 @@ Exercises
 while inside a text entry, that submits the form that the text entry
 was in. Add this feature to your browser.
 
-*Check boxes*: Add checkboxes. In HTML, checkbox `<input>`
-elements with the `type` attribute set to `checkbox`. The checkbox is
-checked if it has the `checked` attribute set, and unchecked
-otherwise. Submitting checkboxes in a form is a little tricky,
-though. A checkbox named `foo` only appears in the form encoding if
-it is checked. Its key is its `name` and its value is the empty string.
+*Check boxes*: In HTML, `input` elements have a `type` attribute. When
+set to `checkbox`, the `input` element looks like a checkbox; it's
+checked if the `checked` attribute is set, and unchecked otherwise.
+Checkboxes are only included in the form submission when they're
+checked.
+
+*Tab*: In most browsers, the `<Tab>` key (on your keyboard) moves
+focus from one input field to the next. Implement this behavior in
+your browser. The "tab order" of input elements should be the same as
+the order of `<input>` elements on the page. You can also add support
+for the [`tabindex`][tabindex] property, which lets a web page change
+this tab order.
+
+[tabindex]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex
 
 *Blurring*: Right now, if you click inside a text entry, and then
 inside the address bar, two cursors will appear on the screen. To fix
@@ -808,9 +906,15 @@ Each topic should have its own URL and its own list of messages. So,
 for example, `/cooking` should be a page of posts (about cooking) and
 comments submitted through the form on that page should only show up
 when you go to `/cooking`, not when you go to `/cars`. Make the home
-page, from `/`, show links to each topic's page.
+page, from `/`, list the available topics with a link to each topic's
+page. Make it possible for users to add new topics.
 
-*Tab*: In most browsers, the `<Tab>` key moves focus from one input
-field to the next. Implement this behavior in your browser. The "tab
-order" of input elements should be the same as the order of `<input>`
-elements on the page.
+*Persistence*: Back the server's list of guest book entries with a
+file, so that when the server is restarted it doesn't lose data.
+
+*Rich buttons*: Make it possible for a button to contain arbitrary
+elements as children, and render them correctly. The children should
+be contained inside button instead of spilling out---this can make a
+button really tall. Think about edge cases, like a button that
+contains another button, an input area, or a link, and test real
+browsers to see what they do.
