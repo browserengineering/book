@@ -350,6 +350,9 @@ class DrawText:
             fill=self.color,
         )
 
+    def __repr__(self):
+        return "DrawText(text={})".format(self.text)
+
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
