@@ -103,23 +103,23 @@ Testing the server
 
 The server handles a GET request to the "/" URL:
 
-    >>> server8.handle_request("GET", "/", {}, "")
+    >>> server8.do_request("GET", "/", {}, "")
     ('200 OK', '<!doctype html><form action=add method=post><p><input name=guest></p><p><button>Sign the book!</button></p></form><p>Pavel was here</p>')
 
 GET requests to other URLs return a 404 page:
 
-    >>> server8.handle_request("GET", "/unknown", {}, "")
+    >>> server8.do_request("GET", "/unknown", {}, "")
     ('404 Not Found', '<!doctype html><h1>GET /unknown not found!</h1>')
 
 A POST request is supported at the "/add" URL, which will parse out the `guest`
 parameter from the body, insert it into the guestbook, and return it as part of
 the response page:
 
-    >>> server8.handle_request("POST", "/add", {}, "guest=Chris")
+    >>> server8.do_request("POST", "/add", {}, "guest=Chris")
     ('200 OK', '<!doctype html><form action=add method=post><p><input name=guest></p><p><button>Sign the book!</button></p></form><p>Pavel was here</p><p>Chris</p>')
 
 POST requsts to other URLs return 404 pages:
 
-    >>> server8.handle_request("POST", "/", {}, "")
+    >>> server8.do_request("POST", "/", {}, "")
     ('404 Not Found', '<!doctype html><h1>POST / not found!</h1>')
 
