@@ -69,6 +69,51 @@ Unknown syntaxes are ignored.
     >>> lab6.CSSParser("foo { bar }").parse()
     [(TagSelector(tag=foo, priority=1), {})]
 
+Whitespace can be present anywhere. This is an easy mistake to make
+with a scannerless parser like used here:
+
+    >>> lab6.CSSParser("a {}").parse()
+    [(TagSelector(tag=a, priority=1), {})]
+    >>> lab6.CSSParser("a{}").parse()
+    [(TagSelector(tag=a, priority=1), {})]
+    >>> lab6.CSSParser("a{ }").parse()
+    [(TagSelector(tag=a, priority=1), {})]
+    >>> lab6.CSSParser("a {} ").parse()
+    [(TagSelector(tag=a, priority=1), {})]
+    >>> lab6.CSSParser("a {p:v} ").parse()
+    [(TagSelector(tag=a, priority=1), {'p': 'v'})]
+    >>> lab6.CSSParser("a {p :v} ").parse()
+    [(TagSelector(tag=a, priority=1), {'p': 'v'})]
+    >>> lab6.CSSParser("a { p:v} ").parse()
+    [(TagSelector(tag=a, priority=1), {'p': 'v'})]
+    >>> lab6.CSSParser("a {p: v} ").parse()
+    [(TagSelector(tag=a, priority=1), {'p': 'v'})]
+    >>> lab6.CSSParser("a {p:v } ").parse()
+    [(TagSelector(tag=a, priority=1), {'p': 'v'})]
+
+Invalid syntax is mostly skipped:
+
+    >>> lab6.CSSParser("a;").parse()
+    []
+    >>> lab6.CSSParser("a {;}").parse()
+    [(TagSelector(tag=a, priority=1), {})]
+    >>> lab6.CSSParser("{} a;").parse()
+    []
+    >>> lab6.CSSParser("a { p }").parse()
+    [(TagSelector(tag=a, priority=1), {})]
+    >>> lab6.CSSParser("a { p: v }").parse()
+    [(TagSelector(tag=a, priority=1), {'p': 'v'})]
+    >>> lab6.CSSParser("a { p: ^ }").parse()
+    [(TagSelector(tag=a, priority=1), {})]
+    >>> lab6.CSSParser("a { p: ; }").parse()
+    [(TagSelector(tag=a, priority=1), {})]
+    >>> lab6.CSSParser("a { p: v; q }").parse()
+    [(TagSelector(tag=a, priority=1), {'p': 'v'})]
+    >>> lab6.CSSParser("a { p: v; ; q: u }").parse()
+    [(TagSelector(tag=a, priority=1), {'p': 'v', 'q': 'u'})]
+    >>> lab6.CSSParser("a { p: v; q:: u }").parse()
+    [(TagSelector(tag=a, priority=1), {'p': 'v'})]
+    
 
 Testing compute_style
 =====================
