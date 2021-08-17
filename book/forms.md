@@ -546,10 +546,9 @@ handling, validation, and loading indicators must now be handled in
 JavaScript instead of by the browser. In any case, both synchronous
 and asynchronous uses of forms are based on the same principles.
 
-[^ajax]: Asynchronous requests make for snappier, smoother, and
-    responsive applications. In the early 2000s, the adoption of
-    asynchronous HTTP requests sparked the wave of innovative new web
-    applications called [Web 2.0][web20].
+[^ajax]: In the early 2000s, the adoption of asynchronous HTTP
+    requests sparked the wave of innovative new web applications
+    called [Web 2.0][web20].
     
 [web20]: https://en.wikipedia.org/wiki/Web_2.0
 
