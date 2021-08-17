@@ -17,7 +17,7 @@ can parse it.
 
 The implicit ``html` and `body` (and `head` when needed) tags are added:
 
-	>>> parser = lab4.HTMLParser("<html><body>test</body></html")
+	>>> parser = lab4.HTMLParser("<html><body>test</body></html>")
 	>>> lab4.print_tree(parser.parse())
 	 <html>
 	   <body>
@@ -37,8 +37,8 @@ Missing tags are added in:
 	   <body>
 	     'test'
 
-Head tags are put in the head, and other tags, such as `div`, are put in the body.
-Also, tags such as `base` are self-closing:
+Head tags are put in the head, and other tags, such as `div`, are put
+in the body. Also, tags such as `base` are self-closing:
 
 	>>> parser = lab4.HTMLParser("<base><basefont></basefont><title></title><div></div>")
 	>>> lab4.print_tree(parser.parse())
@@ -50,7 +50,7 @@ Also, tags such as `base` are self-closing:
  	   <body>
  	     <div>
 
-	Missing end tags are added:
+Missing end tags are added:
 
 	>>> parser = lab4.HTMLParser("<div>text")
 	>>> lab4.print_tree(parser.parse())
