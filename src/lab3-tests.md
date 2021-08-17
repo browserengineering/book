@@ -71,6 +71,36 @@ Breakpoints can be set after each layout:
     
     >>> test.unpatch_breakpoint()
 
+Lines of text are spaced to make room for the tallest text. Let's lay
+out text with mixed font sizes, and then measure the line heights:
+
+    >>> def baseline(word):
+    ...     return word[1] + word[3].metrics("ascent")
+    >>> l = lab3.Layout(lab3.lex("Start<br>Regular<br>Regular <big><big>Big"))
+    >>> l.display_list #doctest: +NORMALIZE_WHITESPACE
+    [(13, 20.4, 'Start', Font size=16 weight=normal slant=roman style=None),
+     (13, 39.599999999999994, 'Regular', Font size=16 weight=normal slant=roman style=None),
+     (13, 65.99999999999999, 'Regular', Font size=16 weight=normal slant=roman style=None),
+     (141, 59.999999999999986, 'Big', Font size=24 weight=normal slant=roman style=None)]
+    >>> baseline(l.display_list[1]) - baseline(l.display_list[0])
+    19.199999999999996
+    >>> baseline(l.display_list[3]) - baseline(l.display_list[1])
+    26.39999999999999
+
+The differing line heights don't occur when text gets smaller:
+
+    >>> l = lab3.Layout(lab3.lex("Start<br>Regular<br>Regular <small><small>Small"))
+    >>> l.display_list #doctest: +NORMALIZE_WHITESPACE
+    [(13, 20.4, 'Start', Font size=16 weight=normal slant=roman style=None),
+     (13, 39.599999999999994, 'Regular', Font size=16 weight=normal slant=roman style=None),
+     (13, 58.79999999999998, 'Regular', Font size=16 weight=normal slant=roman style=None),
+     (141, 61.79999999999998, 'Small', Font size=12 weight=normal slant=roman style=None)]
+    >>> baseline(l.display_list[1]) - baseline(l.display_list[0])
+    19.199999999999996
+    >>> baseline(l.display_list[3]) - baseline(l.display_list[1])
+    19.19999999999999
+
+
 Testing `Browser`
 -----------------
 

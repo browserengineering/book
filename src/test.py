@@ -153,8 +153,8 @@ class MockFont:
         return all
 
     def __repr__(self):
-            return "Font size={} weight={} slant={} style={}".format(
-                self.size, self.weight, self.slant, self.style)
+        return "Font size={} weight={} slant={} style={}".format(
+            self.size, self.weight, self.slant, self.style)
 
 tkinter.font.Font = MockFont
 
