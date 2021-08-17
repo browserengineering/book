@@ -22,8 +22,9 @@ one.
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
     ... b"Header1: Value1\r\n\r\n" +
     ... b"<div>Form submitted</div>", method="POST", body=request_body)
-
     >>> headers, body = lab8.request(url, request_body)
+    >>> test.socket.last_request(url)
+    b'POST /submit HTTP/1.0\r\nContent-Length: 20\r\nHost: test.test\r\n\r\nname=1&comment=2%3D3'
 
 Testing InputLayout
 ===================
