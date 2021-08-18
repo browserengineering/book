@@ -350,8 +350,8 @@ The next step is submitting the now-filled-out form.
 The code that draws the text cursor here is kind of clunky---you could
 imagine each layout object knowing if it's focused and then being
 responsible for drawing the cursor. That's the more traditional
-approach in GUI frameworks, but Chrome uses [the design presented
-here][focused-element] to make sure the cursor can be [globally
+approach in GUI frameworks, but Chrome for example keeps track of a global
+[focused-element] to make sure the cursor can be [globally
 styled][frame-caret].
 :::
 
@@ -498,14 +498,10 @@ So that's how the `POST` request gets sent. Then the server responds
 with an HTML page and the browser will render it in the totally normal
 way. That's basically it for forms!
 
-::: {.further}
-Something about event dispatching
-:::
+How web apps work
+=================
 
-How web applications work
-=========================
-
-So... How do forms support web applications? When you use an
+So... How do forms support web applications (a.k.a. web apps)? When you use an
 application from your browser---whether you are registering to vote,
 looking at pictures of your baby cousin, or checking your
 email---there are typically[^exceptions] two programs involved: client
@@ -553,13 +549,21 @@ and asynchronous uses of forms are based on the same principles.
 [web20]: https://en.wikipedia.org/wiki/Web_2.0
 
 ::: {.further}
-PUT and DELETE requests
+There are more types of request than GET and POST. For example, there
+is [PUT](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT),
+which is like POST but is idempotent---if you send the same request multiple
+times, the effect is the same as if it has been sent once. PUT models
+placing a new keyed entry in a database. Another example is
+[DELETE](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE),
+which "deletes the specified resource".
+
+Neither PUT nor DELETE are commonly used.
 :::
 
 Receiving POST requests
 =======================
 
-To better understand the request/response cycle write a simple web
+To better understand the request/response cycle, let's write a simple web
 server. It'll implement an online guest book,^[They were very hip in
 the 90s---comment threads from before there was anything to comment
 on.] kind of like an open, anonymous comment thread. Now, this is a
