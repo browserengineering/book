@@ -215,8 +215,8 @@ The reason buttons surround their contents but input areas don't is
 that a button can contain images, styled text, or other content. In a
 real browser, that relies on the [`inline-block`][inline-block]
 display mode: a way of putting a block element within an inline.
-There's also `<input type=button>`, an older button syntax which
-worked more like other `input` areas.
+There's also `<input type=button>`, an older button syntax more
+similar to text inputs.
 :::
 
 [inline-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
@@ -869,18 +869,14 @@ browser, and update the guest book a few times. You should also be
 able to use the guest book from a real web browser.
 
 ::: {.further}
-Typically a web server framework like [Flask][flask] or
-[Django][django] (to name two popular Python examples) is used to
-structure your web server. [Micro-frameworks][micro] like Flask just
-provide connection handling and request routing, while
-macro-frameworks like Django also handle things like database access,
-validation, and API support. This book uses the [bottle][bottle-py]
-micro-framework.
+Typically connection handling and request routing is handled by a web
+framework; this book, for example uses [bottle.py][bottle-py].
+Frameworks parse requests into convenient data structures, route
+requests to the right handler, and can also provide tools like HTML
+templates, session handling, database access, validation, and API
+generation.
 :::
 
-[flask]: https://flask.palletsprojects.com/en/2.0.x/
-[django]: https://www.djangoproject.com
-[micro]: https://flask.palletsprojects.com/en/2.0.x/foreword/#what-does-micro-mean
 [bottle]: https://bottlepy.org/docs/dev/
 
 Summary
