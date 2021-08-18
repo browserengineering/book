@@ -549,16 +549,21 @@ and asynchronous uses of forms are based on the same principles.
 [web20]: https://en.wikipedia.org/wiki/Web_2.0
 
 ::: {.further}
-There are more types of request than GET and POST. For example, there
-is [PUT](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT),
-which is like POST but is idempotent---if you send the same request multiple
-times, the effect is the same as if it has been sent once. PUT models
-placing a new keyed entry in a database. Another example is
-[DELETE](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE),
-which "deletes the specified resource".
-
-Neither PUT nor DELETE are commonly used.
+There are request types besides GET and POST, like [PUT][put-req]
+(create if nonexistant) and [DELETE][del-req]. There are also more
+obscure methods like CONNECT and TRACE. New methods were supposed to
+be a standard extension mechanism for HTTP, and some protocols like
+[WebDav][webdav] were built this way (with methods like PROPFIND,
+MOVE, and LOCK), and in 2010 the [PATCH method][patch-req] was
+standardized in [RFC 5789]. Still, this did not become an enduring way
+to extend the web, and HTTP 2.0 and 3.0 did not add any new methods.
 :::
+
+[put-req]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT
+[del-req]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE
+[patch-req]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PATCH
+[webdav]: https://en.wikipedia.org/wiki/WebDAV
+[rfc5789]: https://datatracker.ietf.org/doc/html/rfc5789
 
 Receiving POST requests
 =======================
