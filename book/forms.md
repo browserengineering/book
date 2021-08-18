@@ -70,6 +70,18 @@ a great starting point for transforming our toy browser into an
 application platform---our goal for these next few chapters. Let's get
 started implementing all that!
 
+::: {.further}
+HTML forms first standardized in [HTML+][htmlplus], which also
+proposed tables, mathematical equations, and text that wraps around
+images. Amazingly, all three of these technologies survive, but in
+totally different standards: tables in [RFC 1942][rfc1942], equations
+in [MathML][mathml], and floating images in [CSS 1.0][css1].
+:::
+
+[htmlplus]: https://www.w3.org/MarkUp/htmlplus_paper/htmlplus.html
+[rfc1942]: https://datatracker.ietf.org/doc/html/rfc1942
+[mathml]: https://www.w3.org/Math/
+[css1]: https://www.w3.org/TR/REC-CSS1/#floating-elements
 
 Rendering widgets
 =================
@@ -203,6 +215,8 @@ The reason buttons surround their contents but input areas don't is
 that a button can contain images, styled text, or other content. In a
 real browser, that relies on the [`inline-block`][inline-block]
 display mode: a way of putting a block element within an inline.
+There's also `<input type=button>`, an older button syntax which
+worked more like other `input` areas.
 :::
 
 [inline-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
@@ -351,8 +365,8 @@ The code that draws the text cursor here is kind of clunky---you could
 imagine each layout object knowing if it's focused and then being
 responsible for drawing the cursor. That's the more traditional
 approach in GUI frameworks, but Chrome for example keeps track of a global
-[focused-element] to make sure the cursor can be [globally
-styled][frame-caret].
+[focused element][focused-element] to make sure the cursor can be
+[globally styled][frame-caret].
 :::
 
 [focused-element]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/dom/document.h;l=881;drc=80def040657db16e79f59e7e3b27857014c0f58d
@@ -497,6 +511,18 @@ def request(url, payload=None):
 So that's how the `POST` request gets sent. Then the server responds
 with an HTML page and the browser will render it in the totally normal
 way. That's basically it for forms!
+
+::: {.further}
+While most form submissions use the form encoding described here,
+forms with file uploads (using `<input type=file>`) use a [different
+encoding][multi-part] that includes metadata for each key-value pair
+(like the file name or file type). There's also an obscure
+[`text/plain` encoding][plain-enc] option, which uses no escaping and
+which even the standard warns against using.
+:::
+
+[multi-part]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST
+[plain-enc]: https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#text/plain-encoding-algorithm
 
 How web apps work
 =================
@@ -712,6 +738,16 @@ browser is using HTTP 1.0 to talk to it, it doesn't send back any
 headers at all except `Content-Length`, it doesn't support TLS, and so
 on. Again---this is a web *browser* book. But it'll do.
 
+::: {.further}
+Ilya Grigorik's [*High Performance Browser Networking*][hpbn] is an
+excellent deep dive into networking and how to optimize for it in a
+web application. There are things the client can do (make fewer
+requests, avoid polling, reuse connections) and things the server can
+do (compression, protocol support, sharing domains).
+:::
+
+[hpbn]: https://hpbn.co
+
 Generating web pages
 ====================
 
@@ -831,6 +867,21 @@ def not_found(url, method):
 Try it! You should be able to restart the server, open it in your
 browser, and update the guest book a few times. You should also be
 able to use the guest book from a real web browser.
+
+::: {.further}
+Typically a web server framework like [Flask][flask] or
+[Django][django] (to name two popular Python examples) is used to
+structure your web server. [Micro-frameworks][micro] like Flask just
+provide connection handling and request routing, while
+macro-frameworks like Django also handle things like database access,
+validation, and API support. This book uses the [bottle][bottle-py]
+micro-framework.
+:::
+
+[flask]: https://flask.palletsprojects.com/en/2.0.x/
+[django]: https://www.djangoproject.com
+[micro]: https://flask.palletsprojects.com/en/2.0.x/foreword/#what-does-micro-mean
+[bottle]: https://bottlepy.org/docs/dev/
 
 Summary
 =======
