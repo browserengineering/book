@@ -645,7 +645,7 @@ declare that it is using `HTTP/1.1`. Also add a `User-Agent` header.
 Its value can be whatever you want---it identifies your browser to the
 host. Make it easy to add further headers in the future.
 
-*File URLs*: Add support for `file` scheme, which allows the browser
+*File URLs*: Add support for the `file` scheme, which allows the browser
 to open local files. For example, `file:///path/goes/here` should
 refer to the file on your computer at location `/path/goes/here`. Also
 make it so that, if your browser is started without a URL being given,
