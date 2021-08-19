@@ -645,53 +645,31 @@ declare that it is using `HTTP/1.1`. Also add a `User-Agent` header.
 Its value can be whatever you want---it identifies your browser to the
 host. Make it easy to add further headers in the future.
 
+*File URLs*: Add support for the `file` scheme, which allows the browser
+to open local files. For example, `file:///path/goes/here` should
+refer to the file on your computer at location `/path/goes/here`. Also
+make it so that, if your browser is started without a URL being given,
+some specific file on your computer is opened. You can use that file
+for quick testing.
+
+*data:* Yet another scheme is *data*, which
+allow inlining HTML content into the URL itself. Try navigating to
+`data:text/html,Hello world!` in a real browser to see what happens. Add support
+for this scheme to your browser. The *data* scheme is especially
+convenient for making tests without having to put them in separate files.
+
 *Body tag:* Only show text in an HTML document if it is between
 `<body>` and `</body>`. This avoids printing the title and style
-information. The loop in `show` will need more variables to track tag
-names.
+information. Try to do this in a single pass through the
+document---that means not string methods like `split` or similar. The
+loop in `show` will need more variables to track tag names.
 
-*Redirects:* Error codes in the 300 range refer to redirects. Change
-the browser so that, for 300-range statuses, the browser makes a new
-request to the URL sent in the `Location` header. The new URL might
-itself be a redirect, so make sure to handle that case. You don't,
-however, want to get stuck in a redirect loop, so make sure limit how
-many redirects your browser can follow in a row. By the way, the
-`Location` header might start with a `/`, skipping the host and
-scheme. In that case, your browser needs to copy them from the
-original request. You can test this with with the URL
-<http://browser.engineering/redirect>, which should redirect back to
-this page.
-
-*Encodings:* Add support for HTTP compression, in which the browser
-[informs the
-server](https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation)
-that compressed data is acceptable. Your browser must send the
-`Accept-Encoding` header with the value `gzip`. If the server supports
-compression, its response will have a `Content-Encoding` header with
-value `gzip`. The body is then compressed. To decompress it, you can
-use the `decompress` method in the `gzip` module. Calling `makefile`
-with the `encoding` argument will no longer work, because compressed
-data is not `utf8`-encoded. You can change the first argument `"rb"`
-to work with raw bytes instead of encoded text. By the way, many web
-servers send compressed data using a `Transfer-Encoding` called
-`chunked`. You'll want to add support for it as well.
-
-*Caching:* Typically the same images, styles, and scripts are used on
-multiple pages; downloading them repeatedly is a waste. It's generally
-valid to cache any HTTP response, as long as it was requested with
-`GET` and received a `200` response.^[Some other status codes like
-`301` and `404` can also be cached.] Implement a cache in your browser
-and test it by requesting the same file multiple times. Servers
-control caches using the `Cache-Control` header. Add support for this
-header, specifically for `no-store` and `max-age` values. If the
-header contains some other value, it's best not to cache the response.
-
-*Entities:* Implement support for the less-than (`&lt;`) and greater-than (`&gt;`)
-entities. These should be printed as  `<` and `>`, respectively.
-For example, if the HTML response was `&lt;div&gt;abc&lt;/div&gt;`, the `show`
-method of your browser should print `<div>abc</div>` (and *not* just `abc`).
-Entities allow web pages to include these special characters without the browser
-interpreting them as tags.
+*Entities:* Implement support for the less-than (`&lt;`) and
+greater-than (`&gt;`) entities. These should be printed as `<` and
+`>`, respectively. For example, if the HTML response was
+`&lt;div&gt;`, the `show` method of your browser should print `<div>`.
+Entities allow web pages to include these special characters without
+the browser interpreting them as tags.
 
 *view-source:* In addition to HTTP and HTTPS, there are other schemes,
 such as *view-source*; navigating in a real browser to
@@ -703,12 +681,46 @@ previous exercise, and add an extra `transform()` method that adjusts
 the input to `show()` when in view-source mode, like this:
 `show(transform(body))`.
 
-*data:* Yet another scheme is *data*, which
-allow inlining HTML content into the URL itself. Try navigating to
-`data:text/html,Hello world!` in a real browser to see what happens. Add support
-for this scheme to your browser. The *data* scheme is especially
-convenient for making tests without having to put them in separate files.
+*Compression:* Add support for HTTP compression, in which the browser
+[informs the server][negotiate] that compressed data is acceptable.
+Your browser must send the `Accept-Encoding` header with the value
+`gzip`. If the server supports compression, its response will have a
+`Content-Encoding` header with value `gzip`. The body is then
+compressed. To decompress it, you can use the `decompress` method in
+the `gzip` module. Calling `makefile` with the `encoding` argument
+will no longer work, because compressed data is not `utf8`-encoded.
+You can change the first argument `"rb"` to work with raw bytes
+instead of encoded text.[^te]
 
+[negotiate]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
+
+[^te]: Most web servers that support compressed data use a
+`Transfer-Encoding` called [`chunked`][chunked]. You'll need to add
+support for it as well to access most web servers.
+
+[chunked]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
+
+*Redirects:* Error codes in the 300 range request a redirect. When
+your browser encounters one, it should make a new request to the URL
+given in the `Location` header. Sometimes the `Location` header is a
+full URL, but sometimes it skips the host and scheme and just starts
+with a `/` (meaning the same host and scheme as the original request).
+The new URL might itself be a redirect, so make sure to handle that
+case. You don't, however, want to get stuck in a redirect loop, so
+make sure limit how many redirects your browser can follow in a row.
+You can test this with with the URL
+<http://browser.engineering/redirect>, which redirects back to this
+page.
+
+*Caching:* Typically the same images, styles, and scripts are used on
+multiple pages; downloading them repeatedly is a waste. It's generally
+valid to cache any HTTP response, as long as it was requested with
+`GET` and received a `200` response.^[Some other status codes like
+`301` and `404` can also be cached.] Implement a cache in your browser
+and test it by requesting the same file multiple times. Servers
+control caches using the `Cache-Control` header. Add support for this
+header, specifically for `no-store` and `max-age` values. If the
+header contains some other value, it's best not to cache the response.
 
 [^5]: On some systems, you can run `dig +short example.org` to do this
     conversion yourself.
