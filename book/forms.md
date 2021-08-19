@@ -70,6 +70,18 @@ a great starting point for transforming our toy browser into an
 application platform---our goal for these next few chapters. Let's get
 started implementing all that!
 
+::: {.further}
+HTML forms first standardized in [HTML+][htmlplus], which also
+proposed tables, mathematical equations, and text that wraps around
+images. Amazingly, all three of these technologies survive, but in
+totally different standards: tables in [RFC 1942][rfc1942], equations
+in [MathML][mathml], and floating images in [CSS 1.0][css1].
+:::
+
+[htmlplus]: https://www.w3.org/MarkUp/htmlplus_paper/htmlplus.html
+[rfc1942]: https://datatracker.ietf.org/doc/html/rfc1942
+[mathml]: https://www.w3.org/Math/
+[css1]: https://www.w3.org/TR/REC-CSS1/#floating-elements
 
 Rendering widgets
 =================
@@ -203,6 +215,8 @@ The reason buttons surround their contents but input areas don't is
 that a button can contain images, styled text, or other content. In a
 real browser, that relies on the [`inline-block`][inline-block]
 display mode: a way of putting a block element within an inline.
+There's also `<input type=button>`, an older button syntax more
+similar to text inputs.
 :::
 
 [inline-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
@@ -351,8 +365,8 @@ The code that draws the text cursor here is kind of clunky---you could
 imagine each layout object knowing if it's focused and then being
 responsible for drawing the cursor. That's the more traditional
 approach in GUI frameworks, but Chrome for example keeps track of a global
-[focused-element] to make sure the cursor can be [globally
-styled][frame-caret].
+[focused element][focused-element] to make sure the cursor can be
+[globally styled][frame-caret].
 :::
 
 [focused-element]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/dom/document.h;l=881;drc=80def040657db16e79f59e7e3b27857014c0f58d
@@ -498,6 +512,18 @@ So that's how the `POST` request gets sent. Then the server responds
 with an HTML page and the browser will render it in the totally normal
 way. That's basically it for forms!
 
+::: {.further}
+While most form submissions use the form encoding described here,
+forms with file uploads (using `<input type=file>`) use a [different
+encoding][multi-part] that includes metadata for each key-value pair
+(like the file name or file type). There's also an obscure
+[`text/plain` encoding][plain-enc] option, which uses no escaping and
+which even the standard warns against using.
+:::
+
+[multi-part]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST
+[plain-enc]: https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#text/plain-encoding-algorithm
+
 How web apps work
 =================
 
@@ -549,16 +575,21 @@ and asynchronous uses of forms are based on the same principles.
 [web20]: https://en.wikipedia.org/wiki/Web_2.0
 
 ::: {.further}
-There are more types of request than GET and POST. For example, there
-is [PUT](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT),
-which is like POST but is idempotent---if you send the same request multiple
-times, the effect is the same as if it has been sent once. PUT models
-placing a new keyed entry in a database. Another example is
-[DELETE](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE),
-which "deletes the specified resource".
-
-Neither PUT nor DELETE are commonly used.
+There are request types besides GET and POST, like [PUT][put-req]
+(create if nonexistant) and [DELETE][del-req]. There are also more
+obscure methods like CONNECT and TRACE. New methods were supposed to
+be a standard extension mechanism for HTTP, and some protocols like
+[WebDav][webdav] were built this way (with methods like PROPFIND,
+MOVE, and LOCK), and in 2010 the [PATCH method][patch-req] was
+standardized in [RFC 5789]. Still, this did not become an enduring way
+to extend the web, and HTTP 2.0 and 3.0 did not add any new methods.
 :::
+
+[put-req]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT
+[del-req]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE
+[patch-req]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PATCH
+[webdav]: https://en.wikipedia.org/wiki/WebDAV
+[rfc5789]: https://datatracker.ietf.org/doc/html/rfc5789
 
 Receiving POST requests
 =======================
@@ -707,6 +738,16 @@ browser is using HTTP 1.0 to talk to it, it doesn't send back any
 headers at all except `Content-Length`, it doesn't support TLS, and so
 on. Again---this is a web *browser* book. But it'll do.
 
+::: {.further}
+Ilya Grigorik's [*High Performance Browser Networking*][hpbn] is an
+excellent deep dive into networking and how to optimize for it in a
+web application. There are things the client can do (make fewer
+requests, avoid polling, reuse connections) and things the server can
+do (compression, protocol support, sharing domains).
+:::
+
+[hpbn]: https://hpbn.co
+
 Generating web pages
 ====================
 
@@ -826,6 +867,17 @@ def not_found(url, method):
 Try it! You should be able to restart the server, open it in your
 browser, and update the guest book a few times. You should also be
 able to use the guest book from a real web browser.
+
+::: {.further}
+Typically connection handling and request routing is handled by a web
+framework; this book, for example uses [bottle.py][bottle-py].
+Frameworks parse requests into convenient data structures, route
+requests to the right handler, and can also provide tools like HTML
+templates, session handling, database access, validation, and API
+generation.
+:::
+
+[bottle]: https://bottlepy.org/docs/dev/
 
 Summary
 =======
