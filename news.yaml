@@ -4,6 +4,15 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Sending Information to Servers
+    link: https://browser.engineering/forms.html
+    pubDate: Fri, 20 Aug 2021, 14:32:00 -0600
+    description:
+      Today we’re releasing a chapter on Sending Information to
+      Servers. In it, our browser becomes an application platform,
+      starting with a 90s-style guest book. The next few chapters will
+      explore that theme, building more and more capable web
+      applications as we go.
   - title: Handling Buttons and Links
     link: https://browser.engineering/chrome.html
     pubDate: Thu, 1 Jul 2021, 18:14:00 -0600

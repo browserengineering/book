@@ -13,7 +13,7 @@
         "styles.md": { "disabled": false, "lab": "lab6.py" },
         "chrome.md": { "disabled": false, "lab": "lab7.py" },
 
-        "forms.md": { "disabled": true, "lab": "lab8.py" },
+        "forms.md": { "disabled": false, "lab": "lab8.py" },
         "scripts.md": { "disabled": true, "lab": "lab9.py" },
         "security.md": { "disabled": true, "lab": "lab10.py" },
 
