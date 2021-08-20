@@ -739,7 +739,8 @@ class Browser:
         self.node_to_handle = {}
         self.handle_to_node = {}
         self.js.export_function("log", print)
-        self.js.export_function("querySelectorAll", self.js_querySelectorAll)
+        self.js.export_function("querySelectorAll",
+            self.js_querySelectorAll)
         self.js.export_function("getAttribute", self.js_getAttribute)
         self.js.export_function("innerHTML", self.js_innerHTML)
         with open("runtime9.js") as f:

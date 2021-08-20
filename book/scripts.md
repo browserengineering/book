@@ -331,7 +331,8 @@ Let's start with `querySelectorAll`. First, register a function:
 ``` {.python}
 def setup_js(self):
     # ...
-    self.js.export_function("querySelectorAll", self.js_querySelectorAll)
+    self.js.export_function("querySelectorAll",
+        self.js_querySelectorAll)
     # ...
 ```
 
@@ -487,7 +488,8 @@ this:[^9]
 ``` {.javascript}
 scripts = document.querySelectorAll("script")
 for (var i = 0; i < scripts.length; i++) {
-    console.log(call_python("getAttribute", scripts[i].handle, "src"));
+    console.log(call_python("getAttribute",
+        scripts[i].handle, "src"));
 }
 ```
 
