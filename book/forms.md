@@ -39,7 +39,7 @@ When the user goes to this page, they can click on those boxes to edit
 their values. Then, when they click the button at the end of the form,
 the browser collects all of the name/value pairs and bundles them into
 an HTTP `POST` request, sent to the URL given by the `form` element's
-`action` attribute and the usual rules of relative URLs---so in this
+`action` attribute, with the usual rules of relative URLs---so in this
 case, `/submit`. The `POST` request looks like this:
 
 ``` {.example}
@@ -211,7 +211,7 @@ elements as blue and orange rectangles.
 The reason buttons surround their contents but input areas don't is
 that a button can contain images, styled text, or other content. In a
 real browser, that relies on the [`inline-block`][inline-block]
-display mode: a way of putting a block element into an line of text.
+display mode: a way of putting a block element into a line of text.
 There's also an older `<input type=button>` syntax more similar to
 text inputs.
 :::
@@ -509,7 +509,7 @@ def request(url, payload=None):
     # ...
 ```
 
-[^unicode]: Because characters from other languages are encoded as
+[^unicode]: Because characters from many languages are encoded as
     multiple bytes.
 
 So that's how the `POST` request gets sent. Then the server responds
@@ -628,8 +628,8 @@ s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 The `setsockopt` call is optional. Normally, when a program has a
 socket open and it crashes, your OS prevents that port from being
 reused[^why-wait] for a short period. That's annoying when developing
-a server, and calling `setsockopt` with the `SO_REUSEADDR` option
-allows the OS to immediately reuse the port.
+a server; calling `setsockopt` with the `SO_REUSEADDR` option allows
+the OS to immediately reuse the port.
 
 [^why-wait]: When your process crashes, the computer on the end of the
     connection won't be informed immediately; if some other process
@@ -645,13 +645,13 @@ s.bind(('', 8000))
 s.listen()
 ```
 
-Let's look at the `bind` call first. Its first argument is says who
-should be allowed to make connections *to* the server. The empty
-string means that anyone can. The second argument is the port others
-will need to connect to to talk to our server; I've chosen `8000`. I
-can't use 80, because ports below 1024 require administrator
-privileges. But you can pick something other than 8000 if, for
-whatever reason, port 8000 is taken on your machine.
+Let's look at the `bind` call first. Its first argument says who
+should be allowed to make connections *to* the server; the empty
+string means that anyone can connect. The second argument is the port
+others must use to talk to our server; I've chosen `8000`. I can't use
+80, because ports below 1024 require administrator privileges, but you
+can pick something other than 8000 if, for whatever reason, port 8000
+is taken on your machine.
 
 Finally, after the `bind` call, the `listen` call tells the OS that
 we're ready to accept connections.
@@ -738,7 +738,7 @@ def handle_connection(conx):
 This is all pretty bare-bones: our server doesn't check that the
 browser is using HTTP 1.0 to talk to it, it doesn't send back any
 headers at all except `Content-Length`, it doesn't support TLS, and so
-on. Again---this is a web *browser* book. But it'll do.
+on. Again: this is a web *browser* book---it'll do.
 
 ::: {.further}
 Ilya Grigorik's [*High Performance Browser Networking*][hpbn] is an
@@ -759,15 +759,14 @@ other hand, depends on what happens inside `do_request`. It needs to
 store the guest book state, generate HTML pages, and respond to `POST`
 requests.
 
-Let's store guest book entries in a list:
+Let's store guest book entries in a Python list. Usually web
+applications use *persistent* state, like a database, so that the
+server can be restarted without losing state, but our guest book need
+not be that resilient.
 
 ``` {.python file=server}
 ENTRIES = [ 'Pavel was here' ]
 ```
-
-Usually web applications use *persistent* state, like a database, so
-that the server can be restarted without losing state, but our guest
-book need not be that resilient.
 
 Next, `do_request` has to output HTML that shows those entries:
 
@@ -782,19 +781,16 @@ def do_request(method, url, headers, body):
 This is definitely "minimal" HTML, so it's a good thing our browser
 will insert implicit tags and has some default styles! You can test it
 out by running this minimal web server and, while it's running, direct
-your browser to `http://localhost:8000/`, `localhost` being what your
-computer calls itself and `8000` being the port we chose earlier. You
-should see one guest book entry.
+your browser to `http://localhost:8000/`, where `localhost` is what
+your computer calls itself and `8000` is the port we chose earlier.
+You should see one guest book entry.
 
-Note that as you debug debug this web server, it's probably easier to
-use a real web browser instead of the toy one you're writing. That way
-you don't have to worry about browser bugs. But this server should
-support both real and toy browsers.
+It's probably better to use a real web browser, instead of this book's
+toy browser, to debug this web server. That way you don't have to
+worry about browser bugs while you work on server bugs. But this
+server does support both real and toy browsers.
 
-It should be possible for visitors to write in the guest book. That's
-going to require the browser sending the server a `POST` request, and
-forms are the easiest way to do that. So, let's add a form to the top
-of the page:
+We'll use forms to let visitors write in the guest book:
 
 ``` {.python file=server}
 def do_request(method, url, headers, body):
@@ -812,7 +808,7 @@ submissions. That means `do_request` will field two kinds of requests:
 regular browsing and form submissions. Let's separate the two kinds of
 requests into different functions.
 
-Rename the current `do_request` to `show_comments`:
+First rename the current `do_request` to `show_comments`:
 
 ``` {.python file=server}
 def show_comments():
@@ -820,8 +816,8 @@ def show_comments():
     return out
 ```
 
-This frees up the `do_request` function to figure out which function
-to call:
+This then frees up the `do_request` function to figure out which
+function to call for which request:
 
 ``` {.python file=server}
 def do_request(method, url, headers, body):
@@ -846,8 +842,8 @@ def form_decode(body):
     return params
 ```
 
-The `add_entry` function just adds new guest book entries from the
-form:
+The `add_entry` function then looks up the `guest` parameter and adds
+its content as a new guest book entry:
 
 ``` {.python file=server}
 def add_entry(params):
@@ -856,8 +852,8 @@ def add_entry(params):
     return show_comments()
 ```
 
-Finally, I've added a "404" response. Fitting the austere stylings of
-our web page, here's the 404 page:
+I've also added a "404" response. Fitting the austere stylings of our
+guest book, here's the 404 page:
 
 ``` {.python file=server}
 def not_found(url, method):
@@ -875,11 +871,11 @@ Typically connection handling and request routing is handled by a web
 framework; this book, for example uses [bottle.py][bottle-py].
 Frameworks parse requests into convenient data structures, route
 requests to the right handler, and can also provide tools like HTML
-templates, session handling, database access, validation, and API
-generation.
+templates, session handling, database access, input validation, and
+API generation.
 :::
 
-[bottle]: https://bottlepy.org/docs/dev/
+[bottle-py]: https://bottlepy.org/docs/dev/
 
 Summary
 =======
@@ -893,7 +889,7 @@ application platform. We've added:
 - Code to submit forms and send them to a server.
 
 Plus, our browser now has a little web server friend. That's going to
-be handy later, when we add more interactive features to the browser.
+be handy as we add more interactive features to the browser.
 
 ::: {.signup}
 :::
