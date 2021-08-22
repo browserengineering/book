@@ -649,7 +649,8 @@ So `event` now just calls `__runHandlers` from Python:
 ``` {.python}
 def dispatch_event(self, type, elt):
     handle = self.node_to_handle.get(elt, -1)
-    do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
+    do_default = self.js.evaljs(
+        "__runHandlers({}, \"{}\")".format(handle, type))
 ```
 
 Note that this code passes arguments to `__runHandlers` by generating
@@ -762,7 +763,7 @@ def js_innerHTML(self, handle, s):
 
 But remember that before we lay out a node, we need to style it,
 and the new nodes added from JavaScript haven't been styled yet.
-To fix this, we'll need to save the CSS rules in `load`
+To fix this, we'll need to save the CSS rules in `load`:
 
 ``` {.python}
 def load(self, url, body=None):
@@ -841,7 +842,7 @@ server, `/comment.css`, with the contents:
 ```
 
 But even though we tell the user that their comment is too long the
-user can submit the guest book entry anyway. Oops!
+user can submit the guest book entry anyway. Oops! Let's fix that.
 
 Event defaults
 ==============
@@ -881,7 +882,7 @@ function __runHandlers(handle, type) {
 }
 ```
 
-After calling the handlers, `evt.cancelled` tells us whether
+After calling the handlers, `evt.do_default` tells us whether
 `preventDefault` was called; let's return that to Python:
 
 ``` {.javascript}
@@ -891,7 +892,7 @@ function __runHandlers(handle, type) {
 }
 ```
 
-On the Python side, `event` can return that boolean to its handler
+On the Python side, `event` can return that boolean to its handler:
 
 ``` {.python expected=False}
 def dispatch_event(self, type, elt):
@@ -972,7 +973,7 @@ waiting for a browser developer to add it into the browser itself.
 Exercises
 =========
 
-*Node.children*: Add support for the [`children` field][children] on
+*Node.children*: Add support for the [`children`][children] property on
 JavaScript `Node`s. `Node.children` returns the immediate
 `ElementNode` children of a node, as an array. `TextNode` children are
 not included.[^13]
@@ -982,10 +983,10 @@ not included.[^13]
 [^13]: The DOM method `childNodes` gives access to both elements and
     text. Feel free to implement it if you'd like...
 
-*createElement*: The [method `document.createElement`][createElement]
-creates a new element, which can be attached to the document with the
+*createElement*: The [`document.createElement`][createElement] method
+creates a new element, which can be *attached* to the document with the
 [`appendChild`][appendChild] and [`insertBefore`][insertBefore]
-methods on nodes; unlike `innerHTML`, there's no parsing involved.
+methods on `Node`s; unlike `innerHTML`, there's no parsing involved.
 Implement all three methods.
 
 [createElement]: https://developer.mozilla.org/en-US/docs/Web/API/Document/createElement
@@ -994,43 +995,62 @@ Implement all three methods.
 
 [insertBefore]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
 
-*Event Bubbling*: Try to run an event handler when the user clicks on
-a link: you'll find that it's actually impossible. That's because when
-you click a link, the `elt` returned by `find_element` is the text
-inside the link, not the link element itself. On the web, this sort of
-quirk is handled by *event bubbling*: when an event is generated on an
-element, handlers are run not just on that element but also on its
-ancestors. Implement event bubbling, and make sure JavaScript can
-attach to clicks on links. Handlers can call `stopPropagation` on the
-event object to, well, stop bubbling the event up the tree. Make sure
-`preventDefault` successfully prevents clicks on a link from actually
-following the link.
+*removeChild*: The [`removeChild`][removeChild] method on `Node`s detaches the
+provided child and returns it, bringing that child---and its subtree---back
+into an *unnattached* state. (It can then be *reattached* elsewhere, or
+deleted.) Implement this method. It's more challenging to implement this one,
+, because you'll need to also remove the subtree from the Python side, and
+  delete any layout objects associated with it.
 
-*Canvas*: The [`<canvas>` element][canvas-tutorial] is a new addition
-in HTML 5; scripts can draw pictures on the `<canvas>`, much like the
-Tk canvas we've been using to implement our browser. To use the
-`<canvas>`, you first select the element in JavaScript; then call
-`canvas.getContext("2d")` on it, which returns a thing called a
+[removeChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/removeChild
+
+*Event Bubbling*: Try to run an event handler when the user clicks on a link:
+ you'll find that it's actually impossible. That's because when you click a
+ link, the `elt` returned by `find_element` is the text inside the link, not
+ the link element itself. On the web, this sort of quirk is handled by
+ [*event bubbling*][eventBubbling]: when an event is generated on an element,
+ handlers are run not just on that element but also on its ancestors.
+ Implement event bubbling, and make sure JavaScript can attach to clicks on
+ links. Handlers can call `stopPropagation` on the event object to, well, stop
+ bubbling the event up the tree. Make sure `preventDefault` successfully
+ prevents clicks on a link from actually following the link.
+
+ [eventBubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling_and_capture
+
+*Canvas*: The [`<canvas>` element][canvas-tutorial] allows scripts to draw
+ content on the `<canvas>` element, much like the `tkinter.Canvas` we've been
+ using to implement our browser. To use the `<canvas>`, you first select the
+ element in JavaScript; then call `canvas.getContext("2d")` on it, which
+ returns a thing called a
 "context"; and finally call methods like `fillRect` and `fillText` on
 that context to draw on the canvas. Implement the basics of
 `<canvas>`, including `fillRect` and `fillText`. Canvases will need a
-custom layout object that store a list of drawing commands.
-    
+custom layout object that store a list of drawing commands, and then inject
+them into the display list when `paint` is called.
+
 [canvas-tutorial]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial
 
-*AJAX Requests*: The [`XMLHttpRequest` object][xhr-tutorial] allows
-scripts to make HTTP requests and read the responses. Implement this
-API, including the `addEventListener`, `open`, and `send` methods.
-Beware that `XMLHttpRequest` calls are asynchronous: you need to
-finish executing the script before calling any event listeners on an
-`XMLHttpRequest`.[^sync-xhr-ok] That will require some kind of queue
-of requests you need to make and the handlers to call afterwards. Make
-sure `XMLHttpRequest`s work even if you create them inside event
-handlers.
+*HTTP Requests*: The [`XMLHttpRequest` object][xhr-tutorial] allows scripts to
+ make HTTP requests and read the responses.  Implement this API, including the
+ `addEventListener`, `open`, and `send` methods. Beware that `XMLHttpRequest`
+ calls are asynchronous:[^sync-xhr] you need to finish executing the script
+ before calling any event listeners on an `XMLHttpRequest`.[^sync-xhr-ok] That
+ will require some kind of queue of requests you need to make and the handlers
+ to call afterwards. Make sure `XMLHttpRequest`s work even if you create them
+ inside event handlers.
     
-[^sync-xhr-ok]: It is OK for the browser make the request
-    synchronously, using our `request` function. But the whole script
-    should finish running before calling the callback.
+[^sync-xhr]: Technically, `XMLHttpRequest` supports synchronous requests as an
+option in its API, and this is supported in all browsers, though
+[strongly discouraged](https://xhr.spec.whatwg.org/#sync-warning) for web
+developers to actually use. It's discouraged because it "freezes" the website
+completely while waiting for the response, in the same way form submissions do.
+However, it's even worse, than that: because of the single-threaded nature of
+the web, other browser tabs might also be frozen at the same time if they share
+this thread.
+
+[^sync-xhr-ok]: It's ok for you to cut corners and implement this by making the
+browser make the request synchronously, using our `request` function. But the
+whole script should finish running before calling the callback.
 
 [xhr-tutorial]: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
 

@@ -766,7 +766,8 @@ class Browser:
 
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
-        do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
+        do_default = self.js.evaljs(
+            "__runHandlers({}, \"{}\")".format(handle, type))
         return not do_default
 
     def make_handle(self, elt):
