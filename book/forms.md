@@ -38,18 +38,9 @@ This form contains two text entry boxes called `name` and `comment`.
 When the user goes to this page, they can click on those boxes to edit
 their values. Then, when they click the button at the end of the form,
 the browser collects all of the name/value pairs and bundles them into
-a format that looks like this:
-
-``` {.example}
-name=1&comment=2
-```
-
-This data is then sent to the server in an HTTP `POST` request,
-specifically to the URL given by the `form` element's `action`
-attribute and the usual rules of relative URLs. That `POST` request
-looks a lot like a regular request, except that it has a body---you've
-already seen HTTP responses with bodies, but requests can have them
-too. So the overall `POST` request looks like this:
+an HTTP `POST` request, sent to the URL given by the `form` element's
+`action` attribute, with the usual rules of relative URLs---so in this
+case, `/submit`. The `POST` request looks like this:
 
 ``` {.example}
 POST /submit HTTP/1.0
@@ -59,19 +50,22 @@ Content-Length: 16
 name=1&comment=2
 ```
 
-Note the `Content-Length` header; it's mandatory for `POST` requests.
-The server then responds to this request with a web page, just like
-normal, and the browser then does everything it normally does.
+In other words, it's lot like the regular `GET` requests we've already
+seen, except that it has a body---you've already seen HTTP responses
+with bodies, but requests can have them too. Note the `Content-Length`
+header; it's mandatory for `POST` requests. The server responds to
+this request with a web page, just like normal, and the browser then
+does everything it normally does.
 
-Forms require extensions across the whole browser to function
-properly, from implementing HTTP `POST` through new layout objects
-that draw `input` elements to handling buttons clicks. That makes it
-a great starting point for transforming our toy browser into an
-application platform---our goal for these next few chapters. Let's get
-started implementing all that!
+Implementing forms requires extending many parts of the browser, from
+implementing HTTP `POST` through new layout objects that draw `input`
+elements to handling buttons clicks. That makes it a great starting
+point for transforming our toy browser into an application platform,
+our goal for these next few chapters. Let's get started implementing
+it all!
 
 ::: {.further}
-HTML forms first standardized in [HTML+][htmlplus], which also
+HTML forms were first standardized in [HTML+][htmlplus], which also
 proposed tables, mathematical equations, and text that wraps around
 images. Amazingly, all three of these technologies survive, but in
 totally different standards: tables in [RFC 1942][rfc1942], equations
@@ -86,11 +80,11 @@ in [MathML][mathml], and floating images in [CSS 1.0][css1].
 Rendering widgets
 =================
 
-First, let's draw the input areas that the user will fill
-out.[^styled-widgets] Input areas are inline content, laid out in
+First, let's draw the input areas that the user will type
+into.[^styled-widgets] Input areas are inline content, laid out in
 lines next to text. So to support inputs we'll need a new kind of
 layout object, which I'll call `InputLayout`. We can copy `TextLayout`
-and use it as a template, but need to make some quick edits.
+and use it as a template, though we'll need to make some quick edits.
 
 [^styled-widgets]: Most applications use OS libraries to draw input
 areas, so that those input areas look like other applications on that
@@ -165,12 +159,12 @@ class InputLayout:
             DrawText(self.x, self.y, text, self.font, color))
 ```
 
-By this point in the book, you've seen new layout objects plenty of
-times. So I'm glossing over details; the point is that new layout
-objects are one standard place to extend the browser.
+By this point in the book, you've seen many layout objects, so I'm
+glossing over these changes. The point is that new layout objects are
+one standard way to extend the browser.
 
-With `InputLayout` written we now need to create some of these layout
-objects. We'll do so in `InlineLayout`:
+We now need to create some `InputLayout`s, which we can do in
+`InlineLayout`:
 
 ``` {.python}
 class InlineLayout:
@@ -187,9 +181,12 @@ class InlineLayout:
                     self.recurse(child)
 ```
 
-Note we don't recurse into `button` elements, because the button
-element is reponsible for drawing its contents. Meanwhile `input`
-elements are self-closing, so they never have children.
+Note that I don't recurse into `button` elements, because the `button`
+element draws its own contents.[^but-exercise] `input` elements are
+self-closing, so they never have children.
+
+[^but-exercise]: Though you'll need to do this differently for one of
+    the exercises below.
 
 Finally, this new `input` method is similar to the `text` method,
 creating a new layout object and adding it to the current line:
@@ -214,9 +211,9 @@ elements as blue and orange rectangles.
 The reason buttons surround their contents but input areas don't is
 that a button can contain images, styled text, or other content. In a
 real browser, that relies on the [`inline-block`][inline-block]
-display mode: a way of putting a block element within an inline.
-There's also `<input type=button>`, an older button syntax more
-similar to text inputs.
+display mode: a way of putting a block element into a line of text.
+There's also an older `<input type=button>` syntax more similar to
+text inputs.
 :::
 
 [inline-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
@@ -229,8 +226,7 @@ contents yet. But of course that's the whole point! So let's make
 `input` elements work like the address bar does---clicking on one will
 clear it and let you type into it.
 
-The clearing part is easy: we need another case inside `Tab`'s `click`
-method:
+Clearing is easy, another case inside `Tab`'s `click` method:
 
 ``` {.python}
 class Tab:
@@ -244,10 +240,10 @@ class Tab:
 
 But keyboard input is harder. Think back to how we [implemented the
 address bar](chrome.md): we added a `focus` field that remembered what
-we clicked on so we could send it our key presses. We need something
-like that `focus` field for input areas, but it's going to be more
-complex because the input areas live inside a `Tab`, not inside the
-`Browser`.
+we clicked on so we could later send it our key presses. We need
+something like that `focus` field for input areas, but it's going to
+be more complex because the input areas live inside a `Tab`, not
+inside the `Browser`.
 
 Naturally, we will need a `focus` field on each `Tab`, to remember
 which text entry (if any) we've recently clicked on:
@@ -292,13 +288,13 @@ class Browser:
         self.draw()
 ```
 
-Note that the `if` branch above, which corresponds to the user
-clicking in the browser interface, unsets `focus` by default, but then
-some existing code in that branch will set `focus` to `address bar` if
-the user actually clicked in the address bar.
+The `if` branch that corresponds to clicks in the browser interface
+unsets `focus` by default, but some existing code in that branch will
+set `focus` to `"address bar"` if the user actually clicked in the
+address bar.
 
 When a key press happens, the `Browser` sends it either to the address
-bar or to the active tab `keypress` method:
+bar or calls the active tab's `keypress` method:
 
 ``` {.python}
 class Browser:
@@ -309,8 +305,8 @@ class Browser:
             self.draw()
 ```
 
-Each tab's `keypress` method would then use the tab's `focus` field to
-add the character to the right text entry:
+That `keypress` method then uses the tab's `focus` field to put the
+character in the right text entry:
 
 ``` {.python}
 class Tab:
@@ -321,7 +317,11 @@ class Tab:
 
 This hierarchical focus handling is an important pattern for combining
 graphical widgets; in a real browser, where web pages can be embedded
-into one another with `iframe`s, the focus tree can be arbitrarily deep.
+into one another with `iframe`s,[^iframes] the focus tree can be
+arbitrarily deep.
+
+[^iframes]: The `iframe` element allows you to embed one web page into
+    another as a little window.
 
 So now we have user input working with `input` elements. Before we
 move on, there is one last tweak that we need to make: drawing the
@@ -373,8 +373,8 @@ approach in GUI frameworks, but Chrome for example keeps track of a global
 [frame-caret]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/editing/frame_caret.h?q=framecaret&ss=chromium
 
 
-Implementing forms
-==================
+Submitting forms
+================
 
 You submit a form by clicking on a `button`. So let's add another
 condition to the big `while` loop in `click`:
@@ -497,8 +497,9 @@ def request(url, payload=None):
     # ...
 ```
 
-Note that I grab the length of the payload in bytes, not the length in
-letters. Finally, we need send the payload itself:
+Note that the `Content-Length` is the length of the payload in bytes,
+which might not be equal to its length in letters.[^unicode] Finally,
+after the headers, we send the payload itself:
 
 ``` {.python}
 def request(url, payload=None):
@@ -507,6 +508,9 @@ def request(url, payload=None):
     s.send(body.encode("utf8"))
     # ...
 ```
+
+[^unicode]: Because characters from many languages are encoded as
+    multiple bytes.
 
 So that's how the `POST` request gets sent. Then the server responds
 with an HTML page and the browser will render it in the totally normal
@@ -527,14 +531,14 @@ which even the standard warns against using.
 How web apps work
 =================
 
-So... How do forms support web applications (a.k.a. web apps)? When you use an
-application from your browser---whether you are registering to vote,
-looking at pictures of your baby cousin, or checking your
+So... How do web applications (a.k.a. web apps) use forms? When you
+use an application from your browser---whether you are registering to
+vote, looking at pictures of your baby cousin, or checking your
 email---there are typically[^exceptions] two programs involved: client
 code that runs in the browser, and server code that runs on the
 server. When you click on things or take actions in the application,
-that runs client code, which sends then data to the server via
-HTTP requests.
+that runs client code, which sends then data to the server via HTTP
+requests.
 
 [^exceptions]: Here's I'm talking in general terms. There are some
     browser applications without a server, and others where the client
@@ -548,25 +552,24 @@ page---drawing the posts, letting the user enter new ones---happens in
 the browser. Both components are necessary.
 
 The browser and the server interact over HTTP. The browser first makes
-a `GET` request to the server to load the current message board. You
-can think of this as downloading and running the client code in the
-browser. The user interacts with the browser to type a new post, and
-submits it to the server (say, via a form). That causes the browser to
-make a `POST` request to the server, which instructs the server to
-update the message board state. The response to this request is a new
-HTML page with the new state of the message board, taking into account
-the requested changes.
+a GET request to the server to load the current message board. The
+user interacts with the browser to type a new post, and submits it to
+the server (say, via a form). That causes the browser to make a POST
+request to the server, which instructs the server to update the
+message board state. The server then needs to browser to update what
+the user sees; with forms, the server sends a new HTML page in its
+response to the POST requst.
 
 Forms are a simple, minimal introduction to this cycle of request and
 response and make a good introduction to how browser applications
 work. They're also implemented in every browser and have been around
-for decades. These days web applications still use the form elements,
+for decades. These days many web applications use the form elements,
 but replace synchronous POST requests with asynchronous ones driven by
 Javascript,[^ajax] which makes application snappier by hiding the time
-to make the HTTP request. In return for that snappiness, error
-handling, validation, and loading indicators must now be handled in
-JavaScript instead of by the browser. In any case, both synchronous
-and asynchronous uses of forms are based on the same principles.
+to make the HTTP request. In return for that snappiness, that
+JavaScript code must now handle errors, validate inputs, and indicate
+loading time. In any case, both synchronous and asynchronous uses of
+forms are based on the same principles of client and server code.
 
 [^ajax]: In the early 2000s, the adoption of asynchronous HTTP
     requests sparked the wave of innovative new web applications
@@ -576,13 +579,13 @@ and asynchronous uses of forms are based on the same principles.
 
 ::: {.further}
 There are request types besides GET and POST, like [PUT][put-req]
-(create if nonexistant) and [DELETE][del-req]. There are also more
-obscure methods like CONNECT and TRACE. New methods were supposed to
-be a standard extension mechanism for HTTP, and some protocols like
-[WebDav][webdav] were built this way (with methods like PROPFIND,
-MOVE, and LOCK), and in 2010 the [PATCH method][patch-req] was
-standardized in [RFC 5789]. Still, this did not become an enduring way
-to extend the web, and HTTP 2.0 and 3.0 did not add any new methods.
+(create if nonexistant) and [DELETE][del-req], or the more obscure
+CONNECT and TRACE. In 2010 the [PATCH method][patch-req] was
+standardized in [RFC 5789][rfc5789]. New methods were intended as a
+standard extension mechanism for HTTP, and some protocols were built
+this way (like [WebDav][webdav]'s PROPFIND, MOVE, and LOCK methods),
+but this did not become an enduring way to extend the web, and HTTP
+2.0 and 3.0 did not add any new methods.
 :::
 
 [put-req]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT
@@ -594,14 +597,13 @@ to extend the web, and HTTP 2.0 and 3.0 did not add any new methods.
 Receiving POST requests
 =======================
 
-To better understand the request/response cycle, let's write a simple web
-server. It'll implement an online guest book,^[They were very hip in
-the 90s---comment threads from before there was anything to comment
+To better understand the request/response cycle, let's write a simple
+web server. It'll implement an online guest book,^[They were very hip
+in the 90s---comment threads from before there was anything to comment
 on.] kind of like an open, anonymous comment thread. Now, this is a
-book on web *browser* engineering, so I won't be too thorough in
-discussing web server implementation choices. But I want you to see
-how the other side of the connection works and give you a concrete
-sense of how work is divided between client and server.
+book on web *browser* engineering, so I won't discuss web server
+implementation that thoroughly. But I want you to see how the server
+side of an application works.
 
 A web server is a separate program from the web browser, so let's
 start a new file. The server will need to:
@@ -626,8 +628,8 @@ s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 The `setsockopt` call is optional. Normally, when a program has a
 socket open and it crashes, your OS prevents that port from being
 reused[^why-wait] for a short period. That's annoying when developing
-a server, and calling `setsockopt` with the `SO_REUSEADDR` option
-allows the OS to immediately reuse the port.
+a server; calling `setsockopt` with the `SO_REUSEADDR` option allows
+the OS to immediately reuse the port.
 
 [^why-wait]: When your process crashes, the computer on the end of the
     connection won't be informed immediately; if some other process
@@ -643,13 +645,13 @@ s.bind(('', 8000))
 s.listen()
 ```
 
-Let's look at the `bind` call first. Its first argument is says who
-should be allowed to make connections *to* the server. The empty
-string means that anyone can. The second argument is the port others
-will need to connect to to talk to our server; I've chosen `8000`. I
-can't use 80, because ports below 1024 require administrator
-privileges. But you can pick something other than 8000 if, for
-whatever reason, port 8000 is taken on your machine.
+Let's look at the `bind` call first. Its first argument says who
+should be allowed to make connections *to* the server; the empty
+string means that anyone can connect. The second argument is the port
+others must use to talk to our server; I've chosen `8000`. I can't use
+80, because ports below 1024 require administrator privileges, but you
+can pick something other than 8000 if, for whatever reason, port 8000
+is taken on your machine.
 
 Finally, after the `bind` call, the `listen` call tells the OS that
 we're ready to accept connections.
@@ -736,7 +738,7 @@ def handle_connection(conx):
 This is all pretty bare-bones: our server doesn't check that the
 browser is using HTTP 1.0 to talk to it, it doesn't send back any
 headers at all except `Content-Length`, it doesn't support TLS, and so
-on. Again---this is a web *browser* book. But it'll do.
+on. Again: this is a web *browser* book---it'll do.
 
 ::: {.further}
 Ilya Grigorik's [*High Performance Browser Networking*][hpbn] is an
@@ -757,15 +759,14 @@ other hand, depends on what happens inside `do_request`. It needs to
 store the guest book state, generate HTML pages, and respond to `POST`
 requests.
 
-Let's store guest book entries in a list:
+Let's store guest book entries in a Python list. Usually web
+applications use *persistent* state, like a database, so that the
+server can be restarted without losing state, but our guest book need
+not be that resilient.
 
 ``` {.python file=server}
 ENTRIES = [ 'Pavel was here' ]
 ```
-
-Usually web applications use *persistent* state, like a database, so
-that the server can be restarted without losing state, but our guest
-book need not be that resilient.
 
 Next, `do_request` has to output HTML that shows those entries:
 
@@ -780,19 +781,16 @@ def do_request(method, url, headers, body):
 This is definitely "minimal" HTML, so it's a good thing our browser
 will insert implicit tags and has some default styles! You can test it
 out by running this minimal web server and, while it's running, direct
-your browser to `http://localhost:8000/`, `localhost` being what your
-computer calls itself and `8000` being the port we chose earlier. You
-should see one guest book entry.
+your browser to `http://localhost:8000/`, where `localhost` is what
+your computer calls itself and `8000` is the port we chose earlier.
+You should see one guest book entry.
 
-Note that as you debug debug this web server, it's probably easier to
-use a real web browser instead of the toy one you're writing. That way
-you don't have to worry about browser bugs. But this server should
-support both real and toy browsers.
+It's probably better to use a real web browser, instead of this book's
+toy browser, to debug this web server. That way you don't have to
+worry about browser bugs while you work on server bugs. But this
+server does support both real and toy browsers.
 
-It should be possible for visitors to write in the guest book. That's
-going to require the browser sending the server a `POST` request, and
-forms are the easiest way to do that. So, let's add a form to the top
-of the page:
+We'll use forms to let visitors write in the guest book:
 
 ``` {.python file=server}
 def do_request(method, url, headers, body):
@@ -810,7 +808,7 @@ submissions. That means `do_request` will field two kinds of requests:
 regular browsing and form submissions. Let's separate the two kinds of
 requests into different functions.
 
-Rename the current `do_request` to `show_comments`:
+First rename the current `do_request` to `show_comments`:
 
 ``` {.python file=server}
 def show_comments():
@@ -818,8 +816,8 @@ def show_comments():
     return out
 ```
 
-This frees up the `do_request` function to figure out which function
-to call:
+This then frees up the `do_request` function to figure out which
+function to call for which request:
 
 ``` {.python file=server}
 def do_request(method, url, headers, body):
@@ -844,8 +842,8 @@ def form_decode(body):
     return params
 ```
 
-The `add_entry` function just adds new guest book entries from the
-form:
+The `add_entry` function then looks up the `guest` parameter and adds
+its content as a new guest book entry:
 
 ``` {.python file=server}
 def add_entry(params):
@@ -854,8 +852,8 @@ def add_entry(params):
     return show_comments()
 ```
 
-Finally, I've added a "404" response. Fitting the austere stylings of
-our web page, here's the 404 page:
+I've also added a "404" response. Fitting the austere stylings of our
+guest book, here's the 404 page:
 
 ``` {.python file=server}
 def not_found(url, method):
@@ -873,11 +871,11 @@ Typically connection handling and request routing is handled by a web
 framework; this book, for example uses [bottle.py][bottle-py].
 Frameworks parse requests into convenient data structures, route
 requests to the right handler, and can also provide tools like HTML
-templates, session handling, database access, validation, and API
-generation.
+templates, session handling, database access, input validation, and
+API generation.
 :::
 
-[bottle]: https://bottlepy.org/docs/dev/
+[bottle-py]: https://bottlepy.org/docs/dev/
 
 Summary
 =======
@@ -891,7 +889,7 @@ application platform. We've added:
 - Code to submit forms and send them to a server.
 
 Plus, our browser now has a little web server friend. That's going to
-be handy later, when we add more interactive features to the browser.
+be handy as we add more interactive features to the browser.
 
 ::: {.signup}
 :::
