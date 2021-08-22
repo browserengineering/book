@@ -1017,11 +1017,11 @@ deleted.) Implement this method. It's more challenging to implement this one,
 
  [eventBubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling_and_capture
 
-*Canvas*: The [`<canvas>` element][canvas-tutorial] allows scripts to draw
- content on the `<canvas>` element, much like the `tkinter.Canvas` we've been
- using to implement our browser. To use the `<canvas>`, you first select the
- element in JavaScript; then call `canvas.getContext("2d")` on it, which
- returns a thing called a
+*Canvas*: The [`<canvas>`][canvas-tutorial] element allows scripts to draw
+ content on a `<canvas>` element with an API very similar to the
+ `tkinter.Canvas` API we've been using to implement our browser. To drawe to the
+ `<canvas>`, you first select the element in JavaScript; then call
+ `canvas.getContext("2d")` on it, which returns a thing called a
 "context"; and finally call methods like `fillRect` and `fillText` on
 that context to draw on the canvas. Implement the basics of
 `<canvas>`, including `fillRect` and `fillText`. Canvases will need a
