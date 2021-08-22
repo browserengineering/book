@@ -121,7 +121,7 @@ HEAD_TAGS = [
             
 def implicit_tags(tok, currently_open):
     tag = tok.tag if isinstance(tok, Tag) else None
-    while True:4
+    while True:
         open_tags = [node.tag for node in currently_open]
         if open_tags == [] and tag != "html":
             node = ElementNode("html", {})
