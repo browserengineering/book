@@ -689,7 +689,7 @@ class Browser:
         if self.dispatch_event("submit", elt): return
         inputs = find_inputs(elt, [])
         body = ""
-    for input in inputs:
+        for input in inputs:
             name = input.attributes["name"]
             value = input.attributes.get("value", "")
             body += "&" + name + "=" + value.replace(" ", "%20")
