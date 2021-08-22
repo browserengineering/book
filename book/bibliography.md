@@ -2,6 +2,7 @@
 title: More resources
 ...
 
+* [A Brief History of JavaScript](https://auth0.com/blog/a-brief-history-of-javascript/) - Sebastian Peyrott
 * [From URL to Interactive](https://alistapart.com/article/from-url-to-interactive/) - Aaron Gustafson
 * [High-performance Browser Networking](https://hpbn.co/) - Ilya Grigorik
 * [How Browsers Work](https://taligarsiel.com/Projects/howbrowserswork1.htm) - Tali Garsiel
