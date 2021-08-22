@@ -2,6 +2,7 @@
 title: More resources
 ...
 
+* [Ajax: A New Approach to Web Applications](https://www.semanticscholar.org/paper/Ajax%3A-A-New-Approach-to-Web-Applications-Garrett/c440ae765ff19ddd3deda24a92ac39cef9570f1e): Jesse James Garrett
 * [A Brief History of JavaScript](https://auth0.com/blog/a-brief-history-of-javascript/) - Sebastian Peyrott
 * [From URL to Interactive](https://alistapart.com/article/from-url-to-interactive/) - Aaron Gustafson
 * [High-performance Browser Networking](https://hpbn.co/) - Ilya Grigorik
