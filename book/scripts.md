@@ -5,12 +5,37 @@ prev: forms
 next: security
 ...
 
-Forms allow our web browser to run dynamic web applications like that
-guest book. But form-based web applications require page loads every
-time you do anything, and fell out of favor in the early 2000s. What
-took their place are JavaScript-based applications, which run user
-code on web pages that can modify the pages dynamically, without
-reloads. Let's add support for that to our toy web browser.
+Forms allow our web browser to run dynamic web applications like that guest
+book. But form-based web applications require page loads every time you do
+anything, and fell out of favor in the early 2000s. What took their place are
+JavaScript-enhanced applications, which can respond to user input modify the
+pages dynamically, without reloads. Let's add support for that to our toy web
+browser.
+
+These applications are "enhanced" by JavaScript, because they still use HTML,
+CSS, form elements and all the other features we've built so far into our
+browser. JavaScript is designed to build on top of those technologies, allowing
+web applications to customize the browser beyond what is built-in with custom
+code. In this way, JavaScript is similar in some ways to a
+[browser extension][browserExtension], as it enhances
+the experience of using a web page. Ideally, web pages should be
+written so that they work correctly without JavaScript, but work better with
+it. This is the concept of
+[progressive enhancement](https://en.wikipedia.org/wiki/Progressive_enhancement).
+
+[browserExtension]: https://en.wikipedia.org/wiki/Browser_extension
+
+::: {.further}
+JavaScript first appeared in 1995, as part of Netscape Navigator. It was
+intentionally named to evoke a similarity to the [Java][javaLang] language, and
+the syntax is Java-esque for that reason. However, JavaScript is actually a much
+more dynamic language than Java, as is appropriate given its role as 
+progressive enhancement mechanism for the web.
+You can learn more about the interesting history of JavaScript [here][historyJS].
+
+[javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
+[historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
+:::
 
 Installing DukPy
 ================
@@ -144,10 +169,19 @@ Our browser is making one major departure here from how real web
 browsers work, a departure important enough to call out. In a real web
 browser, JavaScript code is run as soon as the browser *parses* the
 `<script>` tag, and at that point most of the page is not parsed and may
-not even have been received over the network. But your toy browser
-only runs scripts after loading and parsing the whole page. I don't
-think the difference is essential to understanding how browsers run
-interactive scripts.
+not even have been received over the network. But that is only the default;
+as you can see
+[here][scriptElement] (check out the schematic diagram), there are multiple
+ways scripts can be set up to load in a real web browser.
+
+Our toy browser only runs scripts after loading and parsing the whole page,
+similar to a script in a real browser that uses the [`defer`]
+[deferAttr] attribute. I don't think the difference is essential to
+understanding how browsers run interactive scripts, and not blocking parsing is
+a lot easier to implement.
+
+[scriptElement]: https://html.spec.whatwg.org/multipage/scripting.html#the-script-element
+[deferAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#attr-defer
 :::
 
 Registering functions
