@@ -8,30 +8,31 @@ next: security
 Forms allow our web browser to run dynamic web applications like that guest
 book. But form-based web applications require page loads every time you do
 anything, and fell out of favor in the early 2000s. What took their place are
-JavaScript-enhanced applications, which can respond to user input modify the
-pages dynamically, without reloads. Let's add support for that to our toy web
-browser.
+JavaScript-enhanced web applications, which can respond to user input modify
+the pages dynamically, without reloads. Let's add support for that to our toy
+web browser.
 
 These applications are "enhanced" by JavaScript, because they still use HTML,
 CSS, form elements and all the other features we've built so far into our
-browser. JavaScript is designed to build on top of those technologies, allowing
-web applications to customize the browser beyond what is built-in with custom
-code. In this way, JavaScript is similar in some ways to a
+browser. JavaScript builds on top of those technologies, allowing
+web applications to go beyond what is built into the browser via custom
+code. In this way, JavaScript is conceptually similar in some ways to a
 [browser extension][browserExtension], as it enhances
 the experience of using a web page. Ideally, web pages should be
 written so that they work correctly without JavaScript, but work better with
-it. This is the concept of
+it---this is the concept of
 [progressive enhancement](https://en.wikipedia.org/wiki/Progressive_enhancement).
 
 [browserExtension]: https://en.wikipedia.org/wiki/Browser_extension
 
 ::: {.further}
-JavaScript first appeared in 1995, as part of Netscape Navigator. It was
-intentionally named to evoke a similarity to the [Java][javaLang] language, and
-the syntax is Java-esque for that reason. However, JavaScript is actually a much
-more dynamic language than Java, as is appropriate given its role as 
-progressive enhancement mechanism for the web.
-You can learn more about the interesting history of JavaScript [here][historyJS].
+JavaScript first appeared in 1995, as part of Netscape Navigator. Its name
+was chosen to indicate a similarity to the [Java][javaLang]
+language, and the syntax is Java-esque for that reason. However, under the
+surface JavaScript is a much more dynamic language than Java, as is
+appropriate given its role as a progressive enhancement mechanism for the web.
+You can learn more about the interesting history of JavaScript
+[here][historyJS].
 
 [javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
 [historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
