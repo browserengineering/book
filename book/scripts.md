@@ -12,32 +12,6 @@ JavaScript-enhanced web applications, which can respond to user input modify
 the pages dynamically, without reloads. Let's add support for that to our toy
 web browser.
 
-These applications are "enhanced" by JavaScript, because they still use HTML,
-CSS, form elements and all the other features we've built so far into our
-browser. JavaScript builds on top of those technologies, allowing
-web applications to go beyond what is built into the browser via custom
-code. In this way, JavaScript is conceptually similar in some ways to a
-[browser extension][browserExtension], as it enhances
-the experience of using a web page. Ideally, web pages should be
-written so that they work correctly without JavaScript, but work better with
-it---this is the concept of
-[progressive enhancement](https://en.wikipedia.org/wiki/Progressive_enhancement).
-
-[browserExtension]: https://en.wikipedia.org/wiki/Browser_extension
-
-::: {.further}
-JavaScript first appeared in 1995, as part of Netscape Navigator. Its name
-was chosen to indicate a similarity to the [Java][javaLang]
-language, and the syntax is Java-esque for that reason. However, under the
-surface JavaScript is a much more dynamic language than Java, as is
-appropriate given its role as a progressive enhancement mechanism for the web.
-You can learn more about the interesting history of JavaScript
-[here][historyJS].
-
-[javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
-[historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
-:::
-
 Installing DukPy
 ================
 
@@ -1002,8 +976,47 @@ those include:
 - Writing and modifying page elements
 - Attaching event listeners so that scripts can respond to page events
 
-A web page can now add functionality via a clever script, instead of
-waiting for a browser developer to add it into the browser itself.
+A web page can now add functionality via a clever script, instead of waiting for
+a browser developer to add it into the browser itself. And as a side-benefit,
+earn the title of "web application" instead of just web page.
+
+Note that these applications are only *enhanced* by JavaScript---they still use
+HTML, CSS, form elements and all the other features we've built so far into our
+browser. This is in contrast to the recently-departed
+[Adobe Flash], and before that [Java Applets][javaApplets], which are
+self-contained plug-ins that handle all of input and rendering with their own
+technologies.
+
+Instead of that approach, JavaScript builds on top of HTML and CSS, allowing web
+applications to go beyond what is built into the browser via custom code. In
+this way, JavaScript is conceptually similar in some ways to a
+[browser extension][browserExtension], as it enhances the experience of using a
+web page. Ideally, web pages should be written so that they work correctly
+without JavaScript, but work better with it---this is the concept of
+[progressive enhancement][progEnhancement]. (In addition to user experience
+benefits, progressive enhancement makes life a lot easier for users of
+JavaScript and browser engineers---no need to re-invent HTML and CSS!)
+
+[Adobe Flash]: https://www.adobe.com/products/flashplayer/end-of-life.html
+[javaApplets]: https://en.wikipedia.org/wiki/Java_applet
+
+[browserExtension]: https://en.wikipedia.org/wiki/Browser_extension
+[progEnhancement]: https://en.wikipedia.org/wiki/Progressive_enhancement
+
+::: {.further}
+JavaScript first appeared in 1995, as part of Netscape Navigator. Its name
+was chosen to indicate a similarity to the [Java][javaLang]
+language, and the syntax is Java-esque for that reason. However, under the
+surface JavaScript is a much more dynamic language than Java, as is
+appropriate given its role as a progressive enhancement mechanism for the web.
+You can learn more about the interesting history of JavaScript
+[here][historyJS].
+
+[javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
+[historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
+:::
+
+
 
 Exercises
 =========
