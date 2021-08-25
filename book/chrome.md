@@ -31,7 +31,7 @@ contain a `TextLayout` for each word in that line. These new classes
 can make the layout tree look different from the HTML tree. So to
 avoid surprises, let's look at a simple example:
 
-```
+``` {.html}
 <html>
   <body>
     Here is some text that is
@@ -44,23 +44,21 @@ avoid surprises, let's look at a simple example:
 The text in the `body` element wraps across two lines (because of the
 `br` element), so the layout tree will have this structure:
 
-```
-DocumentLayout
-  BlockLayout (html element)
-    InlineLayout (body element)
-      LineLayout (first line of text)
-        TextLayout ("Here")
-        TextLayout ("is")
-        TextLayout ("some")
-        TextLayout ("text")
-        TextLayout ("that")
-        TextLayout ("is")
-      LineLayout (second line of text)
-        TextLayout ("spread")
-        TextLayout ("across")
-        TextLayout ("multiple")
-        TextLayout ("lines")
-```
+    DocumentLayout
+      BlockLayout (html element)
+        InlineLayout (body element)
+          LineLayout (first line of text)
+            TextLayout ("Here")
+            TextLayout ("is")
+            TextLayout ("some")
+            TextLayout ("text")
+            TextLayout ("that")
+            TextLayout ("is")
+          LineLayout (second line of text)
+            TextLayout ("spread")
+            TextLayout ("across")
+            TextLayout ("multiple")
+            TextLayout ("lines")
 
 Note how one `body` element corresponds to two `LineLayout`s, and how
 two text nodes turn into a total of ten `TextLayout`s!

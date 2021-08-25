@@ -349,7 +349,7 @@ This situation may seem like a corner case, but it's actually very important, as
 this is how JavaScript can run a 60Hz animation. Let's
 try it out with a script that counts from 1 to 100, one frame at a time:
 
-```
+``` {.javascript}
 var count = 0;
 var start_time = Date.now();
 var cur_frame_time = start_time
@@ -371,7 +371,7 @@ requestAnimationFrame(callback);
 
 To make the above code work, you'll need this small addition to the runtime 
 code:
-```
+``` {.javascript}
 function Date() {}
 Date.now = function() {
     return call_python("now");
@@ -501,35 +501,33 @@ let's take the next step beyond using per-rendering pipeline stage timing---a
 CPU profile. We can do that by using the `cPython` profiler that comes with
 python, via a command like like:
 
-`python -m cPython <my-program.py>`
+    python -m cPython <my-program.py>
 
 The output looks like this for me (only listing the top methods by cumulative
 time spent:
 
-```
-   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-     65/1    0.000    0.000    6.633    6.633 {built-in method builtins.exec}
-        1    0.000    0.000    6.633    6.633 lab13.py:1(<module>)
-        1    0.000    0.000    6.512    6.512 __init__.py:601(mainloop)
-        1    0.028    0.028    6.512    6.512 {method 'mainloop' of '_tkinter.tkapp' objects}
-       51    0.000    0.000    6.484    0.127 __init__.py:1887(__call__)
-       51    0.000    0.000    6.484    0.127 __init__.py:812(callit)
-       51    0.001    0.000    6.482    0.127 lab13.py:1016(run_animation_frame)
-     6290    6.344    0.001    6.344    0.001 {method 'call' of '_tkinter.tkapp' objects}
-      102    0.000    0.000    6.311    0.062 lab13.py:1041(run_rendering_pipeline)
-       52    0.001    0.000    6.311    0.121 lab13.py:1051(reflow)
-   159/52    0.002    0.000    4.221    0.081 lab13.py:577(size)
-       53    0.001    0.000    4.216    0.080 lab13.py:487(size)
-     2472    0.006    0.000    3.307    0.001 font.py:152(measure)
-   208/53    0.001    0.000    2.856    0.054 lab13.py:507(recurse)
-      104    0.003    0.000    2.583    0.025 lab13.py:520(text)
-      618    0.004    0.000    1.759    0.003 lab13.py:425(size)
-     1236    0.008    0.000    1.678    0.001 font.py:159(metrics)
-      104    0.001    0.000    1.632    0.016 lab13.py:535(flush)
-      104    0.000    0.000    1.631    0.016 lab13.py:373(size)
-      104    0.002    0.000    1.631    0.016 lab13.py:377(compute_height)
-       52    0.004    0.000    1.271    0.024 lab13.py:1074(draw)
-```
+    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      65/1    0.000    0.000    6.633    6.633 {built-in method builtins.exec}
+         1    0.000    0.000    6.633    6.633 lab13.py:1(<module>)
+         1    0.000    0.000    6.512    6.512 __init__.py:601(mainloop)
+         1    0.028    0.028    6.512    6.512 {method 'mainloop' of '_tkinter.tkapp' objects}
+        51    0.000    0.000    6.484    0.127 __init__.py:1887(__call__)
+        51    0.000    0.000    6.484    0.127 __init__.py:812(callit)
+        51    0.001    0.000    6.482    0.127 lab13.py:1016(run_animation_frame)
+      6290    6.344    0.001    6.344    0.001 {method 'call' of '_tkinter.tkapp' objects}
+       102    0.000    0.000    6.311    0.062 lab13.py:1041(run_rendering_pipeline)
+        52    0.001    0.000    6.311    0.121 lab13.py:1051(reflow)
+    159/52    0.002    0.000    4.221    0.081 lab13.py:577(size)
+        53    0.001    0.000    4.216    0.080 lab13.py:487(size)
+      2472    0.006    0.000    3.307    0.001 font.py:152(measure)
+    208/53    0.001    0.000    2.856    0.054 lab13.py:507(recurse)
+       104    0.003    0.000    2.583    0.025 lab13.py:520(text)
+       618    0.004    0.000    1.759    0.003 lab13.py:425(size)
+      1236    0.008    0.000    1.678    0.001 font.py:159(metrics)
+       104    0.001    0.000    1.632    0.016 lab13.py:535(flush)
+       104    0.000    0.000    1.631    0.016 lab13.py:373(size)
+       104    0.002    0.000    1.631    0.016 lab13.py:377(compute_height)
+        52    0.004    0.000    1.271    0.024 lab13.py:1074(draw)
 
 As you can see, there is a bunch of time spent, seemingly about equally spread
 between layout and painting. The next thing to do is to examine each method
@@ -576,33 +574,31 @@ class TextLayout:
 This turns out to make a dramatic difference, not just in text measurement, but
 in layout *and* paint. How simple and convenient!
 
-```
-   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-     65/1    0.000    0.000    1.143    1.143 {built-in method builtins.exec}
-        1    0.000    0.000    1.143    1.143 lab13.py:1(<module>)
-        1    0.000    0.000    1.007    1.007 __init__.py:601(mainloop)
-        1    0.435    0.435    1.007    1.007 {method 'mainloop' of '_tkinter.tkapp' objects}
-       51    0.000    0.000    0.572    0.011 __init__.py:1887(__call__)
-       51    0.001    0.000    0.572    0.011 __init__.py:812(callit)
-       51    0.002    0.000    0.570    0.011 lab13.py:1016(run_animation_frame)
-     5108    0.449    0.000    0.450    0.000 {method 'call' of '_tkinter.tkapp' objects}
-      102    0.000    0.000    0.441    0.004 lab13.py:1041(run_rendering_pipeline)
-       52    0.001    0.000    0.441    0.008 lab13.py:1051(reflow)
-       52    0.003    0.000    0.290    0.006 lab13.py:1074(draw)
-     1133    0.005    0.000    0.270    0.000 __init__.py:2768(_create)
-      925    0.001    0.000    0.258    0.000 __init__.py:2808(create_text)
-      873    0.002    0.000    0.152    0.000 lab13.py:676(draw)
-       56    0.001    0.000    0.150    0.003 evaljs.py:39(evaljs)
-       56    0.018    0.000    0.145    0.003 {built-in method dukpy._dukpy.eval_string}
-   159/52    0.003    0.000    0.127    0.002 lab13.py:577(size)
-      308    0.003    0.000    0.127    0.000 evaljs.py:72(_call_python)
-       53    0.000    0.000    0.121    0.002 lab13.py:487(size)
-       51    0.001    0.000    0.112    0.002 lab13.py:962(js_innerHTML)
-   208/53    0.000    0.000    0.091    0.002 lab13.py:507(recurse)
-        1    0.000    0.000    0.086    0.086 lab13.py:641(size)
-      104    0.002    0.000    0.086    0.001 lab13.py:520(text)
-     2472    0.003    0.000    0.085    0.000 font.py:152(measure)
-```
+    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      65/1    0.000    0.000    1.143    1.143 {built-in method builtins.exec}
+         1    0.000    0.000    1.143    1.143 lab13.py:1(<module>)
+         1    0.000    0.000    1.007    1.007 __init__.py:601(mainloop)
+         1    0.435    0.435    1.007    1.007 {method 'mainloop' of '_tkinter.tkapp' objects}
+        51    0.000    0.000    0.572    0.011 __init__.py:1887(__call__)
+        51    0.001    0.000    0.572    0.011 __init__.py:812(callit)
+        51    0.002    0.000    0.570    0.011 lab13.py:1016(run_animation_frame)
+      5108    0.449    0.000    0.450    0.000 {method 'call' of '_tkinter.tkapp' objects}
+       102    0.000    0.000    0.441    0.004 lab13.py:1041(run_rendering_pipeline)
+        52    0.001    0.000    0.441    0.008 lab13.py:1051(reflow)
+        52    0.003    0.000    0.290    0.006 lab13.py:1074(draw)
+      1133    0.005    0.000    0.270    0.000 __init__.py:2768(_create)
+       925    0.001    0.000    0.258    0.000 __init__.py:2808(create_text)
+       873    0.002    0.000    0.152    0.000 lab13.py:676(draw)
+        56    0.001    0.000    0.150    0.003 evaljs.py:39(evaljs)
+        56    0.018    0.000    0.145    0.003 {built-in method dukpy._dukpy.eval_string}
+    159/52    0.003    0.000    0.127    0.002 lab13.py:577(size)
+       308    0.003    0.000    0.127    0.000 evaljs.py:72(_call_python)
+        53    0.000    0.000    0.121    0.002 lab13.py:487(size)
+        51    0.001    0.000    0.112    0.002 lab13.py:962(js_innerHTML)
+    208/53    0.000    0.000    0.091    0.002 lab13.py:507(recurse)
+         1    0.000    0.000    0.086    0.086 lab13.py:641(size)
+       104    0.002    0.000    0.086    0.001 lab13.py:520(text)
+      2472    0.003    0.000    0.085    0.000 font.py:152(measure)
 
 As you can see, everything became a lot faster. This is because font measurement
 overhead was making both layout and paint slower for every single object. The
@@ -649,11 +645,9 @@ With these changes, the profile now shows that `draw` is actually a big
 component of the remaining cost, with the following breakdown (this data
 is the time spent, aggregated over 50 animation frames):
 
-```
-ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-    52    0.005    0.000    0.391    0.008 lab13.py:1075(draw)
-    873   0.003    0.000    0.201    0.000 lab13.py:676(draw)
-```
+    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        52    0.005    0.000    0.391    0.008 lab13.py:1075(draw)
+        873   0.003    0.000    0.201    0.000 lab13.py:676(draw)
 
 Line 676 is `DrawText.draw`. Half the time drawing is in drawing text. (I
 told you that fonts and text rendering are big time hogs and sources of 
@@ -845,11 +839,11 @@ opportunities to draw (when `self.needs_draw` is true), and then doing so:
 And of course, draw itself draws `self.draw_display_list`, not
 `self.display_list`:
 
-```
+``` {.python}
     def draw(self):
-        # ....
-        for cmd in self.draw_display_list:
         # ...
+        for cmd in self.draw_display_list:
+            # ...
 ```
 
 Other tasks
