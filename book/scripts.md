@@ -703,6 +703,35 @@ In other words, `innerHTML` is a *property* of node objects, with a
 new value, which must be a string, parses it as HTML, and makes the
 new, parsed HTML nodes children of the original node.
 
+::: {.further}
+`Node` objects in the DOM are now both JavaScript objects and part
+of the document tree. They can have JavaScript object *properties*, and they
+can have node *attributes*. It's easy to confuse one for the other, because
+they are so similar in concept. To make matters worse, there are a number of
+special attributes that [*reflect*][reflection] from property to attribute
+automatically, and vice-versa. The [`id` attribute][idAttr] is one example.
+Consider the following code:
+``` {.javascript}
+node.id = "someId";
+```
+This will cause the `id` attribute on the node to change (just as if the
+[setAttribute] method had been called), in addition to settting the property.
+Likewise, changing the attribute will reflect back on the property.
+
+On the other hand, this code:
+``` {.javascript}
+node.otherProperty = "something";
+```
+will not reflect to the attribute, because `otherProperty` is not special.
+Most built-in attributes reflect, because it's very convenient when writing
+JavaScript not to have to write `setAttribute` and `getAttribute` all over the
+place.
+:::
+
+[idAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id
+[reflection]: https://html.spec.whatwg.org/multipage/common-dom-interfaces.html#reflecting-content-attributes-in-idl-attributes
+[setAttribute]: https://developer.mozilla.org/en-US/docs/Web/API/Element/setAttribute
+
 Let's implement this, starting on the JavaScript side. JavaScript has
 the obscure `Object.defineProperty` function to define setters:
 
@@ -1054,3 +1083,17 @@ whole script should finish running before calling the callback.
 
 [xhr-tutorial]: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
 
+*Inline styling*: The `style` property allows JavaScript to set and get inline
+ styles (ones set in the `style` attribute). An inline style can be modified by
+ setting properties on the object returned by `node.style`. These properties
+ have the same name as the corresponding CSS property, except that dashes are
+ replaced by camel-casing. For example `node.style.backgroundColor = "blue"`
+ will change the `background-color` to blue. Implement this behavior. Note that
+ these changes are supposed to reflect^[See the go-further block about
+ reflection earlier in this chapter.] in the [`style` attribute][styleAttr];
+ you can try implementing that also if you wish. Another add-on can be to
+ implement the behavior of *reading* this attribute as well---`node.style`
+ returns a [`CSSStyleDeclaration`][cssstyle] object.
+
+[cssstyle]: https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleDeclaration
+[styleAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/style
