@@ -1167,9 +1167,9 @@ whole script should finish running before calling the callback.
  subtree below `element` (but not including it). `element.outerHTML` returns a
  string including `element`. Here is an example:
 ``` {.javascript} 
-    node.innerHTML = '<span id=foo>Chris was here</span>';
+    element.innerHTML = '<span id=foo>Chris was here</span>';
     // Prints "<span id=foo>Chris was here</span>":
-    console.log(node.innerHTML);
+    console.log(element.innerHTML);
  ```
  Implement object getters for `innerHTML` and `outerHTML`.
 
