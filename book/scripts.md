@@ -8,8 +8,8 @@ next: security
 Forms allow our web browser to run dynamic web applications like that guest
 book. But form-based web applications require page loads every time you do
 anything, and fell out of favor in the early 2000s. What took their place are
-JavaScript-enhanced web applications, which can respond to user input modify
-the pages dynamically, without reloads. Let's add support for that to our toy
+JavaScript-enhanced web applications, which can respond to user input and update
+pages dynamically, without reloads. Let's add support for that to our toy
 web browser.
 
 Installing DukPy
