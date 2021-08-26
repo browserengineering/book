@@ -1165,6 +1165,12 @@ whole script should finish running before calling the callback.
 *Serializing HTML*: Reading from the [`element.innerHTML`][innerHTML] property
  in JavaScript returns a string with a serialized representation of the DOM
  subtree below `element` (but not including it). `element.outerHTML` returns a
- string including `element`. Implement these.
+ string including `element`. Here is an example:
+``` {.javascript} 
+    node.innerHTML = '<span id=foo>Chris was here</span>';
+    // Prints "<span id=foo>Chris was here</span>":
+    console.log(node.innerHTML);
+ ```
+ Implement object getters for `innerHTML` and `outerHTML`.
 
 [innerHTML]: https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML
