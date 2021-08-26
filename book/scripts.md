@@ -1168,7 +1168,8 @@ whole script should finish running before calling the callback.
  string including `element`. Here is an example:
 ``` {.javascript} 
     element.innerHTML = '<span id=foo>Chris was here</span>';
-    // Prints "<span id=foo>Chris was here</span>":
+    element.id = 'bar';
+    // Prints "<span id=bar>Chris was here</span>":
     console.log(element.innerHTML);
  ```
  Implement object getters for `innerHTML` and `outerHTML`.
