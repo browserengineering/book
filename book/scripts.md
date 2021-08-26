@@ -263,7 +263,7 @@ is for the most part single-threaded, and JavaScript has task-based,
 [run-to-completion scheduling][rtc]. Once you allow a Turing-complete language
 in your browser, all bets are off!
 
-Chapter 13 will have a lot more to say about ways browsers deal with potentially
+Chapter 13 will have more to say about ways browsers deal with potentially
 slow JavaScript.
 :::
 
