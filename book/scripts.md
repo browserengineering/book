@@ -1164,7 +1164,7 @@ whole script should finish running before calling the callback.
 
 *Serializing HTML*: Reading from the [`element.innerHTML`][innerHTML] property
  in JavaScript returns a string with a serialized representation of the DOM
- subtree below `element` (but not including it). `node.outerHTML` returns a
+ subtree below `element` (but not including it). `element.outerHTML` returns a
  string including `element`. Implement these.
 
 [innerHTML]: https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML
