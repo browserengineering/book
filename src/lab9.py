@@ -46,7 +46,7 @@ class Tab:
         self.js.export_function("getAttribute",
             self.js_getAttribute)
         self.js.export_function("innerHTML", self.js_innerHTML)
-        with open("rt9.js") as f:
+        with open("runtime9.js") as f:
             self.js.evaljs(f.read())
         self.node_to_handle = {}
         self.handle_to_node = {}

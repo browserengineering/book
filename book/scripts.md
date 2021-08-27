@@ -232,7 +232,7 @@ can call that JavaScript code our "JavaScript runtime"; we run it
 before we run any user code, so let's stick it in a `runtime.js`
 file that's run in `setup_js`:
 
-``` {.python replace=runtime/rt9}
+``` {.python replace=runtime/runtime9}
 def setup_js(self):
     # ...
     with open("runtime.js") as f:
