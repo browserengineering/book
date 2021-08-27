@@ -164,7 +164,7 @@ class Browser:
         self.canvas.create_text(200, 150, text="Hi!")
 ```
 
-To run this code, create a `Browser`, call `layout`, and then start
+To run this code, create a `Browser`, call `load`, and then start
 the Tk `mainloop`:
 
 ``` {.python}
