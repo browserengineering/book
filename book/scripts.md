@@ -305,14 +305,11 @@ Also wrap all functions in the JavaScript runtime so that they print
 backtraces too:
 
 ``` {.javascript}
-function blah() {
-    try {
-        // ...
-    } catch(e) {
-        console.log("Crash in blah()")
-        console.log(e.stack);
-        throw e;
-    }
+try {
+    // ...
+} catch(e) {
+    console.log(e.stack);
+    throw e;
 }
 ```
 
