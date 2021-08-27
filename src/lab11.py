@@ -786,7 +786,7 @@ class Browser:
         self.address_bar = url
         self.url = url
         self.history.append(url)
-        header, body = request(url, body)
+        header, body = request(url, payload=body)
         self.timer.start("Parsing HTML")
         self.nodes = parse(lex(body))
         
