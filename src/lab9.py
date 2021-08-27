@@ -92,8 +92,8 @@ class Tab:
         headers, body = request(url, body)
         self.nodes = HTMLParser(body).parse()
 
-        scripts = [node.attributes["src"]
-                   for node in tree_to_list(self.nodes, [])
+        scripts = [node.attributes["src"] for node
+                   in tree_to_list(self.nodes, [])
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
