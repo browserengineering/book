@@ -97,8 +97,8 @@ find all of the scripts:
 class Tab:
     def load(self, url, body=None):
         # ...
-        scripts = [node.attributes["href"]
-                   for node in tree_to_list(nodes, [])
+        scripts = [node.attributes["src"] for node
+                   in tree_to_list(nodes, [])
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
