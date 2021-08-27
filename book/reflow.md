@@ -541,7 +541,7 @@ have a `layout` function, which is called on initial layout, and a
 layout. The `layout` function will create the `document` object, and
 ask to fix up that new object:
 
-```
+``` {.python}
 class Browser:
     def layout(self, tree):
         self.document = DocumentLayout(tree)
@@ -552,7 +552,7 @@ Meanwhile `reflow` will contain the steps of the old `layout` method:
 applying styles, calling `size` on the changed elements, and then
 calling `position` and `draw` on all elements:
 
-```
+``` {.python}
 class Browser:
     def reflow(self, obj):
         style(obj.node, obj.node.parent, self.rules)
@@ -561,7 +561,7 @@ class Browser:
         self.display_list = []
         self.document.draw(self.display_list)
         self.render()
-        self.max_y = self.document.h
+        self.max_y = self.document.h - HEIGHT
 ```
 
 Note that `style` and `size` are called just on the layout object
@@ -708,7 +708,7 @@ reads properties of child elements. Call `compute_height` at the end
 of `size`. So for `DocumentLayout` the new `compute_height` method
 looks like this:
 
-```
+``` {.python}
 class DocumentLayout:
     def compute_height(self):
         self.h = self.children[0].h

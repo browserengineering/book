@@ -366,7 +366,7 @@ Since `draw` does need access to the canvas, we keep it a method on
 `Browser`. Now the `load` just needs to call `layout` followed by
 `draw`:
 
-```
+``` {.python}
 class Browser:
     def load(self, url):
         headers, body = request(url)
@@ -387,9 +387,9 @@ class Browser:
 
 The page coordinate `y` then has screen coordinate `y - self.scroll`:
 
-```
+``` {.python}
 def draw(self):
-    for x, y, c in display_list:
+    for x, y, c in self.display_list:
         self.canvas.create_text(x, y - self.scroll, text=c)
 ```
 

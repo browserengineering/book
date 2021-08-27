@@ -139,7 +139,7 @@ stacking context always starts at a node with a
 [“stacking context-inducing”](stacking-context) style and includes all
 descendants that are not stacking contexts.
 
-```
+``` {.javascript}
 function paint(stacking_context) {
     let bitmap = (black fully transparent bitmap)
     /* blend negative-z-index children */

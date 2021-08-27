@@ -107,11 +107,11 @@ def find_scripts(node, out):
 Then, when we load a web page, we will find all of the scripts and run
 them:
 
-```
+``` {.python}
 def load(self, url, body=None):
     # ... load, parse, style
     for script in find_scripts(self.nodes, []):
-        header, body = request(relative_url(script, self.history[-1]))
+        header, body = request(resolve_url(script, self.history[-1]))
         print("Script returned: ", self.js.evaljs(body))
 
     self.layout(self.nodes)
@@ -129,7 +129,7 @@ x + x
 
 Write that to `test.js` and try the following web page:
 
-```
+``` {.html}
 <script src=test.js></script>
 ```
 
@@ -217,10 +217,14 @@ function, so we need to define a `console` object and then give it a
 console = { log: function(x) { call_python("log", x); } }
 ```
 
-In case you're not too familiar with JavaScript,^[Now's a good time to
-brush up---this chapter has a ton of JavaScript!] this defines a
-variable called `console`, whose value is an object literal with the
-property `log`, whose value is the function you see defined there.
+In case you're not too familiar with JavaScript,[^brush-up] this
+defines a variable called `console`, whose value is an object literal
+with the property `log`, whose value is the function you see defined
+there.
+
+[^brush-up]: Now's a good time to [brush up][mdn-js]---this chapter
+    has a ton of JavaScript!
+[mdn-js]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/First_steps/A_first_splash
 
 Taking a step back, when we run JavaScript in our browser, we're
 mixing: C code, which implements the JavaScript interpreter; Python
@@ -244,7 +248,7 @@ As a side benefit of using one `JSInterpreter` for all scripts, it is
 now possible to run two scripts and have one of them define a variable
 that the other uses, say on a page like:
 
-```
+``` {.html}
 <script src=a.js></script>
 <script src=b.js></script>
 ```
@@ -302,7 +306,7 @@ backtraces too:
 
 ``` {.javascript}
 try {
-    # ...
+    // ...
 } catch(e) {
     console.log(e.stack);
     throw e;
