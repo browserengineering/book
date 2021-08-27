@@ -30,51 +30,25 @@ from lab9 import BlockLayout
 from lab9 import InlineLayout
 from lab9 import DocumentLayout
 
-class Tab:
-    def __init__(self):
-        self.history = []
-        self.focus = None
+class JSContext:
+    def __init__(self, tab):
+        self.tab = tab
 
-        with open("browser8.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
-
-    def setup_js(self):
-        self.js = dukpy.JSInterpreter()
-        self.js.export_function("log", print)
-        self.js.export_function("querySelectorAll",
-            self.js_querySelectorAll)
-        self.js.export_function("getAttribute",
-            self.js_getAttribute)
-        self.js.export_function("innerHTML", self.js_innerHTML)
+        self.interp = dukpy.JSInterpreter()
+        self.interp.export_function("log", print)
+        self.interp.export_function("querySelectorAll",
+            self.querySelectorAll)
+        self.interp.export_function("getAttribute",
+            self.getAttribute)
+        self.interp.export_function("innerHTML", self.innerHTML)
         with open("runtime9.js") as f:
-            self.js.evaljs(f.read())
+            self.interp.evaljs(f.read())
+
         self.node_to_handle = {}
         self.handle_to_node = {}
 
-    def dispatch_event(self, type, elt):
-        code = "__runListeners(dukpy.type, dukpy.handle)"
-        handle = self.node_to_handle.get(elt, -1)
-        do_default = self.js.evaljs(code, type=type, handle=handle)
-        return not do_default
-
-    def js_querySelectorAll(self, selector_text):
-        selector = CSSParser(selector_text).selector()
-        nodes = [node for node in tree_to_list(nodes, [])
-                 if selector.matches(node)]
-        return [self.get_handle(node) for node in nodes]
-
-    def js_getAttribute(self, handle, attr):
-        elt = self.handle_to_node[handle]
-        return elt.attributes.get(attr, None)
-
-    def js_innerHTML(self, handle, s):
-        doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
-        new_nodes = doc.children[0].children
-        elt = self.handle_to_node[handle]
-        elt.children = new_nodes
-        for child in elt.children:
-            child.parent = elt
-        self.render()
+    def run(self, code):
+        self.interp.evaljs(code)
 
     def get_handle(self, elt):
         if elt not in self.node_to_handle:
@@ -85,6 +59,40 @@ class Tab:
             handle = self.node_to_handle[elt]
         return handle
 
+    def querySelectorAll(self, selector_text):
+        selector = CSSParser(selector_text).selector()
+        nodes = [node for node
+                 in tree_to_list(self.tab.nodes, [])
+                 if selector.matches(node)]
+        return [self.get_handle(node) for node in nodes]
+
+    def getAttribute(self, handle, attr):
+        elt = self.handle_to_node[handle]
+        return elt.attributes.get(attr, None)
+
+    def innerHTML(self, handle, s):
+        doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
+        new_nodes = doc.children[0].children
+        elt = self.handle_to_node[handle]
+        elt.children = new_nodes
+        for child in elt.children:
+            child.parent = elt
+        self.tab.render()
+
+    def dispatch_event(self, type, elt):
+        code = "__runListeners(dukpy.type, dukpy.handle)"
+        handle = self.node_to_handle.get(elt, -1)
+        do_default = self.interp.evaljs(code, type=type, handle=handle)
+        return not do_default
+
+class Tab:
+    def __init__(self):
+        self.history = []
+        self.focus = None
+
+        with open("browser8.css") as f:
+            self.default_style_sheet = CSSParser(f.read()).parse()
+
     def load(self, url, body=None):
         self.scroll = 0
         self.url = url
@@ -92,8 +100,9 @@ class Tab:
         headers, body = request(url, body)
         self.nodes = HTMLParser(body).parse()
 
-        scripts = [node.attributes["src"]
-                   for node in tree_to_list(self.nodes, [])
+        self.js = JSContext(self)
+        scripts = [node.attributes["src"] for node
+                   in tree_to_list(self.nodes, [])
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
@@ -101,7 +110,7 @@ class Tab:
         for script in scripts:
             header, body = request(resolve_url(script, url))
             try:
-                print("Script returned: ", self.js.evaljs(body))
+                print("Script returned: ", self.js.run(body))
             except dukpy.JSRuntimeError as e:
                 print("Script", script, "crashed", e)
 
@@ -153,7 +162,7 @@ class Tab:
                 and obj.y <= y < obj.y + obj.height]
         if not objs: return
         elt = objs[-1].node
-        if elt and self.dispatch_event("click", elt): return
+        if elt and self.js.dispatch_event("click", elt): return
         while elt:
             if isinstance(elt, Text):
                 pass
@@ -172,7 +181,7 @@ class Tab:
             elt = elt.parent
 
     def submit_form(self, elt):
-        if self.dispatch_event("submit", elt): return
+        if self.js.dispatch_event("submit", elt): return
         inputs = [node for node in tree_to_list(elt, [])
                   if isinstance(node, Element)
                   and node.tag == "input"
@@ -192,7 +201,7 @@ class Tab:
 
     def keypress(self, char):
         if self.focus:
-            if self.dispatch_event("keydown", self.focus): return
+            if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
         self.document.paint(self.display_list) # TODO: is this necessary?
 
