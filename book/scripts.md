@@ -257,6 +257,22 @@ where `a.js` is "`var x = 2;`" and `b.js` is "`console.log(x + x)`".
 In real web browsers, that's important since one script might define
 library functions that another script wants to call.
 
+::: {.further}
+What happens if a script runs for a long time, or even has an infinite loop in
+it? In this situation, the browser has no choice but to "lock up" and become
+completely unresponsive to the user, at least when they try to interact with
+that particular tab via anything that requires DOM or JavaScript changes. The
+reason is that the interaction model of the web
+is for the most part single-threaded, and JavaScript has task-based,
+[run-to-completion scheduling][rtc]. Once you allow a Turing-complete language
+in your browser, all bets are off!
+
+Chapter 13 will have more to say about ways browsers deal with potentially
+slow JavaScript.
+:::
+
+[rtc]: https://en.wikipedia.org/wiki/Run_to_completion_scheduling
+
 Handling Crashes
 ================
 
@@ -1149,3 +1165,17 @@ whole script should finish running before calling the callback.
 
 [cssstyle]: https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleDeclaration
 [styleAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/style
+
+*Serializing HTML*: Reading from the [`element.innerHTML`][innerHTML] property
+ in JavaScript returns a string with a serialized representation of the DOM
+ subtree below `element` (but not including it). `element.outerHTML` returns a
+ string including `element`. Here is an example:
+``` {.javascript} 
+    element.innerHTML = '<span id=foo>Chris was here</span>';
+    element.id = 'bar';
+    // Prints "<span id=bar>Chris was here</span>":
+    console.log(element.innerHTML);
+ ```
+ Implement object getters for `innerHTML` and `outerHTML`.
+
+[innerHTML]: https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML
