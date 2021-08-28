@@ -812,7 +812,7 @@ from local variables in the `load` method to new fields on a `Tab`.
 Note that styling moved from `load` to `render`, but downloading the
 stylesheets didn't. That's because `innerHTML` created new elements
 that have to be styled, but we don't need to redownload the styles to
-do that; we just need to reapply the styles we already have.
+do that; we just need to re-apply the styles we already have.
 
 Now, whenever the page changes, we can lay it out again by calling
 `render`:
