@@ -217,7 +217,7 @@ string, and booleans, but I wouldn't try it with other objects.] and
 then passes that Python string to the `print` function we registered.
 
 Since we ultimately want JavaScript to call a `console.log` function,
-not a `call_python` function, so we need to define a `console` object
+not a `call_python` function, we need to define a `console` object
 and then give it a `log` property. We can do that *in JavaScript*:
 
 ``` {.javascript}
@@ -829,8 +829,8 @@ For this code to work, you'll also need to change `nodes` and `rules`
 from local variables in the `load` method to new fields on a `Tab`.
 Note that styling moved from `load` to `render`, but downloading the
 stylesheets didn't. That's because `innerHTML` created new elements
-that have to be styled, but we don't need to redownload the styles to
-do that; we just need to reapply the styles we already have.
+that have to be styled, but we don't need to re-download the styles to
+do that; we just need to re-apply the styles we already have.
 
 Now, whenever the page changes, we can lay it out again by calling
 `render`:
