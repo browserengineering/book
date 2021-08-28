@@ -38,7 +38,6 @@ ENTRIES = [
 LOGINS = { "crashoverride": "0cool", "cerealkiller": "emmanuel" }
 
 def check_login(username, pw):
-    print('username: ' + username)
     return username in LOGINS and LOGINS[username] == pw
 
 def parse_cookies(s):
@@ -52,8 +51,6 @@ def parse_cookies(s):
 
 def do_request(method, url, headers, body):
     resp_headers = {}
-    print(url)
-    print(method)
    
     username = ""
     if method == 'POST' and url == "/":
@@ -63,8 +60,6 @@ def do_request(method, url, headers, body):
             token = str(random.random())[2:]
             TOKENS[token] = username
             resp_headers["Set-Cookie"] = "token=" + token
-        else:
-            print('login failed')
     elif "cookie" in headers:
         username = TOKENS.get(parse_cookies(headers["cookie"]).get("token"))
 
