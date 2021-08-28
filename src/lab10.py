@@ -1,6 +1,6 @@
 """
 This file compiles the code in Web Browser Engineering,
-up to and including Chapter 9 (Running Interactive Scripts),
+up to and including Chapter 10 (Keeping Data Private),
 without exercises.
 """
 
