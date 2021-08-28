@@ -783,7 +783,7 @@ def innerHTML(self, handle, s):
     new_nodes = doc.children[0].children
 ```
 
-Don't forget to register the `innerHTML` function: Note that we
+Don't forget to register the `innerHTML` function. Note that we
 extract all children of the `body` element, because an `innerHTML`
 call can create multiple nodes at a time. These new nodes must now be
 made children of the element `innerHTML` was called on:
