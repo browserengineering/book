@@ -162,37 +162,46 @@ Registering functions
 Browsers don't just print the last expression in a script; scripts
 call the standard `console.log` function to print. To allow that, we
 will need to *register a function* with DukPy, which would allow
-Javascript code to run Python functions. Those functions are
-registered on a `JSInterpreter` object, which we'll need to create:
+Javascript code to run Python functions. There are going to be a lot
+of these functions, so to avoid polluting the `Tab` object with many
+new methods, let's put this code in a new `JSContext` class:
 
-``` {.python}
-class Tab:
-    def setup_js(self):
-        self.js = dukpy.JSInterpreter()
+``` {.python replace=__init__(self)/__init__(self%2c%20tab)}
+class JSContext:
+    def __init__(self):
+        self.interp = dukpy.JSInterpreter()
+
+    def run(self, code):
+        self.interp.evaljs(code)
 ```
 
-We can call this `setup_js` function when pages load:
+This `JSInterpreter` object stores the values of all the JavaScript
+variables and lets us run multiple JavaScript snippets while sharing
+the same variables.
 
-``` {.python}
+We create a `JSContext` while loading the page:
+
+``` {.python replace=JSContext()/JSContext(self)}
 class Tab:
     def load(self, url, body=None):
         # ...
-        self.setup_js()
+        self.js = JSContext()
         for script in scripts:
             # ...
 ```
 
-The JavaScript function `console.log` corresponds to the Python
-`print` function.[^5] We can register this correspondence using
-`export_function`:
+Let's start registering functions. The JavaScript function
+`console.log` corresponds to the Python `print` function.[^5] We can
+register this correspondence using `export_function`:
 
 [^5]: If you're using Python 2, for some reason, you'll need to write
     a little wrapper function around `print` instead.
 
-``` {.python}
-def setup_js(self):
-    # ...
-    self.js.export_function("log", print)
+``` {.python replace=__init__(self)/__init__(self%2c%20tab)}
+class JSContext:
+    def __init__(self):
+        # ...
+        self.interp.export_function("log", print)
 ```
 
 Then, in JavaScript, Dukpy provides a `call_python` function that you
@@ -230,21 +239,22 @@ code, which handles certain JavaScript functions; and JavaScript code,
 which wraps the Python API to look more like the JavaScript one. We
 can call that JavaScript code our "JavaScript runtime"; we run it
 before we run any user code, so let's stick it in a `runtime.js`
-file that's run in `setup_js`:
+file that's run when the `JSContext` is created:
 
-``` {.python replace=runtime/runtime9}
-def setup_js(self):
-    # ...
-    with open("runtime.js") as f:
-        self.js.evaljs(f.read())
+``` {.python replace=runtime/runtime9,__init__(self)/__init__(self%2c%20tab)}
+class JSContext:
+    def __init__(self):
+        # ...
+        with open("runtime.js") as f:
+            self.interp.evaljs(f.read())
 ```
 
 Now you should be able to run the script `console.log("Hi from JS!")`
 and see output in your terminal. Do test that you can now call
 `console.log`, even multiple times, from a script.
 
-As a side benefit of using one `JSInterpreter` for all scripts, it is
-now possible to run two scripts and have one of them define a variable
+As a side benefit of using one `JSContext` for all scripts, it is now
+possible to run two scripts and have one of them define a variable
 that the other uses, say on a page like:
 
 ``` {.html}
@@ -289,7 +299,7 @@ crashes:
 
 ``` {.python indent=8}
 try:
-    print("Script returned: ", self.js.evaljs(body))
+    print("Script returned: ", self.js.run(body))
 except dukpy.JSRuntimeError as e:
     print("Script", script, "crashed", e)
 ```
@@ -356,12 +366,13 @@ element, and won't allow reading those contents.
 
 Let's start with `querySelectorAll`. First, register a function:
 
-``` {.python indent=4}
-def setup_js(self):
-    # ...
-    self.js.export_function("querySelectorAll",
-        self.js_querySelectorAll)
-    # ...
+``` {.python replace=__init__(self)/__init__(self%2c%20tab)}
+class JSContext:
+    def __init__(self):
+        # ...
+        self.interp.export_function("querySelectorAll",
+            self.querySelectorAll)
+        # ...
 ```
 
 In JavaScript, `querySelectorAll` is a method on the `document`
@@ -373,13 +384,14 @@ document = { querySelectorAll: function(s) {
 }}
 ```
 
-The `js_querySelectorAll` handler will first parse the selector, then
+The `querySelectorAll` handler will first parse the selector, then
 find and return the matching elements. To parse just the selector,
 I'll call into the `CSSParser`'s `selector` method:
 
 ``` {.python}
-def js_querySelectorAll(self, selector_text):
-    selector = CSSParser(selector_text).selector()
+class JSContext:
+    def querySelectorAll(self, selector_text):
+        selector = CSSParser(selector_text).selector()
 ```
 
 If you pass `querySelectorAll` an invalid selector,
@@ -388,12 +400,25 @@ crashes. At that point DukPy turns that Python-side exception into a
 JavaScript-side exception in the web script we are running, which can
 catch it or do something else.
 
-Next we need to find and return all matching elements:
+Next we need to find and return all matching elements. To do that, we
+need the `JSContext` to have access to the `Tab`, specifically to the
+`nodes` field. So let's pass in the `Tab` object when creating a
+`JSContext`:
+
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        self.tab = tab
+        # ...
+```
+
+Now inside `querySelectorAll` we can return all matching nodes:
 
 ``` {.python expected=False}
-def js_querySelectorAll(self, selector_text):
+def querySelectorAll(self, selector_text):
     # ...
-    nodes = [node for node in tree_to_list(nodes, [])
+    nodes = [node for node
+             in tree_to_list(self.tab.nodes, [])
              if selector.matches(node)]
     return nodes
 ```
@@ -427,8 +452,9 @@ We'll need to keep track of the handle to node mapping. Let's create a
 `handle_to_node` map that goes the other way:
 
 ``` {.python}
-class Tab:
-    def setup_js(self):
+class JSContext:
+    def __init__(self, tab):
+        # ...
         self.node_to_handle = {}
         self.handle_to_node = {}
         # ...
@@ -438,7 +464,7 @@ Then, I'll allocate new handles for each node being returned into
 JavaScript:
 
 ``` {.python}
-def js_querySelectorAll(self, selector_text):
+def querySelectorAll(self, selector_text):
     # ...
     return [self.get_handle(node) for node in nodes]
 ```
@@ -449,15 +475,16 @@ exist yet:[^id-elt]
 [^id-elt]: `node_to_handle` uses `id(elt)` instead of `elt` as its key
     because Python objects can't be used as hash keys by default.
 
-``` {.python indent=4}
-def get_handle(self, elt):
-    if elt not in self.node_to_handle:
-        handle = len(self.node_to_handle)
-        self.node_to_handle[id(elt)] = handle
-        self.handle_to_node[handle] = elt
-    else:
-        handle = self.node_to_handle[elt]
-    return handle
+``` {.python}
+class JSContext:
+    def get_handle(self, elt):
+        if elt not in self.node_to_handle:
+            handle = len(self.node_to_handle)
+            self.node_to_handle[id(elt)] = handle
+            self.handle_to_node[handle] = elt
+        else:
+            handle = self.node_to_handle[elt]
+        return handle
 ```
 
 Calling `document.querySelectorAll` will now return something like
@@ -482,8 +509,8 @@ Well, the idea is that `getAttribute` should take in handles and
 convert those handles back into elements. It would look like this:
 
 ``` {.python}
-class Tab:
-    def js_getAttribute(self, handle, attr):
+class JSContext:
+    def getAttribute(self, handle, attr):
         elt = self.handle_to_node[handle]
         return elt.attributes.get(attr, None)
 ```
@@ -582,7 +609,7 @@ class Tab:
         # ...
         elt = objs[-1].node
         if elt:
-            self.dispatch_event("click", elt)
+            self.js.dispatch_event("click", elt)
         # ...
 ```
 
@@ -592,7 +619,7 @@ Second, before updating input area values:
 class Tab:
     def keypress(self, char):
         if self.focus:
-            self.dispatch_event("keydown", self.focus)
+            self.js.dispatch_event("keydown", self.focus)
             self.focus.attributes["value"] += char
 ```
 
@@ -601,7 +628,7 @@ request to the server:
 
 ``` {.python expected=False}
 def submit_form(self, elt):
-    self.dispatch_event("submit", elt)
+    self.js.dispatch_event("submit", elt)
     # ...
 ```
 
@@ -646,11 +673,11 @@ When an event happens in the browser, it can call `__runListeners` from
 Python:
 
 ``` {.python expected=False}
-class Tab:
+class JSContext:
     def dispatch_event(self, type, elt):
         code = "__runListeners(dukpy.type, dukpy.handle)"
         handle = self.node_to_handle.get(elt, -1)
-        self.js.evaljs(code, type=type, handle=handle)
+        self.interp.evaljs(code, type=type, handle=handle)
 ```
 
 Here the `code` variable contains a string of JavaScript code, code
@@ -741,15 +768,6 @@ Object.defineProperty(Node.prototype, 'innerHTML', {
 });
 ```
 
-Next, we need to register the `innerHTML` function:
-
-``` {.python indent=4}
-def setup_js(self):
-    # ...
-    self.js.export_function("innerHTML", self.js_innerHTML)
-    # ...
-```
-
 In `innerHTML`, we'll need to parse the HTML string. That turns out to
 be trickier than you'd think, because our browser's HTML parser is
 intended to parse whole HTML documents, not document fragments like
@@ -760,18 +778,18 @@ HTML string in an `html` and `body` element:
     HTML fragments.
 
 ``` {.python indent=4}
-def js_innerHTML(self, handle, s):
+def innerHTML(self, handle, s):
     doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
     new_nodes = doc.children[0].children
 ```
 
-Note that we extract all children of the `body` element, because an
-`innerHTML` call can create multiple nodes at a time. These new nodes
-must now be made children of the element `innerHTML` was called
-on:
+Don't forget to register the `innerHTML` function. Note that we
+extract all children of the `body` element, because an `innerHTML`
+call can create multiple nodes at a time. These new nodes must now be
+made children of the element `innerHTML` was called on:
 
 ``` {.python indent=4}
-def js_innerHTML(self, handle, s):
+def innerHTML(self, handle, s):
     # ...
     elt = self.handle_to_node[handle]
     elt.children = new_nodes
@@ -818,9 +836,10 @@ Now, whenever the page changes, we can lay it out again by calling
 `render`:
 
 ``` {.python}
-def js_innerHTML(self, handle, s):
-    # ...
-    self.render()
+class JSContext:
+    def innerHTML(self, handle, s):
+        # ...
+        self.tab.render()
 ```
 
 JavaScript can now modify the web page!
@@ -936,35 +955,39 @@ function __runListeners(handle, type) {
 On the Python side, `event` can return that boolean to its handler:
 
 ``` {.python}
-def dispatch_event(self, type, elt):
-    # ...
-    do_default = self.js.evaljs(code, type=type, handle=handle)
-    return not do_default
+class JSContext:
+    def dispatch_event(self, type, elt):
+        # ...
+        do_default = self.interp.evaljs(code, type=type, handle=handle)
+        return not do_default
 ```
 
 Finally, whatever event handler runs `dispatch_event` should check
 that return value and stop if it is `True`. So in `click`:
 
 ``` {.python}
-def click(self, x, y):
-    # ...
-    if elt and self.dispatch_event("click", elt): return
-    # ...
+class Tab:
+    def click(self, x, y):
+        # ...
+        if elt and self.js.dispatch_event("click", elt): return
+        # ...
 ```
 
 And also in `submit_form`:
 
 ``` {.python}
-def submit_form(self, elt):
-    if self.dispatch_event("submit", elt): return
+class Tab:
+    def submit_form(self, elt):
+        if self.js.dispatch_event("submit", elt): return
 ```
 
 And in `keypress`:
 
 ``` {.python}
-def keypress(self, char):
-    if self.focus:
-        if self.dispatch_event("keydown", self.focus): return
+class Tab:
+    def keypress(self, char):
+        if self.focus:
+            if self.js.dispatch_event("keydown", self.focus): return
 ```
 
 With this change, `comment.js` can use a global variable to track
