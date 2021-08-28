@@ -24,8 +24,62 @@ from lab6 import CSSParser
 from lab6 import DrawText
 from lab7 import LineLayout
 from lab7 import TextLayout
-from lab8 import request
 from lab8 import DocumentLayout
+
+def url_origin(url):
+    return "/".join(url.split("/")[:3])
+
+def request(url, headers={}, payload=None):
+    scheme, url = url.split("://", 1)
+    assert scheme in ["http", "https"], \
+        "Unknown scheme {}".format(scheme)
+
+    host, path = url.split("/", 1)
+    path = "/" + path
+    port = 80 if scheme == "http" else 443
+
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    s.connect((host, port))
+
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
+
+    method = "POST" if payload else "GET"
+    body = "{} {} HTTP/1.0\r\n".format(method, path)
+    body += "Host: {}\r\n".format(host)
+    for header, value in headers.items():
+        body += "{}: {}\r\n".format(header, value)
+    if payload:
+        content_length = len(payload.encode("utf8"))
+        body += "Content-Length: {}\r\n".format(content_length)
+    body += "\r\n" + (payload or "")
+    s.send(body.encode("utf8"))
+    response = s.makefile("r", encoding="utf8", newline="\r\n")
+
+    statusline = response.readline()
+    version, status, explanation = statusline.split(" ", 2)
+    assert status == "200", "{}: {}".format(status, explanation)
+
+    headers = {}
+    while True:
+        line = response.readline()
+        if line == "\r\n": break
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+
+    body = response.read()
+    s.close()
+
+    return headers, body
 
 class JSContext:
     def __init__(self, tab):
@@ -100,8 +154,11 @@ class Tab:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def cookie_string(self):
+        origin = url_origin(self.history[-1])
         cookie_string = ""
-        for key, value in self.cookies.items():
+        if not origin in self.cookies:
+            return cookie_string
+        for key, value in self.cookies[origin].items():
             cookie_string += "&" + key + "=" + value
         return cookie_string[1:]
 
@@ -110,10 +167,12 @@ class Tab:
         self.url = url
         self.history.append(url)
         req_headers = { "Cookie": self.cookie_string() }        
-        headers, body = request(url, body)
+        headers, body = request(url, headers=req_headers, payload=body)
         if "set-cookie" in headers:
-            print('cookies')
-            kv, params = headers["set-cookie"].split(";", 1)
+            if ";" in headers["set-cookie"]:
+                kv, params = headers["set-cookie"].split(";", 1)
+            else:
+                kv = headers["set-cookie"]
             key, value = kv.split("=", 1)
             origin = url_origin(self.history[-1])
             self.cookies.setdefault(origin, {})[key] = value
@@ -127,7 +186,8 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            header, body = request(resolve_url(script, url))
+            header, body = request(resolve_url(script, url),
+                headers=req_headers)
             try:
                 print("Script returned: ", self.js.run(body))
             except dukpy.JSRuntimeError as e:
@@ -142,7 +202,8 @@ class Tab:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = request(resolve_url(link, url))
+                header, body = request(resolve_url(link, url),
+                    headers=req_headers)
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())

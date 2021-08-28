@@ -9,9 +9,13 @@ function lengthCheck() {
 }
 
 var input = document.querySelectorAll("input")[0];
-input.addEventListener("keydown", lengthCheck);
+if (input) {
+    input.addEventListener("keydown", lengthCheck);
+}
 
 var form = document.querySelectorAll("form")[0];
-form.addEventListener("submit", function(e) {
-    if (!allow_submit) e.preventDefault();
-});
+if (form) {
+    form.addEventListener("submit", function(e) {
+        if (!allow_submit) e.preventDefault();
+    });
+}

@@ -18,8 +18,8 @@ def handle_connection(conx):
     else:
         body = None
 
-    body, headers = handle_request(method, url, headers, body)
-    response = "HTTP/1.0 200 OK\r\n"
+    status, body, headers = do_request(method, url, headers, body)
+    response = "HTTP/1.0 {}\r\n".format(status)
     for header, value in headers.items():
         response += "{}: {}\r\n".format(header, value)
     response += "Content-Length: {}\r\n".format(len(body.encode("utf8")))
@@ -38,6 +38,7 @@ ENTRIES = [
 LOGINS = { "crashoverride": "0cool", "cerealkiller": "emmanuel" }
 
 def check_login(username, pw):
+    print('username: ' + username)
     return username in LOGINS and LOGINS[username] == pw
 
 def parse_cookies(s):
@@ -49,8 +50,11 @@ def parse_cookies(s):
         out[k] = v
     return out
 
-def handle_request(method, url, headers, body):
+def do_request(method, url, headers, body):
     resp_headers = {}
+    print(url)
+    print(method)
+   
     username = ""
     if method == 'POST' and url == "/":
         params = form_decode(body)
@@ -59,26 +63,30 @@ def handle_request(method, url, headers, body):
             token = str(random.random())[2:]
             TOKENS[token] = username
             resp_headers["Set-Cookie"] = "token=" + token
+        else:
+            print('login failed')
     elif "cookie" in headers:
         username = TOKENS.get(parse_cookies(headers["cookie"]).get("token"))
 
-    if method == 'POST':
-        params = form_decode(body)
-        if url == '/add':
-            return add_entry(params, username), resp_headers
-        else:
-            return show_comments(username), resp_headers
-    else:
-        if url == "/comment.js":
+    if method == "GET":
+        if url == "/":
+            return "200 OK", show_comments(username), resp_headers
+        elif url == "/login":
+            return "200 OK", login_form(), resp_headers
+        elif url == "/comment.js":
             with open("comment9.js") as f:
-                return f.read(), resp_headers
+                return "200 OK", f.read(), resp_headers
         elif url == "/comment.css":
             with open("comment9.css") as f:
-                return f.read(), resp_headers
-        elif url == "/login":
-            return login_form(), resp_headers
+                return "200 OK", f.read(), resp_headers
+    elif method == "POST":
+        if url == "/add":
+            params = form_decode(body)
+            return "200 OK", add_entry(params, username), resp_headers
         else:
-            return show_comments(username), resp_headers
+            return "200 OK", show_comments(username), resp_headers
+
+    return "404 Not Found", not_found(url, method), resp_headers
 
 def login_form():
     body = "<!doctype html>"
@@ -116,10 +124,15 @@ def check_nonce(params, username):
     if username not in NONCES: return False
     return params['nonce'] == NONCES[username]
 
+def not_found(url, method):
+    out = "<!doctype html>"
+    out += "<h1>{} {} not found!</h1>".format(method, url)
+    return out
+
 def add_entry(params, username):
     if 'guest' in params and len(params["guest"]) <= 100 and username:
-        ENTRIES.append(params['guest'])
-    return show_comments()
+        ENTRIES.append((params['guest'], username))
+    return show_comments(username)
 
 def form_decode(body):
     params = {}
