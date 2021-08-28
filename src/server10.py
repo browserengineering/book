@@ -1,14 +1,6 @@
 import socket
 import random
 
-s = socket.socket(
-    family=socket.AF_INET,
-    type=socket.SOCK_STREAM,
-    proto=socket.IPPROTO_TCP,
-)
-s.bind(('', 8000))
-s.listen()
-
 def handle_connection(conx):
     req = conx.makefile("rb")
     reqline = req.readline().decode('utf8')
@@ -136,7 +128,17 @@ def form_decode(body):
         params[name] = value.replace("%20", " ")
     return params
 
-while True:
-    conx, addr = s.accept()
-    print("Received connection from", addr)
-    handle_connection(conx)
+if __name__ == "__main__":
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(('', 8000))
+    s.listen()
+
+    while True:
+        conx, addr = s.accept()
+        print("Received connection from", addr)
+        handle_connection(conx)

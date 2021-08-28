@@ -112,6 +112,7 @@ class Tab:
         req_headers = { "Cookie": self.cookie_string() }        
         headers, body = request(url, body)
         if "set-cookie" in headers:
+            print('cookies')
             kv, params = headers["set-cookie"].split(";", 1)
             key, value = kv.split("=", 1)
             origin = url_origin(self.history[-1])

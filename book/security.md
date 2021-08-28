@@ -65,7 +65,7 @@ just call it `cookies`:
     on-brand.
 
 ``` {.python}
-class Browser:
+class Tab:
     def __init__(self):
         # ...
         self.cookies = {}

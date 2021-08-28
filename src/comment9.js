@@ -1,5 +1,5 @@
-allow_submit = true;
-p_error = document.querySelectorAll("#errors")[0];
+var allow_submit = true;
+var p_error = document.querySelectorAll("#errors")[0];
 
 function lengthCheck() {
     allow_submit = this.getAttribute("value").length <= 100;
@@ -8,10 +8,10 @@ function lengthCheck() {
     }
 }
 
-input = document.querySelectorAll("input")[0];
+var input = document.querySelectorAll("input")[0];
 input.addEventListener("keydown", lengthCheck);
 
-form = document.querySelectorAll("form")[0];
+var form = document.querySelectorAll("form")[0];
 form.addEventListener("submit", function(e) {
     if (!allow_submit) e.preventDefault();
 });
