@@ -1083,10 +1083,21 @@ Implement all three methods.
 provided child and returns it, bringing that child---and its subtree---back
 into an *unnattached* state. (It can then be *reattached* elsewhere, or
 deleted.) Implement this method. It's more challenging to implement this one,
-, because you'll need to also remove the subtree from the Python side, and
-  delete any layout objects associated with it.
+because you'll need to also remove the subtree from the Python side, and
+delete any layout objects associated with it.
 
 [removeChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/removeChild
+
+*IDs*: When an HTML element on a page has an `id` attribute, a
+variable is predefined in the JavaScript context refering to that
+element.[^standard] So, if a page has a `<div id="foo"></div>`, then the variable
+`foo` refers to that node. Implement this in your browser. Make sure
+to handle the case of nodes being added and removed (such as with
+`innerHTML`).
+
+[^standard]: This is [standard][html5-varnames] behavior.
+
+[html5-varnames]: http://www.whatwg.org/specs/web-apps/current-work/#named-access-on-the-window-object
 
 *Event Bubbling*: Try to run an event handler when the user clicks on a link:
  you'll find that it's actually impossible. That's because when you click a
