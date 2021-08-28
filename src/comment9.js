@@ -9,7 +9,7 @@ function lengthCheck() {
 }
 
 input = document.querySelectorAll("input")[0];
-input.addEventListener("change", lengthCheck);
+input.addEventListener("keydown", lengthCheck);
 
 form = document.querySelectorAll("form")[0];
 form.addEventListener("submit", function(e) {
