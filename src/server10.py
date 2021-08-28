@@ -69,10 +69,10 @@ def handle_request(method, url, headers, body):
         else:
             return show_comments(username), resp_headers
     else:
-        if url == "/comment9.js":
+        if url == "/comment.js":
             with open("comment9.js") as f:
                 return f.read(), resp_headers
-        elif url == "/comment9.css":
+        elif url == "/comment.css":
             with open("comment9.css") as f:
                 return f.read(), resp_headers
         elif url == "/login":
