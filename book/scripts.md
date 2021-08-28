@@ -610,7 +610,7 @@ it needs to run the handlers set up by `addEventListener`, so those
 need to be stored somewhere. Since those handlers are JavaScript
 functions, we need to keep that data on the JavaScript side, in an
 variable in the runtime. I'll call that variable `LISTENERS`; we'll
-use it to look up handles and event types, so let's make map handles
+use it to look up handles and event types, so let's make it map handles
 to a dictionary that maps event types to a list of handlers:
 
 ``` {.javascript}
