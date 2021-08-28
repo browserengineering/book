@@ -865,7 +865,7 @@ class Browser:
 
     def reflow(self, obj):
         self.timer.start("Style")
-        style(obj.node, None, self.rules)
+        style(obj.node, obj.node.parent, self.rules)
         self.timer.start("Layout (phase 1A)")
         obj.size()
         self.timer.start("Layout (phase 1B)")
