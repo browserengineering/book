@@ -10,16 +10,24 @@ HEIGHT=800
 surface = skia.Surface(WIDTH, HEIGHT)
 
 with surface as canvas:
-    canvas.save()
-    canvas.translate(128., 128.)
-    canvas.rotate(45.)
-    rect = skia.Rect.MakeXYWH(-90.5, -90.5, 181.0, 181.0)
+    rect = skia.Rect.MakeXYWH(0, 0, 300, 400)
     paint = skia.Paint()
     paint.setColor(skia.ColorBLUE)
     canvas.drawRect(rect, paint)
-    canvas.restore()
+
+    paint = skia.Paint(AntiAlias=True, Color=skia.ColorRED)
+    canvas.drawString('String', 10, 32, skia.Font(skia.Typeface('Arial'), 36), paint)
+    
+    paint.setColor(skia.ColorGREEN)
+    blob = skia.TextBlob('Blob', skia.Font(skia.Typeface('Times New Roman'), 36))
+    canvas.drawTextBlob(blob, 10, 64, paint)
+    
+    paint.setColor(skia.ColorBLUE)
+    blob = skia.TextBlob('Blob', skia.Font(None, 36), [(0, 0), (32, 5), (64, -5), (96, 2)])
+    canvas.drawTextBlob(blob, 10, 96, paint)
 
 skia_image = surface.makeImageSnapshot()
+skia_image.save('output.png', skia.kPNG)
 
 # First doesn't work - messes up color channels. Second says it isn't supported.
 #pil_image = Image.fromarray(skia_image.convert(alphaType=skia.kUnpremul_AlphaType))
