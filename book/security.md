@@ -77,8 +77,10 @@ Then, when responses are processed:
 def load(self, url, body=None):
     # ...
     if "set-cookie" in headers:
-        kv, params = headers["set-cookie"].split(";", 1)
-        key, value = kv.split("=", 1)
+        if ";" in headers["set-cookie"]:
+            kv, params = headers["set-cookie"].split(";", 1)
+        else:
+            kv = headers["set-cookie"]
         self.cookies[key] = value
     # ...
 ```
@@ -415,8 +417,9 @@ port---where it was set. Let's update our cookie policy to do this.
 I'll change the `cookies` field so it stores a map from origins to
 key-value pairs:
 
-``` {.python}
+``` {.python indent=4}
 def load(self, url, body=None):
+    # ...
     if "set-cookie" in headers:
         # ...
         origin = url_origin(self.history[-1])
@@ -471,10 +474,10 @@ Now we register `cookie` to a simple function that returns the cookie
 value:
 
 ``` {.python}
-class Browser:
-    def setup_js(self):
+class JSContext:
+    def __init__(self, tab):
         # ...
-        self.js.export_function("cookie", self.cookie_string)
+        self.interp.export_function("cookie", self.cookie_string)
         # ...
 ```
 
