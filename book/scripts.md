@@ -208,7 +208,7 @@ string, and booleans, but I wouldn't try it with other objects.] and
 then passes that Python string to the `print` function we registered.
 
 Since we ultimately want JavaScript to call a `console.log` function,
-not a `call_python` function, so we need to define a `console` object
+not a `call_python` function, we need to define a `console` object
 and then give it a `log` property. We can do that *in JavaScript*:
 
 ``` {.javascript}
