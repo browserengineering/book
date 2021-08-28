@@ -59,6 +59,7 @@ def parse_cookies(s):
 
 def handle_request(method, url, headers, body):
     resp_headers = {}
+    username = ""
     if method == 'POST' and url == "/":
         params = form_decode(body)
         if check_login(params.get("username"), params.get("password")):
