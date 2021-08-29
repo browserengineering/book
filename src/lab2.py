@@ -6,7 +6,6 @@ without exercises.
 
 from lab1 import request
 from PIL import Image, ImageTk
-import numpy
 import skia
 import socket
 import ssl
@@ -89,6 +88,8 @@ class Browser:
                pil_image.load()
             tk_image = ImageTk.PhotoImage(image=pil_image)
             self.canvas.create_image(0, 0, image=tk_image, anchor="nw")
+
+            # Don't konw why this is required, but it is in my demo.
             tkinter.mainloop()
         else:
             for x, y, c in self.display_list:
@@ -104,5 +105,4 @@ if __name__ == "__main__":
     import sys
 
     Browser().load(sys.argv[1])
-    print('mainloop')
     tkinter.mainloop(1,2,3)
