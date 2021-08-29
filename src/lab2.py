@@ -5,9 +5,13 @@ without exercises.
 """
 
 from lab1 import request
+from PIL import Image, ImageTk
+import numpy
+import skia
 import socket
 import ssl
 import tkinter
+import io
 
 def lex(body):
     text = ""
@@ -47,7 +51,6 @@ class Browser:
             width=WIDTH,
             height=HEIGHT
         )
-
         self.canvas.pack()
 
         self.scroll = 0
@@ -61,11 +64,37 @@ class Browser:
 
     def draw(self):
         self.canvas.delete("all")
-        for x, y, c in self.display_list:
-            breakpoint("draw")
-            if y > self.scroll + HEIGHT: continue
-            if y + VSTEP < self.scroll: continue
-            self.canvas.create_text(x, y - self.scroll, text=c)
+        surface = skia.Surface(WIDTH, HEIGHT)
+
+        use_skia = True
+
+        if use_skia:
+            with surface as canvas:
+                skia_paint = skia.Paint(AntiAlias=True, Color=skia.ColorBLACK)
+                skia_font = skia.Font(skia.Typeface('Arial'), 20)
+                for x, y, c in self.display_list:
+                    if c == '\n': continue
+                    breakpoint("draw")
+                    if y > self.scroll + HEIGHT: continue
+                    if y + VSTEP < self.scroll: continue
+                    canvas.drawString(c, x, y - self.scroll, skia_font,
+                        skia_paint)
+            skia_image = surface.makeImageSnapshot()
+            # This is supposed to work, but gets the color channels messed up
+            # for some reason
+            pil_image = Image.fromarray(skia_image.convert(alphaType=skia.kUnpremul_AlphaType))
+            # ... whereas this does not:
+            with io.BytesIO(skia_image.encodeToData()) as f:
+               pil_image = Image.open(f)
+               pil_image.load()
+            tk_image = ImageTk.PhotoImage(image=pil_image)
+            self.canvas.create_image(0, 0, image=tk_image, anchor="nw")
+            tkinter.mainloop()
+        else:
+            for x, y, c in self.display_list:
+                if y > self.scroll + HEIGHT: continue
+                if y + VSTEP < self.scroll: continue
+                self.canvas.create_text(x, y - self.scroll, text=c)
 
     def scrolldown(self, e):
         self.scroll += SCROLL_STEP
@@ -75,4 +104,5 @@ if __name__ == "__main__":
     import sys
 
     Browser().load(sys.argv[1])
-    tkinter.mainloop()
+    print('mainloop')
+    tkinter.mainloop(1,2,3)
