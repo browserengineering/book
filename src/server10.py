@@ -1,14 +1,6 @@
 import socket
 import random
 
-s = socket.socket(
-    family=socket.AF_INET,
-    type=socket.SOCK_STREAM,
-    proto=socket.IPPROTO_TCP,
-)
-s.bind(('', 8000))
-s.listen()
-
 def handle_connection(conx):
     req = conx.makefile("rb")
     reqline = req.readline().decode('utf8')
@@ -26,8 +18,8 @@ def handle_connection(conx):
     else:
         body = None
 
-    body, headers = handle_request(method, url, headers, body)
-    response = "HTTP/1.0 200 OK\r\n"
+    status, body, headers = do_request(method, url, headers, body)
+    response = "HTTP/1.0 {}\r\n".format(status)
     for header, value in headers.items():
         response += "{}: {}\r\n".format(header, value)
     response += "Content-Length: {}\r\n".format(len(body.encode("utf8")))
@@ -57,8 +49,10 @@ def parse_cookies(s):
         out[k] = v
     return out
 
-def handle_request(method, url, headers, body):
+def do_request(method, url, headers, body):
     resp_headers = {}
+   
+    username = ""
     if method == 'POST' and url == "/":
         params = form_decode(body)
         if check_login(params.get("username"), params.get("password")):
@@ -69,23 +63,25 @@ def handle_request(method, url, headers, body):
     elif "cookie" in headers:
         username = TOKENS.get(parse_cookies(headers["cookie"]).get("token"))
 
-    if method == 'POST':
-        params = form_decode(body)
-        if url == '/add':
-            return add_entry(params, username), resp_headers
-        else:
-            return show_comments(username), resp_headers
-    else:
-        if url == "/comment9.js":
-            with open("comment9.js") as f:
-                return f.read(), resp_headers
-        elif url == "/comment9.css":
-            with open("comment9.css") as f:
-                return f.read(), resp_headers
+    if method == "GET":
+        if url == "/":
+            return "200 OK", show_comments(username), resp_headers
         elif url == "/login":
-            return login_form(), resp_headers
+            return "200 OK", login_form(), resp_headers
+        elif url == "/comment.js":
+            with open("comment9.js") as f:
+                return "200 OK", f.read(), resp_headers
+        elif url == "/comment.css":
+            with open("comment9.css") as f:
+                return "200 OK", f.read(), resp_headers
+    elif method == "POST":
+        if url == "/add":
+            params = form_decode(body)
+            return "200 OK", add_entry(params, username), resp_headers
         else:
-            return show_comments(username), resp_headers
+            return "200 OK", show_comments(username), resp_headers
+
+    return "404 Not Found", not_found(url, method), resp_headers
 
 def login_form():
     body = "<!doctype html>"
@@ -123,10 +119,15 @@ def check_nonce(params, username):
     if username not in NONCES: return False
     return params['nonce'] == NONCES[username]
 
+def not_found(url, method):
+    out = "<!doctype html>"
+    out += "<h1>{} {} not found!</h1>".format(method, url)
+    return out
+
 def add_entry(params, username):
     if 'guest' in params and len(params["guest"]) <= 100 and username:
-        ENTRIES.append(params['guest'])
-    return show_comments()
+        ENTRIES.append((params['guest'], username))
+    return show_comments(username)
 
 def form_decode(body):
     params = {}
@@ -135,7 +136,17 @@ def form_decode(body):
         params[name] = value.replace("%20", " ")
     return params
 
-while True:
-    conx, addr = s.accept()
-    print("Received connection from", addr)
-    handle_connection(conx)
+if __name__ == "__main__":
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(('', 8000))
+    s.listen()
+
+    while True:
+        conx, addr = s.accept()
+        print("Received connection from", addr)
+        handle_connection(conx)

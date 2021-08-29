@@ -27,13 +27,20 @@ def handle_connection(conx):
     conx.close()
 
 def do_request(method, url, headers, body):
-    if method == "GET" and url == "/":
-        return "200 OK", show_comments()
+    if method == "GET":
+        if url == "/":
+            return "200 OK", show_comments()
+        elif url == "/comment.js":
+            with open("comment9.js") as f:
+                return "200 OK", f.read()
+        elif url == "/comment.css":
+            with open("comment9.css") as f:
+                return "200 OK", f.read()
     elif method == "POST" and url == "/add":
         params = form_decode(body)
         return "200 OK", add_entry(params)
-    else:
-        return "404 Not Found", not_found(url, method)
+    
+    return "404 Not Found", not_found(url, method)
 
 def form_decode(body):
     params = {}
@@ -52,6 +59,9 @@ def show_comments():
     out += "</form>"
     for entry in ENTRIES:
         out += "<p>" + entry + "</p>"
+    out += "<link rel=stylesheet src=/comment.css>"
+    out += "<div id=errors></div>"
+    out += "<script src=/comment.js></script>"
     return out
 
 def not_found(url, method):

@@ -24,11 +24,8 @@ from lab6 import CSSParser
 from lab6 import DrawText
 from lab7 import LineLayout
 from lab7 import TextLayout
-from lab9 import request
-from lab9 import InputLayout
-from lab9 import BlockLayout
-from lab9 import InlineLayout
-from lab9 import DocumentLayout
+from lab8 import request
+from lab8 import DocumentLayout
 
 class JSContext:
     def __init__(self, tab):
@@ -84,6 +81,9 @@ class JSContext:
         for child in elt.children:
             child.parent = elt
         self.tab.render()
+
+SCROLL_STEP = 100
+CHROME_PX = 100
 
 class Tab:
     def __init__(self):
@@ -209,6 +209,8 @@ class Tab:
             self.history.pop()
             back = self.history.pop()
             self.load(back)
+
+WIDTH, HEIGHT = 800, 600
 
 class Browser:
     def __init__(self):
