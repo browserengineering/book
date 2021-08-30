@@ -10,6 +10,8 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.9
+      - name: Install dependencies
+        run: python -m pip install dukpy
       - uses: r-lib/actions/setup-pandoc@v1
         with:
           pandoc-version: 2.11.4
