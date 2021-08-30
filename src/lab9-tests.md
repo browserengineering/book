@@ -35,9 +35,13 @@ If the script succeeds, the browser prints its return value:
 
 If instead the script crashes, the browser prints the error message:
 
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nthrow 'Test exception!';")
-    >>> lab9.Browser().load(url)
-    Script http://test.test/js crashed Test exception!
+    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nthrow Error('Oops');")
+    >>> lab9.Browser().load(url) #doctest: +ELLIPSIS
+    Script http://test.test/js crashed Error: Oops
+    ...
+
+Note that in the last test I set the `ELLIPSIS` flag to elide the duktape stack
+trace.
 
 Testing JSContext
 =================
