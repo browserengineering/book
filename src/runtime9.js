@@ -36,7 +36,7 @@ Object.defineProperty(Node.prototype, 'innerHTML', {
     }
 });
 
-function __runListeners(handle, type) {
+function __runListeners(type, handle) {
     var list = (LISTENERS[handle] && LISTENERS[handle][type]) || [];
     var evt = new Event(type);
     for (var i = 0; i < list.length; i++) {
