@@ -212,7 +212,7 @@ test things:
     Listener ran!
     False
 
-The `False` is from our `preventDefault` handling.
+The `False` is from our `preventDefault` handling (we didn't call it).
 
 Let's test each of our automatic event types. We'll need a new web page with a
 link, a button, and an input area:
