@@ -33,7 +33,7 @@ If the script succeeds, the browser prints its return value:
     >>> lab9.Browser().load(url)
     Script returned: 4
 
-If instead the script crashes, the browser prints the error message:
+If instead the script crashes, the browser prints an error message:
 
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nthrow Error('Oops');")
     >>> lab9.Browser().load(url) #doctest: +ELLIPSIS
