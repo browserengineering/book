@@ -172,7 +172,7 @@ class JSContext:
         self.interp = dukpy.JSInterpreter()
 
     def run(self, code):
-        self.interp.evaljs(code)
+        return self.interp.evaljs(code)
 ```
 
 This `JSInterpreter` object stores the values of all the JavaScript
@@ -297,9 +297,9 @@ of crashes: crashes in web page scripts, and crashes in your own
 JavaScript runtime. In the first case, you want to ignore those
 crashes:
 
-``` {.python indent=8}
+``` {.python indent=12}
 try:
-    print("Script returned: ", self.js.run(body))
+    print("Script returned:", self.js.run(body))
 except dukpy.JSRuntimeError as e:
     print("Script", script, "crashed", e)
 ```
@@ -478,12 +478,12 @@ exist yet:[^id-elt]
 ``` {.python}
 class JSContext:
     def get_handle(self, elt):
-        if elt not in self.node_to_handle:
+        if id(elt) not in self.node_to_handle:
             handle = len(self.node_to_handle)
             self.node_to_handle[id(elt)] = handle
             self.handle_to_node[handle] = elt
         else:
-            handle = self.node_to_handle[elt]
+            handle = self.node_to_handle[id(elt)]
         return handle
 ```
 
@@ -606,11 +606,18 @@ click in the page:
 ``` {.python expected=False}
 class Tab:
     def click(self, x, y):
-        # ...
-        elt = objs[-1].node
-        if elt:
-            self.js.dispatch_event("click", elt)
-        # ...
+        while elt:
+            # ...
+            elif elt.tag == "a" and "href" in elt.attributes:
+                self.js.dispatch_event("click", elt)
+                # ...
+            elif elt.tag == "input":
+                self.js.dispatch_event("click", elt)
+                # ...
+            elif elt.tag == "button":
+                self.js.dispatch_event("click", elt)
+                # ...
+            # ...
 ```
 
 Second, before updating input area values:
@@ -672,11 +679,11 @@ that the event was generated on.
 When an event happens in the browser, it can call `__runListeners` from
 Python:
 
-``` {.python expected=False}
+``` {.python replace=self.interp.evaljs/do_default%20=%20self.interp.evaljs}
 class JSContext:
     def dispatch_event(self, type, elt):
         code = "__runListeners(dukpy.type, dukpy.handle)"
-        handle = self.node_to_handle.get(elt, -1)
+        handle = self.node_to_handle.get(id(elt), -1)
         self.interp.evaljs(code, type=type, handle=handle)
 ```
 
@@ -963,14 +970,25 @@ class JSContext:
 ```
 
 Finally, whatever event handler runs `dispatch_event` should check
-that return value and stop if it is `True`. So in `click`:
+that return value and stop if it is `True`. So in the `click` method,
+we have three places where we should check `dispatch_event`:
 
 ``` {.python}
 class Tab:
     def click(self, x, y):
-        # ...
-        if elt and self.js.dispatch_event("click", elt): return
-        # ...
+        while elt:
+            # ...
+            elif elt.tag == "a" and "href" in elt.attributes:
+                if self.js.dispatch_event("click", elt): return
+                # ...
+            elif elt.tag == "input":
+                if self.js.dispatch_event("click", elt): return
+                # ...
+            elif elt.tag == "button":
+                if self.js.dispatch_event("click", elt): return
+                # ...
+            # ...
+         # ...
 ```
 
 And also in `submit_form`:
