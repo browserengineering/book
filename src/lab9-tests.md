@@ -2,7 +2,7 @@ Tests for WBE Chapter 9
 =======================
 
 Chapter 9 (Running Interactive Scripts) introduces JavaScript and the DOM API,
-plus submit forms to the server. The focus of the chapter is browser-JS
+The focus of the chapter is browser-JS
 interaction.
 
     >>> import test
