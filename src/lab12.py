@@ -4,142 +4,280 @@ up to and including Chapter 12 (Adding Visual Effects),
 without exercises.
 """
 
+import dukpy
+import skia
 import socket
 import ssl
 import tkinter
 import tkinter.font
 import urllib.parse
-import dukpy
 from lab4 import print_tree
 from lab4 import Element
 from lab4 import Text
 from lab4 import HTMLParser
-from lab5 import DrawRect
 from lab6 import cascade_priority
 from lab6 import layout_mode
 from lab6 import resolve_url
 from lab6 import style
 from lab6 import tree_to_list
 from lab6 import CSSParser
-from lab6 import DrawText
 from lab7 import LineLayout
 from lab7 import TextLayout
-from lab8 import DocumentLayout
+from lab10 import request
+from lab10 import url_origin
+from lab10 import JSContext
 
-def url_origin(url):
-    return "/".join(url.split("/")[:3])
+class DrawText:
+    def __init__(self, x1, y1, text, font, color):
+        self.top = y1
+        self.left = x1
+        self.text = text
+        self.font = font
+        self.color = color
 
-def request(url, headers={}, payload=None):
-    scheme, url = url.split("://", 1)
-    assert scheme in ["http", "https"], \
-        "Unknown scheme {}".format(scheme)
+        self.bottom = y1 + font.metrics("linespace")
 
-    host, path = url.split("/", 1)
-    path = "/" + path
-    port = 80 if scheme == "http" else 443
+    def execute(self, scroll, canvas):
+        canvas.create_text(
+            self.left, self.top - scroll,
+            text=self.text,
+            font=self.font,
+            anchor='nw',
+            fill=self.color,
+        )
 
-    if ":" in host:
-        host, port = host.split(":", 1)
-        port = int(port)
+    def __repr__(self):
+        return "DrawText(text={})".format(self.text)
 
-    s = socket.socket(
-        family=socket.AF_INET,
-        type=socket.SOCK_STREAM,
-        proto=socket.IPPROTO_TCP,
-    )
-    s.connect((host, port))
+class DrawRect:
+    def __init__(self, x1, y1, x2, y2, color):
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+        self.color = color
 
-    if scheme == "https":
-        ctx = ssl.create_default_context()
-        s = ctx.wrap_socket(s, server_hostname=host)
+    def execute(self, scroll, canvas):
+        canvas.create_rectangle(
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
+            width=0,
+            fill=self.color,
+        )
 
-    method = "POST" if payload else "GET"
-    body = "{} {} HTTP/1.0\r\n".format(method, path)
-    body += "Host: {}\r\n".format(host)
-    for header, value in headers.items():
-        body += "{}: {}\r\n".format(header, value)
-    if payload:
-        content_length = len(payload.encode("utf8"))
-        body += "Content-Length: {}\r\n".format(content_length)
-    body += "\r\n" + (payload or "")
-    s.send(body.encode("utf8"))
-    response = s.makefile("r", encoding="utf8", newline="\r\n")
+    def __repr__(self):
+        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
+            self.top, self.left, self.bottom, self.right, self.color)
 
-    statusline = response.readline()
-    version, status, explanation = statusline.split(" ", 2)
-    assert status == "200", "{}: {}".format(status, explanation)
+INPUT_WIDTH_PX = 200
 
-    headers = {}
-    while True:
-        line = response.readline()
-        if line == "\r\n": break
-        header, value = line.split(":", 1)
-        headers[header.lower()] = value.strip()
+class InputLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
 
-    body = response.read()
-    s.close()
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(float(self.node.style["font-size"][:-2]) * .75)
+        self.font = tkinter.font.Font(
+            size=size, weight=weight, slant=style)
 
-    return headers, body
+        self.width = INPUT_WIDTH_PX
 
-class JSContext:
-    def __init__(self, tab):
-        self.tab = tab
-
-        self.interp = dukpy.JSInterpreter()
-        self.interp.export_function("log", print)
-        self.interp.export_function("querySelectorAll",
-            self.querySelectorAll)
-        self.interp.export_function("getAttribute",
-            self.getAttribute)
-        self.interp.export_function("innerHTML", self.innerHTML)
-        self.interp.export_function("cookie", self.cookie_string)
-        with open("runtime9.js") as f:
-            self.interp.evaljs(f.read())
-
-        self.node_to_handle = {}
-        self.handle_to_node = {}
-
-    def run(self, code):
-        self.interp.evaljs(code)
-
-    def dispatch_event(self, type, elt):
-        code = "__runListeners(dukpy.type, dukpy.handle)"
-        handle = self.node_to_handle.get(elt, -1)
-        do_default = self.interp.evaljs(code, type=type, handle=handle)
-        return not do_default
-
-    def get_handle(self, elt):
-        if elt not in self.node_to_handle:
-            handle = len(self.node_to_handle)
-            self.node_to_handle[id(elt)] = handle
-            self.handle_to_node[handle] = elt
+        if self.previous:
+            space = self.previous.font.measure(" ")
+            self.x = self.previous.x + space + self.previous.width
         else:
-            handle = self.node_to_handle[elt]
-        return handle
+            self.x = self.parent.x
 
-    def querySelectorAll(self, selector_text):
-        selector = CSSParser(selector_text).selector()
-        nodes = [node for node
-                 in tree_to_list(self.tab.nodes, [])
-                 if selector.matches(node)]
-        return [self.get_handle(node) for node in nodes]
+        self.height = self.font.metrics("linespace")
 
-    def getAttribute(self, handle, attr):
-        elt = self.handle_to_node[handle]
-        return elt.attributes.get(attr, None)
+    def paint(self, display_list):
+        bgcolor = self.node.style.get("background-color",
+                                      "transparent")
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            display_list.append(rect)
 
-    def innerHTML(self, handle, s):
-        doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
-        new_nodes = doc.children[0].children
-        elt = self.handle_to_node[handle]
-        elt.children = new_nodes
-        for child in elt.children:
-            child.parent = elt
-        self.tab.render()
+        if self.node.tag == "input":
+            text = self.node.attributes.get("value", "")
+        elif self.node.tag == "button":
+            text = self.node.children[0].text
 
-    def cookie_string(self):
-        return self.tab.cookie_string()
+        color = self.node.style["color"]
+        display_list.append(
+            DrawText(self.x, self.y, text, self.font, color))
 
+    def __repr__(self):
+        return "InputLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
+class BlockLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def layout(self):
+        previous = None
+        for child in self.node.children:
+            if layout_mode(child) == "inline":
+                next = InlineLayout(child, self, previous)
+            else:
+                next = BlockLayout(child, self, previous)
+            self.children.append(next)
+            previous = next
+
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for child in self.children:
+            child.layout()
+
+        self.height = sum([child.height for child in self.children])
+
+    def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
+    def __repr__(self):
+        return "BlockLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
+class InlineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.display_list = None
+
+    def layout(self):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        self.new_line()
+        self.recurse(self.node)
+        
+        for line in self.children:
+            line.layout()
+
+        self.height = sum([line.height for line in self.children])
+
+    def recurse(self, node):
+        if isinstance(node, Text):
+            self.text(node)
+        else:
+            if node.tag == "br":
+                self.new_line()
+            elif node.tag == "input" or node.tag == "button":
+                self.input(node)
+            else:
+                for child in node.children:
+                    self.recurse(child)
+
+    def new_line(self):
+        self.previous_word = None
+        self.cursor_x = self.x
+        last_line = self.children[-1] if self.children else None
+        new_line = LineLayout(self.node, self, last_line)
+        self.children.append(new_line)
+
+    def get_font(self, node):
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(float(node.style["font-size"][:-2]) * .75)
+        return tkinter.font.Font(size=size, weight=weight, slant=style)
+
+    def text(self, node):
+        font = self.get_font(node)
+        for word in node.text.split():
+            w = font.measure(word)
+            if self.cursor_x + w > self.x + self.width:
+                self.new_line()
+            line = self.children[-1]
+            text = TextLayout(node, word, line, self.previous_word)
+            line.children.append(text)
+            self.previous_word = text
+            self.cursor_x += w + font.measure(" ")
+
+    def input(self, node):
+        w = INPUT_WIDTH_PX
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = InputLayout(node, line, self.previous_word)
+        line.children.append(input)
+        self.previous_word = input
+        size = int(float(node.style["font-size"][:-2]) * .75)
+        font = self.get_font(node)
+        self.cursor_x += w + font.measure(" ")
+
+    def paint(self, display_list):
+        bgcolor = self.node.style.get("background-color",
+                                      "transparent")
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            display_list.append(rect)
+        for child in self.children:
+            child.paint(display_list)
+
+    def __repr__(self):
+        return "InlineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
+class DocumentLayout:
+    def __init__(self, node):
+        self.node = node
+        self.parent = None
+        self.previous = None
+        self.children = []
+
+    def layout(self):
+        child = BlockLayout(self.node, self, None)
+        self.children.append(child)
+
+        self.width = WIDTH - 2*HSTEP
+        self.x = HSTEP
+        self.y = VSTEP
+        child.layout()
+        self.height = child.height + 2*VSTEP
+
+    def paint(self, display_list):
+        self.children[0].paint(display_list)
+
+    def __repr__(self):
+        return "DocumentLayout()"
 
 SCROLL_STEP = 100
 CHROME_PX = 100
@@ -292,6 +430,7 @@ class Tab:
             self.load(back)
 
 WIDTH, HEIGHT = 800, 600
+HSTEP, VSTEP = 13, 18
 
 class Browser:
     def __init__(self):
@@ -302,6 +441,8 @@ class Browser:
             height=HEIGHT
         )
         self.canvas.pack()
+
+        self.skia_surface = skia.Surface(WIDTH, HEIGHT)
 
         self.window.bind("<Down>", self.handle_down)
         self.window.bind("<Button-1>", self.handle_click)
@@ -357,44 +498,93 @@ class Browser:
         self.tabs.append(new_tab)
         self.draw()
 
-    def draw(self):
-        self.canvas.delete("all")
-        self.tabs[self.active_tab].draw(self.canvas)
-        self.canvas.create_rectangle(
-            0, 0, WIDTH, CHROME_PX, fill="white")
+    def draw_rect(self, x1, y1, x2, y2, filled):
+        rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        if filled:
+            self.canvas.create_rectangle(
+                x1, y1, x2, y2, fill="white")
 
-        tabfont = tkinter.font.Font(size=20)
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            self.canvas.create_line(x1, 0, x1, 40)
-            self.canvas.create_line(x2, 0, x2, 40)
-            self.canvas.create_text(
-                x1 + 10, 10, text=name, font=tabfont, anchor="nw")
-            if i == self.active_tab:
-                self.canvas.create_line(0, 40, x1, 40)
-                self.canvas.create_line(x2, 40, WIDTH, 40)
-
-        buttonfont = tkinter.font.Font(size=30)
-        self.canvas.create_rectangle(10, 10, 30, 30, width=1)
-        self.canvas.create_text(
-            11, 0, font=buttonfont, text="+", anchor="nw")
-
-        self.canvas.create_rectangle(40, 50, WIDTH - 10, 90, width=1)
-        if self.focus == "address bar":
-            self.canvas.create_text(
-                55, 55, anchor='nw', text=self.address_bar,
-                font=buttonfont)
-            w = buttonfont.measure(self.address_bar)
-            self.canvas.create_line(55 + w, 55, 55 + w, 85)
+            paint = skia.Paint()
+            paint.setColor(skia.ColorWHITE)
+            with self.skia_surface as canvas:
+                canvas.drawRect(rect, paint)
         else:
-            url = self.tabs[self.active_tab].url
-            self.canvas.create_text(
-                55, 55, anchor='nw', text=url, font=buttonfont)
+            self.canvas.create_rectangle(
+                x1, y1, x2, y2)
 
-        self.canvas.create_rectangle(10, 50, 35, 90, width=1)
-        self.canvas.create_polygon(
-            15, 70, 30, 55, 30, 85, fill='black')
+            paint = skia.Paint()
+            paint.setStyle(skia.Paint.kStroke_Style)
+            paint.setStrokeWidth(1);
+            paint.setColor(skia.ColorBLACK)
+            with self.skia_surface as canvas:
+                canvas.drawRect(rect, paint)
+
+    def draw_polyline(self, x1, y1, x2, y2, x3=None, y3=None, fill=False):
+        if x3:
+            if fill:
+                self.canvas.create_polygon(x1, y1, x2, y2, x3, y3, fill='black')
+            else:
+                self.canvas.create_polygon(x1, y1, x2, y2, x3, y3)
+        else:
+            self.canvas.create_line(x1, y1, x2, y2)
+
+        path = skia.Path()
+        path.moveTo(x1, y1)
+        path.lineTo(x2, y2)
+        if x3:
+            path.lineTo(x3, y3)
+        paint = skia.Paint()
+        paint.setColor(skia.ColorBLACK)
+        if fill:
+            paint.setStyle(skia.Paint.kFill_Style)
+        else:
+            paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(1);
+        with self.skia_surface as canvas:
+            canvas.drawPath(path, paint)
+
+    def draw_text(self, x, y, text, tkinter_font):
+        self.canvas.create_text(
+            x, y, anchor='nw', text=text, font=tkinter_font)
+
+    def draw(self):
+        with self.skia_surface as canvas:
+            canvas.clear(skia.ColorWHITE)
+            self.canvas.delete("all")
+
+            self.tabs[self.active_tab].draw(self.canvas)
+        
+            self.draw_rect(0, 0, WIDTH, CHROME_PX, True)
+
+            tabfont = tkinter.font.Font(size=20)
+            for i, tab in enumerate(self.tabs):
+                name = "Tab {}".format(i)
+                x1, x2 = 40 + 80 * i, 120 + 80 * i
+                self.draw_polyline(x1, 0, x1, 40)
+                self.draw_polyline(x2, 0, x2, 40)
+                self.draw_text(x1 + 10, 10, name, tabfont)
+                if i == self.active_tab:
+                    self.draw_polyline(0, 40, x1, 40)
+                    self.draw_polyline(x2, 40, WIDTH, 40)
+
+            buttonfont = tkinter.font.Font(size=30)
+            self.draw_rect(10, 10, 30, 30, False)
+            self.draw_text(11, 0, "+", buttonfont)
+
+            self.draw_rect(40, 50, WIDTH - 10, 90, False)
+            if self.focus == "address bar":
+                self.draw_text(55, 55, self.address_bar, buttonfont)
+                w = buttonfont.measure(self.address_bar)
+                self.draw_polyline(55 + w, 55, 55 + w, 85)
+            else:
+                url = self.tabs[self.active_tab].url
+                self.draw_text(55, 55, url, buttonfont)
+
+            self.draw_rect(10, 50, 35, 90, False)
+            self.draw_polyline(
+                15, 70, 30, 55, 30, 85, True)
+        skia_image = self.skia_surface.makeImageSnapshot()
+        skia_image.save('output.png', skia.kPNG)
 
 
 if __name__ == "__main__":
