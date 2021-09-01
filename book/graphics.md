@@ -560,14 +560,26 @@ embedded in "Journey to the West"; you'll now be able to make them
 out.
 
 *Mouse wheel*: Add support for scrolling up when you hit the up arrow.
-Make sure you can't scroll past the top of the page. Then bind the
-`<MouseWheel>` event, which triggers when you scroll with the mouse
-wheel.[^laptop-mousewheel] The associated event object has an
-`event.delta` value which tells you how far and in what direction to
-scroll.
+Make sure you can't scroll past the top of the page.[^why-only-top]
+Then bind the `<MouseWheel>` event, which triggers when you scroll
+with the mouse wheel.[^laptop-mousewheel] The associated event object
+has an `event.delta` value which tells you how far and in what
+direction to scroll. Unfortunately, Mac and Windows give the
+`event.delta` objects opposite sign and different scales, and on
+Linux, scrolling instead uses the `<Mouse-4>` and `<Mouse-5>`
+events.^[more-mousewheel]
+
+[^why-only-top]: It's harder to stop scrolling past the bottom of the
+    page; we will implement this in [Chapter 5](layout.md)
 
 [^laptop-mousewheel]: It will also trigger with touchpad gestures,
     if you don't have a mouse.
+    
+[^more-mousewheel]: The [Tk manual][tk-mousewheel] has more
+    information about this. It's not easy to write cross-platform
+    applications!
+
+[tk-mousewheel]: https://wiki.tcl-lang.org/page/mousewheel
 
 *Emoji*: Add support for emoji 😀 to our browser. Emoji are
 characters, and you can call `create_text` to draw them, but the
@@ -588,10 +600,16 @@ window's new width and height can be found in the `width` and `height`
 fields on the event object. Remember that when the window is resized,
 the line breaks must change, so you will need to call `layout` again.
 
-*Zoom*: Make the `+` and `-` keys change the text size. You will need
-to use the `font` argument in `create_text` to change the size of
-text. Be careful in how you split the task between `layout` and
-`draw`. Make sure that scrolling also works when zoomed in.
+*Zoom*: Make the `+` key double the text size. You will need to use
+the `font` argument in `create_text` to change the size of text, like
+this:
+
+    font = tkinter.font.Font(size=32)
+    canvas.create_text(200, 150, text="Hi!", font=font)
+
+Be careful in how you split the task between `layout` and `draw`. Make
+sure that text doesn't overlap when you zoom in and that scrolling
+works when zoomed in.
 
 [^3]: On older systems, applications drew directly to the screen, and if
     they didn't update, whatever was there last would stay in place,
