@@ -45,21 +45,21 @@ class JSContext:
         self.handle_to_node = {}
 
     def run(self, code):
-        self.interp.evaljs(code)
+        return self.interp.evaljs(code)
 
     def dispatch_event(self, type, elt):
         code = "__runListeners(dukpy.type, dukpy.handle)"
-        handle = self.node_to_handle.get(elt, -1)
+        handle = self.node_to_handle.get(id(elt), -1)
         do_default = self.interp.evaljs(code, type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):
-        if elt not in self.node_to_handle:
+        if id(elt) not in self.node_to_handle:
             handle = len(self.node_to_handle)
             self.node_to_handle[id(elt)] = handle
             self.handle_to_node[handle] = elt
         else:
-            handle = self.node_to_handle[elt]
+            handle = self.node_to_handle[id(elt)]
         return handle
 
     def querySelectorAll(self, selector_text):
@@ -109,7 +109,7 @@ class Tab:
         for script in scripts:
             header, body = request(resolve_url(script, url))
             try:
-                print("Script returned: ", self.js.run(body))
+                print("Script returned:", self.js.run(body))
             except dukpy.JSRuntimeError as e:
                 print("Script", script, "crashed", e)
 
@@ -161,18 +161,20 @@ class Tab:
                 and obj.y <= y < obj.y + obj.height]
         if not objs: return
         elt = objs[-1].node
-        if elt and self.js.dispatch_event("click", elt): return
         while elt:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "a" and "href" in elt.attributes:
+                if self.js.dispatch_event("click", elt): return
                 url = resolve_url(elt.attributes["href"], self.url)
                 return self.load(url)
             elif elt.tag == "input":
+                if self.js.dispatch_event("click", elt): return
                 elt.attributes["value"] = ""
                 self.focus = elt
                 return
             elif elt.tag == "button":
+                if self.js.dispatch_event("click", elt): return
                 while elt:
                     if elt.tag == "form" and "action" in elt.attributes:
                         return self.submit_form(elt)
