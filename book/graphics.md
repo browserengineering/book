@@ -567,7 +567,7 @@ has an `event.delta` value which tells you how far and in what
 direction to scroll. Unfortunately, Mac and Windows give the
 `event.delta` objects opposite sign and different scales, and on
 Linux, scrolling instead uses the `<Mouse-4>` and `<Mouse-5>`
-events.^[more-mousewheel]
+events.[^more-mousewheel]
 
 [^why-only-top]: It's harder to stop scrolling past the bottom of the
     page; we will implement this in [Chapter 5](layout.md)
@@ -604,8 +604,10 @@ the line breaks must change, so you will need to call `layout` again.
 the `font` argument in `create_text` to change the size of text, like
 this:
 
-    font = tkinter.font.Font(size=32)
-    canvas.create_text(200, 150, text="Hi!", font=font)
+``` {.python expected=False}
+font = tkinter.font.Font(size=32)
+canvas.create_text(200, 150, text="Hi!", font=font)
+```
 
 Be careful in how you split the task between `layout` and `draw`. Make
 sure that text doesn't overlap when you zoom in and that scrolling
