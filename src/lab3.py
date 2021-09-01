@@ -48,6 +48,15 @@ HSTEP, VSTEP = 13, 18
 
 SCROLL_STEP = 100
 
+FONTS = {}
+
+def get_font(size, weight, slant):
+    key = (size, weight, slant)
+    if key not in FONTS:
+        font = tkinter.font.Font(size=size, weight=weight, slant=slant)
+        FONTS[key] = font
+    return FONTS[key]
+
 class Layout:
     def __init__(self, tokens):
         self.tokens = tokens
@@ -90,11 +99,7 @@ class Layout:
             self.cursor_y += VSTEP
         
     def text(self, tok):
-        font = tkinter.font.Font(
-            size=self.size,
-            weight=self.weight,
-            slant=self.style,
-        )
+        font = get_font(self.size, self.weight, self.style)
         for word in tok.text.split():
             w = font.measure(word)
             if self.cursor_x + w > WIDTH - HSTEP:

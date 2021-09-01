@@ -877,7 +877,7 @@ def text(self, node):
     style = node.style["font-style"]
     if style == "normal": style = "roman"
     size = int(float(node.style["font-size"][:-2]) * .75)
-    font = tkinter.font.Font(size=size, weight=weight, slant=style)
+    font = get_font(size, weight, style)
     # ...
 ```
 

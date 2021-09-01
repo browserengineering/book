@@ -10,6 +10,7 @@ import tkinter
 import tkinter.font
 from lab4 import print_tree
 from lab1 import request
+from lab3 import get_font
 from lab4 import Element
 from lab4 import HTMLParser
 from lab4 import Text
@@ -88,8 +89,7 @@ class TextLayout:
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(self.node.style["font-size"][:-2]) * .75)
-        self.font = tkinter.font.Font(
-            size=size, weight=weight, slant=style)
+        self.font = get_font(size, weight, style)
 
         # Do not set self.y!!!
         self.width = self.font.measure(self.word)
@@ -201,7 +201,7 @@ class InlineLayout:
         style = node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(node.style["font-size"][:-2]) * .75)
-        font = tkinter.font.Font(size=size, weight=weight, slant=style)
+        font = get_font(size, weight, style)
         for word in node.text.split():
             w = font.measure(word)
             if self.cursor_x + w > self.width - HSTEP:
@@ -388,7 +388,7 @@ class Browser:
         self.canvas.create_rectangle(
             0, 0, WIDTH, CHROME_PX, fill="white")
 
-        tabfont = tkinter.font.Font(size=20)
+        tabfont = get_font(20, "normal", "roman")
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
@@ -400,7 +400,7 @@ class Browser:
                 self.canvas.create_line(0, 40, x1, 40)
                 self.canvas.create_line(x2, 40, WIDTH, 40)
 
-        buttonfont = tkinter.font.Font(size=30)
+        buttonfont = get_font(30, "normal", "roman")
         self.canvas.create_rectangle(10, 10, 30, 30, width=1)
         self.canvas.create_text(
             11, 0, font=buttonfont, text="+", anchor="nw")

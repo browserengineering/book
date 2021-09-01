@@ -278,8 +278,7 @@ class TextLayout:
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(self.node.style["font-size"][:-2]) * .75)
-        self.font = tkinter.font.Font(
-            size=size, weight=weight, slant=style)
+        self.font = get_font(size, weight, style)
 ```
 
 Next, we need to compute word's size and `x` position. We use the font
@@ -625,7 +624,7 @@ drawn:
 class Browser:
     def draw(self):
         # ...
-        tabfont = tkinter.font.Font(size=20)
+        tabfont = get_font(20, "normal", "roman")
         for i, tab in enumerate(self.tabs):
             # ...
 ```
@@ -675,7 +674,7 @@ that on the left of the tab bar, with a big plus in the middle:
 class Browser:
     def draw(self):
         # ...
-        buttonfont = tkinter.font.Font(size=30)
+        buttonfont = get_font(30, "normal", "roman")
         self.canvas.create_rectangle(10, 10, 30, 30, width=1)
         self.canvas.create_text(
             11, 0, font=buttonfont, text="+", anchor="nw")

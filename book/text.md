@@ -495,7 +495,7 @@ def token(self, tok):
 In fact, the body of the `isinstance(tok, Text)` branch can be moved
 to its own method:
 
-``` {.python replace=16/self.size indent=4}
+``` {.python expected=False}
 def text(self, tok):
     font = tkinter.font.Font(
         size=16,
@@ -545,7 +545,7 @@ self.size = 16
 
 That variable is used to create the font object:
 
-``` {.python}
+``` {.python expected=False}
 font = tkinter.font.Font(
     size=self.size,
     weight=self.weight,
@@ -747,6 +747,75 @@ styles. A particular challenge is [Mongolian script][mongolian].
 
 [vertical]: https://www.smashingmagazine.com/2019/08/writing-modes-layout/
 [mongolian]: https://www.w3.org/TR/mlreq/
+
+Faster text layout
+==================
+
+Now that you've implemented styled text, you've probably
+noticed---unless you're on macOS[^macos-cache]---that on a large web
+page like this chapter your browser has slowed significantly from the
+[last chapter](graphics.md). That's because text layout, and
+specifically the part where you measure each word, is quite slow.
+
+[^macos-cache]: The macOS text APIs do fairly complex system-wide font
+    caching that Linux and Windows do not do. The optimization
+    described in this section won't hurt any.
+
+Unfortunately, it's hard to make text measurement much faster. With
+proportional fonts and complex font features like hinting and kerning,
+measuring text can require pretty complex computations. But on a large
+web page, some words likely appear a lot---for example, this page
+includes the word "the" over two hundred times. Instead of measuring
+these words over and over again, we could measure them once, and then
+cache the results. On normal English text, this usually results in a
+substantial speedup.
+
+Caching is such a good idea that Tk already implements it internally.
+But there's a small catch: Tk stores the cache inside each `Font`
+object. But our `text` method creates a new `Font` object for each
+word, even if two words are actually rendered with the same font. That
+renders Tk's cache ineffective. To fix this, let's build our own cache
+of `Font` object, so that we can reuse those `Font` objects and their
+associated text measurement cache.
+
+We'll store our cache in a global `FONTS` dictionary:
+
+``` {.python}
+FONTS = {}
+```
+
+The keys to this dictionary will be size/weight/style triples, and the
+values will be `Font` objects. We can put the caching logic itself in
+a new `get_font` function:
+
+``` {.python}
+def get_font(size, weight, slant):
+    key = (size, weight, slant)
+    if key not in FONTS:
+        font = tkinter.font.Font(size=size, weight=weight, slant=slant)
+        FONTS[key] = font
+    return FONTS[key]
+```
+
+Now, inside the `text` method we can call `get_font` instead of
+creating a `Font` object directly:
+
+``` {.python}
+class Layout:
+    def text(self, tok):
+        font = get_font(self.size, self.weight, self.style)
+        # ...
+```
+
+::: {.further}
+Fonts are surprisingly large, sometimes on the order of multiple
+megabytes for scripts like Chinese with a lot of different, complex
+characters. For this reason they are generally stored on disk and only
+loaded into memory on-demand, which is slow. Optimizing font loading
+(and the cost to shape them and lay them out, since many web pages
+have a *lot* of text) turns out to be one of the most important parts
+of speeding up text rendering.
+:::
 
 Summary
 =======
