@@ -21,33 +21,104 @@ from lab6 import resolve_url
 from lab6 import style
 from lab6 import tree_to_list
 from lab6 import CSSParser
-from lab7 import LineLayout
-from lab7 import TextLayout
 from lab10 import request
 from lab10 import url_origin
 from lab10 import JSContext
 
+def color_to_sk_color(color):
+    if color == "white":
+        return skia.ColorWHITE
+    elif color == "lightblue":
+        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
+    elif color == "orange":
+        return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
+    elif color == "blue":
+        return skia.ColorBLUE
+    else:
+        return skia.ColorBLACK
+
+class Rasterizer:
+    def __init__(self, canvas, skia_surface):
+        self.canvas = canvas
+        self.skia_surface = skia_surface
+
+    def draw_rect(self, x1, y1, x2, y2, fill=None, width=1):
+        rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        if fill:
+            self.canvas.create_rectangle(
+                x1, y1, x2, y2, fill=fill, width=width)
+
+            paint = skia.Paint()
+            paint.setStrokeWidth(width);
+            paint.setColor(color_to_sk_color(fill))
+            with self.skia_surface as canvas:
+                canvas.drawRect(rect, paint)
+        else:
+            self.canvas.create_rectangle(
+                x1, y1, x2, y2, width=width)
+
+            paint = skia.Paint()
+            paint.setStyle(skia.Paint.kStroke_Style)
+            paint.setStrokeWidth(1);
+            paint.setColor(skia.ColorBLACK)
+            with self.skia_surface as canvas:
+                canvas.drawRect(rect, paint)
+
+    def draw_polyline(self, x1, y1, x2, y2, x3=None, y3=None, fill=False):
+        if x3:
+            if fill:
+                self.canvas.create_polygon(x1, y1, x2, y2, x3, y3, fill='black')
+            else:
+                self.canvas.create_polygon(x1, y1, x2, y2, x3, y3)
+        else:
+            self.canvas.create_line(x1, y1, x2, y2)
+
+        path = skia.Path()
+        path.moveTo(x1, y1)
+        path.lineTo(x2, y2)
+        if x3:
+            path.lineTo(x3, y3)
+        paint = skia.Paint()
+        paint.setColor(skia.ColorBLACK)
+        if fill:
+            paint.setStyle(skia.Paint.kFill_Style)
+        else:
+            paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(1);
+        with self.skia_surface as canvas:
+            canvas.drawPath(path, paint)
+
+    def draw_text(self, x, y, text, tkinter_font, skia_font, color=None):
+        self.canvas.create_text(
+            x, y, anchor='nw', text=text, font=tkinter_font, fill=color)
+
+        paint = skia.Paint(AntiAlias=True, Color=color_to_sk_color(color))
+        with self.skia_surface as canvas:
+            canvas.drawString(text, x, y - skia_font.getMetrics().fAscent,
+                skia_font, paint)
+
 class DrawText:
-    def __init__(self, x1, y1, text, font, color):
+    def __init__(self, x1, y1, text, tkinter_font, skia_font, color):
         self.top = y1
         self.left = x1
         self.text = text
-        self.font = font
+        self.tkinter_font = tkinter_font
+        self.skia_font = skia_font
         self.color = color
 
-        self.bottom = y1 + font.metrics("linespace")
+        self.bottom = y1 + self.tkinter_font.metrics("linespace")
 
-    def execute(self, scroll, canvas):
-        canvas.create_text(
+    def execute(self, scroll, rasterizer):
+        rasterizer.draw_text(
             self.left, self.top - scroll,
-            text=self.text,
-            font=self.font,
-            anchor='nw',
-            fill=self.color,
+            self.text,
+            self.tkinter_font,
+            self.skia_font,
+            self.color,
         )
 
     def __repr__(self):
-        return "DrawText(text={})".format(self.text)
+        return "DrawText(text={})".fpormat(self.text)
 
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
@@ -57,8 +128,9 @@ class DrawRect:
         self.right = x2
         self.color = color
 
-    def execute(self, scroll, canvas):
-        canvas.create_rectangle(
+    def execute(self, scroll, rasterizer):
+        print(self.color)
+        rasterizer.draw_rect(
             self.left, self.top - scroll,
             self.right, self.bottom - scroll,
             width=0,
@@ -71,6 +143,104 @@ class DrawRect:
 
 INPUT_WIDTH_PX = 200
 
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def layout(self):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for word in self.children:
+            word.layout()
+
+        if not self.children:
+            self.height = 0
+            return
+
+        max_ascent = max([word.tkinter_font.metrics("ascent") 
+                          for word in self.children])
+        baseline = self.y + 1.2 * max_ascent
+        for word in self.children:
+            word.y = baseline - word.tkinter_font.metrics("ascent")
+        max_descent = max([word.tkinter_font.metrics("descent")
+                           for word in self.children])
+        self.height = 1.2 * (max_ascent + max_descent)
+
+    def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
+    def __repr__(self):
+        return "LineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
+def skia_font_style(weight, style):
+    skia_weight = skia.FontStyle.kNormal_Weight
+    if weight == "bold":
+        skia_weight = skia.FontStyle.kBold_Weight
+    skia_style = skia.FontStyle.kUpright_Slant
+    if style == "italic":
+        skia_style = skia.FontStyle.kItalic_Slant
+    return skia.FontStyle(skia_weight, skia.FontStyle.kNormal_Width, skia_style)
+
+class TextLayout:
+    def __init__(self, node, word, parent, previous):
+        self.node = node
+        self.word = word
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.tkinter_font = None
+        self.skia_font = None
+
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(float(self.node.style["font-size"][:-2]) * .75)
+        self.tkinter_font = tkinter.font.Font(
+            size=size, weight=weight, slant=style)
+        self.skia_font = skia.Font(
+            skia.Typeface('Arial', skia_font_style(weight, style)), size)
+
+        # Do not set self.y!!!
+        self.width = self.tkinter_font.measure(self.word)
+
+        if self.previous:
+            space = self.previous.tkinter_font.measure(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+        self.height = self.tkinter_font.metrics("linespace")
+
+    def paint(self, display_list):
+        color = self.node.style["color"]
+        display_list.append(
+            DrawText(self.x, self.y, self.word, self.tkinter_font,
+                self.skia_font, color))
+    
+    def __repr__(self):
+        return "TextLayout(x={}, y={}, width={}, height={}, font={}".format(
+            self.x, self.y, self.width, self.height, self.tkinter_font)
+
 class InputLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -81,24 +251,28 @@ class InputLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.tkinter_font = None
+        self.skia_font = None
 
     def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(self.node.style["font-size"][:-2]) * .75)
-        self.font = tkinter.font.Font(
+        self.tkinter_font = tkinter.font.Font(
             size=size, weight=weight, slant=style)
+        self.skia_font = skia.Font(
+            skia.Typeface('Arial', skia_font_style(weight, style)), size)
 
         self.width = INPUT_WIDTH_PX
 
         if self.previous:
-            space = self.previous.font.measure(" ")
+            space = self.previous.tkinter_font.measure(" ")
             self.x = self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
 
-        self.height = self.font.metrics("linespace")
+        self.height = self.tkinter_font.metrics("linespace")
 
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",
@@ -115,7 +289,8 @@ class InputLayout:
 
         color = self.node.style["color"]
         display_list.append(
-            DrawText(self.x, self.y, text, self.font, color))
+            DrawText(self.x, self.y, text, self.tkinter_font,
+                self.skia_font, color))
 
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
@@ -354,11 +529,11 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-    def draw(self, canvas):
+    def draw(self, rasterizer):
         for cmd in self.display_list:
             if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
             if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, canvas)
+            cmd.execute(self.scroll - CHROME_PX, rasterizer)
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
@@ -366,7 +541,7 @@ class Tab:
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measure(text)
             y = obj.y - self.scroll + CHROME_PX
-            canvas.create_line(x, y, x, y + obj.height)
+            rasterizer.canvas.create_line(x, y, x, y + obj.height)
 
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
@@ -498,90 +673,45 @@ class Browser:
         self.tabs.append(new_tab)
         self.draw()
 
-    def draw_rect(self, x1, y1, x2, y2, filled):
-        rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
-        if filled:
-            self.canvas.create_rectangle(
-                x1, y1, x2, y2, fill="white")
-
-            paint = skia.Paint()
-            paint.setColor(skia.ColorWHITE)
-            with self.skia_surface as canvas:
-                canvas.drawRect(rect, paint)
-        else:
-            self.canvas.create_rectangle(
-                x1, y1, x2, y2)
-
-            paint = skia.Paint()
-            paint.setStyle(skia.Paint.kStroke_Style)
-            paint.setStrokeWidth(1);
-            paint.setColor(skia.ColorBLACK)
-            with self.skia_surface as canvas:
-                canvas.drawRect(rect, paint)
-
-    def draw_polyline(self, x1, y1, x2, y2, x3=None, y3=None, fill=False):
-        if x3:
-            if fill:
-                self.canvas.create_polygon(x1, y1, x2, y2, x3, y3, fill='black')
-            else:
-                self.canvas.create_polygon(x1, y1, x2, y2, x3, y3)
-        else:
-            self.canvas.create_line(x1, y1, x2, y2)
-
-        path = skia.Path()
-        path.moveTo(x1, y1)
-        path.lineTo(x2, y2)
-        if x3:
-            path.lineTo(x3, y3)
-        paint = skia.Paint()
-        paint.setColor(skia.ColorBLACK)
-        if fill:
-            paint.setStyle(skia.Paint.kFill_Style)
-        else:
-            paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(1);
-        with self.skia_surface as canvas:
-            canvas.drawPath(path, paint)
-
-    def draw_text(self, x, y, text, tkinter_font):
-        self.canvas.create_text(
-            x, y, anchor='nw', text=text, font=tkinter_font)
-
     def draw(self):
         with self.skia_surface as canvas:
             canvas.clear(skia.ColorWHITE)
             self.canvas.delete("all")
 
-            self.tabs[self.active_tab].draw(self.canvas)
+            rasterizer = Rasterizer(self.canvas, self.skia_surface)
+
+            self.tabs[self.active_tab].draw(rasterizer)
         
-            self.draw_rect(0, 0, WIDTH, CHROME_PX, True)
+            rasterizer.draw_rect(0, 0, WIDTH, CHROME_PX, "white")
 
             tabfont = tkinter.font.Font(size=20)
+            skia_tabfont = skia.Font(skia.Typeface('Arial'), 20)
             for i, tab in enumerate(self.tabs):
                 name = "Tab {}".format(i)
                 x1, x2 = 40 + 80 * i, 120 + 80 * i
-                self.draw_polyline(x1, 0, x1, 40)
-                self.draw_polyline(x2, 0, x2, 40)
-                self.draw_text(x1 + 10, 10, name, tabfont)
+                rasterizer.draw_polyline(x1, 0, x1, 40)
+                rasterizer.draw_polyline(x2, 0, x2, 40)
+                rasterizer.draw_text(x1 + 10, 10, name, tabfont, skia_tabfont)
                 if i == self.active_tab:
-                    self.draw_polyline(0, 40, x1, 40)
-                    self.draw_polyline(x2, 40, WIDTH, 40)
+                    rasterizer.draw_polyline(0, 40, x1, 40)
+                    rasterizer.draw_polyline(x2, 40, WIDTH, 40)
 
             buttonfont = tkinter.font.Font(size=30)
-            self.draw_rect(10, 10, 30, 30, False)
-            self.draw_text(11, 0, "+", buttonfont)
+            skia_buttonfont = skia.Font(skia.Typeface('Arial'), 30)
+            rasterizer.draw_rect(10, 10, 30, 30)
+            rasterizer.draw_text(11, 0, "+", buttonfont, skia_buttonfont)
 
-            self.draw_rect(40, 50, WIDTH - 10, 90, False)
+            rasterizer.draw_rect(40, 50, WIDTH - 10, 90)
             if self.focus == "address bar":
-                self.draw_text(55, 55, self.address_bar, buttonfont)
+                rasterizer.draw_text(55, 55, self.address_bar, buttonfont, skia_buttonfont)
                 w = buttonfont.measure(self.address_bar)
-                self.draw_polyline(55 + w, 55, 55 + w, 85)
+                rasterizer.draw_polyline(55 + w, 55, 55 + w, 85)
             else:
                 url = self.tabs[self.active_tab].url
-                self.draw_text(55, 55, url, buttonfont)
+                rasterizer.draw_text(55, 55, url, buttonfont, skia_buttonfont)
 
-            self.draw_rect(10, 50, 35, 90, False)
-            self.draw_polyline(
+            rasterizer.draw_rect(10, 50, 35, 90)
+            rasterizer.draw_polyline(
                 15, 70, 30, 55, 30, 85, True)
         skia_image = self.skia_surface.makeImageSnapshot()
         skia_image.save('output.png', skia.kPNG)
