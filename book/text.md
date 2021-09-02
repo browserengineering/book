@@ -759,7 +759,7 @@ specifically the part where you measure each word, is quite slow.
 
 [^macos-cache]: The macOS text APIs do fairly complex system-wide font
     caching that Linux and Windows do not do. The optimization
-    described in this section won't hurt any.
+    described in this section won't hurt any on that platform, though.
 
 Unfortunately, it's hard to make text measurement much faster. With
 proportional fonts and complex font features like hinting and kerning,
