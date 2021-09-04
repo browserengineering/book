@@ -97,6 +97,10 @@ class Rasterizer:
             canvas.drawString(text, x, y - skia_font.getMetrics().fAscent,
                 skia_font, paint)
 
+def linespace(skia_font):
+    metrics = skia_font.getMetrics()
+    return metrics.fDescent - metrics.fAscent
+
 class DrawText:
     def __init__(self, x1, y1, text, tkinter_font, skia_font, color):
         self.top = y1
@@ -106,7 +110,7 @@ class DrawText:
         self.skia_font = skia_font
         self.color = color
 
-        self.bottom = y1 + self.tkinter_font.metrics("linespace")
+        self.bottom = y1 + linespace(self.skia_font)
 
     def execute(self, scroll, rasterizer):
         rasterizer.draw_text(
@@ -170,12 +174,12 @@ class LineLayout:
             self.height = 0
             return
 
-        max_ascent = max([word.tkinter_font.metrics("ascent") 
+        max_ascent = max([-word.skia_font.getMetrics().fAscent 
                           for word in self.children])
         baseline = self.y + 1.2 * max_ascent
         for word in self.children:
-            word.y = baseline - word.tkinter_font.metrics("ascent")
-        max_descent = max([word.tkinter_font.metrics("descent")
+            word.y = baseline + word.skia_font.getMetrics().fAscent
+        max_descent = max([word.skia_font.getMetrics().fDescent
                            for word in self.children])
         self.height = 1.2 * (max_ascent + max_descent)
 
@@ -221,15 +225,15 @@ class TextLayout:
             skia.Typeface('Arial', skia_font_style(weight, style)), size)
 
         # Do not set self.y!!!
-        self.width = self.tkinter_font.measure(self.word)
+        self.width = self.skia_font.measureText(self.word)
 
         if self.previous:
-            space = self.previous.tkinter_font.measure(" ")
+            space = self.previous.skia_font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
 
-        self.height = self.tkinter_font.metrics("linespace")
+        self.height = linespace(self.skia_font)
 
     def paint(self, display_list):
         color = self.node.style["color"]
@@ -267,12 +271,12 @@ class InputLayout:
         self.width = INPUT_WIDTH_PX
 
         if self.previous:
-            space = self.previous.tkinter_font.measure(" ")
+            space = self.previous.skia_font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
 
-        self.height = self.tkinter_font.metrics("linespace")
+        self.height = linespace(self.skia_font)
 
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",
