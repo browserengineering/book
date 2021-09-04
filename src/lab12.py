@@ -589,11 +589,8 @@ WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
 class Browser:
-    def __init__(self):
-        SDL_Init(SDL_INIT_VIDEO)
-        self.sdl_window = SDL_CreateWindow(b"Browser",
-            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            WIDTH, HEIGHT, SDL_WINDOW_SHOWN)
+    def __init__(self, sdl_window):
+        self.sdl_window = sdl_window
         self.window_surface = SDL_GetWindowSurface(self.sdl_window)
         self.surface = skia.Surface(WIDTH, HEIGHT)
 
@@ -601,6 +598,19 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
+
+    def to_sdl_surface(skia_bytes):
+        depth = 32 # 4 bytes per pixel
+        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen
+        # Skia uses an ARGB format - alpha first byte, then through to blue
+        # as the last byte.
+        alpha_mask = 0xff000000
+        red_mask = 0x00ff0000
+        green_mask = 0x0000ff00
+        blue_mask = 0x000000ff
+        return SDL_CreateRGBSurfaceFrom(
+            skia_bytes, WIDTH, HEIGHT, depth, pitch, red_mask, green_mask,
+            blue_mask, alpha_mask)
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
@@ -682,44 +692,44 @@ class Browser:
         rasterizer.draw_polyline(
             15, 70, 30, 55, 30, 85, True)
 
+        # Snapshot the skia canvas, convert it to a byte array, wrap that
+        # array in an SDL surface, blit (copy) the SDL surface onto
+        # the window surface, and finally update the window surface:
         skia_image = self.surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
-        depth = 32
-        pitch = 4 * WIDTH
-        # Alpha is at the start for some reason - ARGB.
-        rmask = 0x00ff0000
-        gmask = 0x0000ff00
-        bmask = 0x000000ff
-        amask = 0xff000000
-        rgb_surface = SDL_CreateRGBSurfaceFrom(
-            skia_bytes, WIDTH, HEIGHT, depth, pitch, rmask, gmask, bmask, amask)
-        src_rect = SDL_Rect(0, 0, WIDTH, HEIGHT)
-        dst_rect = SDL_Rect(0, 0, WIDTH, HEIGHT)
-        SDL_BlitSurface(rgb_surface, src_rect, self.window_surface, src_rect)
+        rect = SDL_Rect(0, 0, WIDTH, HEIGHT)
+        skia_surface = Browser.to_sdl_surface(skia_bytes)
+        SDL_BlitSurface(skia_surface, rect, self.window_surface, rect)
         SDL_UpdateWindowSurface(self.sdl_window)
 
 if __name__ == "__main__":
     import sys
-    browser = Browser()
+
+    SDL_Init(SDL_INIT_VIDEO)
+    sdl_window = SDL_CreateWindow(b"Browser",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        WIDTH, HEIGHT, SDL_WINDOW_SHOWN)
+
+    browser = Browser(sdl_window)
     browser.load(sys.argv[1])
-        
+
     running = True
     event = SDL_Event()
     while running:
-            while SDL_PollEvent(ctypes.byref(event)) != 0:
-                if event.type == SDL_MOUSEMOTION or event.type == SDL_WINDOWEVENT:
-                    continue
-                if event.type == SDL_MOUSEBUTTONUP:
-                    browser.handle_click(event.button)
-                if event.type == SDL_KEYDOWN:
-                    if event.key.keysym.sym == SDLK_RETURN:
-                        browser.handle_enter()
-                    if event.key.keysym.sym == SDLK_DOWN:
-                        browser.handle_down()
-                    browser.handle_key(event.key.keysym)
-                if event.type == SDL_QUIT:
-                    running = False
-                    break
+        while SDL_PollEvent(ctypes.byref(event)) != 0:
+            if event.type == SDL_MOUSEMOTION or event.type == SDL_WINDOWEVENT:
+                continue
+            if event.type == SDL_MOUSEBUTTONUP:
+                browser.handle_click(event.button)
+            if event.type == SDL_KEYDOWN:
+                if event.key.keysym.sym == SDLK_RETURN:
+                    browser.handle_enter()
+                if event.key.keysym.sym == SDLK_DOWN:
+                    browser.handle_down()
+                browser.handle_key(event.key.keysym)
+            if event.type == SDL_QUIT:
+                running = False
+                break
 
-    SDL_DestroyWindow(browser.sdl_window)
+    SDL_DestroyWindow(sdl_window)
     SDL_Quit()
