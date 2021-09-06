@@ -45,23 +45,22 @@ class Rasterizer:
         with self.surface as canvas:
             canvas.clear(color)
 
-    def draw_rect(self, x1, y1, x2, y2, fill=None, width=1):
+    def draw_rect(self, x1, y1, x2, y2,
+        fill=None, width=1):
         rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        paint = skia.Paint()
         if fill:
-            paint = skia.Paint()
             paint.setStrokeWidth(width);
             paint.setColor(color_to_sk_color(fill))
-            with self.surface as canvas:
-                canvas.drawRect(rect, paint)
         else:
-            paint = skia.Paint()
             paint.setStyle(skia.Paint.kStroke_Style)
             paint.setStrokeWidth(1);
             paint.setColor(skia.ColorBLACK)
-            with self.surface as canvas:
-                canvas.drawRect(rect, paint)
+        with self.surface as canvas:
+            canvas.drawRect(rect, paint)
 
-    def draw_polyline(self, x1, y1, x2, y2, x3=None, y3=None, fill=False):
+    def draw_polyline(self, x1, y1, x2, y2, x3=None,
+        y3=None, fill=False):
         path = skia.Path()
         path.moveTo(x1, y1)
         path.lineTo(x2, y2)
@@ -78,9 +77,11 @@ class Rasterizer:
             canvas.drawPath(path, paint)
 
     def draw_text(self, x, y, text, font, color=None):
-        paint = skia.Paint(AntiAlias=True, Color=color_to_sk_color(color))
+        paint = skia.Paint(
+            AntiAlias=True, Color=color_to_sk_color(color))
         with self.surface as canvas:
-            canvas.drawString(text, x, y - font.getMetrics().fAscent,
+            canvas.drawString(
+                text, x, y - font.getMetrics().fAscent,
                 font, paint)
 
 def linespace(font):
@@ -591,8 +592,9 @@ HSTEP, VSTEP = 13, 18
 class Browser:
     def __init__(self, sdl_window):
         self.sdl_window = sdl_window
-        self.window_surface = SDL_GetWindowSurface(self.sdl_window)
-        self.surface = skia.Surface(WIDTH, HEIGHT)
+        self.window_surface = SDL_GetWindowSurface(
+            self.sdl_window)
+        self.skia_surface = skia.Surface(WIDTH, HEIGHT)
 
         self.tabs = []
         self.active_tab = None
@@ -602,15 +604,15 @@ class Browser:
     def to_sdl_surface(skia_bytes):
         depth = 32 # 4 bytes per pixel
         pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen
-        # Skia uses an ARGB format - alpha first byte, then through to blue
-        # as the last byte.
+        # Skia uses an ARGB format - alpha first byte, then
+        # through to blue as the last byte.
         alpha_mask = 0xff000000
         red_mask = 0x00ff0000
         green_mask = 0x0000ff00
         blue_mask = 0x000000ff
         return SDL_CreateRGBSurfaceFrom(
-            skia_bytes, WIDTH, HEIGHT, depth, pitch, red_mask, green_mask,
-            blue_mask, alpha_mask)
+            skia_bytes, WIDTH, HEIGHT, depth, pitch,
+            red_mask, green_mask, blue_mask, alpha_mask)
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
@@ -657,13 +659,12 @@ class Browser:
         self.draw()
 
     def draw(self):
-        rasterizer = Rasterizer(self.surface)
+        rasterizer = Rasterizer(self.skia_surface)
         rasterizer.clear(skia.ColorWHITE)
 
         self.tabs[self.active_tab].draw(rasterizer)
     
-        rasterizer.draw_rect(0, 0, WIDTH, CHROME_PX, "white")
-
+        # Draw the tabs UI:
         tabfont = skia.Font(skia.Typeface('Arial'), 20)
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
@@ -675,10 +676,12 @@ class Browser:
                 rasterizer.draw_polyline(0, 40, x1, 40)
                 rasterizer.draw_polyline(x2, 40, WIDTH, 40)
 
+        # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
         rasterizer.draw_rect(10, 10, 30, 30)
         rasterizer.draw_text(11, 0, "+", buttonfont)
 
+        # Draw the URL address bar:
         rasterizer.draw_rect(40, 50, WIDTH - 10, 90)
         if self.focus == "address bar":
             rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
@@ -688,18 +691,18 @@ class Browser:
             url = self.tabs[self.active_tab].url
             rasterizer.draw_text(55, 55, url, buttonfont)
 
+        # Draw the back button:
         rasterizer.draw_rect(10, 50, 35, 90)
         rasterizer.draw_polyline(
             15, 70, 30, 55, 30, 85, True)
 
-        # Snapshot the skia canvas, convert it to a byte array, wrap that
-        # array in an SDL surface, blit (copy) the SDL surface onto
-        # the window surface, and finally update the window surface:
-        skia_image = self.surface.makeImageSnapshot()
+        # Raster the results and copy to the SDL surface:
+        skia_image = self.skia_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
         rect = SDL_Rect(0, 0, WIDTH, HEIGHT)
         skia_surface = Browser.to_sdl_surface(skia_bytes)
-        SDL_BlitSurface(skia_surface, rect, self.window_surface, rect)
+        SDL_BlitSurface(
+            skia_surface, rect, self.window_surface, rect)
         SDL_UpdateWindowSurface(self.sdl_window)
 
 if __name__ == "__main__":
