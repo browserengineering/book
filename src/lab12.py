@@ -635,7 +635,7 @@ class Browser:
 
     def handle_key(self, keysym):
         if not (SDLK_a <= keysym.sym <= SDLK_z): return
-        char = "" + SDL_GetKeyName(keysym.sym)
+        char = chr(keysym.sym)
         if self.focus == "address bar":
             self.address_bar += char
             self.draw()
