@@ -10,7 +10,7 @@ transforms, scrolling filters and blend modes. These *visual effects* have two
 characteristics. Thhey apply:
 
 * *after* layout and painting is done, and
-* to large pieces of the DOM (often a whole subtree)
+* to large pieces of the DOM---often a whole subtree---and not just one node.
 
  To implement them, we'll add a new phase of rendering called *compositing*. It
  will go after paint and before drawing.
@@ -18,7 +18,7 @@ characteristics. Thhey apply:
 Skia replaces Tkinter
 =====================
 
-before we get to how visual effects are implemented, we'll need to upgrade
+But before we get to how visual effects are implemented, we'll need to upgrade
 our graphics system. While Tkinter was great for painting and handling input,
 it has no built-in support at all for implementing visual
 effects.[^tkinter-before-gpu] And just as implementing the details of text
@@ -30,7 +30,7 @@ execute visual effects for web pages specifically.
 its graphics, was built back in the early 90s, before high-performance graphics
 cards and GPUs became widespread.
 
-So we'll need a new library that can perform visual effects. We'll use
+So we need a new library that can perform visual effects. We'll use
 [Skia](https://skia.org), the library that Chromium uses. However, Skia is just
 a library for raster and compositing, so we'll also use
 [SDL](https://www.libsdl.org/) to provide windows, input events, and OS-level
@@ -259,7 +259,7 @@ And here is the `to_sdl_surface` method:
             red_mask, green_mask, blue_mask, alpha_mask)
 ```
 
-Then some small changes need to be made `handle_key` since it's being called
+Then some small changes need to be made to `handle_key` since it's being called
 with different arguments:
 
 ``` {.python}
@@ -293,10 +293,22 @@ Update also all the other places that `measure` was called to use the Skia
 method (and also create Skia fonts instead of Tkinter ones, of course).
 
 Skia font metrics are accessed via a `getMetrics` method on a font. Then metrics
-like ascent and descent are accessible via `font.getMetrics().fAscent` and
-`font.getMetrics().fDescent`. Note that in Skia, ascent and descent are
+like ascent and descent are accessible via:
+``` {.python expected=False}
+    font.getMetrics().fAscent
+```
+and
+``` {.python expected=False}
+    font.getMetrics().fDescent
+```
+
+Note that in Skia, ascent and descent are
 positive if they go downward and negative if upward, so ascents will normally
 be negative.
+
+Now you should be able to run the browser just as it did in previous chapters,
+and have all of the same visuals. It'll probably also feel faster, because
+Skia and SDL are highly optimized libraries written in C & C++.
 
 Visual effects
 ==============
