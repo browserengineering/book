@@ -5,40 +5,53 @@ prev: security
 next: rendering-architecture
 ...
 
-In addition to drawing text and color, browsers can have ways to apply
-transparency, clips, transforms, scrolling filters and blend modes to the
-output of pieces of the DOM. These *visual effects* have two characteristics:
-First, they apply after layout and painting is done, and second, they apply to
-large pieces of the DOM (often a subtree). To implement them, we'll need to add
-a new phase of rendering called *compositing*. It will go after paint and
-before drawing.
+In addition to drawing text and color, browsers can apply transparency, clips,
+transforms, scrolling filters and blend modes. These *visual effects* have two
+characteristics. Thhey apply:
+
+* *after* layout and painting is done, and
+* to large pieces of the DOM (often a whole subtree)
+
+ To implement them, we'll add a new phase of rendering called *compositing*. It
+ will go after paint and before drawing.
 
 Skia replaces Tkinter
 =====================
 
-Before we get to how visual effects are implemented, we'll need to upgrade our
-graphics system. While Tkinter was great for painting and handling input, it
-has no built-in support at all for implementing visual effects
-[^tkinter-before-gpu]. And just as implementing the details of text rendering
-or drawing rectangles is outside the scope of this book, so is implementing
-visual effects. We'll focus on how to represent and visual effects for web
-pages. So we'll need a new library, which will be [Skia](https://skia.org).
-However, Skia is just a library for raster and compositing, so we'll also use
-[SDL](url...) to provide windows, input events, and OS-level integration.
+before we get to how visual effects are implemented, we'll need to upgrade
+our graphics system. While Tkinter was great for painting and handling input,
+it has no built-in support at all for implementing visual
+effects.[^tkinter-before-gpu] And just as implementing the details of text
+rendering or drawing rectangles is outside the scope of this book, so is
+implementing visual effects---our focus should be on how to represent and
+execute visual effects for web pages specifically.
+
+[^tkinter-before-gpu]: That's because Tk, the library Tkinter uses to implement
+its graphics, was built back in the early 90s, before high-performance graphics
+cards and GPUs became widespread.
+
+So we'll need a new library that can perform visual effects. We'll use
+[Skia](https://skia.org), the library that Chromium uses. However, Skia is just
+a library for raster and compositing, so we'll also use
+[SDL](https://www.libsdl.org/) to provide windows, input events, and OS-level
+integration.
 
 ::: {.further}
-While this book is about browsers, not how to implement high-quality
-raster libraries, that topic is very interesting in its own right
+While this book is about browsers, and not how to implement high-quality
+raster libraries, that topic is very interesting in its own right.
 (todo: find a reference) and (todo: another one) are two resources you can dig
-into if you are curious to learn more how they work. That being said,
-it is very imponrtant these days browsers to be carefully designed to work
-smoothly with all of the advanced hardware features of today's devices, so
-in practice browser teams include experts in these areas.
+into if you are curious to learn more about how they work. That being said,
+it is very important these days for browsers to work smoothly with the
+advanced GPUs in today's devices, so in practice browser teams include experts
+in these areas.
 :::
 
-To install Skia, you'll need to install the `skia-python` library, via 
-a command like `pip3 install skia-python` (TODO: flesh out these instructions).
-SDL can be installed via `pip3 install PySDL2` and `pip3 install pysdp2-dll`.
+To install Skia, you'll need to install the
+[`skia-python`](https://github.com/kyamagu/skia-python)
+library (via `pip3 install skia-python`); as explained on the linked site, you
+might need to install additional dependencies. Instructions
+[here](https://pypi.org/project/PySDL2/) explain how to install SDL on your
+computer (short version: `pip3 install PySDL2` and `pip3 install pysdp2-dll`).
 
 Once installed, remove `tkinter` from your Python imports and replace them with:
 
@@ -54,6 +67,8 @@ types.
 The main loop of the browser first needs some boilerplate to get SDL started:
 
 ``` {.python}
+if __name__ == "__main__":
+    # ...
     SDL_Init(SDL_INIT_VIDEO)
     sdl_window = SDL_CreateWindow(b"Browser",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -64,8 +79,7 @@ The main loop of the browser first needs some boilerplate to get SDL started:
 ```
 
 In SDL, you have to implement the event loop yourself (rather than calling
-`tkinter.mainloop()`). This loop also handles the same input events as you were
-familiar with in `tkinter`:
+`tkinter.mainloop()`). This loop also has to handle input events:
 
 ``` {.python}
     running = True
@@ -89,7 +103,7 @@ familiar with in `tkinter`:
 ```
 
 Next let's factor a bunch of the tasks of drawing into a new class we'll call
-`Rasterizer`. The implementation in Skia is also included, and is relatively
+`Rasterizer`. The implementation in Skia should be relatively
 self-explanatory:
 
 ``` {.python}
@@ -166,64 +180,66 @@ class Browser:
         self.skia_surface = skia.Surface(WIDTH, HEIGHT)
 ```
 
-Next we need to re-implement the `draw` method use Skia. I'll walk through
-it step-by-step. First we make a rasterizer and draw the current `Tab` into it:
+Next we need to re-implement the `draw` method on `Browser` using Skia. I'll
+walk through it step-by-step. First we make a rasterizer and draw the current
+`Tab` into it:
 
 ``` {.python}
-    rasterizer = Rasterizer(self.skia_surface)
-    rasterizer.clear(skia.ColorWHITE)
+    def draw(self):
+        rasterizer = Rasterizer(self.skia_surface)
+        rasterizer.clear(skia.ColorWHITE)
 
-    self.tabs[self.active_tab].draw(rasterizer)
+        self.tabs[self.active_tab].draw(rasterizer)
 ```
 
 Then we draw the browser UI elements:
 
-``` {.python indent=4}
-    # Draw the tabs UI:
-    tabfont = skia.Font(skia.Typeface('Arial'), 20)
-    for i, tab in enumerate(self.tabs):
-        name = "Tab {}".format(i)
-        x1, x2 = 40 + 80 * i, 120 + 80 * i
-        rasterizer.draw_polyline(x1, 0, x1, 40)
-        rasterizer.draw_polyline(x2, 0, x2, 40)
-        rasterizer.draw_text(x1 + 10, 10, name, tabfont)
-        if i == self.active_tab:
-            rasterizer.draw_polyline(0, 40, x1, 40)
-            rasterizer.draw_polyline(x2, 40, WIDTH, 40)
+``` {.python}
+        # Draw the tabs UI:
+        tabfont = skia.Font(skia.Typeface('Arial'), 20)
+        for i, tab in enumerate(self.tabs):
+            name = "Tab {}".format(i)
+            x1, x2 = 40 + 80 * i, 120 + 80 * i
+            rasterizer.draw_polyline(x1, 0, x1, 40)
+            rasterizer.draw_polyline(x2, 0, x2, 40)
+            rasterizer.draw_text(x1 + 10, 10, name, tabfont)
+            if i == self.active_tab:
+                rasterizer.draw_polyline(0, 40, x1, 40)
+                rasterizer.draw_polyline(x2, 40, WIDTH, 40)
 
-    # Draw the plus button to add a tab:
-    buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-    rasterizer.draw_rect(10, 10, 30, 30)
-    rasterizer.draw_text(11, 0, "+", buttonfont)
+        # Draw the plus button to add a tab:
+        buttonfont = skia.Font(skia.Typeface('Arial'), 30)
+        rasterizer.draw_rect(10, 10, 30, 30)
+        rasterizer.draw_text(11, 0, "+", buttonfont)
 
-    # Draw the URL address bar:
-    rasterizer.draw_rect(40, 50, WIDTH - 10, 90)
-    if self.focus == "address bar":
-        rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
-        w = buttonfont.measureText(self.address_bar)
-        rasterizer.draw_polyline(55 + w, 55, 55 + w, 85)
-    else:
-        url = self.tabs[self.active_tab].url
-        rasterizer.draw_text(55, 55, url, buttonfont)
+        # Draw the URL address bar:
+        rasterizer.draw_rect(40, 50, WIDTH - 10, 90)
+        if self.focus == "address bar":
+            rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
+            w = buttonfont.measureText(self.address_bar)
+            rasterizer.draw_polyline(55 + w, 55, 55 + w, 85)
+        else:
+            url = self.tabs[self.active_tab].url
+            rasterizer.draw_text(55, 55, url, buttonfont)
 
-    # Draw the back button:
-    rasterizer.draw_rect(10, 50, 35, 90)
-    rasterizer.draw_polyline(
-        15, 70, 30, 55, 30, 85, True)
+        # Draw the back button:
+        rasterizer.draw_rect(10, 50, 35, 90)
+        rasterizer.draw_polyline(
+            15, 70, 30, 55, 30, 85, True)
 ```
 
-Finally we perform the incantations to save off rastered bitmap and copy it
+Finally we perform the incantations to save off a rastered bitmap and copy it
 from the Skia surface to the SDL surface:
 
 ``` {.python}
-     # Raster the results and copy to the SDL surface:
-    skia_image = self.skia_surface.makeImageSnapshot()
-    skia_bytes = skia_image.tobytes()
-    rect = SDL_Rect(0, 0, WIDTH, HEIGHT)
-    skia_surface = Browser.to_sdl_surface(skia_bytes)
-    SDL_BlitSurface(
-        skia_surface, rect, self.window_surface, rect)
-    SDL_UpdateWindowSurface(self.sdl_window)
+        # Raster the results and copy to the SDL surface:
+        skia_image = self.skia_surface.makeImageSnapshot()
+        skia_bytes = skia_image.tobytes()
+        rect = SDL_Rect(0, 0, WIDTH, HEIGHT)
+        skia_surface = Browser.to_sdl_surface(skia_bytes)
+        SDL_BlitSurface(
+            skia_surface, rect, self.window_surface, rect)
+        SDL_UpdateWindowSurface(self.sdl_window)
 ```
 
 And here is the `to_sdl_surface` method:
@@ -243,7 +259,8 @@ And here is the `to_sdl_surface` method:
             red_mask, green_mask, blue_mask, alpha_mask)
 ```
 
-Some small changes need to be made `handle_key`:
+Then some small changes need to be made `handle_key` since it's being called
+with different arguments:
 
 ``` {.python}
     def handle_key(self, keysym):
@@ -251,20 +268,35 @@ Some small changes need to be made `handle_key`:
         char = chr(keysym.sym)
         # ...
 ```
-
-Also, `handle_enter` and `handle_down` no longer need an event parameter.
+(Also, `handle_enter` and `handle_down` no longer need an event parameter.)
 
 [^surface]: In Skia and SDL, a surface is representation of a graphics buffer
 into which you can draw "pixels" (bits representing colors). A surface may or
 may not be bound to the actual pixels on the screen via a window, and there can
 be many surfaces. A *canvas* is an API interface that allows you to draw
 into the surface with higher-level commands such as drawing lines or text. In
-our first implementation, we'll use separate surfaces for Skia and SDL for
+our implementation, we'll start with separate surfaces for Skia and SDL for
 simplicity.
 
-[^tkinter-before-gpu]: That's because Tk, the library Tkinter uses to implement
-its graphics, was built back in the early 90s, before high-performance graphics
-cards and GPUs became widespread.
+In the `Tab` class, the differences in `draw` is the new rasterizer parameter
+that gets passed around, and a Skia API to measure font metrics. Skia's
+`measureText` method on a font is the same as the `measure` method on a Tkinter
+font.
+
+``` {.python}
+    def draw(self, rasterizer):
+        # ...
+            x = obj.x + obj.font.measureText(text)
+```
+
+Update also all the other places that `measure` was called to use the Skia
+method (and also create Skia fonts instead of Tkinter ones, of course).
+
+Skia font metrics are accessed via a `getMetrics` method on a font. Then metrics
+like ascent and descent are accessible via `font.getMetrics().fAscent` and
+`font.getMetrics().fDescent`. Note that in Skia, ascent and descent are
+positive if they go downward and negative if upward, so ascents will normally
+be negative.
 
 Visual effects
 ==============
