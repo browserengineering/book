@@ -9,6 +9,7 @@ import ssl
 import tkinter
 import tkinter.font
 from lab1 import request
+from lab3 import get_font
 
 class Text:
     def __init__(self, text, parent):
@@ -185,11 +186,7 @@ class Layout:
             self.cursor_y += VSTEP
         
     def text(self, node):
-        font = tkinter.font.Font(
-            size=self.size,
-            weight=self.weight,
-            slant=self.style,
-        )
+        font = get_font(self.size, self.weight, self.style)
         for word in node.text.split():
             w = font.measure(word)
             if self.cursor_x + w > WIDTH - HSTEP:

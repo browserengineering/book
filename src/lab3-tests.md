@@ -143,3 +143,20 @@ And with breakpoints:
     create_text: x=69 y=20.1 text=def font=Font size=14 weight=normal slant=italic style=None anchor=nw
 
     >>> test.unpatch_breakpoint()
+
+Testing font caching
+--------------------
+
+To test font caching, we call `get_font` twice and use Python's `is`
+operator to test that we get identical `Font` objects back:
+
+    >>> a = lab3.get_font(16, "normal", "roman")
+    >>> b = lab3.get_font(16, "normal", "roman")
+    >>> c = lab3.get_font(20, "normal", "roman")
+    >>> d = lab3.get_font(16, "bold", "roman")
+    >>> a is b
+    True
+    >>> a is c
+    False
+    >>> a is d
+    False

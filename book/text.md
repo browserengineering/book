@@ -495,7 +495,7 @@ def token(self, tok):
 In fact, the body of the `isinstance(tok, Text)` branch can be moved
 to its own method:
 
-``` {.python replace=16/self.size indent=4}
+``` {.python expected=False}
 def text(self, tok):
     font = tkinter.font.Font(
         size=16,
@@ -545,7 +545,7 @@ self.size = 16
 
 That variable is used to create the font object:
 
-``` {.python}
+``` {.python expected=False}
 font = tkinter.font.Font(
     size=self.size,
     weight=self.weight,
@@ -747,6 +747,82 @@ styles. A particular challenge is [Mongolian script][mongolian].
 
 [vertical]: https://www.smashingmagazine.com/2019/08/writing-modes-layout/
 [mongolian]: https://www.w3.org/TR/mlreq/
+
+Faster text layout
+==================
+
+Now that you've implemented styled text, you've probably
+noticed---unless you're on macOS[^macos-cache]---that on a large web
+page like this chapter your browser has slowed significantly from the
+[last chapter](graphics.md). That's because text layout, and
+specifically the part where you measure each word, is quite
+slow.[^profile]
+
+[^macos-cache]: While we can't confirm this in the documentation, it
+    seems that the macOS "Core Text" APIs cache fonts more
+    aggressively than Linux and Windows. The optimization described in
+    this section won't hurt any on macOS, but also won't improve speed
+    as much as on Windows and Linux.
+
+[^profile]: You can profile Python programs by replacing your
+    `python3` command with `python3 -m cProfile`. Look for the lines
+    corresponding to the `measure` and `metrics` calls to see how much
+    time is spent measuring text.
+
+Unfortunately, it's hard to make text measurement much faster. With
+proportional fonts and complex font features like hinting and kerning,
+measuring text can require pretty complex computations. But on a large
+web page, some words likely appear a lot---for example, this page
+includes the word "the" over two hundred times. Instead of measuring
+these words over and over again, we could measure them once, and then
+cache the results. On normal English text, this usually results in a
+substantial speedup.
+
+Caching is such a good idea that most text libraries already implement
+it. But because our `text` method creates a new `Font` object for each
+word, our browser isn't taking advantage of that caching. If we only
+made a new `Font` object when we had to, the built-in caches would
+work better and our browser would be faster. So we'll need our own
+cache, so that we can reuse `Font` objects and have our text
+measurements cached.
+
+We'll store our cache in a global `FONTS` dictionary:
+
+``` {.python}
+FONTS = {}
+```
+
+The keys to this dictionary will be size/weight/style triples, and the
+values will be `Font` objects. We can put the caching logic itself in
+a new `get_font` function:
+
+``` {.python}
+def get_font(size, weight, slant):
+    key = (size, weight, slant)
+    if key not in FONTS:
+        font = tkinter.font.Font(size=size, weight=weight, slant=slant)
+        FONTS[key] = font
+    return FONTS[key]
+```
+
+Now, inside the `text` method we can call `get_font` instead of
+creating a `Font` object directly:
+
+``` {.python}
+class Layout:
+    def text(self, tok):
+        font = get_font(self.size, self.weight, self.style)
+        # ...
+```
+
+::: {.further}
+Fonts for scripts like Chinese can be megabytes in size, so they are
+generally stored on disk and only loaded into memory on-demand. That
+makes font loading slow. Browsers also have extensive caches for
+measuring, shaping, and rendering text. Because web pages have a lot
+of text, these caches turn out to be one of the most important parts
+of speeding up rendering.
+:::
 
 Summary
 =======
