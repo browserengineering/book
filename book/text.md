@@ -816,13 +816,12 @@ class Layout:
 ```
 
 ::: {.further}
-Fonts are surprisingly large, sometimes on the order of multiple
-megabytes for scripts like Chinese with a lot of different, complex
-characters. For this reason they are generally stored on disk and only
-loaded into memory on-demand, which is slow. Optimizing font loading
-(and the cost to shape them and lay them out, since many web pages
-have a *lot* of text) turns out to be one of the most important parts
-of speeding up text rendering.
+Fonts for scripts like Chinese can be megabytes in size, so they are
+generally stored on disk and only loaded into memory on-demand. That
+makes font loading slow. Browsers also have extensive caches for
+measuring, shaping, and rendering text. Because web pages have a lot
+of text, these caches turn out to be one of the most important parts
+of speeding up rendering.
 :::
 
 Summary
