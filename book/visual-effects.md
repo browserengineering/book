@@ -5,13 +5,310 @@ prev: security
 next: rendering-architecture
 ...
 
-In [Chapter 2](graphics.md), you learned how to draw text to the
-screen and implement scrolling; in [Chapter 5](layout.md) you will
-learn how to draw styled boxes, and in [Chapter 6](styles.md) how to
-parse and apply style sheets to change those styles. This chapter is a
-whirlwind tour of many of the additional effects browsers offer, the
-concepts underlying them, and techniques browsers use to take full
-advantage of modern computer hardware to accelerate these effects.
+In addition to drawing text and color, browsers can apply transparency, clips,
+transforms, scrolling filters and blend modes. These *visual effects* have two
+characteristics. Thhey apply:
+
+* *after* layout and painting is done, and
+* to large pieces of the DOM---often a whole subtree---and not just one node.
+
+ To implement them, we'll add a new phase of rendering called *compositing*. It
+ will go after paint and before drawing.
+
+Skia replaces Tkinter
+=====================
+
+But before we get to how visual effects are implemented, we'll need to upgrade
+our graphics system. While Tkinter was great for painting and handling input,
+it has no built-in support at all for implementing visual
+effects.[^tkinter-before-gpu] And just as implementing the details of text
+rendering or drawing rectangles is outside the scope of this book, so is
+implementing visual effects---our focus should be on how to represent and
+execute visual effects for web pages specifically.
+
+[^tkinter-before-gpu]: That's because Tk, the library Tkinter uses to implement
+its graphics, was built back in the early 90s, before high-performance graphics
+cards and GPUs became widespread.
+
+So we need a new library that can perform visual effects. We'll use
+[Skia](https://skia.org), the library that Chromium uses. However, Skia is just
+a library for raster and compositing, so we'll also use
+[SDL](https://www.libsdl.org/) to provide windows, input events, and OS-level
+integration.
+
+::: {.further}
+While this book is about browsers, and not how to implement high-quality
+raster libraries, that topic is very interesting in its own right.
+(todo: find a reference) and (todo: another one) are two resources you can dig
+into if you are curious to learn more about how they work. That being said,
+it is very important these days for browsers to work smoothly with the
+advanced GPUs in today's devices, so in practice browser teams include experts
+in these areas.
+:::
+
+To install Skia, you'll need to install the
+[`skia-python`](https://github.com/kyamagu/skia-python)
+library (via `pip3 install skia-python`); as explained on the linked site, you
+might need to install additional dependencies. Instructions
+[here](https://pypi.org/project/PySDL2/) explain how to install SDL on your
+computer (short version: `pip3 install PySDL2` and `pip3 install pysdp2-dll`).
+
+Once installed, remove `tkinter` from your Python imports and replace them with:
+
+``` {.python}
+import ctypes
+from sdl2 import *
+import skia
+```
+
+The additional `ctypes` module is for interfacing between Python types and C
+types.
+
+The main loop of the browser first needs some boilerplate to get SDL started:
+
+``` {.python}
+if __name__ == "__main__":
+    # ...
+    SDL_Init(SDL_INIT_VIDEO)
+    sdl_window = SDL_CreateWindow(b"Browser",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        WIDTH, HEIGHT, SDL_WINDOW_SHOWN)
+
+    browser = Browser(sdl_window)
+    browser.load(sys.argv[1])
+```
+
+In SDL, you have to implement the event loop yourself (rather than calling
+`tkinter.mainloop()`). This loop also has to handle input events:
+
+``` {.python}
+    running = True
+    event = SDL_Event()
+    while running:
+        while SDL_PollEvent(ctypes.byref(event)) != 0:
+            if event.type == SDL_MOUSEBUTTONUP:
+                browser.handle_click(event.button)
+            if event.type == SDL_KEYDOWN:
+                if event.key.keysym.sym == SDLK_RETURN:
+                    browser.handle_enter()
+                if event.key.keysym.sym == SDLK_DOWN:
+                    browser.handle_down()
+                browser.handle_key(event.key.keysym)
+            if event.type == SDL_QUIT:
+                running = False
+                break
+
+    SDL_DestroyWindow(sdl_window)
+    SDL_Quit()
+```
+
+Next let's factor a bunch of the tasks of drawing into a new class we'll call
+`Rasterizer`. The implementation in Skia should be relatively
+self-explanatory:
+
+``` {.python}
+class Rasterizer:
+    def __init__(self, surface):
+        self.surface = surface
+
+    def clear(self, color):
+        with self.surface as canvas:
+            canvas.clear(color)
+
+    def draw_rect(self, x1, y1, x2, y2,
+        fill=None, width=1):
+        rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        paint = skia.Paint()
+        if fill:
+            paint.setStrokeWidth(width);
+            paint.setColor(color_to_sk_color(fill))
+        else:
+            paint.setStyle(skia.Paint.kStroke_Style)
+            paint.setStrokeWidth(1);
+            paint.setColor(skia.ColorBLACK)
+        with self.surface as canvas:
+            canvas.drawRect(rect, paint)
+
+
+    def draw_polyline(self, x1, y1, x2, y2, x3=None,
+        y3=None, fill=False):
+        path = skia.Path()
+        path.moveTo(x1, y1)
+        path.lineTo(x2, y2)
+        if x3:
+            path.lineTo(x3, y3)
+        paint = skia.Paint()
+        paint.setColor(skia.ColorBLACK)
+        if fill:
+            paint.setStyle(skia.Paint.kFill_Style)
+        else:
+            paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(1);
+        with self.surface as canvas:
+            canvas.drawPath(path, paint)
+
+    def draw_text(self, x, y, text, font, color=None):
+        paint = skia.Paint(
+            AntiAlias=True, Color=color_to_sk_color(color))
+        with self.surface as canvas:
+            canvas.drawString(
+                text, x, y - font.getMetrics().fAscent,
+                font, paint)
+```
+
+`DrawText` and `DrawRect` use the rasterizer in the obvious way. For exampe,
+here is `DrawText.execute`:
+
+``` {.python}
+    def execute(self, scroll, rasterizer):
+        rasterizer.draw_text(
+            self.left, self.top - scroll,
+            self.text,
+            self.font,
+            self.color,
+        )
+```
+
+Now let's integrate with the `Browser` class. We need a surface[^surface] for
+drawing to the window, and a surface into which Skia will draw.
+
+``` {.python}
+class Browser:
+    def __init__(self, sdl_window):
+        self.window_surface = SDL_GetWindowSurface(
+            self.sdl_window)
+        self.skia_surface = skia.Surface(WIDTH, HEIGHT)
+```
+
+Next we need to re-implement the `draw` method on `Browser` using Skia. I'll
+walk through it step-by-step. First we make a rasterizer and draw the current
+`Tab` into it:
+
+``` {.python}
+    def draw(self):
+        rasterizer = Rasterizer(self.skia_surface)
+        rasterizer.clear(skia.ColorWHITE)
+
+        self.tabs[self.active_tab].draw(rasterizer)
+```
+
+Then we draw the browser UI elements:
+
+``` {.python}
+        # Draw the tabs UI:
+        tabfont = skia.Font(skia.Typeface('Arial'), 20)
+        for i, tab in enumerate(self.tabs):
+            name = "Tab {}".format(i)
+            x1, x2 = 40 + 80 * i, 120 + 80 * i
+            rasterizer.draw_polyline(x1, 0, x1, 40)
+            rasterizer.draw_polyline(x2, 0, x2, 40)
+            rasterizer.draw_text(x1 + 10, 10, name, tabfont)
+            if i == self.active_tab:
+                rasterizer.draw_polyline(0, 40, x1, 40)
+                rasterizer.draw_polyline(x2, 40, WIDTH, 40)
+
+        # Draw the plus button to add a tab:
+        buttonfont = skia.Font(skia.Typeface('Arial'), 30)
+        rasterizer.draw_rect(10, 10, 30, 30)
+        rasterizer.draw_text(11, 0, "+", buttonfont)
+
+        # Draw the URL address bar:
+        rasterizer.draw_rect(40, 50, WIDTH - 10, 90)
+        if self.focus == "address bar":
+            rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
+            w = buttonfont.measureText(self.address_bar)
+            rasterizer.draw_polyline(55 + w, 55, 55 + w, 85)
+        else:
+            url = self.tabs[self.active_tab].url
+            rasterizer.draw_text(55, 55, url, buttonfont)
+
+        # Draw the back button:
+        rasterizer.draw_rect(10, 50, 35, 90)
+        rasterizer.draw_polyline(
+            15, 70, 30, 55, 30, 85, True)
+```
+
+Finally we perform the incantations to save off a rastered bitmap and copy it
+from the Skia surface to the SDL surface:
+
+``` {.python}
+        # Raster the results and copy to the SDL surface:
+        skia_image = self.skia_surface.makeImageSnapshot()
+        skia_bytes = skia_image.tobytes()
+        rect = SDL_Rect(0, 0, WIDTH, HEIGHT)
+        skia_surface = Browser.to_sdl_surface(skia_bytes)
+        SDL_BlitSurface(
+            skia_surface, rect, self.window_surface, rect)
+        SDL_UpdateWindowSurface(self.sdl_window)
+```
+
+And here is the `to_sdl_surface` method:
+
+``` {.python}
+    def to_sdl_surface(skia_bytes):
+        depth = 32 # 4 bytes per pixel
+        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen
+        # Skia uses an ARGB format - alpha first byte, then
+        # through to blue as the last byte.
+        alpha_mask = 0xff000000
+        red_mask = 0x00ff0000
+        green_mask = 0x0000ff00
+        blue_mask = 0x000000ff
+        return SDL_CreateRGBSurfaceFrom(
+            skia_bytes, WIDTH, HEIGHT, depth, pitch,
+            red_mask, green_mask, blue_mask, alpha_mask)
+```
+
+Then some small changes need to be made to `handle_key` since it's being called
+with different arguments:
+
+``` {.python}
+    def handle_key(self, keysym):
+        if not (0x20 <= keysym.sym < 0x7f): return
+        char = chr(keysym.sym)
+        # ...
+```
+(Also, `handle_enter` and `handle_down` no longer need an event parameter.)
+
+[^surface]: In Skia and SDL, a surface is representation of a graphics buffer
+into which you can draw "pixels" (bits representing colors). A surface may or
+may not be bound to the actual pixels on the screen via a window, and there can
+be many surfaces. A *canvas* is an API interface that allows you to draw
+into the surface with higher-level commands such as drawing lines or text. In
+our implementation, we'll start with separate surfaces for Skia and SDL for
+simplicity.
+
+In the `Tab` class, the differences in `draw` is the new rasterizer parameter
+that gets passed around, and a Skia API to measure font metrics. Skia's
+`measureText` method on a font is the same as the `measure` method on a Tkinter
+font.
+
+``` {.python}
+    def draw(self, rasterizer):
+        # ...
+            x = obj.x + obj.font.measureText(text)
+```
+
+Update also all the other places that `measure` was called to use the Skia
+method (and also create Skia fonts instead of Tkinter ones, of course).
+
+Skia font metrics are accessed via a `getMetrics` method on a font. Then metrics
+like ascent and descent are accessible via:
+``` {.python expected=False}
+    font.getMetrics().fAscent
+```
+and
+``` {.python expected=False}
+    font.getMetrics().fDescent
+```
+
+Note that in Skia, ascent and descent are
+positive if they go downward and negative if upward, so ascents will normally
+be negative.
+
+Now you should be able to run the browser just as it did in previous chapters,
+and have all of the same visuals. It'll probably also feel faster, because
+Skia and SDL are highly optimized libraries written in C & C++.
 
 Visual effects
 ==============
@@ -22,7 +319,16 @@ that does not affect layout (see chapter 5), but does affect how pixels are
 drawn to the screen.
 
 Before getting to those effects, we first need to discuss colors, how they are
-specified, and how this translates to the color of a pixel on a computer screen. Colors are specified on a computer via a particular choice of color space. A color space is a specific organization of colors, comprising a mathematical color model and a mapping function to other color spaces or computer screen technologies. The default color space of the web is [sRGB](srgb); even now, most browsers only support sRGB[^1], though newer screen technologies are starting to support a much wider range of visible colors outside of the sRGB [gamut](gamut). sRGB was defined in the 90s for the purposes of drawing to the monitor technologies of the time, as well as defining colors on the Web. 
+specified, and how this translates to the color of a pixel on a computer
+screen. Colors are specified on a computer via a particular choice of color
+space. A color space is a specific organization of colors, comprising a
+mathematical color model and a mapping function to other color spaces or
+computer screen technologies. The default color space of the web is [sRGB]
+(srgb); even now, most browsers only support sRGB[^1], though newer screen
+technologies are starting to support a much wider range of visible colors
+outside of the sRGB [gamut](gamut). sRGB was defined in the 90s for the
+purposes of drawing to the monitor technologies of the time, as well as
+defining colors on the Web. 
 
 [srgb]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
 [gamut]: https://en.wikipedia.org/wiki/Gamut

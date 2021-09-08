@@ -18,7 +18,7 @@
         "security.md": { "disabled": true, "lab": "lab10.py" },
 
         "reflow.md": { "disabled": true, "lab": "lab11.py" },
-        "visual-effects.md": { "disabled": true },
+        "visual-effects.md": { "disabled": true, "lab": "lab12.py" },
         "scheduling-and-threading.md": { "disabled": true, "lab": "lab13.py" },
 
         "skipped.md": { "disabled": true },
