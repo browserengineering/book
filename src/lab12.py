@@ -635,9 +635,8 @@ class Browser:
             self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
         self.draw()
 
-    def handle_key(self, keysym):
-        if not (0x20 <= keysym.sym < 0x7f): return
-        char = chr(keysym.sym)
+    def handle_key(self, char):
+        if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += char
             self.draw()
@@ -729,7 +728,8 @@ if __name__ == "__main__":
                     browser.handle_enter()
                 if event.key.keysym.sym == SDLK_DOWN:
                     browser.handle_down()
-                browser.handle_key(event.key.keysym)
+            if event.type == SDL_TEXTINPUT:
+                browser.handle_key(event.text.text.decode('utf8'))
             if event.type == SDL_QUIT:
                 running = False
                 break

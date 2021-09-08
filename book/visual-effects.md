@@ -93,7 +93,8 @@ In SDL, you have to implement the event loop yourself (rather than calling
                     browser.handle_enter()
                 if event.key.keysym.sym == SDLK_DOWN:
                     browser.handle_down()
-                browser.handle_key(event.key.keysym)
+            if event.type == SDL_TEXTINPUT:
+                browser.handle_key(event.text.text.decode('utf8'))
             if event.type == SDL_QUIT:
                 running = False
                 break
@@ -259,16 +260,7 @@ And here is the `to_sdl_surface` method:
             red_mask, green_mask, blue_mask, alpha_mask)
 ```
 
-Then some small changes need to be made to `handle_key` since it's being called
-with different arguments:
-
-``` {.python}
-    def handle_key(self, keysym):
-        if not (0x20 <= keysym.sym < 0x7f): return
-        char = chr(keysym.sym)
-        # ...
-```
-(Also, `handle_enter` and `handle_down` no longer need an event parameter.)
+Finally, `handle_enter` and `handle_down` no longer need an event parameter.
 
 [^surface]: In Skia and SDL, a surface is representation of a graphics buffer
 into which you can draw "pixels" (bits representing colors). A surface may or
