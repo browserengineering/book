@@ -258,7 +258,7 @@ a time:[^10]
 for word in text.split():
     w = font.measure(word)
     if cursor_x + w >= WIDTH - HSTEP:
-        cursor_y += font.metrics("linespace") * 1.2
+        cursor_y += font.metrics("linespace") * 1.25
         cursor_x = HSTEP
     self.display_list.append((cursor_x, cursor_y, word))
     cursor_x += w + font.measure(" ")
@@ -279,10 +279,10 @@ removed all of the whitespace, and this adds it back. I don't add the
 space to `w` on the second line, though, because you don't need a
 space after the last word on a line.
 
-Finally, note that I multiply the linespace by 1.2 when incrementing
+Finally, note that I multiply the linespace by 1.25 when incrementing
 `y`. Try removing the multiplier: you'll see that the text is harder
 to read because the lines are too close together.[^11] Instead, it is
-common to add "line spacing" or "leading"[^12] between lines. The 20%
+common to add "line spacing" or "leading"[^12] between lines. The 25%
 line spacing is a normal amount.
 
 [^11]: Designers say the text is too "tight".
@@ -669,15 +669,16 @@ max_ascent = max([metric["ascent"] for metric in metrics])
 The line is then `max_ascent` below `self.y`—or actually a little more
 to account for the leading:[^leading-half]
 
-[^leading-half]: Actually actually, 20% leading doesn't add 20% of the
-    ascender above the ascender and 20% of the descender below the
-    descender. Instead, it adds [10% of the line height in both
-    places][line-height-def].
+[^leading-half]: Actually actually, 25% leading doesn't add 25% of the
+    ascender above the ascender and 25% of the descender below the
+    descender. Instead, it adds [12.5% of the line height in both
+    places][line-height-def], which is subtly different when fonts are
+    mixed. But let's skip that subtlety here.
 
 [line-height-def]: https://www.w3.org/TR/CSS2/visudet.html#leading
     
 ``` {.python}
-baseline = self.cursor_y + 1.2 * max_ascent
+baseline = self.cursor_y + 1.25 * max_ascent
 ```
 
 Now that we know where the line is, we can place each word relative to
@@ -705,7 +706,7 @@ deepest descender:
 
 ``` {.python}
 max_descent = max([metric["descent"] for metric in metrics])
-self.cursor_y = baseline + 1.2 * max_descent
+self.cursor_y = baseline + 1.25 * max_descent
 ```
 
 Now all the text is aligned along the line, even when text sizes are
