@@ -27,7 +27,10 @@ from lab7 import TextLayout
 from lab8 import request
 from lab8 import DocumentLayout
 
+DISPATCH_CODE = "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
+
 class JSContext:
+
     def __init__(self, tab):
         self.tab = tab
 
@@ -37,7 +40,7 @@ class JSContext:
             self.querySelectorAll)
         self.interp.export_function("getAttribute",
             self.getAttribute)
-        self.interp.export_function("innerHTML", self.innerHTML)
+        self.interp.export_function("innerHTML", self.innerHTML_set)
         with open("runtime9.js") as f:
             self.interp.evaljs(f.read())
 
@@ -48,18 +51,17 @@ class JSContext:
         return self.interp.evaljs(code)
 
     def dispatch_event(self, type, elt):
-        code = "__runListeners(dukpy.type, dukpy.handle)"
-        handle = self.node_to_handle.get(id(elt), -1)
-        do_default = self.interp.evaljs(code, type=type, handle=handle)
+        handle = self.node_to_handle.get(elt, -1)
+        do_default = self.interp.evaljs(DISPATCH_CODE, type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):
-        if id(elt) not in self.node_to_handle:
+        if elt not in self.node_to_handle:
             handle = len(self.node_to_handle)
-            self.node_to_handle[id(elt)] = handle
+            self.node_to_handle[elt] = handle
             self.handle_to_node[handle] = elt
         else:
-            handle = self.node_to_handle[id(elt)]
+            handle = self.node_to_handle[elt]
         return handle
 
     def querySelectorAll(self, selector_text):
@@ -73,7 +75,7 @@ class JSContext:
         elt = self.handle_to_node[handle]
         return elt.attributes.get(attr, None)
 
-    def innerHTML(self, handle, s):
+    def innerHTML_set(self, handle, s):
         doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
