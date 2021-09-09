@@ -863,10 +863,6 @@ should be smaller (perhaps half the normal text size) and be placed so
 that the top of a superscript lines up with the top of a normal
 letter.
 
-*Small caps:* Make the `<abbr>` element render text in small caps,
-<abbr>like this</abbr>. Upper-case letters should be in a normal font,
-while lower-case letters should be small, capitalized, and bold.
-
 *Soft hyphens:* The soft hyphen character, written `\N{soft hyphen}`
 in Python, represents a place where the text renderer can, but doesn't
 have to, insert a hyphen and break the word across lines. Add support
@@ -875,6 +871,11 @@ soft hyphens, and if so break the word across lines. Remember that a
 word can have multiple soft hyphens in it, and make sure to draw a
 hyphen when you break a word. The word
 "super­cala­fraga­listic­expi­ala­do­shus" is a good test case.
+
+*Small caps:* Make the `<abbr>` element render text in small caps,
+<abbr>like this</abbr>. Inside an `<abbr>` tag, lower-case letters
+should be small, capitalized, and bold, while all other characters
+(upper case, numbers, etc) should be drawn in the normal font.
 
 *Preformatted text:* Add support for the `<pre>` tag. Unlike normal
 paragraphs, text inside `<pre>` tags doesn't automatically break
