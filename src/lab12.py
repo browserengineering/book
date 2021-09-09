@@ -88,6 +88,30 @@ def linespace(font):
     metrics = font.getMetrics()
     return metrics.fDescent - metrics.fAscent
 
+class SaveLayer:
+    def __init__(self, sk_paint, x1, y1, x2, y2):
+        self.sk_paint = sk_paint
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.saveLayer(paint=self.sk_paint)
+
+class Restore:
+    def __init__(self, x1, y1, x2, y2):
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.restore()
+
+
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
         self.top = y1
@@ -431,7 +455,11 @@ class DocumentLayout:
         self.height = child.height + 2*VSTEP
 
     def paint(self, display_list):
+        paint = skia.Paint(Alphaf=0.5)
+        x2, y2 = self.x + self.width, self.y + self.height
+        display_list.append(SaveLayer(paint, self.x, self.y, x2, y2))
         self.children[0].paint(display_list)
+        display_list.append(Restore(self.x, self.y, x2, y2))
 
     def __repr__(self):
         return "DocumentLayout()"
@@ -512,6 +540,9 @@ class Tab:
         self.document.paint(self.display_list)
 
     def draw(self, rasterizer):
+#        with rasterizer.surface as canvas:
+#            rect = skia.Rect.MakeLTRB(0, 0, WIDTH, HEIGHT)
+#            canvas.saveLayerAlpha(rect, 255)
         for cmd in self.display_list:
             if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
             if cmd.bottom < self.scroll: continue
@@ -524,6 +555,8 @@ class Tab:
             x = obj.x + obj.font.measureText(text)
             y = obj.y - self.scroll + CHROME_PX
             rasterizer.draw_polyline(x, y, x, y + obj.height)
+ #       with rasterizer.surface as canvas:
+ #           canvas.restore()
 
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
