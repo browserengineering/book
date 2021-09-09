@@ -286,14 +286,14 @@ class InlineLayout:
         if not self.line: return
         metrics = [font.metrics() for x, word, font, color in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
-        baseline = self.cursor_y + 1.2 * max_ascent
+        baseline = self.cursor_y + 1.25 * max_ascent
         for x, word, font, color in self.line:
             y = baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font, color))
         self.cursor_x = self.x
         self.line = []
         max_descent = max([metric["descent"] for metric in metrics])
-        self.cursor_y = baseline + 1.2 * max_descent
+        self.cursor_y = baseline + 1.25 * max_descent
 
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",

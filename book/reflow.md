@@ -282,10 +282,10 @@ class LineLayout:
         self.metrics = [child.font.metrics() for child in self.children]
         self.max_ascent = max([metric["ascent"] for metric in self.metrics])
         self.max_descent = max([metric["descent"] for metric in self.metrics])
-        self.h = 1.2 * (self.max_descent + self.max_ascent)
+        self.h = 1.25 * (self.max_descent + self.max_ascent)
 
     def position(self):
-        baseline = self.y + 1.2 * self.max_ascent
+        baseline = self.y + 1.25 * self.max_ascent
         cx = 0
         for child, metrics in zip(self.children, self.metrics):
             child.x = self.x + cx
@@ -480,7 +480,7 @@ Then we can use `self.cxs` in `position`:
 ``` {.python}
 class LineLayout:
     def position(self):
-        baseline = self.y + 1.2 * self.max_ascent
+        baseline = self.y + 1.25 * self.max_ascent
         for cx, child, metrics in \
           zip(self.cxs, self.children, self.metrics):
             child.x = self.x + cx
