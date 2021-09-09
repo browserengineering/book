@@ -21,7 +21,7 @@ if it sounds interesting!] so this chapter uses the `dukpy` library
 for executing JavaScript.
 
 [DukPy](https://github.com/amol-/dukpy) is a Python library that wraps
-a JavaScript interpreter called [Duktape](https://duktape.org). Those
+a JavaScript interpreter called [Duktape](https://duktape.org). The
 most famous JavaScript interpreters are those used in browsers:
 TraceMonkey (Firefox), JavaScriptCore (Safari), and V8 (Chrome).
 Unlike those implementations, which are extremely fast but also
@@ -157,8 +157,8 @@ much trickier to [implement efficiently][speculative].
 Exporting functions
 =====================
 
-Right now our browsers just prints the last expression in a script;
-but in a real browser scripts must call the `console.log` function to
+Right now our browser just prints the last expression in a script; but
+in a real browser scripts must call the `console.log` function to
 print. To support that, we will need to *export a function* from
 Python into JavaScript. We'll be exporting a lot of functions, so to
 avoid polluting the `Tab` object with many new methods, let's put this
@@ -263,9 +263,9 @@ class JSContext:
             self.interp.evaljs(f.read())
 ```
 
-Now you should be able to run the put `console.log("Hi from JS!")`
-into a JavaScript file, run it from your browser, and see output in
-your terminal. You should also be able to call `console.log` multiple
+Now you should be able to put `console.log("Hi from JS!")` into a
+JavaScript file, run it from your browser, and see output in your
+terminal. You should also be able to call `console.log` multiple
 times.
 
 ::: {.further}
@@ -428,7 +428,7 @@ class Tab:
         # ...
 ```
 
-Now `querySelectorAll` we find all nodes matching the selector:
+Now `querySelectorAll` will find all nodes matching the selector:
 
 ``` {.python}
 def querySelectorAll(self, selector_text):
@@ -438,8 +438,8 @@ def querySelectorAll(self, selector_text):
              if selector.matches(node)]
 ```
 
-Finally we need to return those nodes back to JavaScript, and you
-might think of doing something like this:
+Finally we need to return those nodes back to JavaScript. You might
+try something like this:
 
 ``` {.python expected=False}
 def querySelectorAll(self, selector_text):
@@ -447,7 +447,7 @@ def querySelectorAll(self, selector_text):
     return nodes
 ```
 
-However, if you try this, you'll see an error:[^7]
+However, this throws an error:[^7]
 
     _dukpy.JSRuntimeError: EvalError:
     Error while calling Python Function:
@@ -640,7 +640,7 @@ Event handling
 
 The browser executes JavaScript code as soon as it loads the web page,
 but most changes to the page should be made *in response* to user
-actions. To bridging the gap, scripts ask for code to run when *page
+actions. To bridge the gap, scripts ask for code to run when *page
 events*, like button clicks or key presses, occur.
 
 Here's how that works. First, any time the user interacts with the
