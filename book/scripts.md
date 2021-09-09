@@ -74,6 +74,12 @@ chapter.
 [^2]: Or, on my Linux machine, I sometimes get errors due to file
     ownership. You may have to do some sleuthing.
 
+::: {.quirk}
+Note to JS experts: Dukpy does not implement newer JS syntax like
+`let` and `const` or arrow functions. You'll need to use old-school
+JavaScript from the turn of the centry.
+:::
+
 
 Running JavaScript code
 =======================
@@ -574,11 +580,7 @@ Note that if the attribute is not assigned, the `get` method will
 return `None`, which DukPy will translate to JavaScript's `null`.
 Don't forget to export this function as `getAttribute`.
 
-You should now be able to run a script like this:[^9]
-
-[^9]: Note to JS experts: Dukpy does not implement newer JS syntax
-    like `let` and `const` or arrow functions. You'll need to use
-    old-school JavaScript from the turn of the centry.
+You should now be able to run a script like this:
 
 ``` {.javascript}
 scripts = document.querySelectorAll("script")
@@ -647,7 +649,8 @@ page, the browser generates *events*. Each event has a name, like
 link, or a form). JavaScript code can call `addEventListener` to react
 to those events: `node.addEventListener('click', handler)` sets
 `handler` to run every time the element corresponding to `node`
-generates a `click` event.
+generates a `click` event. It's basically Tk's `bind`, but in the
+browser. Let's implement it.
 
 Let's start with generating events. I'll create a `dispatch_event`
 method and call it whenever an event is generated. That includes,
@@ -952,6 +955,19 @@ server, `/comment.css`, with the contents:
 
 But even though we tell the user that their comment is too long the
 user can submit the guest book entry anyway. Oops! Let's fix that.
+
+::: {.further}
+This code has a subtle memory leak: if you access an HTML element from
+JavaScript (thereby creating a handle for it) and then remove the
+element from the page (using `innerHTML`), Python won't be able to
+garbage-collect the `Element` object because it is still stored in the
+`node_to_handle` map. And that's good, if JavaScript can still access
+that `Element` via its handle, but bad otherwise. Solving this is
+quite tricky, because it requires the Python and JavaScript garbage
+collectors to [cooperate][cross-component].
+:::
+
+[cross-component]: https://research.google/pubs/pub47359/
 
 Event defaults
 ==============
