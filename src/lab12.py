@@ -335,6 +335,7 @@ class BlockLayout:
         self.height = sum([child.height for child in self.children])
 
     def paint(self, display_list):
+        if 
         for child in self.children:
             child.paint(display_list)
 
