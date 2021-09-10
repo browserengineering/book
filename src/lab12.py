@@ -18,9 +18,11 @@ from lab4 import HTMLParser
 from lab6 import cascade_priority
 from lab6 import layout_mode
 from lab6 import resolve_url
-from lab6 import style
 from lab6 import tree_to_list
-from lab6 import CSSParser
+from lab6 import INHERITED_PROPERTIES
+from lab6 import compute_style
+from lab6 import TagSelector
+from lab6 import DescendantSelector
 from lab10 import request
 from lab10 import url_origin
 from lab10 import JSContext
@@ -36,6 +38,12 @@ def color_to_sk_color(color):
         return skia.ColorBLUE
     else:
         return skia.ColorBLACK
+
+def parse_rotation_transform(transform_str):
+    print(transform_str)
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find('deg)')
+    return float(transform_str[left_paren + 1:right_paren])
 
 class Rasterizer:
     def __init__(self, surface):
@@ -100,6 +108,17 @@ class SaveLayer:
         with rasterizer.surface as canvas:
             canvas.saveLayer(paint=self.sk_paint)
 
+class Save:
+    def __init__(self, x1, y1, x2, y2):
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.save()
+
 class Restore:
     def __init__(self, x1, y1, x2, y2):
         self.top = y1
@@ -111,6 +130,30 @@ class Restore:
         with rasterizer.surface as canvas:
             canvas.restore()
 
+class Translate:
+    def __init__(self, translate_x, translate_y, x1, y1, x2, y2):
+        self.translate_x = translate_x
+        self.translate_y = translate_y
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.translate(self.translate_x, self.translate_y)
+
+class Rotate:
+    def __init__(self, degrees, x1, y1, x2, y2):
+        self.degrees = degrees
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.rotate(self.degrees)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -335,9 +378,15 @@ class BlockLayout:
         self.height = sum([child.height for child in self.children])
 
     def paint(self, display_list):
-        if 
+        opacity = float(self.node.style.get("opacity", "1.0"))
+        x2, y2 = self.x + self.width, self.y + self.height
+        if opacity != 1.0:
+            paint = skia.Paint(Alphaf=opacity)
+            display_list.append(SaveLayer(paint, self.x, self.y, x2, y2))
         for child in self.children:
             child.paint(display_list)
+        if opacity != 1.0:
+            display_list.append(Restore(self.x, self.y, x2, y2))
 
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={})".format(
@@ -423,6 +472,22 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
+        x2, y2 = self.x + self.width, self.y + self.height
+        transform = self.node.style.get("transform", "")
+        if transform:
+            display_list.append(Save(self.x, self.y, x2, y2))
+            degrees = parse_rotation_transform(transform)
+            print(self.width)
+#            display_list.append(
+#                Translate((x2 - self.x) / 2, (y2 - self.y) / 2,
+#                self.x, self.y, x2, y2))
+            display_list.append(Rotate(degrees, self.x, self.y, x2, y2))
+
+        opacity = float(self.node.style.get("opacity", "1.0"))
+        if opacity != 1.0:
+            paint = skia.Paint(Alphaf=opacity)
+            display_list.append(SaveLayer(paint, self.x, self.y, x2, y2))
+
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
@@ -431,6 +496,10 @@ class InlineLayout:
             display_list.append(rect)
         for child in self.children:
             child.paint(display_list)
+        if opacity != 1.0:
+            display_list.append(Restore(self.x, self.y, x2, y2))
+        if transform:
+            display_list.append(Restore(self.x, self.y, x2, y2))
 
     def __repr__(self):
         return "InlineLayout(x={}, y={}, width={}, height={})".format(
@@ -454,14 +523,119 @@ class DocumentLayout:
         self.height = child.height + 2*VSTEP
 
     def paint(self, display_list):
-        paint = skia.Paint(Alphaf=0.5)
-        x2, y2 = self.x + self.width, self.y + self.height
-        display_list.append(SaveLayer(paint, self.x, self.y, x2, y2))
         self.children[0].paint(display_list)
-        display_list.append(Restore(self.x, self.y, x2, y2))
 
     def __repr__(self):
         return "DocumentLayout()"
+
+class CSSParser:
+    def __init__(self, s):
+        self.s = s
+        self.i = 0
+
+    def whitespace(self):
+        while self.i < len(self.s) and self.s[self.i].isspace():
+            self.i += 1
+
+    def literal(self, literal):
+        assert self.i < len(self.s) and self.s[self.i] == literal
+        self.i += 1
+
+    def word(self):
+        start = self.i
+        while self.i < len(self.s):
+            if self.s[self.i].isalnum() or self.s[self.i] in "#-.%()":
+                self.i += 1
+            else:
+                break
+        assert self.i > start
+        return self.s[start:self.i]
+
+    def pair(self):
+        prop = self.word()
+        self.whitespace()
+        self.literal(":")
+        self.whitespace()
+        val = self.word()
+        return prop.lower(), val
+
+    def ignore_until(self, chars):
+        while self.i < len(self.s):
+            if self.s[self.i] in chars:
+                return self.s[self.i]
+            else:
+                self.i += 1
+
+    def body(self):
+        pairs = {}
+        while self.i < len(self.s) and self.s[self.i] != "}":
+            try:
+                prop, val = self.pair()
+                pairs[prop.lower()] = val
+                self.whitespace()
+                self.literal(";")
+                self.whitespace()
+            except AssertionError:
+                why = self.ignore_until([";", "}"])
+                if why == ";":
+                    self.literal(";")
+                    self.whitespace()
+                else:
+                    break
+        return pairs
+
+    def selector(self):
+        out = TagSelector(self.word().lower())
+        self.whitespace()
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            tag = self.word()
+            descendant = TagSelector(tag.lower())
+            out = DescendantSelector(out, descendant)
+            self.whitespace()
+        return out
+
+    def parse(self):
+        rules = []
+        while self.i < len(self.s):
+            try:
+                self.whitespace()
+                selector = self.selector()
+                self.literal("{")
+                self.whitespace()
+                body = self.body()
+                self.literal("}")
+                rules.append((selector, body))
+            except AssertionError:
+                why = self.ignore_until(["}"])
+                if why == "}":
+                    self.literal("}")
+                    self.whitespace()
+                else:
+                    break
+        return rules
+
+def style(node, rules):
+    node.style = {}
+    for property, default_value in INHERITED_PROPERTIES.items():
+        if node.parent:
+            node.style[property] = node.parent.style[property]
+        else:
+            node.style[property] = default_value
+    for selector, body in rules:
+        if not selector.matches(node): continue
+        for property, value in body.items():
+            computed_value = compute_style(node, property, value)
+            if not computed_value: continue
+            node.style[property] = computed_value
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        for property, value in pairs.items():
+            print(property)
+            print(value)
+            computed_value = compute_style(node, property, value)
+            node.style[property] = computed_value
+    for child in node.children:
+        style(child, rules)
 
 SCROLL_STEP = 100
 CHROME_PX = 100
