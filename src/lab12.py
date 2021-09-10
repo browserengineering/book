@@ -370,8 +370,6 @@ class InlineLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = int(node.style["font-size"][:-2])
-        #fix!
-#        if style == "normal": style = "roman"
         return skia.Font(
             skia.Typeface('Arial', font_style(weight, style)), size)
 
