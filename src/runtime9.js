@@ -36,11 +36,12 @@ Object.defineProperty(Node.prototype, 'innerHTML', {
     }
 });
 
-function __runListeners(type, handle) {
+Node.prototype.dispatchEvent = function(evt) {
+    var type = evt.type;
+    var handle = this.handle
     var list = (LISTENERS[handle] && LISTENERS[handle][type]) || [];
-    var evt = new Event(type);
     for (var i = 0; i < list.length; i++) {
-        list[i].call(new Node(handle), evt);
+        list[i].call(this, evt);
     }
     return evt.do_default;
 }
