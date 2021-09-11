@@ -45,6 +45,14 @@ def parse_rotation_transform(transform_str):
     right_paren = transform_str.find('deg)')
     return float(transform_str[left_paren + 1:right_paren])
 
+def parse_blend_mode(blend_mode_str):
+    if blend_mode_str == "multiply":
+        return skia.BlendMode.kMultiply
+    elif blend_mode_str == "difference":
+        return skia.BlendMode.kDifference
+    else:
+        return skia.BlendMode.kSrcOver
+
 class Rasterizer:
     def __init__(self, surface):
         self.surface = surface
@@ -473,19 +481,21 @@ class InlineLayout:
 
     def paint(self, display_list):
         x2, y2 = self.x + self.width, self.y + self.height
-        transform = self.node.style.get("transform", "")
-        if transform:
+
+        transform_str = self.node.style.get("transform", "")
+        if transform_str:
             display_list.append(Save(self.x, self.y, x2, y2))
-            degrees = parse_rotation_transform(transform)
-            print(self.width)
-#            display_list.append(
-#                Translate((x2 - self.x) / 2, (y2 - self.y) / 2,
-#                self.x, self.y, x2, y2))
+            degrees = parse_rotation_transform(transform_str)
             display_list.append(Rotate(degrees, self.x, self.y, x2, y2))
 
+        blend_mode_str = self.node.style.get("mix-blend-mode")
+        if blend_mode_str:
+            blend_mode = parse_blend_mode(blend_mode_str)
+
         opacity = float(self.node.style.get("opacity", "1.0"))
-        if opacity != 1.0:
-            paint = skia.Paint(Alphaf=opacity)
+        if opacity != 1.0 or blend_mode_str:
+            print(blend_mode)
+            paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
             display_list.append(SaveLayer(paint, self.x, self.y, x2, y2))
 
         bgcolor = self.node.style.get("background-color",
@@ -496,9 +506,9 @@ class InlineLayout:
             display_list.append(rect)
         for child in self.children:
             child.paint(display_list)
-        if opacity != 1.0:
+        if opacity != 1.0 or blend_mode_str:
             display_list.append(Restore(self.x, self.y, x2, y2))
-        if transform:
+        if transform_str:
             display_list.append(Restore(self.x, self.y, x2, y2))
 
     def __repr__(self):
