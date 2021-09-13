@@ -5,7 +5,7 @@ prev: forms
 next: security
 ...
 
-But form-based web applications, like [last chapter's guest
+Form-based web applications, like [last chapter's guest
 book](forms.md), reload the page every time the user does anything,
 and fell out of favor in the early 2000s. What took their place are
 JavaScript-enhanced web applications, which can respond to user input
@@ -199,14 +199,14 @@ that the other uses, say on a page like this:
 
 Suppose `a.js` is "`var x = 2;`" and `b.js` is "`console.log(x + x)`";
 the variable `x` is set in `a.js` but used in `b.js`. In real web
-browsers, that's important since one script might define library
+browsers, that's important, since one script might define library
 functions that another script wants to call.
 
 Let's start exporting functions. The JavaScript function `console.log`
 corresponds to the Python `print` function.[^5] We can leverage this
 correspondence using `export_function`:
 
-[^5]: If you're using Python 2, for some reason, you'll need to write
+[^5]: If you're using Python 2, you'll need to write
     a little wrapper function around `print` instead.
 
 ``` {.python replace=__init__(self)/__init__(self%2c%20tab)}
@@ -244,6 +244,7 @@ there.
 
 [^brush-up]: Now's a good time to [brush up][mdn-js]---this chapter
     has a ton of JavaScript!
+
 [mdn-js]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/First_steps/A_first_splash
 
 Taking a step back, when we run JavaScript in our browser, we're
@@ -345,15 +346,15 @@ class JSContext:
 
 Debugging these issues is not easy, because all these calls between
 Python and JS get pretty complicated. *Because* these bugs are hard,
-it's worth approaching debugging systematically and gather a lot of
+it's worth approaching debugging systematically and gathering a lot of
 information before attempting a fix.
 
 Returning handles
 =================
 
 So far, JavaScript evaluation is fun but useless, because JavaScript
-can't make any kinds of modifications to the page itself. Why even run
-JavaScript if it can't do anything besides print? (Who looks at a
+can't make any kinds of modifications to the page itself. (Why even run
+JavaScript if it can't do anything besides print? Who looks at a
 browser's console output?) We need to allow JavaScript to modify the
 page.
 
@@ -371,8 +372,8 @@ We'll implement simplified versions of these APIs.[^simplified]
 [^simplified]: The simplifications will be minor. `querySelectorAll`
 will return an array, not this thing called a `NodeList`; `innerHTML`
 will only write the HTML contents of an element, and won't allow
-reading those contents. The goal is to demonstrate how the JS-browser
-communication happens.
+reading those contents. This suffices to demonstrate the goal of understanding
+how JS-browser communication happens.
 
 Let's start with `querySelectorAll`. First, export a function:
 
@@ -394,7 +395,7 @@ document = { querySelectorAll: function(s) {
 }}
 ```
 
-On the Python side, `querySelectorAll` has first parse the selector
+On the Python side, `querySelectorAll` has to first parse the selector
 and then find and return the matching elements.
 
 To parse just the selector, I'll call into the `CSSParser`'s
@@ -409,7 +410,7 @@ class JSContext:
 If you pass `querySelectorAll` an invalid selector, the `selector`
 call will throw an error, and DukPy will convert that Python-side
 exception into a JavaScript-side exception in the web script we are
-running, which can catch it or do something else.
+running, which can catch it and do something else.
 
 Next we need to find and return all matching elements. To do that, we
 need the `JSContext` to have access to the `Tab`, specifically to the
@@ -493,7 +494,7 @@ def querySelectorAll(self, selector_text):
 ```
 
 The `get_handle` function should create a new handle if one doesn't
-exist yet:[^id-elt]
+exist yet:
 
 ``` {.python}
 class JSContext:
@@ -605,7 +606,8 @@ for (var i = 0; i < inputs.length; i++) {
 ```
 
 Ideally, we'd update the character count every time the user types
-into an input box.
+into an input box, but that requires running JavaScript after input.
+Let's implement that next.
 
 ::: {.further}
 `Node` objects in the DOM are now both JavaScript objects and part of
@@ -614,8 +616,12 @@ they can have node *attributes*. It's easy to confuse one for the
 other, because they are so similar in concept. To make matters worse,
 there are a number of special attributes that [*reflect*][reflection]
 from property to attribute automatically, and vice-versa. The [`id`
-attribute][idAttr] is one example. Consider the following code: ```
-{.javascript} node.id = "someId"; ``` This will cause the `id`
+attribute][idAttr] is one example. Consider the following code:
+
+``` {.javascript}
+node.id = "someId";
+```
+This will cause the `id`
 attribute on the node to change (just as if the [setAttribute] method
 had been called), in addition to settting the property. Likewise,
 changing the attribute will reflect back on the property.
@@ -659,7 +665,6 @@ first, any time we click in the page:
 ``` {.python expected=False}
 class Tab:
     def click(self, x, y):
-        while elt:
             # ...
             elif elt.tag == "a" and "href" in elt.attributes:
                 self.js.dispatch_event("click", elt)
@@ -705,7 +710,7 @@ LISTENERS = {}
 
 Node.prototype.addEventListener = function(type, handler) {
     if (!LISTENERS[this.handle]) LISTENERS[this.handle] = {};
-    var dict = LISTENERS[this.handle]
+    var dict = LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
     list.push(handler);
@@ -736,20 +741,22 @@ When an event occurs, the browser calls `dispatchEvent` from Python:
 class JSContext:
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
-        self.interp.evaljs(DISPATCH_CODE, type=type, handle=handle)
+        self.interp.evaljs(
+            EVENT_DISPATCH_CODE, type=type, handle=handle)
 ```
 
-Here the `DISPATCH_CODE` constant is a string of JavaScript code that
+Here the `EVENT_DISPATCH_CODE` constant is a string of JavaScript code that
 dispatches a new event:
 
 ``` {.python replace=dukpy.type/new%20Event(dukpy.type)}
-DISPATCH_CODE = "new Node(dukpy.handle).dispatchEvent(dukpy.type)"
+EVENT_DISPATCH_CODE = \
+    "new Node(dukpy.handle).dispatchEvent(dukpy.type)"
 ```
 
-Here the `dukpy` object stores the named `type` and `handle` arguments
-passed above. So when `dispatch_event` is called on the Python side,
-that runs `dispatchEvent` on the JavaScript side, and that in turn
-runs all of the event listeners.
+The `dukpy` JavaScript object automatically stores the named `type` and `handle`
+arguments passed above. So when `dispatch_event` is called on the Python side,
+that runs `dispatchEvent` on the JavaScript side, and that in turn runs all of
+the event listeners.
 
 With all this event-handling machinery in place, we can update the
 character count every time an input area changes:
@@ -770,7 +777,7 @@ for (var i = 0; i < inputs.length; i++) {
 ```
 
 Note that `lengthCheck` uses `this` to reference the input element
-that actually changed, as set up by `__runListeners`.
+that actually changed, as set up by `dispatchEvent`.
 
 So far so good---but ideally the length check wouldn't print to the
 console; it would add a warning to the web page itself. To do that,
@@ -804,16 +811,16 @@ Object.defineProperty(Node.prototype, 'innerHTML', {
 });
 ```
 
-In `innerHTML`, we'll need to parse the HTML string. That turns out to
+In `innerHTML_set`, we'll need to parse the HTML string. That turns out to
 be trickier than you'd think, because our browser's HTML parser is
 intended to parse whole HTML documents, not these document fragments.
 As an expedient but incorrect hack,[^hack] I'll just wrap the HTML in
 an `html` and `body` element:
 
-[^hack]: Real browsers follow the standardized parsing algorithm for
-    HTML fragments defined by [HTML 5][html5-fragment].
-    
-[html5-fragment]: https://html.spec.whatwg.org/#parsing-html-fragments
+[^hack]: Real browsers follow the
+[standardized parsing algorithm][html-fragment] for HTML fragments. 
+
+[html-fragment]: https://html.spec.whatwg.org/#parsing-html-fragments
 
 ``` {.python indent=4}
 def innerHTML_set(self, handle, s):
@@ -847,8 +854,9 @@ the old page.
 
 Right now, the layout tree and display list are computed in `load`,
 but we don't want to reload the whole page; we just want to redo the
-styling, layout, and painting phases. So let's extract these styling,
-layout, and painting phases into a new `Tab` method, `render`:
+styling, layout, paint and draw phases. Together these are called
+*rendering*.[^why-no-draw] So let's extract these phases into a
+ new `Tab` method, `render`:
 
 ``` {.python}
 class Tab:
@@ -864,6 +872,13 @@ class Tab:
         self.document.paint(self.display_list)
 ```
 
+[^why-no-draw]: Why is `Browser.draw` not one of the phases that has to run?
+After all, running `paint` will have no visible effect until `draw` happens.
+It's technically not necessary right now because the only way to cause a script
+to run is loading or event handling, and you'll see that in  all such cases,
+such as `handle_key`, `draw` is called at the end. (Subtleties like this will be
+clarified and made more precise in [Chapter 13](scheduling-and-threading.md).)
+
 For this code to work, you'll also need to change `nodes` and `rules`
 from local variables in the `load` method to new fields on a `Tab`.
 Note that styling moved from `load` to `render`, but downloading the
@@ -878,7 +893,7 @@ do that; we just need to re-apply the styles we already have.[^update-styles]
     `link` nodes are created. This is tricky to get right, so I'm
     skipping it here.
 
-Now, whenever the page changes, we can lay it out again by calling
+Now, whenever the page changes, we can update its rendering again by calling
 `render`:
 
 ``` {.python}
@@ -973,8 +988,9 @@ Event defaults
 ==============
 
 So far, when an event is generated, the browser will run the handlers,
-and then *also* do whatever it normally does for that event. I'd now
-like JavaScript code to be able to *cancel* that default action.
+and then *also* do whatever it normally does for that event---the
+*default action*. I'd now like JavaScript code to be able to *cancel* that
+default action.
 
 There are a few steps involved. First of all, event handlers should
 receive an *event object* as an argument. That object should have a
@@ -1010,10 +1026,11 @@ Node.prototype.dispatchEvent = function(evt) {
 }
 ```
 
-In Python, we now need to create an `Event` to call `dispatchEvent`:
+In Python, we now need to create an `Event` to pass to `dispatchEvent`:
 
 ``` {.python}
-DISPATCH_CODE = "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
+EVENT_DISPATCH_CODE = \
+    "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
 ```
 
 Also note that `dispatchEvent` returns `evt.do_default`, which is not
@@ -1025,7 +1042,8 @@ to its handler:
 class JSContext:
     def dispatch_event(self, type, elt):
         # ...
-        do_default = self.interp.evaljs(DISPATCH_CODE, type=type, handle=handle)
+        do_default = self.interp.evaljs(
+            EVENT_DISPATCH_CODE, type=type, handle=handle)
         return not do_default
 ```
 
@@ -1117,9 +1135,9 @@ applications to go beyond what is built into the browser, similar in
 some ways to a [browser extension][browserExtension]. Ideally, web
 pages should be written so that they work correctly without
 JavaScript, but work better with it---this is the concept of
-[progressive enhancement][progEnhancement]. (In addition to supporting
-more browsers, progressive enhancement makes saves you from needing to
-re-invent HTML and CSS---even if you now know how!)
+[progressive enhancement][progEnhancement]. In addition to supporting
+more browsers, progressive enhancement saves you from needing to
+re-invent HTML and CSS---even now that you now know how.
 
 [flash]: https://www.adobe.com/products/flashplayer/end-of-life.html
 [javaApplets]: https://en.wikipedia.org/wiki/Java_applet
@@ -1223,7 +1241,7 @@ to handle the case of nodes being added and removed (such as with
 "context"; and finally call methods like `fillRect` and `fillText` on
 that context to draw on the canvas. Implement the basics of
 `<canvas>`, including `fillRect` and `fillText`. Canvases will need a
-custom layout object that store a list of drawing commands, and then inject
+custom layout object that stores a list of drawing commands, and then injects
 them into the display list when `paint` is called.
 
 [canvas-tutorial]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial
@@ -1257,8 +1275,8 @@ styles (ones set in the `style` attribute). An inline style can be modified by
 setting properties on the object returned by `node.style`. These properties
 have the same name as the corresponding CSS property, except that dashes are
 replaced by camel-casing. For example `node.style.backgroundColor = "blue"`
-will change the `background-color` to blue. Implement this behavior. Note that
-these changes are supposed to reflect^[See the go-further block about
+will change the node's `background-color` to blue. Implement this behavior.
+Note that these changes are supposed to reflect^[See the go-further block about
 reflection earlier in this chapter.] in the [`style` attribute][styleAttr];
 you can try implementing that also if you wish. Another add-on can be to
 implement the behavior of *reading* this attribute as well---`node.style`
@@ -1268,7 +1286,7 @@ returns a [`CSSStyleDeclaration`][cssstyle] object.
 [styleAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/style
 
 *Serializing HTML*: Reading from the [`element.innerHTML`][innerHTML] property
-in JavaScript returns a string with a serialized representation of the DOM
+in JavaScript should return a string with a serialized representation of the DOM
 subtree below `element` (but not including it). `element.outerHTML` returns a
 string including `element`. Here is an example:
 

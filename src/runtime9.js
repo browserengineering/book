@@ -24,7 +24,7 @@ Event.prototype.preventDefault = function() {
 
 Node.prototype.addEventListener = function(type, handler) {
     if (!LISTENERS[this.handle]) LISTENERS[this.handle] = {};
-    var dict = LISTENERS[this.handle]
+    var dict = LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
     list.push(handler);
