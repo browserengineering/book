@@ -265,10 +265,9 @@ class Browser:
         if not (0x20 <= ord(e.char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += e.char
-            self.draw()
         elif self.focus == "content":
             self.tabs[self.active_tab].keypress(e.char)
-            self.draw()
+        self.draw()
 
     def handle_enter(self, e):
         if self.focus == "address bar":

@@ -855,7 +855,7 @@ the old page.
 Right now, the layout tree and display list are computed in `load`,
 but we don't want to reload the whole page; we just want to redo the
 styling, layout, paint and draw phases. Together these are called
-*rendering*. So let's extract these phases into a
+*rendering*.[^why-no-draw] So let's extract these phases into a
  new `Tab` method, `render`:
 
 ``` {.python}
@@ -871,6 +871,13 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 ```
+
+[^why-no-draw]: Why is `Browser.draw` not one of the phases that has to run?
+After all, running `paint` will have no visible effect until `draw` happens.
+It's technically not necessary right now because the only way to cause a script
+to run is loading or event handling, and you'll see that in  all such cases,
+such as `handle_key`, `draw` is called at the end. (All of this will be cleaned
+up and made more precise in [Chapter 13](scheduling-and-threading.md).)
 
 For this code to work, you'll also need to change `nodes` and `rules`
 from local variables in the `load` method to new fields on a `Tab`.
