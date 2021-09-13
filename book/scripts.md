@@ -909,15 +909,15 @@ Let's try this out this in our guest book server. I don't want people
 writing long rants in my guest book, so I'm going to put a
 100-character limit on guest book entries.
 
-First, switch to the server codebase and add a new paragraph `<p
-id=errors></p>` after the guest book form. Initially this paragraph
+First, switch to the server codebase and add a new label element
+`<label></label>` after the guest book form. Initially this paragraph
 will be empty, but we'll write an error message into it if the
 paragraph gets too long.
 
 ``` {.python file=server}
 def show_comments():
     # ...
-    out += "<p id=errors></p>"
+    out += "<label></label>"
     # ...
 ```
 
