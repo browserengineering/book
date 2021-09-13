@@ -669,9 +669,9 @@ max_ascent = max([metric["ascent"] for metric in metrics])
 The line is then `max_ascent` below `self.y`—or actually a little more
 to account for the leading:[^leading-half]
 
-[^leading-half]: Actually actually, 25% leading doesn't add 25% of the
-    ascender above the ascender and 25% of the descender below the
-    descender. Instead, it adds [12.5% of the line height in both
+[^leading-half]: Actually, 25% leading doesn't add 25% of the ascender
+    above the ascender and 25% of the descender below the descender.
+    Instead, it adds [12.5% of the line height in both
     places][line-height-def], which is subtly different when fonts are
     mixed. But let's skip that subtlety here.
 
