@@ -876,8 +876,8 @@ class Tab:
 After all, running `paint` will have no visible effect until `draw` happens.
 It's technically not necessary right now because the only way to cause a script
 to run is loading or event handling, and you'll see that in  all such cases,
-such as `handle_key`, `draw` is called at the end. (All of this will be cleaned
-up and made more precise in [Chapter 13](scheduling-and-threading.md).)
+such as `handle_key`, `draw` is called at the end. (Subtleties like this will be
+clarified and made more precise in [Chapter 13](scheduling-and-threading.md).)
 
 For this code to work, you'll also need to change `nodes` and `rules`
 from local variables in the `load` method to new fields on a `Tab`.
