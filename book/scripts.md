@@ -5,12 +5,12 @@ prev: forms
 next: security
 ...
 
-Form-based web applications, like [last chapter's guest
-book](forms.md), reload the page every time the user does anything.
-They fell out of favor in the early 2000s; what took their place are
-JavaScript-enhanced web applications, which can respond to user input
-and update pages without reloads. Let's add support for that to our
-toy browser.
+The first web applications were like [last chapter's guest
+book](forms.md) with the server generating new web pages for every
+user action. But in the early 2000s, JavaScript-enhanced web
+applications, which can update pages dynamically and respond
+immediately to user actions, took their place. Let's add support for
+this key web application technology to our toy browser.
 
 Installing DukPy
 ================
