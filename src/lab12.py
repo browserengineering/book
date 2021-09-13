@@ -160,12 +160,12 @@ class LineLayout:
 
         max_ascent = max([-word.font.getMetrics().fAscent 
                           for word in self.children])
-        baseline = self.y + 1.2 * max_ascent
+        baseline = self.y + 1.25 * max_ascent
         for word in self.children:
             word.y = baseline + word.font.getMetrics().fAscent
         max_descent = max([word.font.getMetrics().fDescent
                            for word in self.children])
-        self.height = 1.2 * (max_ascent + max_descent)
+        self.height = 1.25 * (max_ascent + max_descent)
 
     def paint(self, display_list):
         for child in self.children:
@@ -370,8 +370,6 @@ class InlineLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = int(node.style["font-size"][:-2])
-        #fix!
-#        if style == "normal": style = "roman"
         return skia.Font(
             skia.Typeface('Arial', font_style(weight, style)), size)
 

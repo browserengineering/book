@@ -54,20 +54,20 @@ Testing InputLayout
                'Submit!'
     >>> lab8.print_tree(browser.tabs[0].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=43.199999999999996)
-         BlockLayout(x=13, y=18, width=774, height=43.199999999999996)
-           BlockLayout(x=13, y=18, width=774, height=43.199999999999996)
-             InlineLayout(x=13, y=18, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=18, width=774, height=14.399999999999999)
-                 TextLayout(x=13, y=19.799999999999997, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
-                 InputLayout(x=85, y=19.799999999999997, width=200, height=12)
-             InlineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-                 TextLayout(x=13, y=34.199999999999996, width=96, height=12, font=Font size=12 weight=normal slant=roman style=None
-                 InputLayout(x=121, y=34.199999999999996, width=200, height=12)
-             InlineLayout(x=13, y=46.8, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=46.8, width=774, height=14.399999999999999)
-                 InputLayout(x=13, y=48.599999999999994, width=200, height=12)
+       BlockLayout(x=13, y=18, width=774, height=45.0)
+         BlockLayout(x=13, y=18, width=774, height=45.0)
+           BlockLayout(x=13, y=18, width=774, height=45.0)
+             InlineLayout(x=13, y=18, width=774, height=15.0)
+               LineLayout(x=13, y=18, width=774, height=15.0)
+                 TextLayout(x=13, y=20.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+                 InputLayout(x=85, y=20.25, width=200, height=12)
+             InlineLayout(x=13, y=33.0, width=774, height=15.0)
+               LineLayout(x=13, y=33.0, width=774, height=15.0)
+                 TextLayout(x=13, y=35.25, width=96, height=12, font=Font size=12 weight=normal slant=roman style=None
+                 InputLayout(x=121, y=35.25, width=200, height=12)
+             InlineLayout(x=13, y=48.0, width=774, height=15.0)
+               LineLayout(x=13, y=48.0, width=774, height=15.0)
+                 InputLayout(x=13, y=50.25, width=200, height=12)
 
 The display list of a button should include its contents, and the display list
 of a text input should be its `value` attribute:
@@ -78,18 +78,18 @@ of a text input should be its `value` attribute:
     >>> display_list = []
     >>> text_input.paint(display_list)
     >>> display_list
-    [DrawRect(top=19.799999999999997 left=85 bottom=31.799999999999997 right=285 color=lightblue), DrawText(text=1)]
+    [DrawRect(top=20.25 left=85 bottom=32.25 right=285 color=lightblue), DrawText(text=1)]
     >>> display_list = []
     >>> button.paint(display_list)
     >>> display_list
-    [DrawRect(top=48.599999999999994 left=13 bottom=60.599999999999994 right=213 color=orange), DrawText(text=Submit!)]
+    [DrawRect(top=50.25 left=13 bottom=62.25 right=213 color=orange), DrawText(text=Submit!)]
 
 Testing form submission
 =======================
 
 Forms are submitted via a click on the submit button.
 
-    >>> browser.handle_click(test.Event(14, 50 + 100))
+    >>> browser.handle_click(test.Event(20, 55 + lab8.CHROME_PX))
     >>> lab8.print_tree(browser.tabs[0].document.node)
      <html>
        <body>

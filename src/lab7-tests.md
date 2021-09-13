@@ -35,22 +35,22 @@ Here is how the lines are represented in chapter 7:
 
     >>> lab7.print_tree(browser.tabs[0].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=43.199999999999996)
-         BlockLayout(x=13, y=18, width=774, height=43.199999999999996)
-           LineLayout(x=13, y=18, width=774, height=43.199999999999996)
-             LineLayout(x=13, y=18, width=774, height=14.399999999999999)
-               TextLayout(x=13, y=19.799999999999997, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
-               TextLayout(x=73, y=19.799999999999997, width=24, height=12, font=Font size=12 weight=normal slant=roman style=None
-               TextLayout(x=109, y=19.799999999999997, width=12, height=12, font=Font size=12 weight=normal slant=roman style=None
-               TextLayout(x=133, y=19.799999999999997, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
-             LineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-               TextLayout(x=13, y=34.199999999999996, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
-               TextLayout(x=73, y=34.199999999999996, width=12, height=12, font=Font size=12 weight=normal slant=roman style=None
-               TextLayout(x=97, y=34.199999999999996, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
-             LineLayout(x=13, y=46.8, width=774, height=14.399999999999999)
-               TextLayout(x=13, y=48.599999999999994, width=36, height=12, font=Font size=12 weight=normal slant=roman style=None
-               TextLayout(x=61, y=48.599999999999994, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
-               TextLayout(x=121, y=48.599999999999994, width=36, height=12, font=Font size=12 weight=normal slant=roman style=None
+       BlockLayout(x=13, y=18, width=774, height=45.0)
+         BlockLayout(x=13, y=18, width=774, height=45.0)
+           LineLayout(x=13, y=18, width=774, height=45.0)
+             LineLayout(x=13, y=18, width=774, height=15.0)
+               TextLayout(x=13, y=20.25, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
+               TextLayout(x=73, y=20.25, width=24, height=12, font=Font size=12 weight=normal slant=roman style=None
+               TextLayout(x=109, y=20.25, width=12, height=12, font=Font size=12 weight=normal slant=roman style=None
+               TextLayout(x=133, y=20.25, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
+             LineLayout(x=13, y=33.0, width=774, height=15.0)
+               TextLayout(x=13, y=35.25, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
+               TextLayout(x=73, y=35.25, width=12, height=12, font=Font size=12 weight=normal slant=roman style=None
+               TextLayout(x=97, y=35.25, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
+             LineLayout(x=13, y=48.0, width=774, height=15.0)
+               TextLayout(x=13, y=50.25, width=36, height=12, font=Font size=12 weight=normal slant=roman style=None
+               TextLayout(x=61, y=50.25, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
+               TextLayout(x=121, y=50.25, width=36, height=12, font=Font size=12 weight=normal slant=roman style=None
 
 Whereas in chapter 6 there is no direct layout tree representation of text, but the inline
 has the same total height:
@@ -60,9 +60,9 @@ has the same total height:
     >>> browser2.load(url)
     >>> lab6.print_tree(browser2.document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=57.59999999999998)
-         BlockLayout(x=13, y=18, width=774, height=57.59999999999998)
-           InlineLayout(x=13, y=18, width=774, height=57.59999999999998)
+       BlockLayout(x=13, y=18, width=774, height=60.0)
+         BlockLayout(x=13, y=18, width=774, height=60.0)
+           InlineLayout(x=13, y=18, width=774, height=60.0)
 
 Testing Tab
 ===========
@@ -86,11 +86,11 @@ The browser can have multiple tabs:
 
     >>> lab7.print_tree(browser.tabs[1].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=14.399999999999999)
-         LineLayout(x=13, y=18, width=774, height=14.399999999999999)
-           LineLayout(x=13, y=18, width=774, height=14.399999999999999)
-             TextLayout(x=13, y=19.799999999999997, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
-             TextLayout(x=85, y=19.799999999999997, width=24, height=12, font=Font size=12 weight=normal slant=roman style=None
+       BlockLayout(x=13, y=18, width=774, height=15.0)
+         LineLayout(x=13, y=18, width=774, height=15.0)
+           LineLayout(x=13, y=18, width=774, height=15.0)
+             TextLayout(x=13, y=20.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+             TextLayout(x=85, y=20.25, width=24, height=12, font=Font size=12 weight=normal slant=roman style=None
 
 Tabs supports navigation---clicking on a link to navigate a tab to a new site:
 

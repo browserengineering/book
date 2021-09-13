@@ -28,7 +28,8 @@ from lab7 import TextLayout
 from lab8 import request
 from lab8 import DocumentLayout
 
-DISPATCH_CODE = "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
+EVENT_DISPATCH_CODE = \
+    "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
 
 class JSContext:
 
@@ -53,7 +54,8 @@ class JSContext:
 
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
-        do_default = self.interp.evaljs(DISPATCH_CODE, type=type, handle=handle)
+        do_default = self.interp.evaljs(
+            EVENT_DISPATCH_CODE, type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):
@@ -263,10 +265,9 @@ class Browser:
         if not (0x20 <= ord(e.char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += e.char
-            self.draw()
         elif self.focus == "content":
             self.tabs[self.active_tab].keypress(e.char)
-            self.draw()
+        self.draw()
 
     def handle_enter(self, e):
         if self.focus == "address bar":

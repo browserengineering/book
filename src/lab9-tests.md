@@ -143,19 +143,19 @@ Once we've changed the page, the browser should rerender:
 
     >>> lab9.print_tree(b.tabs[0].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-         BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-           BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-             InlineLayout(x=13, y=18, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=18, width=774, height=14.399999999999999)
-                 TextLayout(x=13, y=19.799999999999997, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
-                 TextLayout(x=73, y=19.799999999999997, width=24, height=12, font=Font size=12 weight=normal slant=roman style=None
-                 TextLayout(x=109, y=19.799999999999997, width=12, height=12, font=Font size=12 weight=normal slant=roman style=None
-                 TextLayout(x=133, y=19.799999999999997, width=36, height=12, font=Font size=12 weight=bold slant=roman style=None
-                 TextLayout(x=181, y=19.799999999999997, width=96, height=12, font=Font size=12 weight=normal slant=roman style=None
-             InlineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-                 TextLayout(x=13, y=34.199999999999996, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+       BlockLayout(x=13, y=18, width=774, height=30.0)
+         BlockLayout(x=13, y=18, width=774, height=30.0)
+           BlockLayout(x=13, y=18, width=774, height=30.0)
+             InlineLayout(x=13, y=18, width=774, height=15.0)
+               LineLayout(x=13, y=18, width=774, height=15.0)
+                 TextLayout(x=13, y=20.25, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
+                 TextLayout(x=73, y=20.25, width=24, height=12, font=Font size=12 weight=normal slant=roman style=None
+                 TextLayout(x=109, y=20.25, width=12, height=12, font=Font size=12 weight=normal slant=roman style=None
+                 TextLayout(x=133, y=20.25, width=36, height=12, font=Font size=12 weight=bold slant=roman style=None
+                 TextLayout(x=181, y=20.25, width=96, height=12, font=Font size=12 weight=normal slant=roman style=None
+             InlineLayout(x=13, y=33.0, width=774, height=15.0)
+               LineLayout(x=13, y=33.0, width=774, height=15.0)
+                 TextLayout(x=13, y=35.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
 
 Note that there's now many `TextLayout`s inside the first `LineLayout`, one per
 new word.
@@ -176,15 +176,15 @@ The page is rerendered again:
 
     >>> lab9.print_tree(b.tabs[0].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-         BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-           BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-             InlineLayout(x=13, y=18, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=18, width=774, height=14.399999999999999)
-                 TextLayout(x=13, y=19.799999999999997, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
-             InlineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-                 TextLayout(x=13, y=34.199999999999996, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+       BlockLayout(x=13, y=18, width=774, height=30.0)
+         BlockLayout(x=13, y=18, width=774, height=30.0)
+           BlockLayout(x=13, y=18, width=774, height=30.0)
+             InlineLayout(x=13, y=18, width=774, height=15.0)
+               LineLayout(x=13, y=18, width=774, height=15.0)
+                 TextLayout(x=13, y=20.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+             InlineLayout(x=13, y=33.0, width=774, height=15.0)
+               LineLayout(x=13, y=33.0, width=774, height=15.0)
+                 TextLayout(x=13, y=35.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
 
 Despite this, the old nodes should stick around:
 
@@ -261,16 +261,16 @@ events. The display list gives us coordinates for clicking.
 
     >>> lab9.print_tree(b.tabs[1].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-         BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-           InlineLayout(x=13, y=18, width=774, height=14.399999999999999)
-             LineLayout(x=13, y=18, width=774, height=14.399999999999999)
-               TextLayout(x=13, y=19.799999999999997, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
-               TextLayout(x=85, y=19.799999999999997, width=36, height=12, font=Font size=12 weight=normal slant=roman style=None
-           InlineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-             LineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-               InputLayout(x=13, y=34.199999999999996, width=200, height=12)
-               InputLayout(x=225, y=34.199999999999996, width=200, height=12)
+       BlockLayout(x=13, y=18, width=774, height=30.0)
+         BlockLayout(x=13, y=18, width=774, height=30.0)
+           InlineLayout(x=13, y=18, width=774, height=15.0)
+             LineLayout(x=13, y=18, width=774, height=15.0)
+               TextLayout(x=13, y=20.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+               TextLayout(x=85, y=20.25, width=36, height=12, font=Font size=12 weight=normal slant=roman style=None
+           InlineLayout(x=13, y=33.0, width=774, height=15.0)
+             LineLayout(x=13, y=33.0, width=774, height=15.0)
+               InputLayout(x=13, y=35.25, width=200, height=12)
+               InputLayout(x=225, y=35.25, width=200, height=12)
     >>> b.tabs[1].click(14, 20)
     a clicked
     >>> b.tabs[1].click(14, 40)

@@ -40,22 +40,22 @@ format text. However, note that this test doesn't use real tkinter fonts, but
 rather a mock font that has faked metrics.
 
     >>> lab3.Layout(lab3.lex("abc")).display_list
-    [(13, 20.4, 'abc', Font size=16 weight=normal slant=roman style=None)]
+    [(13, 21.0, 'abc', Font size=16 weight=normal slant=roman style=None)]
 
     >>> lab3.Layout(lab3.lex("<b>abc</b>")).display_list
-    [(13, 20.4, 'abc', Font size=16 weight=bold slant=roman style=None)]
+    [(13, 21.0, 'abc', Font size=16 weight=bold slant=roman style=None)]
     
     >>> lab3.Layout(lab3.lex("<big>abc</big>")).display_list
-    [(13, 21.0, 'abc', Font size=20 weight=normal slant=roman style=None)]
+    [(13, 21.75, 'abc', Font size=20 weight=normal slant=roman style=None)]
 
     >>> lab3.Layout(lab3.lex("<big><big>abc</big></big>")).display_list
-    [(13, 21.599999999999994, 'abc', Font size=24 weight=normal slant=roman style=None)]
+    [(13, 22.5, 'abc', Font size=24 weight=normal slant=roman style=None)]
 
     >>> lab3.Layout(lab3.lex("<big><big><i>abc</i></big></big>")).display_list
-    [(13, 21.599999999999994, 'abc', Font size=24 weight=normal slant=italic style=None)]
+    [(13, 22.5, 'abc', Font size=24 weight=normal slant=italic style=None)]
 
     >>> lab3.Layout(lab3.lex("<big><big><i>abc</i></big>def</big>")).display_list
-    [(13, 21.599999999999994, 'abc', Font size=24 weight=normal slant=italic style=None), (109, 24.599999999999994, 'def', Font size=20 weight=normal slant=roman style=None)]
+    [(13, 22.5, 'abc', Font size=24 weight=normal slant=italic style=None), (109, 25.5, 'def', Font size=20 weight=normal slant=roman style=None)]
 
 Breakpoints can be set after each layout:
 
@@ -65,9 +65,9 @@ Breakpoints can be set after each layout:
     breakpoint(name='initial_y', '18', '[(13, 'abc', Font size=16 weight=normal slant=roman style=None)]')
     breakpoint(name='metrics', '[{'ascent': 12.0, 'descent': 4.0, 'linespace': 16}]')
     breakpoint(name='max_ascent', '12.0')
-    breakpoint(name='aligned', '[(13, 20.4, 'abc', Font size=16 weight=normal slant=roman style=None)]')
+    breakpoint(name='aligned', '[(13, 21.0, 'abc', Font size=16 weight=normal slant=roman style=None)]')
     breakpoint(name='max_descent', '4.0')
-    breakpoint(name='final_y', '37.199999999999996')
+    breakpoint(name='final_y', '38.0')
     
     >>> test.unpatch_breakpoint()
 
@@ -78,27 +78,27 @@ out text with mixed font sizes, and then measure the line heights:
     ...     return word[1] + word[3].metrics("ascent")
     >>> l = lab3.Layout(lab3.lex("Start<br>Regular<br>Regular <big><big>Big"))
     >>> l.display_list #doctest: +NORMALIZE_WHITESPACE
-    [(13, 20.4, 'Start', Font size=16 weight=normal slant=roman style=None),
-     (13, 39.599999999999994, 'Regular', Font size=16 weight=normal slant=roman style=None),
-     (13, 65.99999999999999, 'Regular', Font size=16 weight=normal slant=roman style=None),
-     (141, 59.999999999999986, 'Big', Font size=24 weight=normal slant=roman style=None)]
+    [(13, 21.0, 'Start', Font size=16 weight=normal slant=roman style=None),
+     (13, 41.0, 'Regular', Font size=16 weight=normal slant=roman style=None),
+     (13, 68.5, 'Regular', Font size=16 weight=normal slant=roman style=None),
+     (141, 62.5, 'Big', Font size=24 weight=normal slant=roman style=None)]
     >>> baseline(l.display_list[1]) - baseline(l.display_list[0])
-    19.199999999999996
+    20.0
     >>> baseline(l.display_list[3]) - baseline(l.display_list[1])
-    26.39999999999999
+    27.5
 
 The differing line heights don't occur when text gets smaller:
 
     >>> l = lab3.Layout(lab3.lex("Start<br>Regular<br>Regular <small><small>Small"))
     >>> l.display_list #doctest: +NORMALIZE_WHITESPACE
-    [(13, 20.4, 'Start', Font size=16 weight=normal slant=roman style=None),
-     (13, 39.599999999999994, 'Regular', Font size=16 weight=normal slant=roman style=None),
-     (13, 58.79999999999998, 'Regular', Font size=16 weight=normal slant=roman style=None),
-     (141, 61.79999999999998, 'Small', Font size=12 weight=normal slant=roman style=None)]
+    [(13, 21.0, 'Start', Font size=16 weight=normal slant=roman style=None),
+     (13, 41.0, 'Regular', Font size=16 weight=normal slant=roman style=None),
+     (13, 61.0, 'Regular', Font size=16 weight=normal slant=roman style=None),
+     (141, 64.0, 'Small', Font size=12 weight=normal slant=roman style=None)]
     >>> baseline(l.display_list[1]) - baseline(l.display_list[0])
-    19.199999999999996
+    20.0
     >>> baseline(l.display_list[3]) - baseline(l.display_list[1])
-    19.19999999999999
+    20.0
 
 
 Testing `Browser`
@@ -116,15 +116,15 @@ Now let's test integration of layout into the Browser class.
 Testing the display list output of this URL:
 
     >>> browser.display_list
-    [(13, 20.1, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 20.1, 'def', Font size=14 weight=normal slant=italic style=None)]
+    [(13, 20.625, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 20.625, 'def', Font size=14 weight=normal slant=italic style=None)]
 
 And the canvas:
 
     >>> test.patch_canvas()
     >>> browser = lab3.Browser()
     >>> browser.load(url)
-    create_text: x=13 y=20.1 text=abc font=Font size=14 weight=normal slant=roman style=None anchor=nw
-    create_text: x=69 y=20.1 text=def font=Font size=14 weight=normal slant=italic style=None anchor=nw
+    create_text: x=13 y=20.625 text=abc font=Font size=14 weight=normal slant=roman style=None anchor=nw
+    create_text: x=69 y=20.625 text=def font=Font size=14 weight=normal slant=italic style=None anchor=nw
     >>> test.unpatch_canvas()
 
 And with breakpoints:
@@ -135,12 +135,12 @@ And with breakpoints:
     breakpoint(name='initial_y', '18', '[(13, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 'def', Font size=14 weight=normal slant=italic style=None)]')
     breakpoint(name='metrics', '[{'ascent': 10.5, 'descent': 3.5, 'linespace': 14}, {'ascent': 10.5, 'descent': 3.5, 'linespace': 14}]')
     breakpoint(name='max_ascent', '10.5')
-    breakpoint(name='aligned', '[(13, 20.1, 'abc', Font size=14 weight=normal slant=roman style=None)]')
-    breakpoint(name='aligned', '[(13, 20.1, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 20.1, 'def', Font size=14 weight=normal slant=italic style=None)]')
+    breakpoint(name='aligned', '[(13, 20.625, 'abc', Font size=14 weight=normal slant=roman style=None)]')
+    breakpoint(name='aligned', '[(13, 20.625, 'abc', Font size=14 weight=normal slant=roman style=None), (69, 20.625, 'def', Font size=14 weight=normal slant=italic style=None)]')
     breakpoint(name='max_descent', '3.5')
-    breakpoint(name='final_y', '34.800000000000004')
-    create_text: x=13 y=20.1 text=abc font=Font size=14 weight=normal slant=roman style=None anchor=nw
-    create_text: x=69 y=20.1 text=def font=Font size=14 weight=normal slant=italic style=None anchor=nw
+    breakpoint(name='final_y', '35.5')
+    create_text: x=13 y=20.625 text=abc font=Font size=14 weight=normal slant=roman style=None anchor=nw
+    create_text: x=69 y=20.625 text=def font=Font size=14 weight=normal slant=italic style=None anchor=nw
 
     >>> test.unpatch_breakpoint()
 

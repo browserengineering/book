@@ -6,7 +6,7 @@ next: security
 ...
 
 The first web applications were like [last chapter's guest
-book](forms.md) with the server generating new web pages for every
+book](forms.md), with the server generating new web pages for every
 user action. But in the early 2000s, JavaScript-enhanced web
 applications, which can update pages dynamically and respond
 immediately to user actions, took their place. Let's add support for
@@ -198,7 +198,7 @@ that the other uses, say on a page like this:
 
 Suppose `a.js` is "`var x = 2;`" and `b.js` is "`console.log(x + x)`";
 the variable `x` is set in `a.js` but used in `b.js`. In real web
-browsers, that's important since one script might define library
+browsers, that's important, since one script might define library
 functions that another script wants to call.
 
 To provide JavaScript access to the outside world---such as to the
@@ -206,7 +206,7 @@ console output---we must export functions. The JavaScript function
 `console.log` corresponds to the Python `print` function. We leverage
 this correspondence using DukPy's `export_function`:[^5]
 
-[^5]: If you're using Python 2, for some reason, you'll need to write
+[^5]: If you're using Python 2, you'll need to write
     a little wrapper function around `print` instead.
 
 ``` {.python replace=__init__(self)/__init__(self%2c%20tab)}
@@ -244,6 +244,7 @@ with the property `log`, whose value is a function that calls
 
 [^brush-up]: Now's a good time to [brush up][mdn-js]---this chapter
     has a ton of JavaScript!
+
 [mdn-js]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/First_steps/A_first_splash
 
 We can call that JavaScript code our "JavaScript runtime"; we run it
@@ -349,15 +350,15 @@ class JSContext:
 
 Debugging these issues is not easy, because all these calls between
 Python and JS get pretty complicated. *Because* these bugs are hard,
-it's worth approaching debugging systematically and gather a lot of
+it's worth approaching debugging systematically and gathering a lot of
 information before attempting a fix.
 
 Returning handles
 =================
 
 So far, JavaScript evaluation is fun but useless, because JavaScript
-can't make any kinds of modifications to the page itself. Why even run
-JavaScript if it can't do anything besides print? (Who looks at a
+can't make any kinds of modifications to the page itself. (Why even run
+JavaScript if it can't do anything besides print? Who looks at a
 browser's console output?) We need to allow JavaScript to modify the
 page.
 
@@ -495,7 +496,7 @@ def querySelectorAll(self, selector_text):
 ```
 
 The `get_handle` function should create a new handle if one doesn't
-exist yet:[^id-elt]
+exist yet:
 
 ``` {.python}
 class JSContext:
@@ -692,7 +693,7 @@ LISTENERS = {}
 
 Node.prototype.addEventListener = function(type, listener) {
     if (!LISTENERS[this.handle]) LISTENERS[this.handle] = {};
-    var dict = LISTENERS[this.handle]
+    var dict = LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
     list.push(listener);
@@ -723,14 +724,16 @@ When an event occurs, the browser calls `dispatchEvent` from Python:
 class JSContext:
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
-        self.interp.evaljs(DISPATCH_CODE, type=type, handle=handle)
+        self.interp.evaljs(
+            EVENT_DISPATCH_CODE, type=type, handle=handle)
 ```
 
-Here the `DISPATCH_CODE` constant is a string of JavaScript code that
+Here the `EVENT_DISPATCH_CODE` constant is a string of JavaScript code that
 dispatches a new event:
 
 ``` {.python replace=dukpy.type/new%20Event(dukpy.type)}
-DISPATCH_CODE = "new Node(dukpy.handle).dispatchEvent(dukpy.type)"
+EVENT_DISPATCH_CODE = \
+    "new Node(dukpy.handle).dispatchEvent(dukpy.type)"
 ```
 
 So when `dispatch_event` is called on the Python side, that runs
@@ -757,7 +760,7 @@ for (var i = 0; i < inputs.length; i++) {
 ```
 
 Note that `lengthCheck` uses `this` to reference the input element
-that actually changed, as set up by `__runListeners`.
+that actually changed, as set up by `dispatchEvent`.
 
 So far so good---but ideally the length check wouldn't print to the
 console; it would add a warning to the web page itself. To do that,
@@ -798,10 +801,10 @@ is intended to parse whole HTML documents, not these document
 fragments. As an expedient, close-enough hack,[^hack] I'll just wrap
 the HTML in an `html` and `body` element:
 
-[^hack]: Real browsers follow the standardized parsing algorithm for
-    HTML fragments defined by [HTML 5][html5-fragment].
-    
-[html5-fragment]: https://html.spec.whatwg.org/#parsing-html-fragments
+[^hack]: Real browsers follow the
+[standardized parsing algorithm][html-fragment] for HTML fragments. 
+
+[html-fragment]: https://html.spec.whatwg.org/#parsing-html-fragments
 
 ``` {.python indent=4}
 def innerHTML_set(self, handle, s):
@@ -835,8 +838,9 @@ the old page.
 
 Right now, the layout tree and display list are computed in `load`,
 but we don't want to reload the whole page; we just want to redo the
-styling, layout, and painting phases. So let's extract these styling,
-layout, and painting phases into a new `Tab` method, `render`:
+styling, layout, paint and draw phases. Together these are called
+*rendering*.[^why-no-draw] So let's extract these phases into a
+ new `Tab` method, `render`:
 
 ``` {.python}
 class Tab:
@@ -851,6 +855,13 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 ```
+
+[^why-no-draw]: Why is `Browser.draw` not one of the phases that has to run?
+After all, running `paint` will have no visible effect until `draw` happens.
+It's technically not necessary right now because the only way to cause a script
+to run is loading or event handling, and you'll see that in  all such cases,
+such as `handle_key`, `draw` is called at the end. (Subtleties like this will be
+clarified and made more precise in [Chapter 13](scheduling-and-threading.md).)
 
 For this code to work, you'll also need to change `nodes` and `rules`
 from local variables in the `load` method to new fields on a `Tab`.
@@ -1003,10 +1014,11 @@ Node.prototype.dispatchEvent = function(evt) {
 }
 ```
 
-In Python, we now need to create an `Event` to call `dispatchEvent`:
+In Python, we now need to create an `Event` to pass to `dispatchEvent`:
 
 ``` {.python}
-DISPATCH_CODE = "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
+EVENT_DISPATCH_CODE = \
+    "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
 ```
 
 Also note that `dispatchEvent` returns `evt.do_default`, which is not
@@ -1018,7 +1030,8 @@ to its handler:
 class JSContext:
     def dispatch_event(self, type, elt):
         # ...
-        do_default = self.interp.evaljs(DISPATCH_CODE, type=type, handle=handle)
+        do_default = self.interp.evaljs(
+            EVENT_DISPATCH_CODE, type=type, handle=handle)
         return not do_default
 ```
 
@@ -1111,9 +1124,9 @@ applications to go beyond what is built into the browser, similar in
 some ways to a [browser extension][browserExtension]. Ideally, web
 pages should be written so that they work correctly without
 JavaScript, but work better with it---this is the concept of
-[progressive enhancement][progEnhancement]. (In addition to supporting
-more browsers, progressive enhancement makes saves you from needing to
-re-invent HTML and CSS---even if you now know how!)
+[progressive enhancement][progEnhancement]. In addition to supporting
+more browsers, progressive enhancement saves you from needing to
+re-invent HTML and CSS---even now that you now know how.
 
 [flash]: https://www.adobe.com/products/flashplayer/end-of-life.html
 [javaApplets]: https://en.wikipedia.org/wiki/Java_applet

@@ -234,7 +234,7 @@ method:
 # ...
 max_ascent = max([word.font.metrics("ascent")
                   for word in self.children])
-baseline = self.y + 1.2 * max_ascent
+baseline = self.y + 1.25 * max_ascent
 for word in self.children:
     word.y = baseline - word.font.metrics("ascent")
 max_descent = max([word.font.metrics("descent")
@@ -260,7 +260,7 @@ to have a height. We compuate it from the maximum ascent and descent:
 
 ``` {.python indent=8}
 # ...
-self.height = 1.2 * (max_ascent + max_descent)
+self.height = 1.25 * (max_ascent + max_descent)
 ```
 
 Ok, so that's line layout. Now let's think about laying out each word.
