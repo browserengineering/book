@@ -28,7 +28,7 @@ implementations, which are extremely fast but also extremely complex,
 Duktape aims to be simple and extensible, and is usually embedded
 inside a larger C or C++ project.[^1]
 
-[^1]: For examples, in a video game the high-speed graphics code is
+[^1]: For example, in a video game the high-speed graphics code is
     usually written in C or C++ , but the actual plot of the game is
     usually written in a simpler language.
 
@@ -269,7 +269,8 @@ Taking a step back, when we run JavaScript in our browser, we're
 mixing: C code, which implements the JavaScript interpreter; Python
 code, which implements certain JavaScript functions; a JavaScript
 runtime, which wraps the Python API to look more like the JavaScript
-one; and of course some user code in JavaScript. This complexity 
+one; and of course some user code in JavaScript. There's a lot of
+complexity here!
 
 ::: {.further}
 If a script runs for a long time, has an infinite loop, our browser
@@ -366,7 +367,7 @@ JavaScript manipulates a web page by calling any of a large set of
 methods collectively called the DOM API, for "Document Object Model".
 The DOM API is big, and it keeps getting bigger, so we won't
 implementing all, or even most, of it. But a few core functions show
-the range of the full API:
+key elements of the full API:
 
 -   `querySelectorAll` returns all the elements matching a selector;
 -   `getAttribute` returns an element's value for some attribute; and
@@ -377,8 +378,8 @@ We'll implement simplified versions of these APIs.[^simplified]
 [^simplified]: The simplifications will be minor. `querySelectorAll`
 will return an array, not this thing called a `NodeList`; `innerHTML`
 will only write the HTML contents of an element, and won't allow
-reading those contents. This suffices to demonstrate JS-browser
-interaction.
+reading those contents. This suffices to demonstrate
+JavaScript-browser interaction.
 
 Let's start with `querySelectorAll`. First, export a function:
 
@@ -618,7 +619,7 @@ attribute values automatically. For example, the `id` property on
 of the underlying `Element`. This is very convenient, and avoids
 calling `setAttribute` and `getAttribute` all over the place. But this
 reflection only applies to certain fields; setting made-up JavaScript
-properties won't create corresponding HTML attributes.
+properties won't create corresponding HTML attributes, nor vice-versa.
 :::
 
 [idAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id
