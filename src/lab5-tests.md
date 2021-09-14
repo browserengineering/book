@@ -100,18 +100,18 @@ Testing the layout tree
 
     >>> lab5.print_tree(browser.document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=57.59999999999998)
-         BlockLayout(x=13, y=18, width=774, height=57.59999999999998)
+       BlockLayout(x=13, y=18, width=774, height=60.0)
+         BlockLayout(x=13, y=18, width=774, height=60.0)
            BlockLayout(x=13, y=18, width=774, height=0)
-           InlineLayout(x=13, y=18, width=774, height=19.199999999999996)
-           BlockLayout(x=13, y=37.199999999999996, width=774, height=19.199999999999996)
-             BlockLayout(x=13, y=37.199999999999996, width=774, height=0)
-             InlineLayout(x=13, y=37.199999999999996, width=774, height=19.199999999999996)
-           BlockLayout(x=13, y=56.39999999999999, width=774, height=0)
-           InlineLayout(x=13, y=56.39999999999999, width=774, height=19.19999999999999)
+           InlineLayout(x=13, y=18, width=774, height=20.0)
+           BlockLayout(x=13, y=38.0, width=774, height=20.0)
+             BlockLayout(x=13, y=38.0, width=774, height=0)
+             InlineLayout(x=13, y=38.0, width=774, height=20.0)
+           BlockLayout(x=13, y=58.0, width=774, height=0)
+           InlineLayout(x=13, y=58.0, width=774, height=20.0)
 
-    >>> browser.display_list
-    [DrawText(top=20.4 left=13 bottom=36.4 text=text font=Font size=16 weight=normal slant=roman style=None), DrawText(top=39.599999999999994 left=13 bottom=55.599999999999994 text=text font=Font size=16 weight=normal slant=roman style=None), DrawText(top=58.79999999999998 left=13 bottom=74.79999999999998 text=text font=Font size=16 weight=normal slant=roman style=None)]
+    >>> browser.display_list #doctest
+    [DrawText(top=21.0 left=13 bottom=37.0 text=text font=Font size=16 weight=normal slant=roman style=None), DrawText(top=41.0 left=13 bottom=57.0 text=text font=Font size=16 weight=normal slant=roman style=None), DrawText(top=61.0 left=13 bottom=77.0 text=text font=Font size=16 weight=normal slant=roman style=None)]
 
 Testing background painting
 ===========================
@@ -133,14 +133,14 @@ Testing background painting
 
     >>> lab5.print_tree(browser.document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=19.199999999999996)
-         BlockLayout(x=13, y=18, width=774, height=19.199999999999996)
-           InlineLayout(x=13, y=18, width=774, height=19.199999999999996)
+       BlockLayout(x=13, y=18, width=774, height=20.0)
+         BlockLayout(x=13, y=18, width=774, height=20.0)
+           InlineLayout(x=13, y=18, width=774, height=20.0)
 
 The first display list entry is now a gray rect, since it's for a `<pre>` element:
 
     >>> browser.display_list[0]
-    DrawRect(top=18 left=13 bottom=37.199999999999996 right=787 color=gray)
+    DrawRect(top=18 left=13 bottom=38.0 right=787 color=gray)
 
 
 Testing breakpoints in layout
@@ -156,7 +156,7 @@ Tree-based layout also supports debugging breakpoints.
     breakpoint(name='layout_pre', 'BlockLayout(x=None, y=None, width=None, height=None)')
     breakpoint(name='layout_pre', 'BlockLayout(x=None, y=None, width=None, height=None)')
     breakpoint(name='layout_pre', 'InlineLayout(x=None, y=None, width=None, height=None)')
-    breakpoint(name='layout_post', 'InlineLayout(x=13, y=18, width=774, height=19.199999999999996)')
-    breakpoint(name='layout_post', 'BlockLayout(x=13, y=18, width=774, height=19.199999999999996)')
-    breakpoint(name='layout_post', 'BlockLayout(x=13, y=18, width=774, height=19.199999999999996)')
+    breakpoint(name='layout_post', 'InlineLayout(x=13, y=18, width=774, height=20.0)')
+    breakpoint(name='layout_post', 'BlockLayout(x=13, y=18, width=774, height=20.0)')
+    breakpoint(name='layout_post', 'BlockLayout(x=13, y=18, width=774, height=20.0)')
     breakpoint(name='layout_post', 'DocumentLayout()')
