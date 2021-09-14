@@ -23,15 +23,13 @@ The browser should download JavaScript code mentioned in a `<script>` tag:
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\n" + html_page.encode("utf8"))
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n")
     >>> lab9.Browser().load(url)
-    Script returned: None
     >>> test.socket.last_request(url2)
     b'GET /js HTTP/1.0\r\nHost: test.test\r\n\r\n'
 
-If the script succeeds, the browser prints its return value:
+If the script succeeds, the browser prints nothing:
 
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nvar x = 2; x + x")
     >>> lab9.Browser().load(url)
-    Script returned: 4
 
 If instead the script crashes, the browser prints an error message:
 
@@ -52,7 +50,6 @@ For the rest of these tests we're going to use `console.log` for most testing:
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
     >>> lab9.Browser().load(url)
     Hello, world!
-    Script returned: None
 
 Note that you can print other data structures as well:
 
@@ -60,7 +57,6 @@ Note that you can print other data structures as well:
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
     >>> lab9.Browser().load(url)
     [2, 3, 4]
-    Script returned: None
 
 Let's test that variables work:
 
@@ -68,7 +64,6 @@ Let's test that variables work:
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
     >>> lab9.Browser().load(url)
     Hello!
-    Script returned: None
     
 Next let's try to do two scripts:
 
@@ -79,9 +74,7 @@ Next let's try to do two scripts:
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nvar x = 'Testing, testing';")
     >>> test.socket.respond(url3, b"HTTP/1.0 200 OK\r\n\r\nconsole.log(x);")
     >>> lab9.Browser().load(url)
-    Script returned: None
     Testing, testing
-    Script returned: None
 
 Testing querySelectorAll
 ========================

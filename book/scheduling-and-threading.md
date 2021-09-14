@@ -1210,3 +1210,27 @@ these two needs.
 * *Font caching*: look at the tkinter source code. Can you figure out where its
 font cache is?
 
+
+*HTTP Requests*: The [`XMLHttpRequest` object][xhr-tutorial] allows scripts to
+ make HTTP requests and read the responses.  Implement this API, including the
+ `addEventListener`, `open`, and `send` methods. Beware that `XMLHttpRequest`
+ calls are asynchronous:[^sync-xhr] you need to finish executing the script
+ before calling any event listeners on an `XMLHttpRequest`.[^sync-xhr-ok] That
+ will require some kind of queue of requests you need to make and the listeners
+ to call afterwards. Make sure `XMLHttpRequest`s work even if you create them
+ inside event listeners.
+    
+[^sync-xhr]: Technically, `XMLHttpRequest` supports synchronous requests as an
+option in its API, and this is supported in all browsers, though
+[strongly discouraged](https://xhr.spec.whatwg.org/#sync-warning) for web
+developers to actually use. It's discouraged because it "freezes" the website
+completely while waiting for the response, in the same way form submissions do.
+However, it's even worse, than that: because of the single-threaded nature of
+the web, other browser tabs might also be frozen at the same time if they share
+this thread.
+
+[^sync-xhr-ok]: It's ok for you to cut corners and implement this by making the
+browser make the request synchronously, using our `request` function. But the
+whole script should finish running before calling the callback.
+
+[xhr-tutorial]: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
