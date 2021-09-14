@@ -74,7 +74,7 @@ chapter.
     ownership. You may have to do some sleuthing.
 
 ::: {.quirk}
-Note to JS experts: Dukpy does not implement newer JS syntax like
+Note to JavaScript experts: Dukpy does not implement newer syntax like
 `let` and `const` or arrow functions. You'll need to use old-school
 JavaScript from the turn of the century.
 :::
@@ -350,7 +350,7 @@ class JSContext:
 ```
 
 Debugging these issues is not easy, because all these calls between
-Python and JS get pretty complicated. *Because* these bugs are hard,
+Python and JavaScript get pretty complicated. *Because* these bugs are hard,
 it's worth approaching debugging systematically and gathering a lot of
 information before attempting a fix.
 
@@ -986,7 +986,7 @@ receive an *event object* as an argument. That object should have a
 `preventDefault` method. When that method is called, the default
 action shouldn't occur.
 
-First of all, we'll need event objects. Back to our JS runtime:
+First of all, we'll need event objects. Back to our JavaScript runtime:
 
 ``` {.javascript}
 function Event(type) {
