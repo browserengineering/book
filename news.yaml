@@ -4,6 +4,14 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Running Interactive Scripts
+    link: https://browser.engineering/scripts.html
+    pubDate: Wed, 15 Sept 2021, XX:XX:XX -0600
+    description:
+      Today we’re releasing a chapter on Running Interactive Scripts.
+      Binding a JavaScript engine to our browser—and building the
+      system for passing data between JavaScript and browser code—adds
+      a whole new world of interactive web applications.
   - title: Sending Information to Servers
     link: https://browser.engineering/forms.html
     pubDate: Fri, 20 Aug 2021, 14:32:00 -0600
