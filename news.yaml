@@ -10,7 +10,7 @@ item:
     description:
       Today we’re releasing a chapter on Running Interactive Scripts.
       Binding a JavaScript engine to our browser—and building the
-      system for passing data between JavaScript and browser code—adds
+      system for passing data between JavaScript and browser code—makes possible
       a whole new world of interactive web applications.
   - title: Sending Information to Servers
     link: https://browser.engineering/forms.html
