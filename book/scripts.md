@@ -867,7 +867,7 @@ clarified and made more precise in [Chapter 13](scheduling-and-threading.md).)
 For this code to work, you'll also need to change `nodes` and `rules`
 from local variables in the `load` method to new fields on a `Tab`.
 Note that styling moved from `load` to `render`, but downloading the
-stylesheets didn't. That's because `innerHTML` created new elements
+style sheets didn't. That's because `innerHTML` created new elements
 that have to be styled, but we don't need to re-download the styles to
 do that; we just need to re-apply the styles we already have.[^update-styles]
 
@@ -955,7 +955,7 @@ server, `/comment.css`, with the contents:
 label { font-weight: bold; color: red; }
 ```
 
-Add a `link` to the guest book page so that this stylesheet is loaded.
+Add a `link` to the guest book page so that this style sheet is loaded.
 
 But even though we tell the user that their comment is too long the
 user can submit the guest book entry anyway. Oops! Let's fix that.
@@ -1207,7 +1207,7 @@ Python side, and delete any layout objects associated with it.
 
 *IDs*: When an HTML element has an `id` attribute, a JavaScript
 variable pointing to that element is predefined. So, if a page has a
-`<div id="foo"></div>`, then there's a variable `foo` refering to that
+`<div id="foo"></div>`, then there's a variable `foo` referring to that
 node.[^standard] Implement this in your browser. Make sure to handle
 the case of nodes being added and removed (such as with `innerHTML`).
 
