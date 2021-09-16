@@ -22,12 +22,12 @@ Event.prototype.preventDefault = function() {
     this.do_default = false;
 }
 
-Node.prototype.addEventListener = function(type, handler) {
+Node.prototype.addEventListener = function(type, listener) {
     if (!LISTENERS[this.handle]) LISTENERS[this.handle] = {};
     var dict = LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
-    list.push(handler);
+    list.push(listener);
 }
 
 Object.defineProperty(Node.prototype, 'innerHTML', {
