@@ -14,7 +14,7 @@
         "chrome.md": { "disabled": false, "lab": "lab7.py" },
 
         "forms.md": { "disabled": false, "lab": "lab8.py" },
-        "scripts.md": { "disabled": true, "lab": "lab9.py" },
+        "scripts.md": { "disabled": false, "lab": "lab9.py" },
         "security.md": { "disabled": true, "lab": "lab10.py" },
 
         "reflow.md": { "disabled": true, "lab": "lab11.py" },

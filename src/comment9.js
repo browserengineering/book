@@ -1,10 +1,10 @@
 var allow_submit = true;
-var p_error = document.querySelectorAll("#errors")[0];
+var label = document.querySelectorAll("label")[0];
 
 function lengthCheck() {
     allow_submit = this.getAttribute("value").length <= 100;
     if (!allow_submit) {
-        p_error.innerHTML = "Comment too long!"
+        label.innerHTML = "Comment too long!"
     }
 }
 

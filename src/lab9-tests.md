@@ -23,15 +23,13 @@ The browser should download JavaScript code mentioned in a `<script>` tag:
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\n" + html_page.encode("utf8"))
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n")
     >>> lab9.Browser().load(url)
-    Script returned: None
     >>> test.socket.last_request(url2)
     b'GET /js HTTP/1.0\r\nHost: test.test\r\n\r\n'
 
-If the script succeeds, the browser prints its return value:
+If the script succeeds, the browser prints nothing:
 
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nvar x = 2; x + x")
     >>> lab9.Browser().load(url)
-    Script returned: 4
 
 If instead the script crashes, the browser prints an error message:
 
@@ -52,7 +50,6 @@ For the rest of these tests we're going to use `console.log` for most testing:
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
     >>> lab9.Browser().load(url)
     Hello, world!
-    Script returned: None
 
 Note that you can print other data structures as well:
 
@@ -60,7 +57,6 @@ Note that you can print other data structures as well:
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
     >>> lab9.Browser().load(url)
     [2, 3, 4]
-    Script returned: None
 
 Let's test that variables work:
 
@@ -68,7 +64,6 @@ Let's test that variables work:
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
     >>> lab9.Browser().load(url)
     Hello!
-    Script returned: None
     
 Next let's try to do two scripts:
 
@@ -79,9 +74,7 @@ Next let's try to do two scripts:
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nvar x = 'Testing, testing';")
     >>> test.socket.respond(url3, b"HTTP/1.0 200 OK\r\n\r\nconsole.log(x);")
     >>> lab9.Browser().load(url)
-    Script returned: None
     Testing, testing
-    Script returned: None
 
 Testing querySelectorAll
 ========================
@@ -150,19 +143,19 @@ Once we've changed the page, the browser should rerender:
 
     >>> lab9.print_tree(b.tabs[0].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-         BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-           BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-             InlineLayout(x=13, y=18, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=18, width=774, height=14.399999999999999)
-                 TextLayout(x=13, y=19.799999999999997, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
-                 TextLayout(x=73, y=19.799999999999997, width=24, height=12, font=Font size=12 weight=normal slant=roman style=None
-                 TextLayout(x=109, y=19.799999999999997, width=12, height=12, font=Font size=12 weight=normal slant=roman style=None
-                 TextLayout(x=133, y=19.799999999999997, width=36, height=12, font=Font size=12 weight=bold slant=roman style=None
-                 TextLayout(x=181, y=19.799999999999997, width=96, height=12, font=Font size=12 weight=normal slant=roman style=None
-             InlineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-                 TextLayout(x=13, y=34.199999999999996, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+       BlockLayout(x=13, y=18, width=774, height=30.0)
+         BlockLayout(x=13, y=18, width=774, height=30.0)
+           BlockLayout(x=13, y=18, width=774, height=30.0)
+             InlineLayout(x=13, y=18, width=774, height=15.0)
+               LineLayout(x=13, y=18, width=774, height=15.0)
+                 TextLayout(x=13, y=20.25, width=48, height=12, font=Font size=12 weight=normal slant=roman style=None
+                 TextLayout(x=73, y=20.25, width=24, height=12, font=Font size=12 weight=normal slant=roman style=None
+                 TextLayout(x=109, y=20.25, width=12, height=12, font=Font size=12 weight=normal slant=roman style=None
+                 TextLayout(x=133, y=20.25, width=36, height=12, font=Font size=12 weight=bold slant=roman style=None
+                 TextLayout(x=181, y=20.25, width=96, height=12, font=Font size=12 weight=normal slant=roman style=None
+             InlineLayout(x=13, y=33.0, width=774, height=15.0)
+               LineLayout(x=13, y=33.0, width=774, height=15.0)
+                 TextLayout(x=13, y=35.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
 
 Note that there's now many `TextLayout`s inside the first `LineLayout`, one per
 new word.
@@ -183,15 +176,15 @@ The page is rerendered again:
 
     >>> lab9.print_tree(b.tabs[0].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-         BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-           BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-             InlineLayout(x=13, y=18, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=18, width=774, height=14.399999999999999)
-                 TextLayout(x=13, y=19.799999999999997, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
-             InlineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-               LineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-                 TextLayout(x=13, y=34.199999999999996, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+       BlockLayout(x=13, y=18, width=774, height=30.0)
+         BlockLayout(x=13, y=18, width=774, height=30.0)
+           BlockLayout(x=13, y=18, width=774, height=30.0)
+             InlineLayout(x=13, y=18, width=774, height=15.0)
+               LineLayout(x=13, y=18, width=774, height=15.0)
+                 TextLayout(x=13, y=20.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+             InlineLayout(x=13, y=33.0, width=774, height=15.0)
+               LineLayout(x=13, y=33.0, width=774, height=15.0)
+                 TextLayout(x=13, y=35.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
 
 Despite this, the old nodes should stick around:
 
@@ -268,16 +261,16 @@ events. The display list gives us coordinates for clicking.
 
     >>> lab9.print_tree(b.tabs[1].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-         BlockLayout(x=13, y=18, width=774, height=28.799999999999997)
-           InlineLayout(x=13, y=18, width=774, height=14.399999999999999)
-             LineLayout(x=13, y=18, width=774, height=14.399999999999999)
-               TextLayout(x=13, y=19.799999999999997, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
-               TextLayout(x=85, y=19.799999999999997, width=36, height=12, font=Font size=12 weight=normal slant=roman style=None
-           InlineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-             LineLayout(x=13, y=32.4, width=774, height=14.399999999999999)
-               InputLayout(x=13, y=34.199999999999996, width=200, height=12)
-               InputLayout(x=225, y=34.199999999999996, width=200, height=12)
+       BlockLayout(x=13, y=18, width=774, height=30.0)
+         BlockLayout(x=13, y=18, width=774, height=30.0)
+           InlineLayout(x=13, y=18, width=774, height=15.0)
+             LineLayout(x=13, y=18, width=774, height=15.0)
+               TextLayout(x=13, y=20.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+               TextLayout(x=85, y=20.25, width=36, height=12, font=Font size=12 weight=normal slant=roman style=None
+           InlineLayout(x=13, y=33.0, width=774, height=15.0)
+             LineLayout(x=13, y=33.0, width=774, height=15.0)
+               InputLayout(x=13, y=35.25, width=200, height=12)
+               InputLayout(x=225, y=35.25, width=200, height=12)
     >>> b.tabs[1].click(14, 20)
     a clicked
     >>> b.tabs[1].click(14, 40)

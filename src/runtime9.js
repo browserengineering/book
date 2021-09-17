@@ -22,12 +22,12 @@ Event.prototype.preventDefault = function() {
     this.do_default = false;
 }
 
-Node.prototype.addEventListener = function(type, handler) {
+Node.prototype.addEventListener = function(type, listener) {
     if (!LISTENERS[this.handle]) LISTENERS[this.handle] = {};
-    var dict = LISTENERS[this.handle]
+    var dict = LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
-    list.push(handler);
+    list.push(listener);
 }
 
 Object.defineProperty(Node.prototype, 'innerHTML', {
@@ -36,11 +36,12 @@ Object.defineProperty(Node.prototype, 'innerHTML', {
     }
 });
 
-function __runListeners(type, handle) {
+Node.prototype.dispatchEvent = function(evt) {
+    var type = evt.type;
+    var handle = this.handle
     var list = (LISTENERS[handle] && LISTENERS[handle][type]) || [];
-    var evt = new Event(type);
     for (var i = 0; i < list.length; i++) {
-        list[i].call(new Node(handle), evt);
+        list[i].call(this, evt);
     }
     return evt.do_default;
 }

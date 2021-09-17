@@ -60,7 +60,7 @@ def show_comments():
     for entry in ENTRIES:
         out += "<p>" + entry + "</p>"
     out += "<link rel=stylesheet src=/comment.css>"
-    out += "<div id=errors></div>"
+    out += "<label></label>"
     out += "<script src=/comment.js></script>"
     return out
 
