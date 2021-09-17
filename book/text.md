@@ -257,7 +257,7 @@ a time:[^10]
 ``` {.python expected=False}
 for word in text.split():
     w = font.measure(word)
-    if cursor_x + w >= WIDTH - HSTEP:
+    if cursor_x + w > WIDTH - HSTEP:
         cursor_y += font.metrics("linespace") * 1.25
         cursor_x = HSTEP
     self.display_list.append((cursor_x, cursor_y, word))
@@ -659,8 +659,7 @@ def flush(self):
     metrics = [font.metrics() for x, word, font in self.line]
 ```
 
-To line up the words up "along the line", let's start by computing
-where that line should be. We need to locate the tallest word:
+We need to locate the tallest word:
 
 ``` {.python}
 max_ascent = max([metric["ascent"] for metric in metrics])

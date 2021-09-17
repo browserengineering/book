@@ -273,7 +273,7 @@ one; and of course some user code in JavaScript. There's a lot of
 complexity here!
 
 ::: {.further}
-If a script runs for a long time, has an infinite loop, our browser
+If a script runs for a long time, or has an infinite loop, our browser
 locks up and become completely unresponsive to the user. This is a
 consequence of JavaScript's single-threaded semantics and its task-based,
 [run-to-completion scheduling][rtc]. Some APIs like [Web
@@ -315,7 +315,7 @@ class Tab:
 But as you go through this chapter, you'll also run into another type
 of crash: crashes in the JavaScript runtime. We can't ignore those,
 because we want our runtime to work. Debugging these crashes is a
-bear: by default Dukpy won't show a backtrace, and if the runtime code
+bear: by default DukPy won't show a backtrace, and if the runtime code
 calls into a exported function that crashes it gets even more
 confusing.
 
@@ -867,7 +867,7 @@ clarified and made more precise in [Chapter 13](scheduling-and-threading.md).)
 For this code to work, you'll also need to change `nodes` and `rules`
 from local variables in the `load` method to new fields on a `Tab`.
 Note that styling moved from `load` to `render`, but downloading the
-stylesheets didn't. That's because `innerHTML` created new elements
+style sheets didn't. That's because `innerHTML` created new elements
 that have to be styled, but we don't need to re-download the styles to
 do that; we just need to re-apply the styles we already have.[^update-styles]
 
@@ -897,7 +897,7 @@ JavaScript can now modify the web page!
 Let's try this out this in our guest book. To prevent long rants in my
 guest book, I want a 100-character limit on guest book entries.
 
-First, switch to the server codebase and add `<label>` after the guest
+First, switch to the server codebase and add a `<label>` after the guest
 book form. Initially this label will be empty, but we'll write an
 error message into it if the paragraph gets too long.
 
@@ -955,7 +955,7 @@ server, `/comment.css`, with the contents:
 label { font-weight: bold; color: red; }
 ```
 
-Add a `link` to the guest book page so that this stylesheet is loaded.
+Add a `link` to the guest book page so that this style sheet is loaded.
 
 But even though we tell the user that their comment is too long the
 user can submit the guest book entry anyway. Oops! Let's fix that.
@@ -1141,11 +1141,16 @@ Navigator. Its name was chosen to indicate a similarity to the
 [Java][javaLang] language, and the syntax is Java-esque for that
 reason. However, under the surface JavaScript is a much more dynamic
 language than Java, as is appropriate given its role as a progressive
-enhancement mechanism for the web.
+enhancement mechanism for the web. For example, any method or property on any
+object (including built-in ones like `Element`) can be dynamically
+overridden at any time. This makes it possible to [polyfill] differences
+between browsers, adding features that look built-in to other
+JavaScript that wants to use them.
 :::
 
 [javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
 [historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
+[polyfill]: https://developer.mozilla.org/en-US/docs/Glossary/Polyfill
 
 
 Summary
@@ -1153,7 +1158,7 @@ Summary
 
 Our browser now runs JavaScript applications on behalf of websites.
 Granted, it supports just four methods from the vast DOM API, but even
-those include:
+those demonstrate:
 
 - Generating handles to allow scripts to refer to page elements
 - Reading attribute values from page elements
@@ -1171,11 +1176,11 @@ Exercises
 *Node.children*: Add support for the [`children`][children] property
 on JavaScript `Node`s. `Node.children` returns the immediate `Element`
 children of a node, as an array. `Text` children are not
-included.[^13]
+included.[^text-children]
     
 [children]: https://developer.mozilla.org/en-US/docs/Web/API/ParentNode/children
 
-[^13]: The DOM method `childNodes` gives access to both elements and
+[^text-children]: The DOM method `childNodes` gives access to both elements and
     text.
 
 *createElement*: The [`document.createElement`][createElement] method
@@ -1192,8 +1197,8 @@ Implement all three methods.
 
 *removeChild*: The [`removeChild`][removeChild] method on `Node`s
 detaches the provided child and returns it, bringing that child---and
-its subtree---back into an *unnattached* state. (It can then be
-*reattached* elsewhere, with `appendChild` and `insertBefore`, or
+its subtree---back into an *detached* state. (It can then be
+*re-attached* elsewhere, with `appendChild` and `insertBefore`, or
 deleted.) Implement this method. It's more challenging to implement
 this one, because you'll need to also remove the subtree from the
 Python side, and delete any layout objects associated with it.
@@ -1202,7 +1207,7 @@ Python side, and delete any layout objects associated with it.
 
 *IDs*: When an HTML element has an `id` attribute, a JavaScript
 variable pointing to that element is predefined. So, if a page has a
-`<div id="foo"></div>`, then there's a variable `foo` refering to that
+`<div id="foo"></div>`, then there's a variable `foo` referring to that
 node.[^standard] Implement this in your browser. Make sure to handle
 the case of nodes being added and removed (such as with `innerHTML`).
 
@@ -1218,7 +1223,7 @@ bubbling*][eventBubbling]: when an event is generated on an element,
 listeners are run not just on that element but also on its ancestors.
 Implement event bubbling, and make sure listeners can call
 `stopPropagation` on the event object to stop bubbling the event up
-the tree. Double-check that clicking on lines still works, and make
+the tree. Double-check that clicking on links still works, and make
 sure `preventDefault` still successfully prevents clicks on a link
 from actually following the link.
 
