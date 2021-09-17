@@ -40,7 +40,6 @@ def color_to_sk_color(color):
         return skia.ColorBLACK
 
 def parse_rotation_transform(transform_str):
-    print(transform_str)
     left_paren = transform_str.find('(')
     right_paren = transform_str.find('deg)')
     return float(transform_str[left_paren + 1:right_paren])
@@ -137,6 +136,23 @@ class Restore:
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
             canvas.restore()
+
+class CircleMask:
+    def __init__(self, cx, cy, radius, x1, y1, x2, y2):
+        self.cx = cx
+        self.cy = cy
+        self.radius = radius
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.clear(skia.ColorBLACK)
+            canvas.drawCircle(
+                self.cx, self.cy - scroll, self.radius, skia.Paint(Color=skia.ColorWHITE))
+            canvas.saveLayer(paint=skia.Paint(BlendMode=skia.kDstIn))
 
 class Translate:
     def __init__(self, translate_x, translate_y, x1, y1, x2, y2):
@@ -494,9 +510,17 @@ class InlineLayout:
 
         opacity = float(self.node.style.get("opacity", "1.0"))
         if opacity != 1.0 or blend_mode_str:
-            print(blend_mode)
             paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
             display_list.append(SaveLayer(paint, self.x, self.y, x2, y2))
+
+        clip_path = self.node.style.get("clip-path")
+        if clip_path and clip_path == "circle()":
+            display_list.append(SaveLayer(skia.Paint(), self.x, self.y, x2, y2))
+            center_x = self.x + (x2 - self.x) / 2
+            center_y = self.y + (y2 - self.y) / 2
+            radius = (x2 - self.x) / 4
+            display_list.append(CircleMask(
+                center_x, center_y, radius, self.x, self.y, x2, y2))
 
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
@@ -506,6 +530,11 @@ class InlineLayout:
             display_list.append(rect)
         for child in self.children:
             child.paint(display_list)
+
+        if clip_path and clip_path == "circle()":
+            display_list.append(Restore(self.x, self.y, x2, y2))
+            display_list.append(Restore(self.x, self.y, x2, y2))
+
         if opacity != 1.0 or blend_mode_str:
             display_list.append(Restore(self.x, self.y, x2, y2))
         if transform_str:
@@ -640,8 +669,6 @@ def style(node, rules):
     if isinstance(node, Element) and "style" in node.attributes:
         pairs = CSSParser(node.attributes["style"]).body()
         for property, value in pairs.items():
-            print(property)
-            print(value)
             computed_value = compute_style(node, property, value)
             node.style[property] = computed_value
     for child in node.children:
@@ -724,8 +751,10 @@ class Tab:
 
     def draw(self, rasterizer):
 #        with rasterizer.surface as canvas:
-#            rect = skia.Rect.MakeLTRB(0, 0, WIDTH, HEIGHT)
-#            canvas.saveLayerAlpha(rect, 255)
+#            paint = skia.Paint(BlendMode=skia.BlendMode.kDstIn)
+#            rasterizer.draw_rect(0, 0, WIDTH, HEIGHT, width=0, fill="black")
+#            rasterizer.draw_rect(0, 0, 100, 200, width=0, fill="white")
+#            canvas.saveLayer(paint=paint)
         for cmd in self.display_list:
             if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
             if cmd.bottom < self.scroll: continue
@@ -738,8 +767,8 @@ class Tab:
             x = obj.x + obj.font.measureText(text)
             y = obj.y - self.scroll + CHROME_PX
             rasterizer.draw_polyline(x, y, x, y + obj.height)
- #       with rasterizer.surface as canvas:
- #           canvas.restore()
+#        with rasterizer.surface as canvas:
+#            canvas.restore()
 
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
