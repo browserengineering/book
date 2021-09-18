@@ -149,10 +149,10 @@ class CircleMask:
 
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
-            canvas.clear(skia.ColorBLACK)
+            canvas.saveLayer(paint=skia.Paint(Alphaf=1.0, BlendMode=skia.kDstIn))
             canvas.drawCircle(
                 self.cx, self.cy - scroll, self.radius, skia.Paint(Color=skia.ColorWHITE))
-            canvas.saveLayer(paint=skia.Paint(BlendMode=skia.kDstIn))
+            canvas.restore()
 
 class Translate:
     def __init__(self, translate_x, translate_y, x1, y1, x2, y2):
@@ -336,7 +336,7 @@ class InputLayout:
         self.font = skia.Font(
             skia.Typeface('Arial', font_style(weight, style)), size)
 
-        self.width = INPUT_WIDTH_PX
+        self.width = style_length(self.node, "width", INPUT_WIDTH_PX)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -344,7 +344,8 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-        self.height = linespace(self.font)
+        self.height = style_length(
+            self.node, "height", linespace(self.font))
 
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",
@@ -367,6 +368,54 @@ class InputLayout:
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
+def style_length(node, style_name, default_value):
+    style_val = node.style.get(style_name)
+    if style_val:
+        return int(style_val[:-2])
+    else:
+        return default_value
+
+def paint_clip_path(layout_object, display_list):
+    x2, y2 = layout_object.x + layout_object.width, layout_object.y + layout_object.height
+    clip_path = layout_object.node.style.get("clip-path")
+    if clip_path and clip_path == "circle()":
+        center_x = layout_object.x + (x2 - layout_object.x) / 2
+        center_y = layout_object.y + (y2 - layout_object.y) / 2
+        radius = (x2 - layout_object.x) / 4
+        print('circle mask')
+        display_list.append(CircleMask(
+            center_x, center_y, radius, layout_object.x, layout_object.y, x2, y2))
+
+def paint_visual_effects(layout_object, display_list):
+    restore_count = 0
+    x2, y2 = layout_object.x + layout_object.width, layout_object.y + layout_object.height
+    
+    transform_str = layout_object.node.style.get("transform", "")
+    if transform_str:
+        display_list.append(Save(layout_object.x, layout_object.y, x2, y2))
+        restore_count = restore_count + 1
+        degrees = parse_rotation_transform(transform_str)
+        display_list.append(Rotate(degrees, layout_object.x, layout_object.y, x2, y2))
+
+    blend_mode_str = layout_object.node.style.get("mix-blend-mode")
+    blend_mode = skia.BlendMode.kSrcOver
+    if blend_mode_str:
+        blend_mode = parse_blend_mode(blend_mode_str)
+
+    opacity = float(layout_object.node.style.get("opacity", "1.0"))
+    if opacity != 1.0 or blend_mode_str:
+        paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
+        display_list.append(SaveLayer(paint, layout_object.x, layout_object.y, x2, y2))
+        restore_count = restore_count + 1
+
+    clip_path = layout_object.node.style.get("clip-path")
+    if clip_path and clip_path == "circle()":
+        print('save layer for mask')
+        display_list.append(SaveLayer(skia.Paint(), layout_object.x, layout_object.y, x2, y2))
+        restore_count = restore_count + 1
+
+    return restore_count
+
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -388,7 +437,8 @@ class BlockLayout:
             self.children.append(next)
             previous = next
 
-        self.width = self.parent.width
+        self.width = style_length(self.node, "width", self.parent.width)
+        print(self.width)
         self.x = self.parent.x
 
         if self.previous:
@@ -399,17 +449,26 @@ class BlockLayout:
         for child in self.children:
             child.layout()
 
-        self.height = sum([child.height for child in self.children])
+        self.height = style_length(
+            self.node, "height", sum([child.height for child in self.children]))
+        print(self.height)
 
     def paint(self, display_list):
-        opacity = float(self.node.style.get("opacity", "1.0"))
-        x2, y2 = self.x + self.width, self.y + self.height
-        if opacity != 1.0:
-            paint = skia.Paint(Alphaf=opacity)
-            display_list.append(SaveLayer(paint, self.x, self.y, x2, y2))
+        restore_count = paint_visual_effects(self, display_list)
+
+        bgcolor = self.node.style.get("background-color",
+                                      "transparent")
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            display_list.append(rect)
+
         for child in self.children:
             child.paint(display_list)
-        if opacity != 1.0:
+
+        paint_clip_path(self, display_list)
+
+        for i in range(0, restore_count):
             display_list.append(Restore(self.x, self.y, x2, y2))
 
     def __repr__(self):
@@ -498,29 +557,7 @@ class InlineLayout:
     def paint(self, display_list):
         x2, y2 = self.x + self.width, self.y + self.height
 
-        transform_str = self.node.style.get("transform", "")
-        if transform_str:
-            display_list.append(Save(self.x, self.y, x2, y2))
-            degrees = parse_rotation_transform(transform_str)
-            display_list.append(Rotate(degrees, self.x, self.y, x2, y2))
-
-        blend_mode_str = self.node.style.get("mix-blend-mode")
-        if blend_mode_str:
-            blend_mode = parse_blend_mode(blend_mode_str)
-
-        opacity = float(self.node.style.get("opacity", "1.0"))
-        if opacity != 1.0 or blend_mode_str:
-            paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
-            display_list.append(SaveLayer(paint, self.x, self.y, x2, y2))
-
-        clip_path = self.node.style.get("clip-path")
-        if clip_path and clip_path == "circle()":
-            display_list.append(SaveLayer(skia.Paint(), self.x, self.y, x2, y2))
-            center_x = self.x + (x2 - self.x) / 2
-            center_y = self.y + (y2 - self.y) / 2
-            radius = (x2 - self.x) / 4
-            display_list.append(CircleMask(
-                center_x, center_y, radius, self.x, self.y, x2, y2))
+        restore_count = paint_visual_effects(self, display_list)
 
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
@@ -528,17 +565,14 @@ class InlineLayout:
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
             display_list.append(rect)
+            print("color")
+            print(rect)
         for child in self.children:
             child.paint(display_list)
 
-        if clip_path and clip_path == "circle()":
-            display_list.append(Restore(self.x, self.y, x2, y2))
+        for i in range(0, restore_count):
             display_list.append(Restore(self.x, self.y, x2, y2))
 
-        if opacity != 1.0 or blend_mode_str:
-            display_list.append(Restore(self.x, self.y, x2, y2))
-        if transform_str:
-            display_list.append(Restore(self.x, self.y, x2, y2))
 
     def __repr__(self):
         return "InlineLayout(x={}, y={}, width={}, height={})".format(
