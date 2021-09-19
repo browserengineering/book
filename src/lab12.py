@@ -6,11 +6,13 @@ without exercises.
 
 import ctypes
 import dukpy
+import io
 from sdl2 import *
 import skia
 import socket
 import ssl
 import urllib.parse
+from PIL import Image
 from lab4 import print_tree
 from lab4 import Element
 from lab4 import Text
@@ -23,9 +25,67 @@ from lab6 import INHERITED_PROPERTIES
 from lab6 import compute_style
 from lab6 import TagSelector
 from lab6 import DescendantSelector
-from lab10 import request
 from lab10 import url_origin
 from lab10 import JSContext
+
+def request(url, headers={}, payload=None):
+    scheme, url = url.split("://", 1)
+    assert scheme in ["http", "https"], \
+        "Unknown scheme {}".format(scheme)
+
+    host, path = url.split("/", 1)
+    path = "/" + path
+    port = 80 if scheme == "http" else 443
+
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    s.connect((host, port))
+
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
+
+    method = "POST" if payload else "GET"
+    body = "{} {} HTTP/1.0\r\n".format(method, path)
+    body += "Host: {}\r\n".format(host)
+    for header, value in headers.items():
+        body += "{}: {}\r\n".format(header, value)
+    if payload:
+        content_length = len(payload.encode("utf8"))
+        body += "Content-Length: {}\r\n".format(content_length)
+    body += "\r\n" + (payload or "")
+    s.send(body.encode("utf8"))
+    # has bugs if the same string has utf8 and non-utf8 segments. probably need
+    # to read up to \r\n and then stop
+    response = s.makefile("r", encoding="utf8", newline="\r\n")
+
+    statusline = response.readline()
+    version, status, explanation = statusline.split(" ", 2)
+    assert status == "200", "{}: {}".format(status, explanation)
+
+    headers = {}
+    while True:
+        line = response.readline()
+        if line == "\r\n": break
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+
+    if headers['content-type'] in ['text/html', 'text/css']:
+        body = response.read()
+    else:
+        body_bytes = s.recv(int(headers['content-length']))
+        body = body_bytes
+
+    s.close()
+
+    return headers, body
 
 def color_to_sk_color(color):
     if color == "white":
@@ -220,6 +280,18 @@ class DrawRect:
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
             self.top, self.left, self.bottom, self.right, self.color)
 
+class DrawImage:
+    def __init__(self, image, x1, y1, x2, y2):
+        self.image = image
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.drawImage(self.image, self.top, self.left - scroll)
+
 INPUT_WIDTH_PX = 200
 
 class LineLayout:
@@ -382,7 +454,6 @@ def paint_clip_path(layout_object, display_list):
         center_x = layout_object.x + (x2 - layout_object.x) / 2
         center_y = layout_object.y + (y2 - layout_object.y) / 2
         radius = (x2 - layout_object.x) / 4
-        print('circle mask')
         display_list.append(CircleMask(
             center_x, center_y, radius, layout_object.x, layout_object.y, x2, y2))
 
@@ -410,7 +481,6 @@ def paint_visual_effects(layout_object, display_list):
 
     clip_path = layout_object.node.style.get("clip-path")
     if clip_path and clip_path == "circle()":
-        print('save layer for mask')
         display_list.append(SaveLayer(skia.Paint(), layout_object.x, layout_object.y, x2, y2))
         restore_count = restore_count + 1
 
@@ -438,7 +508,6 @@ class BlockLayout:
             previous = next
 
         self.width = style_length(self.node, "width", self.parent.width)
-        print(self.width)
         self.x = self.parent.x
 
         if self.previous:
@@ -451,7 +520,6 @@ class BlockLayout:
 
         self.height = style_length(
             self.node, "height", sum([child.height for child in self.children]))
-        print(self.height)
 
     def paint(self, display_list):
         restore_count = paint_visual_effects(self, display_list)
@@ -463,6 +531,10 @@ class BlockLayout:
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
             display_list.append(rect)
 
+        background_image = self.node.style.get("background-image")
+        if background_image:
+            display_list.append(DrawImage(self.node.backgroundImage,
+                self.x, self.y, x2, y2))
         for child in self.children:
             child.paint(display_list)
 
@@ -565,8 +637,6 @@ class InlineLayout:
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
             display_list.append(rect)
-            print("color")
-            print(rect)
         for child in self.children:
             child.paint(display_list)
 
@@ -687,7 +757,7 @@ class CSSParser:
                     break
         return rules
 
-def style(node, rules):
+def style(node, rules, images):
     node.style = {}
     for property, default_value in INHERITED_PROPERTIES.items():
         if node.parent:
@@ -705,8 +775,10 @@ def style(node, rules):
         for property, value in pairs.items():
             computed_value = compute_style(node, property, value)
             node.style[property] = computed_value
+    if node.style.get('background-image'):
+        node.backgroundImage = images[node.style.get('background-image')[4:][:-1]]
     for child in node.children:
-        style(child, rules)
+        style(child, rules, images)
 
 SCROLL_STEP = 100
 CHROME_PX = 100
@@ -774,10 +846,27 @@ class Tab:
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
+
+        images = [rule[1]['background-image']
+                 for rule in self.rules
+                 if 'background-image' in rule[1]]
+        self.images = {}
+        for image in images:
+            # TODO: Fix CSS parser to understand quoted URLs
+            image_url = image[4:][:-1]
+            header, body_bytes = request(resolve_url(image_url, url),
+                headers=req_headers)
+            picture_stream = io.BytesIO(body_bytes)
+
+            pil_image = Image.open(picture_stream)
+            self.images[image_url] = skia.Image.frombytes(
+                array=pil_image.tobytes(),
+                dimensions=skia.ISize(pil_image.width, pil_image.height))
+
         self.render()
 
     def render(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
+        style(self.nodes, sorted(self.rules, key=cascade_priority), self.images)
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
