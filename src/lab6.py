@@ -194,8 +194,6 @@ def style(node, rules):
     if isinstance(node, Element) and "style" in node.attributes:
         pairs = CSSParser(node.attributes["style"]).body()
         for property, value in pairs.items():
-            print(property)
-            print(value)
             computed_value = compute_style(node, property, value)
             node.style[property] = computed_value
     for child in node.children:
