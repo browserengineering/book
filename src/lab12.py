@@ -671,7 +671,7 @@ class CSSParser:
     def word(self):
         start = self.i
         while self.i < len(self.s):
-            if self.s[self.i].isalnum() or self.s[self.i] in "#-.%()":
+            if self.s[self.i].isalnum() or self.s[self.i] in "#-.%()\"":
                 self.i += 1
             else:
                 break
@@ -741,6 +741,9 @@ class CSSParser:
                     break
         return rules
 
+def parse_style_url(url_str):
+    return url_str[5:][:-2]
+
 def style(node, rules, images):
     node.style = {}
     for property, default_value in INHERITED_PROPERTIES.items():
@@ -760,7 +763,8 @@ def style(node, rules, images):
             computed_value = compute_style(node, property, value)
             node.style[property] = computed_value
     if node.style.get('background-image'):
-        node.backgroundImage = images[node.style.get('background-image')[4:][:-1]]
+        node.backgroundImage = \
+            images[parse_style_url(node.style.get('background-image'))]
     for child in node.children:
         style(child, rules, images)
 
@@ -836,8 +840,7 @@ class Tab:
                  if 'background-image' in rule[1]]
         self.images = {}
         for image in images:
-            # TODO: Fix CSS parser to understand quoted URLs
-            image_url = image[4:][:-1]
+            image_url = parse_style_url(image)
             header, body_bytes = request(resolve_url(image_url, url),
                 headers=req_headers)
             picture_stream = io.BytesIO(body_bytes)
