@@ -7,6 +7,7 @@ without exercises.
 import ctypes
 import dukpy
 import io
+import math
 from sdl2 import *
 import skia
 import socket
@@ -115,6 +116,11 @@ def parse_blend_mode(blend_mode_str):
         return skia.BlendMode.kDifference
     else:
         return skia.BlendMode.kSrcOver
+
+def parse_clip_path(clip_path_str):
+    if clip_path_str.find("circle") != 0:
+        return None
+    return int(clip_path_str[7:][:-2])
 
 class Rasterizer:
     def __init__(self, surface):
@@ -454,12 +460,17 @@ def style_length(node, style_name, default_value):
 def paint_clip_path(layout_object, display_list):
     x2, y2 = layout_object.x + layout_object.width, layout_object.y + layout_object.height
     clip_path = layout_object.node.style.get("clip-path")
-    if clip_path and clip_path == "circle()":
-        center_x = layout_object.x + (x2 - layout_object.x) / 2
-        center_y = layout_object.y + (y2 - layout_object.y) / 2
-        radius = (x2 - layout_object.x) / 4
-        display_list.append(CircleMask(
-            center_x, center_y, radius, layout_object.x, layout_object.y, x2, y2))
+    if clip_path:
+        percent = parse_clip_path(clip_path)
+        if percent:
+            width = x2 - layout_object.x
+            height = y2 - layout_object.y
+            reference_val = math.sqrt(width * width + height * height) / math.sqrt(2)
+            center_x = layout_object.x + (x2 - layout_object.x) / 2
+            center_y = layout_object.y + (y2 - layout_object.y) / 2
+            radius = reference_val * percent / 100
+            display_list.append(CircleMask(
+                center_x, center_y, radius, layout_object.x, layout_object.y, x2, y2))
 
 def paint_visual_effects(layout_object, display_list):
     restore_count = 0
