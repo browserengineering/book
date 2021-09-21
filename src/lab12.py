@@ -206,9 +206,11 @@ class CircleMask:
 
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
-            canvas.saveLayer(paint=skia.Paint(Alphaf=1.0, BlendMode=skia.kDstIn))
+            canvas.saveLayer(paint=skia.Paint(
+                Alphaf=1.0, BlendMode=skia.kDstIn))
             canvas.drawCircle(
-                self.cx, self.cy - scroll, self.radius, skia.Paint(Color=skia.ColorWHITE))
+                self.cx, self.cy - scroll,
+                self.radius, skia.Paint(Color=skia.ColorWHITE))
             canvas.restore()
 
 class Rotate:
@@ -612,9 +614,7 @@ class InlineLayout:
 
     def paint(self, display_list):
         x2, y2 = self.x + self.width, self.y + self.height
-
         restore_count = paint_visual_effects(self, display_list)
-
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
