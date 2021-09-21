@@ -298,6 +298,20 @@ Now you should be able to run the browser just as it did in previous chapters,
 and have all of the same visuals. It'll probably also feel faster, because
 Skia and SDL are highly optimized libraries written in C & C++.
 
+Background images
+=================
+
+Now let's add our first visual effect: background images. A background image
+is specified in css via the `background-image` CSS property. Its true syntax
+has many options, but let's just implement a simple version of it. We'll support
+the `background-image: url("relative-url")` syntax, which says to draw an image
+as the background of an element, with the given relative URL.
+
+We'll implement this by loading all of the image URLs specified in CSS rules
+for a `Tab`. Firt we collect the image URLs:
+
+
+
 Visual effects
 ==============
 

@@ -835,12 +835,13 @@ class Tab:
                 continue
             self.rules.extend(CSSParser(body).parse())
 
-        images = [rule[1]['background-image']
+        image_url_strs = [rule[1]['background-image']
                  for rule in self.rules
                  if 'background-image' in rule[1]]
+
         self.images = {}
-        for image in images:
-            image_url = parse_style_url(image)
+        for image_url_str in image_url_strs:
+            image_url = parse_style_url(image_url_str)
             header, body_bytes = request(resolve_url(image_url, url),
                 headers=req_headers)
             picture_stream = io.BytesIO(body_bytes)
