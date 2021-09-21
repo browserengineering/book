@@ -130,9 +130,8 @@ class Rasterizer:
         with self.surface as canvas:
             canvas.clear(color)
 
-    def draw_rect(self, x1, y1, x2, y2,
+    def draw_rect(self, rect,
         fill=None, width=1):
-        rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
         paint = skia.Paint()
         if fill:
             paint.setStrokeWidth(width);
@@ -174,48 +173,36 @@ def linespace(font):
     return metrics.fDescent - metrics.fAscent
 
 class SaveLayer:
-    def __init__(self, sk_paint, x1, y1, x2, y2):
+    def __init__(self, sk_paint, rect):
         self.sk_paint = sk_paint
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+        self.rect = rect
 
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
             canvas.saveLayer(paint=self.sk_paint)
 
 class Save:
-    def __init__(self, x1, y1, x2, y2):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+    def __init__(self, rect):
+        self.rect = rect
 
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
             canvas.save()
 
 class Restore:
-    def __init__(self, x1, y1, x2, y2):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+    def __init__(self, rect):
+        self.rect = rect
 
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
             canvas.restore()
 
 class CircleMask:
-    def __init__(self, cx, cy, radius, x1, y1, x2, y2):
+    def __init__(self, cx, cy, radius, rect):
         self.cx = cx
         self.cy = cy
         self.radius = radius
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+        self.rect = rect
 
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
@@ -224,26 +211,10 @@ class CircleMask:
                 self.cx, self.cy - scroll, self.radius, skia.Paint(Color=skia.ColorWHITE))
             canvas.restore()
 
-class Translate:
-    def __init__(self, translate_x, translate_y, x1, y1, x2, y2):
-        self.translate_x = translate_x
-        self.translate_y = translate_y
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
-
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
-            canvas.translate(self.translate_x, self.translate_y)
-
 class Rotate:
-    def __init__(self, degrees, x1, y1, x2, y2):
+    def __init__(self, degrees, rect):
         self.degrees = degrees
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+        self.rect = rect
 
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
@@ -251,17 +222,15 @@ class Rotate:
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
-        self.top = y1
-        self.left = x1
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x1, y1 + linespace(self.font))
         self.text = text
         self.font = font
         self.color = color
 
-        self.bottom = y1 + linespace(self.font)
 
     def execute(self, scroll, rasterizer):
         rasterizer.draw_text(
-            self.left, self.top - scroll,
+            self.rect.left(), self.rect.top() - scroll,
             self.text,
             self.font,
             self.color,
@@ -271,36 +240,32 @@ class DrawText:
         return "DrawText(text={})".fpormat(self.text)
 
 class DrawRect:
-    def __init__(self, x1, y1, x2, y2, color):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+    def __init__(self, rect, color):
+        self.rect = rect
         self.color = color
 
     def execute(self, scroll, rasterizer):
         rasterizer.draw_rect(
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
+            skia.Rect.MakeLTRB(
+                self.left, self.top - scroll,
+                self.right, self.bottom - scroll),
             width=0,
             fill=self.color,
         )
 
     def __repr__(self):
+        (left, top, right, bottom) = tuple(self.rect)
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
-            self.top, self.left, self.bottom, self.right, self.color)
+            left, top, right, bottom, self.color)
 
 class DrawImage:
-    def __init__(self, image, x1, y1, x2, y2):
+    def __init__(self, image, rect):
         self.image = image
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+        self.rect = rect
 
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
-            canvas.drawImage(self.image, self.top, self.left - scroll)
+            canvas.drawImage(self.image, self.rect.top(), self.rect.left() - scroll)
 
 INPUT_WIDTH_PX = 200
 
@@ -458,30 +423,32 @@ def style_length(node, style_name, default_value):
         return default_value
 
 def paint_clip_path(layout_object, display_list):
-    x2, y2 = layout_object.x + layout_object.width, layout_object.y + layout_object.height
+    rect = skia.Rect.MakeLTRB(layout_object.x, layout_object.y,
+        layout_object.x + layout_object.width, layout_object.y + layout_object.height)
     clip_path = layout_object.node.style.get("clip-path")
     if clip_path:
         percent = parse_clip_path(clip_path)
         if percent:
-            width = x2 - layout_object.x
-            height = y2 - layout_object.y
+            width = rect.right() - layout_object.x
+            height = rect.bottom() - layout_object.y
             reference_val = math.sqrt(width * width + height * height) / math.sqrt(2)
-            center_x = layout_object.x + (x2 - layout_object.x) / 2
-            center_y = layout_object.y + (y2 - layout_object.y) / 2
+            center_x = rect.left() + (rect.right() - rect.left()) / 2
+            center_y = rect.top() + (rect.bottom() - rect.top()) / 2
             radius = reference_val * percent / 100
             display_list.append(CircleMask(
-                center_x, center_y, radius, layout_object.x, layout_object.y, x2, y2))
+                center_x, center_y, radius, rect))
 
 def paint_visual_effects(layout_object, display_list):
     restore_count = 0
-    x2, y2 = layout_object.x + layout_object.width, layout_object.y + layout_object.height
+    rect = skia.Rect.MakeLTRB(layout_object.x, layout_object.y,
+        layout_object.x + layout_object.width, layout_object.y + layout_object.height)
     
     transform_str = layout_object.node.style.get("transform", "")
     if transform_str:
-        display_list.append(Save(layout_object.x, layout_object.y, x2, y2))
+        display_list.append(Save(rect))
         restore_count = restore_count + 1
         degrees = parse_rotation_transform(transform_str)
-        display_list.append(Rotate(degrees, layout_object.x, layout_object.y, x2, y2))
+        display_list.append(Rotate(degrees, rect))
 
     blend_mode_str = layout_object.node.style.get("mix-blend-mode")
     blend_mode = skia.BlendMode.kSrcOver
@@ -491,12 +458,12 @@ def paint_visual_effects(layout_object, display_list):
     opacity = float(layout_object.node.style.get("opacity", "1.0"))
     if opacity != 1.0 or blend_mode_str:
         paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
-        display_list.append(SaveLayer(paint, layout_object.x, layout_object.y, x2, y2))
+        display_list.append(SaveLayer(paint, rect))
         restore_count = restore_count + 1
 
     clip_path = layout_object.node.style.get("clip-path")
     if clip_path and clip_path == "circle()":
-        display_list.append(SaveLayer(skia.Paint(), layout_object.x, layout_object.y, x2, y2))
+        display_list.append(SaveLayer(skia.Paint(), rect))
         restore_count = restore_count + 1
 
     return restore_count
@@ -538,30 +505,31 @@ class BlockLayout:
 
 
     def paint(self, display_list):
-        x2, y2 = self.x + self.width, self.y + self.height
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width, self.y + self.height)
         restore_count = paint_visual_effects(self, display_list)
 
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            rect = DrawRect(rect, bgcolor)
             display_list.append(rect)
 
         background_image = self.node.style.get("background-image")
         if background_image:
             display_list.append(DrawImage(self.node.backgroundImage,
-                self.x, self.y, x2, y2))
+                rect))
         for child in self.children:
             child.paint(display_list)
 
         paint_clip_path(self, display_list)
 
         for i in range(0, restore_count):
-            display_list.append(Restore(self.x, self.y, x2, y2))
+            display_list.append(Restore(rect))
 
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+            self.x, self.x, self.width, self.height)
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
@@ -889,14 +857,9 @@ class Tab:
         self.document.paint(self.display_list)
 
     def draw(self, rasterizer):
-#        with rasterizer.surface as canvas:
-#            paint = skia.Paint(BlendMode=skia.BlendMode.kDstIn)
-#            rasterizer.draw_rect(0, 0, WIDTH, HEIGHT, width=0, fill="black")
-#            rasterizer.draw_rect(0, 0, 100, 200, width=0, fill="white")
-#            canvas.saveLayer(paint=paint)
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
-            if cmd.bottom < self.scroll: continue
+            if cmd.rect.top() > self.scroll + HEIGHT - CHROME_PX: continue
+            if cmd.rect.bottom() < self.scroll: continue
             cmd.execute(self.scroll - CHROME_PX, rasterizer)
 
         if self.focus:
@@ -906,8 +869,6 @@ class Tab:
             x = obj.x + obj.font.measureText(text)
             y = obj.y - self.scroll + CHROME_PX
             rasterizer.draw_polyline(x, y, x, y + obj.height)
-#        with rasterizer.surface as canvas:
-#            canvas.restore()
 
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
@@ -1061,11 +1022,11 @@ class Browser:
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        rasterizer.draw_rect(10, 10, 30, 30)
+        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 10, 30, 30))
         rasterizer.draw_text(11, 0, "+", buttonfont)
 
         # Draw the URL address bar:
-        rasterizer.draw_rect(40, 50, WIDTH - 10, 90)
+        rasterizer.draw_rect(skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
         if self.focus == "address bar":
             rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
@@ -1075,7 +1036,7 @@ class Browser:
             rasterizer.draw_text(55, 55, url, buttonfont)
 
         # Draw the back button:
-        rasterizer.draw_rect(10, 50, 35, 90)
+        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
         rasterizer.draw_polyline(
             15, 70, 30, 55, 30, 85, True)
 
