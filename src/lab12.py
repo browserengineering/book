@@ -47,7 +47,6 @@ def request(url, headers={}, payload=None):
         proto=socket.IPPROTO_TCP,
     )
     s.connect((host, port))
-
     if scheme == "https":
         ctx = ssl.create_default_context()
         s = ctx.wrap_socket(s, server_hostname=host)
@@ -62,8 +61,10 @@ def request(url, headers={}, payload=None):
         body += "Content-Length: {}\r\n".format(content_length)
     body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
-    # has bugs if the same string has utf8 and non-utf8 segments. probably need
-    # to read up to \r\n and then stop
+
+    # This has bugs if the same string has utf8 and non-utf8 segments.
+    # Probably need to read up to \r\n and then stop, but it doesn't always
+    # reproduce.
     response = s.makefile("r", encoding="utf8", newline="\r\n")
 
     statusline = response.readline()
@@ -521,13 +522,14 @@ class BlockLayout:
         self.height = style_length(
             self.node, "height", sum([child.height for child in self.children]))
 
+
     def paint(self, display_list):
+        x2, y2 = self.x + self.width, self.y + self.height
         restore_count = paint_visual_effects(self, display_list)
 
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
             display_list.append(rect)
 
