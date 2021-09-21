@@ -5,15 +5,12 @@ prev: security
 next: rendering-architecture
 ...
 
-In addition to drawing text and color, browsers can apply transparency, clips,
-transforms, scrolling filters and blend modes. These *visual effects* have two
-characteristics. Thhey apply:
-
-* *after* layout and painting is done, and
-* to large pieces of the DOM---often a whole subtree---and not just one node.
-
- To implement them, we'll add a new phase of rendering called *compositing*. It
- will go after paint and before drawing.
+Right now our browser can draw text and rectangles of various colors. But
+that's pretty boring! Browsers have all sorts of great ways to make content
+look great on the screen. These are called *visual effects*---visual because
+they affect how it looks, but not how it functions under the hood or lays out.
+Therefore these effects are extensions to the *paint* and *draw* parts of
+rendering.
 
 Skia replaces Tkinter
 =====================
@@ -116,9 +113,8 @@ class Rasterizer:
         with self.surface as canvas:
             canvas.clear(color)
 
-    def draw_rect(self, x1, y1, x2, y2,
+    def draw_rect(self, rect,
         fill=None, width=1):
-        rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
         paint = skia.Paint()
         if fill:
             paint.setStrokeWidth(width);
@@ -163,7 +159,7 @@ here is `DrawText.execute`:
 ``` {.python}
     def execute(self, scroll, rasterizer):
         rasterizer.draw_text(
-            self.left, self.top - scroll,
+            self.rect.left(), self.rect.top() - scroll,
             self.text,
             self.font,
             self.color,
@@ -210,11 +206,11 @@ Then we draw the browser UI elements:
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        rasterizer.draw_rect(10, 10, 30, 30)
+        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 10, 30, 30))
         rasterizer.draw_text(11, 0, "+", buttonfont)
 
         # Draw the URL address bar:
-        rasterizer.draw_rect(40, 50, WIDTH - 10, 90)
+        rasterizer.draw_rect(skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
         if self.focus == "address bar":
             rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
@@ -224,7 +220,7 @@ Then we draw the browser UI elements:
             rasterizer.draw_text(55, 55, url, buttonfont)
 
         # Draw the back button:
-        rasterizer.draw_rect(10, 50, 35, 90)
+        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
         rasterizer.draw_polyline(
             15, 70, 30, 55, 30, 85, True)
 ```
