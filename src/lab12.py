@@ -81,8 +81,11 @@ def request(url, headers={}, payload=None):
     if headers['content-type'] in ['text/html', 'text/css']:
         body = response.read()
     else:
-        body_bytes = s.recv(int(headers['content-length']))
-        body = body_bytes
+        body_length = int(headers['content-length'])
+        chunk_size = 2**14
+        body = s.recv(chunk_size)
+        while len(body) < body_length:
+            body = body + s.recv(chunk_size)
 
     s.close()
 
