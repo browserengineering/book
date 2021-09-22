@@ -4,39 +4,38 @@ WBE's Python-to-JS compiler
 This file is mostly unit tests, but you could pretend it is
 documentation if you were so inclined.
 
-```
-This is some helper code for tests. First, import the compiler:
+First, some helper code for tests. We need import the compiler:
 
->>> import sys
->>> sys.path.append("infra")
->>> from compile import *
->>> test_mode()
+    >>> import sys
+    >>> sys.path.append("infra")
+    >>> from compile import *
+    >>> test_mode()
 
-Then, this pretends all variables are in scope:
+Then, this fake context pretends all variables are in scope, which is
+useful for short tests:
 
->>> class FakeCtx(dict):
-...    type = "module"
-...    def __getitem__(self, i): return True
-...    def __contains__(self, i): return True
-...    def is_global_constant(self, i): return False
+    >>> class FakeCtx(dict):
+    ...    type = "module"
+    ...    def __getitem__(self, i): return True
+    ...    def __contains__(self, i): return True
+    ...    def is_global_constant(self, i): return False
 
-Finally, this has some helper methods:
+Finally, this class has some helper methods:
 
->>> class Test:
-...     @staticmethod
-...     def expr(s):
-...         mod = AST39.parse(s)
-...         assert isinstance(mod, ast.Module) and len(mod.body) == 1
-...         stmt = mod.body[0]
-...         assert isinstance(stmt, ast.Expr)
-...         print(compile_expr(stmt.value, ctx=FakeCtx()))
-...     def stmt(s):
-...         mod = AST39.parse(s)
-...         assert isinstance(mod, ast.Module) and len(mod.body) == 1
-...         print(compile(mod.body[0], ctx=FakeCtx()))
+    >>> class Test:
+    ...     @staticmethod
+    ...     def expr(s):
+    ...         mod = AST39.parse(s)
+    ...         assert isinstance(mod, ast.Module) and len(mod.body) == 1
+    ...         stmt = mod.body[0]
+    ...         assert isinstance(stmt, ast.Expr)
+    ...         print(compile_expr(stmt.value, ctx=FakeCtx()))
+    ...     def stmt(s):
+    ...         mod = AST39.parse(s)
+    ...         assert isinstance(mod, ast.Module) and len(mod.body) == 1
+    ...         print(compile(mod.body[0], ctx=FakeCtx()))
 
 That's all the helper code we need.
-```
 
 Compiling methods 
 -----------------
@@ -275,6 +274,16 @@ compiler state:
     >>> Test.stmt("import ssl")
     // Please configure the 'ssl' module
     >>> assert "ssl" in RT_IMPORTS
+
+However, `from ... import` statements *are* supported, and are used to
+deduplicate the code a bit:
+
+    >>> Test.stmt("from lab1 import request")
+    import { request } from "./lab1.js";
+    >>> assert "request" in LAB_IMPORT_FNS
+    >>> Test.stmt("from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP")
+    import { WIDTH, HEIGHT, HSTEP, VSTEP } from "./lab2.js";
+    >>> assert "WIDTH" in LAB_IMPORT_CONSTANTS
 
 Functions become function definitions:
 
