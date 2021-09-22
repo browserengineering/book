@@ -77,9 +77,6 @@ class JSContext:
             child.parent = elt
         self.tab.render()
 
-SCROLL_STEP = 100
-CHROME_PX = 100
-
 class Tab:
     def __init__(self):
         self.history = []
