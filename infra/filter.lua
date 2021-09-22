@@ -74,6 +74,12 @@ function Div(el)
     if el.attributes["height"] then
        src = src .. " height=\"" .. el.attributes["height"] .. "\""
     end
+    if el.attributes["big-height"] then
+       src = src .. " data-big-height=\"" .. el.attributes["big-height"] .. "\""
+    end
+    if el.attributes["small-height"] then
+       src = src .. " data-small-height=\"" .. el.attributes["small-height"] .. "\""
+    end
     src = src .. "></iframe>"
     return pandoc.RawBlock("html", src)
   elseif el.classes[1] == "cmd" then
