@@ -310,7 +310,91 @@ as the background of an element, with the given relative URL.
 We'll implement this by loading all of the image URLs specified in CSS rules
 for a `Tab`. Firt we collect the image URLs:
 
+``` {.python}
+    def load(self, url, body=None):
+        # ...
 
+        image_url_strs = [rule[1]['background-image']
+                for rule in self.rules
+                if 'background-image' in rule[1]]
+```
+
+And then load them. But to load them we'll have to augment the `request`
+function to support binary image content types (currently it only supports
+`text/html` and `text/css` encoded in `utf-8`). A PNG image has the content
+type `image/png`, and is of course not `utf-8`, it's an encoded PNG file.
+Adding this support is pretty easy. When reading the response, first read the
+headers, then check for the `content-type header`, and if it's not HTML
+or CSS then don't decode it and instead return the raw bytes:
+``` {.python}
+    if not 'content-type' in headers or \
+        headers['content-type'] in ['text/html', 'text/css']:
+        body = response.read()
+    else:
+        # binary data
+        body_length = int(headers['content-length'])
+        chunk_size = 2**14
+        body = s.recv(chunk_size)
+        while len(body) < body_length:
+            body = body + s.recv(chunk_size)
+```
+
+Now we are ready to load the images. Each image found will be loaded and
+stored into an `images` dictionary on a `Tab` keyed by URL. To load an image
+we have to first *decode* it. Images are sent over the network in one of many
+encoding formats, such as PNG or JPEG; when we need to draw them to the screen,
+we need to convert from the encoded format into a raw array of pixels. These
+pixels can then be efficiently drawn onto the screen.
+
+Skia doesn't come with image decoders built-in. In Python, the Pillow library is
+a convenient way to decode images.
+
+::: {.installation}
+`pip3 install Pillow` should install Pillow. See [here][install-pillow] for
+more details.
+:::
+
+[install-pillow]: https://pillow.readthedocs.io/en/stable/installation.html
+
+Once decoded, its output can then be converted into a byte stream and drawn
+into a canvas with Skia, like this:
+
+``` {.python}
+    def load(self, url, body=None):
+        # ...
+
+        self.images = {}
+        for image_url_str in image_url_strs:
+            image_url = parse_style_url(image_url_str)
+            header, body_bytes = request(
+                resolve_url(image_url, url),
+                headers=req_headers)
+            picture_stream = io.BytesIO(body_bytes)
+
+            pil_image = Image.open(picture_stream)
+            self.images[image_url] = skia.Image.frombytes(
+                array=pil_image.tobytes(),
+                dimensions=skia.ISize(
+                    pil_image.width, pil_image.height))
+```
+
+Now that the images are loaded, the next step is to paint them into the display
+list. We'll need a new display list object called `DrawImage`:
+
+``` {.python}
+class DrawImage:
+    def __init__(self, image, rect):
+        self.image = image
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.drawImage(
+                self.image, self.rect.top(),
+                self.rect.left() - scroll)
+```
+
+Then we just need to 
 
 Visual effects
 ==============

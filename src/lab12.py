@@ -79,9 +79,11 @@ def request(url, headers={}, payload=None):
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
 
-    if headers['content-type'] in ['text/html', 'text/css']:
+    if not 'content-type' in headers or \
+        headers['content-type'] in ['text/html', 'text/css']:
         body = response.read()
     else:
+        # binary data
         body_length = int(headers['content-length'])
         chunk_size = 2**14
         body = s.recv(chunk_size)
@@ -224,11 +226,10 @@ class Rotate:
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
+        self.font = font
         self.rect = skia.Rect.MakeLTRB(x1, y1, x1, y1 + linespace(self.font))
         self.text = text
-        self.font = font
         self.color = color
-
 
     def execute(self, scroll, rasterizer):
         rasterizer.draw_text(
@@ -239,7 +240,7 @@ class DrawText:
         )
 
     def __repr__(self):
-        return "DrawText(text={})".fpormat(self.text)
+        return "DrawText(text={})".format(self.text)
 
 class DrawRect:
     def __init__(self, rect, color):
@@ -249,8 +250,8 @@ class DrawRect:
     def execute(self, scroll, rasterizer):
         rasterizer.draw_rect(
             skia.Rect.MakeLTRB(
-                self.left, self.top - scroll,
-                self.right, self.bottom - scroll),
+                self.rect.left(), self.rect.top() - scroll,
+                self.rect.right(), self.rect.bottom() - scroll),
             width=0,
             fill=self.color,
         )
@@ -267,7 +268,9 @@ class DrawImage:
 
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
-            canvas.drawImage(self.image, self.rect.top(), self.rect.left() - scroll)
+            canvas.drawImage(
+                self.image, self.rect.top(),
+                self.rect.left() - scroll)
 
 INPUT_WIDTH_PX = 200
 
@@ -397,12 +400,10 @@ class InputLayout:
             self.node, "height", linespace(self.font))
 
     def paint(self, display_list):
-        bgcolor = self.node.style.get("background-color",
-                                      "transparent")
-        if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width, self.y + self.height)
+
+        paint_background(self.node, display_list, rect)
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -470,6 +471,17 @@ def paint_visual_effects(layout_object, display_list):
 
     return restore_count
 
+def paint_background(node, display_list, rect):
+    bgcolor = node.style.get("background-color",
+                                  "transparent")
+    if bgcolor != "transparent":
+        display_list.append(DrawRect(rect, bgcolor))
+
+    background_image = node.style.get("background-image")
+    if background_image:
+        display_list.append(DrawImage(node.backgroundImage,
+            rect))
+
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -511,16 +523,8 @@ class BlockLayout:
             self.x, self.y, self.x + self.width, self.y + self.height)
         restore_count = paint_visual_effects(self, display_list)
 
-        bgcolor = self.node.style.get("background-color",
-                                      "transparent")
-        if bgcolor != "transparent":
-            rect = DrawRect(rect, bgcolor)
-            display_list.append(rect)
+        paint_background(self.node, display_list, rect)
 
-        background_image = self.node.style.get("background-image")
-        if background_image:
-            display_list.append(DrawImage(self.node.backgroundImage,
-                rect))
         for child in self.children:
             child.paint(display_list)
 
@@ -613,19 +617,19 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
-        x2, y2 = self.x + self.width, self.y + self.height
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
         restore_count = paint_visual_effects(self, display_list)
-        bgcolor = self.node.style.get("background-color",
-                                      "transparent")
-        if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+
+        paint_background(self.node, display_list, rect)
+
         for child in self.children:
             child.paint(display_list)
 
         for i in range(0, restore_count):
-            display_list.append(Restore(self.x, self.y, x2, y2))
+            display_list.append(Restore(rect))
 
 
     def __repr__(self):
@@ -842,14 +846,16 @@ class Tab:
         self.images = {}
         for image_url_str in image_url_strs:
             image_url = parse_style_url(image_url_str)
-            header, body_bytes = request(resolve_url(image_url, url),
+            header, body_bytes = request(
+                resolve_url(image_url, url),
                 headers=req_headers)
             picture_stream = io.BytesIO(body_bytes)
 
             pil_image = Image.open(picture_stream)
             self.images[image_url] = skia.Image.frombytes(
                 array=pil_image.tobytes(),
-                dimensions=skia.ISize(pil_image.width, pil_image.height))
+                dimensions=skia.ISize(
+                    pil_image.width, pil_image.height))
 
         self.render()
 
