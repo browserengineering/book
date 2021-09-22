@@ -9,7 +9,8 @@ import ssl
 import tkinter
 import tkinter.font
 from lab1 import request
-from lab3 import get_font
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
+from lab3 import FONTS, get_font
 
 class Text:
     def __init__(self, text, parent):
@@ -132,11 +133,6 @@ class HTMLParser:
             parent = self.unfinished[-1]
             parent.children.append(node)
         return self.unfinished.pop()
-            
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
-
-SCROLL_STEP = 100
 
 class Layout:
     def __init__(self, tree):

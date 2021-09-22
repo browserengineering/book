@@ -8,24 +8,13 @@ import socket
 import ssl
 import tkinter
 import tkinter.font
-from lab4 import print_tree
 from lab1 import request
-from lab3 import get_font
-from lab4 import Element
-from lab4 import HTMLParser
-from lab4 import Text
-from lab5 import DocumentLayout
-from lab5 import DrawRect
-from lab6 import cascade_priority
-from lab6 import layout_mode
-from lab6 import resolve_url
-from lab6 import style
-from lab6 import tree_to_list
-from lab6 import CSSParser
-from lab6 import DrawText
-
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
+from lab3 import FONTS, get_font
+from lab4 import Text, Element, print_tree, HTMLParser
+from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
+from lab6 import DocumentLayout, BlockLayout, InlineLayout, DrawText
+from lab6 import CSSParser, cascade_priority, style, resolve_url, tree_to_list
 
 class LineLayout:
     def __init__(self, node, parent, previous):
@@ -223,7 +212,7 @@ class InlineLayout:
             child.paint(display_list)
 
     def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={})".format(
+        return "InlineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
 class DocumentLayout:
@@ -251,7 +240,6 @@ class DocumentLayout:
     def __repr__(self):
         return "DocumentLayout()"
 
-SCROLL_STEP = 100
 CHROME_PX = 100
 
 class Tab:

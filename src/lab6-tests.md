@@ -35,10 +35,18 @@ Testing tree_to_list
 
     >>> browser = lab6.Browser()
     >>> browser.load(url)
+    >>> lab6.print_tree(browser.document)
+     DocumentLayout()
+       BlockLayout(x=13, y=18, width=774, height=15.0)
+         BlockLayout(x=13, y=18, width=774, height=15.0)
+           InlineLayout(x=13, y=18, width=774, height=15.0)
     >>> list = []
     >>> retval = lab6.tree_to_list(browser.document, list)
-    >>> retval
-    [DocumentLayout(), BlockLayout(x=13, y=18, width=774, height=20.0), BlockLayout(x=13, y=18, width=774, height=20.0), InlineLayout(x=13, y=18, width=774, height=20.0)]
+    >>> retval #doctest: +NORMALIZE_WHITESPACE
+    [DocumentLayout(),
+     BlockLayout(x=13, y=18, width=774, height=15.0),
+     BlockLayout(x=13, y=18, width=774, height=15.0),
+     InlineLayout(x=13, y=18, width=774, height=15.0)]
     >>> retval == list
     True
 

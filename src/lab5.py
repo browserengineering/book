@@ -9,16 +9,9 @@ import ssl
 import tkinter
 import tkinter.font
 from lab1 import request
-from lab3 import get_font
-from lab4 import print_tree
-from lab4 import Element
-from lab4 import HTMLParser
-from lab4 import Text            
-
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
-
-SCROLL_STEP = 100
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
+from lab3 import FONTS, get_font
+from lab4 import Text, Element, print_tree, HTMLParser
 
 BLOCK_ELEMENTS = [
     "html", "body", "article", "section", "nav", "aside",
