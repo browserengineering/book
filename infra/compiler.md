@@ -281,6 +281,12 @@ deduplicate the code a bit:
     >>> Test.stmt("from lab1 import request")
     import { request } from "./lab1.js";
     >>> assert "request" in LAB_IMPORT_FNS
+    >>> Test.stmt("from lab2 import HSTEP")
+    import { HSTEP } from "./lab2.js";
+    >>> assert "HSTEP" in LAB_IMPORT_CONSTANTS
+    >>> Test.stmt("from lab4 import Element")
+    import { Element } from "./lab4.js";
+    >>> assert "HSTEP" in LAB_IMPORT_CLASSES
     >>> Test.stmt("from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP")
     import { WIDTH, HEIGHT, HSTEP, VSTEP } from "./lab2.js";
     >>> assert "WIDTH" in LAB_IMPORT_CONSTANTS
