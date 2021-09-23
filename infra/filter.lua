@@ -40,13 +40,12 @@ end
 function DisableLinks(el)
   -- Links to Markdown files now link to HTML files
   if is_disabled(el.target) then
-    el2 = pandoc.Span(el.content)
-    el2.classes = { "link" }
-    return el2
-  else
+    el = pandoc.Span(el.content)
+    el.classes = { "link" }
+  elseif el.target:find(".md$") and not el.target:find("://") then
     el.target = string.gsub(el.target, "%.md", ".html")
-    return el
   end
+  return el
 end
 
 function Note(el)
