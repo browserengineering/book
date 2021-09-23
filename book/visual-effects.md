@@ -210,7 +210,8 @@ Then we draw the browser UI elements:
         rasterizer.draw_text(11, 0, "+", buttonfont)
 
         # Draw the URL address bar:
-        rasterizer.draw_rect(skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
+        rasterizer.draw_rect(
+            skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
         if self.focus == "address bar":
             rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
@@ -378,6 +379,20 @@ into a canvas with Skia, like this:
                     pil_image.width, pil_image.height))
 ```
 
+Next we need to provide access to this image from the `paint` method of a
+layout object. Since those objects don't have access to the `Tab`, the easiest
+way to do this is to save a pointer to the image on the layout object's node
+during `style`:
+
+``` {.python}
+def style(node, rules, images):
+    # ...
+    if node.style.get('background-image'):
+        node.backgroundImage = \
+            images[parse_style_url(
+                node.style.get('background-image'))]
+```
+
 Now that the images are loaded, the next step is to paint them into the display
 list. We'll need a new display list object called `DrawImage`:
 
@@ -394,7 +409,66 @@ class DrawImage:
                 self.rect.left() - scroll)
 ```
 
-Then we just need to 
+Some code that draws the background for a node into a display list; here
+we also paint `background-color`:[^paint-order]
+
+``` {.python}
+def paint_background(node, display_list, rect):
+    bgcolor = node.style.get("background-color",
+                                  "transparent")
+    if bgcolor != "transparent":
+        display_list.append(DrawRect(rect, bgcolor))
+
+    background_image = node.style.get("background-image")
+    if background_image:
+        display_list.append(DrawImage(node.backgroundImage,
+            rect))
+
+```
+
+And finally some code to paint the background image for each layout object
+type. For `BlockLayout`: it's
+
+``` {.python expected=False}
+class BlockLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+        paint_background(self.node, display_list, rect)
+        
+        for child in self.children:
+            child.paint(display_list)
+```
+
+Note how the background image is painted *before* children, just like
+`background-color`.
+
+::: {.further}
+Notice that the background image is drawn after the background
+color. One interesting question to ask about this is:
+if the image paints on top of the background color, what's the point of 
+painting the background color in the presence of a background image? One
+reason is *transparency*, which we'll get to in a bit.
+
+Another is that the
+background image may not have the same [*intrinsic size*][intrinsic-size] as
+the element it's associated with. There are a lot of options
+in the specification for the different ways to account for
+this, via CSS properties like [`background-size`][background-size] and
+[`background-repeat`][background-repeat].
+
+[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size
+[background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
+[background-repeat]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-repeat
+
+To add even more complication, in its full generality the *paint order* of
+drawing backgrounds and other painted aspects of a single element, and the
+interaction of its paint order with painting descendants, is
+[quite complicated][paint-order-stacking-context].
+
+:::
+
+[paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
 
 Visual effects
 ==============

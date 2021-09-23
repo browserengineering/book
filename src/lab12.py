@@ -768,7 +768,8 @@ def style(node, rules, images):
             node.style[property] = computed_value
     if node.style.get('background-image'):
         node.backgroundImage = \
-            images[parse_style_url(node.style.get('background-image'))]
+            images[parse_style_url(
+                node.style.get('background-image'))]
     for child in node.children:
         style(child, rules, images)
 
@@ -1036,7 +1037,8 @@ class Browser:
         rasterizer.draw_text(11, 0, "+", buttonfont)
 
         # Draw the URL address bar:
-        rasterizer.draw_rect(skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
+        rasterizer.draw_rect(
+            skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
         if self.focus == "address bar":
             rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
