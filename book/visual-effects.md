@@ -516,16 +516,27 @@ class InputLayout:
 ```
 
 Great. We can now draw rectangles of a specified width and height. But they
-still end up positioned one after another, in a way that we can't control.
-It'd be great to be able to put the rectangle anywhere on the screen. That
-can be done with the `position` CSS property. This property has a whole lot
-of complexity to it, so let's just add in a simplistic subset:
-`position:absolute`[^posabs-caveat]
+still end up positioned one after another, in a way that we can't control. It'd
+be great to be able to put the rectangle anywhere on the screen. That can be
+done with the `position` CSS property. This property has a whole lot of
+complexity to it, so let's just add in a relatively simple-to-implement subset:
+`position:relative`[^posrel-caveat], plus `top` and `left`. Setting the first
+of these tells the browser that it should take the x, y position that the
+element's top-left corner had, and add the values of `left` to x and `top` to
+y.
 
-[^posabs-caveat]: Actually, we'll implement a hacky approximation to
-`position:absolute`. In reality, `position:absolute` elements are not
-positioned according relative to the root element, but the "containing"
-positioned elements.
+[^posrel-caveat]: Note that we won't even implement all of the effects of
+`position:relative`. For example, this property has an effect on paint order,
+but we'll ignore it.
+
+This will still "take up space" where it used to be, in terms of the sizing
+of the parent element. This makes it pretty easy to implement---just figure
+out the layout without taking into account this property, then add in the
+adjustments at the end. To make things even easier, we'll treat it as a
+purely paint-time property that adjusts the display list[^posrel-caveat2]
+
+[^posrel-caveat2]: Again, this is not correct per the real definition! But
+suffices for playing around with visual effects.
 
 Visual effects
 ==============

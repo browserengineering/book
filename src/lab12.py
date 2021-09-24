@@ -399,8 +399,11 @@ class InputLayout:
             self.x = self.parent.x
 
     def paint(self, display_list):
+        (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
+
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width, self.y + self.height)
+            paint_x, paint_y, paint_x + self.width,
+            paint_y + self.height)
 
         paint_background(self.node, display_list, rect)
 
@@ -424,15 +427,13 @@ def style_length(node, style_name, default_value):
     else:
         return default_value
 
-def paint_clip_path(layout_object, display_list):
-    rect = skia.Rect.MakeLTRB(layout_object.x, layout_object.y,
-        layout_object.x + layout_object.width, layout_object.y + layout_object.height)
-    clip_path = layout_object.node.style.get("clip-path")
+def paint_clip_path(node, display_list, rect):
+    clip_path = node.style.get("clip-path")
     if clip_path:
         percent = parse_clip_path(clip_path)
         if percent:
-            width = rect.right() - layout_object.x
-            height = rect.bottom() - layout_object.y
+            width = rect.right() - rect.left()
+            height = rect.bottom() - rect.top()
             reference_val = math.sqrt(width * width + height * height) / math.sqrt(2)
             center_x = rect.left() + (rect.right() - rect.left()) / 2
             center_y = rect.top() + (rect.bottom() - rect.top()) / 2
@@ -440,30 +441,28 @@ def paint_clip_path(layout_object, display_list):
             display_list.append(CircleMask(
                 center_x, center_y, radius, rect))
 
-def paint_visual_effects(layout_object, display_list):
+def paint_visual_effects(node, display_list, rect):
     restore_count = 0
-    rect = skia.Rect.MakeLTRB(layout_object.x, layout_object.y,
-        layout_object.x + layout_object.width, layout_object.y + layout_object.height)
     
-    transform_str = layout_object.node.style.get("transform", "")
+    transform_str = node.style.get("transform", "")
     if transform_str:
         display_list.append(Save(rect))
         restore_count = restore_count + 1
         degrees = parse_rotation_transform(transform_str)
         display_list.append(Rotate(degrees, rect))
 
-    blend_mode_str = layout_object.node.style.get("mix-blend-mode")
+    blend_mode_str = node.style.get("mix-blend-mode")
     blend_mode = skia.BlendMode.kSrcOver
     if blend_mode_str:
         blend_mode = parse_blend_mode(blend_mode_str)
 
-    opacity = float(layout_object.node.style.get("opacity", "1.0"))
+    opacity = float(node.style.get("opacity", "1.0"))
     if opacity != 1.0 or blend_mode_str:
         paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
         display_list.append(SaveLayer(paint, rect))
         restore_count = restore_count + 1
 
-    clip_path = layout_object.node.style.get("clip-path")
+    clip_path = node.style.get("clip-path")
     if clip_path and clip_path == "circle()":
         display_list.append(SaveLayer(skia.Paint(), rect))
         restore_count = restore_count + 1
@@ -478,8 +477,25 @@ def paint_background(node, display_list, rect):
 
     background_image = node.style.get("background-image")
     if background_image:
+        print(rect)
         display_list.append(DrawImage(node.backgroundImage,
             rect))
+
+def paint_coords(node, x, y):
+    if not node.style.get("position") == "relative":
+        return (x, y)
+
+    paint_x = x
+    paint_y = y
+
+    left = node.style.get("top")
+    if left:
+        paint_x = paint_x + int(left[:-2])
+    top = node.style.get("top")
+    if top:
+        paint_y = paint_y + int(top[:-2])
+
+    return (paint_x, paint_y)
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -520,16 +536,18 @@ class BlockLayout:
 
 
     def paint(self, display_list):
+        (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width, self.y + self.height)
-        restore_count = paint_visual_effects(self, display_list)
+            paint_x, paint_y, paint_x + self.width, paint_y + self.height)
+
+        restore_count = paint_visual_effects(self.node, display_list, rect)
 
         paint_background(self.node, display_list, rect)
 
         for child in self.children:
             child.paint(display_list)
 
-        paint_clip_path(self, display_list)
+        paint_clip_path(self.node, display_list, rect)
 
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
@@ -618,11 +636,13 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
+        (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
 
-        restore_count = paint_visual_effects(self, display_list)
+        rect = skia.Rect.MakeLTRB(
+            paint_x, paint_y, paint_x + self.width,
+            paint_y + self.height)
+
+        restore_count = paint_visual_effects(self.node, display_list, rect)
 
         paint_background(self.node, display_list, rect)
 
