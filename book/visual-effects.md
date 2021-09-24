@@ -465,10 +465,67 @@ To add even more complication, in its full generality the *paint order* of
 drawing backgrounds and other painted aspects of a single element, and the
 interaction of its paint order with painting descendants, is
 [quite complicated][paint-order-stacking-context].
-
 :::
 
 [paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
+
+Size and position
+=================
+
+Next let's add a way to set the width and height of block and input elements.
+Right now, block elements size to the dimensions of their inline and input
+content, and input elements have a fixed size. But we're not just displaying
+text and forms any more---now that we're drawing visual effects such as colors,
+images and so on. So we should be able to do things like draw a rectangle
+of a given color on the screen. That is accomplished with the `width` and
+`height` CSS properties.
+
+Support for these properties turns out to be easy---if the property is set, use
+it, and otherwise use the built-in sizing. For `BlockLayout`:
+
+``` {.python}
+def style_length(node, style_name, default_value):
+    style_val = node.style.get(style_name)
+    if style_val:
+        return int(style_val[:-2])
+    else:
+        return default_value
+
+class BlockLayout:
+    # ...
+    def layout(self):
+        # ...
+        self.width = style_length(
+            self.node, "width", self.parent.width)
+        # ...
+        self.height = style_length(
+            self.node, "height",
+            sum([child.height for child in self.children]))
+```
+
+And `InputLayout`:
+
+``` {.python}
+class InputLayout:
+    # ...
+    def layout(self):
+        # ...
+        self.width = style_length(self.node, "width", INPUT_WIDTH_PX)
+        self.height = style_length(
+            self.node, "height", linespace(self.font))
+```
+
+Great. We can now draw rectangles of a specified width and height. But they
+still end up positioned one after another, in a way that we can't control.
+It'd be great to be able to put the rectangle anywhere on the screen. That
+can be done with the `position` CSS property. This property has a whole lot
+of complexity to it, so let's just add in a simplistic subset:
+`position:absolute`[^posabs-caveat]
+
+[^posabs-caveat]: Actually, we'll implement a hacky approximation to
+`position:absolute`. In reality, `position:absolute` elements are not
+positioned according relative to the root element, but the "containing"
+positioned elements.
 
 Visual effects
 ==============

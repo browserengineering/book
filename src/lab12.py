@@ -389,15 +389,14 @@ class InputLayout:
             skia.Typeface('Arial', font_style(weight, style)), size)
 
         self.width = style_length(self.node, "width", INPUT_WIDTH_PX)
+        self.height = style_length(
+            self.node, "height", linespace(self.font))
 
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
-
-        self.height = style_length(
-            self.node, "height", linespace(self.font))
 
     def paint(self, display_list):
         rect = skia.Rect.MakeLTRB(
@@ -503,7 +502,8 @@ class BlockLayout:
             self.children.append(next)
             previous = next
 
-        self.width = style_length(self.node, "width", self.parent.width)
+        self.width = style_length(
+            self.node, "width", self.parent.width)
         self.x = self.parent.x
 
         if self.previous:
@@ -515,7 +515,8 @@ class BlockLayout:
             child.layout()
 
         self.height = style_length(
-            self.node, "height", sum([child.height for child in self.children]))
+            self.node, "height",
+            sum([child.height for child in self.children]))
 
 
     def paint(self, display_list):
