@@ -139,6 +139,7 @@ RENAME_FNS = {
 # These are filled in as import statements are read
 RT_IMPORTS = []
 LAB_IMPORT_FNS = []
+LAB_IMPORT_CONSTANTS = []
 LAB_IMPORT_CLASSES = []
 
 LIBRARY_METHODS = [
@@ -582,21 +583,25 @@ def compile(tree, ctx, indent=0):
         RT_IMPORTS.append(name)
         return " " * indent + "// Please configure the '" + name + "' module"
     elif isinstance(tree, ast.ImportFrom):
-        assert len(tree.names) == 1
-        name = tree.names[0].name
-        module = tree.module
+        assert tree.level == 0
+        assert tree.module
+        assert all(name.asname is None for name in tree.names)
+        names = [name.name for name in tree.names]
+        filename = "src/{}.py".format(tree.module)
 
-        # If the import is for a class name, load its class anme into
-        # OUR_CLASSES and its methods into OUR_METHODS.
-        if name[0].upper() == name[0]:
-            LAB_IMPORT_CLASSES.append(name)
-            filename = "src/{}.py".format(module)
-            file = open(filename)
-            tree = AST39.parse(file.read(), filename)
-            load_outline_for_class(outlines.outline(tree), name)
-        else:
-            LAB_IMPORT_FNS.append(name)
-        return " " * indent + "import {{ {} }} from \"./{}.js\"".format(name, module)
+        with open(filename) as file:
+            outline = outlines.outline(AST39.parse(file.read(), filename))
+
+        for name in names:
+            if name.isupper(): # Global constant
+                LAB_IMPORT_CONSTANTS.append(name)
+            if name[0].isupper(): # Class
+                LAB_IMPORT_CLASSES.append(name)
+                load_outline_for_class(outline, name)
+            else: # function
+                LAB_IMPORT_FNS.append(name)
+
+        return " " * indent + "import {{ {} }} from \"./{}.js\";".format(", ".join(names), tree.module)
     elif isinstance(tree, ast.ClassDef):
         assert not tree.bases
         assert not tree.keywords

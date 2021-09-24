@@ -9,6 +9,7 @@ import ssl
 import tkinter
 import tkinter.font
 from lab1 import request
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 
 class Text:
     def __init__(self, text):
@@ -42,11 +43,6 @@ def lex(body):
     if not in_tag and text:
         out.append(Text(text))
     return out
-
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
-
-SCROLL_STEP = 100
 
 FONTS = {}
 
