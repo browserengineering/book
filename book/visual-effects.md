@@ -552,10 +552,25 @@ purely paint-time property that adjusts the display list[^posrel-caveat2]
 [^posrel-caveat2]: Again, this is not correct per the real definition! But
 suffices for playing around with visual effects.
 
-With sizing and position, we also now have the ability to make content overlap!
-[^overlap-new]. Consider this example:
+Opacity and Blending
+====================
 
-<iframe src="">
+With sizing and position, we also now have the ability to make content overlap!
+[^overlap-new]. Consider this example of CSS & HTML:
+
+<textarea style="width: 300px; height: 150px">
+div { width:100px; height:100px; position:relative }
+</textarea>
+<textarea style="width: 300px; height: 150px">
+    <div style="background-color:lightblue"></div>
+    <div style="background-color:orange;left:50px;top:-25px"></div>
+    <div style="background-color:blue;left:100px;top:-50px"></div>
+</textarea>
+
+Its rendering looks like this:
+
+<iframe class=widget style="height:316px" src="widgets/lab12-example-overlap.html">
+</iframe>
 
 [^overlap-new]: That's right, it was not previously possible to do this in
 our browser. Avoiding overlap is generally good thing for text-based layouts,
@@ -563,6 +578,113 @@ because otherwise you might accidentally obscure content and not be able
 to read it. But it's needed for many kinds of UIs that need to *layer*
 content on top of other content--for instance, to show an overlap menu or
 tooltip.
+
+Right now, the blue rectangle completely obscures part of the orange one, and
+the orange one does the same to the light blue one. It would be
+nice[^why-opacity] for *some* of the orange and light blue to peek through.
+
+[^why-opacity]: Because it's a cool-looking effect, and can make sites
+easier to understand. For example, if you can see some of the content underneath
+an overlay, you know that conceptually it's there and somehow you should be
+able to make the site show it.
+
+We can easily implement that with `opacity`, a CSS property that takes a value
+from 0 to 1, 0 being completely invisible (like a window in a house) to
+completely opaque (the wall next to the window). The way to do this in Skia
+is to create a new canvas, draw the overlay content into it, and then *blend*
+that canvas into the previous canvas. It's a little complicated to think
+about without first seeing it in action, so let's do that.
+
+Because we'll be adding things other than opacity soon, let's put opacity
+into a new function called `paint_visual_effects` that will be called from
+the `paint` method of the various layout objects, just like `paint_background`
+already is:
+
+``` {.python expected=False}
+def paint_visual_effects(node, display_list, rect):
+    restore_count = 0
+
+    opacity = float(node.style.get("opacity", "1.0"))
+    if opacity != 1.0:
+        paint = skia.Paint(Alphaf=opacity
+        display_list.append(SaveLayer(paint, rect))
+        restore_count = restore_count + 1
+
+    return restore_count
+```
+
+This makes use of two new display list types, `SaveLayer` and `Restore`. Here
+is how they are implemented:
+
+``` {.python}
+class SaveLayer:
+    def __init__(self, sk_paint, rect):
+        self.sk_paint = sk_paint
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.saveLayer(paint=self.sk_paint)
+```
+
+``` {.python}
+class Restore:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.restore()
+```
+
+Finally, `BlockLayout`, `InlineLayout` and `InputLayout` all need to call
+`paint_visual_effects`. Here is `BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+        restore_count = paint_visual_effects(
+            self.node, display_list, rect)
+
+        paint_background(self.node, display_list, rect)
+
+        for child in self.children:
+            child.paint(display_list)
+        # ...
+        for i in range(0, restore_count):
+            display_list.append(Restore(rect))
+```
+
+What this code does is this: if the layout object needs to be painted with
+opacity, create a new canvas that draws the layout object and its descendants,
+and then blend that canvas into the previous canvas with the provided opacity.
+
+To understand why `canvas.saveLayer()` is the command that does this, you
+have to know that Skia thinks of a drawing as a stack of layers (like the
+layers of a cake). You can, at any time, stop drawing into one layer and either
+push a new layer on the stack (via `canvas.saveLayer()`), or pop up to the next
+lower level via `restore()`. The words "save" and "restore are there because
+all of the state of the canvas is saved off before pushing the new canvas on on
+the stack, and automatically restored when popping.[^save-like-function-call]
+
+The final part of the process is the blending that occurs of the popped canvas
+into the prevoius one. By default, the coordinate spaces and pixel densities of
+the two canvases are the same, and therefore their pixels overlap and have
+a 1:1 relationship. When applying just an opacity blend, we therefore only
+have to look at each pixel and how the colors for the two canvses blend
+for that pixel.[^not-per-pixel]
+
+[^save-like-function-call]: This is a lot like function calls in Python or many
+other computer languages. When you call a function, the local "state"
+(variables etc) of the code that calls the function is implicitly saved, and is
+available unchanged when the call completes. The blending that occurs during
+a `restore` is analogous to how a function return value is set into a local
+variable of the calling code.
+
+[^not-per-pixel] Thinking of the pixels 1:1 is not always possible as we will
+see later.
 
 Visual effects
 ==============

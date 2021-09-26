@@ -540,7 +540,8 @@ class BlockLayout:
         rect = skia.Rect.MakeLTRB(
             paint_x, paint_y, paint_x + self.width, paint_y + self.height)
 
-        restore_count = paint_visual_effects(self.node, display_list, rect)
+        restore_count = paint_visual_effects(
+            self.node, display_list, rect)
 
         paint_background(self.node, display_list, rect)
 
