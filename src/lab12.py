@@ -570,6 +570,9 @@ class InlineLayout:
 
     def layout(self):
         self.width = self.parent.width
+        self.width = style_length(self.node, "width", self.parent.width)
+
+
         self.x = self.parent.x
 
         if self.previous:
@@ -583,7 +586,9 @@ class InlineLayout:
         for line in self.children:
             line.layout()
 
-        self.height = sum([line.height for line in self.children])
+        self.height = style_length(
+            self.node, "height",
+            sum([line.height for line in self.children]))
 
     def recurse(self, node):
         if isinstance(node, Text):
