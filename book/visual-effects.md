@@ -552,6 +552,18 @@ purely paint-time property that adjusts the display list[^posrel-caveat2]
 [^posrel-caveat2]: Again, this is not correct per the real definition! But
 suffices for playing around with visual effects.
 
+With sizing and position, we also now have the ability to make content overlap!
+[^overlap-new]. Consider this example:
+
+<iframe src="">
+
+[^overlap-new]: That's right, it was not previously possible to do this in
+our browser. Avoiding overlap is generally good thing for text-based layouts,
+because otherwise you might accidentally obscure content and not be able
+to read it. But it's needed for many kinds of UIs that need to *layer*
+content on top of other content--for instance, to show an overlap menu or
+tooltip.
+
 Visual effects
 ==============
 

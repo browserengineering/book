@@ -488,7 +488,7 @@ def paint_coords(node, x, y):
     paint_x = x
     paint_y = y
 
-    left = node.style.get("top")
+    left = node.style.get("left")
     if left:
         paint_x = paint_x + int(left[:-2])
     top = node.style.get("top")
