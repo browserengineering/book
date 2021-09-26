@@ -515,6 +515,20 @@ class InputLayout:
             self.node, "height", linespace(self.font))
 ```
 
+And `InlineLayout`:
+
+``` {.python}
+class InlineLayout:
+    # ...
+    def layout(self):
+        self.width = style_length(
+            self.node, "width", self.parent.width)
+        # ...
+        self.height = style_length(
+            self.node, "height",
+            sum([line.height for line in self.children]))
+```
+
 Great. We can now draw rectangles of a specified width and height. But they
 still end up positioned one after another, in a way that we can't control. It'd
 be great to be able to put the rectangle anywhere on the screen. That can be

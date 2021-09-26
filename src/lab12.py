@@ -569,9 +569,8 @@ class InlineLayout:
         self.display_list = None
 
     def layout(self):
-        self.width = self.parent.width
-        self.width = style_length(self.node, "width", self.parent.width)
-
+        self.width = style_length(
+            self.node, "width", self.parent.width)
 
         self.x = self.parent.x
 
