@@ -66,29 +66,24 @@ def request(url, headers={}, payload=None):
     # This has bugs if the same string has utf8 and non-utf8 segments.
     # Probably need to read up to \r\n and then stop, but it doesn't always
     # reproduce.
-    response = s.makefile("r", encoding="utf8", newline="\r\n")
+    response = s.makefile("b")
 
-    statusline = response.readline()
+    statusline = response.readline().decode("utf8")
     version, status, explanation = statusline.split(" ", 2)
     assert status == "200", "{}: {}".format(status, explanation)
 
     headers = {}
     while True:
-        line = response.readline()
+        line = response.readline().decode("utf8")
         if line == "\r\n": break
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
 
     if not 'content-type' in headers or \
         headers['content-type'] in ['text/html', 'text/css']:
-        body = response.read()
+        body = response.read().decode("utf8")
     else:
-        # binary data
-        body_length = int(headers['content-length'])
-        chunk_size = 2**14
-        body = s.recv(chunk_size)
-        while len(body) < body_length:
-            body = body + s.recv(chunk_size)
+        body = response.read()
 
     s.close()
 
@@ -701,7 +696,7 @@ class CSSParser:
     def word(self):
         start = self.i
         while self.i < len(self.s):
-            if self.s[self.i].isalnum() or self.s[self.i] in "#-.%()\"":
+            if self.s[self.i].isalnum() or self.s[self.i] in "#-.%()\"'":
                 self.i += 1
             else:
                 break
@@ -880,9 +875,9 @@ class Tab:
 
             pil_image = Image.open(picture_stream)
             self.images[image_url] = skia.Image.frombytes(
-                array=pil_image.tobytes(),
-                dimensions=skia.ISize(
-                    pil_image.width, pil_image.height))
+                array=pil_image.convert("RGBA").tobytes(),
+                dimensions=pil_image.size,
+                colorType=skia.kRGBA_8888_ColorType)
 
         self.render()
 
