@@ -231,6 +231,6 @@ form.states.s-success #signup-close { display: block; }
     #signup, nav.links { display: none;}
     .note-container:before { content: " ["; }
     .note-container, .note-container:before, .note-container:after { color: navy; }
-    pre { font-size: 10px; }
+    pre { font-size: 0.8333rem; }
     #toc a { text-decoration: none; color: black; }
 }
