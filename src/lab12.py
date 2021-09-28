@@ -63,9 +63,6 @@ def request(url, headers={}, payload=None):
     body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
 
-    # This has bugs if the same string has utf8 and non-utf8 segments.
-    # Probably need to read up to \r\n and then stop, but it doesn't always
-    # reproduce.
     response = s.makefile("b")
 
     statusline = response.readline().decode("utf8")
@@ -79,8 +76,7 @@ def request(url, headers={}, payload=None):
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
 
-    if not 'content-type' in headers or \
-        headers['content-type'] in ['text/html', 'text/css']:
+    if headers.get('content-type', 'application/octet-stream').startswith("text"):
         body = response.read().decode("utf8")
     else:
         body = response.read()

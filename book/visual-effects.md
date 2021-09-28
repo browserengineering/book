@@ -323,21 +323,53 @@ for a `Tab`. Firt we collect the image URLs:
 And then load them. But to load them we'll have to augment the `request`
 function to support binary image content types (currently it only supports
 `text/html` and `text/css` encoded in `utf-8`). A PNG image has the content
-type `image/png`, and is of course not `utf-8`, it's an encoded PNG file.
-Adding this support is pretty easy. When reading the response, first read the
-headers, then check for the `content-type header`, and if it's not HTML
-or CSS then don't decode it and instead return the raw bytes:
+type `image/png`, and is of course not `utf-8`, it's an encoded PNG
+file. To fix this, we will need to decode to `utf-8` in smaller
+chunks: decoding the status line and headers is good, but decoding the
+body only happens if it's a text content type.
+
+First, when we read from the socket with `makefile`, pass the argument
+`b` instead of `r` to request raw bytes as output:
+
 ``` {.python}
-    if not 'content-type' in headers or \
-        headers['content-type'] in ['text/html', 'text/css']:
-        body = response.read()
+def request(url, headers={}, payload=None):
+    # ...
+    response = s.makefile("b")
+    # ...
+```
+
+Now you'll need to call `decode` every time you read from the file.
+First, when reading the status line:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    statusline = response.readline().decode("utf8")
+    # ...
+```
+
+Then, when reading the headers:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    while True:
+        line = response.readline().decode("utf8")
+        # ...
+    # ...
+```
+
+And finally, when reading the response, we check for the
+`Content-Type`, and only decode it if it starts with `text/`:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    if headers.get('content-type', 'application/octet-stream').startswith("text"):
+        body = response.read().decode("utf8")
     else:
-        # binary data
-        body_length = int(headers['content-length'])
-        chunk_size = 2**14
-        body = s.recv(chunk_size)
-        while len(body) < body_length:
-            body = body + s.recv(chunk_size)
+        body = response.read()
+    # ...
 ```
 
 Now we are ready to load the images. Each image found will be loaded and
@@ -374,9 +406,9 @@ into a canvas with Skia, like this:
 
             pil_image = Image.open(picture_stream)
             self.images[image_url] = skia.Image.frombytes(
-                array=pil_image.tobytes(),
-                dimensions=skia.ISize(
-                    pil_image.width, pil_image.height))
+                array=pil_image.convert("RGBA").tobytes(),
+                dimensions=pil_image.size,
+                colorType=skia.kRGBA_8888_ColorType)
 ```
 
 Next we need to provide access to this image from the `paint` method of a
