@@ -669,13 +669,6 @@ lower level via `restore()`. The words "save" and "restore are there because
 all of the state of the canvas is saved off before pushing the new canvas on on
 the stack, and automatically restored when popping.[^save-like-function-call]
 
-The final part of the process is the blending that occurs of the popped canvas
-into the prevoius one. By default, the coordinate spaces and pixel densities of
-the two canvases are the same, and therefore their pixels overlap and have
-a 1:1 relationship. When applying just an opacity blend, we therefore only
-have to look at each pixel and how the colors for the two canvses blend
-for that pixel.[^not-per-pixel]
-
 [^save-like-function-call]: This is a lot like function calls in Python or many
 other computer languages. When you call a function, the local "state"
 (variables etc) of the code that calls the function is implicitly saved, and is
@@ -683,8 +676,47 @@ available unchanged when the call completes. The blending that occurs during
 a `restore` is analogous to how a function return value is set into a local
 variable of the calling code.
 
-[^not-per-pixel] Thinking of the pixels 1:1 is not always possible as we will
+The final part of the process is applying opacity, and then blending the popped
+canvas into the previous one. Let's assume that pixels are represented
+in an RGBA-type color space[^example-rgb]. To apply the opacity, you just
+multiply the alpha channel by 
+
+By default, the coordinate spaces and pixel
+densities of the two canvases are the same, and therefore their pixels overlap
+and have a 1:1 relationship. When applying just an opacity blend, we therefore
+only have to look at each pixel and how the colors for the two canvses blend
+for that pixel.[^not-per-pixel]
+
+[^not-per-pixel]: Thinking of the pixels 1:1 is not always possible as we will
 see later.
+
+Let's now see how blending works. Assuming that pixels are represented
+in an RGBA-type color space[^example-rgb], then each of the three color
+channels is blended individually. Let's write the blending function in Python:
+[^simple-alpha]
+
+::: {.python expected=False}
+# Blends |from_color| into |to_color|.
+def blend(from_color, to_color):
+    (from_r, from_g, from_b, from_a) = tuple(from_color)
+    (to_r, to_g, t_b, to_a) = tuple(from_color)
+    return skia.Color4f(
+        to_r * (1-from_a) * to_a + from_r * from_a,
+        to_g * (1-from_a) * to_a + from_g * from_a,
+        to_b * (1-from_a) * to_a + from_b * from_a,
+        1 - (1 - from_a) * (1 - to_a))
+:::
+
+[^example-rgb]: Refer back to the Skia section of this chapter---the
+`to_sdl_surface` method needs to convert from a 32-bit ARGB format: 8 bits of
+alpha, then 8 bits each of red, green and blue.
+
+[^simple-alpha]: This formula can be found
+[here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that
+that page refers to "premultiplied alpha" colors, which means that each color
+channel has alread been multiplied by the alpha channel value. Skia does not
+use premultiplied color representations.
+
 
 Visual effects
 ==============
