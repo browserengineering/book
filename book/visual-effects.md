@@ -405,8 +405,12 @@ into a canvas with Skia, like this:
             picture_stream = io.BytesIO(body_bytes)
 
             pil_image = Image.open(picture_stream)
+            if pil_image.mode == "RGBA":
+                pil_image_bytes = pil_image.tobytes()
+            else:
+                pil_image_bytes = pil_image.convert("RGBA").tobytes()
             self.images[image_url] = skia.Image.frombytes(
-                array=pil_image.convert("RGBA").tobytes(),
+                array=pil_image_bytes,
                 dimensions=pil_image.size,
                 colorType=skia.kRGBA_8888_ColorType)
 ```
@@ -693,13 +697,14 @@ What this code does is this: if the layout object needs to be painted with
 opacity, create a new canvas that draws the layout object and its descendants,
 and then blend that canvas into the previous canvas with the provided opacity.
 
-To understand why `canvas.saveLayer()` is the command that does this, you
-have to know that Skia thinks of a drawing as a stack of layers (like the
-layers of a cake). You can, at any time, stop drawing into one layer and either
-push a new layer on the stack (via `canvas.saveLayer()`), or pop up to the next
-lower level via `restore()`. The words "save" and "restore are there because
-all of the state of the canvas is saved off before pushing the new canvas on on
-the stack, and automatically restored when popping.[^save-like-function-call]
+To understand why `canvas.saveLayer()` is the command that does this, and what
+it does under the hood, the first thing you have to know that Skia thinks of a
+drawing as a stack of layers (like the layers of a cake). You can, at any time,
+stop drawing into one layer and either push a new layer on the stack
+(via `canvas.saveLayer()`), or pop up to the next lower level via
+`restore()`. The words "save" and "restore" are there because all of the state
+of the canvas is saved off before pushing the new canvas on on the stack, and
+automatically restored when popping.[^save-like-function-call]
 
 [^save-like-function-call]: This is a lot like function calls in Python or many
 other computer languages. When you call a function, the local "state"
@@ -708,27 +713,29 @@ available unchanged when the call completes. The blending that occurs during
 a `restore` is analogous to how a function return value is set into a local
 variable of the calling code.
 
-The final part of the process is applying opacity, and then blending the popped
-canvas into the previous one. Let's assume that pixels are represented
-in an RGBA-type color space[^example-rgb]. To apply the opacity, you just
-multiply the alpha channel by 
+Let's see how blending and opacity actually work.
 
-By default, the coordinate spaces and pixel
-densities of the two canvases are the same, and therefore their pixels overlap
-and have a 1:1 relationship. When applying just an opacity blend, we therefore
-only have to look at each pixel and how the colors for the two canvses blend
-for that pixel.[^not-per-pixel]
+First, opacity: ;et's assume that pixels are
+represented in `skia.kRGBA_8888_ColorType`[^example-rgb]. To apply the opacity,
+you just multiply each pixel's alpha channel by the opacity value. In Python
+this would be:
 
-[^not-per-pixel]: Thinking of the pixels 1:1 is not always possible as we will
-see later.
+``` {.python expected=False}
+# Returns |color| with opacity applied. |color| is a skia.Color4f.
+def apply_opacity(color, opacity):
+    new_color = color
+    new_color.fA = color.fA * opacity
+    return new_color
+```
 
-Let's now see how blending works. Assuming that pixels are represented
-in an RGBA-type color space[^example-rgb], then each of the three color
-channels is blended individually. Let's write the blending function in Python:
-[^simple-alpha]
+Next, blending: let's also assume that the coordinate spaces and pixel densities
+of the two canvases are the same, and therefore their pixels overlap and have a
+1:1 relationship. Therefore we can blend each pixel in the popped canvas into
+its corresponding pixel in the restored canvas. In Python:[^simple-alpha]
 
-::: {.python expected=False}
-# Blends |from_color| into |to_color|.
+``` {.python expected=False}
+# Blends |from_color| into |to_color|. Each of the inputs are
+# skia.Color4f objects.
 def blend(from_color, to_color):
     (from_r, from_g, from_b, from_a) = tuple(from_color)
     (to_r, to_g, t_b, to_a) = tuple(from_color)
@@ -737,13 +744,36 @@ def blend(from_color, to_color):
         to_g * (1-from_a) * to_a + from_g * from_a,
         to_b * (1-from_a) * to_a + from_b * from_a,
         1 - (1 - from_a) * (1 - to_a))
-:::
+```
+
+Putting it all together, if we were to implement the `Restore` command
+ourselves from one canvas to another, we could write the following
+(pretend we have
+a `getPixel` method that returns a `skia.Color4f` and a `setPixel` that
+sets a pixel color[^real-life-reading-pixels]):
+
+``` {.python expected=False}
+def restore(from_canvas, to_canvas, width, height, opacity):
+    for x in range(0, width):
+        for y in range(0, height):
+            to_canvas.setPixel(
+                x, y,
+                blend(apply_opacity(
+                    from_canvas.getPixel(x, y))))
+```
+
+[^real-life-reading-pixels]: As you'll see later in this chapter, in real
+browsers it's a very bad idea to read canvas pixels into memory and manipulate
+them like this.  So APIs such as Skia don't make it convenient
+(a `skia.Canvas` object does have `peekPixels` and `readPixels` methods that
+are sometimes used).
 
 [^example-rgb]: Refer back to the Skia section of this chapter---the
 `to_sdl_surface` method needs to convert from a 32-bit ARGB format: 8 bits of
-alpha, then 8 bits each of red, green and blue.
+alpha, then 8 bits each of red, green and blue. Images are also converted to
+`kRGBA_8888_ColorType` when exported from a Pillow image.   
 
-[^simple-alpha]: This formula can be found
+[^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that
 that page refers to "premultiplied alpha" colors, which means that each color
 channel has alread been multiplied by the alpha channel value. Skia does not
