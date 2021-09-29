@@ -870,8 +870,12 @@ class Tab:
             picture_stream = io.BytesIO(body_bytes)
 
             pil_image = Image.open(picture_stream)
+            if pil_image.mode == "RGBA":
+                pil_image_bytes = pil_image.tobytes()
+            else:
+                pil_image_bytes = pil_image.convert("RGBA").tobytes()
             self.images[image_url] = skia.Image.frombytes(
-                array=pil_image.convert("RGBA").tobytes(),
+                array=pil_image_bytes,
                 dimensions=pil_image.size,
                 colorType=skia.kRGBA_8888_ColorType)
 
