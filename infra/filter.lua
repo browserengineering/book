@@ -40,13 +40,12 @@ end
 function DisableLinks(el)
   -- Links to Markdown files now link to HTML files
   if is_disabled(el.target) then
-    el2 = pandoc.Span(el.content)
-    el2.classes = { "link" }
-    return el2
-  else
+    el = pandoc.Span(el.content)
+    el.classes = { "link" }
+  elseif el.target:find(".md$") and not el.target:find("://") then
     el.target = string.gsub(el.target, "%.md", ".html")
-    return el
   end
+  return el
 end
 
 function Note(el)
@@ -73,6 +72,12 @@ function Div(el)
     local src = "<iframe class=\"widget\" src=\"" .. url .. "\""
     if el.attributes["height"] then
        src = src .. " height=\"" .. el.attributes["height"] .. "\""
+    end
+    if el.attributes["big-height"] then
+       src = src .. " data-big-height=\"" .. el.attributes["big-height"] .. "\""
+    end
+    if el.attributes["small-height"] then
+       src = src .. " data-small-height=\"" .. el.attributes["small-height"] .. "\""
     end
     src = src .. "></iframe>"
     return pandoc.RawBlock("html", src)

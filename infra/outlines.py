@@ -130,10 +130,33 @@ def outline(tree):
         if item: objs.append(item)
     return objs
 
+def get_imports(tree):
+    objs = []
+    assert isinstance(tree, ast.Module)
+    for cmd in tree.body:
+        if isinstance(cmd, ast.ImportFrom):
+            assert cmd.level == 0
+            assert cmd.module
+            assert all(name.asname is None for name in cmd.names)
+            names = [name.name for name in cmd.names]
+            filename = "src/{}.py".format(cmd.module)
+
+            with open(filename) as file:
+                suboutline = outline(ast.parse(file.read(), filename))
+
+            for item in suboutline:
+                if isinstance(item, IfMain):
+                    pass
+                elif isinstance(item, Const):
+                    if set(names) & set(item.names):
+                        assert set(item.names).issubset(names)
+                        objs.append(item)
+                else:
+                    if item.name in names:
+                        objs.append(item)
+    return objs
+
 if __name__ == "__main__":
-    MIN_PYTHON = (3, 9)
-    if sys.version_info < MIN_PYTHON:
-        sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
 
     parser = argparse.ArgumentParser(description="Generates outlines for each chapter's code")
     parser.add_argument("file", type=argparse.FileType())
@@ -141,7 +164,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     tree = ast.parse(args.file.read(), args.file.name)
-    ol = outline(tree)
+    ol = get_imports(tree)
+    ol.extend(outline(tree))
     if args.html:
         write_html(ol)
     else:

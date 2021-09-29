@@ -9,21 +9,12 @@ import ssl
 import tkinter
 import tkinter.font
 import urllib.parse
-from lab3 import get_font
-from lab4 import print_tree
-from lab4 import Element
-from lab4 import Text
-from lab4 import HTMLParser
-from lab5 import DrawRect
-from lab6 import cascade_priority
-from lab6 import layout_mode
-from lab6 import resolve_url
-from lab6 import style
-from lab6 import tree_to_list
-from lab6 import CSSParser
-from lab6 import DrawText
-from lab7 import LineLayout
-from lab7 import TextLayout
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
+from lab3 import FONTS, get_font
+from lab4 import Text, Element, print_tree, HTMLParser
+from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
+from lab6 import DrawText, CSSParser, cascade_priority, style, resolve_url, tree_to_list
+from lab7 import LineLayout, TextLayout, CHROME_PX
 
 def request(url, payload=None):
     scheme, url = url.split("://", 1)
@@ -79,9 +70,6 @@ def request(url, payload=None):
     s.close()
 
     return headers, body
-
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
 
 INPUT_WIDTH_PX = 200
 
@@ -292,9 +280,6 @@ class DocumentLayout:
     def __repr__(self):
         return "DocumentLayout()"
 
-SCROLL_STEP = 100
-CHROME_PX = 100
-
 class Tab:
     def __init__(self):
         self.history = []
@@ -504,7 +489,6 @@ class Browser:
         self.canvas.create_rectangle(10, 50, 35, 90, width=1)
         self.canvas.create_polygon(
             15, 70, 30, 55, 30, 85, fill='black')
-
 
 if __name__ == "__main__":
     import sys
