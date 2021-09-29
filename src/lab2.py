@@ -4,10 +4,10 @@ up to and including Chapter 2 (Drawing to the Screen),
 without exercises.
 """
 
-from lab1 import request
 import socket
 import ssl
 import tkinter
+from lab1 import request
 
 def lex(body):
     text = ""

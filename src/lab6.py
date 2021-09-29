@@ -8,14 +8,11 @@ import socket
 import ssl
 import tkinter
 import tkinter.font
-from lab4 import print_tree
 from lab1 import request
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import get_font
-from lab4 import Element
-from lab4 import HTMLParser
-from lab4 import Text
-from lab5 import BlockLayout
-from lab5 import DrawRect
+from lab4 import Text, Element, print_tree, HTMLParser
+from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
 
 def resolve_url(url, current):
     if "://" in url:
@@ -203,36 +200,6 @@ def cascade_priority(rule):
     selector, body = rule
     return selector.priority
 
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
-
-SCROLL_STEP = 100
-
-BLOCK_ELEMENTS = [
-    "html", "body", "article", "section", "nav", "aside",
-    "h1", "h2", "h3", "h4", "h5", "h6", "hgroup", "header",
-    "footer", "address", "p", "hr", "pre", "blockquote",
-    "ol", "ul", "menu", "li", "dl", "dt", "dd", "figure",
-    "figcaption", "main", "div", "table", "form", "fieldset",
-    "legend", "details", "summary"
-]
-
-def layout_mode(node):
-    if isinstance(node, Text):
-        return "inline"
-    elif node.children:
-        for child in node.children:
-            if isinstance(child, Text): continue
-            if child.tag in BLOCK_ELEMENTS:
-                return "block"
-        return "inline"
-    else:
-        return "block"
-
-    def __repr__(self):
-        return "BlockLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
-
 class InlineLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -277,7 +244,7 @@ class InlineLayout:
         font = get_font(size, weight, style)
         for word in node.text.split():
             w = font.measure(word)
-            if self.cursor_x + w > self.width - HSTEP:
+            if self.cursor_x + w > self.x + self.width:
                 self.flush()
             self.line.append((self.cursor_x, word, font, color))
             self.cursor_x += w + font.measure(" ")
@@ -309,6 +276,51 @@ class InlineLayout:
         return "InlineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
+class BlockLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def layout(self):
+        breakpoint("layout_pre", self)
+        previous = None
+        for child in self.node.children:
+            if layout_mode(child) == "inline":
+                next = InlineLayout(child, self, previous)
+            else:
+                next = BlockLayout(child, self, previous)
+            self.children.append(next)
+            previous = next
+
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for child in self.children:
+            child.layout()
+
+        self.height = sum([child.height for child in self.children])
+
+        breakpoint("layout_post", self)
+
+    def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
+    def __repr__(self):
+        return "BlockLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
@@ -317,6 +329,7 @@ class DocumentLayout:
         self.children = []
 
     def layout(self):
+        breakpoint("layout_pre", self)
         child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
@@ -325,6 +338,7 @@ class DocumentLayout:
         self.y = VSTEP
         child.layout()
         self.height = child.height + 2*VSTEP
+        breakpoint("layout_post", self)
 
     def paint(self, display_list):
         self.children[0].paint(display_list)

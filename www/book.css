@@ -53,7 +53,7 @@ nav.links {
     padding: 0 40px; position: relative; margin-bottom: 3em;
 }
 nav.links ~ nav.links { margin-top: 3em; }
-nav.links a { color: currentColor; }
+nav.links a { color: black; }
 nav.links a[rel] {
     display: block; width: 40px; height: 100%; position: absolute; top: 0;
     font-size: 36px; text-decoration: none; cursor: pointer;
@@ -102,7 +102,7 @@ body.main { padding: 0 4ex; }
     body { width: 65ex; padding: 0 17ex 0 0; }
     .note {
         float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
-        font-size: 110%; vertical-align: reset; text-align: left; color: currentColor;
+        font-size: 110%; vertical-align: reset; text-align: left; color: black;
     }
     div .note { margin-right: calc(-28ex - 1rem - 2px); }
     .note-container { font-size: 60%; vertical-align: super; cursor: auto; }
@@ -231,6 +231,6 @@ form.states.s-success #signup-close { display: block; }
     #signup, nav.links { display: none;}
     .note-container:before { content: " ["; }
     .note-container, .note-container:before, .note-container:after { color: navy; }
-    pre { font-size: 10px; }
+    pre { font-size: 0.8333rem; }
     #toc a { text-decoration: none; color: black; }
 }
