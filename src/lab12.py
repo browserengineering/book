@@ -387,7 +387,7 @@ class InputLayout:
             space = self.previous.font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
         else:
-            self.x = self.parent.
+            self.x = self.parent.x
 
     def paint(self, display_list):
         (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
