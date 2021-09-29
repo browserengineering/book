@@ -332,8 +332,7 @@ def request(url, payload=None):
     # ...
     if "set-cookie" in headers:
         kv = headers["set-cookie"]
-        key, value = kv.split("=", 1)
-        COOKIE_JAR.setdefault(origin, {})[key] = value
+        COOKIE_JAR[origin] = kv
     # ...
 ```
 
