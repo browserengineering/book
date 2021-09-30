@@ -1015,10 +1015,10 @@ should now look something like this:
 Exercises
 =========
 
-*Fonts*: Implement the `font-family` property, an inheritable
-property that names which font should be used in an element. Make
-`code` fonts use some nice monospaced font like `Courier`. Beware the
-font cache.
+*Fonts*: Implement the `font-family` property, an inheritable property
+that names which font should be used in an element. Make text inside
+`<code>` elements use a nice monospaced font like `Courier`. Beware
+the font cache.
 
 *Width/Height*: Add support to block layout objects for the `width`
 and `height` properties. These can either be a pixel value, which
