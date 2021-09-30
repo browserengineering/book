@@ -468,7 +468,6 @@ def paint_background(node, display_list, rect):
 
     background_image = node.style.get("background-image")
     if background_image:
-        print(rect)
         display_list.append(DrawImage(node.backgroundImage,
             rect))
 
@@ -765,6 +764,25 @@ class CSSParser:
 def parse_style_url(url_str):
     return url_str[5:][:-2]
 
+def get_images(image_url_strs, images, base_url, req_headers):
+    for image_url_str in image_url_strs:
+        image_url = parse_style_url(image_url_str)
+        header, body_bytes = request(
+            resolve_url(image_url, base_url),
+            headers=req_headers)
+        picture_stream = io.BytesIO(body_bytes)
+
+        pil_image = Image.open(picture_stream)
+        if pil_image.mode == "RGBA":
+            pil_image_bytes = pil_image.tobytes()
+        else:
+            pil_image_bytes = pil_image.convert("RGBA").tobytes()
+        images[image_url] = skia.Image.frombytes(
+            array=pil_image_bytes,
+            dimensions=pil_image.size,
+            colorType=skia.kRGBA_8888_ColorType)
+
+
 def style(node, rules, images):
     node.style = {}
     for property, default_value in INHERITED_PROPERTIES.items():
@@ -862,22 +880,7 @@ class Tab:
                  if 'background-image' in rule[1]]
 
         self.images = {}
-        for image_url_str in image_url_strs:
-            image_url = parse_style_url(image_url_str)
-            header, body_bytes = request(
-                resolve_url(image_url, url),
-                headers=req_headers)
-            picture_stream = io.BytesIO(body_bytes)
-
-            pil_image = Image.open(picture_stream)
-            if pil_image.mode == "RGBA":
-                pil_image_bytes = pil_image.tobytes()
-            else:
-                pil_image_bytes = pil_image.convert("RGBA").tobytes()
-            self.images[image_url] = skia.Image.frombytes(
-                array=pil_image_bytes,
-                dimensions=pil_image.size,
-                colorType=skia.kRGBA_8888_ColorType)
+        get_images(image_url_strs, self.images, url, req_headers)
 
         self.render()
 
