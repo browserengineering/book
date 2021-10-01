@@ -252,6 +252,17 @@ class DrawRect:
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
             left, top, right, bottom, self.color)
 
+class ClipRect:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.clipRect(skia.Rect.MakeLTRB(
+                self.rect.left(), self.rect.top() - scroll,
+                self.rect.right(), self.rect.bottom() - scroll))
+#            canvas.clipRect(skia.Rect.MakeLTRB(0, 0, 500, 500))
+
 class DrawImage:
     def __init__(self, image, rect):
         self.image = image
@@ -468,8 +479,12 @@ def paint_background(node, display_list, rect):
 
     background_image = node.style.get("background-image")
     if background_image:
+        display_list.append(Save(rect))
+        display_list.append(ClipRect(rect))
+        print(rect)
         display_list.append(DrawImage(node.backgroundImage,
             rect))
+        display_list.append(Restore(rect))
 
 def paint_coords(node, x, y):
     if not node.style.get("position") == "relative":
