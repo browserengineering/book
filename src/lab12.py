@@ -480,7 +480,6 @@ def paint_background(node, display_list, rect):
     if background_image:
         display_list.append(Save(rect))
         display_list.append(ClipRect(rect))
-        print(rect)
         display_list.append(DrawImage(node.backgroundImage,
             rect))
         display_list.append(Restore(rect))
@@ -787,6 +786,7 @@ def get_images(image_url_strs, base_url, images):
         picture_stream = io.BytesIO(body_bytes)
 
         pil_image = Image.open(picture_stream)
+        print(pil_image.mode)
         if pil_image.mode == "RGBA":
             pil_image_bytes = pil_image.tobytes()
         else:
