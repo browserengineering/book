@@ -393,26 +393,29 @@ Once decoded, its output can then be converted into a byte stream and drawn
 into a canvas with Skia, like this:
 
 ``` {.python}
+def get_images(image_url_strs, base_url, images):
+    for image_url_str in image_url_strs:
+        image_url = parse_style_url(image_url_str)
+        header, body_bytes = request(
+            resolve_url(image_url, base_url),
+            headers={})
+        picture_stream = io.BytesIO(body_bytes)
+
+        pil_image = Image.open(picture_stream)
+        if pil_image.mode == "RGBA":
+            pil_image_bytes = pil_image.tobytes()
+        else:
+            pil_image_bytes = pil_image.convert("RGBA").tobytes()
+        images[image_url] = skia.Image.frombytes(
+            array=pil_image_bytes,
+            dimensions=pil_image.size,
+            colorType=skia.kRGBA_8888_ColorType)
+
     def load(self, url, body=None):
         # ...
 
         self.images = {}
-        for image_url_str in image_url_strs:
-            image_url = parse_style_url(image_url_str)
-            header, body_bytes = request(
-                resolve_url(image_url, url),
-                headers=req_headers)
-            picture_stream = io.BytesIO(body_bytes)
-
-            pil_image = Image.open(picture_stream)
-            if pil_image.mode == "RGBA":
-                pil_image_bytes = pil_image.tobytes()
-            else:
-                pil_image_bytes = pil_image.convert("RGBA").tobytes()
-            self.images[image_url] = skia.Image.frombytes(
-                array=pil_image_bytes,
-                dimensions=pil_image.size,
-                colorType=skia.kRGBA_8888_ColorType)
+        get_images(image_url_strs, url, self.images)
 ```
 
 Next we need to provide access to this image from the `paint` method of a
@@ -421,8 +424,17 @@ way to do this is to save a pointer to the image on the layout object's node
 during `style`:
 
 ``` {.python}
-def style(node, rules, images):
+def style(node, rules, url, images):
     # ...
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        image_url_strs = []
+        for property, value in pairs.items():
+            computed_value = compute_style(node, property, value)
+            node.style[property] = computed_value
+            if property == 'background-image':
+                image_url_strs.append(value)
+        get_images(image_url_strs, url, images)
     if node.style.get('background-image'):
         node.backgroundImage = \
             images[parse_style_url(

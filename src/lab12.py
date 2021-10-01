@@ -261,7 +261,6 @@ class ClipRect:
             canvas.clipRect(skia.Rect.MakeLTRB(
                 self.rect.left(), self.rect.top() - scroll,
                 self.rect.right(), self.rect.bottom() - scroll))
-#            canvas.clipRect(skia.Rect.MakeLTRB(0, 0, 500, 500))
 
 class DrawImage:
     def __init__(self, image, rect):
