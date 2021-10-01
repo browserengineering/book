@@ -838,12 +838,14 @@ def form_decode(body):
     params = {}
     for field in body.split("&"):
         name, value = field.split("=", 1)
-        params[urllib.unquote(name)] = urllib.unquote(value)
+        params[urllib.unquote_plus(name)] = urllib.unquote_plus(value)
     return params
 ```
 
-The `add_entry` function then looks up the `guest` parameter and adds
-its content as a new guest book entry:
+Note that I use `unquote_plus` instead of `unquote`, because some
+browsers use a plus sign to encode a space. The `add_entry` function
+then looks up the `guest` parameter and adds its content as a new
+guest book entry:
 
 ``` {.python file=server}
 def add_entry(params):
