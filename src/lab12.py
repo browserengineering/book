@@ -270,8 +270,8 @@ class DrawImage:
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
             canvas.drawImage(
-                self.image, self.rect.top(),
-                self.rect.left() - scroll)
+                self.image, self.rect.left(),
+                self.rect.top() - scroll)
 
 INPUT_WIDTH_PX = 200
 
