@@ -58,7 +58,7 @@ def request(url, payload=None):
     method = "POST" if payload else "GET"
     body = "{} {} HTTP/1.0\r\n".format(method, path)
     body += "Host: {}\r\n".format(host)
-    origin = (scheme, host, port)
+    origin = (host, port)
     if origin in COOKIE_JAR:
         body += "Cookie: {}\r\n".format(COOKIE_JAR[origin])
     if payload:

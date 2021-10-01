@@ -297,10 +297,9 @@ Note that the cookie jar is global, not limited to a particular tab.
 That makes sense: in a browser, if you're logged in to a website and
 you open a second tab, you're logged in on that tab as well.
 
-Remember that cookies are site-specific. More specifically, a cookie
-is specific to a given combination of scheme, host, and port, which is
-called an origin; this is called the "same-origin policy". So our
-cookie jar will map origins to cookies.
+Remember that cookies are site-specific---each cookie is bound to the
+host and port that set it. So our cookie jar will map host/port pairs
+to cookies.
 
 When the browser visits a page, it needs to send all the cookies it
 knows about. This means adding an extra header to the
@@ -313,7 +312,7 @@ request:[^multi-cookies]
 ``` {.python}
 def request(url, payload=None):
     # ...
-    origin = (scheme, host, port)
+    origin = (host, port)
     if origin in COOKIE_JAR:
         body += "Cookie: {}\r\n".format(COOKIE_JAR[origin])
     # ...
