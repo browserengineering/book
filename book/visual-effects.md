@@ -600,8 +600,8 @@ purely paint-time property that adjusts the display list[^posrel-caveat2]
 [^posrel-caveat2]: Again, this is not correct per the real definition! But
 suffices for playing around with visual effects.
 
-Opacity and Blending
-====================
+Opacity and Compositing
+=======================
 
 With sizing and position, we also now have the ability to make content overlap!
 [^overlap-new]. Consider this example of CSS & HTML:
@@ -721,11 +721,11 @@ automatically restored when popping.[^save-like-function-call]
 [^save-like-function-call]: This is a lot like function calls in Python or many
 other computer languages. When you call a function, the local "state"
 (variables etc) of the code that calls the function is implicitly saved, and is
-available unchanged when the call completes. The blending that occurs during
+available unchanged when the call completes. The *compositing* that occurs during
 a `restore` is analogous to how a function return value is set into a local
 variable of the calling code.
 
-Let's see how blending and opacity actually work.
+Let's see how opacity and compositing actually work.
 
 First, opacity: ;et's assume that pixels are
 represented in `skia.kRGBA_8888_ColorType`[^example-rgb]. To apply the opacity,
@@ -740,23 +740,32 @@ def apply_opacity(color, opacity):
     return new_color
 ```
 
-Next, blending: let's also assume that the coordinate spaces and pixel densities
-of the two canvases are the same, and therefore their pixels overlap and have a
-1:1 relationship. Therefore we can blend each pixel in the popped canvas into
-its corresponding pixel in the restored canvas. In Python:[^simple-alpha]
+Next, compositing: let's also assume that the coordinate spaces and pixel
+densities of the two canvases are the same, and therefore their pixels overlap
+and have a 1:1 relationship. Therefore we can "composite" each pixel in the
+popped canvas on top of (into, really) its corresponding pixel in the restored
+canvas. Let's call the popped canvas the *source canvas* and the restored canvas the
+*backdrop canvas*. Likewise each pixel in the popped canvas is a *source pixel*
+and each pixel in the restored canvas is a *backdrop pixel*.
+
+The default mode is called *simple alpha compositing* or
+*source-over compositing*.[^other-compositing]
+In Python the code looks like this:[^simple-alpha]
 
 ``` {.python expected=False}
-# Blends |from_color| into |to_color|. Each of the inputs are
+# Composites |source_color| into |backdrop_color|. Each of the inputs are
 # skia.Color4f objects.
-def blend(from_color, to_color):
-    (from_r, from_g, from_b, from_a) = tuple(from_color)
-    (to_r, to_g, t_b, to_a) = tuple(from_color)
+def composite(source_color, backdrop_color):
+    (source_r, source_g, source_b, source_a) = tuple(source_color)
+    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
     return skia.Color4f(
-        to_r * (1-from_a) * to_a + from_r * from_a,
-        to_g * (1-from_a) * to_a + from_g * from_a,
-        to_b * (1-from_a) * to_a + from_b * from_a,
-        1 - (1 - from_a) * (1 - to_a))
+        backdrop_r * (1-source_a) * backdrop_a + source_r * source_a,
+        backdrop_g * (1-source_a) * backdrop_a + source_g * source_a,
+        backdrop_rb * (1-source_a) * backdrop_a + source_b * source_a,
+        1 - (1 - source_a) * (1 - backdrop_a))
 ```
+
+[^other-compositing]: We'll shortly encounter other compositing modes.
 
 Putting it all together, if we were to implement the `Restore` command
 ourselves from one canvas to another, we could write the following
@@ -765,13 +774,14 @@ a `getPixel` method that returns a `skia.Color4f` and a `setPixel` that
 sets a pixel color[^real-life-reading-pixels]):
 
 ``` {.python expected=False}
-def restore(from_canvas, to_canvas, width, height, opacity):
+def restore(source_canvas, backdrop_canvas, width, height, opacity):
     for x in range(0, width):
         for y in range(0, height):
-            to_canvas.setPixel(
+            backdrop_canvas.setPixel(
                 x, y,
-                blend(apply_opacity(
-                    from_canvas.getPixel(x, y))))
+                composite(
+                    apply_opacity(source_canvas.getPixel(x, y)),
+                    backdrop_canvas.getPixel(x, y)))
 ```
 
 [^real-life-reading-pixels]: As you'll see later in this chapter, in real
@@ -789,7 +799,92 @@ alpha, then 8 bits each of red, green and blue. Images are also converted to
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that
 that page refers to "premultiplied alpha" colors, which means that each color
 channel has alread been multiplied by the alpha channel value. Skia does not
-use premultiplied color representations.
+use premultiplied color representations. Graphics systems sometimes use a
+premultiplied representation of colors, because it allows them to skip storing
+the alpha channel in memory.
+
+Blending
+========
+
+Blending is a way to mix source and backdrop colors together, but is not the
+same thing as compositing, even though they are very similar. In fact, it's a
+step before compositing but after opacity. Blending mixels the source and
+backdrop colors. The mixed result is then composited with the backdrop pixel.
+The changes to our Python code for `restore` looks like this:
+
+``` {.python expected=False}
+def restore(source_canvas, backdrop_canvas, width, height, opacity, blend_mode):
+    # ...
+            backdrop_canvas.setPixel(
+                x, y,
+                composite(
+                    blend(
+                        apply_opacity(source_canvas.getPixel(x, y)),
+                        backdrop_canvas.getPixel(x, y), blend_mode),
+                    backdrop_canvas.getPixel(x, y)))
+```
+
+and blend is implemented like this:
+
+``` {.python expected=False}
+def blend(source_color, backdrop_color, blend_mode):
+    (source_r, source_g, source_b, source_a) = tuple(source_color)
+    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
+    return skia.Color4f(
+        (1 - backdrop_a) * source_r +
+            backdrop_a * apply_blend(blend_mode, source_r, backdrop_r),
+        (1 - backdrop_a) * source_g +
+            backdrop_a * apply_blend(blend_mode, source_g, backdrop_g),
+        (1 - backdrop_a) * source_b +
+            backdrop_a * apply_blend(blend_mode, source_b, backdrop_b),
+        source_a)
+```
+
+There are various values `blend_mode` could take. An example is "multiply", which
+is defined like this:
+
+``` {.python expected=False}
+# assumes an 8-bit color channel
+def apply_blend(blend_mode, source_color_channel, backdrop_color_channel):
+    float_source = source_color_channel / 255.0
+    float_backdrop = backdrop_color_cnannel / 255.0
+    if blend_mode == "multiply":
+        return int(round(float_source * float_backdrop * 255.0))
+    else
+        # Assume "normal" blend mode.
+        return source_color_channel
+
+```
+
+These are specified with the `mix-blend-mode` CSS property. Let's add support
+for it to our browser:[`mix-blend-mode: multiply`][mbm-mult]. This will be
+very easy, because Skia supports this blend mode natively. It's as simple
+as parsing the property and adding a parameter to `SaveLayer`:
+
+``` {.python}
+def parse_blend_mode(blend_mode_str):
+    if blend_mode_str == "multiply":
+        return skia.BlendMode.kMultiply
+    # ...
+    else:
+        return skia.BlendMode.kSrcOver
+
+def paint_visual_effects(node, display_list, rect):
+    # ...
+
+    blend_mode_str = node.style.get("mix-blend-mode")
+    blend_mode = skia.BlendMode.kSrcOver
+    if blend_mode_str:
+        blend_mode = parse_blend_mode(blend_mode_str)
+
+    opacity = float(node.style.get("opacity", "1.0"))
+    if opacity != 1.0 or blend_mode_str:
+        paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
+        display_list.append(SaveLayer(paint, rect))
+        restore_count = restore_count + 1
+```
+
+[mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
 
 
 Visual effects
