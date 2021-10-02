@@ -453,8 +453,8 @@ class DrawImage:
     def execute(self, scroll, rasterizer):
         with rasterizer.surface as canvas:
             canvas.drawImage(
-                self.image, self.rect.top(),
-                self.rect.left() - scroll)
+                self.image, self.rect.left(),
+                self.rect.top() - scroll)
 ```
 
 Some code that draws the background for a node into a display list; here
