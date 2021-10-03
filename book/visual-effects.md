@@ -469,10 +469,31 @@ def paint_background(node, display_list, rect):
 
     background_image = node.style.get("background-image")
     if background_image:
+        display_list.append(Save(rect))
+        display_list.append(ClipRect(rect))
+        print(rect)
         display_list.append(DrawImage(node.backgroundImage,
             rect))
-
+        display_list.append(Restore(rect))
 ```
+
+Here we're not just drawing the image though---we're also doing something
+new that we haven't seen before. We are applying a *clip*. A clip is a way
+to cut off parts of drawing that exceed a given set of bounds. Here we are
+asking to clip to the rect that bounds the element, because the
+image for `background-image`  never exceeds the size of the element[^bg-opts]
+Clips have to be preceded by a call to `Save`, which says to Skia to 
+snapshot the current parameters to the canvas, so that when `Restore` is called
+later these parameters (including presence or absence of a clip) can be
+restored.[^not-savelayer]
+
+[^not-savelayer]: Note: `Save` is not the same as `SaveLayer` (which will
+be introduced later in this section). `Save` just saves off parameters;
+`SaveLayer` creates a new entire canvas.
+
+[^bg-opts]: The full `background-image` css property has a lot more options
+for ways to deal with a mismatch between the size of the image, such as
+scaling, stretching and tiling.
 
 And finally some code to paint the background image for each layout object
 type. For `BlockLayout`: it's
@@ -840,8 +861,9 @@ def blend(source_color, backdrop_color, blend_mode):
         source_a)
 ```
 
-There are various values `blend_mode` could take. An example is "multiply", which
-is defined like this:
+There are various values `blend_mode` could take. Examples include "multiply",
+which multiplies the colors as floating-point numbers between 0 and 1,
+and "difference", which subtracts the darker color from the ligher one.
 
 ``` {.python expected=False}
 # assumes an 8-bit color channel
@@ -850,6 +872,8 @@ def apply_blend(blend_mode, source_color_channel, backdrop_color_channel):
     float_backdrop = backdrop_color_cnannel / 255.0
     if blend_mode == "multiply":
         return int(round(float_source * float_backdrop * 255.0))
+    elif blend_mode == "difference":
+        return abs(backdrop_color_channel - source_color_channel)
     else
         # Assume "normal" blend mode.
         return source_color_channel
@@ -865,7 +889,8 @@ as parsing the property and adding a parameter to `SaveLayer`:
 def parse_blend_mode(blend_mode_str):
     if blend_mode_str == "multiply":
         return skia.BlendMode.kMultiply
-    # ...
+    elif blend_mode_str == "difference":
+        return skia.BlendMode.kDifference
     else:
         return skia.BlendMode.kSrcOver
 
@@ -886,6 +911,10 @@ def paint_visual_effects(node, display_list, rect):
 
 [mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
 
+Masks
+=====
+
+todo
 
 Visual effects
 ==============
