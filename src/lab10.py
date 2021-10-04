@@ -150,12 +150,7 @@ class JSContext:
 
     def cookie(self):
         scheme, _, host = self.tab.url.split("/", 3)[2]
-        if ":" in host:
-            host, port = host.split(":", 1)
-            port = int(port)
-        else:
-            port = 80 if scheme == "http" else 443
-        return COOKIE_JAR.get((host, port), "")
+        return COOKIE_JAR.get(host, "")
 
 
 SCROLL_STEP = 100
