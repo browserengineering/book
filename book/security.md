@@ -277,7 +277,7 @@ the server, so once you're sure it's all working, let's switch gears
 and implement cookies inside our own browser.
 
 [^7]: I should be hashing passwords! Using `bcrypt`! We should verify
-    email addresses! Over TLS! We should run the server in a sandbox!
+    email addresses, not forcing TLS, and not running the server in a sandbox.
 
 
 Implementing cookies
