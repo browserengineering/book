@@ -63,10 +63,9 @@ implementing a login system for our guest book. That's going to
 require using cookies to create identities for all the users
 using our website.
 
-Let's identify each user by a long random number stored in
-the `token` cookie. When a request is made to the guest book, we'll
-either extract a token from the `Cookie` header, or generate a new
-one:[^secure-random]
+Let's identify each user by a long random number stored in the `token`
+cookie. In the server, when a request arrives, we either extract a
+token from the `Cookie` header, or generate a new one:[^secure-random]
 
 [^secure-random]: This use of `random.random` returns a decimal number
     with 53 bits of randomness. That's not great; 256 bits is ideal.
