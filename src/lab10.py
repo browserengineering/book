@@ -58,9 +58,8 @@ def request(url, payload=None):
     method = "POST" if payload else "GET"
     body = "{} {} HTTP/1.0\r\n".format(method, path)
     body += "Host: {}\r\n".format(host)
-    origin = (host, port)
-    if origin in COOKIE_JAR:
-        body += "Cookie: {}\r\n".format(COOKIE_JAR[origin])
+    if host in COOKIE_JAR:
+        body += "Cookie: {}\r\n".format(COOKIE_JAR[host])
     if payload:
         content_length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(content_length)
@@ -85,7 +84,7 @@ def request(url, payload=None):
         else:
             kv = headers["set-cookie"]
             params = {}
-        COOKIE_JAR[origin] = kv
+        COOKIE_JAR[host] = kv
 
     body = response.read()
     s.close()
