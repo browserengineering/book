@@ -353,42 +353,11 @@ JS files). Because we handle cookies inside `request`, this should
 automatically work correctly, with later requests transmitting cookies
 set by previous responses.
 
-
-
-Cross-site scripting
-====================
-
-Now that our browser supports cookies and uses them for logins, we
-need to make sure cookie data is safe from malicious actors. After
-all: if someone stole your `token` cookie, they could set their own
-browser's cookie to the same value, and then the server would think
-they are you and give them all the same permissions.
-
-There are lots of ways people can steal your cookies. Our browser
-already prevents *other servers* from seeing your cookie values,
-because it stores cookies per-host.[^11][^12][^13][^14]
-
-[^11]: Well... Our connection isn't encrypted, so an attacker could
-    pick up the token from there. But another *server* couldn't.
-
-[^12]: Well... Another server could hijack our DNS and redirect our
-    hostname to a different IP address, and then steal our cookies. But
-    some ISPs support DNSSEC, which prevents that.
-
-[^13]: Well... A state-level attacker could announce fradulent BGP
-    routes, which would send even a correctly-retrieved IP address to
-    the wrong physical computer.
-
-[^14]: Security is very hard.
-
-But attackers might be able to get *your server* to help steal the
-cookie value. For example, cookies are accessible from JavaScript via
-the `document.cookie` field. This field is a string, containing the
-same contents as the `Cookie` header value. We can implement that in
-our browser pretty simply.
-
-First, we register `cookie` to a simple function that returns the cookie
-value:
+Cookies are alos accessible from JavaScript via the `document.cookie`
+field. This field is a string, containing the same contents as the
+`Cookie` header value. We can implement that in our browser pretty
+simply. First, we register `cookie` to a simple function that returns
+the cookie value:
 
 ``` {.python}
 class JSContext:
@@ -415,13 +384,41 @@ Object.defineProperty(document, 'cookie', {
 })
 ```
 
-Once cookies are accessible from JavaScript, any scripts run on our
-server could, in principle, steal the cookie value. This might seem
+Now that our browser supports cookies and uses them for logins, we
+need to make sure cookie data is safe from malicious actors. After
+all: if someone stole your `token` cookie, they could set their own
+browser's cookie to the same value, and then the server would think
+they are you and give them all the same permissions. Our browser
+already prevents *other servers* from seeing your cookie values,
+because it stores cookies per-host.[^11][^12][^13][^14]
+
+[^11]: Well... Our connection isn't encrypted, so an attacker could
+    pick up the token from there. But another *server* couldn't.
+
+[^12]: Well... Another server could hijack our DNS and redirect our
+    hostname to a different IP address, and then steal our cookies. But
+    some ISPs support DNSSEC, which prevents that.
+
+[^13]: Well... A state-level attacker could announce fradulent BGP
+    routes, which would send even a correctly-retrieved IP address to
+    the wrong physical computer.
+
+[^14]: Security is very hard.
+
+But attackers might be able to get *your server* or *your browser* to
+help steal your cookie values...
+
+
+
+Cross-site scripting
+====================
+
+With cookies accessible from JavaScript, any scripts run on our server
+could, in principle, read the cookie value. This might seem
 benign---doesn't our server only run `comment.js`? Well...
 
-Popular web services often become hunting grounds for malicious
-actors. So a web service needs to defend itself from being *misused*.
-Consider the code in our guest book that outputs guest book entries:
+A web service needs to defend itself from being *misused*. Consider
+the code in our guest book that outputs guest book entries:
 
 ``` {.python file=server indent=8}
 out += "<p>" + entry + " <i>by " + who + "</i></p>"
