@@ -31,7 +31,7 @@ def url_origin(url):
         
 COOKIE_JAR = {}
 
-def request(url, payload=None):
+def request(url, top_level, payload=None):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
@@ -59,7 +59,13 @@ def request(url, payload=None):
     body = "{} {} HTTP/1.0\r\n".format(method, path)
     body += "Host: {}\r\n".format(host)
     if host in COOKIE_JAR:
-        body += "Cookie: {}\r\n".format(COOKIE_JAR[host])
+        cookie, params = COOKIE_JAR[host]
+        allow_cookie = True
+        if params.get("samesite", "none") == "lax":
+            _, _, top_level_host, _ = top_level.split("/", 3)
+            allow_cookie = (host == top_level_host or method == "GET")
+        if allow_cookie:
+            body += "Cookie: {}\r\n".format(cookie)
     if payload:
         content_length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(content_length)
@@ -79,12 +85,15 @@ def request(url, payload=None):
         headers[header.lower()] = value.strip()
 
     if "set-cookie" in headers:
+        params = {}
         if ";" in headers["set-cookie"]:
-            kv, params = headers["set-cookie"].split(";", 1)
+            cookie, rest = headers["set-cookie"].split(";", 1)
+            for param_pair in rest:
+                name, value = param_pair.split("=", 1)
+                params[name.lower()] = value.lower()
         else:
-            kv = headers["set-cookie"]
-            params = {}
-        COOKIE_JAR[host] = kv
+            cookie = headers["set-cookie"]
+        COOKIE_JAR[host] = (cookie, params)
 
     body = response.read()
     s.close()
@@ -172,7 +181,7 @@ class Tab:
         return scheme_colon + "//" + host in self.allowed_servers
 
     def load(self, url, body=None):
-        headers, body = request(url, payload=body)
+        headers, body = request(url, self.url, payload=body)
         self.scroll = 0
         self.url = url
         self.history.append(url)
@@ -196,7 +205,7 @@ class Tab:
             if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
-            header, body = request(script_url)
+            header, body = request(script_url, url)
             try:
                 print("Script returned: ", self.js.run(body))
             except dukpy.JSRuntimeError as e:
@@ -215,7 +224,7 @@ class Tab:
                 print("Blocked style", link, "due to CSP")
                 continue
             try:
-                header, body = request(style_url)
+                header, body = request(style_url, url)
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
