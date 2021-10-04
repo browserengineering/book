@@ -832,6 +832,22 @@ developed turn into attack vector. And we've made with some simple
 tweaks to our guest book to prevent two common web application
 vulnerabilities.
 
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab10.py
+:::
+
+The server is much simpler, but has also grown since last chapter:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/server10.py
+:::
+
 Exercises
 =========
 
