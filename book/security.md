@@ -221,7 +221,7 @@ That URL will show a form with a username and a password field:[^4]
 ``` {.python file=server}
 def login_form(session):
     body = "<!doctype html>"
-    body += "<form action=/login method=post>"
+    body += "<form action=/ method=post>"
     body += "<p>Username: <input name=username></p>"
     body += "<p>Password: <input name=password type=password></p>"
     body += "<p><button>Log in</button></p>"
@@ -229,13 +229,14 @@ def login_form(session):
     return body 
 ```
 
-Note that the form sends its data to `/login` as well, but using a
-`POST` request. Let's send those requests to a separate function:
+Note that the form sends its data to `/`. We can distinguish this
+`POST` to `/` from a normal `GET` of `/` to route this request to a
+separate function:
 
 ``` {.python file=server}
 def do_request(session, method, url, headers, body):
     # ...
-    elif method == "POST" and url == "/login":
+    elif method == "POST" and url == "/":
         params = form_decode(body)
         return do_login(session, params)
     # ...
