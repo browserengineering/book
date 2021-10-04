@@ -24,7 +24,7 @@ Cookies
 =======
 
 With what we've implemented so far there's no way for a web server to
-tell whether two HTTP requests come from the same browsers, or
+tell whether two HTTP requests come from the same user, or
 different ones. Our web browser is effectively anonymous.[^1] That
 means it can't "log in" anywhere, because there's no way for the
 server to know which later requests come from the logged in browser
