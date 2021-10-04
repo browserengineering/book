@@ -149,7 +149,7 @@ class JSContext:
         self.tab.render()
 
     def cookie(self):
-        scheme, _, host = self.tab.url.split("/", 3)[2]
+        _, _, host, _ = self.tab.url.split("/", 3)
         return COOKIE_JAR.get(host, "")
 
 
