@@ -282,14 +282,22 @@ deduplicate the code a bit:
     import { request } from "./lab1.js";
     >>> assert "request" in LAB_IMPORT_FNS
     >>> Test.stmt("from lab2 import HSTEP")
-    import { HSTEP } from "./lab2.js";
+    import { constants as lab2_constants } from "./lab2.js";
+    constants.HSTEP = lab2_constants.HSTEP;
     >>> assert "HSTEP" in LAB_IMPORT_CONSTANTS
     >>> Test.stmt("from lab4 import Element")
     import { Element } from "./lab4.js";
-    >>> assert "HSTEP" in LAB_IMPORT_CLASSES
+    >>> assert "Element" in LAB_IMPORT_CLASSES
     >>> Test.stmt("from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP")
-    import { WIDTH, HEIGHT, HSTEP, VSTEP } from "./lab2.js";
+    import { constants as lab2_constants } from "./lab2.js";
+    constants.WIDTH = lab2_constants.WIDTH;
+    constants.HEIGHT = lab2_constants.HEIGHT;
+    constants.HSTEP = lab2_constants.HSTEP;
+    constants.VSTEP = lab2_constants.VSTEP;
     >>> assert "WIDTH" in LAB_IMPORT_CONSTANTS
+    
+Note that `from ... import` statements for constants are complex, due
+to the use of a global collector object for constants.
 
 Functions become function definitions:
 
