@@ -618,9 +618,9 @@ Well, the usual advice is to make sure that every POST request to
 embed a secret value, called a *nonce*, into the form, and to reject
 form submissions that don't come with this secret value. Since you can
 only get a nonce from the server, and since the nonce is tied to your
-user account, the attacker could not embed it in their form and so
-could not craft a form for you to submit that the guest book server
-would accept.[^like-cookie]
+cookie, the attacker could not embed it in their form and so could not
+craft a form for you to submit that the guest book server would
+accept.[^like-cookie]
 
 [^like-cookie]: A nonce is somewhat like a cookie, except that it's
 stored inside the HTML and thus lasts for just one request (instead of
