@@ -123,11 +123,17 @@ static tkinter(options) {
         bind(key, fn) {
             if (['<Up>', '<Down>', '<Left>', '<Right>'].indexOf(key) !== -1) {
                 window.addEventListener("keydown", function(e) {
-                    if (e.key == 'Arrow' + key.substr(1, key.length-2)) fn({});
+                    if (e.key == 'Arrow' + key.substr(1, key.length-2)) {
+                        e.preventDefault();
+                        fn({});
+                    }
                 });
             } else if (key == '<Return>') {
                 window.addEventListener("keydown", function(e) {
-                    if (e.key == 'Enter') fn({});
+                    if (e.key == 'Enter') {
+                        e.preventDefault();
+                        fn({});
+                    }
                 });
             } else if (['<Button-1>', '<Button-2>', '<Button-3>'].indexOf(key) !== -1) {
                 window.addEventListener("mousedown", function(e) {
@@ -139,11 +145,17 @@ static tkinter(options) {
                 });
             } else if (key == '<Key>') {
                 window.addEventListener("keydown", function(e) {
-                    if (e.key.length == 1) fn({ char: e.key });
+                    if (e.key.length == 1) {
+                        e.preventDefault();
+                        fn({});
+                    };
                 });
             } else if (key.length == 1) {
                 window.addEventListener("keydown", function(e) {
-                    if (e.key == key) fn({ char: e.key });
+                    if (e.key == key) {
+                        e.preventDefault();
+                        fn({ char: e.key });
+                    }
                 });
             } else {
                 console.error("Trying to bind unsupported event", key);
