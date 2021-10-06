@@ -842,8 +842,8 @@ def form_decode(body):
     return params
 ```
 
-Note that I use `unquote_plus` instead of `unquote`, because some
-browsers use a plus sign to encode a space. The `add_entry` function
+Note that I use `unquote_plus` instead of `unquote`, because browsers
+may also use a plus sign to encode a space. The `add_entry` function
 then looks up the `guest` parameter and adds its content as a new
 guest book entry:
 
