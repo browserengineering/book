@@ -432,17 +432,17 @@ Our server would then output the HTML:
     <p>Hi! <script src="http://my-server/evil.js"></script>
     <i> by crashoverride</i></p>
 
-So, our browser would download and run the `evil.js` script. So
-`evil.js` could access `document.cookie` and do something evil; in
-real browser, this might mean using `fetch` to secretly send that
-cookie to a server the attacker controls.[^no-fetch]
+Our browser would then download and run the `evil.js` script. Then
+`evil.js` could access `document.cookie` and do something evil, like
+sending it to an attacker who could then impersonate you. In a real
+browser, `evil.js` might us `fetch` to secretly send that cookie to
+the attacker's server, but more complicated attacks work in our
+limited browser as well.[^no-fetch]
 
-[^no-fetch]: Our browser doesn't implement `fetch`, but that doesn't
-    mean this attack won't work. For example, the evil script can
-    replace the whole page with a link that directs their site and
-    includes the token value in the URL. You've seen "please click to
-    continue" screens and have clicked the button unthinkingly; your
-    users will too.
+[^no-fetch]: For example, the evil script can replace the whole page
+    with a link that directs their site and includes the token value
+    in the URL. You've seen "please click to continue" screens and
+    have clicked the button unthinkingly; your users will too.
 
 The core problem behind these problems is that user comments are
 supposed to be data, but the browser is interpreting them as code.
