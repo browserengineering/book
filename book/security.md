@@ -694,15 +694,15 @@ A cookie is marked `SameSite` in the `Set-Cookie` header like this:
 
 The `SameSite` attribute can take the value `Lax`, `Strict`, or
 `None`, and as I write this browsers have and plan different defaults.
-Our browser will default to `None` and implement `Lax` as an option.
-When `SameSite` is set to `Lax`, the cookie is not sent on cross-site
-`POST` requests, but is sent on same-site `POST` or cross-site `GET`
-requests.[^iow-links]
+Our browser will implement only `Lax` and `None`, and default to
+`None`. When `SameSite` is set to `Lax`, the cookie is not sent on
+cross-site `POST` requests, but is sent on same-site `POST` or
+cross-site `GET` requests.[^iow-links]
 
 [^iow-links]: Cross-site `GET` requests are also known as "clicking a
-    link", so you can see why this is a smart set of restrictions. The
-    `Strict` version of `SameSite` blocks these too, which can work
-    for some websites but not others.
+    link", which is why those are allowed. The `Strict` version of
+    `SameSite` blocks these too, but you need to design your web
+    application carefully for this to work.
     
 To start, let's find a place to store this attribute. I'll modify
 `COOKIE_JAR` to store cookie/parameter pairs:
