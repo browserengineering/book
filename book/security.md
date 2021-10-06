@@ -679,11 +679,12 @@ The idea is that a server can opt into its cookies being `SameSite`,
 which means they're not sent on cross-site form
 submissions.[^in-progress]
 
-[^in-progress]: At the time of this writing, `SameSite` cookies are
-    not standardized, and different browsers handle them differently.
-    The [MDN page][mdn-samesite] is helpful for checking the current
-    status. Over time, this section may become out of date, though we
-    expect the general mechanism of `SameSite` cookies to survive.
+[^in-progress]: At the time of this writing, the `SameSite` cookie
+    standard is still in a draft stage, and not all browsers implement
+    that draft fully. So it's possible for this section to become out
+    of date, though some kind of `SameSite` cookies will probably keep
+    existing. The [MDN page][mdn-samesite] is helpful for checking the
+    current status of `SameSite` cookies.
     
 [mdn-samesite]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite#secure
 
