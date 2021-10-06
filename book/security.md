@@ -440,7 +440,7 @@ the attacker's server, but more complicated attacks work in our
 limited browser as well.[^no-fetch]
 
 [^no-fetch]: For example, the evil script can replace the whole page
-    with a link that directs their site and includes the token value
+    with a link that goes to their site and includes the token value
     in the URL. You've seen "please click to continue" screens and
     have clicked the button unthinkingly; your users will too.
 
