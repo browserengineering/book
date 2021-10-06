@@ -676,7 +676,7 @@ SameSite Cookies
 
 For form submissions, that fail-safe solution is `SameSite` cookies.
 The idea is that a server can opt into its cookies being `SameSite`,
-which means they're not sent on cross-site form
+and the browser will them not send them in cross-site form
 submissions.[^in-progress]
 
 [^in-progress]: At the time of this writing, the `SameSite` cookie
@@ -780,7 +780,9 @@ particular styles and scripts, so it defines which of those resources
 are on the same site.
 
 The `request` function can now check the `top_level_url` argument
-before sending `SameSite` cookies:
+before sending `SameSite` cookies. Remember that `SameSite` cookies
+are only sent for `GET` requests or the new URL and the top-level URL
+have the same host anme:
 
 ``` {.python}
 def request(url, top_level_url, payload=None):
