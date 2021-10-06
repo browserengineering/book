@@ -544,7 +544,7 @@ class Tab:
 ```
 
 To test that this works, we can first make our server send a
-`Content-Security-Policy`:
+`Content-Security-Policy` header:
 
 ``` {.python file=server}
 def handle_connection(conx):
