@@ -147,7 +147,7 @@ static tkinter(options) {
                 window.addEventListener("keydown", function(e) {
                     if (e.key.length == 1) {
                         e.preventDefault();
-                        fn({});
+                        fn({ char: e.key });
                     };
                 });
             } else if (key.length == 1) {
