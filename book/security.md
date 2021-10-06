@@ -570,9 +570,9 @@ Cross-site request forgery
 Thanks to `Content-Security-Policy`, web servers can now secure
 themselves against cross-site scripting attacks. But that doesn't
 leave attackers totally out of luck. While they can no longer convince
-web servers to do the wrong things, perhaps they can convince
-misdirect our own web browser. One popular exploit of this type is
-called *cross-site request forgery*, often shortened to CSRF.
+web servers to do the wrong things, perhaps they can misdirect our own
+web browser. One popular exploit of this type is called *cross-site
+request forgery*, often shortened to CSRF.
 
 In cross-site request forgery, the attack does not involve the user
 going to our guest book site at all. Instead, the user begins on our
