@@ -147,9 +147,8 @@ class DescendantSelector:
         return False
 
     def __repr__(self):
-        return ("DescendantSelector(ancestor={}, " +
-            "descendant={}, priority={}").format(
-            self.ancestor, self.descendant, self.priority)
+        return ("DescendantSelector(ancestor={}, descendant={}, priority={}") \
+            .format(self.ancestor, self.descendant, self.priority)
 
 INHERITED_PROPERTIES = {
     "font-size": "16px",

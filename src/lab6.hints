@@ -2,6 +2,5 @@
 {"code": "'://' in url", "type": "str"},
 {"code": "self.s[self.i] in chars", "type": "list"},
 {"code": "'style' in node.attributes", "type": "dict"},
-{"code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
 {"code": "'href' in node.attributes", "type": "dict"}
 ]

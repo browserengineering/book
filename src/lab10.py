@@ -81,6 +81,9 @@ def request(url, headers={}, payload=None):
 
     return headers, body
 
+EVENT_DISPATCH_CODE = \
+    "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
+
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
@@ -103,9 +106,9 @@ class JSContext:
         self.interp.evaljs(code)
 
     def dispatch_event(self, type, elt):
-        code = "__runListeners(dukpy.type, dukpy.handle)"
         handle = self.node_to_handle.get(elt, -1)
-        do_default = self.interp.evaljs(code, type=type, handle=handle)
+        do_default = self.interp.evaljs(
+            EVENT_DISPATCH_CODE, type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):

@@ -533,15 +533,16 @@ def compile_expr(tree, ctx):
     elif isinstance(tree, ast.Tuple) or isinstance(tree, ast.List):
         return "[" + ", ".join([compile_expr(a, ctx) for a in tree.elts]) + "]"
     elif isinstance(tree, ast.Name):
-        assert tree.id == "self" or tree.id in ctx or tree.id in LAB_IMPORT_CLASSES, f"Could not find variable {tree.id}"
         if tree.id == "self":
             return "this"
         elif tree.id in RT_IMPORTS or tree.id in LAB_IMPORT_CLASSES:
             return tree.id
-        elif ctx.is_global_constant(tree.id):
+        elif ctx.is_global_constant(tree.id) or tree.id in LAB_IMPORT_CONSTANTS:
             return "constants.{}".format(tree.id)
-        else:
+        elif tree.id in ctx:
             return tree.id
+        else:
+            raise AssertionError(f"Could not find variable {tree.id}")
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
             return compile_str(tree.value)
@@ -592,16 +593,26 @@ def compile(tree, ctx, indent=0):
         with open(filename) as file:
             outline = outlines.outline(AST39.parse(file.read(), filename))
 
+        to_import = []
+        to_bind = []
         for name in names:
             if name.isupper(): # Global constant
                 LAB_IMPORT_CONSTANTS.append(name)
-            if name[0].isupper(): # Class
+                to_import.append("constants as {}_constants".format(tree.module))
+                to_bind.append(name)
+            elif name[0].isupper(): # Class
                 LAB_IMPORT_CLASSES.append(name)
                 load_outline_for_class(outline, name)
+                to_import.append(name)
             else: # function
                 LAB_IMPORT_FNS.append(name)
+                to_import.append(name)
 
-        return " " * indent + "import {{ {} }} from \"./{}.js\";".format(", ".join(names), tree.module)
+        import_line = "import {{ {} }} from \"./{}.js\";".format(", ".join(sorted(set(to_import))), tree.module)
+        out = " " * indent + import_line
+        for const in to_bind:
+            out += "\n" + " " * indent + "constants.{} = {}_constants.{};".format(const, tree.module, const)
+        return out
     elif isinstance(tree, ast.ClassDef):
         assert not tree.bases
         assert not tree.keywords
