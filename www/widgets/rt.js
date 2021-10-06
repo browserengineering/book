@@ -223,6 +223,8 @@ static tkinter(options) {
             this.style = params.style ?? "normal";
             this.string = (this.style == "roman" ? "normal" : this.style) + 
                 " " + this.weight + " " + this.size * rt_constants.ZOOM + "px serif";
+
+            this.$metrics = null;
         }
 
         measure(text) {
@@ -232,28 +234,30 @@ static tkinter(options) {
         }
 
         metrics(field) {
-            let ctx = rt_constants.TKELEMENT.getContext('2d');
-            ctx.textBaseline = "alphabetic";
-            ctx.font = this.string;
-            let m = ctx.measureText("Hxy");
-            let asc, desc;
+            if (!this.$metrics) {
+                let ctx = rt_constants.TKELEMENT.getContext('2d');
+                ctx.textBaseline = "alphabetic";
+                ctx.font = this.string;
+                let m = ctx.measureText("Hxy");
+                let asc, desc;
 
-            // Only Safari provides emHeight properties as of 2021-04
-            // We fake them in the other browsers by guessing that emHeight = font.size
-            // This is not quite right but is close enough for many fonts...
-            if (m.emHeightAscent && m.emHeightDescent) {
-                asc = ctx.measureText("Hxy").emHeightAscent / rt_constants.ZOOM;
-                desc = ctx.measureText("Hxy").emHeightDescent / rt_constants.ZOOM;
-            } else {
-                asc = ctx.measureText("Hxy").actualBoundingBoxAscent / rt_constants.ZOOM;
-                desc = ctx.measureText("Hxy").actualBoundingBoxDescent / rt_constants.ZOOM;
-                let gap = this.size - (asc + desc)
-                asc += gap / 2;
-                desc += gap / 2;
+                // Only Safari provides emHeight properties as of 2021-04
+                // We fake them in the other browsers by guessing that emHeight = font.size
+                // This is not quite right but is close enough for many fonts...
+                if (m.emHeightAscent && m.emHeightDescent) {
+                    asc = ctx.measureText("Hxy").emHeightAscent / rt_constants.ZOOM;
+                    desc = ctx.measureText("Hxy").emHeightDescent / rt_constants.ZOOM;
+                } else {
+                    asc = ctx.measureText("Hxy").actualBoundingBoxAscent / rt_constants.ZOOM;
+                    desc = ctx.measureText("Hxy").actualBoundingBoxDescent / rt_constants.ZOOM;
+                    let gap = this.size - (asc + desc)
+                    asc += gap / 2;
+                    desc += gap / 2;
+                }
+                this.$metrics = { ascent: asc, descent: desc, linespace: asc + desc, fixed: 0 };
             }
-            let obj = { ascent: asc, descent: desc, linespace: asc + desc, fixed: 0 };
-            if (field) return obj[field]
-            else return obj;
+            if (field) return this.$metrics[field]
+            else return this.$metrics;
         }
     }
 
