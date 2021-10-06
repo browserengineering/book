@@ -31,7 +31,7 @@ def url_origin(url):
         
 COOKIE_JAR = {}
 
-def request(url, top_level, payload=None):
+def request(url, top_level_url, payload=None):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
@@ -62,7 +62,7 @@ def request(url, top_level, payload=None):
         cookie, params = COOKIE_JAR[host]
         allow_cookie = True
         if params.get("samesite", "none") == "lax":
-            _, _, top_level_host, _ = top_level.split("/", 3)
+            _, _, top_level_host, _ = top_level_url.split("/", 3)
             allow_cookie = (host == top_level_host or method == "GET")
         if allow_cookie:
             body += "Cookie: {}\r\n".format(cookie)

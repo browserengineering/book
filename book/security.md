@@ -323,7 +323,7 @@ site:[^multi-cookies]
     using different key-value pairs. The browser is supposed to
     separate them with semicolons. I'll leave that for an exercise.
 
-``` {.python replace=(url/(url%2c%20top_level,COOKIE_JAR[host]/cookie}
+``` {.python replace=(url/(url%2c%20top_level_url,COOKIE_JAR[host]/cookie}
 def request(url, payload=None):
     # ...
     if host in COOKIE_JAR:
@@ -338,7 +338,7 @@ jar:[^multiple-set-cookies]
     `Set-Cookie` headers to set multiple cookies in one request, and a
     real browser would store all of them.
 
-``` {.python replace=(url/(url%2c%20top_level,=%20kv/=%20(kv%2c%20params),kv/cookie}
+``` {.python replace=(url/(url%2c%20top_level_url,=%20kv/=%20(kv%2c%20params),kv/cookie}
 def request(url, payload=None):
     # ...
     if "set-cookie" in headers:
@@ -706,7 +706,7 @@ requests.[^iow-links]
 To start, let's find a place to store this attribute. I'll modify
 `COOKIE_JAR` to store cookie/parameter pairs:
 
-``` {.python replace=(url/(url%2c%20top_level}
+``` {.python replace=(url/(url%2c%20top_level_url}
 def request(url, payload=None):
     if "set-cookie" in headers:
         params = {}
@@ -723,7 +723,7 @@ def request(url, payload=None):
 When sending a cookie in an HTTP request, the browser only sends the
 cookie value, not the parameters:
 
-``` {.python replace=(url/(url%2c%20top_level}
+``` {.python replace=(url/(url%2c%20top_level_url}
 def request(url, payload=None):
     if host in COOKIE_JAR:
         cookie, params = COOKIE_JAR[host]
@@ -732,11 +732,11 @@ def request(url, payload=None):
 
 Now we can reference the `SameSite` parameter of a cookie. But to
 actually use it, we need to know which site an HTTP request is being
-made from. Let's add a new `top_level` parameter to `request` to track
-that:
+made from. Let's add a new `top_level_url` parameter to `request` to
+track that:
 
 ``` {.python}
-def request(url, top_level, payload=None):
+def request(url, top_level_url, payload=None):
     # ...
 ```
 
@@ -778,16 +778,16 @@ That's because it is the new page that made us request these
 particular styles and scripts, so it defines which of those resources
 are on the same site.
 
-The `request` function can now check the `top_level` argument before
-sending `SameSite` cookies:
+The `request` function can now check the `top_level_url` argument
+before sending `SameSite` cookies:
 
 ``` {.python}
-def request(url, top_level, payload=None):
+def request(url, top_level_url, payload=None):
     if host in COOKIE_JAR:
         cookie, params = COOKIE_JAR[host]
         allow_cookie = True
         if params.get("samesite", "none") == "lax":
-            _, _, top_level_host, _ = top_level.split("/", 3)
+            _, _, top_level_host, _ = top_level_url.split("/", 3)
             allow_cookie = (host == top_level_host or method == "GET")
         if allow_cookie:
             body += "Cookie: {}\r\n".format(cookie)
