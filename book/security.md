@@ -435,9 +435,11 @@ Our server would then output the HTML:
 Our browser would then download and run the `evil.js` script. Then
 `evil.js` could access `document.cookie` and do something evil, like
 sending it to an attacker who could then impersonate you. In a real
-browser, `evil.js` might use `fetch` to secretly send that cookie to
+browser, `evil.js` might use [`fetch`][mdn-fetch] to secretly send that cookie to
 the attacker's server, but more complicated attacks work in our
 limited browser as well.[^no-fetch]
+
+[mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
 
 [^no-fetch]: For example, the evil script can replace the whole page
     with a link that goes to their site and includes the token value
