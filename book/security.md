@@ -435,7 +435,7 @@ Our server would then output the HTML:
 Our browser would then download and run the `evil.js` script. Then
 `evil.js` could access `document.cookie` and do something evil, like
 sending it to an attacker who could then impersonate you. In a real
-browser, `evil.js` might us `fetch` to secretly send that cookie to
+browser, `evil.js` might use `fetch` to secretly send that cookie to
 the attacker's server, but more complicated attacks work in our
 limited browser as well.[^no-fetch]
 
@@ -482,7 +482,7 @@ space-separated list of servers:
 When the `Content-Security-Policy` header is provided, the browser
 should refuse to load any resources for that page (CSS, JavaScript,
 images, and so on) except from the listed servers. If our guest book
-used `Content-Security-Policy`, even if cross-site scripting attack
+used `Content-Security-Policy`, even if a cross-site scripting attack
 succeeded, the browser would refuse to load and run the attacker's
 script.
 
@@ -527,7 +527,7 @@ class Tab:
 
 We first resolve the script's relative URL to an absolute URL. Then we
 check to see if it starts with any of the allowed servers, and if not,
-we skip that script Do the same for CSS files.
+we skip that script. Do the same for CSS files.
 
 The `allowed_request` logic is a little tricky: it needs to handle both
 the case of no `Content-Security-Policy` and the case where there is
@@ -553,7 +553,7 @@ def handle_connection(conx):
     # ...
 ```
 
-For testing, let's next modify the web pages the server generates to
+For testing, let's next modify the web pages the server to generate a
 request a script from somewhere else:
 
 ``` {.python file=server}
