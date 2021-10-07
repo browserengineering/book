@@ -911,10 +911,187 @@ def paint_visual_effects(node, display_list, rect):
 
 [mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
 
-Masks
-=====
+Non-rectangular clips
+=====================
 
-todo
+When we added support for images, we also had to implement clipping in case
+the image was larger than the layout object bounds. In that case, the
+clip was to a rectangular box. But there is no particular reason that the clip
+has to be a rectangle. It could be any 2D path that encloses a region and
+finishes back where it staretd.
+
+In CSS, this is expressed with the `clip-path` property. The
+[full definition](https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path)
+is quite complicated, so as usual we'll just implement a simple subset.
+In this case we'll only support the `circle(xx%)` syntax, where XX is a
+percentage and defines the radius of the circle. The percentage is calibrated
+so that if the layout object was a perfect square, a 100% circle would inscribe
+the bounds of the square.
+
+Implementing circular clips is once again easy with Skia in our back pocket.
+We just parse the `clip-path` CSS property:
+
+``` {.python}
+def parse_clip_path(clip_path_str):
+    if clip_path_str.find("circle") != 0:
+        return None
+    return int(clip_path_str[7:][:-2])
+```
+
+and paint it:
+
+``` {.python}
+def paint_clip_path(node, display_list, rect):
+    clip_path = node.style.get("clip-path")
+    if clip_path:
+        percent = parse_clip_path(clip_path)
+        if percent:
+            width = rect.right() - rect.left()
+            height = rect.bottom() - rect.top()
+            reference_val = math.sqrt(width * width + height * height) / math.sqrt(2)
+            center_x = rect.left() + (rect.right() - rect.left()) / 2
+            center_y = rect.top() + (rect.bottom() - rect.top()) / 2
+            radius = reference_val * percent / 100
+            display_list.append(CircleMask(
+                center_x, center_y, radius, rect))
+```
+
+The only tricky part is how to implement the `CircleMask` class. This will use a
+new compositing mode[^blend-compositing] called destination-in. It is defined
+as the backdrop color multiplied by the alpha channel of the source color.
+The circle drawn in the code above defines a region of non-zero
+alpha, and so all pixels fo the backdrop not within the circle will become
+transparent black.
+
+Here is the implementation in Python:
+
+``` {.python expected=False}
+def composite(source_color, backdrop_color):
+    (source_r, source_g, source_b, source_a) = tuple(source_color)
+    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
+    return skia.Color4f(
+        backdrop_a * source_a * backdrop_r,
+        backdrop_a * source_a * backdrop_g,
+        backdrop_a * source_a * backdrop_b,
+        backdrop_a * source_a)
+```
+
+As a result, here is how `CircleMask` is implemented. It creates a new source
+canvas via `saveLayer` (and at the same time specifhying a `kDstIn` blend mode)
+for when it is drawn into the backdrop), draws a circle in white (or really
+any opaque color, it's only the alpha channel that matters), then `restore`.
+[^mask]
+
+
+``` {.python}
+class CircleMask:
+    def __init__(self, cx, cy, radius, rect):
+        self.cx = cx
+        self.cy = cy
+        self.radius = radius
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.saveLayer(paint=skia.Paint(
+                Alphaf=1.0, BlendMode=skia.kDstIn))
+            canvas.drawCircle(
+                self.cx, self.cy - scroll,
+                self.radius, skia.Paint(Color=skia.ColorWHITE))
+            canvas.restore()
+```
+
+Finally, we call `paint_clip_path` for each layout object type. Note however
+that we have to paint it *after* painting children, unlike visual effects
+or backgrounds. This is because you have to paint the other content into the
+backdrop canvas before drawing the circle and applying the clip. For
+`BlockLayout`, this is:
+
+``` {.python}
+    def paint(self, display_list):
+        # ...
+
+        for child in self.children:
+            child.paint(display_list)
+
+        paint_clip_path(self.node, display_list, rect)
+
+        for i in range(0, restore_count):
+            display_list.append(Restore(rect))
+```
+
+But we're not quite done. We still need to *isolate* the element and its
+subtree, in order to apply the clip path to only these elements, not to the
+entire web page. TO achieve that we add an extra `saveLayer` in
+`paint_visual_effects`:
+
+``` {.python}
+def paint_visual_effects(node, display_list, rect):
+    # ...
+
+        clip_path = node.style.get("clip-path")
+    if clip_path:
+        display_list.append(SaveLayer(skia.Paint(), rect))
+        restore_count = restore_count + 1
+```
+
+
+[^blend-compositing]: It's actually specified as a blend mode to Skia. TODO:
+explain why.
+
+This technique described here for implementing `clip-path` is called *masking* -
+draw an auxilliary canvas and reject all pixels of the main that don't overlap
+with the auxilliary one. The circle in this case is the mask image. In general,
+the mask image could be any arbitrary bitmap, including one that is not a
+filled shape. The[`mask`]
+(https://developer.mozilla.org/en-US/docs/Web/CSS/mask) CSS property is a way
+to do this, for example by specifying an image at a URL that supplies the
+mask.
+
+While the `mask` CSS property is relatively uncommonly used (as is `clip-path`
+actually), there is a special kind of mask that is very common: rounded
+corners. Now that we know how to implement masks, this one is also easy to
+add to our browser. Because it's so common in fact, Skia has special-purpose
+methods to draw rounded corners: `clipRRect`.
+
+This call will go in `paint_visual_effects`:
+
+``` {.python}
+def paint_visual_effects(node, display_list, rect):
+    border_radius = node.style.get("border-radius")
+    if border_radius:
+        radius = int(border_radius[:-2])
+        display_list.append(Save(rect))
+        display_list.append(ClipRRect(rect, radius))
+        restore_count = restore_count + 1
+```
+
+Now why is it that rounded rect clips are applied in `paint_visual_effects`
+but masks and clip paths happen later on in the `paint` method? What's going
+on here? It is indeed the same, but Skia only optimizes for rounded rects
+because they are so common. Skia could easily add a `clipCircle` command
+if it was popular enough.
+
+Shat Skia does under the covers may actually equivalent to the clip path
+case, and sometimes that is indeed the case. But in other situations, various
+optimizations can be applied to make the clip more efficient. For example,
+`clipRect` clips to a rectangle, which makes it esaier for Skia to skip
+subsequent draw operations that don't intersect that rectangle[^see-chap-1],
+or dynamically draw only the parts of drawings that interset the rectangle.
+Likewise, the first optimization mentiond above also applies to
+`clipRRect` (but the second is trickier because you have to account for the
+space cut out in the corners).
+
+[^see-chap-1]: This is basically the same optimization as we added in Chapter
+1 to avoid painting offscreen text.
+
+::: {.further}
+
+TODO: the story of rounded corners: Macintosh, early web via nine-patch, GPU
+acceleration.
+
+:::
+
 
 Visual effects
 ==============

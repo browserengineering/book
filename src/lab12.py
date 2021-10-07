@@ -262,6 +262,20 @@ class ClipRect:
                 self.rect.left(), self.rect.top() - scroll,
                 self.rect.right(), self.rect.bottom() - scroll))
 
+class ClipRRect:
+    def __init__(self, rect, radius):
+        self.rect = rect
+        self.radius = radius
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.clipRRect(
+                skia.RRect.MakeRectXY(
+                    skia.Rect.MakeLTRB(
+                        self.rect.left(), self.rect.top() - scroll,
+                        self.rect.right(), self.rect.bottom() - scroll),
+                    self.radius, self.radius))
+
 class DrawImage:
     def __init__(self, image, rect):
         self.image = image
@@ -464,8 +478,15 @@ def paint_visual_effects(node, display_list, rect):
         restore_count = restore_count + 1
 
     clip_path = node.style.get("clip-path")
-    if clip_path and clip_path == "circle()":
+    if clip_path:
         display_list.append(SaveLayer(skia.Paint(), rect))
+        restore_count = restore_count + 1
+
+    border_radius = node.style.get("border-radius")
+    if border_radius:
+        radius = int(border_radius[:-2])
+        display_list.append(Save(rect))
+        display_list.append(ClipRRect(rect, radius))
         restore_count = restore_count + 1
 
     return restore_count
