@@ -31,15 +31,15 @@ different ones. Our web browser is effectively anonymous.[^1] That
 means it can't "log in" anywhere---after logging in, its requests will
 look just like those of a new visitor.
 
+[^1]: I don't mean anonymous against malicious attackers, who might
+    use *browser fingerprinting* or similar techniques to tell users
+    apart. I mean anonymous in the good-faith sense.
+
 The web fixes this problem with cookies. A cookie---the name is
 meaningless, ignore it---is a little bit of information stored by your
 browser on behalf of a web server. The cookie distinguishes your
 browser, and is sent with each web request so the server can
 distinguish its users.
-
-[^1]: I don't mean anonymous against malicious attackers, who might
-    use *browser fingerprinting* or similar techniques to tell users
-    apart. I mean anonymous in the good-faith sense.
 
 
 Here's how cookies work. In the HTTP response a server can send a
