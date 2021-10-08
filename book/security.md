@@ -140,6 +140,19 @@ You'll also need to modify the argument lists for `add_entry` and
 `show_comments`. With the guest book server storing information about
 each user accessing the guest book, we can now build a login system.
 
+::: {.further}
+The [patent][patent] for cookies says there is "no compelling reason"
+for calling them "cookies", but in fact using this term for opaque
+identifiers exchanged between programs seems to date way back;
+[Wikipedia][wiki-magic-cookie] traces it back to at least 1979, and
+cookies were used in [X11][x-cookie] for authentication before they
+were used on the web.
+:::
+
+[cookie]: https://rpx-patents.s3.amazonaws.com/US/2a377-US7895125B2/US7895125B2.pdf
+[wiki-magic-cookie]: https://en.wikipedia.org/wiki/Magic_cookie
+[x-cookie]: https://en.wikipedia.org/wiki/X_Window_authorization#Cookie-based_access
+
 A login system
 ==============
 
@@ -249,9 +262,13 @@ storing their user name in the session data:[^timing-attack]
     is a bad idea: Python's equality function for strings scans the
     string from left to right, and exits as soon as it finds a
     difference. So, *how long* it takes to check passwords gives you
-    clues about the password; this is called a "timing side channel".
-    I'm not fixing this bug because this book is about the browser,
-    not the server---but a real web application has to do it right!
+    clues about the password; this is called a "[timing side
+    channel][timing-attack]". This book is about the browser, not the
+    server, but a real web application has to do do a [constant-time
+    string comparison][constant-time]!
+    
+[timing-attack]: https://en.wikipedia.org/wiki/Timing_attack
+[constant-time]: https://www.chosenplaintext.ca/articles/beginners-guide-constant-time-cryptography.html
 
 ``` {.python file=server}
 def do_login(session, params):
@@ -277,6 +294,8 @@ and implement cookies inside our own browser.
 
 [^7]: The insecurities include not hashing passwords, not using `bcrypt`, not verifying
     email addresses, not forcing TLS, and not running the server in a sandbox.
+    
+[bcrypt]: https://auth0.com/blog/hashing-in-action-understanding-bcrypt/
 
 
 Implementing cookies
