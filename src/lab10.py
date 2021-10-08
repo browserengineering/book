@@ -165,10 +165,8 @@ class Tab:
 
     def allowed_request(self, url):
         if self.allowed_servers == None: return True
-        for server in allowed_servers:
-            if url.startswith(server):
-                return True
-        return False
+        scheme_colon, _, host, _ = url.split("/", 3)
+        return scheme_colon + "//" + host in self.allowed_servers
 
     def load(self, url, body=None):
         headers, body = request(url, payload=body)
@@ -180,7 +178,7 @@ class Tab:
         if "content-security-policy" in headers:
            csp = headers["content-security-policy"].split()
            if len(csp) > 0 and csp[0] == "default-src":
-               self.allowed_servers = csp[1:] + "/"
+               self.allowed_servers = csp[1:]
 
         self.nodes = HTMLParser(body).parse()
 
