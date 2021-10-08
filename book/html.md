@@ -203,6 +203,8 @@ tree by just finishing any unfinished nodes:
 ``` {.python}
 class HTMLParser:
     def finish(self):
+        if len(self.unfinished) == 0:
+            self.add_tag("html")
         while len(self.unfinished) > 1:
             node = self.unfinished.pop()
             parent = self.unfinished[-1]
