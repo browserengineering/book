@@ -5,6 +5,10 @@ document = { querySelectorAll: function(s) {
     return handles.map(function(h) { return new Node(h) });
 }}
 
+Object.defineProperty(document, "cookie", {
+    get: function() { return call_python("cookie"); },
+})
+
 function Node(handle) { this.handle = handle; }
 
 Node.prototype.getAttribute = function(attr) {

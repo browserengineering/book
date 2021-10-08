@@ -164,7 +164,8 @@ class JSContext:
     def cookie(self):
         _, _, host, _ = self.tab.url.split("/", 3)
         if ":" in host: host = host.split(":", 1)[0]
-        return COOKIE_JAR.get(host, "")
+        cookie, params = COOKIE_JAR.get(host, "")
+        return cookie
 
     def XMLHttpRequest_send(self, method, url, body):
         full_url = resolve(url, self.tab.url)
