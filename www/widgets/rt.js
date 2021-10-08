@@ -31,6 +31,46 @@ rt_constants.ZOOM = 1.0;
 rt_constants.TKELEMENT = null;
 rt_constants.URLS = {};
 
+// This function exists because different browsers draw text in
+// different positions even given the same textBaseline. The
+// implementation borrows a technique from [1], which draws a 30px "F"
+// on a canvas and measures its position to compute an offset that is
+// then scaled by font size and applied to any create_text call. A
+// 30px serif font is used because that is used for the new tab "+"
+// button, whose alignment is most visible.
+//
+// [1]: https://pqina.nl/blog/cross-browser-alignment-of-the-canvas-filltext-draw-call/
+let $canvas_offsets = null;
+function get_canvas_offsets(size) {
+    if (!$canvas_offsets) {
+        const canvas = document.createElement("canvas");
+        document.body.appendChild(canvas)
+        canvas.width = 32;
+        canvas.height = 32;
+
+        // The idea is to draw an "F" and measure its top-left pixel
+        const ctx = canvas.getContext("2d");
+        ctx.font = `30px serif`;
+        ctx.fillStyle = "#000";
+        ctx.textBaseline = "top";
+        ctx.fillText("F", 0, 0);
+        const data = ctx.getImageData(0, 0, 32, 32).data;
+
+        // Find the first nonzero pixel
+        let i;
+        for (i = 3; i < data.length; i += 4) {
+            if (data[i]) break;
+        }
+        let x = (i >> 2) & 31;
+        let y = (i >> 7);
+        // This was determined by careful guess-and-check
+        $canvas_offsets = [x/30 - .03, y/30 - .22];
+
+    }
+    let [x, y] = $canvas_offsets;
+    return [x*size, y*size];
+}
+
 class lib {
 
 static socket(URLS) {
@@ -113,7 +153,7 @@ static ssl() {
     }
     return { create_default_context: wrap_class(context) };
 }
-
+    
 static tkinter(options) { 
     class Tk {
         constructor() {
@@ -214,6 +254,7 @@ static tkinter(options) {
         }
 
         create_text(x, y, params) {
+            let [x_offset, y_offset] = get_canvas_offsets(params.font?.size);
             if (params.anchor == "nw") {
                 this.ctx.textAlign = "left";
                 this.ctx.textBaseline = "top";
@@ -224,7 +265,7 @@ static tkinter(options) {
             if (params.font) this.ctx.font = params.font.string;
             this.ctx.lineWidth = 0;
             this.ctx.fillStyle = params.fill ?? "black";
-            if (params.text) this.ctx.fillText(params.text, x * rt_constants.ZOOM, y * rt_constants.ZOOM);
+            if (params.text) this.ctx.fillText(params.text, (x - x_offset) * rt_constants.ZOOM, (y - y_offset) * rt_constants.ZOOM);
         }
     }
     
