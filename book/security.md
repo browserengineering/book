@@ -292,14 +292,13 @@ cookies; that database is traditionally called a *cookie jar*[^2]:
 COOKIE_JAR = {}
 ```
 
-Note that the cookie jar is global, not limited to a particular tab.
-That makes sense: in a browser, if you're logged in to a website and
-you open a second tab, you're logged in on that tab as well. Since
-cookies are site-specific, our cookie jar will map hosts to cookies.
+Since cookies are site-specific, our cookie jar will map sites to
+cookies. Note that the cookie jar is global, not limited to a
+particular tab. That means that if you're logged in to a website and
+you open a second tab, you're logged in on that tab as well.
 
-When the browser visits a page, it needs to send all the cookies it
-knows about. This means adding an extra header to the
-request:[^multi-cookies]
+When the browser visits a page, it needs to send the cookie for that
+site:[^multi-cookies]
 
 [^multi-cookies]: Actually, a site can store multiple cookies at once,
     using different key-value pairs. The browser is supposed to
@@ -313,13 +312,12 @@ def request(url, payload=None):
     # ...
 ```
 
-So that handles sending the `Cookie` header. Receiving the
-`Set-Cookie` header, meanwhile, should update the cookie
+Symmetrically, receiving the `Set-Cookie` header updates the cookie
 jar:[^multiple-set-cookies]
 
 [^multiple-set-cookies]: A server can actually send multiple
-    `Set-Cookie` headers to set multiple cookies in one request. I'm
-    not implementing this here, but a good browser would.
+    `Set-Cookie` headers to set multiple cookies in one request, and a
+    real browser would store all of them.
 
 ``` {.python}
 def request(url, payload=None):
@@ -330,11 +328,10 @@ def request(url, payload=None):
     # ...
 ```
 
-This should work: you should now be able to use your toy browser to
-log in to the guest book and post to it. Moreover, you should be able
-to open the guest book in two browsers simultaneously---maybe your toy
-browser and a real browser as well---and log in and post as two
-different users.
+You should now be able to use your toy browser to log in to the guest
+book and post to it. Moreover, you should be able to open the guest
+book in two browsers simultaneously---maybe your toy browser and a
+real browser as well---and log in and post as two different users.
 
 Note that `load` calls `request` three times (for the HTML, CSS, and
 JS files). Because we handle cookies inside `request`, this should
