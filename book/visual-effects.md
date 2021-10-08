@@ -1072,7 +1072,7 @@ on here? It is indeed the same, but Skia only optimizes for rounded rects
 because they are so common. Skia could easily add a `clipCircle` command
 if it was popular enough.
 
-Shat Skia does under the covers may actually equivalent to the clip path
+What Skia does under the covers may actually equivalent to the clip path
 case, and sometimes that is indeed the case. But in other situations, various
 optimizations can be applied to make the clip more efficient. For example,
 `clipRect` clips to a rectangle, which makes it esaier for Skia to skip
