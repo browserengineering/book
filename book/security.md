@@ -324,11 +324,12 @@ site:[^multi-cookies]
     using different key-value pairs. The browser is supposed to
     separate them with semicolons. I'll leave that for an exercise.
 
-``` {.python replace=(url/(url%2c%20top_level_url,COOKIE_JAR[host]/cookie}
+``` {.python replace=(url/(url%2c%20top_level_url,cookie%20=/cookie%2c%20params%20=}
 def request(url, payload=None):
     # ...
     if host in COOKIE_JAR:
-        body += "Cookie: {}\r\n".format(COOKIE_JAR[host])
+        cookie = COOKIE_JAR[host]
+        body += "Cookie: {}\r\n".format(cookie)
     # ...
 ```
 
@@ -361,7 +362,7 @@ set by previous responses.
 Cookies are also accessible from JavaScript's `document.cookie` value.
 To implement this, register a `cookie` function:
 
-``` {.python}
+``` {.python replace=cookie%20=/cookie%2c%20params%20=}
 class JSContext:
     def __init__(self, tab):
         # ...
@@ -371,7 +372,8 @@ class JSContext:
     def cookie(self):
         _, _, host, _ = self.tab.url.split("/", 3)
         if ":" in host: host = host.split(":", 1)[0]
-        return COOKIE_JAR.get(host, "")
+        cookie = COOKIE_JAR.get(host, "")
+        return cookie
 ```
 
 Then create the `document.cookie` field in `runtime.js`:
