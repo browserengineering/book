@@ -24,11 +24,11 @@ Cookies
 =======
 
 With what we've implemented so far there's no way for a web server to
-tell whether two HTTP requests come from the same browsers, or
+tell whether two HTTP requests come from the same user, or
 different ones. Our web browser is effectively anonymous.[^1] That
 means it can't "log in" anywhere, because there's no way for the
-server to know which later requests come from the logged in browser
-and which come from some unrelated browser.
+server to know which later requests come from the logged in user
+and which come from some unrelated user.
 
 The web fixes this problem with cookies. A cookie---the name is
 meaningless, ignore it---is a little bit of information stored by your
@@ -44,7 +44,7 @@ request from another.
 Here's how cookies work. A web server, when it sends you an HTTP
 response, can add a `Set-Cookie` header. This header contains a
 key-value pair; for example, the following header sets
-the `foo` to `bar`:
+the value of the `foo` cookie to `bar`:
 
     Set-Cookie: foo=bar
     
@@ -60,13 +60,12 @@ core principle.
 
 Before we start implementing cookies, let's see how they're used by
 implementing a login system for our guest book. That's going to
-require is using cookies to create identities for all the browsers
+require using cookies to create identities for all the users
 using our website.
 
-Let's have each browser identified by a long random number stored in
-the `token` cookie. When a request is made to the guest book, we'll
-either extract a token from the `Cookie` header, or generate a new
-one:[^secure-random]
+Let's identify each user by a long random number stored in the `token`
+cookie. In the server, when a request arrives, we either extract a
+token from the `Cookie` header, or generate a new one:[^secure-random]
 
 [^secure-random]: This use of `random.random` returns a decimal number
     with 53 bits of randomness. That's not great; 256 bits is ideal.
@@ -104,8 +103,8 @@ def handle_connection(conx):
 This code should go after `do_request`, when the server is assembling
 the HTTP response.
 
-We can use those identities to store information about each browser
-using our website. Let's do that on the server side,[^cookies-limited]
+We can use those identities to store information about each user
+of our website. Let's do that on the server side,[^cookies-limited]
 in a variable called `SESSIONS`:
 
 [^cookies-limited]: Browsers and servers both limit header lengths, so
@@ -226,7 +225,7 @@ That URL will show a form with a username and a password field:[^4]
 ``` {.python file=server}
 def login_form(session):
     body = "<!doctype html>"
-    body += "<form action=/login method=post>"
+    body += "<form action=/ method=post>"
     body += "<p>Username: <input name=username></p>"
     body += "<p>Password: <input name=password type=password></p>"
     body += "<p><button>Log in</button></p>"
@@ -234,13 +233,14 @@ def login_form(session):
     return body 
 ```
 
-Note that the form sends its data to `/login` as well, but using a
-`POST` request. Let's send those requests to a separate function:
+Note that the form sends its data to `/`. We can distinguish this
+`POST` to `/` from a normal `GET` of `/` to route this request to a
+separate function:
 
 ``` {.python file=server}
 def do_request(session, method, url, headers, body):
     # ...
-    elif method == "POST" and url == "/login":
+    elif method == "POST" and url == "/":
         params = form_decode(body)
         return do_login(session, params)
     # ...
@@ -280,8 +280,8 @@ of insecurities.[^7] But the focus of this book is the browser, not
 the server, so once you're sure it's all working, let's switch gears
 and implement cookies inside our own browser.
 
-[^7]: I should be hashing passwords! Using `bcrypt`! We should verify
-    email addresses! Over TLS! We should run the server in a sandbox!
+[^7]: The insecurities include not hashing passwords, not using `bcrypt`, not verifying
+    email addresses, not forcing TLS, and not running the server in a sandbox.
 
 ::: {.further}
 GDPR / CCPA
@@ -302,11 +302,8 @@ COOKIE_JAR = {}
 
 Note that the cookie jar is global, not limited to a particular tab.
 That makes sense: in a browser, if you're logged in to a website and
-you open a second tab, you're logged in on that tab as well.
-
-Remember that cookies are site-specific---each cookie is bound to the
-host and port that set it. So our cookie jar will map host/port pairs
-to cookies.
+you open a second tab, you're logged in on that tab as well. Since
+cookies are site-specific, our cookie jar will map hosts to cookies.
 
 When the browser visits a page, it needs to send all the cookies it
 knows about. This means adding an extra header to the
@@ -319,9 +316,8 @@ request:[^multi-cookies]
 ``` {.python}
 def request(url, payload=None):
     # ...
-    origin = (host, port)
-    if origin in COOKIE_JAR:
-        body += "Cookie: {}\r\n".format(COOKIE_JAR[origin])
+    if host in COOKIE_JAR:
+        body += "Cookie: {}\r\n".format(COOKIE_JAR[host])
     # ...
 ```
 
@@ -338,7 +334,7 @@ def request(url, payload=None):
     # ...
     if "set-cookie" in headers:
         kv = headers["set-cookie"]
-        COOKIE_JAR[origin] = kv
+        COOKIE_JAR[host] = kv
     # ...
 ```
 

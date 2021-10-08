@@ -60,7 +60,7 @@ def do_request(session, method, url, headers, body):
     elif method == "POST" and url == "/add":
         params = form_decode(body)
         return "200 OK", add_entry(session, params)
-    elif method == "POST" and url == "/login":
+    elif method == "POST" and url == "/":
         params = form_decode(body)
         return do_login(session, params)
     else:
@@ -94,7 +94,7 @@ def show_comments(session):
 
 def login_form(session):
     body = "<!doctype html>"
-    body += "<form action=/login method=post>"
+    body += "<form action=/ method=post>"
     body += "<p>Username: <input name=username></p>"
     body += "<p>Password: <input name=password type=password></p>"
     body += "<p><button>Log in</button></p>"
