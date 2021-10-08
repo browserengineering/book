@@ -33,9 +33,9 @@ look just like those of a new visitor.
 
 The web fixes this problem with cookies. A cookie---the name is
 meaningless, ignore it---is a little bit of information stored by your
-browser on behalf of a web server. The cookie establishes that
-browser's identity and allows the server to distinguish one web
-request from another.
+browser on behalf of a web server. The cookie distinguishes your
+browser, and is sent with each web request so the server can
+distinguish its users.
 
 [^1]: I don't mean anonymous against malicious attackers, who might
     use *browser fingerprinting* or similar techniques to tell users
