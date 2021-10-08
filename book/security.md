@@ -5,10 +5,12 @@ prev: scripts
 next: reflow
 ...
 
-Our browser has grown up and now runs (small) web applications. Let's
-take the final step and add user identity to our browser via cookies.
-Capability demands responsibility: our browser must then secure
-cookies against adversaries interested in getting at them.
+Our browser has grown up and now runs (small) web applications. With
+one final step---user identity via cookies---it can now run all sorts
+of personalized online services. But capability demands
+responsibility: a browser must secure cookies against adversaries
+interested in getting at them. Luckily, browsers have sophisticated
+systems for controlling access to cookies and preventing their misuse.
 
 ::: {.warning}
 Web browser security is a vast topic. It involves securing the web
@@ -26,9 +28,8 @@ Cookies
 With what we've implemented so far there's no way for a web server to
 tell whether two HTTP requests come from the same user, or
 different ones. Our web browser is effectively anonymous.[^1] That
-means it can't "log in" anywhere, because there's no way for the
-server to know which later requests come from the logged in user
-and which come from some unrelated user.
+means it can't "log in" anywhere---after logging in, its requests will
+look just like those of a new visitor.
 
 The web fixes this problem with cookies. A cookie---the name is
 meaningless, ignore it---is a little bit of information stored by your
@@ -41,10 +42,10 @@ request from another.
     apart. I mean anonymous in the good-faith sense.
 
 
-Here's how cookies work. A web server, when it sends you an HTTP
-response, can add a `Set-Cookie` header. This header contains a
-key-value pair; for example, the following header sets
-the value of the `foo` cookie to `bar`:
+Here's how cookies work. In the HTTP response a server can send a
+`Set-Cookie` header. This header contains a key-value pair; for
+example, the following header sets the value of the `foo` cookie to
+`bar`:
 
     Set-Cookie: foo=bar
     
@@ -58,14 +59,11 @@ Servers can also set multiple cookies and also set parameters like
 expiration dates, but this `Set-Cookie` / `Cookie` mechanism is the
 core principle.
 
-Before we start implementing cookies, let's see how they're used by
-implementing a login system for our guest book. That's going to
-require using cookies to create identities for all the users
-using our website.
-
-Let's identify each user by a long random number stored in the `token`
-cookie. In the server, when a request arrives, we either extract a
-token from the `Cookie` header, or generate a new one:[^secure-random]
+Servers use cookies to assign identities to their users. For example,
+let's write a login system for our guest book. Each user will be
+identified by a long random number stored in the `token`
+cookie.[^secure-random] The server will either extract a token from
+the `Cookie` header, or generate a new one for new visitors:
 
 [^secure-random]: This use of `random.random` returns a decimal number
     with 53 bits of randomness. That's not great; 256 bits is ideal.
@@ -86,11 +84,8 @@ def handle_connection(conx):
     # ...
 ```
 
-This code should go after all the request headers are parsed, but
-before we actually handle the request in `do_request`.
-
-Of course, if we just generated a random token, we need to tell the
-browser to remember it:
+Of course, new visitors need to be told to remember their
+newly-generated token:
 
 ``` {.python file=server}
 def handle_connection(conx):
@@ -100,17 +95,20 @@ def handle_connection(conx):
     # ...
 ```
 
-This code should go after `do_request`, when the server is assembling
+The first code block runs after all the request headers are parsed,
+before handling the request in `do_request`, while the the second code
+block runs after `do_request` returns, when the server is assembling
 the HTTP response.
 
-We can use those identities to store information about each user
-of our website. Let's do that on the server side,[^cookies-limited]
-in a variable called `SESSIONS`:
+With these two code changes, each visitor to the guest book now has a
+unique identity. We can now use that identities to store information
+about each user. Let's do that in a server side `SESSIONS`
+variable:[^cookies-limited]
 
 [^cookies-limited]: Browsers and servers both limit header lengths, so
-    it's best not to store variable-sized data in cookies. Plus,
-    cookies are sent back and forth on every request, so long cookies
-    mean a lot of useless traffic.
+    it's best to store minimal data in cookies. Plus, cookies are sent
+    back and forth on every request, so long cookies mean a lot of
+    useless traffic.
 
 ``` {.python file=server}
 SESSIONS = {}
@@ -122,9 +120,10 @@ def handle_connection(conx):
     # ...
 ```
 
-Note that I'm passing the user information as the first argument to
-`do_request`. Let's also make sure to pass that session information to
-individual pages like `show_comments` and `add_entry`:
+The user data extracted from the `SESSIONS` object is called the
+session data, and I'm passing it to `do_request` so that our request
+handlers can read and write user data. Pass that session information
+to individual pages like `show_comments` and `add_entry`:
 
 ``` {.python file=server}
 def do_request(session, method, url, headers, body):
@@ -137,11 +136,9 @@ def do_request(session, method, url, headers, body):
     # ...
 ```
 
-You'll also need to modify the `add_entry` and `show_comments`
-signatures, and also the call to `show_comments` inside `add_entry`.
-
-With the guest book server storing information about each user
-accessing the guest book, we can now build a login system.
+You'll also need to modify the argument lists for `add_entry` and
+`show_comments`. With the guest book server storing information about
+each user accessing the guest book, we can now build a login system.
 
 ::: {.further}
 Cookie patent
@@ -153,15 +150,15 @@ A login system
 I want users to log in before posting to the guest book. Nothing
 complex, just the minimal functionality:
 
-- Users have to be logged in to add guest book entries.
-- The server will display who added which guest book entry.
 - Users will log in with a username and password.
 - The server will hard-code a set of valid logins.
+- Users have to be logged in to add guest book entries.
+- The server will display who added which guest book entry.
 
 Let's start coding. First, we'll need to store usernames in `ENTRIES`:[^3]
 
-[^3]: The seed comments reference 1995's *Hackers*.
-    [Hack the Planet!](https://xkcd.com/1337)
+[^3]: The pre-loaded comments reference 1995's *Hackers*. [Hack the
+    Planet!](https://xkcd.com/1337)
 
 ``` {.python file=server}
 ENTRIES = [
@@ -180,7 +177,8 @@ def show_comments(session):
     # ...
 ```
 
-We'll remember whether a user is logged in using the `user` key in the
+Now, we want users to be logged in before posting comments. We'll
+determine whether a user is logged in using the `user` key in the
 session data:
 
 ``` {.python file=server}
@@ -196,7 +194,8 @@ def show_comments(session):
     # ...
 ```
 
-We'll require that users be logged in before they can post comments:
+Likewise, `add_entry` must check that the user is logged in before
+posting comments:
 
 ``` {.python file=server}
 def add_entry(session, params):
@@ -205,8 +204,10 @@ def add_entry(session, params):
     return show_comments(session)
 ```
 
-Finally, let's work on actually logging in and out. To log in, users
-will go to the `/login` URL:
+Note that the session data (including the `user` key) is stored on the
+server, so users can't modify it directly. That's good, because we
+only want to set the `user` key if users supply the right password at
+the `/login` URL:
 
 ``` {.python file=server}
 def do_request(session, method, url, headers, body):
@@ -216,7 +217,7 @@ def do_request(session, method, url, headers, body):
     # ...
 ```
 
-That URL will show a form with a username and a password field:[^4]
+This URL shows a form with a username and a password field:[^4]
 
 [^4]: I've given the `password` input area the type `password`, which
     in a real browser will draw stars or dots instead of showing what
@@ -233,9 +234,8 @@ def login_form(session):
     return body 
 ```
 
-Note that the form sends its data to `/`. We can distinguish this
-`POST` to `/` from a normal `GET` of `/` to route this request to a
-separate function:
+Note that the form `POST`s its data to the `/` URL. We'll want to
+route these `POST` requests to a new function that handles logins:
 
 ``` {.python file=server}
 def do_request(session, method, url, headers, body):
@@ -246,7 +246,7 @@ def do_request(session, method, url, headers, body):
     # ...
 ```
 
-That `do_login` function will check passwords and log people in by
+This `do_login` function checks passwords and logs people in by
 storing their user name in the session data:[^timing-attack]
 
 [^timing-attack]: Actually, using `==` to compare passwords like here
@@ -254,9 +254,8 @@ storing their user name in the session data:[^timing-attack]
     string from left to right, and exits as soon as it finds a
     difference. So, *how long* it takes to check passwords gives you
     clues about the password; this is called a "timing side channel".
-    I'm not worrying about that here, because this book is really
-    about the browser, not the server---but a secure web application
-    would have to fix it!
+    I'm not fixing this bug because this book is about the browser,
+    not the server---but a real web application has to do it right!
 
 ``` {.python file=server}
 def do_login(session, params):
@@ -300,14 +299,13 @@ cookies; that database is traditionally called a *cookie jar*[^2]:
 COOKIE_JAR = {}
 ```
 
-Note that the cookie jar is global, not limited to a particular tab.
-That makes sense: in a browser, if you're logged in to a website and
-you open a second tab, you're logged in on that tab as well. Since
-cookies are site-specific, our cookie jar will map hosts to cookies.
+Since cookies are site-specific, our cookie jar will map sites to
+cookies. Note that the cookie jar is global, not limited to a
+particular tab. That means that if you're logged in to a website and
+you open a second tab, you're logged in on that tab as well.
 
-When the browser visits a page, it needs to send all the cookies it
-knows about. This means adding an extra header to the
-request:[^multi-cookies]
+When the browser visits a page, it needs to send the cookie for that
+site:[^multi-cookies]
 
 [^multi-cookies]: Actually, a site can store multiple cookies at once,
     using different key-value pairs. The browser is supposed to
@@ -321,13 +319,12 @@ def request(url, payload=None):
     # ...
 ```
 
-So that handles sending the `Cookie` header. Receiving the
-`Set-Cookie` header, meanwhile, should update the cookie
+Symmetrically, receiving the `Set-Cookie` header updates the cookie
 jar:[^multiple-set-cookies]
 
 [^multiple-set-cookies]: A server can actually send multiple
-    `Set-Cookie` headers to set multiple cookies in one request. I'm
-    not implementing this here, but a good browser would.
+    `Set-Cookie` headers to set multiple cookies in one request, and a
+    real browser would store all of them.
 
 ``` {.python}
 def request(url, payload=None):
@@ -338,11 +335,10 @@ def request(url, payload=None):
     # ...
 ```
 
-This should work: you should now be able to use your toy browser to
-log in to the guest book and post to it. Moreover, you should be able
-to open the guest book in two browsers simultaneously---maybe your toy
-browser and a real browser as well---and log in and post as two
-different users.
+You should now be able to use your toy browser to log in to the guest
+book and post to it. Moreover, you should be able to open the guest
+book in two browsers simultaneously---maybe your toy browser and a
+real browser as well---and log in and post as two different users.
 
 Note that `load` calls `request` three times (for the HTML, CSS, and
 JS files). Because we handle cookies inside `request`, this should
