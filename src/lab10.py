@@ -28,8 +28,10 @@ from lab8 import DocumentLayout
 
 def url_origin(url):
     return "/".join(url.split("/")[:3])
+        
+COOKIE_JAR = {}
 
-def request(url, headers={}, payload=None):
+def request(url, payload=None):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
@@ -56,8 +58,8 @@ def request(url, headers={}, payload=None):
     method = "POST" if payload else "GET"
     body = "{} {} HTTP/1.0\r\n".format(method, path)
     body += "Host: {}\r\n".format(host)
-    for header, value in headers.items():
-        body += "{}: {}\r\n".format(header, value)
+    if host in COOKIE_JAR:
+        body += "Cookie: {}\r\n".format(COOKIE_JAR[host])
     if payload:
         content_length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(content_length)
@@ -75,6 +77,14 @@ def request(url, headers={}, payload=None):
         if line == "\r\n": break
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
+
+    if "set-cookie" in headers:
+        if ";" in headers["set-cookie"]:
+            kv, params = headers["set-cookie"].split(";", 1)
+        else:
+            kv = headers["set-cookie"]
+            params = {}
+        COOKIE_JAR[host] = kv
 
     body = response.read()
     s.close()
@@ -141,7 +151,8 @@ class JSContext:
         self.tab.render()
 
     def cookie_string(self):
-        return self.tab.cookie_string()
+        # origin ???
+        raise NotImplemented
 
 
 SCROLL_STEP = 100
@@ -151,34 +162,15 @@ class Tab:
     def __init__(self):
         self.history = []
         self.focus = None
-        self.cookies = {}
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
-
-    def cookie_string(self):
-        origin = url_origin(self.history[-1])
-        cookie_string = ""
-        if not origin in self.cookies:
-            return cookie_string
-        for key, value in self.cookies[origin].items():
-            cookie_string += "&" + key + "=" + value
-        return cookie_string[1:]
 
     def load(self, url, body=None):
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        req_headers = { "Cookie": self.cookie_string() }        
-        headers, body = request(url, headers=req_headers, payload=body)
-        if "set-cookie" in headers:
-            if ";" in headers["set-cookie"]:
-                kv, params = headers["set-cookie"].split(";", 1)
-            else:
-                kv = headers["set-cookie"]
-            key, value = kv.split("=", 1)
-            origin = url_origin(self.history[-1])
-            self.cookies.setdefault(origin, {})[key] = value
+        headers, body = request(url, payload=body)
 
         self.nodes = HTMLParser(body).parse()
 
@@ -189,8 +181,7 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            header, body = request(resolve_url(script, url),
-                headers=req_headers)
+            header, body = request(resolve_url(script, url))
             try:
                 print("Script returned: ", self.js.run(body))
             except dukpy.JSRuntimeError as e:
@@ -205,8 +196,7 @@ class Tab:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = request(resolve_url(link, url),
-                    headers=req_headers)
+                header, body = request(resolve_url(link, url))
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
