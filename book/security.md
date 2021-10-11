@@ -521,7 +521,7 @@ username in the "Hello, so and so" header, so it's enough for the
 attacker to read the guest book web page with your cookies.
 
 `XMLHttpRequest` could let them do that. Say the user visits the
-attacker's website[^why-visit-attacker], which then executes the
+attacker's website[^why-visit-attackers], which then executes the
 following script:
 
 [^why-visit-attackers]: Why is the user on the attacker's site?
@@ -1082,8 +1082,5 @@ they don't want revealed to other websites, so browsers support a
 (never send the `Referer` header when leaving this page) or
 `same-origin` (only do so if navigating to another page on the same
 origin). Implement those two values for `Referer-Policy`.
-
-[^23]: Should `microsoft.com` read `google.com`? What about
-    `microsoft.co.uk` and `google.co.uk`?
 
 [^24]: Yep, spelled that way.
