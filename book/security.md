@@ -875,6 +875,14 @@ they don't want revealed to other websites, so browsers support a
 `same-origin` (only do so if navigating to another page on the same
 origin). Implement those two values for `Referer-Policy`.
 
+[^20]: Why is the user on the attacker's site? Perhaps it has funny
+    memes, or it's been hacked and is being used for the attack
+    against its will, or perhaps the evil-doer paid for ads on sketchy
+    websites where users have low standards for security anyway.
+
+[^21]: For example, search forms that actually just direct you to a
+    Google search.
+
 [^23]: Should `microsoft.com` read `google.com`? What about
     `microsoft.co.uk` and `google.co.uk`?
 
