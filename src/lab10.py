@@ -26,9 +26,6 @@ from lab7 import LineLayout
 from lab7 import TextLayout
 from lab8 import DocumentLayout
 
-def url_origin(url):
-    return "/".join(url.split("/")[:3])
-        
 COOKIE_JAR = {}
 
 def request(url, top_level_url, payload=None):
@@ -100,8 +97,7 @@ def request(url, top_level_url, payload=None):
 
     return headers, body
 
-EVENT_DISPATCH_CODE = \
-    "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
+from lab10 import EVENT_DISPATCH_CODE
 
 class JSContext:
     def __init__(self, tab):
