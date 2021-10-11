@@ -76,6 +76,8 @@ def form_decode(body):
 def show_comments(session):
     out = "<!doctype html>"
     if "user" in session:
+        nonce = str(random.random())[2:]
+        session["nonce"] = nonce
         out += "<form action=add method=post>"
         out +=   "<p><input name=guest></p>"
         out +=   "<p><button>Sign the book!</button></p>"
@@ -118,9 +120,9 @@ def not_found(url, method):
     return out
 
 def add_entry(session, params):
-    if "user" in session and 'guest' in params and len(params['guest']) <= 100:
+    if "user" not in session: return
+    if 'guest' in params and len(params['guest']) <= 100:
         ENTRIES.append((params['guest'], session["user"]))
-    return show_comments(session)
 
 if __name__ == "__main__":
     s = socket.socket(

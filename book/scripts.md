@@ -1169,6 +1169,21 @@ A web page can now add functionality via a clever script, instead of waiting for
 a browser developer to add it into the browser itself. And as a side-benefit,
 a web page can now earn the lofty title of "web application".
 
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab9.py
+:::
+
+The server's outline is unchanged from the last chapter:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/server9.py
+:::
 
 Exercises
 =========

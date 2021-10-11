@@ -132,7 +132,8 @@ def do_request(session, method, url, headers, body):
     # ...
     elif method == "POST" and url == "/add":
         params = form_decode(body)
-        return "200 OK", add_entry(session, params)
+        add_entry(session, params)
+        return "200 OK", show_comments(session)
     # ...
 ```
 
@@ -208,9 +209,8 @@ posting comments:
 
 ``` {.python file=server}
 def add_entry(session, params):
-    if "user" in session and 'guest' in params and len(params['guest']) <= 100:
-        ENTRIES.append((params['guest'], session["user"]))
-    return show_comments(session)
+    if "user" not in session: return
+    # ...
 ```
 
 Note that the session data (including the `user` key) is stored on the
@@ -323,7 +323,7 @@ site:[^multi-cookies]
     using different key-value pairs. The browser is supposed to
     separate them with semicolons. I'll leave that for an exercise.
 
-``` {.python}
+``` {.python replace=(url/(url%2c%20top_level_url,COOKIE_JAR[host]/cookie}
 def request(url, payload=None):
     # ...
     if host in COOKIE_JAR:
@@ -338,7 +338,7 @@ jar:[^multiple-set-cookies]
     `Set-Cookie` headers to set multiple cookies in one request, and a
     real browser would store all of them.
 
-``` {.python}
+``` {.python replace=(url/(url%2c%20top_level_url,=%20kv/=%20(kv%2c%20params),kv/cookie}
 def request(url, payload=None):
     # ...
     if "set-cookie" in headers:
@@ -567,16 +567,22 @@ block the evil script[^evil-js] and report so in the console.
 Cross-site request forgery
 ==========================
 
-Thanks to the same-origin policy and the mitigations for cross-site
-scripting, it's now hard for an evil-doer to steal the login token
-from our browser. But that doesn't leave us totally safe. Another
-concern is our browser misusing the token. One popular exploit of this
-type is called *cross-site request forgery*, often shortened to CSRF.
+Thanks to `Content-Security-Policy`, web servers can now secure
+themselves against cross-site scripting attacks. But that's just one
+type of attack. While they can no longer convince web servers to do
+the wrong things, attackers can still misdirect our own web browser.
+One exploit like this is called *cross-site request forgery*, often
+shortened to CSRF.
 
 In cross-site request forgery, the attack does not involve the user
-going to our guest book site at all. Instead, the user begins on our
-evil-doer's website.[^20] That website has a form analogous to the
-guest-book form:
+going to our guest book site at all. Instead, the attack begins on the
+evil-doer's website.[^20] That website has a form that submits to the
+guest book:
+
+[^20]: Why is the user on the attacker's site? Perhaps it has funny
+    memes, or it's been hacked and is being used for the attack
+    against its will, or perhaps the evil-doer paid for ads on sketchy
+    websites where users have low standards for security anyway.
 
 ``` {.html}
 <form action=http://localhost:8000/add method=post>
@@ -585,124 +591,224 @@ guest-book form:
 </form>
 ```
 
-Our browser (and a real one) does not care what origin a form is on:
-you can submit a form on one origin to another origin, and this
-ability is widely used for some reason.[^21] So even if the user fills
-out this form on the evil website, the form is still submitted to
-the guest-book. When the browser makes that POST request to the
-guest-book, it will *also* send along its guest-book cookie. Since the
-user has no idea where a form is going---the browser does not show
-them that information---they might want to sign a guest book on the
-evil-doer's site and end up signing the one on our server
-instead.^[And thank goodness we never implemented a change-of-password
-form!]
+Even though this form is on the evildoer's website, when you submit
+the form, the browser will make an HTTP request to the *guest book*.
+And that means it will send its guest book cookies, so it will be
+logged in, so it will post to the guest book. But the user has no way
+of knowing which server a form submits to---the attacker's web page
+could have misrepresented that---so they may have posted something
+they didn't mean to. Posting a comment this way is not too scary
+(though shady advertisers will pay for it!) but posting a bank
+transaction is.^[And thank goodness we never implemented a
+change-of-password form!]
 
-But it gets worse! Suppose the form isn't actually like that, and
-instead looks like this:
 
-``` {.html}
-<form action=http://localhost:8000/add method=post>
-  <p><button>Click me!</button></p>
-</form>
-```
+Even worse, the form submission could have been triggered by
+JavaScript, with the user not involved at all. And this kind of attack
+can be further disguised, for example by hiding the entry widget,
+pre-filling a post, and styling the button to look like a normal link.
 
-People will do all sorts of stuff, so they might click that
-button.[^you-too] And it may look safe, since there's no `guest` input
-area. However, there might be some sneaky JavaScript attached:
+Unfortunately, we can't just ban cross-server form submissions.[^21]
+So how do we defend against this attack?
 
-[^you-too]: You have clicked similar buttons. Admit it.
+[^21]: For example, many search forms on websites submit to Google,
+    because those websites don't have their own search engines.
 
-``` {.javascript}
-form  = document.querySelectorAll('form')[0]
-form.addEventListener("submit", function() {
-    comment = "Buy from my website: http://evil.doer/";
-    input = "<input name=guest value=\"" + comment + "\">";
-    form.innerHTML = input;
-})
-```
+Well, the usual advice is to make sure that every POST request to
+`/add` comes from a form on our website. The way to do that is to
+embed a secret value, called a *nonce*, into the form, and to reject
+form submissions that don't come with this secret value. You can only
+get a nonce from the server, and the nonce is tied to the user
+session, so the attacker could not embed it in their form. Cross-site
+submissions wouldn't have the right nonce and would be
+rejected.[^like-cookie]
 
-This script waits for the user to click the button, and then replaces
-the form contents with a `guest` input area with a pre-filled value.
-The browser then finds it when it looks for input areas and submits
-our hard-coded guest-book entry to the guest-book server. And
-remember: the form is submitted by the user's browser, with the user's
-cookies, so the post will succeed (if the user is logged in to the
-guest book). Posting a comment this way is not too scary (though shady
-advertisers will pay for it!) but posting a bank transaction is.
+[^like-cookie]: A nonce is somewhat like a cookie, except that it's
+stored inside the HTML instead of the browser cookie. Like a cookie,
+it can be stolen with cross-site scripting.
 
-Try it! This should work in both ours and in a real browser. Plus, in a
-real browser you could also have a "hidden" input element, which would
-mean that you don't need to write any tricky JavaScript at all.
+The implementation looks like this. When a form is requested, we
+generate a nonce and save it in the user session:[^per-user]
 
-How do we defend against this attack?
+[^per-user]: It's important that nonces are associated with the
+    particular user. Otherwise, the attacker can generate a nonce for
+    *them* and insert it into a form meant for the *user*.
 
-We want to make sure that every POST request to `/add` comes from a form
-on our website. The normal way to ensure that is to embed a secret
-value, called a *nonce*, into the form, and to reject form submissions
-that don't come with this secret value.
-
-A nonce is like a login token, but instead of getting it on login, you
-get a new one every time you're presented with a form to fill out. In
-some sense, it's like a cookie, except that it's stored inside the
-HTML and thus lasts for just one request (instead of across many
-requests to the same server), so it can't be misused in the same way.
-
-Let's implement nonces in our guest book. Generate a secret nonce and
-add it to the form:
-
-``` {.python expected=False}
-def show_comments(username):
+``` {.python file=server}
+def show_comments(session):
     # ...
-    if username:
+    if "user" in session:
         nonce = str(random.random())[2:]
-        out += "<form action=add method=post>"
-        out +=   "<p><input name=nonce type=hidden value=" + nonce + "></p>"
+        session["nonce"] = nonce
+        # ...
+        out += "<input name=nonce type=hidden value=" + nonce + ">"
+```
+
+Usually `<input type=hidden>` is invisible, though our browser doesn't
+support this. Now, when a form is submitted, the server checks that
+the right nonce is submitted with it:[^multi-nonce]
+
+[^multi-nonce]: In real websites it's usually best to allow one user
+    to have multiple active nonces, so that a user can open two forms
+    in two tabs without that overwriting the valid nonce. To prevent
+    the nonce set from growing over time, you'd have nonces expire
+    after a while. I'm skipping this here, because it's not the focus
+    of this chapter.
+
+``` {.python file=server}
+def add_entry(session, params):
+    if "nonce" not in session or "nonce" not in params: return
+    if session["nonce"] != params["nonce"]: return
+    # ...
+```
+
+Now this form can't be submitted except from our website---and if you
+repeat this nonce fix for each form in the web application, it'll be
+secure from CSRF attacks. But as with cross-site scripting attacks,
+it'd be better for the browser to provide a fail-safe backup.
+
+
+SameSite Cookies
+================
+
+For form submissions, that fail-safe solution is `SameSite` cookies.
+The idea is that a if server mark its cookies `SameSite`, the browser
+will them not send them in cross-site form submissions.[^in-progress]
+
+[^in-progress]: At the time of this writing, the `SameSite` cookie
+    standard is still in a draft stage, and not all browsers implement
+    that draft fully. So it's possible for this section to become out
+    of date, though some kind of `SameSite` cookies will probably be
+    ratified. The [MDN page][mdn-samesite] is helpful for checking the
+    current status of `SameSite` cookies.
+    
+[mdn-samesite]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite#secure
+
+A cookie is marked `SameSite` in the `Set-Cookie` header like this:
+
+    Set-Cookie: foo=bar; SameSite=Lax
+
+The `SameSite` attribute can take the value `Lax`, `Strict`, or
+`None`, and as I write this browsers have and plan different defaults.
+Our browser will implement only `Lax` and `None`, and default to
+`None`. When `SameSite` is set to `Lax`, the cookie is not sent on
+cross-site `POST` requests, but is sent on same-site `POST` or
+cross-site `GET` requests.[^iow-links]
+
+[^iow-links]: Cross-site `GET` requests are also known as "clicking a
+    link", which is why those are allowed. The `Strict` version of
+    `SameSite` blocks these too, but you need to design your web
+    application carefully for this to work.
+    
+To start, let's find a place to store this attribute. I'll modify
+`COOKIE_JAR` to store cookie/parameter pairs:
+
+``` {.python replace=(url/(url%2c%20top_level_url}
+def request(url, payload=None):
+    if "set-cookie" in headers:
+        params = {}
+        if ";" in headers["set-cookie"]:
+            cookie, rest = headers["set-cookie"].split(";", 1)
+            for param_pair in rest:
+                name, value = param_pair.split("=", 1)
+                params[name.lower()] = value.lower()
+        else:
+            cookie = headers["set-cookie"]
+        COOKIE_JAR[host] = (cookie, params)
+```
+
+When sending a cookie in an HTTP request, the browser only sends the
+cookie value, not the parameters:
+
+``` {.python replace=(url/(url%2c%20top_level_url}
+def request(url, payload=None):
+    if host in COOKIE_JAR:
+        cookie, params = COOKIE_JAR[host]
+        body += "Cookie: {}\r\n".format(cookie)
+```
+
+This stores the `SameSite` parameter of a cookie. But to actually use
+it, we need to know which site an HTTP request is being made from.
+Let's add a new `top_level_url` parameter to `request` to track that:
+
+``` {.python}
+def request(url, top_level_url, payload=None):
+    # ...
+```
+
+Our browser calls `request` in three places, and we need to send the
+top-level URL in each case. At the top of `load`, it makes the initial
+request to a page. Modify it like so:
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        headers, body = request(url, self.url, payload=body)
         # ...
 ```
 
-The `hidden` input type basically instructs a browser not to render the
-input area, but to still submit it in the form. In our browser, which
-doesn't support hidden input elements, this will show up as an input
-area with a random string of digits---not ideal, but as long as you
-don't touch it form submission will work fine.
+Here, `url` is the new URL to visit, but `self.url` is the URL of the
+page where the request comes from. Make sure this line comes at the
+top of `load`, before `self.url` is changed!
 
-We'll also need to save the nonce so that we can tell valid from
-invalid nonces. I'm going to store that in a `NONCES` variable, which
-will store one nonce per user. We'll then check both that the nonce is
-valid and also that it is associated with the correct user:[^22]
+Later, the browser loads styles and scripts with more `request` calls:
 
-[^22]: Otherwise an attacker could get a nonce for *their* account and
-    then use in a CSRF attack for another user's submission.
-
-``` {.python expected=False}
-def show_comments(username):
-    # ...
-    if username:
-        nonce = str(random.random())[2:]
-        NONCES[username] = nonce
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        for script in scripts:
+            # ...
+            header, body = request(script_url, url)
+            # ...
+        # ...
+        for link in links:
+            # ...
+            header, body = request(style_url, url)
+            # ...
+        # ...
 ```
 
-When the form is submitted, we will check the nonce:
+For these requests the top-level URL is new URL the browser is
+loading. That's because it is the new page that made us request these
+particular styles and scripts, so it defines which of those resources
+are on the same site.
 
-``` {.python expected=False}
-def add_entry(params, username):
-    if not check_nonce(params, username):
-        return "Invalid nonce", {}
-    # ...
+The `request` function can now check the `top_level_url` argument
+before sending `SameSite` cookies. Remember that `SameSite` cookies
+are only sent for `GET` requests or if the new URL and the top-level
+URL have the same host name:
 
-def check_nonce(params, username):
-    if 'nonce' not in params: return False
-    if username not in NONCES: return False
-    return params['nonce'] == NONCES[username]
+``` {.python}
+def request(url, top_level_url, payload=None):
+    if host in COOKIE_JAR:
+        cookie, params = COOKIE_JAR[host]
+        allow_cookie = True
+        if params.get("samesite", "none") == "lax":
+            _, _, top_level_host, _ = top_level_url.split("/", 3)
+            allow_cookie = (host == top_level_host or method == "GET")
+        if allow_cookie:
+            body += "Cookie: {}\r\n".format(cookie)
 ```
 
-Thanks to this change, in order to add an entry to the guest book, you
-need to be logged in and submit the form on the guest book page itself.
-And that's a form that we, as the guest book authors, have sole control
-over (thanks to our XSS mitigations), so the form submission has now
-been secured. Or... I keep saying there's more to security than what's
-in this book. Let's just settle for this fact: the guest book is now
-more secure than before.
+To test this, mark our guest book cookies `SameSite`:
+
+``` {.python file=server}
+def handle_connection(conx):
+    if 'cookie' not in headers:
+        response += "Set-Cookie: token={}; SameSite=Lax\r\n".format(token)
+```
+
+This doesn't mean your should remove the nonces we added earlier:
+`SameSite` provides a kind of "defense in depth", a fail-safe that
+makes sure that even if we forgot a nonce somewhere, we're still
+secure against CSRF attacks.
+
+So are we done? Is the guest book totally secure? Uh... no. There's
+more---much, *much* more---to web application security than what's in
+this book. And just like the rest of this book, there are many other
+browser mechanisms that touch on security and privacy. Let's settle
+for this fact: the guest book is more secure than before.
 
 ::: {.warning}
 The purpose of this book is to teach the *internals of web browsers*,
@@ -721,6 +827,22 @@ ensuring it was not misused. We then saw the rich browser features we
 developed turn into attack vector. And we've made with some simple
 tweaks to our guest book to prevent two common web application
 vulnerabilities.
+
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab10.py
+:::
+
+The server is much simpler, but has also grown since last chapter:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/server10.py
+:::
 
 Exercises
 =========
@@ -752,14 +874,6 @@ they don't want revealed to other websites, so browsers support a
 (never send the `Referer` header when leaving this page) or
 `same-origin` (only do so if navigating to another page on the same
 origin). Implement those two values for `Referer-Policy`.
-
-[^20]: Why is the user on the attacker's site? Perhaps it has funny
-    memes, or it's been hacked and is being used for the attack
-    against its will, or perhaps the evil-doer paid for ads on sketchy
-    websites where users have low standards for security anyway.
-
-[^21]: For example, search forms that actually just direct you to a
-    Google search.
 
 [^23]: Should `microsoft.com` read `google.com`? What about
     `microsoft.co.uk` and `google.co.uk`?
