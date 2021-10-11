@@ -31,15 +31,15 @@ different ones. Our web browser is effectively anonymous.[^1] That
 means it can't "log in" anywhere---after logging in, its requests will
 look just like those of a new visitor.
 
-The web fixes this problem with cookies. A cookie---the name is
-meaningless, ignore it---is a little bit of information stored by your
-browser on behalf of a web server. The cookie establishes that
-browser's identity and allows the server to distinguish one web
-request from another.
-
 [^1]: I don't mean anonymous against malicious attackers, who might
     use *browser fingerprinting* or similar techniques to tell users
     apart. I mean anonymous in the good-faith sense.
+
+The web fixes this problem with cookies. A cookie---the name is
+meaningless, ignore it---is a little bit of information stored by your
+browser on behalf of a web server. The cookie distinguishes your
+browser, and is sent with each web request so the server can
+distinguish its users.
 
 
 Here's how cookies work. In the HTTP response a server can send a
@@ -141,8 +141,17 @@ You'll also need to modify the argument lists for `add_entry` and
 each user accessing the guest book, we can now build a login system.
 
 ::: {.further}
-Cookie patent
+The [patent][patent] for cookies says there is "no compelling reason"
+for calling them "cookies", but in fact using this term for opaque
+identifiers exchanged between programs seems to date way back;
+[Wikipedia][wiki-magic-cookie] traces it back to at least 1979, and
+cookies were used in [X11][x-cookie] for authentication before they
+were used on the web.
 :::
+
+[cookie]: https://rpx-patents.s3.amazonaws.com/US/2a377-US7895125B2/US7895125B2.pdf
+[wiki-magic-cookie]: https://en.wikipedia.org/wiki/Magic_cookie
+[x-cookie]: https://en.wikipedia.org/wiki/X_Window_authorization#Cookie-based_access
 
 A login system
 ==============
@@ -253,9 +262,13 @@ storing their user name in the session data:[^timing-attack]
     is a bad idea: Python's equality function for strings scans the
     string from left to right, and exits as soon as it finds a
     difference. So, *how long* it takes to check passwords gives you
-    clues about the password; this is called a "timing side channel".
-    I'm not fixing this bug because this book is about the browser,
-    not the server---but a real web application has to do it right!
+    clues about the password; this is called a "[timing side
+    channel][timing-attack]". This book is about the browser, not the
+    server, but a real web application has to do do a [constant-time
+    string comparison][constant-time]!
+    
+[timing-attack]: https://en.wikipedia.org/wiki/Timing_attack
+[constant-time]: https://www.chosenplaintext.ca/articles/beginners-guide-constant-time-cryptography.html
 
 ``` {.python file=server}
 def do_login(session, params):
@@ -281,6 +294,8 @@ and implement cookies inside our own browser.
 
 [^7]: The insecurities include not hashing passwords, not using `bcrypt`, not verifying
     email addresses, not forcing TLS, and not running the server in a sandbox.
+    
+[bcrypt]: https://auth0.com/blog/hashing-in-action-understanding-bcrypt/
 
 ::: {.further}
 GDPR / CCPA
