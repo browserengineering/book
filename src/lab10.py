@@ -115,7 +115,9 @@ class JSContext:
             self.getAttribute)
         self.interp.export_function("innerHTML", self.innerHTML)
         self.interp.export_function("cookie", self.cookie)
-        with open("runtime9.js") as f:
+        self.interp.export_function("XMLHttpRequest_send",
+            self.XMLHttpRequest_send)
+        with open("runtime10.js") as f:
             self.interp.evaljs(f.read())
 
         self.node_to_handle = {}
@@ -161,7 +163,17 @@ class JSContext:
 
     def cookie(self):
         _, _, host, _ = self.tab.url.split("/", 3)
+        if ":" in host: host = host.split(":", 1)[0]
         return COOKIE_JAR.get(host, "")
+
+    def XMLHttpRequest_send(self, method, url, body):
+        full_url = resolve(url, self.tab.url)
+        headers, out = request(full_url, self.tab.url, payload=body)
+        new_origin = "/".join(full_url.split("/", 3)[:3])
+        top_level_origin = "/".join(self.tab.url.split("/", 3)[:3])
+        if new_origin != top_level_origin:
+            raise Exception("Cross-origin XHR request not allowed")
+        return out
 
 
 SCROLL_STEP = 100
