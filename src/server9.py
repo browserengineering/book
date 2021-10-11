@@ -46,7 +46,7 @@ def form_decode(body):
     params = {}
     for field in body.split("&"):
         name, value = field.split("=", 1)
-        params[name] = urllib.parse.unquote(value)
+        params[name] = urllib.parse.unquote_plus(value)
     return params
 
 ENTRIES = [ 'Pavel was here' ]

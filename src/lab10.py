@@ -105,7 +105,7 @@ class JSContext:
         self.interp.export_function("getAttribute",
             self.getAttribute)
         self.interp.export_function("innerHTML", self.innerHTML)
-        self.interp.export_function("cookie", self.cookie_string)
+        self.interp.export_function("cookie", self.cookie)
         with open("runtime9.js") as f:
             self.interp.evaljs(f.read())
 
@@ -150,9 +150,9 @@ class JSContext:
             child.parent = elt
         self.tab.render()
 
-    def cookie_string(self):
-        # origin ???
-        raise NotImplemented
+    def cookie(self):
+        _, _, host, _ = self.tab.url.split("/", 3)
+        return COOKIE_JAR.get(host, "")
 
 
 SCROLL_STEP = 100
@@ -166,11 +166,22 @@ class Tab:
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
+    def allowed_request(self, url):
+        if self.allowed_servers == None: return True
+        scheme_colon, _, host, _ = url.split("/", 3)
+        return scheme_colon + "//" + host in self.allowed_servers
+
     def load(self, url, body=None):
+        headers, body = request(url, payload=body)
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        headers, body = request(url, payload=body)
+
+        self.allowed_servers = None
+        if "content-security-policy" in headers:
+           csp = headers["content-security-policy"].split()
+           if len(csp) > 0 and csp[0] == "default-src":
+               self.allowed_servers = csp[1:]
 
         self.nodes = HTMLParser(body).parse()
 
@@ -181,7 +192,11 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            header, body = request(resolve_url(script, url))
+            script_url = resolve_url(script, url)
+            if not self.allowed_request(script_url):
+                print("Blocked script", script, "due to CSP")
+                continue
+            header, body = request(script_url)
             try:
                 print("Script returned: ", self.js.run(body))
             except dukpy.JSRuntimeError as e:
@@ -195,8 +210,12 @@ class Tab:
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
+            style_url = resolve_url(link, url)
+            if not self.allowed_request(style_url):
+                print("Blocked style", link, "due to CSP")
+                continue
             try:
-                header, body = request(resolve_url(link, url))
+                header, body = request(style_url)
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
