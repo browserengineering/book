@@ -678,7 +678,7 @@ request line:
 
 ``` {.python file=server}
 def handle_connection(conx):
-    req = conx.makefile("rb")
+    req = conx.makefile("b")
     reqline = req.readline().decode('utf8')
     method, url, version = reqline.split(" ", 2)
     assert method in ["GET", "POST"]
