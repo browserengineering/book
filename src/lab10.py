@@ -85,8 +85,8 @@ def request(url, top_level_url, payload=None):
         params = {}
         if ";" in headers["set-cookie"]:
             cookie, rest = headers["set-cookie"].split(";", 1)
-            for param_pair in rest:
-                name, value = param_pair.split("=", 1)
+            for param_pair in rest.split(";"):
+                name, value = param_pair.strip().split("=", 1)
                 params[name.lower()] = value.lower()
         else:
             cookie = headers["set-cookie"]
@@ -97,7 +97,7 @@ def request(url, top_level_url, payload=None):
 
     return headers, body
 
-from lab10 import EVENT_DISPATCH_CODE
+from lab9 import EVENT_DISPATCH_CODE
 
 class JSContext:
     def __init__(self, tab):
@@ -164,7 +164,7 @@ class JSContext:
         return cookie
 
     def XMLHttpRequest_send(self, method, url, body):
-        full_url = resolve(url, self.tab.url)
+        full_url = resolve_url(url, self.tab.url)
         headers, out = request(full_url, self.tab.url, payload=body)
         new_origin = "/".join(full_url.split("/", 3)[:3])
         top_level_origin = "/".join(self.tab.url.split("/", 3)[:3])

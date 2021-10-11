@@ -491,7 +491,7 @@ export this `XMLHttpRequest_send` function:[^note-method]
 ``` {.python replace=full_url%2c/full_url%2c%20self.tab.url%2c}
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
-        full_url = resolve(url, self.tab.url)
+        full_url = resolve_url(url, self.tab.url)
         headers, out = request(full_url, payload=body)
         return out
 ```
@@ -725,8 +725,8 @@ def request(url, payload=None):
         params = {}
         if ";" in headers["set-cookie"]:
             cookie, rest = headers["set-cookie"].split(";", 1)
-            for param_pair in rest:
-                name, value = param_pair.split("=", 1)
+            for param_pair in rest.split(";"):
+                name, value = param_pair.strip().split("=", 1)
                 params[name.lower()] = value.lower()
         else:
             cookie = headers["set-cookie"]
