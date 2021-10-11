@@ -297,9 +297,6 @@ and implement cookies inside our own browser.
     
 [bcrypt]: https://auth0.com/blog/hashing-in-action-understanding-bcrypt/
 
-::: {.further}
-GDPR / CCPA
-:::
 
 Implementing cookies
 ====================
