@@ -486,7 +486,7 @@ export this `XMLHttpRequest_send` function:[^note-method]
     whether a payload is passed. This is again not what the standard
     requires, and a careful implementation would fix it.
 
-``` {.python}
+``` {.python replace=full_url%2c/full_url%2c%20self.tab.url%2c}
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
         full_url = resolve(url, self.tab.url)
@@ -1070,7 +1070,8 @@ default, the browser then throws away the response to prevent private
 data from leaking. But if the server sends the
 `Access-Control-Allow-Origin` header, and its value is either the
 requesting origin or the special `*` value, the browser instead makes
-the output available to the script.
+the output available to the script. All requests made by your browser
+will be what the CORS standard calls "simple requests".
 
 *Referer*: When your browser visits a web page, or when it loads a CSS
 or JavaScript file, it sends a `Referer` header[^24] containing the
