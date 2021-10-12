@@ -169,3 +169,97 @@ case the cookie is *not* sent:
     >>> tab.load(url3, body="who=me")
     >>> test.socket.last_request(url3)
     b'POST /add HTTP/1.0\r\nHost: test.test\r\nContent-Length: 6\r\n\r\nwho=me'
+
+Testing Content-Security-Policy
+===============================
+
+We test `Content-Security-Policy` by checking that subresources are
+loaded / not loaded as required. To do that we need a page with a lot
+of subresources:
+
+    >>> url = "http://test.test/"
+    >>> body = """<!doctype html>
+    ... <link rel=stylesheet href=http://test.test/css />
+    ... <script src=http://test.test/js></script>
+    ... <link rel=stylesheet href=http://library.test/css />
+    ... <script src=http://library.test/js></script>
+    ... <link rel=stylesheet href=http://other.test/css />
+    ... <script src=http://other.test/js></script>
+    ... """
+    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\n" + body.encode("utf8"))
+    
+We also need to create all those subresources:
+
+    >>> test.socket.respond_ok(url + "css", "")
+    >>> test.socket.respond_ok(url + "js", "")
+    >>> url2 = "http://library.test/"
+    >>> test.socket.respond_ok(url2 + "css", "")
+    >>> test.socket.respond_ok(url2 + "js", "")
+    >>> url3 = "http://other.test/"
+    >>> test.socket.respond_ok(url3 + "css", "")
+    >>> test.socket.respond_ok(url3 + "js", "")
+
+Now with all of these URLs set up, let's load the page without CSP and
+check that all of these requests were made:
+
+    >>> browser = lab10.Browser()
+    >>> browser.load(url)
+    Script returned:  None
+    Script returned:  None
+    Script returned:  None
+    >>> [test.socket.made_request(url + "css"),
+    ...  test.socket.made_request(url + "js")]
+    [True, True]
+    >>> [test.socket.made_request(url2 + "css"),
+    ...  test.socket.made_request(url2 + "js")]
+    [True, True]
+    >>> [test.socket.made_request(url3 + "css"),
+    ...  test.socket.made_request(url3 + "js")]
+    [True, True]
+
+Now let's reload the page, but with CSP enabled for `test.test` and
+`library.test` but not `other.test`:
+
+    >>> test.socket.clear_history()
+    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" + \
+    ... b"Content-Security-Policy: default-src http://test.test http://library.test\r\n\r\n" + \
+    ... body.encode("utf8"))
+    >>> browser = lab10.Browser()
+    >>> browser.load(url)
+    Script returned:  None
+    Script returned:  None
+    Blocked script http://other.test/js due to CSP
+    Blocked style http://other.test/css due to CSP
+
+The URLs on `test.test` and `library.test` should have been loaded:
+
+    >>> [test.socket.made_request(url + "css"),
+    ...  test.socket.made_request(url + "js")]
+    [True, True]
+    >>> [test.socket.made_request(url2 + "css"),
+    ...  test.socket.made_request(url2 + "js")]
+    [True, True]
+
+However, neither script nor style from `other.test` should be loaded:
+
+    >>> [test.socket.made_request(url3 + "css"),
+    ...  test.socket.made_request(url3 + "js")]
+    [False, False]
+
+Let's also test that XHR is blocked by CSP. This requires a little
+trickery, because cross-site XHR is already blocked, so we need a CSP
+that restricts all sites---but then we can't load and run any
+JavaScript!
+
+    >>> url = "http://weird.test/"
+    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" + \
+    ... b"Content-Security-Policy: default-src\r\n\r\n")
+    >>> browser.load(url)
+    >>> tab = browser.tabs[-1]
+    >>> tab.js.run("""
+    ... x = new XMLHttpRequest()
+    ... x.open('GET', 'http://weird.test/xhr', false);
+    ... x.send();""") #doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+      ...
+    _dukpy.JSRuntimeError: <complicated wrapper around 'Cross-origin XHR blocked by CSP'>

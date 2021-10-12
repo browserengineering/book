@@ -811,14 +811,18 @@ def request(url, top_level_url, payload=None):
     if host in COOKIE_JAR:
         cookie, params = COOKIE_JAR[host]
         allow_cookie = True
-        if params.get("samesite", "none") == "lax":
+        if top_level_url and params.get("samesite", "none") == "lax":
             _, _, top_level_host, _ = top_level_url.split("/", 3)
             allow_cookie = (host == top_level_host or method == "GET")
         if allow_cookie:
             body += "Cookie: {}\r\n".format(cookie)
 ```
 
-To test this, mark our guest book cookies `SameSite`:
+Note that we check whether the `top_level_url` is set---it won't be if
+we're visiting the first web page loaded in a new tab.
+
+To help secure our guest book, we can now mark our guest book cookies
+`SameSite`:
 
 ``` {.python file=server}
 def handle_connection(conx):
@@ -918,7 +922,7 @@ space-separated list of servers:
     Content-Security-Policy: default-src http://example.org
 
 This header asks the browser not to load any resources (including CSS,
-JavaScript, images, and so on) except from the listed servers. If our
+JavaScript, images, and so on) except from the listed origins. If our
 guest book used `Content-Security-Policy`, even an attacker managed to
 get a `<script>` added to the page, the browser would refuse to load
 and run that script.
@@ -934,11 +938,11 @@ and parse the `Content-Security-Policy` header:[^more-complex]
 class Tab:
     def load(self, url, body=None):
         # ...
-        self.allowed_servers = None
+        self.allowed_origins = None
         if "content-security-policy" in headers:
             csp = headers["content-security-policy"].split()
             if len(csp) > 0 and csp[0] == "default-src":
-                self.allowed_servers = csp[1:]
+                self.allowed_origins = csp[1:]
         # ...
 ```
 
@@ -957,6 +961,19 @@ class Tab:
             # ...
 ```
 
+Add the same conditional to the style block: the browser should not
+load CSS from a blocked URL. Finally, `Content-Security-Policy` also
+applies to `XMLHttpRequest`:
+
+``` {.python}
+class JSContext:
+    def XMLHttpRequest_send(self, method, url, body):
+        # ...
+        if not self.tab.allowed_request(full_url):
+            raise Exception("Cross-origin XHR blocked by CSP")
+        # ...
+```
+
 Note that we need to first resolve any relative URLs before checking
 them against the list of allowed servers. The `allowed_request` check
 needs to handle both the case of no `Content-Security-Policy` and the
@@ -965,9 +982,9 @@ case where there is one:
 ``` {.python}
 class Tab:
     def allowed_request(self, url):
-        if self.allowed_servers == None: return True
-        scheme_colon, _, host, _ = url.split("/", 3)
-        return scheme_colon + "//" + host in self.allowed_servers
+        if self.allowed_origins == None: return True
+        origin = "/".join(url.split("/", 3)[:3])
+        return origin in self.allowed_origins
 ```
 
 The guest book can now send a `Content-Security-Policy` header:

@@ -62,8 +62,21 @@ class socket:
         cls.URLs[url] = [method, response, body]
 
     @classmethod
+    def respond_ok(cls, url, response, method="GET", body=None):
+        response = ("HTTP/1.0 200 OK\r\n\r\n" + response).encode("utf8")
+        cls.URLs[url] = [method, response, body]
+
+    @classmethod
+    def made_request(cls, url):
+        return url in cls.Requests
+
+    @classmethod
     def last_request(cls, url):
         return cls.Requests[url][-1]
+
+    @classmethod
+    def clear_history(cls):
+        cls.Requests = {}
 
 class ssl:
     def wrap_socket(self, s, server_hostname):
