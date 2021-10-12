@@ -421,7 +421,11 @@ for another website's cookies. But there _is_ an API to make requests
 to another website. It's called `XMLHttpRequest`.[^weird-name]
 
 [^weird-name]: It's a weird name! Why is `XML` capitalized but not
-    `Http`? And it's not restricted to either XML or HTTP!
+    `Http`? And it's not restricted to either XML or HTTP! Ultimately
+    the name is [historic][xhr-history], dating back to Microsoft's
+    "Outlook Web Access" feature for Exchange Server 2000.
+    
+[xhr-history]: https://en.wikipedia.org/wiki/XMLHttpRequest#History
 
 `XMLHttpRequest` is a pretty big API; typically it is used to send
 asynchronous `GET` or `POST` requests from JavaScript. Since I'm using
@@ -543,15 +547,24 @@ attacker. Since the content is derived from the cookie, it leaks
 private data. To prevent this, the browser must prevent the attacker's
 page from reading the guest book web page content.
 
-The term for this is the "Same-origin policy". Basically, web pages
-can only make `XMLHttpRequests` for web pages on the same
-"origin"---scheme, hostname, and port.[^not-cookies] This makes sure
-that private data on one website can't be leaked by the browser to
-another website.
+This is achieved by the browser's [*same-origin
+policy*][same-origin-mdn], which says that requests like
+`XMLHttpRequest`s[^and-some-others] can only go to web pages on the
+same "origin"---scheme, hostname, and port.[^not-cookies] This makes
+sure that private data on one website can't be leaked by the browser
+to another website.
+
+[same-origin-mdn]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy
+
+[^and-some-others]: Some kinds of requests are not subject to the
+    same-origin policy (most prominently CSS and JavaScript files
+    linked from a web page); conversely, the same-origin policy also
+    governs JavaScript interactions with `iframe`s, images,
+    `localStorage` and many other browser features.
 
 [^not-cookies]: You may have noticed that this is not the same
-    definition of "website" as cookies use. Cookies don't care about
-    scheme and port! This seems to be an oversight or incongruity left
+    definition of "website" as cookies use: cookies don't care about
+    scheme or port! This seems to be an oversight or incongruity left
     over from the messy early web.
 
 Let's implement the same-origin policy for our browser. We'll need to
