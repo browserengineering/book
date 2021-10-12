@@ -330,7 +330,7 @@ class Tab:
             canvas.create_line(x, y, x, y + obj.height)
 
     def scrolldown(self):
-        max_y = self.document.height - HEIGHT
+        max_y = self.document.height - (HEIGHT - CHROME_PX)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 
     def click(self, x, y):
