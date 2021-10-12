@@ -614,7 +614,7 @@ no matter how confusing the markup.[^3]
 
 The full algorithm is, as you might expect, complicated beyond belief,
 with dozens of ever-more-special cases forming a taxonomy of human
-error, but one its the nicer features is *implicit* tags. Normally, an
+error, but one of its nicer features is *implicit* tags. Normally, an
 HTML document starts with a familiar boilerplate:
 
 ``` {.html}

@@ -673,12 +673,12 @@ the browser interpreting them as tags.
 
 *view-source:* In addition to HTTP and HTTPS, there are other schemes,
 such as *view-source*; navigating in a real browser to
-`view-source:browser.engineering/http.html` shows the HTML source of
-this chapter rather than its rendered output. Add support for the
-view-source scheme. Your browser should print the entire HTML file as if
-it was text. *Hint*: To do so, you can utilize the entities from the
-previous exercise, and add an extra `transform()` method that adjusts
-the input to `show()` when in view-source mode, like this:
+`view-source:http://browser.engineering/http.html` shows the HTML
+source of this chapter rather than its rendered output. Add support
+for the view-source scheme. Your browser should print the entire HTML
+file as if it was text. *Hint*: To do so, you can utilize the entities
+from the previous exercise, and add an extra `transform()` method that
+adjusts the input to `show()` when in view-source mode, like this:
 `show(transform(body))`.
 
 *Compression:* Add support for HTTP compression, in which the browser
