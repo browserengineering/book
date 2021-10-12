@@ -495,10 +495,10 @@ class JSContext:
 ```
 
 With this new JavaScript API, a web page can make HTTP requests while
-the user interacts with it, making various "live", "AJAX" websites
+the user interacts with it, making more interactive websites
 possible! This API, and newer analogs like [`fetch`][mdn-fetch], are
-the basis for so many web page interactions that don't reload the
-page---think "liking" a post or hover previews or similar.
+the basis for many web page interactions that don't reload the
+page---think "liking" a post, hover previews or submitting a form without reloading the page.
 
 [mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
 
@@ -509,7 +509,7 @@ Same-origin Policy
 
 However, new capabilities lead to new responsibilities. After all:
 any HTTP requests triggered by `XMLHttpRequest` will include cookies,
-which means they can potentially be used to steal or abuse cookies!
+which means they can potentially be used to steal or abuse private information.
 This is by design: when you "like" something, the corresponding
 HTTP request needs your cookie so the server associates the "like" to
 your account. But it also means that `XMLHttpRequest`s have access to
@@ -518,7 +518,8 @@ private data, and thus need to protect it.
 Let's imagine an attacker that wants to know your username on our
 guest book server. When you're logged in, the guest book includes your
 username in the "Hello, so and so" header, so it's enough for the
-attacker to read the guest book web page with your cookies.
+attacker to read the guest book web page with your cookies, in order to find out your name
+and violate your privacy.
 
 `XMLHttpRequest` could let them do that. Say the user visits the
 attacker's website[^why-visit-attackers], which then executes the
@@ -544,7 +545,7 @@ private data. To prevent this, the browser must prevent the attacker's
 page from reading the guest book web page content.
 
 The term for this is the "Same-origin policy". Basically, web pages
-can only make `XMLHttpRequests` for web pages on the same
+ only make `XMLHttpRequests` for web pages on the same
 "origin"---scheme, hostname, and port.[^not-cookies] This makes sure
 that private data on one website can't be leaked by the browser to
 another website.
@@ -1062,7 +1063,7 @@ overwritten if the same cookie is set again with a later date. On the
 server side, save the same expiration dates in the `SESSIONS` variable
 and use it to delete old sessions to save memory.
 
-*CORS*: Web servers can *opt in* to allowing cross-origin
+*CORS*: Web servers can [*opt in*](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) to allowing cross-origin
 `XMLHttpRequest`s using the `Access-Control-Allow-Origin` header. The
 way it works is that on cross-origin HTTP requests, the web browser
 sends an `Origin` header with the origin of the requesting site. By
