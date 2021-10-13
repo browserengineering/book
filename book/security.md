@@ -575,17 +575,18 @@ compare the URL of the request to the top-level web page URL:
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
         # ...
-        new_origin = "/".join(full_url.split("/", 3)[:3])
-        top_level_origin = "/".join(self.tab.url.split("/", 3)[:3])
-        if new_origin != top_level_origin:
+        if url_origin(full_url) != url_origin(self.tab.url):
             raise Exception("Cross-origin XHR request not allowed")
         # ...
 ```
 
-Here the tricky split-slice-join string manipulations extract the
-origin from a URL by taking everything before the third slash.
-The URL being requested and the tab's top-level URL need to match for
-the request to be valid.
+The `url_origin` function can just strip off the path from a URL:
+
+``` {.python}
+def url_origin(url):
+    scheme_colon, _, host, _ = url.split("/", 3)
+    return scheme_colon + "//" + host
+```
 
 Now an attacker can't read the guest book web page. But can they write
 to it? Actually...
@@ -977,9 +978,8 @@ case where there is one:
 ``` {.python}
 class Tab:
     def allowed_request(self, url):
-        if self.allowed_servers == None: return True
-        scheme_colon, _, host, _ = url.split("/", 3)
-        return scheme_colon + "//" + host in self.allowed_servers
+        return self.allowed_servers == None or \
+            url_origin(url) in self.allowed_servers
 ```
 
 The guest book can now send a `Content-Security-Policy` header:
