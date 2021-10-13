@@ -26,14 +26,14 @@ Cookies
 =======
 
 With what we've implemented so far there's no way for a web server to
-tell whether two HTTP requests come from the same user, or
-different ones. Our web browser is effectively anonymous.[^1] That
+tell whether two HTTP requests come from the same user, or different
+ones. Our web browser is effectively anonymous.[^fingerprinting] That
 means it can't "log in" anywhere---after logging in, its requests will
 look just like those of a new visitor.
 
-[^1]: I don't mean anonymous against malicious attackers, who might
-    use *browser fingerprinting* or similar techniques to tell users
-    apart. I mean anonymous in the good-faith sense.
+[^fingerprinting]: I don't mean anonymous against malicious attackers,
+    who might use *browser fingerprinting* or similar techniques to
+    tell users apart. I mean anonymous in the good-faith sense.
 
 The web fixes this problem with cookies. A cookie---the name is
 meaningless, ignore it---is a little bit of information stored by your
@@ -165,10 +165,11 @@ complex, just the minimal functionality:
 - Users have to be logged in to add guest book entries.
 - The server will display who added which guest book entry.
 
-Let's start coding. First, we'll need to store usernames in `ENTRIES`:[^3]
+Let's start coding. First, we'll need to store usernames in
+`ENTRIES`:[^hackers-movie]
 
-[^3]: The pre-loaded comments reference 1995's *Hackers*. [Hack the
-    Planet!](https://xkcd.com/1337)
+[^hackers-movie]: The pre-loaded comments reference 1995's *Hackers*.
+    [Hack the Planet!](https://xkcd.com/1337)
 
 ``` {.python file=server}
 ENTRIES = [
@@ -227,11 +228,13 @@ def do_request(session, method, url, headers, body):
     # ...
 ```
 
-This URL shows a form with a username and a password field:[^4]
+This URL shows a form with a username and a password
+field:[^password-input]
 
-[^4]: I've given the `password` input area the type `password`, which
-    in a real browser will draw stars or dots instead of showing what
-    you've entered, though our browser doesn't do that.
+[^password-input]: I've given the `password` input area the type
+    `password`, which in a real browser will draw stars or dots
+    instead of showing what you've entered, though our browser doesn't
+    do that.
 
 ``` {.python file=server}
 def login_form(session):
@@ -289,12 +292,13 @@ main guest book page, click the link to log in, use one of the
 username/password pairs above, and post entries.^[The login flow slows
 down debugging. You might want to add the empty string as a
 username/password pair.] Of course, this login system has a whole slew
-of insecurities.[^7] But the focus of this book is the browser, not
-the server, so once you're sure it's all working, let's switch gears
-and implement cookies inside our own browser.
+of insecurities.[^insecurities] But the focus of this book is the
+browser, not the server, so once you're sure it's all working, let's
+switch gears and implement cookies inside our own browser.
 
-[^7]: The insecurities include not hashing passwords, not using `bcrypt`, not verifying
-    email addresses, not forcing TLS, and not running the server in a sandbox.
+[^insecurities]: The insecurities include not hashing passwords, not
+    using `bcrypt`, not verifying email addresses, not forcing TLS,
+    and not running the server in a sandbox.
     
 [bcrypt]: https://auth0.com/blog/hashing-in-action-understanding-bcrypt/
 
@@ -303,10 +307,11 @@ Implementing cookies
 ====================
 
 Let's implement cookies. To start with, we need a place to store
-cookies; that database is traditionally called a *cookie jar*[^2]:
+cookies; that database is traditionally called a *cookie
+jar*:[^silly-name]
 
-[^2]: Because once you have one silly name it's important to stay
-    on-brand.
+[^silly-name]: Because once you have one silly name it's important to
+    stay on-brand.
 
 ``` {.python}
 COOKIE_JAR = {}
@@ -388,21 +393,22 @@ all: if someone stole your `token` cookie, they could copy it into
 their browser, and the server would think they are you.
 
 Our browser must prevent one servers from seeing *another server's*
-cookie values.[^11][^12][^13][^14] But attackers might be able to get
-*your server* or *your browser* to help them steal cookie values...
+cookie values.[^tls][^dns][^bgp][^oof] But attackers might be able to
+get *your server* or *your browser* to help them steal cookie
+values...
 
-[^11]: Well... Our connection isn't encrypted, so an attacker could
+[^tls]: Well... Our connection isn't encrypted, so an attacker could
     pick up the token from there. But another *server* couldn't.
 
-[^12]: Well... Another server could hijack our DNS and redirect our
-    hostname to a different IP address, and then steal our cookies. But
-    some ISPs support DNSSEC, which prevents that.
+[^dns]: Well... Another server could hijack our DNS and redirect our
+    hostname to a different IP address, and then steal our cookies.
+    But some ISPs support DNSSEC, which prevents that.
 
-[^13]: Well... A state-level attacker could announce fradulent BGP
+[^bgp]: Well... A state-level attacker could announce fradulent BGP
     routes, which would send even a correctly-retrieved IP address to
     the wrong physical computer.
 
-[^14]: Security is very hard.
+[^oof]: Security is very hard.
 
 
 
@@ -635,10 +641,11 @@ disguised, for example by hiding the entry widget, pre-filling a post,
 and styling the button to look like a normal link.
 
 Unfortunately, we can't just apply the same-origin policy to form
-submissions.[^21] So how do we defend against this attack?
+submissions.[^google-search] So how do we defend against this attack?
 
-[^21]: For example, many search forms on websites submit to Google,
-    because those websites don't have their own search engines.
+[^google-search]: For example, many search forms on websites submit to
+    Google, because those websites don't have their own search
+    engines.
 
 To start with, there are things the server can do. The usual advice is
 to make sure that every POST request to `/add` comes from a form on
