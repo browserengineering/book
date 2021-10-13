@@ -80,6 +80,7 @@ class Tab:
     def __init__(self):
         self.history = []
         self.focus = None
+        self.url = None
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()

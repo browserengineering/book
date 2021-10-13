@@ -243,6 +243,7 @@ CHROME_PX = 100
 
 class Tab:
     def __init__(self):
+        self.url = None
         self.history = []
 
         with open("browser6.css") as f:

@@ -31,10 +31,9 @@ class socket:
         if self.method == "POST":
             beginning, self.body = self.request.decode("latin1").split("\r\n\r\n")
             headers = [item.split(": ") for item in beginning.split("\r\n")[1:]]
-            assert headers[0][0] == "Content-Length"
-            content_length = headers[0][1]
-
-            assert len(self.body) == int(content_length), len(self.body)
+            assert any(name.lower() == "content-length" for name, value in headers)
+            assert all(int(value) == len(self.body) for name, value in headers
+                       if name.lower() == "content-length")
 
     def makefile(self, mode, encoding, newline):
         assert self.connected and self.host and self.port
@@ -45,7 +44,7 @@ class socket:
         else:
             url = self.scheme + "://" + self.host + ":" + str(self.port) + self.path
         self.Requests.setdefault(url, []).append(self.request)
-        assert self.method == self.URLs[url][0]
+        assert self.method == self.URLs[url][0], f"Made a {self.method} request to a {self.URLs[url][0]} URL"
         output = self.URLs[url][1]
         if self.URLs[url][2]:
             assert self.body == self.URLs[url][2], (self.body, self.URLs[url][2])
@@ -63,8 +62,21 @@ class socket:
         cls.URLs[url] = [method, response, body]
 
     @classmethod
+    def respond_ok(cls, url, response, method="GET", body=None):
+        response = ("HTTP/1.0 200 OK\r\n\r\n" + response).encode("utf8")
+        cls.URLs[url] = [method, response, body]
+
+    @classmethod
+    def made_request(cls, url):
+        return url in cls.Requests
+
+    @classmethod
     def last_request(cls, url):
         return cls.Requests[url][-1]
+
+    @classmethod
+    def clear_history(cls):
+        cls.Requests = {}
 
 class ssl:
     def wrap_socket(self, s, server_hostname):

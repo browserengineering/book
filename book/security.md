@@ -329,11 +329,12 @@ site:[^multi-cookies]
     using different key-value pairs. The browser is supposed to
     separate them with semicolons. I'll leave that for an exercise.
 
-``` {.python replace=(url/(url%2c%20top_level_url,COOKIE_JAR[host]/cookie}
+``` {.python replace=(url/(url%2c%20top_level_url,cookie%20=/cookie%2c%20params%20=}
 def request(url, payload=None):
     # ...
     if host in COOKIE_JAR:
-        body += "Cookie: {}\r\n".format(COOKIE_JAR[host])
+        cookie = COOKIE_JAR[host]
+        body += "Cookie: {}\r\n".format(cookie)
     # ...
 ```
 
@@ -366,7 +367,7 @@ set by previous responses.
 Cookies are also accessible from JavaScript's `document.cookie` value.
 To implement this, register a `cookie` function:
 
-``` {.python}
+``` {.python replace=cookie%20=/cookie%2c%20params%20=}
 class JSContext:
     def __init__(self, tab):
         # ...
@@ -376,7 +377,8 @@ class JSContext:
     def cookie(self):
         _, _, host, _ = self.tab.url.split("/", 3)
         if ":" in host: host = host.split(":", 1)[0]
-        return COOKIE_JAR.get(host, "")
+        cookie = COOKIE_JAR.get(host, "")
+        return cookie
 ```
 
 Then create the `document.cookie` field in `runtime.js`:
@@ -499,7 +501,7 @@ export this `XMLHttpRequest_send` function:[^note-method]
 ``` {.python replace=full_url%2c/full_url%2c%20self.tab.url%2c}
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
-        full_url = resolve(url, self.tab.url)
+        full_url = resolve_url(url, self.tab.url)
         headers, out = request(full_url, payload=body)
         return out
 ```
@@ -744,8 +746,8 @@ def request(url, payload=None):
         params = {}
         if ";" in headers["set-cookie"]:
             cookie, rest = headers["set-cookie"].split(";", 1)
-            for param_pair in rest:
-                name, value = param_pair.split("=", 1)
+            for param_pair in rest.split(";"):
+                name, value = param_pair.strip().split("=", 1)
                 params[name.lower()] = value.lower()
         else:
             cookie = headers["set-cookie"]
@@ -830,14 +832,18 @@ def request(url, top_level_url, payload=None):
     if host in COOKIE_JAR:
         cookie, params = COOKIE_JAR[host]
         allow_cookie = True
-        if params.get("samesite", "none") == "lax":
+        if top_level_url and params.get("samesite", "none") == "lax":
             _, _, top_level_host, _ = top_level_url.split("/", 3)
             allow_cookie = (host == top_level_host or method == "GET")
         if allow_cookie:
             body += "Cookie: {}\r\n".format(cookie)
 ```
 
-To test this, mark our guest book cookies `SameSite`:
+Note that we check whether the `top_level_url` is set---it won't be if
+we're visiting the first web page loaded in a new tab.
+
+To help secure our guest book, we can now mark our guest book cookies
+`SameSite`:
 
 ``` {.python file=server}
 def handle_connection(conx):
@@ -937,7 +943,7 @@ space-separated list of servers:
     Content-Security-Policy: default-src http://example.org
 
 This header asks the browser not to load any resources (including CSS,
-JavaScript, images, and so on) except from the listed servers. If our
+JavaScript, images, and so on) except from the listed origins. If our
 guest book used `Content-Security-Policy`, even an attacker managed to
 get a `<script>` added to the page, the browser would refuse to load
 and run that script.
@@ -953,11 +959,11 @@ and parse the `Content-Security-Policy` header:[^more-complex]
 class Tab:
     def load(self, url, body=None):
         # ...
-        self.allowed_servers = None
+        self.allowed_origins = None
         if "content-security-policy" in headers:
             csp = headers["content-security-policy"].split()
             if len(csp) > 0 and csp[0] == "default-src":
-                self.allowed_servers = csp[1:]
+                self.allowed_origins = csp[1:]
         # ...
 ```
 
@@ -976,6 +982,19 @@ class Tab:
             # ...
 ```
 
+Add the same conditional to the style block: the browser should not
+load CSS from a blocked URL. Finally, `Content-Security-Policy` also
+applies to `XMLHttpRequest`:
+
+``` {.python}
+class JSContext:
+    def XMLHttpRequest_send(self, method, url, body):
+        # ...
+        if not self.tab.allowed_request(full_url):
+            raise Exception("Cross-origin XHR blocked by CSP")
+        # ...
+```
+
 Note that we need to first resolve any relative URLs before checking
 them against the list of allowed servers. The `allowed_request` check
 needs to handle both the case of no `Content-Security-Policy` and the
@@ -984,8 +1003,8 @@ case where there is one:
 ``` {.python}
 class Tab:
     def allowed_request(self, url):
-        return self.allowed_servers == None or \
-            url_origin(url) in self.allowed_servers
+        return self.allowed_origins == None or \
+            url_origin(url) in self.allowed_origins
 ```
 
 The guest book can now send a `Content-Security-Policy` header:

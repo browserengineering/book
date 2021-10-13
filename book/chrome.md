@@ -443,6 +443,10 @@ relative to the current page, so store the current URL in `load`:
 
 ``` {.python replace=Browser/Tab}
 class Browser:
+    def __init__(self):
+        # ...
+        self.url = None
+
     def load(self, url):
         self.url = url
         # ...

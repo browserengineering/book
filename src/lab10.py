@@ -62,7 +62,7 @@ def request(url, top_level_url, payload=None):
     if host in COOKIE_JAR:
         cookie, params = COOKIE_JAR[host]
         allow_cookie = True
-        if params.get("samesite", "none") == "lax":
+        if top_level_url and params.get("samesite", "none") == "lax":
             _, _, top_level_host, _ = top_level_url.split("/", 3)
             allow_cookie = (host == top_level_host or method == "GET")
         if allow_cookie:
@@ -89,8 +89,8 @@ def request(url, top_level_url, payload=None):
         params = {}
         if ";" in headers["set-cookie"]:
             cookie, rest = headers["set-cookie"].split(";", 1)
-            for param_pair in rest:
-                name, value = param_pair.split("=", 1)
+            for param_pair in rest.split(";"):
+                name, value = param_pair.strip().split("=", 1)
                 params[name.lower()] = value.lower()
         else:
             cookie = headers["set-cookie"]
@@ -101,8 +101,7 @@ def request(url, top_level_url, payload=None):
 
     return headers, body
 
-EVENT_DISPATCH_CODE = \
-    "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
+from lab9 import EVENT_DISPATCH_CODE
 
 class JSContext:
     def __init__(self, tab):
@@ -165,10 +164,13 @@ class JSContext:
     def cookie(self):
         _, _, host, _ = self.tab.url.split("/", 3)
         if ":" in host: host = host.split(":", 1)[0]
-        return COOKIE_JAR.get(host, "")
+        cookie, params = COOKIE_JAR.get(host, "")
+        return cookie
 
     def XMLHttpRequest_send(self, method, url, body):
-        full_url = resolve(url, self.tab.url)
+        full_url = resolve_url(url, self.tab.url)
+        if not self.tab.allowed_request(full_url):
+            raise Exception("Cross-origin XHR blocked by CSP")
         headers, out = request(full_url, self.tab.url, payload=body)
         if url_origin(full_url) != url_origin(self.tab.url):
             raise Exception("Cross-origin XHR request not allowed")
@@ -188,8 +190,8 @@ class Tab:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def allowed_request(self, url):
-        return self.allowed_servers == None or \
-            url_origin(url) in self.allowed_servers
+        return self.allowed_origins == None or \
+            url_origin(url) in self.allowed_origins
 
     def load(self, url, body=None):
         headers, body = request(url, self.url, payload=body)
@@ -197,11 +199,11 @@ class Tab:
         self.url = url
         self.history.append(url)
 
-        self.allowed_servers = None
+        self.allowed_origins = None
         if "content-security-policy" in headers:
            csp = headers["content-security-policy"].split()
            if len(csp) > 0 and csp[0] == "default-src":
-               self.allowed_servers = csp[1:]
+               self.allowed_origins = csp[1:]
 
         self.nodes = HTMLParser(body).parse()
 
