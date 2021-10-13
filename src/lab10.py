@@ -190,8 +190,8 @@ class Tab:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def allowed_request(self, url):
-        return self.allowed_servers == None or \
-            url_origin(url) in self.allowed_servers
+        return self.allowed_origins == None or \
+            url_origin(url) in self.allowed_origins
 
     def load(self, url, body=None):
         headers, body = request(url, self.url, payload=body)

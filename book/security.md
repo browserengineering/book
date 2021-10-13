@@ -1003,8 +1003,8 @@ case where there is one:
 ``` {.python}
 class Tab:
     def allowed_request(self, url):
-        return self.allowed_servers == None or \
-            url_origin(url) in self.allowed_servers
+        return self.allowed_origins == None or \
+            url_origin(url) in self.allowed_origins
 ```
 
 The guest book can now send a `Content-Security-Policy` header:
