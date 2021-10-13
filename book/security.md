@@ -387,9 +387,9 @@ need to make sure cookie data is safe from malicious actors. After
 all: if someone stole your `token` cookie, they could copy it into
 their browser, and the server would think they are you.
 
-Our browser must prevent *other servers* from seeing your cookie
-values.[^11][^12][^13][^14] But attackers might be able to get *your
-server* or *your browser* to help them steal cookie values...
+Our browser must prevent one servers from seeing *another server's*
+cookie values.[^11][^12][^13][^14] But attackers might be able to get
+*your server* or *your browser* to help them steal cookie values...
 
 [^11]: Well... Our connection isn't encrypted, so an attacker could
     pick up the token from there. But another *server* couldn't.
@@ -409,7 +409,7 @@ server* or *your browser* to help them steal cookie values...
 Cross-site requests
 ===================
 
-Imagine that your browser is logged in to your bank, and than an
+Imagine that your browser is logged in to your bank, and that an
 attacker wants to know your (private) bank balance. Already, our
 browser stores different cookies for each site. Because of this, it
 won't just send the bank cookie to an attacker's site. But what if the
@@ -421,9 +421,9 @@ for another website's cookies. But there _is_ an API to make requests
 to another website. It's called `XMLHttpRequest`.[^weird-name]
 
 [^weird-name]: It's a weird name! Why is `XML` capitalized but not
-    `Http`? And it's not restricted to either XML or HTTP! Ultimately
-    the name is [historic][xhr-history], dating back to Microsoft's
-    "Outlook Web Access" feature for Exchange Server 2000.
+    `Http`? And it's not restricted to XML! Ultimately, the name is
+    [historic][xhr-history], dating back to Microsoft's "Outlook Web
+    Access" feature for Exchange Server 2000.
     
 [xhr-history]: https://en.wikipedia.org/wiki/XMLHttpRequest#History
 
@@ -521,8 +521,9 @@ private data, and thus need to protect it.
 
 Let's imagine an attacker that wants to know your username on our
 guest book server. When you're logged in, the guest book includes your
-username in the "Hello, so and so" header, so it's enough for the
-attacker to read the guest book web page with your cookies.
+username on the page (where it says "Hello, so and so"), so it's
+enough for the attacker to request the guest book with your cookies
+and read the page contents.
 
 `XMLHttpRequest` could let them do that. Say the user visits the
 attacker's website[^why-visit-attackers], which then executes the
@@ -590,7 +591,7 @@ Now an attacker can't read the guest book web page. But can they write
 to it? Actually...
 
 ::: {.further}
-Same-origin policy for canvas
+Same-origin policy for canvas, images, etc
 :::
 
 
@@ -1076,18 +1077,18 @@ server side, save the same expiration dates in the `SESSIONS` variable
 and use it to delete old sessions to save memory.
 
 *CORS*: Web servers can *opt in* to allowing cross-origin
-`XMLHttpRequest`s using the `Access-Control-Allow-Origin` header. The
-way it works is that on cross-origin HTTP requests, the web browser
-sends an `Origin` header with the origin of the requesting site. By
-default, the browser then throws away the response to prevent private
-data from leaking. But if the server sends the
-`Access-Control-Allow-Origin` header, and its value is either the
-requesting origin or the special `*` value, the browser instead makes
-the output available to the script. All requests made by your browser
+`XMLHttpRequest`s. The way it works is that on cross-origin HTTP
+requests, the web browser makes the request and includes an `Origin`
+header with the origin of the requesting site; this request includes
+cookies for the target origin. By default, due to the same-origin
+policy, the browser then throws away the response; but if the server
+sends the `Access-Control-Allow-Origin` header, and its value is
+either the requesting origin or the special `*` value, the browser
+returns the output to the script. All requests made by your browser
 will be what the CORS standard calls "simple requests".
 
 *Referer*: When your browser visits a web page, or when it loads a CSS
-or JavaScript file, it sends a `Referer` header[^24] containing the
+or JavaScript file, it sends a `Referer` header[^referer] containing the
 URL it is coming from. Sites often use this for analytics. Implement
 this in your browser. However, some URLs contain personal data that
 they don't want revealed to other websites, so browsers support a
@@ -1096,4 +1097,4 @@ they don't want revealed to other websites, so browsers support a
 `same-origin` (only do so if navigating to another page on the same
 origin). Implement those two values for `Referer-Policy`.
 
-[^24]: Yep, spelled that way.
+[^referer]: Yep, spelled that way.
