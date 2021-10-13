@@ -26,6 +26,10 @@ from lab7 import LineLayout
 from lab7 import TextLayout
 from lab8 import DocumentLayout
 
+def url_origin(url):
+    scheme_colon, _, host, _ = url.split("/", 3)
+    return scheme_colon + "//" + host
+        
 COOKIE_JAR = {}
 
 def request(url, top_level_url, payload=None):
@@ -168,9 +172,7 @@ class JSContext:
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
         headers, out = request(full_url, self.tab.url, payload=body)
-        new_origin = "/".join(full_url.split("/", 3)[:3])
-        top_level_origin = "/".join(self.tab.url.split("/", 3)[:3])
-        if new_origin != top_level_origin:
+        if url_origin(full_url) != url_origin(self.tab.url):
             raise Exception("Cross-origin XHR request not allowed")
         return out
 
@@ -188,9 +190,8 @@ class Tab:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def allowed_request(self, url):
-        if self.allowed_origins == None: return True
-        origin = "/".join(url.split("/", 3)[:3])
-        return origin in self.allowed_origins
+        return self.allowed_servers == None or \
+            url_origin(url) in self.allowed_servers
 
     def load(self, url, body=None):
         headers, body = request(url, self.url, payload=body)

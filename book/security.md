@@ -26,14 +26,14 @@ Cookies
 =======
 
 With what we've implemented so far there's no way for a web server to
-tell whether two HTTP requests come from the same user, or
-different ones. Our web browser is effectively anonymous.[^1] That
+tell whether two HTTP requests come from the same user, or different
+ones. Our web browser is effectively anonymous.[^fingerprinting] That
 means it can't "log in" anywhere---after logging in, its requests will
 look just like those of a new visitor.
 
-[^1]: I don't mean anonymous against malicious attackers, who might
-    use *browser fingerprinting* or similar techniques to tell users
-    apart. I mean anonymous in the good-faith sense.
+[^fingerprinting]: I don't mean anonymous against malicious attackers,
+    who might use *browser fingerprinting* or similar techniques to
+    tell users apart. I mean anonymous in the good-faith sense.
 
 The web fixes this problem with cookies. A cookie---the name is
 meaningless, ignore it---is a little bit of information stored by your
@@ -165,10 +165,11 @@ complex, just the minimal functionality:
 - Users have to be logged in to add guest book entries.
 - The server will display who added which guest book entry.
 
-Let's start coding. First, we'll need to store usernames in `ENTRIES`:[^3]
+Let's start coding. First, we'll need to store usernames in
+`ENTRIES`:[^hackers-movie]
 
-[^3]: The pre-loaded comments reference 1995's *Hackers*. [Hack the
-    Planet!](https://xkcd.com/1337)
+[^hackers-movie]: The pre-loaded comments reference 1995's *Hackers*.
+    [Hack the Planet!](https://xkcd.com/1337)
 
 ``` {.python file=server}
 ENTRIES = [
@@ -227,11 +228,13 @@ def do_request(session, method, url, headers, body):
     # ...
 ```
 
-This URL shows a form with a username and a password field:[^4]
+This URL shows a form with a username and a password
+field:[^password-input]
 
-[^4]: I've given the `password` input area the type `password`, which
-    in a real browser will draw stars or dots instead of showing what
-    you've entered, though our browser doesn't do that.
+[^password-input]: I've given the `password` input area the type
+    `password`, which in a real browser will draw stars or dots
+    instead of showing what you've entered, though our browser doesn't
+    do that.
 
 ``` {.python file=server}
 def login_form(session):
@@ -289,12 +292,13 @@ main guest book page, click the link to log in, use one of the
 username/password pairs above, and post entries.^[The login flow slows
 down debugging. You might want to add the empty string as a
 username/password pair.] Of course, this login system has a whole slew
-of insecurities.[^7] But the focus of this book is the browser, not
-the server, so once you're sure it's all working, let's switch gears
-and implement cookies inside our own browser.
+of insecurities.[^insecurities] But the focus of this book is the
+browser, not the server, so once you're sure it's all working, let's
+switch gears and implement cookies inside our own browser.
 
-[^7]: The insecurities include not hashing passwords, not using `bcrypt`, not verifying
-    email addresses, not forcing TLS, and not running the server in a sandbox.
+[^insecurities]: The insecurities include not hashing passwords, not
+    using `bcrypt`, not verifying email addresses, not forcing TLS,
+    and not running the server in a sandbox.
     
 [bcrypt]: https://auth0.com/blog/hashing-in-action-understanding-bcrypt/
 
@@ -303,10 +307,11 @@ Implementing cookies
 ====================
 
 Let's implement cookies. To start with, we need a place to store
-cookies; that database is traditionally called a *cookie jar*[^2]:
+cookies; that database is traditionally called a *cookie
+jar*:[^silly-name]
 
-[^2]: Because once you have one silly name it's important to stay
-    on-brand.
+[^silly-name]: Because once you have one silly name it's important to
+    stay on-brand.
 
 ``` {.python}
 COOKIE_JAR = {}
@@ -389,29 +394,30 @@ need to make sure cookie data is safe from malicious actors. After
 all: if someone stole your `token` cookie, they could copy it into
 their browser, and the server would think they are you.
 
-Our browser must prevent *other servers* from seeing your cookie
-values.[^11][^12][^13][^14] But attackers might be able to get *your
-server* or *your browser* to help them steal cookie values...
+Our browser must prevent one servers from seeing *another server's*
+cookie values.[^tls][^dns][^bgp][^oof] But attackers might be able to
+get *your server* or *your browser* to help them steal cookie
+values...
 
-[^11]: Well... Our connection isn't encrypted, so an attacker could
+[^tls]: Well... Our connection isn't encrypted, so an attacker could
     pick up the token from there. But another *server* couldn't.
 
-[^12]: Well... Another server could hijack our DNS and redirect our
-    hostname to a different IP address, and then steal our cookies. But
-    some ISPs support DNSSEC, which prevents that.
+[^dns]: Well... Another server could hijack our DNS and redirect our
+    hostname to a different IP address, and then steal our cookies.
+    But some ISPs support DNSSEC, which prevents that.
 
-[^13]: Well... A state-level attacker could announce fradulent BGP
+[^bgp]: Well... A state-level attacker could announce fradulent BGP
     routes, which would send even a correctly-retrieved IP address to
     the wrong physical computer.
 
-[^14]: Security is very hard.
+[^oof]: Security is very hard.
 
 
 
 Cross-site requests
 ===================
 
-Imagine that your browser is logged in to your bank, and than an
+Imagine that your browser is logged in to your bank, and that an
 attacker wants to know your (private) bank balance. Already, our
 browser stores different cookies for each site. Because of this, it
 won't just send the bank cookie to an attacker's site. But what if the
@@ -423,7 +429,11 @@ for another website's cookies. But there _is_ an API to make requests
 to another website. It's called `XMLHttpRequest`.[^weird-name]
 
 [^weird-name]: It's a weird name! Why is `XML` capitalized but not
-    `Http`? And it's not restricted to either XML or HTTP!
+    `Http`? And it's not restricted to XML! Ultimately, the name is
+    [historic][xhr-history], dating back to Microsoft's "Outlook Web
+    Access" feature for Exchange Server 2000.
+    
+[xhr-history]: https://en.wikipedia.org/wiki/XMLHttpRequest#History
 
 `XMLHttpRequest` is a pretty big API; typically it is used to send
 asynchronous `GET` or `POST` requests from JavaScript. Since I'm using
@@ -497,10 +507,10 @@ class JSContext:
 ```
 
 With this new JavaScript API, a web page can make HTTP requests while
-the user interacts with it, making various "live", "AJAX" websites
+the user interacts with it, making more interactive websites
 possible! This API, and newer analogs like [`fetch`][mdn-fetch], are
-the basis for so many web page interactions that don't reload the
-page---think "liking" a post or hover previews or similar.
+the basis for many web page interactions that don't reload the
+page---think "liking" a post, hover previews or submitting a form without reloading the page.
 
 [mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
 
@@ -511,7 +521,7 @@ Same-origin Policy
 
 However, new capabilities lead to new responsibilities. After all:
 any HTTP requests triggered by `XMLHttpRequest` will include cookies,
-which means they can potentially be used to steal or abuse cookies!
+which means they can potentially be used to steal or abuse private information.
 This is by design: when you "like" something, the corresponding
 HTTP request needs your cookie so the server associates the "like" to
 your account. But it also means that `XMLHttpRequest`s have access to
@@ -519,8 +529,8 @@ private data, and thus need to protect it.
 
 Let's imagine an attacker that wants to know your username on our
 guest book server. When you're logged in, the guest book includes your
-username in the "Hello, so and so" header, so it's enough for the
-attacker to read the guest book web page with your cookies.
+username on the page (where it says "Hello, so and so"), so reading
+the guest book with your cookies is enough to determine your username.
 
 `XMLHttpRequest` could let them do that. Say the user visits the
 attacker's website[^why-visit-attackers], which then executes the
@@ -545,15 +555,24 @@ attacker. Since the content is derived from the cookie, it leaks
 private data. To prevent this, the browser must prevent the attacker's
 page from reading the guest book web page content.
 
-The term for this is the "Same-origin policy". Basically, web pages
-can only make `XMLHttpRequests` for web pages on the same
-"origin"---scheme, hostname, and port.[^not-cookies] This makes sure
-that private data on one website can't be leaked by the browser to
-another website.
+This is achieved by the browser's [*same-origin
+policy*][same-origin-mdn], which says that requests like
+`XMLHttpRequest`s[^and-some-others] can only go to web pages on the
+same "origin"---scheme, hostname, and port.[^not-cookies] This makes
+sure that private data on one website can't be leaked by the browser
+to another website.
+
+[same-origin-mdn]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy
+
+[^and-some-others]: Some kinds of requests are not subject to the
+    same-origin policy (most prominently CSS and JavaScript files
+    linked from a web page); conversely, the same-origin policy also
+    governs JavaScript interactions with `iframe`s, images,
+    `localStorage` and many other browser features.
 
 [^not-cookies]: You may have noticed that this is not the same
-    definition of "website" as cookies use. Cookies don't care about
-    scheme and port! This seems to be an oversight or incongruity left
+    definition of "website" as cookies use: cookies don't care about
+    scheme or port! This seems to be an oversight or incongruity left
     over from the messy early web.
 
 Let's implement the same-origin policy for our browser. We'll need to
@@ -563,23 +582,24 @@ compare the URL of the request to the top-level web page URL:
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
         # ...
-        new_origin = "/".join(full_url.split("/", 3)[:3])
-        top_level_origin = "/".join(self.tab.url.split("/", 3)[:3])
-        if new_origin != top_level_origin:
+        if url_origin(full_url) != url_origin(self.tab.url):
             raise Exception("Cross-origin XHR request not allowed")
         # ...
 ```
 
-Here the tricky split-slice-join string manipulations extract the
-origin from a URL by taking everything before the third slash.
-The URL being requested and the tab's top-level URL need to match for
-the request to be valid.
+The `url_origin` function can just strip off the path from a URL:
+
+``` {.python}
+def url_origin(url):
+    scheme_colon, _, host, _ = url.split("/", 3)
+    return scheme_colon + "//" + host
+```
 
 Now an attacker can't read the guest book web page. But can they write
 to it? Actually...
 
 ::: {.further}
-Same-origin policy for canvas
+Same-origin policy for canvas, images, etc
 :::
 
 
@@ -623,10 +643,11 @@ disguised, for example by hiding the entry widget, pre-filling a post,
 and styling the button to look like a normal link.
 
 Unfortunately, we can't just apply the same-origin policy to form
-submissions.[^21] So how do we defend against this attack?
+submissions.[^google-search] So how do we defend against this attack?
 
-[^21]: For example, many search forms on websites submit to Google,
-    because those websites don't have their own search engines.
+[^google-search]: For example, many search forms on websites submit to
+    Google, because those websites don't have their own search
+    engines.
 
 To start with, there are things the server can do. The usual advice is
 to make sure that every POST request to `/add` comes from a form on
@@ -982,9 +1003,8 @@ case where there is one:
 ``` {.python}
 class Tab:
     def allowed_request(self, url):
-        if self.allowed_origins == None: return True
-        origin = "/".join(url.split("/", 3)[:3])
-        return origin in self.allowed_origins
+        return self.allowed_servers == None or \
+            url_origin(url) in self.allowed_servers
 ```
 
 The guest book can now send a `Content-Security-Policy` header:
@@ -1081,19 +1101,21 @@ overwritten if the same cookie is set again with a later date. On the
 server side, save the same expiration dates in the `SESSIONS` variable
 and use it to delete old sessions to save memory.
 
-*CORS*: Web servers can *opt in* to allowing cross-origin
-`XMLHttpRequest`s using the `Access-Control-Allow-Origin` header. The
-way it works is that on cross-origin HTTP requests, the web browser
-sends an `Origin` header with the origin of the requesting site. By
-default, the browser then throws away the response to prevent private
-data from leaking. But if the server sends the
-`Access-Control-Allow-Origin` header, and its value is either the
-requesting origin or the special `*` value, the browser instead makes
-the output available to the script. All requests made by your browser
-will be what the CORS standard calls "simple requests".
+*CORS*: Web servers can [*opt in*][cors] to allowing cross-origin
+`XMLHttpRequest`s. The way it works is that on cross-origin HTTP
+requests, the browser makes the request and includes an `Origin`
+header with the origin of the requesting site; this request includes
+cookies for the target origin. Per the same-origin policy, the browser
+then throws away the response. But the server can send the
+`Access-Control-Allow-Origin` header, and if its value is either the
+requesting origin or the special `*` value, the browser returns the
+response to the script. All requests made by your browser will be what
+the CORS standard calls "simple requests".
+
+[cors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
 *Referer*: When your browser visits a web page, or when it loads a CSS
-or JavaScript file, it sends a `Referer` header[^24] containing the
+or JavaScript file, it sends a `Referer` header[^referer] containing the
 URL it is coming from. Sites often use this for analytics. Implement
 this in your browser. However, some URLs contain personal data that
 they don't want revealed to other websites, so browsers support a
@@ -1102,4 +1124,4 @@ they don't want revealed to other websites, so browsers support a
 `same-origin` (only do so if navigating to another page on the same
 origin). Implement those two values for `Referer-Policy`.
 
-[^24]: Yep, spelled that way.
+[^referer]: Yep, spelled that way.
