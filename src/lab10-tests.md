@@ -121,8 +121,8 @@ send it.
 Testing SameSite cookies and CSRF
 =================================
 
-`SameSite` cookies should be sent on cross-domain `GET`s and
-same-domain `POST`s but not on cross-domain `POST`s.
+`SameSite` cookies should be sent on cross-site `GET`s and
+same-site `POST`s but not on cross-site `POST`s.
 
 Cookie without `SameSite` have already been tested above. Let's create
 a `SameSite` cookie to start.
