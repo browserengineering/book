@@ -283,7 +283,7 @@ class Tab:
             cmd.execute(self.scroll - CHROME_PX, canvas)
 
     def scrolldown(self):
-        max_y = self.document.height - HEIGHT
+        max_y = self.document.height - (HEIGHT - CHROME_PX)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 
     def click(self, x, y):
