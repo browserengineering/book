@@ -26,14 +26,14 @@ Cookies
 =======
 
 With what we've implemented so far there's no way for a web server to
-tell whether two HTTP requests come from the same user, or
-different ones. Our web browser is effectively anonymous.[^1] That
+tell whether two HTTP requests come from the same user, or different
+ones. Our web browser is effectively anonymous.[^fingerprinting] That
 means it can't "log in" anywhere---after logging in, its requests will
 look just like those of a new visitor.
 
-[^1]: I don't mean anonymous against malicious attackers, who might
-    use *browser fingerprinting* or similar techniques to tell users
-    apart. I mean anonymous in the good-faith sense.
+[^fingerprinting]: I don't mean anonymous against malicious attackers,
+    who might use *browser fingerprinting* or similar techniques to
+    tell users apart. I mean anonymous in the good-faith sense.
 
 The web fixes this problem with cookies. A cookie---the name is
 meaningless, ignore it---is a little bit of information stored by your
@@ -165,10 +165,11 @@ complex, just the minimal functionality:
 - Users have to be logged in to add guest book entries.
 - The server will display who added which guest book entry.
 
-Let's start coding. First, we'll need to store usernames in `ENTRIES`:[^3]
+Let's start coding. First, we'll need to store usernames in
+`ENTRIES`:[^hackers-movie]
 
-[^3]: The pre-loaded comments reference 1995's *Hackers*. [Hack the
-    Planet!](https://xkcd.com/1337)
+[^hackers-movie]: The pre-loaded comments reference 1995's *Hackers*.
+    [Hack the Planet!](https://xkcd.com/1337)
 
 ``` {.python file=server}
 ENTRIES = [
@@ -195,6 +196,7 @@ session data:
 def show_comments(session):
     # ...
     if "user" in session:
+        out += "<h1>Hello, " + session["user"] + "</h1>"
         out += "<form action=add method=post>"
         out +=   "<p><input name=guest></p>"
         out +=   "<p><button>Sign the book!</button></p>"
@@ -226,11 +228,13 @@ def do_request(session, method, url, headers, body):
     # ...
 ```
 
-This URL shows a form with a username and a password field:[^4]
+This URL shows a form with a username and a password
+field:[^password-input]
 
-[^4]: I've given the `password` input area the type `password`, which
-    in a real browser will draw stars or dots instead of showing what
-    you've entered, though our browser doesn't do that.
+[^password-input]: I've given the `password` input area the type
+    `password`, which in a real browser will draw stars or dots
+    instead of showing what you've entered, though our browser doesn't
+    do that.
 
 ``` {.python file=server}
 def login_form(session):
@@ -288,12 +292,13 @@ main guest book page, click the link to log in, use one of the
 username/password pairs above, and post entries.^[The login flow slows
 down debugging. You might want to add the empty string as a
 username/password pair.] Of course, this login system has a whole slew
-of insecurities.[^7] But the focus of this book is the browser, not
-the server, so once you're sure it's all working, let's switch gears
-and implement cookies inside our own browser.
+of insecurities.[^insecurities] But the focus of this book is the
+browser, not the server, so once you're sure it's all working, let's
+switch gears and implement cookies inside our own browser.
 
-[^7]: The insecurities include not hashing passwords, not using `bcrypt`, not verifying
-    email addresses, not forcing TLS, and not running the server in a sandbox.
+[^insecurities]: The insecurities include not hashing passwords, not
+    using `bcrypt`, not verifying email addresses, not forcing TLS,
+    and not running the server in a sandbox.
     
 [bcrypt]: https://auth0.com/blog/hashing-in-action-understanding-bcrypt/
 
@@ -302,10 +307,11 @@ Implementing cookies
 ====================
 
 Let's implement cookies. To start with, we need a place to store
-cookies; that database is traditionally called a *cookie jar*[^2]:
+cookies; that database is traditionally called a *cookie
+jar*:[^silly-name]
 
-[^2]: Because once you have one silly name it's important to stay
-    on-brand.
+[^silly-name]: Because once you have one silly name it's important to
+    stay on-brand.
 
 ``` {.python}
 COOKIE_JAR = {}
@@ -369,6 +375,7 @@ class JSContext:
 
     def cookie(self):
         _, _, host, _ = self.tab.url.split("/", 3)
+        if ":" in host: host = host.split(":", 1)[0]
         return COOKIE_JAR.get(host, "")
 ```
 
@@ -385,204 +392,226 @@ need to make sure cookie data is safe from malicious actors. After
 all: if someone stole your `token` cookie, they could copy it into
 their browser, and the server would think they are you.
 
-Our browser already prevents *other servers* from seeing your cookie
-values, because it stores cookies per-host.[^11][^12][^13][^14] But
-attackers might be able to get *your server* or *your browser* to help
-them steal cookie values...
+Our browser must prevent one servers from seeing *another server's*
+cookie values.[^tls][^dns][^bgp][^oof] But attackers might be able to
+get *your server* or *your browser* to help them steal cookie
+values...
 
-[^11]: Well... Our connection isn't encrypted, so an attacker could
+[^tls]: Well... Our connection isn't encrypted, so an attacker could
     pick up the token from there. But another *server* couldn't.
 
-[^12]: Well... Another server could hijack our DNS and redirect our
-    hostname to a different IP address, and then steal our cookies. But
-    some ISPs support DNSSEC, which prevents that.
+[^dns]: Well... Another server could hijack our DNS and redirect our
+    hostname to a different IP address, and then steal our cookies.
+    But some ISPs support DNSSEC, which prevents that.
 
-[^13]: Well... A state-level attacker could announce fradulent BGP
+[^bgp]: Well... A state-level attacker could announce fradulent BGP
     routes, which would send even a correctly-retrieved IP address to
     the wrong physical computer.
 
-[^14]: Security is very hard.
+[^oof]: Security is very hard.
 
 
 
-Cross-site scripting
-====================
+Cross-site requests
+===================
 
-With cookies accessible from JavaScript, any scripts run on our server
-could, in principle, read the cookie value. This might seem
-benign---doesn't our server only run `comment.js`? Well...
+Imagine that your browser is logged in to your bank, and that an
+attacker wants to know your (private) bank balance. Already, our
+browser stores different cookies for each site. Because of this, it
+won't just send the bank cookie to an attacker's site. But what if the
+attacker is clever?
 
-A web service needs to defend itself from being *misused*. Consider
-the code in our guest book that outputs guest book entries:
+The easiest way for an attacker to steal your private data is to ask
+for it. Of course, there's no API in the browser for a website to ask
+for another website's cookies. But there _is_ an API to make requests
+to another website. It's called `XMLHttpRequest`.[^weird-name]
 
-``` {.python file=server indent=8}
-out += "<p>" + entry + " <i>by " + who + "</i></p>"
+[^weird-name]: It's a weird name! Why is `XML` capitalized but not
+    `Http`? And it's not restricted to XML! Ultimately, the name is
+    [historic][xhr-history], dating back to Microsoft's "Outlook Web
+    Access" feature for Exchange Server 2000.
+    
+[xhr-history]: https://en.wikipedia.org/wiki/XMLHttpRequest#History
+
+`XMLHttpRequest` is a pretty big API; typically it is used to send
+asynchronous `GET` or `POST` requests from JavaScript. Since I'm using
+`XMLHttpRequest` just to illustrate security issues, I'll implement a
+minimal version here. Specifically, I'll support only the `open` and
+`send` methods, and only *synchronous* requests.[^obsolete]
+    
+[^obsolete]: Synchronous `XMLHttpRequests` are slowly moving through
+    [deprecation and obsolescence][xhr-open], but are convenient here
+    for quick implementation.
+
+[xhr-open]: https://xhr.spec.whatwg.org/#the-open()-method
+
+Using this minimal `XMLHttpRequest` looks like this:
+
+``` {.javascript}
+x = new XMLHttpRequest();
+x.open("GET", url, false);
+x.send();
+// use x.responseText
 ```
 
-Note that `entry` can be anything, anything the user might stick into
-our comment form. That includes HTML tags, like a custom `<script>`
-tag! So, a malicious user could post the comment:
+We'll export an `XMLHttpRequest_send` function to make the actual
+request, and define the `XMLHttpRequest` objects and methods in
+JavaScript. The `open` method will just save the method and
+URL:[^more-options]
 
-    Hi! <script src="http://my-server/evil.js"></script>
+[^more-options]: `XMLHttpRequest` has more options not implemented
+    here, like support for usernames and passwords. This code is also
+    missing some error checking, like making sure the method is a
+    valid HTTP method supported by our browser.
 
-The server would then output the HTML:
+``` {.javascript}
+function XMLHttpRequest() {}
 
-    <p>Hi! <script src="http://my-server/evil.js"></script>
-    <i> by crashoverride</i></p>
+XMLHttpRequest.prototype.open = function(method, url, is_async) {
+    if (is_async) throw Error("Asynchronous XHR is not supported");
+    this.method = method;
+    this.url = url;
+}
+```
 
-Every user's browser would then download and run the `evil.js` script,
-which might read `document.cookie` and send[^how-send] it to the
-attacker. The attacker could then impersonate other users, posting as
-them or misusing any other capabilities those users had in our
-service.
+The `send` method calls our exported function:[^even-more-options]
 
-[^how-send]: In a real browser, `evil.js` might use
-    [`fetch`][mdn-fetch] to secretly send that cookie to the
-    attacker's server, but more complicated attacks work in our
-    limited browser as well. For example, the evil script can replace
-    the whole page with a link that goes to their site and includes
-    the token value in the URL. You've seen "please click to continue"
-    screens and have clicked the button unthinkingly; your users will
-    too.
+[^even-more-options]: As above, this implementation skips important
+    `XMLHttpRequest` features, like setting request headers (and
+    reading response headers), changing the response type, or
+    triggering various events and callbacks during the request.
+
+``` {.javascript}
+XMLHttpRequest.prototype.send = function(body) {
+    this.responseText = call_python("XMLHttpRequest_send",
+        this.method, this.url, this.body);
+}
+```
+
+In Python, implementing `send` is pretty simple. Just define and
+export this `XMLHttpRequest_send` function:[^note-method]
+
+[^note-method]: Note that the `method` argument is ignored, because
+    our `request` function chooses the method on its own based on
+    whether a payload is passed. This is again not what the standard
+    requires, and a careful implementation would fix it.
+
+``` {.python replace=full_url%2c/full_url%2c%20self.tab.url%2c}
+class JSContext:
+    def XMLHttpRequest_send(self, method, url, body):
+        full_url = resolve(url, self.tab.url)
+        headers, out = request(full_url, payload=body)
+        return out
+```
+
+With this new JavaScript API, a web page can make HTTP requests while
+the user interacts with it, making more interactive websites
+possible! This API, and newer analogs like [`fetch`][mdn-fetch], are
+the basis for many web page interactions that don't reload the
+page---think "liking" a post, hover previews or submitting a form without reloading the page.
 
 [mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
 
-The core problem here is that user comments are supposed to be data,
-but the browser is interpreting them as code. This kind of exploit is
-usually called *cross-site scripting* (often written "XSS"), though
-misinterpreting data as code is a common security issue in all kinds
-of programs.
 
-The standard fix is to encode the data so that it can't be interpreted
-as code. For example, in HTML, you can write `&lt;` to display a
-less-than sign.[^ch1-ex] Python has an `html` module for this kind of
-encoding:
 
-[^ch1-ex]: You may have implemented this as part of an [exercise in
-    Chapter 1](http.md#exercises).
+Same-origin Policy
+==================
 
-``` {.python file=server}
-import html
+However, new capabilities lead to new responsibilities. After all:
+any HTTP requests triggered by `XMLHttpRequest` will include cookies,
+which means they can potentially be used to steal or abuse private information.
+This is by design: when you "like" something, the corresponding
+HTTP request needs your cookie so the server associates the "like" to
+your account. But it also means that `XMLHttpRequest`s have access to
+private data, and thus need to protect it.
 
-def show_comments(username):
-    # ...
-    out += "<p>" + html.escape(entry)
-    out += " <i>from " + html.escape(who) + "</i></p>"
-    # ...
+Let's imagine an attacker that wants to know your username on our
+guest book server. When you're logged in, the guest book includes your
+username on the page (where it says "Hello, so and so"), so reading
+the guest book with your cookies is enough to determine your username.
+
+`XMLHttpRequest` could let them do that. Say the user visits the
+attacker's website[^why-visit-attackers], which then executes the
+following script:
+
+[^why-visit-attackers]: Why is the user on the attacker's site?
+    Perhaps it has funny memes, or it's been hacked and is being used
+    for the attack against its will, or perhaps the evil-doer paid for
+    ads on sketchy websites where users have low standards for
+    security anyway.
+
+
+``` {.javascript}
+x = new XMLHttpRequest();
+x.open("GET", "http://localhost:8000/", false);
+x.send();
+user = x.responseText.split(" ")[2].split("<")[0];
 ```
 
-This is a good fix, and you should do it. But if you forget to encode
-any text anywhere---that's a security bug. So browsers provide
-additional layers of defense.
+The issue here is that private guest book content is being sent to the
+attacker. Since the content is derived from the cookie, it leaks
+private data. To prevent this, the browser must prevent the attacker's
+page from reading the guest book web page content.
 
-Content security policy
-=======================
+This is achieved by the browser's [*same-origin
+policy*][same-origin-mdn], which says that requests like
+`XMLHttpRequest`s[^and-some-others] can only go to web pages on the
+same "origin"---scheme, hostname, and port.[^not-cookies] This makes
+sure that private data on one website can't be leaked by the browser
+to another website.
 
-One such layer is the `Content-Security-Policy` header. The full
-specification for this header is quite complex, but in the simplest
-case, the header is set to the keyword `default-src` followed by a
-space-separated list of servers:
+[same-origin-mdn]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy
 
-    Content-Security-Policy: default-src http://example.org
+[^and-some-others]: Some kinds of requests are not subject to the
+    same-origin policy (most prominently CSS and JavaScript files
+    linked from a web page); conversely, the same-origin policy also
+    governs JavaScript interactions with `iframe`s, images,
+    `localStorage` and many other browser features.
 
-This header asks the browser not to load any resources (including CSS,
-JavaScript, images, and so on) except from the listed servers. If our
-guest book used `Content-Security-Policy`, even an attacker managed to
-get a `<script>` added to the page, the browser would refuse to load
-and run that script.
+[^not-cookies]: You may have noticed that this is not the same
+    definition of "website" as cookies use: cookies don't care about
+    scheme or port! This seems to be an oversight or incongruity left
+    over from the messy early web.
 
-Let's implement support for this header. First, we'll need to extract
-and parse the `Content-Security-Policy` header:[^more-complex]
-
-[^more-complex]: In reality `Content-Security-Policy` can also list
-    scheme-generic URLs and even more complex sources like `'self'`.
-    This is a very limited CSP implementation.
+Let's implement the same-origin policy for our browser. We'll need to
+compare the URL of the request to the top-level web page URL:
 
 ``` {.python}
-class Tab:
-    def load(self, url, body=None):
+class JSContext:
+    def XMLHttpRequest_send(self, method, url, body):
         # ...
-        self.allowed_servers = None
-        if "content-security-policy" in headers:
-            csp = headers["content-security-policy"].split()
-            if len(csp) > 0 and csp[0] == "default-src":
-                self.allowed_servers = csp[1:]
+        if url_origin(full_url) != url_origin(self.tab.url):
+            raise Exception("Cross-origin XHR request not allowed")
         # ...
 ```
 
-This parsing needs to happen _before_ we request any JavaScript or
-CSS, because we now need to check whether those requests are allowed:
+The `url_origin` function can just strip off the path from a URL:
 
 ``` {.python}
-class Tab:
-    def load(self, url, body=None):
-        # ...
-        for script in scripts:
-            script_url = resolve_url(script, url)
-            if not self.allowed_request(script_url):
-                print("Blocked script", script, "due to CSP")
-                continue
-            # ...
+def url_origin(url):
+    scheme_colon, _, host, _ = url.split("/", 3)
+    return scheme_colon + "//" + host
 ```
 
-Note that we need to first resolve any relative URLs before checking
-them against the list of allowed servers. The `allowed_request` check
-needs to handle both the case of no `Content-Security-Policy` and the
-case where there is one:
+Now an attacker can't read the guest book web page. But can they write
+to it? Actually...
 
-``` {.python}
-class Tab:
-    def allowed_request(self, url):
-        if self.allowed_servers == None: return True
-        scheme_colon, _, host, _ = url.split("/", 3)
-        return scheme_colon + "//" + host in self.allowed_servers
-```
+::: {.further}
+Same-origin policy for canvas, images, etc
+:::
 
-The guest book can now send a `Content-Security-Policy` header:
-
-``` {.python file=server}
-def handle_connection(conx):
-    # ...
-    response += "Content-Security-Policy: default-src http://localhost:8000\r\n"
-    # ...
-```
-
-To check that our implementation works, let's have the guest book
-request a script from outside the list of allowed servers:
-
-``` {.python file=server}
-def show_comments(session):
-    # ...
-    out += "<script src=https://example.com/evil.js></script>"
-    # ...
-```
-
-If you've got everything implemented correctly, the browser should
-block the evil script[^evil-js] and report so in the console.
-
-[^evil-js]: Needless to say, `example.com` does not actually host an
-    `evil.js` file, and any request to it returns `404 Not Found`.
 
 
 Cross-site request forgery
 ==========================
 
-Thanks to `Content-Security-Policy`, web servers can now secure
-themselves against cross-site scripting attacks. But that's just one
-type of attack. While they can no longer convince web servers to do
-the wrong things, attackers can still misdirect our own web browser.
-One exploit like this is called *cross-site request forgery*, often
-shortened to CSRF.
+The same-origin policy protects against cross-origin `XMLHttpRequest`
+calls. But the same-origin policy doesn't apply to normal browser
+actions like clicking a link or filling out a form. This enables an
+exploit called *cross-site request forgery*, often shortened to CSRF.
 
-In cross-site request forgery, the attack does not involve the user
-going to our guest book site at all. Instead, the attack begins on the
-evil-doer's website.[^20] That website has a form that submits to the
-guest book:
-
-[^20]: Why is the user on the attacker's site? Perhaps it has funny
-    memes, or it's been hacked and is being used for the attack
-    against its will, or perhaps the evil-doer paid for ads on sketchy
-    websites where users have low standards for security anyway.
+In cross-site request forgery, instead of using `XMLHttpRequest,` the
+attacker uses a form that submits to the guest book:
 
 ``` {.html}
 <form action=http://localhost:8000/add method=post>
@@ -597,31 +626,35 @@ And that means it will send its guest book cookies, so it will be
 logged in, so it will post to the guest book. But the user has no way
 of knowing which server a form submits to---the attacker's web page
 could have misrepresented that---so they may have posted something
-they didn't mean to. Posting a comment this way is not too scary
-(though shady advertisers will pay for it!) but posting a bank
-transaction is.^[And thank goodness we never implemented a
-change-of-password form!]
+they didn't mean to.
 
+Of course, the attacker can't read the response, so this doesn't leak
+private data to the attacker. But it can allow the attacker to _act_
+as the user! Posting a comment this way is not too scary (though shady
+advertisers will pay for it!) but posting a bank transaction is. And
+if the website has a change-of-password form, there could even be a
+way to take control of the account.
 
-Even worse, the form submission could have been triggered by
-JavaScript, with the user not involved at all. And this kind of attack
-can be further disguised, for example by hiding the entry widget,
-pre-filling a post, and styling the button to look like a normal link.
+Even worse, the form submission could be triggered by JavaScript, with
+the user not involved at all. And this kind of attack can be further
+disguised, for example by hiding the entry widget, pre-filling a post,
+and styling the button to look like a normal link.
 
-Unfortunately, we can't just ban cross-server form submissions.[^21]
-So how do we defend against this attack?
+Unfortunately, we can't just apply the same-origin policy to form
+submissions.[^google-search] So how do we defend against this attack?
 
-[^21]: For example, many search forms on websites submit to Google,
-    because those websites don't have their own search engines.
+[^google-search]: For example, many search forms on websites submit to
+    Google, because those websites don't have their own search
+    engines.
 
-Well, the usual advice is to make sure that every POST request to
-`/add` comes from a form on our website. The way to do that is to
-embed a secret value, called a *nonce*, into the form, and to reject
-form submissions that don't come with this secret value. You can only
-get a nonce from the server, and the nonce is tied to the user
-session, so the attacker could not embed it in their form. Cross-site
-submissions wouldn't have the right nonce and would be
-rejected.[^like-cookie]
+To start with, there are things the server can do. The usual advice is
+to make sure that every POST request to `/add` comes from a form on
+our website. The way to do that is to embed a secret value, called a
+*nonce*, into the form, and to reject form submissions that don't come
+with this secret value. You can only get a nonce from the server, and
+the nonce is tied to the user session, so the attacker could not embed
+it in their form. Cross-site submissions wouldn't have the right nonce
+and would be rejected.[^like-cookie]
 
 [^like-cookie]: A nonce is somewhat like a cookie, except that it's
 stored inside the HTML instead of the browser cookie. Like a cookie,
@@ -664,8 +697,10 @@ def add_entry(session, params):
 
 Now this form can't be submitted except from our website---and if you
 repeat this nonce fix for each form in the web application, it'll be
-secure from CSRF attacks. But as with cross-site scripting attacks,
-it'd be better for the browser to provide a fail-safe backup.
+secure from CSRF attacks. But server-side solutions are fragile---what
+if you forget a form---and relying on every website out there to do it
+right is a pipe dream. It'd be better for the browser to provide a
+fail-safe backup.
 
 
 SameSite Cookies
@@ -774,6 +809,17 @@ loading. That's because it is the new page that made us request these
 particular styles and scripts, so it defines which of those resources
 are on the same site.
 
+Similarly, `XMLHttpRequest`-triggered requests use the tab URL as
+their top-level URL:
+
+``` {.python}
+class JSContext:
+    def XMLHttpRequest_send(self, method, url, body):
+        # ...
+        headers, out = request(full_url, self.tab.url, payload=body)
+        # ...
+```
+
 The `request` function can now check the `top_level_url` argument
 before sending `SameSite` cookies. Remember that `SameSite` cookies
 are only sent for `GET` requests or if the new URL and the top-level
@@ -804,11 +850,192 @@ This doesn't mean your should remove the nonces we added earlier:
 makes sure that even if we forgot a nonce somewhere, we're still
 secure against CSRF attacks.
 
+
+Cross-site scripting
+====================
+
+Now other websites can't misuse our browser's cookies to read or write
+private data. This seems secure! But what about *our own* website?
+With cookies accessible from JavaScript, any scripts run on our server
+could, in principle, read the cookie value. This might seem
+benign---doesn't our server only run `comment.js`? But in fact...
+
+A web service needs to defend itself from being *misused*. Consider
+the code in our guest book that outputs guest book entries:
+
+``` {.python file=server indent=8}
+out += "<p>" + entry + " <i>by " + who + "</i></p>"
+```
+
+Note that `entry` can be anything, anything the user might stick into
+our comment form. That includes HTML tags, like a custom `<script>`
+tag! So, a malicious user could post the comment:
+
+    Hi! <script src="http://my-server/evil.js"></script>
+
+The server would then output the HTML:
+
+    <p>Hi! <script src="http://my-server/evil.js"></script>
+    <i> by crashoverride</i></p>
+
+Every user's browser would then download and run the `evil.js` script,
+which might read `document.cookie` and send[^how-send] it to the
+attacker. The attacker could then impersonate other users, posting as
+them or misusing any other capabilities those users had in our
+service.
+
+[^how-send]: In a real browser, `evil.js` might use cross-domain
+     `XMLHttpRequest`s[^cross-domain-xhr] to secretly send that cookie
+     to the attacker's server, or even add hidden images or scripts to
+     the page, thereby triggering requests. In our limited browser
+     these won't work, but the evil script can, for example, replace
+     the whole page with a link that goes to their site and includes
+     the token value in the URL. You've seen "please click to
+     continue" screens and have clicked the button unthinkingly; your
+     users will too.
+    
+[^cross-domain-xhr]: See the exercise on `Access-Control-Allow-Origin`
+    for more details on how web servers can *opt in* to allowing
+    cross-origin requests.
+
+The core problem here is that user comments are supposed to be data,
+but the browser is interpreting them as code. This kind of exploit is
+usually called *cross-site scripting* (often written "XSS"), though
+misinterpreting data as code is a common security issue in all kinds
+of programs.
+
+The standard fix is to encode the data so that it can't be interpreted
+as code. For example, in HTML, you can write `&lt;` to display a
+less-than sign.[^ch1-ex] Python has an `html` module for this kind of
+encoding:
+
+[^ch1-ex]: You may have implemented this as part of an [exercise in
+    Chapter 1](http.md#exercises).
+
+``` {.python file=server}
+import html
+
+def show_comments(username):
+    # ...
+    out += "<p>" + html.escape(entry)
+    out += " <i>from " + html.escape(who) + "</i></p>"
+    # ...
+```
+
+This is a good fix, and you should do it. But if you forget to encode
+any text anywhere---that's a security bug. So browsers provide
+additional layers of defense.
+
+Content security policy
+=======================
+
+One such layer is the `Content-Security-Policy` header. The full
+specification for this header is quite complex, but in the simplest
+case, the header is set to the keyword `default-src` followed by a
+space-separated list of servers:
+
+    Content-Security-Policy: default-src http://example.org
+
+This header asks the browser not to load any resources (including CSS,
+JavaScript, images, and so on) except from the listed servers. If our
+guest book used `Content-Security-Policy`, even an attacker managed to
+get a `<script>` added to the page, the browser would refuse to load
+and run that script.
+
+Let's implement support for this header. First, we'll need to extract
+and parse the `Content-Security-Policy` header:[^more-complex]
+
+[^more-complex]: In reality `Content-Security-Policy` can also list
+    scheme-generic URLs and even more complex sources like `'self'`.
+    This is a very limited CSP implementation.
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        self.allowed_servers = None
+        if "content-security-policy" in headers:
+            csp = headers["content-security-policy"].split()
+            if len(csp) > 0 and csp[0] == "default-src":
+                self.allowed_servers = csp[1:]
+        # ...
+```
+
+This parsing needs to happen _before_ we request any JavaScript or
+CSS, because we now need to check whether those requests are allowed:
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        for script in scripts:
+            script_url = resolve_url(script, url)
+            if not self.allowed_request(script_url):
+                print("Blocked script", script, "due to CSP")
+                continue
+            # ...
+```
+
+Note that we need to first resolve any relative URLs before checking
+them against the list of allowed servers. The `allowed_request` check
+needs to handle both the case of no `Content-Security-Policy` and the
+case where there is one:
+
+``` {.python}
+class Tab:
+    def allowed_request(self, url):
+        return self.allowed_servers == None or \
+            url_origin(url) in self.allowed_servers
+```
+
+The guest book can now send a `Content-Security-Policy` header:
+
+``` {.python file=server}
+def handle_connection(conx):
+    # ...
+    response += "Content-Security-Policy: default-src http://localhost:8000\r\n"
+    # ...
+```
+
+To check that our implementation works, let's have the guest book
+request a script from outside the list of allowed servers:
+
+``` {.python file=server}
+def show_comments(session):
+    # ...
+    out += "<script src=https://example.com/evil.js></script>"
+    # ...
+```
+
+If you've got everything implemented correctly, the browser should
+block the evil script[^evil-js] and report so in the console.
+
+[^evil-js]: Needless to say, `example.com` does not actually host an
+    `evil.js` file, and any request to it returns `404 Not Found`.
+
 So are we done? Is the guest book totally secure? Uh... no. There's
 more---much, *much* more---to web application security than what's in
 this book. And just like the rest of this book, there are many other
 browser mechanisms that touch on security and privacy. Let's settle
 for this fact: the guest book is more secure than before.
+
+Summary
+=======
+
+We've added user data, in the form of cookies, to our browser, and
+immediately had to bear the heavy burden of securing that data and
+ensuring it was not misused. That involved:
+
+- Mitigating cross-site `XMLHttpRequest`s with the same-origin policy
+- Mitigating cross-site request forgery with nonces and with
+  `SameSite` cookies
+- Mitigating cross-site scripting with escaping and with
+  `Content-Security-Policy`.
+
+We've also seen the more general lesson that every increase in the
+capabilities of a web browser also leads to an increase in its
+responsibility to safeguard user data. Security is an ever-present
+consideration throughout the design of a web browser.
 
 ::: {.warning}
 The purpose of this book is to teach the *internals of web browsers*,
@@ -817,16 +1044,6 @@ to do to make this guest book truly secure, let alone what we'd need
 to do to avoid denial of service attacks or to handle spam and
 malicious use.
 :::
-
-Summary
-=======
-
-We've added user data, in the form of cookies, to our browser, and
-immediately had to bear the heavy burden of securing that data and
-ensuring it was not misused. We then saw the rich browser features we
-developed turn into attack vector. And we've made with some simple
-tweaks to our guest book to prevent two common web application
-vulnerabilities.
 
 Outline
 =======
@@ -847,26 +1064,39 @@ The server is much simpler, but has also grown since last chapter:
 Exercises
 =========
 
-*Hidden input*: Add support for hidden input elements. Since they
-don't need to be laid out, there's no need for a layout type at all!
+*New inputs*: Add support for hidden and password input elements.
+Hidden inputs shouldn't show up or take up space, while password input
+elements should show ther contents as stars instead of characters.
+
+*Cookie access*: Add support for the `HttpOnly` and `Secure`
+parameters for cookies. `HttpOnly` cookies should not be available
+from JavaScript's `document.cookie`, but should be sent along with
+HTTP requests. `Secure` cookies should only be sent over HTTPS, but
+not over HTTP, requests.  `HttpOnly` cookies provide some protection
+against cross-site scripting attacks, while `Secure` cookies prevent
+an attacker from reading cookies sent over unencrypted networks.
 
 *Cookie Expiration*: Add support for cookie expiration. Cookie
 expiration dates are set in the `Set-Cookie` header, and can be
-overwritten if the same cookie is set again with a later date. Save
-the same expiration dates in the `TOKENS` variable and use it to
-delete old tokens to save memory.
+overwritten if the same cookie is set again with a later date. On the
+server side, save the same expiration dates in the `SESSIONS` variable
+and use it to delete old sessions to save memory.
 
-*Cookie Origins*: Add support for cookie origins. Due to the
-same-origin policy, a cookie set by `mail.google.com` cannot be read
-by, say, `calendar.google.com`, because the host name is the same.
-This is a good default,[^23] but is sometimes annoying. A server can
-set an `origin` parameter in the `Set-Cookie` header to strip off some
-subdomains from the cookie origin. Implement this in your browser,
-making sure to send these generalized-origin cookies on any requests
-covered by the generalized origin.
+*CORS*: Web servers can [*opt in*][cors] to allowing cross-origin
+`XMLHttpRequest`s. The way it works is that on cross-origin HTTP
+requests, the browser makes the request and includes an `Origin`
+header with the origin of the requesting site; this request includes
+cookies for the target origin. Per the same-origin policy, the browser
+then throws away the response. But the server can send the
+`Access-Control-Allow-Origin` header, and if its value is either the
+requesting origin or the special `*` value, the browser returns the
+response to the script. All requests made by your browser will be what
+the CORS standard calls "simple requests".
+
+[cors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
 *Referer*: When your browser visits a web page, or when it loads a CSS
-or JavaScript file, it sends a `Referer` header[^24] containing the
+or JavaScript file, it sends a `Referer` header[^referer] containing the
 URL it is coming from. Sites often use this for analytics. Implement
 this in your browser. However, some URLs contain personal data that
 they don't want revealed to other websites, so browsers support a
@@ -875,7 +1105,4 @@ they don't want revealed to other websites, so browsers support a
 `same-origin` (only do so if navigating to another page on the same
 origin). Implement those two values for `Referer-Policy`.
 
-[^23]: Should `microsoft.com` read `google.com`? What about
-    `microsoft.co.uk` and `google.co.uk`?
-
-[^24]: Yep, spelled that way.
+[^referer]: Yep, spelled that way.

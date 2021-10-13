@@ -76,6 +76,7 @@ def form_decode(body):
 def show_comments(session):
     out = "<!doctype html>"
     if "user" in session:
+        out += "<h1>Hello, " + session["user"] + "</h1>"
         nonce = str(random.random())[2:]
         session["nonce"] = nonce
         out += "<form action=add method=post>"

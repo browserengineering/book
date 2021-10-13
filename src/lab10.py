@@ -27,7 +27,8 @@ from lab7 import TextLayout
 from lab8 import DocumentLayout
 
 def url_origin(url):
-    return "/".join(url.split("/")[:3])
+    scheme_colon, _, host, _ = url.split("/", 3)
+    return scheme_colon + "//" + host
         
 COOKIE_JAR = {}
 
@@ -115,7 +116,9 @@ class JSContext:
             self.getAttribute)
         self.interp.export_function("innerHTML", self.innerHTML)
         self.interp.export_function("cookie", self.cookie)
-        with open("runtime9.js") as f:
+        self.interp.export_function("XMLHttpRequest_send",
+            self.XMLHttpRequest_send)
+        with open("runtime10.js") as f:
             self.interp.evaljs(f.read())
 
         self.node_to_handle = {}
@@ -161,7 +164,15 @@ class JSContext:
 
     def cookie(self):
         _, _, host, _ = self.tab.url.split("/", 3)
+        if ":" in host: host = host.split(":", 1)[0]
         return COOKIE_JAR.get(host, "")
+
+    def XMLHttpRequest_send(self, method, url, body):
+        full_url = resolve(url, self.tab.url)
+        headers, out = request(full_url, self.tab.url, payload=body)
+        if url_origin(full_url) != url_origin(self.tab.url):
+            raise Exception("Cross-origin XHR request not allowed")
+        return out
 
 
 SCROLL_STEP = 100
@@ -177,9 +188,8 @@ class Tab:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def allowed_request(self, url):
-        if self.allowed_servers == None: return True
-        scheme_colon, _, host, _ = url.split("/", 3)
-        return scheme_colon + "//" + host in self.allowed_servers
+        return self.allowed_servers == None or \
+            url_origin(url) in self.allowed_servers
 
     def load(self, url, body=None):
         headers, body = request(url, self.url, payload=body)
