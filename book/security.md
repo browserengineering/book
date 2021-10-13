@@ -499,10 +499,10 @@ class JSContext:
 ```
 
 With this new JavaScript API, a web page can make HTTP requests while
-the user interacts with it, making various "live", "AJAX" websites
+the user interacts with it, making more interactive websites
 possible! This API, and newer analogs like [`fetch`][mdn-fetch], are
-the basis for so many web page interactions that don't reload the
-page---think "liking" a post or hover previews or similar.
+the basis for many web page interactions that don't reload the
+page---think "liking" a post, hover previews or submitting a form without reloading the page.
 
 [mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
 
@@ -513,7 +513,7 @@ Same-origin Policy
 
 However, new capabilities lead to new responsibilities. After all:
 any HTTP requests triggered by `XMLHttpRequest` will include cookies,
-which means they can potentially be used to steal or abuse cookies!
+which means they can potentially be used to steal or abuse private information.
 This is by design: when you "like" something, the corresponding
 HTTP request needs your cookie so the server associates the "like" to
 your account. But it also means that `XMLHttpRequest`s have access to
@@ -521,9 +521,8 @@ private data, and thus need to protect it.
 
 Let's imagine an attacker that wants to know your username on our
 guest book server. When you're logged in, the guest book includes your
-username on the page (where it says "Hello, so and so"), so it's
-enough for the attacker to request the guest book with your cookies
-and read the page contents.
+username on the page (where it says "Hello, so and so"), so reading
+the guest book with your cookies is enough to determine your username.
 
 `XMLHttpRequest` could let them do that. Say the user visits the
 attacker's website[^why-visit-attackers], which then executes the
@@ -1076,16 +1075,18 @@ overwritten if the same cookie is set again with a later date. On the
 server side, save the same expiration dates in the `SESSIONS` variable
 and use it to delete old sessions to save memory.
 
-*CORS*: Web servers can *opt in* to allowing cross-origin
+*CORS*: Web servers can [*opt in*][cors] to allowing cross-origin
 `XMLHttpRequest`s. The way it works is that on cross-origin HTTP
-requests, the web browser makes the request and includes an `Origin`
+requests, the browser makes the request and includes an `Origin`
 header with the origin of the requesting site; this request includes
-cookies for the target origin. By default, due to the same-origin
-policy, the browser then throws away the response; but if the server
-sends the `Access-Control-Allow-Origin` header, and its value is
-either the requesting origin or the special `*` value, the browser
-returns the output to the script. All requests made by your browser
-will be what the CORS standard calls "simple requests".
+cookies for the target origin. Per the same-origin policy, the browser
+then throws away the response. But the server can send the
+`Access-Control-Allow-Origin` header, and if its value is either the
+requesting origin or the special `*` value, the browser returns the
+response to the script. All requests made by your browser will be what
+the CORS standard calls "simple requests".
+
+[cors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
 *Referer*: When your browser visits a web page, or when it loads a CSS
 or JavaScript file, it sends a `Referer` header[^referer] containing the
