@@ -707,7 +707,7 @@ def load(self, url):
     # ...
 ```
 
-Note that before sorting `rules`, it as in file order. Since Python's
+Note that before sorting `rules`, it is in file order. Since Python's
 `sorted` function keeps the relative order of things when possible,
 file order thus acts as a tie breaker, as it should.
 
@@ -834,10 +834,14 @@ def style(node, rules):
     # ...
 ```
 
+Note that because the `style` function recurses at the end of the
+function, the node's parent already has a `font-size` value stored
+when `compute_style` is called.
+
 The loop that handles `style` attributes should likewise call
-`computed_style`. Note that because the `style` function recurses at
-the end of the function, the node's parent already has a `font-size`
-value stored when `compute_style` is called.
+`computed_style`. Remember that `style` attributes overwrite CSS
+rules; that means the loop above, which handles rules, should come
+*before* the loop that handles the style attribute.
 
 ::: {.further}
 Styling a page can be slow, so real browsers apply tricks like [bloom
@@ -868,7 +872,7 @@ big { font-size: 110%; }
 ```
 
 The browser looks up font information in its `text` method; we'll need
-to change that method use the node's `style` field:
+to change that method to use the node's `style` field:
 
 ``` {.python indent=4}
 def text(self, node):

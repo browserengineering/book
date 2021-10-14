@@ -34,6 +34,7 @@ def handle_connection(conx):
         len(body.encode("utf8")))
     if 'cookie' not in headers:
         response += "Set-Cookie: token={}\r\n".format(token)
+    response += "Content-Security-Policy: default-src http://localhost:8000\r\n"
     response += "\r\n" + body
     conx.send(response.encode('utf8'))
     conx.close()
@@ -69,12 +70,15 @@ def form_decode(body):
     params = {}
     for field in body.split("&"):
         name, value = field.split("=", 1)
-        params[name] = urllib.parse.unquote(value)
+        params[name] = urllib.parse.unquote_plus(value)
     return params
 
 def show_comments(session):
     out = "<!doctype html>"
     if "user" in session:
+        out += "<h1>Hello, " + session["user"] + "</h1>"
+        nonce = str(random.random())[2:]
+        session["nonce"] = nonce
         out += "<form action=add method=post>"
         out +=   "<p><input name=guest></p>"
         out +=   "<p><button>Sign the book!</button></p>"
@@ -88,6 +92,7 @@ def show_comments(session):
     out += "<link rel=stylesheet src=/comment.css>"
     out += "<label></label>"
     out += "<script src=/comment.js></script>"
+    out += "<script src=https://example.com/evil.js></script>"
     return out
 
 def login_form(session):
@@ -116,9 +121,9 @@ def not_found(url, method):
     return out
 
 def add_entry(session, params):
-    if "user" in session and 'guest' in params and len(params['guest']) <= 100:
+    if "user" not in session: return
+    if 'guest' in params and len(params['guest']) <= 100:
         ENTRIES.append((params['guest'], session["user"]))
-    return show_comments(session)
 
 if __name__ == "__main__":
     s = socket.socket(

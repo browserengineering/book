@@ -203,6 +203,8 @@ tree by just finishing any unfinished nodes:
 ``` {.python}
 class HTMLParser:
     def finish(self):
+        if len(self.unfinished) == 0:
+            self.add_tag("html")
         while len(self.unfinished) > 1:
             node = self.unfinished.pop()
             parent = self.unfinished[-1]
@@ -614,7 +616,7 @@ no matter how confusing the markup.[^3]
 
 The full algorithm is, as you might expect, complicated beyond belief,
 with dozens of ever-more-special cases forming a taxonomy of human
-error, but one its the nicer features is *implicit* tags. Normally, an
+error, but one of its nicer features is *implicit* tags. Normally, an
 HTML document starts with a familiar boilerplate:
 
 ``` {.html}
