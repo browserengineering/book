@@ -5,19 +5,18 @@ prev: security
 next: rendering-architecture
 ...
 
-Right now our browser can draw text and rectangles of various colors. But
-that's pretty boring! Browsers have all sorts of great ways to make content
-look great on the screen. These are called *visual effects*---visual because
-they affect how it looks, but not how it functions under the hood or lays out.
-Therefore these effects are extensions to the *paint* and *draw* parts of
-rendering.
+Right now our browser can draw text and rectangles of various colors. But that's
+pretty boring! Browsers have all sorts of great ways to make content look good
+on the screen. These are called *visual effects*---visual because they affect
+how it looks, but not functionality per se, or layout. Therefore these effects are
+extensions to the *paint* and *draw* parts of rendering.
 
 Skia replaces Tkinter
 =====================
 
 But before we get to how visual effects are implemented, we'll need to upgrade
 our graphics system. While Tkinter was great for painting and handling input,
-it has no built-in support at all for implementing visual
+it has no built-in support at all for implementing many visual
 effects.[^tkinter-before-gpu] And just as implementing the details of text
 rendering or drawing rectangles is outside the scope of this book, so is
 implementing visual effects---our focus should be on how to represent and
@@ -25,7 +24,7 @@ execute visual effects for web pages specifically.
 
 [^tkinter-before-gpu]: That's because Tk, the library Tkinter uses to implement
 its graphics, was built back in the early 90s, before high-performance graphics
-cards and GPUs became widespread.
+cards and GPUs, and their software equivalents, became widespread.
 
 So we need a new library that can perform visual effects. We'll use
 [Skia](https://skia.org), the library that Chromium uses. However, Skia is just
@@ -100,7 +99,7 @@ In SDL, you have to implement the event loop yourself (rather than calling
     SDL_Quit()
 ```
 
-Next let's factor a bunch of the tasks of drawing into a new class we'll call
+Next factor a bunch of the tasks of drawing into a new class we'll call
 `Rasterizer`. The implementation in Skia should be relatively
 self-explanatory:
 
@@ -166,7 +165,7 @@ here is `DrawText.execute`:
         )
 ```
 
-Now let's integrate with the `Browser` class. We need a surface[^surface] for
+Now integrate with the `Browser` class. We need a surface[^surface] for
 drawing to the window, and a surface into which Skia will draw.
 
 ``` {.python}
@@ -177,8 +176,8 @@ class Browser:
         self.skia_surface = skia.Surface(WIDTH, HEIGHT)
 ```
 
-Next we need to re-implement the `draw` method on `Browser` using Skia. I'll
-walk through it step-by-step. First we make a rasterizer and draw the current
+Next, re-implement the `draw` method on `Browser` using Skia. I'll
+walk through it step-by-step. First make a rasterizer and draw the current
 `Tab` into it:
 
 ``` {.python}
@@ -189,7 +188,7 @@ walk through it step-by-step. First we make a rasterizer and draw the current
         self.tabs[self.active_tab].draw(rasterizer)
 ```
 
-Then we draw the browser UI elements:
+Then draw the browser UI elements:
 
 ``` {.python}
         # Draw the tabs UI:
@@ -226,7 +225,7 @@ Then we draw the browser UI elements:
             15, 70, 30, 55, 30, 85, True)
 ```
 
-Finally we perform the incantations to save off a rastered bitmap and copy it
+Finally perform the incantations to save off a rastered bitmap and copy it
 from the Skia surface to the SDL surface:
 
 ``` {.python}
@@ -259,16 +258,17 @@ And here is the `to_sdl_surface` method:
 
 Finally, `handle_enter` and `handle_down` no longer need an event parameter.
 
-[^surface]: In Skia and SDL, a surface is representation of a graphics buffer
+[^surface]: In Skia and SDL, a surface is a representation of a graphics buffer
 into which you can draw "pixels" (bits representing colors). A surface may or
 may not be bound to the actual pixels on the screen via a window, and there can
 be many surfaces. A *canvas* is an API interface that allows you to draw
-into the surface with higher-level commands such as drawing lines or text. In
+into a surface with higher-level commands such as for lines or text. In
 our implementation, we'll start with separate surfaces for Skia and SDL for
-simplicity.
+simplicity. In a highly optimized browser, minimizng the number of surfaces
+is important for good performance.
 
-In the `Tab` class, the differences in `draw` is the new rasterizer parameter
-that gets passed around, and a Skia API to measure font metrics. Skia's
+In the `Tab` class, the differences in `draw` is the new `rasterizer` parameter
+that gets passed around, and using Skia API to measure font metrics. Skia's
 `measureText` method on a font is the same as the `measure` method on a Tkinter
 font.
 
@@ -291,9 +291,8 @@ and
     font.getMetrics().fDescent
 ```
 
-Note that in Skia, ascent and descent are
-positive if they go downward and negative if upward, so ascents will normally
-be negative.
+Note that in Skia, ascent and descent are baseline-relative---positive if they
+go downward and negative if upward, so ascents will normally be negative.
 
 Now you should be able to run the browser just as it did in previous chapters,
 and have all of the same visuals. It'll probably also feel faster, because
@@ -302,14 +301,17 @@ Skia and SDL are highly optimized libraries written in C & C++.
 Background images
 =================
 
-Now let's add our first visual effect: background images. A background image
-is specified in css via the `background-image` CSS property. Its true syntax
-has many options, but let's just implement a simple version of it. We'll support
-the `background-image: url("relative-url")` syntax, which says to draw an image
-as the background of an element, with the given relative URL.
+Now let's add our first visual effect: background images. A background image is
+specified in css via the `background-image` CSS property. Its full syntax has
+[many options][background-image], so let's just implement a simple version of
+it. We'll support the `background-image: url("relative-url")` syntax, which
+says to draw an image as the background of an element, with the given relative
+URL.
 
-We'll implement this by loading all of the image URLs specified in CSS rules
-for a `Tab`. Firt we collect the image URLs:
+[background-image]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
+
+To implement it, first we'll need to load all of the image URLs specified in CSS rules
+for a `Tab`. Firt collect the image URLs:
 
 ``` {.python}
     def load(self, url, body=None):
@@ -320,13 +322,27 @@ for a `Tab`. Firt we collect the image URLs:
                 if 'background-image' in rule[1]]
 ```
 
+The same will need to be done for inline styles:
+
+``` {.python}
+def style(node, rules, url, images):
+    # ...
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        image_url_strs = []
+        for property, value in pairs.items():
+            # ...
+            if property == 'background-image':
+                image_url_strs.append(value)
+```
+
 And then load them. But to load them we'll have to augment the `request`
 function to support binary image content types (currently it only supports
-`text/html` and `text/css` encoded in `utf-8`). A PNG image has the content
-type `image/png`, and is of course not `utf-8`, it's an encoded PNG
-file. To fix this, we will need to decode to `utf-8` in smaller
-chunks: decoding the status line and headers is good, but decoding the
-body only happens if it's a text content type.
+`text/html` and `text/css` encoded in `utf-8`). A PNG image, for instance, has
+the content type `image/png`, and is of course not `utf-8`, it's an encoded PNG
+file. To fix this, we will need to decode in smaller chunks:
+the status line and headers are still `utf-8`, but the body encoding depends
+on the image type.
 
 First, when we read from the socket with `makefile`, pass the argument
 `b` instead of `r` to request raw bytes as output:
@@ -365,19 +381,22 @@ And finally, when reading the response, we check for the
 ``` {.python}
 def request(url, headers={}, payload=None):
     # ...
-    if headers.get('content-type', 'application/octet-stream').startswith("text"):
+    if headers.get(
+        'content-type', 
+        'application/octet-stream').startswith("text"):
         body = response.read().decode("utf8")
     else:
         body = response.read()
     # ...
 ```
 
-Now we are ready to load the images. Each image found will be loaded and
-stored into an `images` dictionary on a `Tab` keyed by URL. To load an image
-we have to first *decode* it. Images are sent over the network in one of many
-encoding formats, such as PNG or JPEG; when we need to draw them to the screen,
-we need to convert from the encoded format into a raw array of pixels. These
-pixels can then be efficiently drawn onto the screen.
+Now we are ready to load the images. Each image found will be loaded and stored
+into an `images` dictionary on a `Tab` keyed by URL. However, to actually show
+an image on the first screen, we have to first *decode* it. Images are sent
+over the network in one of many optimized encoding formats, such as PNG or
+JPEG; when we need to draw them to the screen, we need to convert from the
+encoded format into a raw array of pixels. These pixels can then be efficiently
+drawn onto the screen.
 
 Skia doesn't come with image decoders built-in. In Python, the Pillow library is
 a convenient way to decode images.
@@ -389,8 +408,10 @@ more details.
 
 [install-pillow]: https://pillow.readthedocs.io/en/stable/installation.html
 
-Once decoded, its output can then be converted into a byte stream and drawn
-into a canvas with Skia, like this:
+Here's how to load, decode and convert images into a `skia.Image` object.
+Note that there are two `Image` classes, which is a little confusing.
+The Pillow `Image` class's role is to decode the image, and the Skia `Image`
+class is an interface between the decoded bytes and Skia's internals.
 
 ``` {.python}
 def get_images(image_url_strs, base_url, images):
@@ -427,13 +448,7 @@ during `style`:
 def style(node, rules, url, images):
     # ...
     if isinstance(node, Element) and "style" in node.attributes:
-        pairs = CSSParser(node.attributes["style"]).body()
-        image_url_strs = []
-        for property, value in pairs.items():
-            computed_value = compute_style(node, property, value)
-            node.style[property] = computed_value
-            if property == 'background-image':
-                image_url_strs.append(value)
+        # ...
         get_images(image_url_strs, url, images)
     if node.style.get('background-image'):
         node.backgroundImage = \
@@ -457,8 +472,9 @@ class DrawImage:
                 self.rect.top() - scroll)
 ```
 
-Some code that draws the background for a node into a display list; here
-we also paint `background-color`:[^paint-order]
+Then add a `DrawImage`, plus a few additional things, to a new
+`paint_background` function that also paints other parts of the background:
+
 
 ``` {.python}
 def paint_background(node, display_list, rect):
@@ -477,26 +493,8 @@ def paint_background(node, display_list, rect):
         display_list.append(Restore(rect))
 ```
 
-Here we're not just drawing the image though---we're also doing something
-new that we haven't seen before. We are applying a *clip*. A clip is a way
-to cut off parts of drawing that exceed a given set of bounds. Here we are
-asking to clip to the rect that bounds the element, because the
-image for `background-image`  never exceeds the size of the element[^bg-opts]
-Clips have to be preceded by a call to `Save`, which says to Skia to 
-snapshot the current parameters to the canvas, so that when `Restore` is called
-later these parameters (including presence or absence of a clip) can be
-restored.[^not-savelayer]
-
-[^not-savelayer]: Note: `Save` is not the same as `SaveLayer` (which will
-be introduced later in this section). `Save` just saves off parameters;
-`SaveLayer` creates a new entire canvas.
-
-[^bg-opts]: The full `background-image` css property has a lot more options
-for ways to deal with a mismatch between the size of the image, such as
-scaling, stretching and tiling.
-
-And finally some code to paint the background image for each layout object
-type. For `BlockLayout`: it's
+This will need to be called from each of the layout object types. Here is
+`BlockLayout`:
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -508,6 +506,34 @@ class BlockLayout:
         for child in self.children:
             child.paint(display_list)
 ```
+
+Here we're not just drawing the image though---we're also doing something
+new that we haven't seen before. We are applying a *clip*. A clip is a way
+to cut off parts of a drawing that exceed a given set of bounds. Here we are
+asking to clip to the rect that bounds the element, because the
+image for `background-image`  never exceeds the size of the element.
+Clips have to be preceded by a call to `Save`, which says to Skia to 
+snapshot the current parameters to the canvas, so that when `Restore` is called
+later these parameters (including presence or absence of a clip) can be
+restored.[^not-savelayer]
+
+The `ClipRect` display list entry looks like this:
+
+``` {.python}
+class ClipRect:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.clipRect(skia.Rect.MakeLTRB(
+                self.rect.left(), self.rect.top() - scroll,
+                self.rect.right(), self.rect.bottom() - scroll))
+```
+
+[^not-savelayer]: Note: `Save` is not the same as `SaveLayer` (which will
+be introduced later in this section). `Save` just saves off parameters;
+`SaveLayer` creates am entirely new canvas.
 
 Note how the background image is painted *before* children, just like
 `background-color`.

@@ -76,7 +76,9 @@ def request(url, headers={}, payload=None):
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
 
-    if headers.get('content-type', 'application/octet-stream').startswith("text"):
+    if headers.get(
+        'content-type',
+        'application/octet-stream').startswith("text"):
         body = response.read().decode("utf8")
     else:
         body = response.read()
