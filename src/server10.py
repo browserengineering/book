@@ -34,7 +34,8 @@ def handle_connection(conx):
         len(body.encode("utf8")))
     if 'cookie' not in headers:
         response += "Set-Cookie: token={}\r\n".format(token)
-    response += "Content-Security-Policy: default-src http://localhost:8000\r\n"
+    response += \
+        "Content-Security-Policy: default-src http://localhost:8000\r\n"
     response += "\r\n" + body
     conx.send(response.encode('utf8'))
     conx.close()

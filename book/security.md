@@ -6,7 +6,7 @@ next: reflow
 ...
 
 Our browser has grown up and now runs (small) web applications. With
-one final step---user identity via cookies---it can now run all sorts
+one final step---user identity via cookies---it will be able torun all sorts
 of personalized online services. But capability demands
 responsibility: a browser must secure cookies against adversaries
 interested in getting at them. Luckily, browsers have sophisticated
@@ -17,9 +17,9 @@ Web browser security is a vast topic. It involves securing the web
 browser, securing the network, and securing the applications that the
 browser runs. It also involves educating the user, so that attackers
 can't misleading them into revealing their own secure data. This chapter
-can't cover all of that. Instead, it focuses on the mechanisms browsers
-have developed to protect the security of web applications. *So*, if
-you're writing security-sensitive code, this book is not enough.
+can't cover all of that. Instead, it focuses on some of the mechanisms
+browsers have developed to protect the security of web applications.
+*So*, if you're writing security-sensitive code, this book is not enough.
 :::
 
 Cookies
@@ -50,8 +50,8 @@ example, the following header sets the value of the `foo` cookie to
     Set-Cookie: foo=bar
     
 The browser remembers this key-value pair, and the next time it makes
-a request to the same server (cookies are site-specific) it echoes it
-back in the `Cookie` header:
+a request to the same server (cookies are site-specific) the browser echoes
+the cookie back in the `Cookie` header:
 
     Cookie: foo=bar
 
@@ -59,8 +59,8 @@ Servers can also set multiple cookies and also set parameters like
 expiration dates, but this `Set-Cookie` / `Cookie` mechanism is the
 core principle.
 
-Servers use cookies to assign identities to their users. For example,
-let's write a login system for our guest book. Each user will be
+Servers use cookies to assign identities to their users. Let's use
+them to write a login system for our guest book. Each user will be
 identified by a long random number stored in the `token`
 cookie.[^secure-random] The server will either extract a token from
 the `Cookie` header, or generate a new one for new visitors:
@@ -142,15 +142,14 @@ You'll also need to modify the argument lists for `add_entry` and
 each user accessing the guest book, we can now build a login system.
 
 ::: {.further}
-The [patent][patent] for cookies says there is "no compelling reason"
-for calling them "cookies", but in fact using this term for opaque
-identifiers exchanged between programs seems to date way back;
+The cookie  term for opaque
+identifiers exchanged between programs seems to date way back.
 [Wikipedia][wiki-magic-cookie] traces it back to at least 1979, and
 cookies were used in [X11][x-cookie] for authentication before they
 were used on the web.
 :::
 
-[cookie]: https://rpx-patents.s3.amazonaws.com/US/2a377-US7895125B2/US7895125B2.pdf
+[patent]: https://rpx-patents.s3.amazonaws.com/US/2a377-US7895125B2/US7895125B2.pdf
 [wiki-magic-cookie]: https://en.wikipedia.org/wiki/Magic_cookie
 [x-cookie]: https://en.wikipedia.org/wiki/X_Window_authorization#Cookie-based_access
 
@@ -266,8 +265,8 @@ storing their user name in the session data:[^timing-attack]
     is a bad idea: Python's equality function for strings scans the
     string from left to right, and exits as soon as it finds a
     difference. So, *how long* it takes to check passwords gives you
-    clues about the password; this is called a "[timing side
-    channel][timing-attack]". This book is about the browser, not the
+    clues about the password; this is called a [timing side
+    channel][timing-attack]. This book is about the browser, not the
     server, but a real web application has to do do a [constant-time
     string comparison][constant-time]!
     
@@ -323,11 +322,8 @@ particular tab. That means that if you're logged in to a website and
 you open a second tab, you're logged in on that tab as well.
 
 When the browser visits a page, it needs to send the cookie for that
-site:[^multi-cookies]
+site:
 
-[^multi-cookies]: Actually, a site can store multiple cookies at once,
-    using different key-value pairs. The browser is supposed to
-    separate them with semicolons. I'll leave that for an exercise.
 
 ``` {.python replace=(url/(url%2c%20top_level_url,cookie%20=/cookie%2c%20params%20=}
 def request(url, payload=None):
@@ -429,8 +425,8 @@ for another website's cookies. But there _is_ an API to make requests
 to another website. It's called `XMLHttpRequest`.[^weird-name]
 
 [^weird-name]: It's a weird name! Why is `XML` capitalized but not
-    `Http`? And it's not restricted to XML! Ultimately, the name is
-    [historic][xhr-history], dating back to Microsoft's "Outlook Web
+    `Http`? And it's not restricted to XML! Ultimately, the naming is
+    [historical][xhr-history], dating back to Microsoft's "Outlook Web
     Access" feature for Exchange Server 2000.
     
 [xhr-history]: https://en.wikipedia.org/wiki/XMLHttpRequest#History
@@ -533,7 +529,7 @@ username on the page (where it says "Hello, so and so"), so reading
 the guest book with your cookies is enough to determine your username.
 
 `XMLHttpRequest` could let them do that. Say the user visits the
-attacker's website[^why-visit-attackers], which then executes the
+attacker's website,[^why-visit-attackers] which then executes the
 following script:
 
 [^why-visit-attackers]: Why is the user on the attacker's site?
@@ -597,12 +593,6 @@ def url_origin(url):
 
 Now an attacker can't read the guest book web page. But can they write
 to it? Actually...
-
-::: {.further}
-Same-origin policy for canvas, images, etc
-:::
-
-
 
 Cross-site request forgery
 ==========================
@@ -848,7 +838,8 @@ To help secure our guest book, we can now mark our guest book cookies
 ``` {.python file=server}
 def handle_connection(conx):
     if 'cookie' not in headers:
-        response += "Set-Cookie: token={}; SameSite=Lax\r\n".format(token)
+        response += \
+            "Set-Cookie: token={}; SameSite=Lax\r\n".format(token)
 ```
 
 This doesn't mean your should remove the nonces we added earlier:
@@ -885,13 +876,13 @@ The server would then output the HTML:
     <i> by crashoverride</i></p>
 
 Every user's browser would then download and run the `evil.js` script,
-which might read `document.cookie` and send[^how-send] it to the
-attacker. The attacker could then impersonate other users, posting as
+which might read `document.cookie` and send[^how-send][^cross-domain-xhr] it
+to the attacker. The attacker could then impersonate other users, posting as
 them or misusing any other capabilities those users had in our
 service.
 
 [^how-send]: In a real browser, `evil.js` might use cross-domain
-     `XMLHttpRequest`s[^cross-domain-xhr] to secretly send that cookie
+     `XMLHttpRequest`s to secretly send that cookie
      to the attacker's server, or even add hidden images or scripts to
      the page, thereby triggering requests. In our limited browser
      these won't work, but the evil script can, for example, replace
@@ -944,7 +935,7 @@ space-separated list of servers:
 
 This header asks the browser not to load any resources (including CSS,
 JavaScript, images, and so on) except from the listed origins. If our
-guest book used `Content-Security-Policy`, even an attacker managed to
+guest book used `Content-Security-Policy`, even if an attacker managed to
 get a `<script>` added to the page, the browser would refuse to load
 and run that script.
 
@@ -1012,7 +1003,8 @@ The guest book can now send a `Content-Security-Policy` header:
 ``` {.python file=server}
 def handle_connection(conx):
     # ...
-    response += "Content-Security-Policy: default-src http://localhost:8000\r\n"
+    response += \
+        "Content-Security-Policy: default-src http://localhost:8000\r\n"
     # ...
 ```
 
