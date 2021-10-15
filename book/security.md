@@ -1175,8 +1175,8 @@ elements should show ther contents as stars instead of characters.
 *Script access*: Implement the [`document.cookie` JavaScript
 API][mdn-doc-cookie]. Reading this field should return a string
 containing the cookie value and parameters, formatted similarly to the
-`Set-Cookie` header. Writing to this field updates the cookie value
-and parameters, just like receiving a `Set-Cookie` header does. Also
+`Cookie` header. Writing to this field updates the cookie value and
+parameters, just like receiving a `Set-Cookie` header does. Also
 implement the `HttpOnly` cookie parameter; cookies with this parameter
 [cannot be read or written][std-httponly] from JavaScript.
 
