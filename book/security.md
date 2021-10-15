@@ -305,6 +305,22 @@ switch back to our web browser and implement cookies.
     
 [bcrypt]: https://auth0.com/blog/hashing-in-action-understanding-bcrypt/
 
+::: {.further}
+A more obscure way to handle logins through the browser is the use of
+[TLS client certificates][client-certs], which use public/private key
+pairs to prove the browser's identity. The user downloads their client
+certificate from the server, and the browser then supplies proof that
+it has the certificate on later requests to that server. There is also
+[HTTP authentication][http-auth]; if you've ever seen a URL with 
+`username:password@` before the hostname, that's HTTP authentication.
+Please don't use either of these for new websites without a good reason.
+:::
+
+[client-certs]: https://aboutssl.org/ssl-tls-client-authentication-how-does-it-works/
+
+[http-auth]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication
+
+
 
 Implementing cookies
 ====================
