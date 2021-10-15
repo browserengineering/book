@@ -700,6 +700,23 @@ if you forget a form---and relying on every website out there to do it
 right is a pipe dream. It'd be better for the browser to provide a
 fail-safe backup.
 
+::: {.further}
+One unusual attack, similar in spirit to cross-site request forgery,
+is [click-jacking][clickjacking]. This attack involves including an
+external site in a transparent `iframe` positioned over a
+seemingly-innocent site. The user thinks they are clicking around the
+innocent site, but they actually take actions on the external site.
+Nowadays, sites can prevent this with the [`frame-ancestors`
+directive][csp-frame-ancestors] to `Content-Security-Policy` or the
+older [`X-Frame-Options` header][x-frame-options].
+:::
+
+[clickjacking]: https://owasp.org/www-community/attacks/Clickjacking
+
+[x-frame-options]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
+
+[csp-frame-ancestors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors
+
 
 SameSite Cookies
 ================
@@ -1070,6 +1087,22 @@ this book. And just like the rest of this book, there are many other
 browser mechanisms that touch on security and privacy. Let's settle
 for this fact: the guest book is more secure than before.
 
+::: {.further}
+On a complicated site, deploying `Content-Security-Policy` can
+accidentally break some features. For this reason, browsers can
+automatically report `Content-Security-Policy` violations to the
+server, using the [`report-uri`][report-uri] or [`report-to`
+directives][report-to]. The
+[`Content-Security-Policy-Report-Only`][report-only]
+header asks the browser to report violations of the content security
+policy *without* actually blocking the requests.
+:::
+
+[report-uri]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/report-uri
+
+[report-uri]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/report-to
+
+[report-only]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
 
 
 Summary
