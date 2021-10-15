@@ -738,7 +738,7 @@ SameSite Cookies
 ================
 
 For form submissions, that fail-safe solution is `SameSite` cookies.
-The idea is that a if server marks its cookies `SameSite`, the browser
+The idea is that if a server marks its cookies `SameSite`, the browser
 will them not send them in cross-site form submissions.[^in-progress]
 
 [^in-progress]: At the time of this writing, the `SameSite` cookie
@@ -936,7 +936,7 @@ posting as them or misusing any other capabilities those users had.
     more details on how web servers can *opt in* to allowing
     cross-origin requests. To steal cookies, it's the attacker's
     server that would to opt in to receiving stolen cookies. Or, in a
-    real browser, `evil.js` add images or scripts to the page to
+    real browser, `evil.js` could add images or scripts to the page to
     trigger additional requests.
 
 [^how-send]: In our limited browser the attack has to be a little
