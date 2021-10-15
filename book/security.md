@@ -140,7 +140,7 @@ You'll also need to modify the argument lists for `add_entry` and
 `show_comments`. We can now build a login system.
 
 ::: {.further}
-The [patent][cookie-patent] for cookies says there is "no compelling
+The [original specification][netscape-spec] for cookies says there is "no compelling
 reason" for calling them "cookies", but in fact using this term for
 opaque identifiers exchanged between programs seems to date way back;
 [Wikipedia][wiki-magic-cookie] traces it back to at least 1979, and
@@ -148,7 +148,7 @@ cookies were used in [X11][x-cookie] for authentication before they
 were used on the web.
 :::
 
-[cookie-patent]: https://rpx-patents.s3.amazonaws.com/US/2a377-US7895125B2/US7895125B2.pdf
+[netscape-spec]: https://curl.se/rfc/cookie_spec.html
 [wiki-magic-cookie]: https://en.wikipedia.org/wiki/Magic_cookie
 [x-cookie]: https://en.wikipedia.org/wiki/X_Window_authorization#Cookie-based_access
 
