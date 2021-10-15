@@ -124,8 +124,8 @@ def handle_connection(conx):
 ```
 
 `SESSIONS` maps tokens to session data dictionaries. I'm passing that
-session data to `do_request` and ultimately to individual pages like
-`show_comments` and `add_entry`:
+session data via `do_request` to individual pages like `show_comments`
+and `add_entry`:
 
 ``` {.python file=server}
 def do_request(session, method, url, headers, body):
@@ -140,7 +140,7 @@ def do_request(session, method, url, headers, body):
 ```
 
 You'll need to modify the argument lists for `add_entry` and
-`show_comments` to accept this new argument. We can now have the
+`show_comments` to accept this new argument. We now have the
 foundation upon which to build a login system.
 
 ::: {.further}
@@ -313,10 +313,10 @@ working, let's switch back to our web browser and implement cookies.
 
 ::: {.further}
 A more obscure browser authentication system is [TLS client
-certificates][client-certs]. The user downloads a public/private from
-the server, and the browser then uses them to prove who it is on later
-requests to that server. Also, if you've ever seen a URL with
-`username:password@` before the hostname, that's [HTTP
+certificates][client-certs]. The user downloads a public/private key
+pair from the server, and the browser then uses them to prove who it
+is on later requests to that server. Also, if you've ever seen a URL
+with `username:password@` before the hostname, that's [HTTP
 authentication][http-auth]. Please don't use either method in new
 websites (without a good reason).
 :::
