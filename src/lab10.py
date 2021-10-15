@@ -114,7 +114,6 @@ class JSContext:
         self.interp.export_function("getAttribute",
             self.getAttribute)
         self.interp.export_function("innerHTML", self.innerHTML)
-        self.interp.export_function("cookie", self.cookie)
         self.interp.export_function("XMLHttpRequest_send",
             self.XMLHttpRequest_send)
         with open("runtime10.js") as f:
@@ -160,12 +159,6 @@ class JSContext:
         for child in elt.children:
             child.parent = elt
         self.tab.render()
-
-    def cookie(self):
-        _, _, host, _ = self.tab.url.split("/", 3)
-        if ":" in host: host = host.split(":", 1)[0]
-        cookie, params = COOKIE_JAR.get(host, "")
-        return cookie
 
     def XMLHttpRequest_send(self, method, url, body):
         full_url = resolve_url(url, self.tab.url)
