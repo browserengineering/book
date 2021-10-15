@@ -50,14 +50,6 @@ Cookie values can be updated:
     >>> lab10.COOKIE_JAR["test.test"]
     ('foo=baz', {})
 
-Moreover, the cookie value should be accessible from JavaScript:
-
-    >>> browser.tabs[0].js.interp.evaljs("document.cookie")
-    'foo=baz'
-
-Note that tab 0 was loaded when the cookie value was `foo=bar`, but
-`document.cookie` nonetheless returns the up-to-date value.
-
 Testing XMLHttpRequest
 ======================
 
