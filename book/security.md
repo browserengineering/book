@@ -368,6 +368,16 @@ all: if someone stole your `token` cookie, they could copy it into
 their browser, and the server would think they are you. We need to
 prevent that.
 
+::: {.further}
+At one point, an attempt was made to "clean up" the cookie
+specification in [RFC 2965][rfc-2965], including human-readable cookie
+descriptions and cookies restricted to certain ports. This required
+introducing the `Cookie2` and `Set-Cookie2` headers; the new headers
+were not popular. They are now [obsolete][rfc-6265].
+:::
+
+[rfc-2965]: https://datatracker.ietf.org/doc/html/rfc2965
+[rfc-6265]: https://datatracker.ietf.org/doc/html/rfc6265
 
 
 Cross-site requests
@@ -479,6 +489,20 @@ post, see hover previews, or submitting a form without reloading.
 
 [mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
 
+::: {.further}
+`XMLHttpRequest` objects have [`setRequestHeader`][xhr-srh] and
+[`getResponseHeader`][xhr-grh] method to control HTTP headers.
+However, this could allow a script to interfere with the cookie
+mechanism or with other security measures, so some
+[request][bad-req-headers] and [response][bad-resp-headers] headers
+are not accessible from JavaScript.
+:::
+
+[xhr-grh]: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/getResponseHeader
+[xhr-srh]: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/setRequestHeader
+[bad-req-headers]: https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_header_name
+[bad-resp-headers]: https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_response_header_name
+
 
 
 Same-origin Policy
@@ -558,6 +582,22 @@ def url_origin(url):
 
 Now an attacker can't read the guest book web page. But can they write
 to it? Actually...
+
+::: {.further}
+One interesting form of the same-origin policy involves images and the
+HTML `<canvas>` element. The [`drawImage` method][mdn-drawimage]
+allows drawing an image to a canvas, even if that image was loaded
+from another origin. But to prevent that image from being read back
+with [`getImageData`][mdn-getimagedata] or related methods, writing
+cross-origin data to a canvas [taints][tainted] it, blocking read
+methods.
+:::
+
+[mdn-drawimage]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
+
+[mdn-getimagedata]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData
+
+[tainted]: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
 
 
 Cross-site request forgery
@@ -811,6 +851,15 @@ But don't remove the nonces we added earlier: `SameSite` provides a
 kind of "defense in depth", a fail-safe that makes sure that even if
 we forgot a nonce somewhere, we're still secure against CSRF attacks.
 
+::: {.further}
+The web was not initially designed around security, which has lead to
+some [awkward patches][patches] after the fact. These patches may be
+ugly, but a dedication to backwards compatibility is a strength of the
+web, and at least newer APIs can be designed around more consistent
+policies.
+:::
+
+[patches]: https://jakearchibald.com/2021/cors/
 
 Cross-site scripting
 ====================
@@ -891,6 +940,19 @@ def show_comments(username):
 This is a good fix, and every application should be careful to do this
 escaping. But if you forget to encode any text anywhere---that's a
 security bug. So browsers provide additional layers of defense.
+
+::: {.further}
+Since the [CSS parser](styles.md) is very permissive, some HTML pages
+also parse as valid CSS. This leads to an attack: include an external
+HTML page as a style sheet and observe the the styling it applies. A
+[similar attack][json-hijack] involves including external JSON
+files as scripts. Setting a `Content-Type` header can prevent this
+sort of attack thanks to browsers' [Cross-Origin Read Blocking][corb]
+policy.
+:::
+
+[corb]: https://chromium.googlesource.com/chromium/src/+/refs/heads/main/services/network/cross_origin_read_blocking_explainer.md
+[json-hijack]: https://owasp.org/www-pdf-archive/OWASPLondon20161124_JSON_Hijacking_Gareth_Heyes.pdf
 
 
 Content security policy
@@ -1036,6 +1098,7 @@ to do to avoid denial of service attacks or to handle spam and
 malicious use. Please consult other sources before working on
 security-critical code.
 :::
+
 
 Outline
 =======
