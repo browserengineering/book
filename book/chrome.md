@@ -443,6 +443,10 @@ relative to the current page, so store the current URL in `load`:
 
 ``` {.python replace=Browser/Tab}
 class Browser:
+    def __init__(self):
+        # ...
+        self.url = None
+
     def load(self, url):
         self.url = url
         # ...
@@ -717,6 +721,16 @@ class Browser:
 ```
 
 Now you can see the tab bar fine.
+
+You'll also need to adjust `scrolldown` to account for the height of
+the page content now being `HEIGHT - CHROME_PX`:
+
+``` {.python}
+class Tab:
+    def scrolldown(self):
+        max_y = self.document.height - (HEIGHT - CHROME_PX)
+        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
+```
 
 The next step is clicking on tabs to switch between them. That has to
 happen in the `Browser` class, since it's the `Browser` that stores

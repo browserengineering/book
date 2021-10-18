@@ -4,9 +4,17 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Keeping Data Private
+    link: https://browser.engineering/security.html
+    pubDate: Fri, 15 Oct 2021, 16:15:00 -0600
+    description:
+      Today we’re releasing a chapter on Keeping Data Private. Cookies
+      enable a whole economy of personalized web applications—but also
+      raise issues of security and privacy. New, powerful browser-side
+      tools can help.
   - title: Running Interactive Scripts
     link: https://browser.engineering/scripts.html
-    pubDate: Wed, 15 Sept 2021, XX:XX:XX -0600
+    pubDate: Thu, 16 Sept 2021, 12:49:00 -0600
     description:
       Today we’re releasing a chapter on Running Interactive Scripts.
       Binding a JavaScript engine to our browser—and building the

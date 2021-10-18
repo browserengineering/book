@@ -27,11 +27,12 @@ from lab7 import TextLayout
 from lab8 import DocumentLayout
 
 def url_origin(url):
-    return "/".join(url.split("/")[:3])
+    scheme_colon, _, host, _ = url.split("/", 3)
+    return scheme_colon + "//" + host
         
 COOKIE_JAR = {}
 
-def request(url, payload=None):
+def request(url, top_level_url, payload=None):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
@@ -59,7 +60,13 @@ def request(url, payload=None):
     body = "{} {} HTTP/1.0\r\n".format(method, path)
     body += "Host: {}\r\n".format(host)
     if host in COOKIE_JAR:
-        body += "Cookie: {}\r\n".format(COOKIE_JAR[host])
+        cookie, params = COOKIE_JAR[host]
+        allow_cookie = True
+        if top_level_url and params.get("samesite", "none") == "lax":
+            _, _, top_level_host, _ = top_level_url.split("/", 3)
+            allow_cookie = (host == top_level_host or method == "GET")
+        if allow_cookie:
+            body += "Cookie: {}\r\n".format(cookie)
     if payload:
         content_length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(content_length)
@@ -79,20 +86,22 @@ def request(url, payload=None):
         headers[header.lower()] = value.strip()
 
     if "set-cookie" in headers:
+        params = {}
         if ";" in headers["set-cookie"]:
-            kv, params = headers["set-cookie"].split(";", 1)
+            cookie, rest = headers["set-cookie"].split(";", 1)
+            for param_pair in rest.split(";"):
+                name, value = param_pair.strip().split("=", 1)
+                params[name.lower()] = value.lower()
         else:
-            kv = headers["set-cookie"]
-            params = {}
-        COOKIE_JAR[host] = kv
+            cookie = headers["set-cookie"]
+        COOKIE_JAR[host] = (cookie, params)
 
     body = response.read()
     s.close()
 
     return headers, body
 
-EVENT_DISPATCH_CODE = \
-    "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
+from lab9 import EVENT_DISPATCH_CODE
 
 class JSContext:
     def __init__(self, tab):
@@ -105,8 +114,9 @@ class JSContext:
         self.interp.export_function("getAttribute",
             self.getAttribute)
         self.interp.export_function("innerHTML", self.innerHTML)
-        self.interp.export_function("cookie", self.cookie_string)
-        with open("runtime9.js") as f:
+        self.interp.export_function("XMLHttpRequest_send",
+            self.XMLHttpRequest_send)
+        with open("runtime10.js") as f:
             self.interp.evaljs(f.read())
 
         self.node_to_handle = {}
@@ -150,9 +160,14 @@ class JSContext:
             child.parent = elt
         self.tab.render()
 
-    def cookie_string(self):
-        # origin ???
-        raise NotImplemented
+    def XMLHttpRequest_send(self, method, url, body):
+        full_url = resolve_url(url, self.tab.url)
+        if not self.tab.allowed_request(full_url):
+            raise Exception("Cross-origin XHR blocked by CSP")
+        headers, out = request(full_url, self.tab.url, payload=body)
+        if url_origin(full_url) != url_origin(self.tab.url):
+            raise Exception("Cross-origin XHR request not allowed")
+        return out
 
 
 SCROLL_STEP = 100
@@ -162,15 +177,26 @@ class Tab:
     def __init__(self):
         self.history = []
         self.focus = None
+        self.url = None
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
+    def allowed_request(self, url):
+        return self.allowed_origins == None or \
+            url_origin(url) in self.allowed_origins
+
     def load(self, url, body=None):
+        headers, body = request(url, self.url, payload=body)
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        headers, body = request(url, payload=body)
+
+        self.allowed_origins = None
+        if "content-security-policy" in headers:
+           csp = headers["content-security-policy"].split()
+           if len(csp) > 0 and csp[0] == "default-src":
+               self.allowed_origins = csp[1:]
 
         self.nodes = HTMLParser(body).parse()
 
@@ -181,7 +207,11 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            header, body = request(resolve_url(script, url))
+            script_url = resolve_url(script, url)
+            if not self.allowed_request(script_url):
+                print("Blocked script", script, "due to CSP")
+                continue
+            header, body = request(script_url, url)
             try:
                 print("Script returned: ", self.js.run(body))
             except dukpy.JSRuntimeError as e:
@@ -195,8 +225,12 @@ class Tab:
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
+            style_url = resolve_url(link, url)
+            if not self.allowed_request(style_url):
+                print("Blocked style", link, "due to CSP")
+                continue
             try:
-                header, body = request(resolve_url(link, url))
+                header, body = request(style_url, url)
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
@@ -224,7 +258,7 @@ class Tab:
             canvas.create_line(x, y, x, y + obj.height)
 
     def scrolldown(self):
-        max_y = self.document.height - HEIGHT
+        max_y = self.document.height - (HEIGHT - CHROME_PX)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 
     def click(self, x, y):

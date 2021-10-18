@@ -6,7 +6,7 @@ prev: outlines
 ...
 
 This is a different kind of blog post---perhaps you can call it a
-menifesto. When Chris and I published [Chapter 5](../layout.md), we
+manifesto. When Chris and I published [Chapter 5](../layout.md), we
 included two interactive widgets that let you explore how the element
 tree and layout tree interact. We plan to do more. This post is about
 why we are building these widgets and what we hope to accomplish. I'll
