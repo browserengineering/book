@@ -868,9 +868,9 @@ class Tab:
             self.load(self.history[-2])
 ```
 
-That's almost correct, but it does work if you click the back button
-twice, because `load` adds to the history. Instead, we need to do
-something more like this:
+That's almost correct, but it doesn't work if you click the back
+button twice, because `load` adds to the history. Instead, we need to
+do something more like this:
 
 ``` {.python indent=4}
 class Tab:
