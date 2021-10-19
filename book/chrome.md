@@ -256,7 +256,7 @@ optimizations of this kind that are needed to make text layout super
 fast.
 
 Finally, since each line is now a standalone layout object, it needs
-to have a height. We compuate it from the maximum ascent and descent:
+to have a height. We compute it from the maximum ascent and descent:
 
 ``` {.python indent=8}
 # ...
@@ -264,7 +264,7 @@ self.height = 1.25 * (max_ascent + max_descent)
 ```
 
 Ok, so that's line layout. Now let's think about laying out each word.
-Recall that there's a few quirks here: we needs to compute a `font`
+Recall that there's a few quirks here: we need to compute a `font`
 field for each `TextLayout`, but we do not need to compute a `y`
 field.
 
