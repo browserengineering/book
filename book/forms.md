@@ -933,9 +933,10 @@ is focused, and call it before changing focus.
 *Tab*: In most browsers, the `<Tab>` key (on your keyboard) moves
 focus from one input field to the next. Implement this behavior in
 your browser. The "tab order" of input elements should be the same as
-the order of `<input>` elements on the page. You can also add support
-for the [`tabindex`][tabindex] property, which lets a web page change
-this tab order.
+the order of `<input>` elements on the page.[^tabindex]
+
+[^tabindex]: The [`tabindex`][tabindex] property lets a web page
+    change this tab order, but its behavior is pretty weird.
 
 [tabindex]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex
 
