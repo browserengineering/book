@@ -30,19 +30,22 @@ def get_blocks(file):
 # Lua code to extract all code blocks from a Markdown file via Pandoc
 FILTER = r'''
 function CodeBlock(el)
-  if el.classes:find("python") and not el.classes:find("example") then
-     io.write("##<{")
-     local written = nil
-     for k, v in pairs(el.attributes) do
-         if written then io.write(", ") end
-         io.write("\"" .. k .. "\": \"" .. v .. "\"")
-         written = true
-     end
-     io.write("}>\n")
-     io.write(el.text .. "\n")
-     io.write("##</>\n\n")
-     io.flush()
+  io.write("##<{")
+  local written = nil
+  io.write("\"classes\": [")
+  for i, cls in pairs(el.classes) do
+      if written then io.write(", ") end
+      io.write("\"" .. cls .. "\"")
+      written = true
   end
+  io.write("]")
+  for k, v in pairs(el.attributes) do
+      io.write(", \"" .. k .. "\": \"" .. v .. "\"")
+  end
+  io.write("}>\n")
+  io.write(el.text .. "\n")
+  io.write("##</>\n\n")
+  io.flush()
   return el
 end
 '''
@@ -71,9 +74,7 @@ def tangle(file):
     return list(get_blocks(out.stdout.decode("utf8").split("\n")))
 
 def find_block(block, text):
-    differ = difflib.Differ(
-        charjunk=lambda c: c == " ",
-        linejunk=lambda s: s.strip().startswith("#") or s.strip().startswith("breakpoint"))
+    differ = difflib.Differ(charjunk=lambda c: c == " ", linejunk=lambda s: "..." in s)
     d = differ.compare(block.splitlines(keepends=True), text.splitlines(keepends=True))
     same = []
     last_type = None
@@ -92,7 +93,7 @@ def find_block(block, text):
         elif type == " ":
             same.append((False, l))
         elif type == "-":
-            if l.strip().startswith("# ..."):
+            if "..." in l:
                 type = " "
             else:
                 same.append((True, l))
@@ -101,11 +102,13 @@ def find_block(block, text):
         last_type = type
     return same
 
-def compare_files(book, code, file):
+def compare_files(book, code, language, file):
     src = code.read()
     blocks = tangle(book.name)
     failure, count = 0, 0
     for name, block in blocks:
+        if "example" in name.get("classes"): continue
+        if language and language not in name.get("classes"): continue
         if name.get("file") != file: continue
         block = indent(block, name.get("indent", "0"))
         block = replace(block, *[item.split("/", 1) for item in name.get("replace", "/").split(",")])
@@ -134,6 +137,17 @@ def compare_files(book, code, file):
         print("  Found no differences {} blocks".format(count))
     return failure
 
+def test_entry(chapter, chapter_metadata, key, language, file):
+    if key in chapter_metadata:
+        fname = chapter_metadata[key]
+        print(f"Comparing chapter {chapter} with {key} {fname}")
+        with open("book/" + chapter) as book, \
+             open("src/" + fname) as code:
+            return compare_files(book, code, language, file)
+    else:
+        return 0
+    
+
 if __name__ == "__main__":
     import sys, argparse
     argparser = argparse.ArgumentParser(description="Compare book blocks to teacher's copy")
@@ -149,21 +163,11 @@ if __name__ == "__main__":
             data = json.load(f)
 
             chapters = data["chapters"]
-            for chapter, chapter_metadata in data["chapters"].items():
-                if "lab" in chapter_metadata:
-                    lab = chapter_metadata["lab"]
-                    print(f"Comparing chapter {chapter} with lab {lab}")
-                    with open("book/" + chapter) as book, \
-                         open("src/" + lab) as code:
-                        cur_failure = compare_files(book, code, None)
-                        failure += cur_failure
-                if "server" in chapter_metadata:
-                    server = chapter_metadata["server"]
-                    print(f"Comparing chapter {chapter} with server {server}")
-                    with open("book/" + chapter) as book, \
-                         open("src/" + server) as code:
-                        cur_failure = compare_files(book, code, "server")
-                        failure += cur_failure
+            for chapter, metadata in data["chapters"].items():
+                failure += test_entry(chapter, metadata, "lab", "python", None)
+                failure += test_entry(chapter, metadata, "server", "python", "server")
+                failure += test_entry(chapter, metadata, "stylesheet", "css", None)
+                failure += test_entry(chapter, metadata, "runtime", "javascript", None)
     else:
-        failure = compare_files(args.book, args.code, args.file)
+        failure = compare_files(args.book, args.code, None, args.file)
     sys.exit(failure)

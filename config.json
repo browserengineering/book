@@ -10,12 +10,12 @@
 
         "html.md": { "disabled": false, "lab": "lab4.py" },
         "layout.md": { "disabled": false, "lab": "lab5.py" },
-        "styles.md": { "disabled": false, "lab": "lab6.py" },
+        "styles.md": { "disabled": false, "lab": "lab6.py", "stylesheet": "browser6.css" },
         "chrome.md": { "disabled": false, "lab": "lab7.py" },
 
-        "forms.md": { "disabled": false, "lab": "lab8.py", "server": "server8.py" },
-        "scripts.md": { "disabled": false, "lab": "lab9.py", "server": "server9.py" },
-        "security.md": { "disabled": false, "lab": "lab10.py", "server": "server10.py" },
+        "forms.md": { "disabled": false, "lab": "lab8.py", "server": "server8.py", "stylesheet": "browser8.css" },
+        "scripts.md": { "disabled": false, "lab": "lab9.py", "server": "server9.py", "runtime": "runtime9.js" },
+        "security.md": { "disabled": false, "lab": "lab10.py", "server": "server10.py", "runtime": "runtime10.js" },
 
         "reflow.md": { "disabled": true, "lab": "lab11.py" },
         "visual-effects.md": { "disabled": true, "lab": "lab12.py" },

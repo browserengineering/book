@@ -449,7 +449,7 @@ I'll implement a minimal version here. Specifically, I'll support only
 
 [xhr-open]: https://xhr.spec.whatwg.org/#the-open()-method
 
-``` {.javascript}
+``` {.javascript.example}
 x = new XMLHttpRequest();
 x.open("GET", url, false);
 x.send();
@@ -550,8 +550,7 @@ could request the guest book page:
     ads on sketchy websites where users have low standards for
     security anyway.
 
-
-``` {.javascript}
+``` {.javascript.example}
 x = new XMLHttpRequest();
 x.open("GET", "http://localhost:8000/", false);
 x.send();

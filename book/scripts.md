@@ -129,7 +129,7 @@ simple web page with a `script` tag:
 
 Then write a super simple script to `test.js`, maybe this:
 
-``` {.javascript}
+``` {.javascript.example}
 var x = 2
 x + x
 ```
@@ -219,7 +219,7 @@ class JSContext:
 We can call an exported function from JavaScript using Dukpy's
 `call_python` function. For example:
 
-``` {.javascript}
+``` {.javascript.example}
 call_python("log", "Hi from JS")
 ```
 
@@ -233,7 +233,7 @@ Since we ultimately want JavaScript to call a `console.log` function,
 not a `call_python` function, we need to define a `console` object
 and then give it a `log` property. We can do that *in JavaScript*:
 
-``` {.javascript}
+``` {.javascript.example}
 console = { log: function(x) { call_python("log", x); } }
 ```
 
@@ -293,7 +293,7 @@ Crashes in JavaScript code are frustrating to debug. You can cause a
 crash by writing bad code, or by explicitly raising an exception, like
 so:
 
-``` {.javascript}
+``` {.javascript.example}
 throw Error("bad");
 ```
 
@@ -395,7 +395,7 @@ class JSContext:
 In JavaScript, `querySelectorAll` is a method on the `document`
 object, which we need to define in the JavaScript runtime:
 
-``` {.javascript}
+``` {.javascript replace=return/var%20handles%20=}
 document = { querySelectorAll: function(s) {
     return call_python("querySelectorAll", s);
 }}
@@ -538,7 +538,7 @@ We create these `Node` objects in `querySelectorAll`'s wrapper:[^11]
 
 ``` {.javascript}
 document = { querySelectorAll: function(s) {
-    var handles = call_python("querySelectorAll", s)
+    var handles = call_python("querySelectorAll", s);
     return handles.map(function(h) { return new Node(h) });
 }}
 ```
@@ -582,19 +582,10 @@ Note that if the attribute is not assigned, the `get` method will
 return `None`, which DukPy will translate to JavaScript's `null`.
 Don't forget to export this function as `getAttribute`.
 
-You should now be able to run a script like this:
-
-``` {.javascript}
-scripts = document.querySelectorAll("script")
-for (var i = 0; i < scripts.length; i++) {
-    console.log(scripts[i].getAttribute("src"));
-}
-```
-
 We finally have enough of the DOM API to implement a little character
 count function for text areas:
 
-``` {.javascript}
+``` {.javascript file=comment}
 inputs = document.querySelectorAll('input')
 for (var i = 0; i < inputs.length; i++) {
     var name = inputs[i].getAttribute("name");
@@ -704,7 +695,7 @@ Node.prototype.addEventListener = function(type, listener) {
 To dispatch an event, we need to look up the type and handle in the
 `LISTENERS` array, like this:
 
-``` {.javascript}
+``` {.javascript replace=(type)/(evt),(this)/(this%2c%20evt)}
 Node.prototype.dispatchEvent = function(type) {
     var handle = this.handle;
     var list = (LISTENERS[handle] && LISTENERS[handle][type]) || [];
@@ -745,7 +736,7 @@ snippet stores the named `type` and `handle` arguments to `evaljs`.
 With all this event-handling machinery in place, we can update the
 character count every time an input area changes:
 
-``` {.javascript}
+``` {.javascript file=comment}
 function lengthCheck() {
     var name = this.getAttribute("name");
     var value = this.getAttribute("value");
@@ -775,7 +766,7 @@ that change the page. The full DOM API provides a lot of such methods,
 but for simplicity I'm going to implement only `innerHTML`, which is
 used like this:
 
-``` {.javascript}
+``` {.javascript.example}
 node.innerHTML = "This is my <b>new</b> bit of content!";
 ```
 
@@ -932,7 +923,7 @@ def do_request(method, url, headers, body):
 We can then put our little input length checker into `comment.js`,
 with the `lengthCheck` function modified to use `innerHTML`:
 
-``` {.javascript}
+``` {.javascript file=commentt}
 label = document.querySelectorAll("label")[0];
 
 function lengthCheck() {
@@ -1080,7 +1071,7 @@ form: it can use a global variable to track whether or not submission
 is allowed, and then when submission is attempted it can check that
 variable and cancel that submission if necessary:
 
-``` {.javascript}
+``` {.javascript file=comment}
 allow_submit = true;
 
 function lengthCheck() {
@@ -1272,7 +1263,7 @@ property is called `backgroundColor` in Javascript. Implement the
 return a string containing HTML source code. That source code should
 reflect the *current* attributes of the element; for example:
 
-``` {.javascript} 
+``` {.javascript.example} 
 element.innerHTML = '<span id=foo>Chris was here</span>';
 element.id = 'bar';
 // Prints "<span id=bar>Chris was here</span>":
