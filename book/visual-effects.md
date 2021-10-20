@@ -15,7 +15,7 @@ Skia replaces Tkinter
 =====================
 
 But before we get to how visual effects are implemented, we'll need to upgrade
-our graphics system. While Tkinter was great for painting and handling input,
+our graphics system. While Tkinter was great for basic painting and handling input,
 it has no built-in support at all for implementing many visual
 effects.[^tkinter-before-gpu] And just as implementing the details of text
 rendering or drawing rectangles is outside the scope of this book, so is
@@ -38,7 +38,8 @@ raster libraries, that topic is very interesting in its own right.
 (todo: find a reference) and (todo: another one) are two resources you can dig
 into if you are curious to learn more about how they work. That being said,
 it is very important these days for browsers to work smoothly with the
-advanced GPUs in today's devices, so in practice browser teams include experts
+advanced GPUs in today's devices, and often browsers are pushing the envelope
+of graphics technology. So in practice browser teams include experts
 in these areas.
 :::
 
