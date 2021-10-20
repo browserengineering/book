@@ -919,31 +919,32 @@ Exercises
 while inside a text entry, that submits the form that the text entry
 was in. Add this feature to your browser.
 
-*Check boxes*: In HTML, `input` elements have a `type` attribute. When
-set to `checkbox`, the `input` element looks like a checkbox; it's
-checked if the `checked` attribute is set, and unchecked otherwise.
-Checkboxes are only included in the form submission when they're
-checked.
-
-*Tab*: In most browsers, the `<Tab>` key (on your keyboard) moves
-focus from one input field to the next. Implement this behavior in
-your browser. The "tab order" of input elements should be the same as
-the order of `<input>` elements on the page. You can also add support
-for the [`tabindex`][tabindex] property, which lets a web page change
-this tab order.
-
-[tabindex]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex
+*GET forms*: Forms can be submitted via GET requests as well as POST
+requests. In GET requests, the form-encoded data is pasted onto the
+end of the URL, separated from the path by a question mark, like
+`/search?q=hi`; GET form submissions have no body. Implement GET form
+submissions.
 
 *Blurring*: Right now, if you click inside a text entry, and then
 inside the address bar, two cursors will appear on the screen. To fix
 this, add a `blur` method to each `Tab` which unfocuses anything that
 is focused, and call it before changing focus.
 
-*GET forms*: Forms can be submitted via GET requests as well as POST
-requests. In GET requests, the form-encoded data is pasted onto the
-end of the URL, separated from the path by a question mark, like
-`/search?q=hi`; GET form submissions have no body. Implement GET form
-submissions.
+*Tab*: In most browsers, the `<Tab>` key (on your keyboard) moves
+focus from one input field to the next. Implement this behavior in
+your browser. The "tab order" of input elements should be the same as
+the order of `<input>` elements on the page.[^tabindex]
+
+[^tabindex]: The [`tabindex`][tabindex] property lets a web page
+    change this tab order, but its behavior is pretty weird.
+
+[tabindex]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex
+
+*Check boxes*: In HTML, `input` elements have a `type` attribute. When
+set to `checkbox`, the `input` element looks like a checkbox; it's
+checked if the `checked` attribute is set, and unchecked otherwise.
+Checkboxes are only included in the form submission when they're
+checked.
 
 *Resubmit requests*: One reason to separate GET and POST requests is
 that GET requests are supposed to be *idempotent* (read-only,
