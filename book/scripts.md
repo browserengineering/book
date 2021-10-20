@@ -920,10 +920,10 @@ def show_comments():
 Now the browser will request `comment.js`, so our server needs to
 *serve* that JavaScript file:
 
-``` {.python file=server}
+``` {.python file=server replace="comment.js"/"comment9.js"}
 def do_request(method, url, headers, body):
     # ...
-    elif method == "GET" and url == "/comments.js":
+    elif method == "GET" and url == "/comment.js":
         with open("comment.js") as f:
             return "200 OK", f.read()
     # ...
@@ -1106,7 +1106,7 @@ the length on the server side too:
 ``` {.python file=server}
 def add_entry(params):
     if 'guest' in params and len(params['guest']) <= 100:
-        ENTRIES.append(params["guest"])
+        ENTRIES.append(params['guest'])
     return show_comments()
 ```
 
