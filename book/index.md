@@ -29,7 +29,7 @@ Introduction
 ============
 
 ::: {.intro}
-0. [About the authors](about.md)
+0. [About the Authors](about.md)
 1. [Preface](preface.md)
 2. [Browsers and the Web](intro.md)
 3. [History of the Web](history.md)
