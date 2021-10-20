@@ -6,11 +6,14 @@ without exercises.
 
 import ctypes
 import dukpy
+import io
+import math
 from sdl2 import *
 import skia
 import socket
 import ssl
 import urllib.parse
+from PIL import Image
 from lab4 import print_tree
 from lab4 import Element
 from lab4 import Text
@@ -18,12 +21,71 @@ from lab4 import HTMLParser
 from lab6 import cascade_priority
 from lab6 import layout_mode
 from lab6 import resolve_url
-from lab6 import style
 from lab6 import tree_to_list
-from lab6 import CSSParser
-from lab10 import request
+from lab6 import INHERITED_PROPERTIES
+from lab6 import compute_style
+from lab6 import TagSelector
+from lab6 import DescendantSelector
 from lab10 import url_origin
 from lab10 import JSContext
+
+def request(url, headers={}, payload=None):
+    scheme, url = url.split("://", 1)
+    assert scheme in ["http", "https"], \
+        "Unknown scheme {}".format(scheme)
+
+    host, path = url.split("/", 1)
+    path = "/" + path
+    port = 80 if scheme == "http" else 443
+
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    s.connect((host, port))
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
+
+    method = "POST" if payload else "GET"
+    body = "{} {} HTTP/1.0\r\n".format(method, path)
+    body += "Host: {}\r\n".format(host)
+    for header, value in headers.items():
+        body += "{}: {}\r\n".format(header, value)
+    if payload:
+        content_length = len(payload.encode("utf8"))
+        body += "Content-Length: {}\r\n".format(content_length)
+    body += "\r\n" + (payload or "")
+    s.send(body.encode("utf8"))
+
+    response = s.makefile("b")
+
+    statusline = response.readline().decode("utf8")
+    version, status, explanation = statusline.split(" ", 2)
+    assert status == "200", "{}: {}".format(status, explanation)
+
+    headers = {}
+    while True:
+        line = response.readline().decode("utf8")
+        if line == "\r\n": break
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+
+    if headers.get(
+        'content-type',
+        'application/octet-stream').startswith("text"):
+        body = response.read().decode("utf8")
+    else:
+        body = response.read()
+
+    s.close()
+
+    return headers, body
 
 def color_to_sk_color(color):
     if color == "white":
@@ -37,6 +99,24 @@ def color_to_sk_color(color):
     else:
         return skia.ColorBLACK
 
+def parse_rotation_transform(transform_str):
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find('deg)')
+    return float(transform_str[left_paren + 1:right_paren])
+
+def parse_blend_mode(blend_mode_str):
+    if blend_mode_str == "multiply":
+        return skia.BlendMode.kMultiply
+    elif blend_mode_str == "difference":
+        return skia.BlendMode.kDifference
+    else:
+        return skia.BlendMode.kSrcOver
+
+def parse_clip_path(clip_path_str):
+    if clip_path_str.find("circle") != 0:
+        return None
+    return int(clip_path_str[7:][:-2])
+
 class Rasterizer:
     def __init__(self, surface):
         self.surface = surface
@@ -45,9 +125,8 @@ class Rasterizer:
         with self.surface as canvas:
             canvas.clear(color)
 
-    def draw_rect(self, x1, y1, x2, y2,
+    def draw_rect(self, rect,
         fill=None, width=1):
-        rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
         paint = skia.Paint()
         if fill:
             paint.setStrokeWidth(width);
@@ -88,46 +167,127 @@ def linespace(font):
     metrics = font.getMetrics()
     return metrics.fDescent - metrics.fAscent
 
+class SaveLayer:
+    def __init__(self, sk_paint, rect):
+        self.sk_paint = sk_paint
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.saveLayer(paint=self.sk_paint)
+
+class Save:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.save()
+
+class Restore:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.restore()
+
+class CircleMask:
+    def __init__(self, cx, cy, radius, rect):
+        self.cx = cx
+        self.cy = cy
+        self.radius = radius
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.saveLayer(paint=skia.Paint(
+                Alphaf=1.0, BlendMode=skia.kDstIn))
+            canvas.drawCircle(
+                self.cx, self.cy - scroll,
+                self.radius, skia.Paint(Color=skia.ColorWHITE))
+            canvas.restore()
+
+class Rotate:
+    def __init__(self, degrees, rect):
+        self.degrees = degrees
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.rotate(self.degrees)
+
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
-        self.top = y1
-        self.left = x1
-        self.text = text
         self.font = font
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x1, y1 + linespace(self.font))
+        self.text = text
         self.color = color
-
-        self.bottom = y1 + linespace(self.font)
 
     def execute(self, scroll, rasterizer):
         rasterizer.draw_text(
-            self.left, self.top - scroll,
+            self.rect.left(), self.rect.top() - scroll,
             self.text,
             self.font,
             self.color,
         )
 
     def __repr__(self):
-        return "DrawText(text={})".fpormat(self.text)
+        return "DrawText(text={})".format(self.text)
 
 class DrawRect:
-    def __init__(self, x1, y1, x2, y2, color):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+    def __init__(self, rect, color):
+        self.rect = rect
         self.color = color
 
     def execute(self, scroll, rasterizer):
         rasterizer.draw_rect(
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
+            skia.Rect.MakeLTRB(
+                self.rect.left(), self.rect.top() - scroll,
+                self.rect.right(), self.rect.bottom() - scroll),
             width=0,
             fill=self.color,
         )
 
     def __repr__(self):
+        (left, top, right, bottom) = tuple(self.rect)
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
-            self.top, self.left, self.bottom, self.right, self.color)
+            left, top, right, bottom, self.color)
+
+class ClipRect:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.clipRect(skia.Rect.MakeLTRB(
+                self.rect.left(), self.rect.top() - scroll,
+                self.rect.right(), self.rect.bottom() - scroll))
+
+class ClipRRect:
+    def __init__(self, rect, radius):
+        self.rect = rect
+        self.radius = radius
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.clipRRect(
+                skia.RRect.MakeRectXY(
+                    skia.Rect.MakeLTRB(
+                        self.rect.left(), self.rect.top() - scroll,
+                        self.rect.right(), self.rect.bottom() - scroll),
+                    self.radius, self.radius))
+
+class DrawImage:
+    def __init__(self, image, rect):
+        self.image = image
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.drawImage(
+                self.image, self.rect.left(),
+                self.rect.top() - scroll)
 
 INPUT_WIDTH_PX = 200
 
@@ -245,7 +405,9 @@ class InputLayout:
         self.font = skia.Font(
             skia.Typeface('Arial', font_style(weight, style)), size)
 
-        self.width = INPUT_WIDTH_PX
+        self.width = style_length(self.node, "width", INPUT_WIDTH_PX)
+        self.height = style_length(
+            self.node, "height", linespace(self.font))
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -253,15 +415,14 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-        self.height = linespace(self.font)
-
     def paint(self, display_list):
-        bgcolor = self.node.style.get("background-color",
-                                      "transparent")
-        if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+        (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
+
+        rect = skia.Rect.MakeLTRB(
+            paint_x, paint_y, paint_x + self.width,
+            paint_y + self.height)
+
+        paint_background(self.node, display_list, rect)
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -275,6 +436,95 @@ class InputLayout:
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
+
+def style_length(node, style_name, default_value):
+    style_val = node.style.get(style_name)
+    if style_val:
+        return int(style_val[:-2])
+    else:
+        return default_value
+
+def paint_clip_path(node, display_list, rect):
+    clip_path = node.style.get("clip-path")
+    if clip_path:
+        percent = parse_clip_path(clip_path)
+        if percent:
+            width = rect.right() - rect.left()
+            height = rect.bottom() - rect.top()
+            reference_val = math.sqrt(width * width + height * height) / math.sqrt(2)
+            center_x = rect.left() + (rect.right() - rect.left()) / 2
+            center_y = rect.top() + (rect.bottom() - rect.top()) / 2
+            radius = reference_val * percent / 100
+            display_list.append(CircleMask(
+                center_x, center_y, radius, rect))
+
+def paint_visual_effects(node, display_list, rect):
+    restore_count = 0
+    
+    transform_str = node.style.get("transform", "")
+    if transform_str:
+        display_list.append(Save(rect))
+        restore_count = restore_count + 1
+        degrees = parse_rotation_transform(transform_str)
+        display_list.append(Rotate(degrees, rect))
+
+    blend_mode_str = node.style.get("mix-blend-mode")
+    blend_mode = skia.BlendMode.kSrcOver
+    if blend_mode_str:
+        blend_mode = parse_blend_mode(blend_mode_str)
+
+    opacity = float(node.style.get("opacity", "1.0"))
+    if opacity != 1.0 or blend_mode_str:
+        paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
+#            ImageFilter=skia.DropShadowImageFilter.Make(5, 5, 3, 3, skia.ColorBLACK,
+#                skia.DropShadowImageFilter.kDrawShadowAndForeground_ShadowMode))
+        display_list.append(SaveLayer(paint, rect))
+        restore_count = restore_count + 1
+
+    clip_path = node.style.get("clip-path")
+    if clip_path:
+        display_list.append(SaveLayer(skia.Paint(), rect))
+        restore_count = restore_count + 1
+
+    border_radius = node.style.get("border-radius")
+    if border_radius:
+        radius = int(border_radius[:-2])
+        display_list.append(Save(rect))
+        display_list.append(ClipRRect(rect, radius))
+        restore_count = restore_count + 1
+
+    return restore_count
+
+def paint_background(node, display_list, rect):
+    bgcolor = node.style.get("background-color",
+                                  "transparent")
+    if bgcolor != "transparent":
+        display_list.append(DrawRect(rect, bgcolor))
+
+    background_image = node.style.get("background-image")
+    if background_image:
+        display_list.append(Save(rect))
+        display_list.append(ClipRect(rect))
+        print(rect)
+        display_list.append(DrawImage(node.backgroundImage,
+            rect))
+        display_list.append(Restore(rect))
+
+def paint_coords(node, x, y):
+    if not node.style.get("position") == "relative":
+        return (x, y)
+
+    paint_x = x
+    paint_y = y
+
+    left = node.style.get("left")
+    if left:
+        paint_x = paint_x + int(left[:-2])
+    top = node.style.get("top")
+    if top:
+        paint_y = paint_y + int(top[:-2])
+
+    return (paint_x, paint_y)
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -297,7 +547,8 @@ class BlockLayout:
             self.children.append(next)
             previous = next
 
-        self.width = self.parent.width
+        self.width = style_length(
+            self.node, "width", self.parent.width)
         self.x = self.parent.x
 
         if self.previous:
@@ -308,15 +559,33 @@ class BlockLayout:
         for child in self.children:
             child.layout()
 
-        self.height = sum([child.height for child in self.children])
+        self.height = style_length(
+            self.node, "height",
+            sum([child.height for child in self.children]))
+
 
     def paint(self, display_list):
+        (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
+        rect = skia.Rect.MakeLTRB(
+            paint_x, paint_y,
+            paint_x + self.width, paint_y + self.height)
+
+        restore_count = paint_visual_effects(
+            self.node, display_list, rect)
+
+        paint_background(self.node, display_list, rect)
+
         for child in self.children:
             child.paint(display_list)
 
+        paint_clip_path(self.node, display_list, rect)
+
+        for i in range(0, restore_count):
+            display_list.append(Restore(rect))
+
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+            self.x, self.x, self.width, self.height)
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
@@ -331,7 +600,9 @@ class InlineLayout:
         self.display_list = None
 
     def layout(self):
-        self.width = self.parent.width
+        self.width = style_length(
+            self.node, "width", self.parent.width)
+
         self.x = self.parent.x
 
         if self.previous:
@@ -345,7 +616,9 @@ class InlineLayout:
         for line in self.children:
             line.layout()
 
-        self.height = sum([line.height for line in self.children])
+        self.height = style_length(
+            self.node, "height",
+            sum([line.height for line in self.children]))
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -398,14 +671,22 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
-        bgcolor = self.node.style.get("background-color",
-                                      "transparent")
-        if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+        (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
+
+        rect = skia.Rect.MakeLTRB(
+            paint_x, paint_y, paint_x + self.width,
+            paint_y + self.height)
+
+        restore_count = paint_visual_effects(self.node, display_list, rect)
+
+        paint_background(self.node, display_list, rect)
+
         for child in self.children:
             child.paint(display_list)
+
+        for i in range(0, restore_count):
+            display_list.append(Restore(rect))
+
 
     def __repr__(self):
         return "InlineLayout(x={}, y={}, width={}, height={})".format(
@@ -433,6 +714,142 @@ class DocumentLayout:
 
     def __repr__(self):
         return "DocumentLayout()"
+
+class CSSParser:
+    def __init__(self, s):
+        self.s = s
+        self.i = 0
+
+    def whitespace(self):
+        while self.i < len(self.s) and self.s[self.i].isspace():
+            self.i += 1
+
+    def literal(self, literal):
+        assert self.i < len(self.s) and self.s[self.i] == literal
+        self.i += 1
+
+    def word(self):
+        start = self.i
+        while self.i < len(self.s):
+            if self.s[self.i].isalnum() or self.s[self.i] in "#-.%()\"'":
+                self.i += 1
+            else:
+                break
+        assert self.i > start
+        return self.s[start:self.i]
+
+    def pair(self):
+        prop = self.word()
+        self.whitespace()
+        self.literal(":")
+        self.whitespace()
+        val = self.word()
+        return prop.lower(), val
+
+    def ignore_until(self, chars):
+        while self.i < len(self.s):
+            if self.s[self.i] in chars:
+                return self.s[self.i]
+            else:
+                self.i += 1
+
+    def body(self):
+        pairs = {}
+        while self.i < len(self.s) and self.s[self.i] != "}":
+            try:
+                prop, val = self.pair()
+                pairs[prop.lower()] = val
+                self.whitespace()
+                self.literal(";")
+                self.whitespace()
+            except AssertionError:
+                why = self.ignore_until([";", "}"])
+                if why == ";":
+                    self.literal(";")
+                    self.whitespace()
+                else:
+                    break
+        return pairs
+
+    def selector(self):
+        out = TagSelector(self.word().lower())
+        self.whitespace()
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            tag = self.word()
+            descendant = TagSelector(tag.lower())
+            out = DescendantSelector(out, descendant)
+            self.whitespace()
+        return out
+
+    def parse(self):
+        rules = []
+        while self.i < len(self.s):
+            try:
+                self.whitespace()
+                selector = self.selector()
+                self.literal("{")
+                self.whitespace()
+                body = self.body()
+                self.literal("}")
+                rules.append((selector, body))
+            except AssertionError:
+                why = self.ignore_until(["}"])
+                if why == "}":
+                    self.literal("}")
+                    self.whitespace()
+                else:
+                    break
+        return rules
+
+def parse_style_url(url_str):
+    return url_str[5:][:-2]
+
+def get_images(image_url_strs, base_url, images):
+    for image_url_str in image_url_strs:
+        image_url = parse_style_url(image_url_str)
+        header, body_bytes = request(
+            resolve_url(image_url, base_url),
+            headers={})
+        picture_stream = io.BytesIO(body_bytes)
+
+        pil_image = Image.open(picture_stream)
+        if pil_image.mode == "RGBA":
+            pil_image_bytes = pil_image.tobytes()
+        else:
+            pil_image_bytes = pil_image.convert("RGBA").tobytes()
+        images[image_url] = skia.Image.frombytes(
+            array=pil_image_bytes,
+            dimensions=pil_image.size,
+            colorType=skia.kRGBA_8888_ColorType)
+
+def style(node, rules, url, images):
+    node.style = {}
+    for property, default_value in INHERITED_PROPERTIES.items():
+        if node.parent:
+            node.style[property] = node.parent.style[property]
+        else:
+            node.style[property] = default_value
+    for selector, body in rules:
+        if not selector.matches(node): continue
+        for property, value in body.items():
+            computed_value = compute_style(node, property, value)
+            if not computed_value: continue
+            node.style[property] = computed_value
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        image_url_strs = []
+        for property, value in pairs.items():
+            computed_value = compute_style(node, property, value)
+            node.style[property] = computed_value
+            if property == 'background-image':
+                image_url_strs.append(value)
+        get_images(image_url_strs, url, images)
+    if node.style.get('background-image'):
+        node.backgroundImage = \
+            images[parse_style_url(
+                node.style.get('background-image'))]
+    for child in node.children:
+        style(child, rules, url, images)
 
 SCROLL_STEP = 100
 CHROME_PX = 100
@@ -500,10 +917,19 @@ class Tab:
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
+
+        image_url_strs = [rule[1]['background-image']
+                 for rule in self.rules
+                 if 'background-image' in rule[1]]
+
+        self.images = {}
+        get_images(image_url_strs, url, self.images)
+
         self.render()
 
     def render(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
+        style(self.nodes, sorted(self.rules, key=cascade_priority),
+            self.url, self.images)
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
@@ -511,8 +937,8 @@ class Tab:
 
     def draw(self, rasterizer):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
-            if cmd.bottom < self.scroll: continue
+            if cmd.rect.top() > self.scroll + HEIGHT - CHROME_PX: continue
+            if cmd.rect.bottom() < self.scroll: continue
             cmd.execute(self.scroll - CHROME_PX, rasterizer)
 
         if self.focus:
@@ -675,11 +1101,12 @@ class Browser:
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        rasterizer.draw_rect(10, 10, 30, 30)
+        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 10, 30, 30))
         rasterizer.draw_text(11, 0, "+", buttonfont)
 
         # Draw the URL address bar:
-        rasterizer.draw_rect(40, 50, WIDTH - 10, 90)
+        rasterizer.draw_rect(
+            skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
         if self.focus == "address bar":
             rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
@@ -689,7 +1116,7 @@ class Browser:
             rasterizer.draw_text(55, 55, url, buttonfont)
 
         # Draw the back button:
-        rasterizer.draw_rect(10, 50, 35, 90)
+        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
         rasterizer.draw_polyline(
             15, 70, 30, 55, 30, 85, True)
 

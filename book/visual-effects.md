@@ -5,22 +5,18 @@ prev: security
 next: rendering-architecture
 ...
 
-In addition to drawing text and color, browsers can apply transparency, clips,
-transforms, scrolling filters and blend modes. These *visual effects* have two
-characteristics. Thhey apply:
-
-* *after* layout and painting is done, and
-* to large pieces of the DOM---often a whole subtree---and not just one node.
-
- To implement them, we'll add a new phase of rendering called *compositing*. It
- will go after paint and before drawing.
+Right now our browser can draw text and rectangles of various colors. But that's
+pretty boring! Browsers have all sorts of great ways to make content look good
+on the screen. These are called *visual effects*---visual because they affect
+how it looks, but not functionality per se, or layout. Therefore these effects are
+extensions to the *paint* and *draw* parts of rendering.
 
 Skia replaces Tkinter
 =====================
 
 But before we get to how visual effects are implemented, we'll need to upgrade
-our graphics system. While Tkinter was great for painting and handling input,
-it has no built-in support at all for implementing visual
+our graphics system. While Tkinter was great for basic painting and handling input,
+it has no built-in support at all for implementing many visual
 effects.[^tkinter-before-gpu] And just as implementing the details of text
 rendering or drawing rectangles is outside the scope of this book, so is
 implementing visual effects---our focus should be on how to represent and
@@ -28,7 +24,7 @@ execute visual effects for web pages specifically.
 
 [^tkinter-before-gpu]: That's because Tk, the library Tkinter uses to implement
 its graphics, was built back in the early 90s, before high-performance graphics
-cards and GPUs became widespread.
+cards and GPUs, and their software equivalents, became widespread.
 
 So we need a new library that can perform visual effects. We'll use
 [Skia](https://skia.org), the library that Chromium uses. However, Skia is just
@@ -42,7 +38,8 @@ raster libraries, that topic is very interesting in its own right.
 (todo: find a reference) and (todo: another one) are two resources you can dig
 into if you are curious to learn more about how they work. That being said,
 it is very important these days for browsers to work smoothly with the
-advanced GPUs in today's devices, so in practice browser teams include experts
+advanced GPUs in today's devices, and often browsers are pushing the envelope
+of graphics technology. So in practice browser teams include experts
 in these areas.
 :::
 
@@ -103,9 +100,11 @@ In SDL, you have to implement the event loop yourself (rather than calling
     SDL_Quit()
 ```
 
-Next let's factor a bunch of the tasks of drawing into a new class we'll call
+Next factor a bunch of the tasks of drawing into a new class we'll call
 `Rasterizer`. The implementation in Skia should be relatively
-self-explanatory:
+self-explanatory (there is also more complete documentation
+[here](https://kyamagu.github.io/skia-python/)
+or at the [Skia site](https://skia.org)):
 
 ``` {.python}
 class Rasterizer:
@@ -116,9 +115,8 @@ class Rasterizer:
         with self.surface as canvas:
             canvas.clear(color)
 
-    def draw_rect(self, x1, y1, x2, y2,
+    def draw_rect(self, rect,
         fill=None, width=1):
-        rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
         paint = skia.Paint()
         if fill:
             paint.setStrokeWidth(width);
@@ -163,14 +161,14 @@ here is `DrawText.execute`:
 ``` {.python}
     def execute(self, scroll, rasterizer):
         rasterizer.draw_text(
-            self.left, self.top - scroll,
+            self.rect.left(), self.rect.top() - scroll,
             self.text,
             self.font,
             self.color,
         )
 ```
 
-Now let's integrate with the `Browser` class. We need a surface[^surface] for
+Now integrate with the `Browser` class. We need a surface[^surface] for
 drawing to the window, and a surface into which Skia will draw.
 
 ``` {.python}
@@ -181,8 +179,8 @@ class Browser:
         self.skia_surface = skia.Surface(WIDTH, HEIGHT)
 ```
 
-Next we need to re-implement the `draw` method on `Browser` using Skia. I'll
-walk through it step-by-step. First we make a rasterizer and draw the current
+Next, re-implement the `draw` method on `Browser` using Skia. I'll
+walk through it step-by-step. First make a rasterizer and draw the current
 `Tab` into it:
 
 ``` {.python}
@@ -193,7 +191,7 @@ walk through it step-by-step. First we make a rasterizer and draw the current
         self.tabs[self.active_tab].draw(rasterizer)
 ```
 
-Then we draw the browser UI elements:
+Then draw the browser UI elements:
 
 ``` {.python}
         # Draw the tabs UI:
@@ -210,11 +208,12 @@ Then we draw the browser UI elements:
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        rasterizer.draw_rect(10, 10, 30, 30)
+        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 10, 30, 30))
         rasterizer.draw_text(11, 0, "+", buttonfont)
 
         # Draw the URL address bar:
-        rasterizer.draw_rect(40, 50, WIDTH - 10, 90)
+        rasterizer.draw_rect(
+            skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
         if self.focus == "address bar":
             rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
@@ -224,12 +223,12 @@ Then we draw the browser UI elements:
             rasterizer.draw_text(55, 55, url, buttonfont)
 
         # Draw the back button:
-        rasterizer.draw_rect(10, 50, 35, 90)
+        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
         rasterizer.draw_polyline(
             15, 70, 30, 55, 30, 85, True)
 ```
 
-Finally we perform the incantations to save off a rastered bitmap and copy it
+Finally perform the incantations to save off a rastered bitmap and copy it
 from the Skia surface to the SDL surface:
 
 ``` {.python}
@@ -262,16 +261,17 @@ And here is the `to_sdl_surface` method:
 
 Finally, `handle_enter` and `handle_down` no longer need an event parameter.
 
-[^surface]: In Skia and SDL, a surface is representation of a graphics buffer
+[^surface]: In Skia and SDL, a surface is a representation of a graphics buffer
 into which you can draw "pixels" (bits representing colors). A surface may or
 may not be bound to the actual pixels on the screen via a window, and there can
 be many surfaces. A *canvas* is an API interface that allows you to draw
-into the surface with higher-level commands such as drawing lines or text. In
+into a surface with higher-level commands such as for lines or text. In
 our implementation, we'll start with separate surfaces for Skia and SDL for
-simplicity.
+simplicity. In a highly optimized browser, minimizng the number of surfaces
+is important for good performance.
 
-In the `Tab` class, the differences in `draw` is the new rasterizer parameter
-that gets passed around, and a Skia API to measure font metrics. Skia's
+In the `Tab` class, the differences in `draw` is the new `rasterizer` parameter
+that gets passed around, and using the Skia API to measure font metrics. Skia's
 `measureText` method on a font is the same as the `measure` method on a Tkinter
 font.
 
@@ -284,7 +284,7 @@ font.
 Update also all the other places that `measure` was called to use the Skia
 method (and also create Skia fonts instead of Tkinter ones, of course).
 
-Skia font metrics are accessed via a `getMetrics` method on a font. Then metrics
+Skia font metrics are accessed via the `getMetrics` method on a font. Then metrics
 like ascent and descent are accessible via:
 ``` {.python expected=False}
     font.getMetrics().fAscent
@@ -294,688 +294,1092 @@ and
     font.getMetrics().fDescent
 ```
 
-Note that in Skia, ascent and descent are
-positive if they go downward and negative if upward, so ascents will normally
-be negative.
+Note that in Skia, ascent and descent are baseline-relative---positive if they
+go downward and negative if upward, so ascents will normally be negative.
 
 Now you should be able to run the browser just as it did in previous chapters,
 and have all of the same visuals. It'll probably also feel faster, because
 Skia and SDL are highly optimized libraries written in C & C++.
 
-Visual effects
-==============
-
-Browsers can not only draw text and colored boxes to the screen, but can apply
-various visual effects to those boxes and text. A visual effect in HTML is one
-that does not affect layout (see chapter 5), but does affect how pixels are
-drawn to the screen.
-
-Before getting to those effects, we first need to discuss colors, how they are
-specified, and how this translates to the color of a pixel on a computer
-screen. Colors are specified on a computer via a particular choice of color
-space. A color space is a specific organization of colors, comprising a
-mathematical color model and a mapping function to other color spaces or
-computer screen technologies. The default color space of the web is [sRGB]
-(srgb); even now, most browsers only support sRGB[^1], though newer screen
-technologies are starting to support a much wider range of visible colors
-outside of the sRGB [gamut](gamut). sRGB was defined in the 90s for the
-purposes of drawing to the monitor technologies of the time, as well as
-defining colors on the Web. 
-
-[srgb]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
-[gamut]: https://en.wikipedia.org/wiki/Gamut
-
-[^1]: Except for images and video, which can be encoded in different color
-spaces, and are converted to a common color space by the browser.
-
-sRGB in CSS is quite straightforward. There are three color channels: red, green
-and blue. “s” stands for “standard”. Each has a one-byte resolution, and
-therefore values between 0 and 255. The mapping function for sRGB is
-intuitively simple: the larger the red value, the more red, and likewise green
-and blue. Usually, we specify the colors in the order (Red, Green, Blue). For
-example, `rgb(255, 255, 255)` is white,
-`rgb(0,0,0)` is black, and `rgb(255,0,0)` is red. Cyan is `rgb(0,255,255)`.
-The mapping function to screen pixel colors actually used is derived from
-specific technology choices of the past and present, and while very
-interesting, is beyond the scope of this chapter. It’s important to note only
-that the function is nonlinear. While in the examples below it looks linear,
-there is also a nonlinear function being applied behind the scenes that maps to
-the screen color brightness values.
-
-Opacity
-=======
-
-The simplest visual effect is opacity. Opacity is a way to apply transparency to
-content drawn to the screen, in the same way that a thin piece of paper has a
-certain amount of transparency through which one can look at objects behind it.
-The equivalent on a computer screen is that one bitmap B is drawn, and then
-another A is drawn on top, and their pixels in common are interpolated between
-the colors of B and A. The interpolation parameter is called alpha, which is a
-real number in `[0, 1]`. For a particular pixel, the final color is computed with
-this formula:
-
-    blend(B, A) = (Color from B) * (1-alpha_A) * alpha_B + (color from A) * alpha_A
-
-where `alpha_{A, B}` is a number in `[0, 1]` (remember that both A and B can
-have opacity!).
-
-One source of opacity is an additional “alpha channel” of a color. For example,
-the color from a pixel of A might be rgba(0, 255, 255, 64), which is cyan with
-an alpha of 64/255 = 0.25. If the color from B in the example above was also
-`rgb(255, 0, 0, 255)`, then the above equation would become:
-
-    blend(B, A) = rgb(255, 0, 0) * 0.75 * 1 + rgb(0, 255, 255) * 0.25 = rgb(191, 191, 191)
-
-Note that each channel averages according to alpha independently. If three or
-more bitmaps are drawn to the screen, then the final pixel is the result of
-blending pairwise in sequence. For example, if the bitmaps are C, B and A, in
-that order, the final pixel value is `blend(C, blend(B, A))`.
-
-You might also be wondering: what happens if all of the colors have an alpha
-value less than 1? Is that allowed? Yes it is allowed, and blend() will always
-output an RGB value that can be interpreted by the computer (worst case
-scenario, the monitor can just ignore a residual alpha, since there is no such
-concept in an LED pixel). However, it doesn’t make sense - in almost all cases
-at least - for web pages to blend with windows behind them in the OS; for that
-reason, browsers always paint a white backdrop behind everything. (You can even
-see the specification text for it [here](root-group)!)
-
-[root-group]: https://drafts.fxtf.org/compositing-1/#rootgroup
-
-Paint order
-===========
-
-The next thing to know is that content on the web draws to the screen in a
-particular order. When display list entries’ drawn outputs don’t overlap, it’s
-not necessary to specify what the order is, because it doesn’t matter, which is
-why paint order was not necessary for Chapter 2. If not, then it does, since we
-need to figure out what color is on top, as well as the inputs to the sequential
-blend() functions. Paint order on the web is a complicated topic with a number
-of special rules and ways for the web page to force certain elements to paint
-in a different order. For the purposes of this chapter, it’s most important to
-start with two facts:
-
- - The HTML elements *do not* paint in a simple tree order such as depth-first
-   or breadth-first.
- - The elements are painted in contiguous groups called stacking contexts. Each
-   stacking context consists of the complete painted output of all of the
-   elements that are part of the stacking context. The stacking contexts draw to
-   the screen in a well-defined order.
-
-For the purpose of understanding all of the visual effects described in this
-chapter[^2], you can forget about how stacking contexts are painted, and that
-they ultimately come from laying out and painting boxes and text, and just focus
-on the bitmaps generated by executing the display list of the stacking context.
-From now on, when I say “stacking context”, I will almost always refer to that
-bitmap.
-
-::: {.further}
-See [here](stacking-context) for more information on the rules for stacking
-contexts and [here](paint-order) for the gory details of the basic rules for
-paint order. Interestingly enough, even these descriptions are out of date. The
-exact behavior of painting in browsers is somewhat under-specified.
-:::
-
-[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
-[paint-order]: https://www.w3.org/TR/CSS21/zindex.html
-
-Stacking contexts also form a tree[^3]. Each stacking context S has a display
-list and a list of child stacking contexts. Each of the children has a z-index,
-which is an integer. Child stacking contexts with a z-index less than zero paint
-before S (and in the order of their z-index, starting with most negative); the
-others paint after (and in the order of their z-index, starting with lowest). In
-pseudocode it looks like:
-
-[^2]: In reality, rounded corners and certain clips can and often do apply to
-non-stacking contexts. This was perhaps the single biggest mistake made when
-designing the painting algorithms of the web in the past, and leads to an
-enormous amount of complexity in real-world browser implementations. After
-reading this chapter, can you guess why?
-
-[^3]: In fact, his tree is of the same shape as the HTML node tree, because a
-stacking context always starts at a node with a
-[“stacking context-inducing”](stacking-context) style and includes all
-descendants that are not stacking contexts.
-
-``` {.javascript}
-function paint(stacking_context) {
-    let bitmap = (black fully transparent bitmap)
-    /* blend negative-z-index children */
-    For negative_child in stacking_context.negative_z_index_children_sorted()
-        bitmap = blend(bitmap, paint(negative_child), blending_operation(negative_child))
-
-    /* draw self with default blending. The blend mode of self will apply when drawing
-       into the parent */ 
-    bitmap = blend(bitmap, draw_into_bitmap(stacking_context))
-
-    /* blend nonnegative-z-index children */
-    For nonnegative_child in stacking_context.nonnegative_z_index_children_sorted()
-        bitmap = blend(bitmap, paint(nonnegative_child), blending_operation(nonnegative_child))
-    
-    /* return result to be blended into parent */
-    return bitmap
-}
-
-/* final_bitmap will be what is seen on the screen */
-Let final_bitmap = paint(root stacking context (i.e. the stacking context for the `<html>` element))
-```
-
-We’ll study various different values for `blending_operation()`; so far you have
-already seen the simplest one - opacity.
-
-Blend-mode
-==========
-
-Blend modes allow for various blending operations other than opacity. The blend
-modes are based on the “Porter Duff” operators, first defined in a
-[research paper](porter-duff) in 1984[^4]. The [specification](compositing-1)
-does a pretty good job of explaining the various blend modes, you can read more
-there, including seeing examples. The intuitive “draw one bitmap on top of
-another” method we’ve discussed already in this chapter is called
-[“source over”](src-over) in blend-mode terminology;
-[“destination over”](dst-over) means to draw them in the opposite order. Another
-important one is [“destination in”](dst-in). We’ll use this later to explain how
- clipping works. The other basic blend modes are less commonly encountered.
-
-[porter-duff]: http://graphics.pixar.com/library/Compositing/paper.pdf
-[compositing-1]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators
-[src-over]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_srcover
-[dst-over]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstover
-[dst-in]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstin
-
-[^4]: Porter and Duff worked at Lucasfilm, the film company that produced the
-origial Star Wars movies.
-
-Source over blend-mode is the default; let’s specify other blend modes with an
-additional parameter to blend():
-
-    blend(B, A, destination-in) = ...
-
-In prose, this means to output a bitmap that is the pixels of B that overlap A.
-Additional blend modes exist that combine a Porter Duff blend mode with additional features, such as transparency or other color manipulations. For historical reasons, [opacity] is represented as special and listed in a different spec, but otherwise functions [the same](opacity-blending) as the other blend modes. In addition, there are [“non-separable”](non-separable) blend modes where the color channels influence one another, such as hue, saturation, color and luminosity.
-
-[opacity]: https://drafts.csswg.org/css-color/#transparency
-[opacity-blending]: https://drafts.csswg.org/css-color/#alpha
-[non-separable]: https://drafts.fxtf.org/compositing-1/#blendingnonseparable
-
-Another subtle point to consider is that blending always occurs between a
-stacking context and the stacking context parent. Even though the specification
-uses the term “backdrop”, blending does *not* apply to the entire “backdrop”
-behind a stacking context, meaning all things you could see in place of that
-stacking context if it was invisible. There are good reasons that web designers
-want to apply the latter semantics (in fact, this is what tools like Photoshop
-often do), but as we will see later, this would come at a high performance cost,
-so the web uses a different definition.
-
-Opacity vs alpha?
+Size and position
 =================
 
-You might also be wondering what the difference is between opacity and alpha.
-The answer is that they are very similar, but not quite the same thing. Opacity
-is a visual effect that applies alpha to a stacking context when blending it
-with its parent stacking context. Alpha is transparency within a bitmap. When
-blending a bitmap with 0.5 alpha into its ancestor via source-over transparency,
-the result is equivalent to blending the same bitmap but without alpha and with
-an 0.5 opacity blend mode. Another way to look at it is that alpha has opacity
-already baked into the bitmap (and also alpha can vary pixel-by-pixel), whereas
-opacity is a single floating-point value that is applied as a visual effect.
+Let's add a way to set the width and height of block and input elements, and
+adjust their positions.
 
-Filters
-=======
+Right now, block elements size to the dimensions of their inline and input
+content, and input elements have a fixed size. But we're not just displaying
+text and forms any more---now we're planning to deraw visual effects such as
+arbitrary colors, images and so on. So we should be able to do things like draw
+a rectangle of a given color on the screen. That is accomplished with the
+`width` and `height` CSS properties.
 
-[Filters](filters) are a way to apply a wider variety of pixel-manipulation
-algorithms. A good example is a blur filter. This applies a blurring effect,
-where pixels near each other influence each other's colors in a way that looks
-similar to blurry eyesight. Pixels are also “spread out” according to the radius
-of the blur.
+For example, this HTML:
 
-[filters]: https://drafts.fxtf.org/filter-effects/#FilterPrimitivesOverviewIntro
+<textarea style="width: 100%; height: auto; border: 0">
+    <div style="background-color:lightblue;width:50px; height:100px"></div>
+    <div style="background-color:orange;width:50px; height:100px"></div>
+</textarea>
 
-Filters can be somewhat expensive to compute. In addition, filters such as blur
-cause a lot of headache in browser implementations, because of the spreading-out
-behavior. This makes it difficult to know the true size of the painted region
-of an element in many cases, which as we will see is very important to get
-right for fast and correct implementations on GPU hardware.
+renders into a light blue 50x100 rectangle, with another orange one below it:
 
-Backdrop filter
-===============
+<div style="background-color:lightblue;width:50px;height:100px"></div>
+<div style="background-color:orange;width:50px;height:100px"></div>
 
-There is a special kind of filter called a backdrop filter. Backdrop filters
-apply an effect sometimes called the “glass effect”, where the content behind
-the glass has a filter, such as blur, applied to it, but content in front of the
-glass does not. An effect like this is present in some OS window managers; some
-versions of Windows offer it for example.
+Support for these properties turns out to be easy---if `width` or `height` is
+set, use it, and otherwise use the built-in sizing. For `BlockLayout`:
 
-Backdrop filters ideally should apply to the entire backdrop of a stacking
-context S. This means that if you computed the pixels drawn by all stacking
-contexts that paint *before* S, and looked at the pixels that
-intersect S, those pixels comprise S’s backdrop. Unfortunately this definition
-of backdrop has multiple [problems](backdrop-root-problems) with it, including:
+``` {.python}
+def style_length(node, style_name, default_value):
+    style_val = node.style.get(style_name)
+    if style_val:
+        return int(style_val[:-2])
+    else:
+        return default_value
 
- - Performance: It’s expensive to read back some of the pixels of a GPU texture
-   partway through drawing, because it interferes with the pipelining and
-   parallelism that makes GPUs fast.
- - That the definition of backdrop is otherwise circular and therefore
-   ill-defined.
+class BlockLayout:
+    # ...
+    def layout(self):
+        # ...
+        self.width = style_length(
+            self.node, "width", self.parent.width)
+        # ...
+        self.height = style_length(
+            self.node, "height",
+            sum([child.height for child in self.children]))
+```
 
-[backdrop-root-problems]: https://drafts.fxtf.org/filter-effects-2/#BackdropRootMotivation
+And `InputLayout`:
 
-For these reasons, backdrop filters filter only the backdrop up to the [backdrop
-root](backdrop-root).
+``` {.python}
+class InputLayout:
+    # ...
+    def layout(self):
+        # ...
+        self.width = style_length(self.node, "width", INPUT_WIDTH_PX)
+        self.height = style_length(
+            self.node, "height", linespace(self.font))
+```
 
-[backdrop-root]: https://drafts.fxtf.org/filter-effects-2/#BackdropRoot
+And `InlineLayout`:
+
+``` {.python}
+class InlineLayout:
+    # ...
+    def layout(self):
+        self.width = style_length(
+            self.node, "width", self.parent.width)
+        # ...
+        self.height = style_length(
+            self.node, "height",
+            sum([line.height for line in self.children]))
+```
+
+Great. We can now draw rectangles of a specified width and height. But they
+still end up positioned one after another, in a way that we can't control. It'd
+be great to be able to put the rectangle anywhere on the screen. That can be
+done with the `position` CSS property. This property has a whole lot of
+complexity to it, so let's just add in a relatively simple-to-implement subset:
+`position:relative`,[^posrel-caveat] plus `top` and `left`. Setting these
+tells the browser that it should take the x, y position that the
+element's top-left corner had, and add the values of `left` to x and `top` to
+y. If `position` is not specified, then `top` and `left` are ignored.
+
+[^posrel-caveat]: Note that we won't even implement all of the effects of
+`position:relative`. For example, this property has an effect on paint order,
+but we'll ignore it.
+
+This will still "take up space" where it used to be, in terms of the sizing
+of the parent element. This makes it pretty easy to implement---just figure
+out the layout without taking into account this property, then add in the
+adjustments at the end. To make things even easier, we'll treat it as a
+purely paint-time property that adjusts the display list.[^posrel-caveat2]
+
+Here's an example:
+
+<textarea style="width: 100%; height: 100px; border: 0">
+    <div style="background-color:lightblue;width:50px; height:100px"></div>
+    <div style="background-color:orange;width:50px; height:100px;
+                position:relative;top:-50px;left:50px"></div>
+</textarea>
+
+This renders into a light blue 50x100 rectangle, with another orange one below
+it, but this time they overlap.
+
+<div style="background-color:lightblue;width:50px;height:100px"></div>
+<div style="background-color:orange;width:50px;height:100px;position:relative;top:-50px;left:25px"></div>
+
+
+[^posrel-caveat2]: Again, this is not fully correct! But it
+suffices for playing around with visual effects.
+
+To implement `position:relative`, we'll add a new helper method `paint_coords`:
+
+``` {.python}
+def paint_coords(node, x, y):
+    if not node.style.get("position") == "relative":
+        return (x, y)
+
+    paint_x = x
+    paint_y = y
+
+    left = node.style.get("left")
+    if left:
+        paint_x = paint_x + int(left[:-2])
+    top = node.style.get("top")
+    if top:
+        paint_y = paint_y + int(top[:-2])
+
+    return (paint_x, paint_y)
+```
+
+Then we can use it in `BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    # ...
+    def paint(self, display_list):
+        (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
+        rect = skia.Rect.MakeLTRB(
+            paint_x, paint_y,
+            paint_x + self.width, paint_y + self.height)
+        # ...
+```
+
+A similar change should be made to `InlineLayout` and `InputLayout`.
 
 ::: {.further}
-Think carefully about the definition of the backdrop root and how backdrop
-filters work, and work through some examples. This will give you some idea of
-the complexity of the problem space.
+Since we've added support for setting the size of a layout object to
+be different than the sum of its children's sizes, it's easy for there to
+be a visual mismatch. What are we supposed to do if a `LayoutBlock` is not
+as tall as the text content within it? By default, browsers draw the content
+anyway, and it might or might not paint out side the block's box.
+This situation is called [*overflow*][overflow-doc]. There are various CSS
+properties, such as [`overflow`][overflow-prop], to control what to do with
+this situation. By far the most important (or complex, at least) value of
+this property is `scroll`.
+
+[overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow
+
+This value means, of course, for the browser to allow the user to scroll
+the content in order to see it; the parts that don't overlap the block
+are *clipped* out (we'll cover clipping later in this chater).
+
+Basic scrolling for DOM elements is very similar to the scrolling you already
+implemented in [Chapter 2](graphics.html#graphics-scrolling). But implementing
+it in its full generality, and with excellent performance, is *extremely*
+challenging. Scrolling is probably the single most complicated feature in a
+browser rendering engine. The corner cases and subtleties involved are almost
+endless.
 :::
 
-As mentioned above, other blend-modes and filters only blend with the stacking
-context parent; you might be wondering why they don’t blend up to the backdrop
-root. The reason is merely historical, and this may change in the future.
+[overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
 
-Clips
-=====
+Background images
+=================
 
-Clips are the way to cut out parts of content that are outside of a given set of
-bounds. There are two common reasons to do this:
+Now let's add our first visual effect: background images. A background image is
+specified in css via the `background-image` CSS property. Its full syntax has
+[many options][background-image], so let's just implement a simple version of
+it. We'll support the `background-image: url("relative-url")` syntax, which
+says to draw an image as the background of an element, with the given relative
+URL.
 
- - Avoiding content being larger on the screen than desired (this use-case is
-   called “clipping overflow”)
- - Applying visual flourish, such as rounded corners or other shapes
+[background-image]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
 
-Let’s pretend that clips always apply to stacking contexts. (On the web this is
-unfortunately often not true, but the consequences are much too complicated to
-discuss here, and not relevant to the description of *how* clips work.)
+Here is an example:
 
-To start, let’s consider a simple rectangular clip. The inputs are a stacking
-context A and a rectangle. The rectangle has a size and position relative to the
-corner of the stacking context (remember, in this chapter, “stacking context”
-and “bitmap” are the same). The output of the clipping operation is another
-bitmap. This bitmap is then blended with the parent stacking context B of A. In
-equation form this is:
+<textarea style="width: 100%; height: 100px; border: 0">
+    <div style="width:194px; height:194px;
+                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+</textarea>
 
-    Output = blend(B, clip(A, clip_rect_A))
+It renders like this:[^exact-size]
 
-The clip() operation can be viewed as a kind of blend, as long as the rectangle
-is re-interpreted as an opaque bitmap of the same size and position as the
-rectangle:
+<div style="width:194px; height:194px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')"></div>
 
-    Output = blend(B, blend(A, clip_rect_A, destination-in), source-over)
+[^exact-size]: Note that I cleverly chose the width and height of the `div` to
+be exactly `194px`, the dimensions of the JPEG image.
 
-Remember that from the blend-mode section, blend(A, clip_rect_A, destination-in)
-means to draw “the pixels of A that overlap clip_rect_A”, which of course is the
-result of clipping A to the rectangle. This formulation also hints at an
-implementation approach: convert the rectangle to a bitmap  (by drawing it into
-one) and blend it with A via destination-in.
+To implement this propertyb, first we'll need to load all of the image URLs
+specified in CSS rules for a `Tab`. Firt collect the image URLs:
 
-The second most common kind of clipping is rounded corners. From the formulation
-we just discussed, it’s simple to see how to generalize rectangular clips to
-rounded corners: when drawing the bitmap for the rectangle, exclude the parts
-outside of the rounded corners. By “exclude”, I mean set the alpha channel to 0
-for that pixel. For pixels that are adjacent to the edge of a rounded corner
-curve, anti-aliasing techniques can be used to supply an alpha value somewhere
-between 0 and 1 according to their overlap with the curve.
+``` {.python}
+    def load(self, url, body=None):
+        # ...
 
-Other clips can use the same technique, but more complex shapes when generating
-the clip bitmap.
+        image_url_strs = [rule[1]['background-image']
+                for rule in self.rules
+                if 'background-image' in rule[1]]
+```
 
-2D Transforms
-=============
+The same will need to be done for inline styles:
 
-Stacking contexts can also be transformed in 2D (or 3D, which we’ll get to in
-the next section). This is done by considering a stacking context as a rectangle
-in a 2D space and [applying a transform](applying-a-transform) to it, which
-means multiplying the coordinates of the rectangle’s four corners by the matrix.
-Note that the resulting polygon - called a “quad” in graphics still has four
-corners and straight sides, but may no longer be a rectangle, or the sides may
-no longer be horizontal or vertical. Similarly, the contents of the stacking
-context are also transformed accordingly, and due to the linearity of the
-transform always end up inside the quad.
+``` {.python}
+def style(node, rules, url, images):
+    # ...
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        image_url_strs = []
+        for property, value in pairs.items():
+            # ...
+            if property == 'background-image':
+                image_url_strs.append(value)
+```
+
+And then load them. But to load them we'll have to augment the `request`
+function to support binary image content types (currently it only supports
+`text/html` and `text/css` encoded in `utf-8`). A PNG image, for instance, has
+the content type `image/png`, and is of course not `utf-8`, it's an encoded PNG
+file. To fix this, we will need to decode in smaller chunks:
+the status line and headers are still `utf-8`, but the body encoding depends
+on the image type.
+
+First, when we read from the socket with `makefile`, pass the argument
+`b` instead of `r` to request raw bytes as output:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    response = s.makefile("b")
+    # ...
+```
+
+Now you'll need to call `decode` every time you read from the file.
+First, when reading the status line:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    statusline = response.readline().decode("utf8")
+    # ...
+```
+
+Then, when reading the headers:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    while True:
+        line = response.readline().decode("utf8")
+        # ...
+    # ...
+```
+
+And finally, when reading the response, we check for the
+`Content-Type`, and only decode it if it starts with `text/`:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    if headers.get(
+        'content-type', 
+        'application/octet-stream').startswith("text"):
+        body = response.read().decode("utf8")
+    else:
+        body = response.read()
+    # ...
+```
+
+Now we are ready to load the images. Each image found will be loaded and stored
+into an `images` dictionary on a `Tab` keyed by URL. However, to actually show
+an image on the first screen, we have to first *decode* it. Images are sent
+over the network in one of many optimized encoding formats, such as PNG or
+JPEG; when we need to draw them to the screen, we need to convert from the
+encoded format into a raw array of pixels. These pixels can then be efficiently
+drawn onto the screen.[^image-decoding]
+
+[^image-decoding]: While image decoding technologies are beyond the
+scrope of this book, it's very important for browsers to make optimized use
+of image decoding, because the decoded bytes are often take up *much* more
+memory than the encoded representation. For a web page with a lot
+of images, it's easy to accidentally use up too much memory unless you're very
+careful.
+
+Skia doesn't come with image decoders built-in. In Python, the Pillow library is
+a convenient way to decode images.
+
+::: {.installation}
+`pip3 install Pillow` should install Pillow. See [here][install-pillow] for
+more details.
+:::
+
+[install-pillow]: https://pillow.readthedocs.io/en/stable/installation.html
+
+Here's how to load, decode and convert images into a `skia.Image` object.
+Note that there are two `Image` classes, which is a little confusing.
+The Pillow `Image` class's role is to decode the image, and the Skia `Image`
+class is an interface between the decoded bytes and Skia's internals.
+
+``` {.python}
+def get_images(image_url_strs, base_url, images):
+    for image_url_str in image_url_strs:
+        image_url = parse_style_url(image_url_str)
+        header, body_bytes = request(
+            resolve_url(image_url, base_url),
+            headers={})
+        picture_stream = io.BytesIO(body_bytes)
+
+        pil_image = Image.open(picture_stream)
+        if pil_image.mode == "RGBA":
+            pil_image_bytes = pil_image.tobytes()
+        else:
+            pil_image_bytes = pil_image.convert("RGBA").tobytes()
+        images[image_url] = skia.Image.frombytes(
+            array=pil_image_bytes,
+            dimensions=pil_image.size,
+            colorType=skia.kRGBA_8888_ColorType)
+
+    def load(self, url, body=None):
+        # ...
+
+        self.images = {}
+        get_images(image_url_strs, url, self.images)
+```
+
+Next we need to provide access to this image from the `paint` method of a
+layout object. Since those objects don't have access to the `Tab`, the easiest
+way to do this is to save a pointer to the image on the layout object's node
+during `style`:
+
+``` {.python}
+def style(node, rules, url, images):
+    # ...
+    if isinstance(node, Element) and "style" in node.attributes:
+        # ...
+        get_images(image_url_strs, url, images)
+    if node.style.get('background-image'):
+        node.backgroundImage = \
+            images[parse_style_url(
+                node.style.get('background-image'))]
+```
+
+Now that the images are loaded, the next step is to paint them into the display
+list. We'll need a new display list object called `DrawImage`:
+
+``` {.python}
+class DrawImage:
+    def __init__(self, image, rect):
+        self.image = image
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.drawImage(
+                self.image, self.rect.left(),
+                self.rect.top() - scroll)
+```
+
+Then add a `DrawImage`, plus a few additional things, to a new
+`paint_background` function that also paints other parts of the background:
+
+
+``` {.python}
+def paint_background(node, display_list, rect):
+    bgcolor = node.style.get("background-color",
+                                  "transparent")
+    if bgcolor != "transparent":
+        display_list.append(DrawRect(rect, bgcolor))
+
+    background_image = node.style.get("background-image")
+    if background_image:
+        display_list.append(Save(rect))
+        display_list.append(ClipRect(rect))
+        print(rect)
+        display_list.append(DrawImage(node.backgroundImage,
+            rect))
+        display_list.append(Restore(rect))
+```
+
+This will need to be called from each of the layout object types. Here is
+`BlockLayout`:
+
+``` {.python expected=False}
+class BlockLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+        paint_background(self.node, display_list, rect)
+        
+        for child in self.children:
+            child.paint(display_list)
+```
+
+Here we're not just drawing the image though---we're also doing something
+new that we haven't seen before. We are applying a *clip*. A clip is a way
+to cut off parts of a drawing that exceed a given set of bounds. Here we are
+asking to clip to the rect that bounds the element, because the
+image for `background-image`  never exceeds the size of the element.
+Clips have to be preceded by a call to `Save`, which says to Skia to 
+snapshot the current parameters to the canvas, so that when `Restore` is called
+later these parameters (including presence or absence of a clip) can be
+restored.[^not-savelayer]
+
+This example should clip out parts of the image:
+
+<textarea style="width: 100%; height: 100px; border: 0">
+    <div style="width:100px; height:100px;
+                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+</textarea>
+
+Like this:
+
+<div style="width:100px; height:100px;
+                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+</div>
+
+
+
+The `ClipRect` display list entry looks like this:
+
+``` {.python}
+class ClipRect:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.clipRect(skia.Rect.MakeLTRB(
+                self.rect.left(), self.rect.top() - scroll,
+                self.rect.right(), self.rect.bottom() - scroll))
+```
+
+[^not-savelayer]: Note: `Save` is not the same as `SaveLayer` (which will
+be introduced later in this section). `Save` just saves off parameters;
+`SaveLayer` creates am entirely new canvas.
+
+Note how the background image is painted *before* children, just like
+`background-color`.
+
+::: {.further}
+Notice that the background image is drawn after the background
+color. One interesting question to ask about this is:
+if the image paints on top of the background color, what's the point of 
+painting the background color in the presence of a background image? One
+reason is *transparency*, which we'll get to in a bit.
+
+Another is that the
+background image may not have the same [*intrinsic size*][intrinsic-size] as
+the element it's associated with. There are a lot of options
+in the specification for the different ways to account for
+this, via CSS properties like [`background-size`][background-size] and
+[`background-repeat`][background-repeat].
+
+[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size
+[background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
+[background-repeat]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-repeat
+
+And this is without even getting into the complex topic of the various
+algorithms for [image scaling][image-rendering] algorithms (for situations
+where we want the image to grow or shrink to fit its container).
+
+[image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
+
+To add even more complication, in its full generality the *paint order* of
+drawing backgrounds and other painted aspects of a single element, and the
+interaction of its paint order with painting descendants, is
+[quite complicated][paint-order-stacking-context].
+:::
+
+[paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
+
+
+Opacity and Compositing
+=======================
+
+With sizing and position, we also now have the ability to make content overlap!
+[^overlap-new]. Consider this example of CSS & HTML:
+
+<textarea style="width: 300px; height: 150px">
+div { width:100px; height:100px; position:relative }
+</textarea>
+<textarea style="width: 300px; height: 150px">
+    <div style="background-color:lightblue"></div>
+    <div style="background-color:orange;left:50px;top:-25px"></div>
+    <div style="background-color:blue;left:100px;top:-50px"></div>
+</textarea>
+
+Its rendering looks like this:
+
+<iframe class=widget style="height:316px" src="widgets/lab12-example-overlap.html">
+</iframe>
+
+[^overlap-new]: That's right, it was not previously possible to do this in
+our browser. Avoiding overlap is generally good thing for text-based layouts,
+because otherwise you might accidentally obscure content and not be able
+to read it. But it's needed for many kinds of UIs that need to *layer*
+content on top of other content--for instance, to show an overlap menu or
+tooltip.
+
+Right now, the blue rectangle completely obscures part of the orange one, and
+the orange one does the same to the light blue one. It would be
+nice[^why-opacity] for *some* of the orange and light blue to peek through.
+
+[^why-opacity]: Because it's a cool-looking effect, and can make sites
+easier to understand. For example, if you can see some of the content underneath
+an overlay, you know that conceptually it's there and somehow you should be
+able to make the site show it.
+
+We can easily implement that with `opacity`, a CSS property that takes a value
+from 0 to 1, 0 being completely invisible (like a window in a house) to
+completely opaque (the wall next to the window). The way to do this in Skia
+is to create a new canvas, draw the overlay content into it, and then *blend*
+that canvas into the previous canvas. It's a little complicated to think
+about without first seeing it in action, so let's do that.
+
+Because we'll be adding things other than opacity soon, let's put opacity
+into a new function called `paint_visual_effects` that will be called from
+the `paint` method of the various layout objects, just like `paint_background`
+already is:
+
+``` {.python expected=False}
+def paint_visual_effects(node, display_list, rect):
+    restore_count = 0
+
+    opacity = float(node.style.get("opacity", "1.0"))
+    if opacity != 1.0:
+        paint = skia.Paint(Alphaf=opacity
+        display_list.append(SaveLayer(paint, rect))
+        restore_count = restore_count + 1
+
+    return restore_count
+```
+
+This makes use of two new display list types, `SaveLayer` and `Restore`. Here
+is how they are implemented:
+
+``` {.python}
+class SaveLayer:
+    def __init__(self, sk_paint, rect):
+        self.sk_paint = sk_paint
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.saveLayer(paint=self.sk_paint)
+```
+
+``` {.python}
+class Restore:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.restore()
+```
+
+Finally, `BlockLayout`, `InlineLayout` and `InputLayout` all need to call
+`paint_visual_effects`. Here is `BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+        restore_count = paint_visual_effects(
+            self.node, display_list, rect)
+
+        paint_background(self.node, display_list, rect)
+
+        for child in self.children:
+            child.paint(display_list)
+        # ...
+        for i in range(0, restore_count):
+            display_list.append(Restore(rect))
+```
+
+What this code does is this: if the layout object needs to be painted with
+opacity, create a new canvas that draws the layout object and its descendants,
+and then blend that canvas into the previous canvas with the provided opacity.
+
+To understand why `canvas.saveLayer()` is the command that does this, and what
+it does under the hood, the first thing you have to know that Skia thinks of a
+drawing as a stack of layers (like the layers of a cake). You can, at any time,
+stop drawing into one layer and either push a new layer on the stack
+(via `canvas.saveLayer()`), or pop up to the next lower level via
+`restore()`. The words "save" and "restore" are there because all of the state
+of the canvas is saved off before pushing the new canvas on on the stack, and
+automatically restored when popping.[^save-like-function-call]
+
+[^save-like-function-call]: This is a lot like function calls in Python or many
+other computer languages. When you call a function, the local "state"
+(variables etc) of the code that calls the function is implicitly saved, and is
+available unchanged when the call completes. The *compositing* that occurs during
+a `restore` is analogous to how a function return value is set into a local
+variable of the calling code.
+
+Let's see how opacity and compositing actually work.
+
+First, opacity: ;et's assume that pixels are
+represented in `skia.kRGBA_8888_ColorType`[^example-rgb]. To apply the opacity,
+you just multiply each pixel's alpha channel by the opacity value. In Python
+this would be:
+
+``` {.python expected=False}
+# Returns |color| with opacity applied. |color| is a skia.Color4f.
+def apply_opacity(color, opacity):
+    new_color = color
+    new_color.fA = color.fA * opacity
+    return new_color
+```
+
+Next, compositing: let's also assume that the coordinate spaces and pixel
+densities of the two canvases are the same, and therefore their pixels overlap
+and have a 1:1 relationship. Therefore we can "composite" each pixel in the
+popped canvas on top of (into, really) its corresponding pixel in the restored
+canvas. Let's call the popped canvas the *source canvas* and the restored canvas the
+*backdrop canvas*. Likewise each pixel in the popped canvas is a *source pixel*
+and each pixel in the restored canvas is a *backdrop pixel*.
+
+The default mode is called *simple alpha compositing* or
+*source-over compositing*.[^other-compositing]
+In Python the code looks like this:[^simple-alpha]
+
+``` {.python expected=False}
+# Composites |source_color| into |backdrop_color|. Each of the inputs are
+# skia.Color4f objects.
+def composite(source_color, backdrop_color):
+    (source_r, source_g, source_b, source_a) = tuple(source_color)
+    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
+    return skia.Color4f(
+        backdrop_r * (1-source_a) * backdrop_a + source_r * source_a,
+        backdrop_g * (1-source_a) * backdrop_a + source_g * source_a,
+        backdrop_rb * (1-source_a) * backdrop_a + source_b * source_a,
+        1 - (1 - source_a) * (1 - backdrop_a))
+```
+
+[^other-compositing]: We'll shortly encounter other compositing modes.
+
+Putting it all together, if we were to implement the `Restore` command
+ourselves from one canvas to another, we could write the following
+(pretend we have
+a `getPixel` method that returns a `skia.Color4f` and a `setPixel` that
+sets a pixel color[^real-life-reading-pixels]):
+
+``` {.python expected=False}
+def restore(source_canvas, backdrop_canvas, width, height, opacity):
+    for x in range(0, width):
+        for y in range(0, height):
+            backdrop_canvas.setPixel(
+                x, y,
+                composite(
+                    apply_opacity(source_canvas.getPixel(x, y)),
+                    backdrop_canvas.getPixel(x, y)))
+```
+
+[^real-life-reading-pixels]: As you'll see later in this chapter, in real
+browsers it's a very bad idea to read canvas pixels into memory and manipulate
+them like this.  So APIs such as Skia don't make it convenient
+(a `skia.Canvas` object does have `peekPixels` and `readPixels` methods that
+are sometimes used).
+
+[^example-rgb]: Refer back to the Skia section of this chapter---the
+`to_sdl_surface` method needs to convert from a 32-bit ARGB format: 8 bits of
+alpha, then 8 bits each of red, green and blue. Images are also converted to
+`kRGBA_8888_ColorType` when exported from a Pillow image.   
+
+[^simple-alpha]: The formula for this code can be found
+[here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that
+that page refers to "premultiplied alpha" colors, which means that each color
+channel has alread been multiplied by the alpha channel value. Skia does not
+use premultiplied color representations. Graphics systems sometimes use a
+premultiplied representation of colors, because it allows them to skip storing
+the alpha channel in memory.
+
+Blending
+========
+
+Blending is a way to mix source and backdrop colors together, but is not the
+same thing as compositing, even though they are very similar. In fact, it's a
+step before compositing but after opacity. Blending mixels the source and
+backdrop colors. The mixed result is then composited with the backdrop pixel.
+The changes to our Python code for `restore` looks like this:
+
+``` {.python expected=False}
+def restore(source_canvas, backdrop_canvas, width, height, opacity, blend_mode):
+    # ...
+            backdrop_canvas.setPixel(
+                x, y,
+                composite(
+                    blend(
+                        apply_opacity(source_canvas.getPixel(x, y)),
+                        backdrop_canvas.getPixel(x, y), blend_mode),
+                    backdrop_canvas.getPixel(x, y)))
+```
+
+and blend is implemented like this:
+
+``` {.python expected=False}
+def blend(source_color, backdrop_color, blend_mode):
+    (source_r, source_g, source_b, source_a) = tuple(source_color)
+    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
+    return skia.Color4f(
+        (1 - backdrop_a) * source_r +
+            backdrop_a * apply_blend(blend_mode, source_r, backdrop_r),
+        (1 - backdrop_a) * source_g +
+            backdrop_a * apply_blend(blend_mode, source_g, backdrop_g),
+        (1 - backdrop_a) * source_b +
+            backdrop_a * apply_blend(blend_mode, source_b, backdrop_b),
+        source_a)
+```
+
+There are various values `blend_mode` could take. Examples include "multiply",
+which multiplies the colors as floating-point numbers between 0 and 1,
+and "difference", which subtracts the darker color from the ligher one.
+
+``` {.python expected=False}
+# assumes an 8-bit color channel
+def apply_blend(blend_mode, source_color_channel, backdrop_color_channel):
+    float_source = source_color_channel / 255.0
+    float_backdrop = backdrop_color_cnannel / 255.0
+    if blend_mode == "multiply":
+        return int(round(float_source * float_backdrop * 255.0))
+    elif blend_mode == "difference":
+        return abs(backdrop_color_channel - source_color_channel)
+    else
+        # Assume "normal" blend mode.
+        return source_color_channel
+
+```
+
+These are specified with the `mix-blend-mode` CSS property. Let's add support
+for it to our browser:[`mix-blend-mode: multiply`][mbm-mult]. This will be
+very easy, because Skia supports this blend mode natively. It's as simple
+as parsing the property and adding a parameter to `SaveLayer`:
+
+``` {.python}
+def parse_blend_mode(blend_mode_str):
+    if blend_mode_str == "multiply":
+        return skia.BlendMode.kMultiply
+    elif blend_mode_str == "difference":
+        return skia.BlendMode.kDifference
+    else:
+        return skia.BlendMode.kSrcOver
+
+def paint_visual_effects(node, display_list, rect):
+    # ...
+
+    blend_mode_str = node.style.get("mix-blend-mode")
+    blend_mode = skia.BlendMode.kSrcOver
+    if blend_mode_str:
+        blend_mode = parse_blend_mode(blend_mode_str)
+
+    opacity = float(node.style.get("opacity", "1.0"))
+    if opacity != 1.0 or blend_mode_str:
+        paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
+        display_list.append(SaveLayer(paint, rect))
+        restore_count = restore_count + 1
+```
+
+[mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
+
+Non-rectangular clips
+=====================
+
+When we added support for images, we also had to implement clipping in case
+the image was larger than the layout object bounds. In that case, the
+clip was to a rectangular box. But there is no particular reason that the clip
+has to be a rectangle. It could be any 2D path that encloses a region and
+finishes back where it staretd.
+
+In CSS, this is expressed with the `clip-path` property. The
+[full definition](https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path)
+is quite complicated, so as usual we'll just implement a simple subset.
+In this case we'll only support the `circle(xx%)` syntax, where XX is a
+percentage and defines the radius of the circle. The percentage is calibrated
+so that if the layout object was a perfect square, a 100% circle would inscribe
+the bounds of the square.
+
+Implementing circular clips is once again easy with Skia in our back pocket.
+We just parse the `clip-path` CSS property:
+
+``` {.python}
+def parse_clip_path(clip_path_str):
+    if clip_path_str.find("circle") != 0:
+        return None
+    return int(clip_path_str[7:][:-2])
+```
+
+and paint it:
+
+``` {.python}
+def paint_clip_path(node, display_list, rect):
+    clip_path = node.style.get("clip-path")
+    if clip_path:
+        percent = parse_clip_path(clip_path)
+        if percent:
+            width = rect.right() - rect.left()
+            height = rect.bottom() - rect.top()
+            reference_val = math.sqrt(width * width + height * height) / math.sqrt(2)
+            center_x = rect.left() + (rect.right() - rect.left()) / 2
+            center_y = rect.top() + (rect.bottom() - rect.top()) / 2
+            radius = reference_val * percent / 100
+            display_list.append(CircleMask(
+                center_x, center_y, radius, rect))
+```
+
+The only tricky part is how to implement the `CircleMask` class. This will use a
+new compositing mode[^blend-compositing] called destination-in. It is defined
+as the backdrop color multiplied by the alpha channel of the source color.
+The circle drawn in the code above defines a region of non-zero
+alpha, and so all pixels fo the backdrop not within the circle will become
+transparent black.
+
+Here is the implementation in Python:
+
+``` {.python expected=False}
+def composite(source_color, backdrop_color):
+    (source_r, source_g, source_b, source_a) = tuple(source_color)
+    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
+    return skia.Color4f(
+        backdrop_a * source_a * backdrop_r,
+        backdrop_a * source_a * backdrop_g,
+        backdrop_a * source_a * backdrop_b,
+        backdrop_a * source_a)
+```
+
+As a result, here is how `CircleMask` is implemented. It creates a new source
+canvas via `saveLayer` (and at the same time specifhying a `kDstIn` blend mode)
+for when it is drawn into the backdrop), draws a circle in white (or really
+any opaque color, it's only the alpha channel that matters), then `restore`.
+[^mask]
+
+
+``` {.python}
+class CircleMask:
+    def __init__(self, cx, cy, radius, rect):
+        self.cx = cx
+        self.cy = cy
+        self.radius = radius
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.saveLayer(paint=skia.Paint(
+                Alphaf=1.0, BlendMode=skia.kDstIn))
+            canvas.drawCircle(
+                self.cx, self.cy - scroll,
+                self.radius, skia.Paint(Color=skia.ColorWHITE))
+            canvas.restore()
+```
+
+Finally, we call `paint_clip_path` for each layout object type. Note however
+that we have to paint it *after* painting children, unlike visual effects
+or backgrounds. This is because you have to paint the other content into the
+backdrop canvas before drawing the circle and applying the clip. For
+`BlockLayout`, this is:
+
+``` {.python}
+    def paint(self, display_list):
+        # ...
+
+        for child in self.children:
+            child.paint(display_list)
+
+        paint_clip_path(self.node, display_list, rect)
+
+        for i in range(0, restore_count):
+            display_list.append(Restore(rect))
+```
+
+But we're not quite done. We still need to *isolate* the element and its
+subtree, in order to apply the clip path to only these elements, not to the
+entire web page. TO achieve that we add an extra `saveLayer` in
+`paint_visual_effects`:
+
+``` {.python}
+def paint_visual_effects(node, display_list, rect):
+    # ...
+
+        clip_path = node.style.get("clip-path")
+    if clip_path:
+        display_list.append(SaveLayer(skia.Paint(), rect))
+        restore_count = restore_count + 1
+```
+
+
+[^blend-compositing]: It's actually specified as a blend mode to Skia. TODO:
+explain why.
+
+This technique described here for implementing `clip-path` is called *masking* -
+draw an auxilliary canvas and reject all pixels of the main that don't overlap
+with the auxilliary one. The circle in this case is the mask image. In general,
+the mask image could be any arbitrary bitmap, including one that is not a
+filled shape. The[`mask`]
+(https://developer.mozilla.org/en-US/docs/Web/CSS/mask) CSS property is a way
+to do this, for example by specifying an image at a URL that supplies the
+mask.
+
+While the `mask` CSS property is relatively uncommonly used (as is `clip-path`
+actually), there is a special kind of mask that is very common: rounded
+corners. Now that we know how to implement masks, this one is also easy to
+add to our browser. Because it's so common in fact, Skia has special-purpose
+methods to draw rounded corners: `clipRRect`.
+
+This call will go in `paint_visual_effects`:
+
+``` {.python}
+def paint_visual_effects(node, display_list, rect):
+    border_radius = node.style.get("border-radius")
+    if border_radius:
+        radius = int(border_radius[:-2])
+        display_list.append(Save(rect))
+        display_list.append(ClipRRect(rect, radius))
+        restore_count = restore_count + 1
+```
+
+Now why is it that rounded rect clips are applied in `paint_visual_effects`
+but masks and clip paths happen later on in the `paint` method? What's going
+on here? It is indeed the same, but Skia only optimizes for rounded rects
+because they are so common. Skia could easily add a `clipCircle` command
+if it was popular enough.
+
+What Skia does under the covers may actually equivalent to the clip path
+case, and sometimes that is indeed the case. But in other situations, various
+optimizations can be applied to make the clip more efficient. For example,
+`clipRect` clips to a rectangle, which makes it esaier for Skia to skip
+subsequent draw operations that don't intersect that rectangle[^see-chap-1],
+or dynamically draw only the parts of drawings that interset the rectangle.
+Likewise, the first optimization mentiond above also applies to
+`clipRRect` (but the second is trickier because you have to account for the
+space cut out in the corners).
+
+[^see-chap-1]: This is basically the same optimization as we added in Chapter
+1 to avoid painting offscreen text.
+
+::: {.further}
+
+TODO: the story of rounded corners: Macintosh, early web via nine-patch, GPU
+acceleration.
+
+:::
+
+
+Transforms
+==========
+
+The last visual effect we'll implement is 2D transforms. In computer
+graphics, a transform is a linear transformation of a point in space, typically
+represented as multiplication of that point by a transformation matrix. The
+same concept exists on the web in the `transform` CSS property. This property
+allows transforming the four points of a rectangular layout object by a
+matrix[^3d-matrix] when drawing to the screen.
+
+[^3d-matrix]: The matrix can be 3D, but we'll only discuss 2D matrices in this
+chapter. There is a lot more complexity to 3D transforms, having to do with
+the definition of 3D spaces, flatting, backfaces, and plane intersections.
+
+[^except-scrolling]: The only exception is that transform contribute to
+[scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable).
+
+By default, the origin of the coordinate space in which the transform applies is
+the center of the layout object's box[^transform-origin], which means that each
+of the four corners will be in a different quadrant of the 2D plane. The
+transform matrix specfied by the `transform` property
+[maps][applying-a-transform] each of the four points to a new 2D location.
+You can also roughly think of it also doing the same for the pixels inside
+the rectangle.[^filter-transform]
+
+[^transform-origin]: As you might expect, there is a CSS property called
+`transform-origin` that allows changing this default.
 
 [applying-a-transform]: https://drafts.csswg.org/css-transforms-1/#transform-rendering
 
-The process of drawing a stacking context A with a transform into its ancestor B
-looks like this:
+[^filter-transform]: In reality, the method of generating the bitmap transform
+(A) is a nuanced topic. Generating high-quality bitmaps in these situations
+involves a number of considerations, such as bilinear or trilinear filtering,
+and how to handle pixels near the edges.
 
-    blend(B, transform(A))
+Transforms are almost entirely a visual effect, and do not affect layout.
+[^except-scrolling] As you would expect, this means we can implement
+2D transforms with a simple addition to `paint_visual_effects`. Let's do it
+now. We'll implement just a syntax for simple rotation about the Z axis
+(which means that the element should rotate on the screen; the Z axis
+is the one that points from your eye to the screen; the X and Y axes
+are the same ones we've been working with to this point for layout and paint).
 
-Here `transform(A)` is a different bitmap, that may be generated with an
-algorithm similar to this:
+So we'll need to parse it:
 
- - For each pixel P of A, compute its transformed location. Blend in the color
-   of the pixels next to the transformed location according to their closeness
-   to it.
- - Other pixels that are not next to one mapped to from A are transparent.
-Note also that adjacent pixels don’t overwrite each other when they conflict,
-they add/blend [^5]. Further, we haven’t discussed it much, but there is also the
-question of the size and shape of transform(A). The answer is that it’s sized to
-the [axis-aligned bounding box](axis-aligned-bounding-box) of the transformed
-polygon. The “axis” in the previous sentence is the orientation of B’s stacking
-context.
+``` {.python}
+def parse_rotation_transform(transform_str):
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find('deg)')
+    return float(transform_str[left_paren + 1:right_paren])
+```
 
-[^5]: In reality, the method of generating the bitmap transform(A) is a nuanced
-topic. Generating high-quality bitmaps in these situations involves a number of
-considerations, such as bilinear or trilinear filtering, and how to handle
-pixels near the edges.
+Then paint it (we need to `Save` before rotating, to only rotate
+the element and its subtree, not the rest of the output):
 
-[axis-aligned-bounding-box]: https://en.wikipedia.org/wiki/Bounding_volume
+``` {.python}
+def paint_visual_effects(node, display_list, rect):
+    transform_str = node.style.get("transform", "")
+    if transform_str:
+        display_list.append(Save(rect))
+        restore_count = restore_count + 1
+        degrees = parse_rotation_transform(transform_str)
+        display_list.append(Rotate(degrees, rect))
+```
 
-::: {.further}
-We never discussed how to generate the bounds of the bitmap of a stacking
-context. How do you imagine that can be done?
-:::
+The implementation of `Rotate` in Skia looks like this:
 
-3D transforms
-=============
+``` {.python}
+class Rotate:
+    def __init__(self, degrees, rect):
+        self.degrees = degrees
+        self.rect = rect
 
-3D transforms are significantly more complex than 2D, for several reasons:
-
- a. How and when to “flatten” (aka 2D projection) 3D transformed stacking
-   contexts back into a 2D bitmap
- b. Perspective
- c. What happens if the transformed polygon is turned around backward
-In this section I’ll give a quick sketch of how those concerns can be resolved
-in a web browser.
-
-Reason (a) can be solved by putting a boolean on each stacking context
-indicating whether it flattens when it draws into its ancestor stacking context.
-Groups of tree-adjacent stacking contexts with the “3D” bit are drawn into the
-same 3D space, and only flattened as a group when drawing into their parent.
-Reason (b) can be solved by specifying a perspective matrix to apply when the
-“3D” bit is false. Reason (c) can be solved by another bit saying whether the
-stacking context is [“backface visible”](backface-visible).
-
-[backface-visible]: https://drafts.csswg.org/css-transforms-2/#propdef-backface-visibility
-
-<a name=hardware-acceleration>
-
-Hardware Acceleration
-=====================
-
-All of the visual effects described in this chapter can be implemented very
-efficiently on modern [GPU architectures](gpu-architectures); let’s see how
-[^6].
-GPUs are designed to make it easy to compute, in a [pixel shader](pixel-shader)
-(plus [vertex shaders](vertex-shader) for geometry),
-in-parallel, all pixels of a bitmap from the combination of:
-
- - One or more other bitmaps
- - Some arrays, matrices or other floating-point variables
-
-[^6]: However, it should be noted that it is not surprising at all that this is
-possible, because those same visual effects were first developed by earlier
-generations of graphical computer programs that co-evolved with GPUs before
-being adopted by the web.
-
-[gpu-architectures]: https://en.wikipedia.org/wiki/Graphics_processing_unit
-[pixel-shader]: https://en.wikipedia.org/wiki/Shader#Pixel_shaders
-[vertex-shader]: https://en.wikipedia.org/wiki/Shader#Vertex_shaders
-
-As long as the computation is a non-looping sequence of simple
-mathematical operations, each pixel is independent of the other
-ones[^7]. It is also easy to apply transforms via vertex shaders.
-
-[^7]: This is why filters and blend modes that do introduce such dependencies
-are more expensive, because they require multiple passes over the data.
-
-Because they don’t depend on each other, and GPUs have special-purpose hardware
-to do so, computations for each pixel runs in parallel. Due to this parallelism,
-it’s often much faster to compute visual effects on the GPU than on the CPU.
-(However, it is not free, and in some cases can be slower or more expensive, as
-we will see in the next section.) It is also often more CPU and power-efficient
-to do this work on the GPU.
-
-The details of the languages used to program GPUs are somewhat complicated, but
-it’s easy to reason through how a pixel shader might be written in a C-like
-function without loops. For the simple case of opacity, the shader is literally
-a function that takes in two colors and two alpha values, and implements the
-blend() function with a few lines of code. Other blend modes are also easy, as
-the spec text makes pretty clear from its [pseudocode](blend-mode-pseudocode).
-
-[blend-mode-pseudocode]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators
-
-Filters are sometimes more complicated, and sometimes require some clever tricks
-to make them very efficient. Rectangular clips are easy to write as direct
-numerical  inputs to the shader (skipping the intermediate bitmap). Rounded
-corners can often be implemented with shaders as well, via parameterized
-descriptions of the shape of the rounded corner curve; the corresponding math
-to determine whether a pixel is inside or outside can run in the shader. Other
-clip shapes are often implemented via the generate-bitmap-on-the-CPU+GPU
-blend-mode method described in the Clipping section. 
-
-Transforms also have special support in GPUs that makes them relatively easy to
-implement. GPUs also often have built-in support for different common approaches
-for bilinear and other filtering.
-
-Compositing
-===========
-
-In chapter 2, you saw how to produce a display list of low-level painting
-commands, which can then be replayed to draw to the screen. The example you
-worked through in that case was to optimize scrolling by repainting only part of
-the display list - the part visible on the screen - when scrolling. Compositing
-takes this even further, by saving the pixels generated drawing display lists
-into auxiliary bitmaps that can be saved for future re-use.
-
-Let’s look at scrolling as an example. You know from the previous section that
-if we can create a bitmap, then we can use the GPU to transform that bitmap
-extremely efficiently. Since scrolling is equivalent to a translation transform
-in the *x* or *y* direction, we can use the following technique to implement HTML
-document scrolling very efficiently:
-
- 1. Draw a solid white background bitmap
- 2. Draw the entire web page into a separate bitmap from the background
- 3. On scroll, use a GPU shader to shift the bitmap relative to the white
-    background by the scroll amount and then blend it into the background
-
-I’ll also quickly note for now that once the web page has been drawn into such a
-bitmap, and that bitmap is stored in immutable memory, then scrolling can be
-performed in parallel with javascript or other tasks, on a separate CPU thread.
-This technique is called threaded scrolling, or composited scrolling. The thread
-performing scrolling is often called the compositor thread, and the other one
-you already know about the main thread.
-
-Earlier in the chapter, I used the term blending to refer to how stacking
-contexts (aka bitmaps) get put together. In graphics and image processing, the
-process of putting together multiple bitmaps into a final image is actually
-called [compositing][compositing]; blending refers more to the particular math to use when
-compositing. However, in browsers the word compositing is often overloaded to
-mean not just this concept, but also the optimization technique - hence the
-term “composited scrolling”. To make sure everything is clear, let’s define and
-review a list of rendering concepts, as we know of them so far:
-
- - Stacking context: a group of HTML elements that paint contiguously together;
-   the stacking contexts form a tree
- - Paint: the process of emitting display lists from stacking contexts, in order
- - Display list: the output of paint
- - Raster: the process of executing the commands in a display list to create a
-   bitmap of defined dimensions
- - Compositing: the process or strategy for putting different parts of the
-   display list into different bitmaps
- - Bitmap (usually called a composited layer in browser terminology): the output
-   of raster
- - Draw: the process of executing a sequence of blends, filters, clips and
-   transforms to generate a final screen bitmap. Typically implemented with GPU
-   shaders
-
-[compositing]: https://en.wikipedia.org/wiki/Compositing
-
-Let’s now get back to the scrolling example. There is an immediately noticeable
-flaw in this three-step process for hardware accelerated scrolling. Just like
-you saw in Chapter 2, it’s not only expensive to draw the display list for the
-entire document if it is much bigger than the screen, it’s even more expensive
-to raster all of this content [^8]. For this reason, it’s much better to raster only
-content on or near the screen. This is easy enough for a single-threaded browser
-like was discussed in Chapter 2; for threaded scrolling it becomes more complex
-because:
-
- - Any scrolls happening on the compositor thread need to be communicated
-   periodically back to the main thread, so that it can paint or raster
-   additional content that has come into view
- - Scrolling on the compositor thread may happen faster than the main thread can
-   keep up, leading to missing content on the screen, which usually exhibits as
-   a solid-color background. At least in Chromium, this situation is called
-   checkerboarding, by analogy with the
-   [checkerboard rendering](checkerboard-rendering) technique for
-   incrementally rendering an image or scene. Scheduling thread synchronization,
-   raster, and paints to minimize checkerboarding is tricky.
-
-[checkerboard-rendering]: https://en.wikipedia.org/wiki/Checkerboard_rendering
-[^8]:  It’s usually a good rule of thumb to consider raster more expensive than
-paint, but these days that is becoming less  true as browsers make more use of
-the GPU itself to execute raster.
-
-Beyond scrolling
-================
-
-In addition, there is the possibility of rastering one or more stacking contexts
-into separate bitmaps. This has two potential benefits:
-
- a. Less raster cost when rastering *other* stacking contexts that are nearby or
-    overlapping on-screen
- b.. Faster animations when those stacking contexts move on-screen
-
-Benefit (b) is the one we observed with scrolling, which is one type of
-animation. On the web, there are ways to
-[declare animations](declare-animations) of opacity, filters and transform as
-part of element styles. Scrolling parts of the page that are not the root
-element is also supported, and can be accelerated in a similar way to document
-scrolling, via a translation transform. Browsers use this information as a hint
-to raster the stacking contexts within the animation into a different bitmap, so
-that the opacity, filter or transform can be efficiently run on the GPU without
-incurring any additional cost, and also running on the compositor thread.
-
-[declare-animations]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Animations/Using_CSS_animations
-
-Downsides of compositing
-========================
-
-Compositing sounds like an amazing technique that should always be used, so as
-to use the GPU as much as possible to make web pages faster. However, it is by
-no means a silver bullet, and can easily make pages slower, not faster. Here are
-some of the reasons compositing might be slower:
-
- - *Increased memory use*. Every extra bitmap created takes up memory. If every
-    stacking context gets its own bitmap, for example, the total memory used is
-    almost always much higher than a single bitmap for all stacking contexts.
-    GPU operations can also cause extra memory use, because they result in more
-    intermediate textures to represent the output of blending steps, or because
-    sometimes CPU and GPU copies of the same bitmap are necessary.
- - *GPU setup overhead*. GPUs are very fast once started, but there is a large
-    overhead to set them up. This is mostly in the form of the cost to copy
-    bitmaps to and from the GPU, and to install and compile the shader programs.
- - *Main thread processing overhead*. All of these bitmaps need to be kept track
-   of by the browser, because it needs to know where to re-paint and re-raster
-   when content changes. In addition, if two stacking contexts overlap on the
-   screen, and one of them is composited and draws first in paint order, then
-   the second needs to be composited as well [^9]; detecting this situation in all
-   cases is quite expensive.
- - *Layer explosion*. Compositing and GPU acceleration has a tendency to bleed
-   out into other seemingly unrelated parts of the web page, causing more
-   overhead than was originally desired. The overlap situation just mentioned is
-   one such situation. Others include visual effects applied to ancestors of
-   composited stacking contexts (for example: if a composited stacking context
-   is clipped by an ancestor, the clip must be applied on the GPU, or else there
-   will be an extremely expensive CPU pixel readback).
- - *Loss of quality*. High-quality and precise rendering is very important for
-   browsers. This is especially important for text and images, where humans are
-   very sensitive to issues of blurriness in particular. It’s easy to cause loss
-   of precision or quality when using GPU-accelerated compositing due to rounding
-   or quality/speed tradeoffs.
- - *Dependence on GPUs*. GPU hardware and software varies in quality, speed and
-   features. Dependence on these technologies leads to exposure to the flaws in
-   various GPU/driver/OS combinations, and a corresponding worsened reliability
-   or need for bug workarounds[^10].
-
-[^9]: Do you see why?
-[^10]: Chromium solves this in part by providing a
-[complete implementation](swiftshader) of
-all GPU APIs in a software library! This library is used for cases when a
-particular GPU has too many bugs or other limitations.
-
-[swiftshader]: https://github.com/google/swiftshader
-
-GPU raster
-==========
-
-It’s possible on today’s GPUs not only to execute visual effects, but also
-perform raster itself on the GPU. This technique, if it can be made to work
-well, has the following benefits:
-
- - Utilize GPU parallelism to raster much faster in many cases, and reduce CPU
-  and battery utilization for raster
- - Eliminate the overhead of copying bitmaps to and from the GPU
-
-The hardest content to accelerate via GPU programs are [text](gpu-raster-text)
-and [paths](gpu-raster-paths) (the most common example of complicated paths on
-the web is [SVG icons](svg-icons). In some cases, text and paths are still rastered on the
-CPU and then uploaded as GPU auxiliary textures, for reasons of performance and
-quality. Image and video decoding cannot in general be GPU accelerated without
-special-purpose hardware.
-
-[gpu-raster-text]: http://litherum.blogspot.com/2016/04/gpu-text-rendering-overview.html
-[gpu-raster-paths]: https://community.khronos.org/t/gpu-accelerated-path-rendering/65247
-[svg-icons]: https://www.google.com/search?q=svg+icons
-
-GPU raster, if it’s fast enough, would allow browsers to raster the entire
-screen on-demand every time, and skip the complexities of compositing. This
-approach is being explored in various projects, such as [this one](webrender).
-To date, it has not succeeded, because GPUs are not yet fast enough to handle
-very complex content, or reliable enough across the huge variety of computing
-devices available.
-
-[webrender]: https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-gets-rid-of-jank/
-
-Image decoding
-==============
-
-Images are a complex and difficult space unto themselves, but conceptually
-relatively simple. Images are encoded into various formats by people who make
-websites; browsers need to download, decode and filter those images when
-displaying them to the screen.
-
- - Encoding: processing an image file and compressing it into a particular
-   format, such as JPEG or [WebP], optimizing for
-   quality/file-size/speed-of-decoding tradeoffs. This task is not performed by
-   web browsers when rendering, but during authoring of web sites.
- - Decoding: uncompressing an encoded image into some representation in memory.
-   The time to decode, and memory size relative to compressed form, is
-   conceptually similar to ZIP files. In other words, decoding is a relatively
-   slow process, and the decompressed size is often one or more orders of
-   magnitude larger than the compressed size.
- - Filtering: resizing the image to match a particular screen size for
-   presentation on the screen. The intrinsic size of an image is the resolution
-   of the decoded bitmap of the image before resizing.
-
-[WebP]: https://en.wikipedia.org/wiki/WebP
-
-The main challenges with rendering images on the web are:
-
- - Slow image decodes, or time to copy the decoded bitmap to the GPU
- - Excessive memory use due to putting the decoded bitmap of images in memory
- - Appropriate algorithms to implement filtering with good quality
-
-Real-world browsers all have complex machinery to handle these situations, such
-as:
-
- - Only decode images are on or near the screen (and not immediately upon
-   downloading them), and ideally only when the screen size of the image is
-   already known
- - Decoding on a background thread in parallel with other work
- - Special-purpose [APIs] allowing website authors to control the quality/speed
-    tradeoffs used
- - Storing decoded image bitmaps in an LRU cache of limited size
-
-[APIs]: https://html.spec.whatwg.org/multipage/embedded-content.html#dom-img-decoding
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.rotate(self.degrees)
+```
 
 Summary
 =======
 
-This chapter gave a high-level overview of many of the complex algorithms
-involved in actually rendering typical web pages in real-world web browsers, as
-well as more advanced visual effects than we had encoutered so far in this book.
-It also explains how to use today's computer hardware to greatly accelerate the
-speed of web page rendering, and the some of the subtleties and tradeoffs
-involved.
+So there you have it. Now we don't have just a boring browser that can only
+draw simple input boxes plus text. It now supports:
+
+* Arbitrary position and size of boxes
+* Background images
+* Opacity
+* Blending
+* Clips
+* Masks
+* 2D transforms
+
+Exercises
+=========
+
+*z-index*: Right now, the order of paint is a depth-first traversal of the
+ layout tree. By using the `z-index` CSS property, pages can change that order.
+ An element with lower z-index than another one paints before it. Elements with
+ the same z-index paint in depth-first order. Elements with no z-index
+ specified paint at the same time as z-index 0. Implement this CSS property.
+ [^nested-z-index]
+
+ [^nested-z-index]: You don't need to add support for nested z-index (an
+ elemnet with z-index that has an ancestor also witih z-index). In order
+ to do that properly, you'd need to add support for
+ [stacking contexts][stacking-context] to our browser. In addition, the true
+ paint order depends not only on z-index but also on `position`, and is
+ broken into multiple phases. See [here][elaborate] for the gory details.
+
+ [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+
+ [elaborate]: https://www.w3.org/TR/CSS2/zindex.html
+
+ *Overflow clipping*: As mentioned at the end of the section introducing the
+  `width` and `height` CSS properties, sizing boxes with CSS means that the
+  contents of a layout object can exceed its size. Implement the
+  `overflow`clip` CSS property+value. When set, this should clip out the parts
+  of the content that exceed the box size of the element 
+
+*Overflow scrolling*: Implement a very basic version of the `overflow:scroll` 
+property+value. (This exercise builds on the previous one). You'll need to
+have a way to actually process input to cause scrolling, and also keep
+track of the total height of the [*layout overflow*][overflow-doc]. One
+way to allow the user to scroll is to use built-in arrow key handlers
+that apply when the `overflow:scroll` element has focus.
