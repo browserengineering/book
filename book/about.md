@@ -3,7 +3,7 @@ title: About the Authors
 next: Preface
 ...
 
-Pavel Panchekha is ...
+Pavel Panchekha is a professor of Computer Science at the University of Utah.p
 
 [Chris Harrelson](https://twitter.com/chrishtr) is a Principal Software Engineer
 at Google, and leads the [Blink Rendering](https://www.chromium.org/teams/rendering) team.
