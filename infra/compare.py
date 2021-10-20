@@ -150,13 +150,20 @@ if __name__ == "__main__":
 
             chapters = data["chapters"]
             for chapter, chapter_metadata in data["chapters"].items():
-                if "lab" not in chapter_metadata: continue
-                lab = chapter_metadata["lab"]
-                print(f"Comparing chapter {chapter} with lab {lab}")
-                with open("book/" + chapter) as book, \
-                     open("src/" + lab) as code:
-                    cur_failure = compare_files(book, code, None)
-                    failure += cur_failure
+                if "lab" in chapter_metadata:
+                    lab = chapter_metadata["lab"]
+                    print(f"Comparing chapter {chapter} with lab {lab}")
+                    with open("book/" + chapter) as book, \
+                         open("src/" + lab) as code:
+                        cur_failure = compare_files(book, code, None)
+                        failure += cur_failure
+                if "server" in chapter_metadata:
+                    server = chapter_metadata["server"]
+                    print(f"Comparing chapter {chapter} with server {server}")
+                    with open("book/" + chapter) as book, \
+                         open("src/" + server) as code:
+                        cur_failure = compare_files(book, code, "server")
+                        failure += cur_failure
     else:
         failure = compare_files(args.book, args.code, args.file)
     sys.exit(failure)
