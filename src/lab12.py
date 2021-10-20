@@ -14,7 +14,7 @@ import socket
 import ssl
 import urllib.parse
 from PIL import Image
-from lab4 import print_tree
+from lab4 import print_tree.
 from lab4 import Element
 from lab4 import Text
 from lab4 import HTMLParser

@@ -102,7 +102,9 @@ In SDL, you have to implement the event loop yourself (rather than calling
 
 Next factor a bunch of the tasks of drawing into a new class we'll call
 `Rasterizer`. The implementation in Skia should be relatively
-self-explanatory:
+self-explanatory (there is also more complete documentation
+[here](https://kyamagu.github.io/skia-python/)
+or at the [Skia site](https://skia.org)):
 
 ``` {.python}
 class Rasterizer:
@@ -269,7 +271,7 @@ simplicity. In a highly optimized browser, minimizng the number of surfaces
 is important for good performance.
 
 In the `Tab` class, the differences in `draw` is the new `rasterizer` parameter
-that gets passed around, and using Skia API to measure font metrics. Skia's
+that gets passed around, and using the Skia API to measure font metrics. Skia's
 `measureText` method on a font is the same as the `measure` method on a Tkinter
 font.
 
@@ -282,7 +284,7 @@ font.
 Update also all the other places that `measure` was called to use the Skia
 method (and also create Skia fonts instead of Tkinter ones, of course).
 
-Skia font metrics are accessed via a `getMetrics` method on a font. Then metrics
+Skia font metrics are accessed via the `getMetrics` method on a font. Then metrics
 like ascent and descent are accessible via:
 ``` {.python expected=False}
     font.getMetrics().fAscent
@@ -299,6 +301,128 @@ Now you should be able to run the browser just as it did in previous chapters,
 and have all of the same visuals. It'll probably also feel faster, because
 Skia and SDL are highly optimized libraries written in C & C++.
 
+Size and position
+=================
+
+Let's add a way to set the width and height of block and input elements, and
+adjust their positions.
+
+Right now, block elements size to the dimensions of their inline and input
+content, and input elements have a fixed size. But we're not just displaying
+text and forms any more---now we're planning to deraw visual effects such as
+arbitrary colors, images and so on. So we should be able to do things like draw
+a rectangle of a given color on the screen. That is accomplished with the
+`width` and `height` CSS properties.
+
+For example, this HTML:
+
+<textarea style="width: 100%; height: auto; border: 0">
+    <div style="background-color:lightblue;width:50px; height:100px"></div>
+</textarea>
+
+renders into a light blue 50x100 rectangle:
+
+<div style="background-color:lightblue;width:50px;height:100px"></div>
+
+Support for these properties turns out to be easy---if `width` or `height` is
+set, use it, and otherwise use the built-in sizing. For `BlockLayout`:
+
+``` {.python}
+def style_length(node, style_name, default_value):
+    style_val = node.style.get(style_name)
+    if style_val:
+        return int(style_val[:-2])
+    else:
+        return default_value
+
+class BlockLayout:
+    # ...
+    def layout(self):
+        # ...
+        self.width = style_length(
+            self.node, "width", self.parent.width)
+        # ...
+        self.height = style_length(
+            self.node, "height",
+            sum([child.height for child in self.children]))
+```
+
+And `InputLayout`:
+
+``` {.python}
+class InputLayout:
+    # ...
+    def layout(self):
+        # ...
+        self.width = style_length(self.node, "width", INPUT_WIDTH_PX)
+        self.height = style_length(
+            self.node, "height", linespace(self.font))
+```
+
+And `InlineLayout`:
+
+``` {.python}
+class InlineLayout:
+    # ...
+    def layout(self):
+        self.width = style_length(
+            self.node, "width", self.parent.width)
+        # ...
+        self.height = style_length(
+            self.node, "height",
+            sum([line.height for line in self.children]))
+```
+
+Great. We can now draw rectangles of a specified width and height. But they
+still end up positioned one after another, in a way that we can't control. It'd
+be great to be able to put the rectangle anywhere on the screen. That can be
+done with the `position` CSS property. This property has a whole lot of
+complexity to it, so let's just add in a relatively simple-to-implement subset:
+`position:relative`[^posrel-caveat], plus `top` and `left`. Setting the first
+of these tells the browser that it should take the x, y position that the
+element's top-left corner had, and add the values of `left` to x and `top` to
+y.
+
+[^posrel-caveat]: Note that we won't even implement all of the effects of
+`position:relative`. For example, this property has an effect on paint order,
+but we'll ignore it.
+
+This will still "take up space" where it used to be, in terms of the sizing
+of the parent element. This makes it pretty easy to implement---just figure
+out the layout without taking into account this property, then add in the
+adjustments at the end. To make things even easier, we'll treat it as a
+purely paint-time property that adjusts the display list.[^posrel-caveat2]
+
+[^posrel-caveat2]: Again, this is not correct per the real definition! But
+suffices for playing around with visual effects.
+
+::: {.further}
+Since we've added support for setting the size of a layout object to
+be different than the sum of its children's sizes, it's easy for there to
+be a visual mismatch. What we supposed to do if a `LayoutBlock` is not
+as tall as the text content within it? By default, browsers draw the content
+anyway, and it might or might not paint out side the block's box.
+This situation is called [*overflow*][overflow-doc]. There are various CSS
+properties, such as [`overflow`][overflow-prop], to control what to do with
+this situation. By far the most important (or complex, at least) value of
+this property is `overflow:scroll`.
+
+[overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow
+
+This value means, of course, for the browser to allow the user to scroll
+the content in order to see it; the parts that don't overlap the block
+are *clipped* out (we'll cover clipping later in this chater).
+
+Basic scrolling for DOM elements is very similar to the scrolling you already
+implemented in [Chapter 2](graphics.html#graphics-scrolling). But implementing
+it in its full generality, and with excellent performance, is *extremely*
+challenging. Scrolling is probably the single most complicated feature in a
+browser rendering engine. The corner cases and subtleties involved are almost
+endless.
+:::
+
+[overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
+
 Background images
 =================
 
@@ -309,7 +433,6 @@ it. We'll support the `background-image: url("relative-url")` syntax, which
 says to draw an image as the background of an element, with the given relative
 URL.
 
-[background-image]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
 
 To implement it, first we'll need to load all of the image URLs specified in CSS rules
 for a `Tab`. Firt collect the image URLs:
@@ -565,88 +688,6 @@ interaction of its paint order with painting descendants, is
 
 [paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
 
-Size and position
-=================
-
-Next let's add a way to set the width and height of block and input elements.
-Right now, block elements size to the dimensions of their inline and input
-content, and input elements have a fixed size. But we're not just displaying
-text and forms any more---now that we're drawing visual effects such as colors,
-images and so on. So we should be able to do things like draw a rectangle
-of a given color on the screen. That is accomplished with the `width` and
-`height` CSS properties.
-
-Support for these properties turns out to be easy---if the property is set, use
-it, and otherwise use the built-in sizing. For `BlockLayout`:
-
-``` {.python}
-def style_length(node, style_name, default_value):
-    style_val = node.style.get(style_name)
-    if style_val:
-        return int(style_val[:-2])
-    else:
-        return default_value
-
-class BlockLayout:
-    # ...
-    def layout(self):
-        # ...
-        self.width = style_length(
-            self.node, "width", self.parent.width)
-        # ...
-        self.height = style_length(
-            self.node, "height",
-            sum([child.height for child in self.children]))
-```
-
-And `InputLayout`:
-
-``` {.python}
-class InputLayout:
-    # ...
-    def layout(self):
-        # ...
-        self.width = style_length(self.node, "width", INPUT_WIDTH_PX)
-        self.height = style_length(
-            self.node, "height", linespace(self.font))
-```
-
-And `InlineLayout`:
-
-``` {.python}
-class InlineLayout:
-    # ...
-    def layout(self):
-        self.width = style_length(
-            self.node, "width", self.parent.width)
-        # ...
-        self.height = style_length(
-            self.node, "height",
-            sum([line.height for line in self.children]))
-```
-
-Great. We can now draw rectangles of a specified width and height. But they
-still end up positioned one after another, in a way that we can't control. It'd
-be great to be able to put the rectangle anywhere on the screen. That can be
-done with the `position` CSS property. This property has a whole lot of
-complexity to it, so let's just add in a relatively simple-to-implement subset:
-`position:relative`[^posrel-caveat], plus `top` and `left`. Setting the first
-of these tells the browser that it should take the x, y position that the
-element's top-left corner had, and add the values of `left` to x and `top` to
-y.
-
-[^posrel-caveat]: Note that we won't even implement all of the effects of
-`position:relative`. For example, this property has an effect on paint order,
-but we'll ignore it.
-
-This will still "take up space" where it used to be, in terms of the sizing
-of the parent element. This makes it pretty easy to implement---just figure
-out the layout without taking into account this property, then add in the
-adjustments at the end. To make things even easier, we'll treat it as a
-purely paint-time property that adjusts the display list[^posrel-caveat2]
-
-[^posrel-caveat2]: Again, this is not correct per the real definition! But
-suffices for playing around with visual effects.
 
 Opacity and Compositing
 =======================
@@ -1204,8 +1245,8 @@ Summary
 So there you have it. Now we don't have just a boring browser that can only
 draw simple input boxes plus text. It now supports:
 
-* Background images
 * Arbitrary position and size of boxes
+* Background images
 * Opacity
 * Blending
 * Clips
@@ -1232,3 +1273,16 @@ Exercises
  [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
  [elaborate]: https://www.w3.org/TR/CSS2/zindex.html
+
+ *Overflow clipping*: As mentioned at the end of the section introducing the
+  `width` and `height` CSS properties, sizing boxes with CSS means that the
+  contents of a layout object can exceed its size. Implement the
+  `overflow`clip` CSS property+value. When set, this should clip out the parts
+  of the content that exceed the box size of the element 
+
+*Overflow scrolling*: Implement a very basic version of the `overflow:scroll` 
+property+value. (This exercise builds on the previous one). You'll need to
+have a way to actually process input to cause scrolling, and also keep
+track of the total height of the [*layout overflow*][overflow-doc]. One
+way to allow the user to scroll is to use built-in arrow key handlers
+that apply when the `overflow:scroll` element has focus.
