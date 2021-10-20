@@ -1,6 +1,7 @@
 import socket
 import urllib.parse
 import random
+import html
 
 SESSIONS = {}
 
@@ -61,7 +62,8 @@ def do_request(session, method, url, headers, body):
         return "200 OK", login_form(session)
     elif method == "POST" and url == "/add":
         params = form_decode(body)
-        return "200 OK", add_entry(session, params)
+        add_entry(session, params)
+        return "200 OK", show_comments(session)
     elif method == "POST" and url == "/":
         params = form_decode(body)
         return do_login(session, params)
@@ -83,13 +85,15 @@ def show_comments(session):
         session["nonce"] = nonce
         out += "<form action=add method=post>"
         out +=   "<p><input name=guest></p>"
+        out +=   "<input name=nonce type=hidden value=" + nonce + ">"
         out +=   "<p><button>Sign the book!</button></p>"
         out += "</form>"
     else:
         out += "<a href=/login>Sign in to write in the guest book</a>"
 
     for entry, who in ENTRIES:
-        out += "<p>" + entry + " <i>by " + who + "</i></p>"
+        out += "<p>" + html.escape(entry) + "\n"
+        out += "<i>by " + html.escape(who) + "</i></p>"
 
     out += "<link rel=stylesheet src=/comment.css>"
     out += "<label></label>"
@@ -124,6 +128,8 @@ def not_found(url, method):
 
 def add_entry(session, params):
     if "user" not in session: return
+    if "nonce" not in session or "nonce" not in params: return
+    if session["nonce"] != params["nonce"]: return
     if 'guest' in params and len(params['guest']) <= 100:
         ENTRIES.append((params['guest'], session["user"]))
 
