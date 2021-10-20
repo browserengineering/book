@@ -14,7 +14,7 @@ import socket
 import ssl
 import urllib.parse
 from PIL import Image
-from lab4 import print_tree.
+from lab4 import print_tree
 from lab4 import Element
 from lab4 import Text
 from lab4 import HTMLParser
@@ -567,7 +567,8 @@ class BlockLayout:
     def paint(self, display_list):
         (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
         rect = skia.Rect.MakeLTRB(
-            paint_x, paint_y, paint_x + self.width, paint_y + self.height)
+            paint_x, paint_y,
+            paint_x + self.width, paint_y + self.height)
 
         restore_count = paint_visual_effects(
             self.node, display_list, rect)

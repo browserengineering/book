@@ -318,11 +318,13 @@ For example, this HTML:
 
 <textarea style="width: 100%; height: auto; border: 0">
     <div style="background-color:lightblue;width:50px; height:100px"></div>
+    <div style="background-color:orange;width:50px; height:100px"></div>
 </textarea>
 
-renders into a light blue 50x100 rectangle:
+renders into a light blue 50x100 rectangle, with another orange one below it:
 
 <div style="background-color:lightblue;width:50px;height:100px"></div>
+<div style="background-color:orange;width:50px;height:100px"></div>
 
 Support for these properties turns out to be easy---if `width` or `height` is
 set, use it, and otherwise use the built-in sizing. For `BlockLayout`:
@@ -378,10 +380,10 @@ still end up positioned one after another, in a way that we can't control. It'd
 be great to be able to put the rectangle anywhere on the screen. That can be
 done with the `position` CSS property. This property has a whole lot of
 complexity to it, so let's just add in a relatively simple-to-implement subset:
-`position:relative`[^posrel-caveat], plus `top` and `left`. Setting the first
-of these tells the browser that it should take the x, y position that the
+`position:relative`,[^posrel-caveat] plus `top` and `left`. Setting these
+tells the browser that it should take the x, y position that the
 element's top-left corner had, and add the values of `left` to x and `top` to
-y.
+y. If `position` is not specified, then `top` and `left` are ignored.
 
 [^posrel-caveat]: Note that we won't even implement all of the effects of
 `position:relative`. For example, this property has an effect on paint order,
@@ -393,19 +395,69 @@ out the layout without taking into account this property, then add in the
 adjustments at the end. To make things even easier, we'll treat it as a
 purely paint-time property that adjusts the display list.[^posrel-caveat2]
 
-[^posrel-caveat2]: Again, this is not correct per the real definition! But
+Here's an example:
+
+<textarea style="width: 100%; height: 100px; border: 0">
+    <div style="background-color:lightblue;width:50px; height:100px"></div>
+    <div style="background-color:orange;width:50px; height:100px;
+                position:relative;top:-50px;left:50px"></div>
+</textarea>
+
+This renders into a light blue 50x100 rectangle, with another orange one below
+it, but this time they overlap.
+
+<div style="background-color:lightblue;width:50px;height:100px"></div>
+<div style="background-color:orange;width:50px;height:100px;position:relative;top:-50px;left:25px"></div>
+
+
+[^posrel-caveat2]: Again, this is not fully correct! But it
 suffices for playing around with visual effects.
+
+To implement `position:relative`, we'll add a new helper method `paint_coords`:
+
+``` {.python}
+def paint_coords(node, x, y):
+    if not node.style.get("position") == "relative":
+        return (x, y)
+
+    paint_x = x
+    paint_y = y
+
+    left = node.style.get("left")
+    if left:
+        paint_x = paint_x + int(left[:-2])
+    top = node.style.get("top")
+    if top:
+        paint_y = paint_y + int(top[:-2])
+
+    return (paint_x, paint_y)
+```
+
+Then we can use it in `BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    # ...
+    def paint(self, display_list):
+        (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
+        rect = skia.Rect.MakeLTRB(
+            paint_x, paint_y,
+            paint_x + self.width, paint_y + self.height)
+        # ...
+```
+
+A similar change should be made to `InlineLayout` and `InputLayout`.
 
 ::: {.further}
 Since we've added support for setting the size of a layout object to
 be different than the sum of its children's sizes, it's easy for there to
-be a visual mismatch. What we supposed to do if a `LayoutBlock` is not
+be a visual mismatch. What are we supposed to do if a `LayoutBlock` is not
 as tall as the text content within it? By default, browsers draw the content
 anyway, and it might or might not paint out side the block's box.
 This situation is called [*overflow*][overflow-doc]. There are various CSS
 properties, such as [`overflow`][overflow-prop], to control what to do with
 this situation. By far the most important (or complex, at least) value of
-this property is `overflow:scroll`.
+this property is `scroll`.
 
 [overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow
 
@@ -433,9 +485,25 @@ it. We'll support the `background-image: url("relative-url")` syntax, which
 says to draw an image as the background of an element, with the given relative
 URL.
 
+[background-image]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
 
-To implement it, first we'll need to load all of the image URLs specified in CSS rules
-for a `Tab`. Firt collect the image URLs:
+Here is an example:
+
+<textarea style="width: 100%; height: 100px; border: 0">
+    <div style="width:194px; height:194px;
+                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+</textarea>
+
+It renders like this:[^exact-size]
+
+<div style="width:194px; height:194px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')"></div>
+
+[^exact-size]: Note that I cleverly chose the width and height of the `div` to
+be exactly `194px`, the dimensions of the JPEG image.
+
+To implement this propertyb, first we'll need to load all of the image URLs
+specified in CSS rules for a `Tab`. Firt collect the image URLs:
 
 ``` {.python}
     def load(self, url, body=None):
@@ -520,7 +588,14 @@ an image on the first screen, we have to first *decode* it. Images are sent
 over the network in one of many optimized encoding formats, such as PNG or
 JPEG; when we need to draw them to the screen, we need to convert from the
 encoded format into a raw array of pixels. These pixels can then be efficiently
-drawn onto the screen.
+drawn onto the screen.[^image-decoding]
+
+[^image-decoding]: While image decoding technologies are beyond the
+scrope of this book, it's very important for browsers to make optimized use
+of image decoding, because the decoded bytes are often take up *much* more
+memory than the encoded representation. For a web page with a lot
+of images, it's easy to accidentally use up too much memory unless you're very
+careful.
 
 Skia doesn't come with image decoders built-in. In Python, the Pillow library is
 a convenient way to decode images.
@@ -641,6 +716,22 @@ snapshot the current parameters to the canvas, so that when `Restore` is called
 later these parameters (including presence or absence of a clip) can be
 restored.[^not-savelayer]
 
+This example should clip out parts of the image:
+
+<textarea style="width: 100%; height: 100px; border: 0">
+    <div style="width:100px; height:100px;
+                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+</textarea>
+
+Like this:
+
+<div style="width:100px; height:100px;
+                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+</div>
+
+
+
 The `ClipRect` display list entry looks like this:
 
 ``` {.python}
@@ -679,6 +770,12 @@ this, via CSS properties like [`background-size`][background-size] and
 [intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size
 [background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
 [background-repeat]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-repeat
+
+And this is without even getting into the complex topic of the various
+algorithms for [image scaling][image-rendering] algorithms (for situations
+where we want the image to grow or shrink to fit its container).
+
+[image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
 To add even more complication, in its full generality the *paint order* of
 drawing backgrounds and other painted aspects of a single element, and the
