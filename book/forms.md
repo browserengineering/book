@@ -944,9 +944,17 @@ the order of `<input>` elements on the page.[^tabindex]
 
 *Check boxes*: In HTML, `input` elements have a `type` attribute. When
 set to `checkbox`, the `input` element looks like a checkbox; it's
-checked if the `checked` attribute is set, and unchecked otherwise.
-Checkboxes are only included in the form submission when they're
-checked.
+checked if the `checked` attribute is set, and unchecked
+otherwise.[^checked-attr] When the form is submitted, a checkbox's
+`name=value` pair is included only if the checkbox is checked. (If the
+checkbox has no `value` attribute, the default is the string `on`.)
+
+[^checked-attr]: Technically, the `checked` attribute [only affects
+    the state of the checkbox when the page loads][mdn-checked];
+    checking and unchecking a checkbox does not affect this attribute
+    but instead manipulates internal state.
+    
+[mdn-checked]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox#attr-checked
 
 *Resubmit requests*: One reason to separate GET and POST requests is
 that GET requests are supposed to be *idempotent* (read-only,
