@@ -27,15 +27,14 @@ def handle_connection(conx):
     conx.close()
 
 def do_request(method, url, headers, body):
-    if method == "GET":
-        if url == "/":
-            return "200 OK", show_comments()
-        elif url == "/comment.js":
-            with open("comment9.js") as f:
-                return "200 OK", f.read()
-        elif url == "/comment.css":
-            with open("comment9.css") as f:
-                return "200 OK", f.read()
+    if method == "GET" and url == "/":
+        return "200 OK", show_comments()
+    elif method == "GET" and url == "/comment.js":
+        with open("comment9.js") as f:
+            return "200 OK", f.read()
+    elif method == "GET" and url == "/comment.css":
+        with open("comment9.css") as f:
+            return "200 OK", f.read()
     elif method == "POST" and url == "/add":
         params = form_decode(body)
         return "200 OK", add_entry(params)

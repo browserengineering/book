@@ -279,7 +279,7 @@ HTML elements a list of property/value pairs apply to:[^media-queries]
     Media queries are super-important for building sites that work
     across many devices, like reading this book on a phone.
 
-``` {.css}
+``` {.css.example}
 selector { property-1: value-1; property-2: value-2; }
 ```
 

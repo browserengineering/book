@@ -32,7 +32,7 @@ Node.prototype.addEventListener = function(type, listener) {
 
 Object.defineProperty(Node.prototype, 'innerHTML', {
     set: function(s) {
-        call_python("innerHTML", this.handle, s.toString());
+        call_python("innerHTML_set", this.handle, s.toString());
     }
 });
 
@@ -55,5 +55,6 @@ XMLHttpRequest.prototype.open = function(method, url, is_async) {
 }
 
 XMLHttpRequest.prototype.send = function(body) {
-    this.responseText = call_python("XMLHttpRequest_send", this.method, this.url, this.body);
+    this.responseText = call_python("XMLHttpRequest_send",
+        this.method, this.url, this.body);
 }

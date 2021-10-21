@@ -770,7 +770,7 @@ ENTRIES = [ 'Pavel was here' ]
 
 Next, `do_request` has to output HTML that shows those entries:
 
-``` {.python file=server}
+``` {.python file=server expected=False}
 def do_request(method, url, headers, body):
     out = "<!doctype html>"
     for entry in ENTRIES:
@@ -838,7 +838,9 @@ def form_decode(body):
     params = {}
     for field in body.split("&"):
         name, value = field.split("=", 1)
-        params[urllib.unquote_plus(name)] = urllib.unquote_plus(value)
+        name = urllib.parse.unquote_plus(name)
+        value = urllib.parse.unquote_plus(value)
+        params[name] = value
     return params
 ```
 

