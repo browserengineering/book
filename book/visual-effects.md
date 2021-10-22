@@ -924,12 +924,21 @@ variable of the calling code.
 
 Let's see how opacity and compositing actually work.
 
-First, opacity: ;et's assume that pixels are
-represented in `skia.kRGBA_8888_ColorType`[^example-rgb]. To apply the opacity,
-you just multiply each pixel's alpha channel by the opacity value. In Python
-this would be:
+First, opacity: let's assume that pixels are represented in a `skia.Color4f`,
+which has fields `fA` (floating-point alpha), and the three color channels:
+`fR`, `fG`, and `fB`. Alpha indicates the amount of transparency---an alpha of
+1 means fully opaque, and 0 means fully transparent, just like for
+`opacity`.[^alpha-vs-opacity]
 
-``` {.python expected=False}
+[^alpha-vs-opacity]: The difference between opacity and alpha is often
+confusing. To remember the difference, think of opacity as a visual effect
+*applied to* content, but alpha as a *part of* content. (In fact, whether there
+is an alpha channel in a color representation at all is often an implementation
+choice---n alternative to having an alpha channel is to multiply the other
+color channels by the alpha value, which is called a *premultiplied*
+representation of the color.)
+
+``` {.python.example}
 # Returns |color| with opacity applied. |color| is a skia.Color4f.
 def apply_opacity(color, opacity):
     new_color = color
@@ -949,12 +958,14 @@ The default mode is called *simple alpha compositing* or
 *source-over compositing*.[^other-compositing]
 In Python the code looks like this:[^simple-alpha]
 
-``` {.python expected=False}
-# Composites |source_color| into |backdrop_color|. Each of the inputs are
-# skia.Color4f objects.
+``` {.python.example}
+# Composites |source_color| into |backdrop_color|.
+# Each of the inputs are skia.Color4f objects.
 def composite(source_color, backdrop_color):
-    (source_r, source_g, source_b, source_a) = tuple(source_color)
-    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
+    (source_r, source_g, source_b, source_a) = \
+        tuple(source_color)
+    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
+        tuple(backdrop_color)
     return skia.Color4f(
         backdrop_r * (1-source_a) * backdrop_a + source_r * source_a,
         backdrop_g * (1-source_a) * backdrop_a + source_g * source_a,
@@ -968,9 +979,9 @@ Putting it all together, if we were to implement the `Restore` command
 ourselves from one canvas to another, we could write the following
 (pretend we have
 a `getPixel` method that returns a `skia.Color4f` and a `setPixel` that
-sets a pixel color[^real-life-reading-pixels]):
+sets a pixel color):[^real-life-reading-pixels]
 
-``` {.python expected=False}
+``` {.python.example}
 def restore(source_canvas, backdrop_canvas, width, height, opacity):
     for x in range(0, width):
         for y in range(0, height):
@@ -981,21 +992,15 @@ def restore(source_canvas, backdrop_canvas, width, height, opacity):
                     backdrop_canvas.getPixel(x, y)))
 ```
 
-[^real-life-reading-pixels]: As you'll see later in this chapter, in real
-browsers it's a very bad idea to read canvas pixels into memory and manipulate
-them like this.  So APIs such as Skia don't make it convenient
-(a `skia.Canvas` object does have `peekPixels` and `readPixels` methods that
-are sometimes used).
-
-[^example-rgb]: Refer back to the Skia section of this chapter---the
-`to_sdl_surface` method needs to convert from a 32-bit ARGB format: 8 bits of
-alpha, then 8 bits each of red, green and blue. Images are also converted to
-`kRGBA_8888_ColorType` when exported from a Pillow image.   
+[^real-life-reading-pixels]: In real browsers it's a bad idea to read
+canvas pixels into memory and manipulate them like this, because it would be
+very slow. So libraries such as Skia don't make it convenient to do so.
+(Skia canvases do have `peekPixels` and `readPixels` methods that
+are sometimes used, but not for this use case).
 
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that
-that page refers to "premultiplied alpha" colors, which means that each color
-channel has alread been multiplied by the alpha channel value. Skia does not
+that page refers to premultiplied alpha colors. Skia does not
 use premultiplied color representations. Graphics systems sometimes use a
 premultiplied representation of colors, because it allows them to skip storing
 the alpha channel in memory.
@@ -1009,7 +1014,7 @@ step before compositing but after opacity. Blending mixels the source and
 backdrop colors. The mixed result is then composited with the backdrop pixel.
 The changes to our Python code for `restore` looks like this:
 
-``` {.python expected=False}
+``` {.python.example}
 def restore(source_canvas, backdrop_canvas, width, height, opacity, blend_mode):
     # ...
             backdrop_canvas.setPixel(
@@ -1023,7 +1028,7 @@ def restore(source_canvas, backdrop_canvas, width, height, opacity, blend_mode):
 
 and blend is implemented like this:
 
-``` {.python expected=False}
+``` {.python.example}
 def blend(source_color, backdrop_color, blend_mode):
     (source_r, source_g, source_b, source_a) = tuple(source_color)
     (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
@@ -1041,7 +1046,7 @@ There are various values `blend_mode` could take. Examples include "multiply",
 which multiplies the colors as floating-point numbers between 0 and 1,
 and "difference", which subtracts the darker color from the ligher one.
 
-``` {.python expected=False}
+``` {.python.example}
 # assumes an 8-bit color channel
 def apply_blend(blend_mode, source_color_channel, backdrop_color_channel):
     float_source = source_color_channel / 255.0
