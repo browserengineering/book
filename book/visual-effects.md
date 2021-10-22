@@ -930,7 +930,7 @@ which has fields `fA` (floating-point alpha), and the three color channels:
 1 means fully opaque, and 0 means fully transparent, just like for
 `opacity`.[^alpha-vs-opacity]
 
-[^alpha-vs-opacity]: The difference between opacity and alpha is a big
+[^alpha-vs-opacity]: The difference between opacity and alpha is often
 confusing. To remember the difference, think of opacity as a *visual effect*
 applied to content, but alpha as a part of a pixel. In fact, whether there
 is an alpha channel to a color at all is often an implementation choice. An
