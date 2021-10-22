@@ -924,10 +924,18 @@ variable of the calling code.
 
 Let's see how opacity and compositing actually work.
 
-First, opacity: ;et's assume that pixels are
-represented in `skia.kRGBA_8888_ColorType`[^example-rgb]. To apply the opacity,
-you just multiply each pixel's alpha channel by the opacity value. In Python
-this would be:
+First, opacity: let's assume that pixels are represented in a `skia.Color4f`,
+which has fields `fA` (floating-point alpha), and the three color channels:
+`fR`, `fG`, and `fB`. Alpha indicates the amount of transparency---an alpha of
+1 means fully opaque, and 0 means fully transparent, just like for
+`opacity`.[^alpha-vs-opacity]
+
+[^alpha-vs-opacity]: The difference between opacity and alpha is a big
+confusing. To remember the difference, think of opacity as a *visual effect*
+applied to content, but alpha as a part of a pixel. In fact, whether there
+is an alpha channel to a color at all is often an implementation choice. An
+alternative is to multiply the other color channels by the alpha value, which
+is called a *premultiplied* representation of the color.
 
 ``` {.python expected=False}
 # Returns |color| with opacity applied. |color| is a skia.Color4f.
@@ -950,11 +958,13 @@ The default mode is called *simple alpha compositing* or
 In Python the code looks like this:[^simple-alpha]
 
 ``` {.python expected=False}
-# Composites |source_color| into |backdrop_color|. Each of the inputs are
-# skia.Color4f objects.
+# Composites |source_color| into |backdrop_color|.
+# Each of the inputs are skia.Color4f objects.
 def composite(source_color, backdrop_color):
-    (source_r, source_g, source_b, source_a) = tuple(source_color)
-    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
+    (source_r, source_g, source_b, source_a) = \
+        tuple(source_color)
+    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
+        tuple(backdrop_color)
     return skia.Color4f(
         backdrop_r * (1-source_a) * backdrop_a + source_r * source_a,
         backdrop_g * (1-source_a) * backdrop_a + source_g * source_a,
@@ -968,7 +978,7 @@ Putting it all together, if we were to implement the `Restore` command
 ourselves from one canvas to another, we could write the following
 (pretend we have
 a `getPixel` method that returns a `skia.Color4f` and a `setPixel` that
-sets a pixel color[^real-life-reading-pixels]):
+sets a pixel color):[^real-life-reading-pixels]
 
 ``` {.python expected=False}
 def restore(source_canvas, backdrop_canvas, width, height, opacity):
@@ -981,21 +991,15 @@ def restore(source_canvas, backdrop_canvas, width, height, opacity):
                     backdrop_canvas.getPixel(x, y)))
 ```
 
-[^real-life-reading-pixels]: As you'll see later in this chapter, in real
-browsers it's a very bad idea to read canvas pixels into memory and manipulate
-them like this.  So APIs such as Skia don't make it convenient
+[^real-life-reading-pixels]: In real browsers it's a very bad idea to read
+canvas pixels into memory and manipulate them like this, because it would be
+very slow.  So APIs such as Skia don't make it convenient to do so.
 (a `skia.Canvas` object does have `peekPixels` and `readPixels` methods that
-are sometimes used).
-
-[^example-rgb]: Refer back to the Skia section of this chapter---the
-`to_sdl_surface` method needs to convert from a 32-bit ARGB format: 8 bits of
-alpha, then 8 bits each of red, green and blue. Images are also converted to
-`kRGBA_8888_ColorType` when exported from a Pillow image.   
+are sometimes used, but not for this use case).
 
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that
-that page refers to "premultiplied alpha" colors, which means that each color
-channel has alread been multiplied by the alpha channel value. Skia does not
+that page refers to premultiplied alpha colors. Skia does not
 use premultiplied color representations. Graphics systems sometimes use a
 premultiplied representation of colors, because it allows them to skip storing
 the alpha channel in memory.
