@@ -304,30 +304,32 @@ Skia and SDL are highly optimized libraries written in C & C++.
 Size and position
 =================
 
-Let's add a way to set the width and height of block and input elements, and
-adjust their positions.
-
 Right now, block elements size to the dimensions of their inline and input
 content, and input elements have a fixed size. But we're not just displaying
-text and forms any more---now we're planning to deraw visual effects such as
+text and forms any more---now we're planning to draw visual effects such as
 arbitrary colors, images and so on. So we should be able to do things like draw
 a rectangle of a given color on the screen. That is accomplished with the
 `width` and `height` CSS properties.
 
 For example, this HTML:
 
-<textarea style="width: 100%; height: auto; border: 0">
+<textarea style="width: 100%; height: 75px; border: 0">
     <div style="background-color:lightblue;width:50px; height:100px"></div>
     <div style="background-color:orange;width:50px; height:100px"></div>
 </textarea>
 
-renders into a light blue 50x100 rectangle, with another orange one below it:
+should render into a light blue 50x100 rectangle, with another orange one below
+it:
 
 <div style="background-color:lightblue;width:50px;height:100px"></div>
 <div style="background-color:orange;width:50px;height:100px"></div>
 
-Support for these properties turns out to be easy---if `width` or `height` is
-set, use it, and otherwise use the built-in sizing. For `BlockLayout`:
+Support for these properties turns out to be easy[^not-easy]---if `width` or
+`height` is set, use it, and otherwise use the built-in sizing. For
+`BlockLayout`:
+
+[^not-easy]: Or more precisely, easy only because the layout engine of our
+browser only has a few modes implemented.
 
 ``` {.python}
 def style_length(node, style_name, default_value):
@@ -377,13 +379,14 @@ class InlineLayout:
 
 Great. We can now draw rectangles of a specified width and height. But they
 still end up positioned one after another, in a way that we can't control. It'd
-be great to be able to put the rectangle anywhere on the screen. That can be
-done with the `position` CSS property. This property has a whole lot of
-complexity to it, so let's just add in a relatively simple-to-implement subset:
-`position:relative`,[^posrel-caveat] plus `top` and `left`. Setting these
-tells the browser that it should take the x, y position that the
-element's top-left corner had, and add the values of `left` to x and `top` to
-y. If `position` is not specified, then `top` and `left` are ignored.
+be great to be able to put the rectangle anywhere on the screen, and not just
+in a place dictated by layout. That can be done with the `position` CSS
+property. This property has a whole lot of complexity to it, so let's just add
+in a relatively simple-to-implement subset: `position:relative`,[^posrel-caveat]
+ plus `top` and `left`. Setting these tells the browser that it
+should take the x, y position that the element's top-left corner had, and add
+the values of `left` to x and `top` to y. If `position` is not specified, then
+`top` and `left` are ignored.
 
 [^posrel-caveat]: Note that we won't even implement all of the effects of
 `position:relative`. For example, this property has an effect on paint order,
@@ -502,7 +505,7 @@ It renders like this:[^exact-size]
 [^exact-size]: Note that I cleverly chose the width and height of the `div` to
 be exactly `194px`, the dimensions of the JPEG image.
 
-To implement this propertyb, first we'll need to load all of the image URLs
+To implement this property, first we'll need to load all of the image URLs
 specified in CSS rules for a `Tab`. Firt collect the image URLs:
 
 ``` {.python}
@@ -567,8 +570,8 @@ def request(url, headers={}, payload=None):
     # ...
 ```
 
-And finally, when reading the response, we check for the
-`Content-Type`, and only decode it if it starts with `text/`:
+And finally, when reading the response, we check for the `Content-Type`, and
+only decode[^image-decode] it as utf-8 if it starts with `text/`:
 
 ``` {.python}
 def request(url, headers={}, payload=None):
@@ -581,6 +584,9 @@ def request(url, headers={}, payload=None):
         body = response.read()
     # ...
 ```
+
+[^image-decode]: Not to be confused with image decoding, which will be done 
+later.
 
 Now we are ready to load the images. Each image found will be loaded and stored
 into an `images` dictionary on a `Tab` keyed by URL. However, to actually show
@@ -610,7 +616,12 @@ more details.
 Here's how to load, decode and convert images into a `skia.Image` object.
 Note that there are two `Image` classes, which is a little confusing.
 The Pillow `Image` class's role is to decode the image, and the Skia `Image`
-class is an interface between the decoded bytes and Skia's internals.
+class is an interface between the decoded bytes and Skia's internals. Note
+that nowhere do we pass the content type of the image (such as `image/png`)
+to a Pillow `Image`. Instead, the format is auto-detected by reading
+for content type [signatures] in the bytes of the encoded image.
+
+[signatures]: https://en.wikipedia.org/wiki/List_of_file_signatures
 
 ``` {.python}
 def get_images(image_url_strs, base_url, images):
@@ -650,7 +661,7 @@ def style(node, rules, url, images):
         # ...
         get_images(image_url_strs, url, images)
     if node.style.get('background-image'):
-        node.backgroundImage = \
+        node.background_image = \
             images[parse_style_url(
                 node.style.get('background-image'))]
 ```
@@ -678,7 +689,7 @@ Then add a `DrawImage`, plus a few additional things, to a new
 ``` {.python}
 def paint_background(node, display_list, rect):
     bgcolor = node.style.get("background-color",
-                                  "transparent")
+                             "transparent")
     if bgcolor != "transparent":
         display_list.append(DrawRect(rect, bgcolor))
 
@@ -687,7 +698,7 @@ def paint_background(node, display_list, rect):
         display_list.append(Save(rect))
         display_list.append(ClipRect(rect))
         print(rect)
-        display_list.append(DrawImage(node.backgroundImage,
+        display_list.append(DrawImage(node.background_image,
             rect))
         display_list.append(Restore(rect))
 ```
@@ -732,7 +743,7 @@ Like this:
 
 
 
-The `ClipRect` display list entry looks like this:
+The `ClipRect` class looks like this:
 
 ``` {.python}
 class ClipRect:
@@ -747,7 +758,7 @@ class ClipRect:
 ```
 
 [^not-savelayer]: Note: `Save` is not the same as `SaveLayer` (which will
-be introduced later in this section). `Save` just saves off parameters;
+be introduced later in this chapter). `Save` just saves off parameters;
 `SaveLayer` creates am entirely new canvas.
 
 Note how the background image is painted *before* children, just like
@@ -777,10 +788,10 @@ where we want the image to grow or shrink to fit its container).
 
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
-To add even more complication, in its full generality the *paint order* of
-drawing backgrounds and other painted aspects of a single element, and the
-interaction of its paint order with painting descendants, is
-[quite complicated][paint-order-stacking-context].
+In its full generality, the *paint order* of drawing backgrounds and other
+painted aspects of a single element, and the interaction of its paint order
+with painting descendants, is[quite complicated]
+[paint-order-stacking-context].
 :::
 
 [paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
@@ -1371,11 +1382,11 @@ Exercises
 
  [elaborate]: https://www.w3.org/TR/CSS2/zindex.html
 
- *Overflow clipping*: As mentioned at the end of the section introducing the
-  `width` and `height` CSS properties, sizing boxes with CSS means that the
-  contents of a layout object can exceed its size. Implement the
-  `overflow`clip` CSS property+value. When set, this should clip out the parts
-  of the content that exceed the box size of the element 
+*Overflow clipping*: As mentioned at the end of the section introducing the
+ width` and `height` CSS properties, sizing boxes with CSS means that the
+ contents of a layout object can exceed its size. Implement the `overflow`clip`
+ CSS property+value. When set, this should clip out the parts of the content
+ that exceed the box size of the element 
 
 *Overflow scrolling*: Implement a very basic version of the `overflow:scroll` 
 property+value. (This exercise builds on the previous one). You'll need to
@@ -1383,3 +1394,9 @@ have a way to actually process input to cause scrolling, and also keep
 track of the total height of the [*layout overflow*][overflow-doc]. One
 way to allow the user to scroll is to use built-in arrow key handlers
 that apply when the `overflow:scroll` element has focus.
+
+*Image elements*: the `<img>` element is a way (the original way, back in the
+90s, in fact) to draw an image to the screen. The image URL is specified
+by the `src` attribute, it has inline layout, and is by default sized to the
+intrinsic size of the image, which is its bitmap dimensions. Before an image
+has loaded, it has 0x0 intrinsic sizing. Implement this element.
