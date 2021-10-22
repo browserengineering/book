@@ -931,12 +931,12 @@ which has fields `fA` (floating-point alpha), and the three color channels:
 `opacity`.[^alpha-vs-opacity]
 
 [^alpha-vs-opacity]: The difference between opacity and alpha is often
-confusing. To remember the difference, think of opacity as a *visual effect*
-applied to content, but alpha as a part of a pixel. In fact, whether there is
-an alpha channel in a color representation at all is often an implementation
+confusing. To remember the difference, think of opacity as a visual effect
+*applied to* content, but alpha as a *part of* content. (In fact, whether there
+is an alpha channel in a color representation at all is often an implementation
 choice---n alternative to having an alpha channel is to multiply the other
 color channels by the alpha value, which is called a *premultiplied*
-representation of the color.
+representation of the color.)
 
 ``` {.python.example}
 # Returns |color| with opacity applied. |color| is a skia.Color4f.
@@ -994,8 +994,8 @@ def restore(source_canvas, backdrop_canvas, width, height, opacity):
 
 [^real-life-reading-pixels]: In real browsers it's a bad idea to read
 canvas pixels into memory and manipulate them like this, because it would be
-very slow.  So APIs such as Skia don't make it convenient to do so.
-(a `skia.Canvas` object does have `peekPixels` and `readPixels` methods that
+very slow. So libraries such as Skia don't make it convenient to do so.
+(Skia canvases do have `peekPixels` and `readPixels` methods that
 are sometimes used, but not for this use case).
 
 [^simple-alpha]: The formula for this code can be found
