@@ -1383,10 +1383,10 @@ Exercises
  [elaborate]: https://www.w3.org/TR/CSS2/zindex.html
 
 *Overflow clipping*: As mentioned at the end of the section introducing the
- width` and `height` CSS properties, sizing boxes with CSS means that the
- contents of a layout object can exceed its size. Implement the `overflow`clip`
- CSS property+value. When set, this should clip out the parts of the content
- that exceed the box size of the element 
+`width` and `height` CSS properties, sizing boxes with CSS means that the
+contents of a layout object can exceed its size. Implement the `clip` value of
+the `overflow` CSS property+value. When set, this should clip out the parts
+of the content that exceed the box size of the element .
 
 *Overflow scrolling*: Implement a very basic version of the `overflow:scroll` 
 property+value. (This exercise builds on the previous one). You'll need to
