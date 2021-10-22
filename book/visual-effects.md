@@ -932,12 +932,13 @@ which has fields `fA` (floating-point alpha), and the three color channels:
 
 [^alpha-vs-opacity]: The difference between opacity and alpha is often
 confusing. To remember the difference, think of opacity as a *visual effect*
-applied to content, but alpha as a part of a pixel. In fact, whether there
-is an alpha channel to a color at all is often an implementation choice. An
-alternative is to multiply the other color channels by the alpha value, which
-is called a *premultiplied* representation of the color.
+applied to content, but alpha as a part of a pixel. In fact, whether there is
+an alpha channel in a color representation at all is often an implementation
+choice---n alternative to having an alpha channel is to multiply the other
+color channels by the alpha value, which is called a *premultiplied*
+representation of the color.
 
-``` {.python expected=False}
+``` {.python.example}
 # Returns |color| with opacity applied. |color| is a skia.Color4f.
 def apply_opacity(color, opacity):
     new_color = color
@@ -957,7 +958,7 @@ The default mode is called *simple alpha compositing* or
 *source-over compositing*.[^other-compositing]
 In Python the code looks like this:[^simple-alpha]
 
-``` {.python expected=False}
+``` {.python.example}
 # Composites |source_color| into |backdrop_color|.
 # Each of the inputs are skia.Color4f objects.
 def composite(source_color, backdrop_color):
@@ -980,7 +981,7 @@ ourselves from one canvas to another, we could write the following
 a `getPixel` method that returns a `skia.Color4f` and a `setPixel` that
 sets a pixel color):[^real-life-reading-pixels]
 
-``` {.python expected=False}
+``` {.python.example}
 def restore(source_canvas, backdrop_canvas, width, height, opacity):
     for x in range(0, width):
         for y in range(0, height):
@@ -991,7 +992,7 @@ def restore(source_canvas, backdrop_canvas, width, height, opacity):
                     backdrop_canvas.getPixel(x, y)))
 ```
 
-[^real-life-reading-pixels]: In real browsers it's a very bad idea to read
+[^real-life-reading-pixels]: In real browsers it's a bad idea to read
 canvas pixels into memory and manipulate them like this, because it would be
 very slow.  So APIs such as Skia don't make it convenient to do so.
 (a `skia.Canvas` object does have `peekPixels` and `readPixels` methods that
@@ -1013,7 +1014,7 @@ step before compositing but after opacity. Blending mixels the source and
 backdrop colors. The mixed result is then composited with the backdrop pixel.
 The changes to our Python code for `restore` looks like this:
 
-``` {.python expected=False}
+``` {.python.example}
 def restore(source_canvas, backdrop_canvas, width, height, opacity, blend_mode):
     # ...
             backdrop_canvas.setPixel(
@@ -1027,7 +1028,7 @@ def restore(source_canvas, backdrop_canvas, width, height, opacity, blend_mode):
 
 and blend is implemented like this:
 
-``` {.python expected=False}
+``` {.python.example}
 def blend(source_color, backdrop_color, blend_mode):
     (source_r, source_g, source_b, source_a) = tuple(source_color)
     (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
@@ -1045,7 +1046,7 @@ There are various values `blend_mode` could take. Examples include "multiply",
 which multiplies the colors as floating-point numbers between 0 and 1,
 and "difference", which subtracts the darker color from the ligher one.
 
-``` {.python expected=False}
+``` {.python.example}
 # assumes an 8-bit color channel
 def apply_blend(blend_mode, source_color_channel, backdrop_color_channel):
     float_source = source_color_channel / 255.0
