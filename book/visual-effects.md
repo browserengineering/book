@@ -618,7 +618,7 @@ Note that there are two `Image` classes, which is a little confusing.
 The Pillow `Image` class's role is to decode the image, and the Skia `Image`
 class is an interface between the decoded bytes and Skia's internals. Note
 that nowhere do we pass the content type of the image (such as `image/png`)
-to a Pillow `Image`. Instead, the format is auto-detected by reading
+to a Pillow `Image`. Instead, the format is auto-detected by looking
 for content type [signatures] in the bytes of the encoded image.
 
 [signatures]: https://en.wikipedia.org/wiki/List_of_file_signatures
