@@ -497,7 +497,7 @@ def paint_visual_effects(node, display_list, rect):
 
 def paint_background(node, display_list, rect):
     bgcolor = node.style.get("background-color",
-                                  "transparent")
+                             "transparent")
     if bgcolor != "transparent":
         display_list.append(DrawRect(rect, bgcolor))
 
@@ -506,7 +506,7 @@ def paint_background(node, display_list, rect):
         display_list.append(Save(rect))
         display_list.append(ClipRect(rect))
         print(rect)
-        display_list.append(DrawImage(node.backgroundImage,
+        display_list.append(DrawImage(node.background_image,
             rect))
         display_list.append(Restore(rect))
 
@@ -845,7 +845,7 @@ def style(node, rules, url, images):
                 image_url_strs.append(value)
         get_images(image_url_strs, url, images)
     if node.style.get('background-image'):
-        node.backgroundImage = \
+        node.background_image = \
             images[parse_style_url(
                 node.style.get('background-image'))]
     for child in node.children:
