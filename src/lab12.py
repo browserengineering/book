@@ -476,8 +476,6 @@ def paint_visual_effects(node, display_list, rect):
     opacity = float(node.style.get("opacity", "1.0"))
     if opacity != 1.0 or blend_mode_str:
         paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
-#            ImageFilter=skia.DropShadowImageFilter.Make(5, 5, 3, 3, skia.ColorBLACK,
-#                skia.DropShadowImageFilter.kDrawShadowAndForeground_ShadowMode))
         display_list.append(SaveLayer(paint, rect))
         restore_count = restore_count + 1
 
