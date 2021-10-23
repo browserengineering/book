@@ -1370,8 +1370,8 @@ Likewise, the first optimization mentiond above also applies to
 `clipRRect` (but the second is trickier because you have to account for the
 space cut out in the corners).
 
-[^skia-opts]: Skia has amny internal optimizations, and by design does not
-necessarily expose whether they are used to the caller.
+[^skia-opts]: Skia has many internal optimizations, and by design does not
+expose whether they are used to the caller.
 
 [^see-chap-1]: This is basically the same optimization as we added in Chapter
 1 to avoid painting offscreen text.
