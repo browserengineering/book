@@ -1090,3 +1090,13 @@ the asymptotic speed of your implementation. There is a clever
 implementation that is *O(1)* amortized per element---can you find
 it?^[No, this clever implementation is still not fast enough for real
 browsers to implement.]
+
+*Inline Style Sheets*: The `link rel=stylesheet` syntax allows importing an
+ external style sheet (meaning one loaded via its own HTTP request). There is
+ also a way to provide a style sheet inline, as part of the HTML, via the
+ `<style>` tag. Inline style sheets are useful for creating self-contained
+ example web pages, but more importantly are a way that web sites can make
+ themselves faster by reducing the number of round-trip network requests to the
+ server. Since no angle brackets are allowed in a style sheet, you can
+ implement this feature by consuming input charactures after `<style>` up to
+ the next `<` character.
