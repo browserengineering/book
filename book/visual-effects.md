@@ -1095,12 +1095,12 @@ This will look like:
 is because `mix-blend-mode` is defined in terms of stacking contexts (see below
 for more on that topic).
 
-Here you can see that the intersection of the orange and blue[^note-yellow] rectangle renders
-as pink. Let's work through the math to see why. Here we are blending a blue
-color with orange, via the "difference" blend mode. Blue has (red, green, blue)
-color channels of (0, 0, 1.0), and orange has (1.0, 0.65, 0.0). The blended
-result will then be (1.0 - 0, 0.65 - 0, 1.0 - 0) = (1.0, 0.65, 1.0),
-which is pink.
+Here you can see that the intersection of the orange and blue
+[^note-yellow] rectangle renders as pink. Let's work through the math to see
+why. Here we are blending a blue color with orange, via the "difference" blend
+mode. Blue has (red, green, blue) color channels of (0, 0, 1.0), and orange
+has (1.0, 0.65, 0.0). The blended result will then be (1.0 - 0, 0.65 - 0, 1.0 -
+0) = (1.0, 0.65, 1.0), which is pink.
 
 [^note-yellow]: The "difference" blend mode on the blue redctangle makes it look
 yellow over a white background!
