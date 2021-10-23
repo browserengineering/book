@@ -313,10 +313,10 @@ a rectangle of a given color on the screen. That is accomplished with the
 
 For example, this HTML:
 
-<textarea style="width: 100%; height: 75px; border: 0">
-    <div style="background-color:lightblue;width:50px; height:100px"></div>
-    <div style="background-color:orange;width:50px; height:100px"></div>
-</textarea>
+    <div style="background-color:lightblue;width:50px; height:100px">
+    </div>
+    <div style="background-color:orange;width:50px; height:100px">
+    </div>
 
 should render into a light blue 50x100 rectangle, with another orange one below
 it:
@@ -400,11 +400,11 @@ purely paint-time property that adjusts the display list.[^posrel-caveat2]
 
 Here's an example:
 
-<textarea style="width: 100%; height: 100px; border: 0">
-    <div style="background-color:lightblue;width:50px; height:100px"></div>
+    <div style="background-color:lightblue;width:50px; height:100px">
+    </div>
     <div style="background-color:orange;width:50px; height:100px;
-                position:relative;top:-50px;left:50px"></div>
-</textarea>
+                position:relative;top:-50px;left:50px">
+    </div>
 
 This renders into a light blue 50x100 rectangle, with another orange one below
 it, but this time they overlap.
@@ -492,11 +492,9 @@ URL.
 
 Here is an example:
 
-<textarea style="width: 100%; height: 100px; border: 0">
-    <div style="width:194px; height:194px;
-                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+    <div style="width:194px; height:194px;background-image:
+            url('https://pavpanchekha.com/im/me-square.jpg')">
     </div>
-</textarea>
 
 It renders like this:[^exact-size]
 
@@ -729,18 +727,14 @@ restored.[^not-savelayer]
 
 This example should clip out parts of the image:
 
-<textarea style="width: 100%; height: 100px; border: 0">
-    <div style="width:100px; height:100px;
-                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+    <div style="width:100px; height:100px;background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
     </div>
-</textarea>
 
 Like this:
 
-<div style="width:100px; height:100px;
-                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+<div style="width:100px; height:100px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
 </div>
-
 
 
 The `ClipRect` class looks like this:
@@ -801,21 +795,25 @@ Opacity and Compositing
 =======================
 
 With sizing and position, we also now have the ability to make content overlap!
-[^overlap-new]. Consider this example of CSS & HTML:
+[^overlap-new]. Consider this example of CSS & HTML:[^inline-stylesheet]
 
-<textarea style="width: 300px; height: 150px">
-div { width:100px; height:100px; position:relative }
-</textarea>
-<textarea style="width: 300px; height: 150px">
+    <style>
+        div { width:100px; height:100px; position:relative }
+    </style>
     <div style="background-color:lightblue"></div>
     <div style="background-color:orange;left:50px;top:-25px"></div>
     <div style="background-color:blue;left:100px;top:-50px"></div>
-</textarea>
+
+[^inline-stylesheet]: Here I've used an inline style sheet. If you haven't
+completed the inline style sheet exercise for chapter 6, you'll need to
+convert this into a style sheet file in order to load it in your browser.
+
 
 Its rendering looks like this:
 
-<iframe class=widget style="height:316px" src="widgets/lab12-example-overlap.html">
-</iframe>
+<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
+<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px"></div>
+<div style="width:100px;height:100px;position:relative;background-color:blue;left:100px;top:-50px"></div>
 
 [^overlap-new]: That's right, it was not previously possible to do this in
 our browser. Avoiding overlap is generally good thing for text-based layouts,
@@ -835,10 +833,30 @@ able to make the site show it.
 
 We can easily implement that with `opacity`, a CSS property that takes a value
 from 0 to 1, 0 being completely invisible (like a window in a house) to
-completely opaque (the wall next to the window). The way to do this in Skia
-is to create a new canvas, draw the overlay content into it, and then *blend*
-that canvas into the previous canvas. It's a little complicated to think
-about without first seeing it in action, so let's do that.
+completely opaque (the wall next to the window). After adding opacity, our
+example looks like:
+
+    <style>
+        div { width:100px; height:100px; position:relative }
+    </style>
+    <div style="background-color:lightblue">
+    </div>
+    <div style="background-color:orange;left:50px;top:-25px">
+    </div>
+    <div style="background-color:blue;left:100px;top:-50px; opacity: 0.5">
+    </div>
+
+<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
+<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px"></div>
+<div style="width:100px;height:100px;position:relative;background-color:blue;left:100px;top:-50px;opacity: 0.5"></div>
+
+Note that you can now see part of the orange square through the blue one, and
+part of the white background as well.
+
+The way to do this in Skia is to create a new canvas, draw the overlay content
+into it, and then *blend* that canvas into the previous canvas. It's a little
+complicated to think about without first seeing it in action, so let's do
+that.
 
 Because we'll be adding things other than opacity soon, let's put opacity
 into a new function called `paint_visual_effects` that will be called from
@@ -1052,7 +1070,7 @@ def blend(source_color, backdrop_color, blend_mode):
         source_a)
 ```
 
-There are various values `blend_mode` could take. Examples include "multiply",
+There are various algorithms `blend_mode` could take. Examples include "multiply",
 which multiplies the colors as floating-point numbers between 0 and 1,
 and "difference", which subtracts the darker color from the ligher one. The
 default is "normal", which means to ignore the backdrop color.
@@ -1072,9 +1090,44 @@ def apply_blend(blend_mode, source_color_channel,
 ```
 
 These are specified with the `mix-blend-mode` CSS property. Let's add support
-for [multiply][mbm-mult] and [difference][mbm-diff] to our browser. This will be
-very easy, because Skia supports these blend mode natively. It's as simple
-as parsing the property and adding a parameter to `SaveLayer`:
+for [multiply][mbm-mult] and [difference][mbm-diff] to our browser. Let's modify
+the previous example to see how it will look:[^isolation]
+
+    <style>
+        html { background-color: white }
+        div { width:100px; height:100px }
+    </style>
+    <div style="background-color:lightblue"></div>
+    <div style="background-color:orange;left:50px;top:-25px"></div>
+    <div style="background-color:blue;left:100px;top:-50px"></div>
+
+This will look like:
+
+<style>
+    html { background-color: white }
+</style>
+<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
+<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px;mix-blend-mode:multiply"></div>
+<div style="width:100px;height:100px; position:relative;background-color:blue;left:100px;top:-50px;mix-blend-mode:difference"></div>
+
+[^isolation]: Here I had to explicitly set a background color of white on the
+`<html>` element, even thoiugh web pages have a default white background. This
+is because `mix-blend-mode` is defined in terms of stacking contexts (see below
+for more on that topic).
+
+Here you can see that the intersection of the orange and blue
+[^note-yellow] square renders as pink. Let's work through the math to see
+why. Here we are blending a blue color with orange, via the "difference" blend
+mode. Blue has (red, green, blue) color channels of (0, 0, 1.0), and orange
+has (1.0, 0.65, 0.0). The blended result will then be (1.0 - 0, 0.65 - 0, 1.0 -
+0) = (1.0, 0.65, 1.0), which is pink.
+
+[^note-yellow]: The "difference" blend mode on the blue redctangle makes it look
+yellow over a white background!
+
+Implementing these blend modes in our browser will be very easy, because Skia
+supports these blend mode natively. It's as simple as parsing the property and
+adding a parameter to `SaveLayer`:
 
 ``` {.python}
 def parse_blend_mode(blend_mode_str):
@@ -1102,6 +1155,45 @@ def paint_visual_effects(node, display_list, rect):
 
 [mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
 [mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
+
+::: {.further}
+CSS has a concept that is similar in many ways to Skia's nexted canvases,
+called a *stacking context*. If an element *induces a stacking context*,
+it means that that element and its descendants (up to any descendants that
+themselves induce a stacking contexts) paint together into one contiguous group.
+That means a browser can paint each stacking context into its own
+canvas, and composite & blend those canvses together in a hierarchical
+manner (hierarchical in the same way we've been using `saveLayer` and
+`restore` in this capter) in order to generate pixels on the screen.
+
+The `mix-blend-mode` CSS property's [definition][mix-blend-mode-def] actually
+says that the blending should occur with "the stacking context that contains
+the element" (actually, it's even more complicated---earlier sibling stacking
+contexts also blend, which is why the blue and orange squares in the example
+above blend to pink). Now that you know how saving and resoring canvases work,
+you can see why it is defined this way. This also explains why I had to put an
+explicit white background on the `<html>` element, because that element always
+induces a [stacking context][stacking-context] in a real browser.
+
+Most stacking contexts on the web don't actually have any non-normal blend modes
+or other complex visual effects. In those cases, these stacking contexts don't
+actually require their own canvases, and real browsers take advantage of this
+to reuse canvases thereby save time and memory. In these cases, the above
+definition for properties like `mix-blend-mode` are therefore overly strict.
+However, there is a tradeoff betweeen memory and speed for complex
+visual effects and animations in general, having to do with maximal use of
+the GPU---sometimes browsers allocate extra GPU canvases on purpose to speed up
+content, and sometimes they do it because it's necessary to perform multiple
+execution passes on the GPU for complex visual effects.
+
+There is now a [backdrop root][backdrop-root] concept for some features that
+generalizes beyond stacking contexts, but takes into account the need for
+performant use of GPUs.
+:::
+
+[mix-blend-mode-def]: https://drafts.fxtf.org/compositing-1/#propdef-mix-blend-mode
+[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+[backdrop-root]: https://drafts.fxtf.org/filter-effects-2/#BackdropRoot
 
 Non-rectangular clips
 =====================
