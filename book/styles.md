@@ -1094,9 +1094,13 @@ browsers to implement.]
 *Inline Style Sheets*: The `link rel=stylesheet` syntax allows importing an
  external style sheet (meaning one loaded via its own HTTP request). There is
  also a way to provide a style sheet inline, as part of the HTML, via the
- `<style>` tag. Inline style sheets are useful for creating self-contained
- example web pages, but more importantly are a way that web sites can make
- themselves faster by reducing the number of round-trip network requests to the
- server. Since no angle brackets are allowed in a style sheet, you can
- implement this feature by consuming input charactures after `<style>` up to
- the next `<` character.
+ `<style>` tag---everything up to the following `</style>` tag is interpreted
+ as a style sheet.[^ordered] Inline style sheets are useful for
+ creating self-contained example web pages, but more importantly are a way that
+ web sites can make themselves faster by reducing the number of round-trip
+ network requests to the server. Since no angle brackets are allowed in a style
+ sheet, you can implement this feature by consuming input charactures after
+ `<style>` up to the next `<` character.
+
+[^ordered]: Inline style sheets should apply after all external
+style sheets in the cascade, and apply in order of their position in the HTML.
