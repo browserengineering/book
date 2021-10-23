@@ -1520,9 +1520,9 @@ of the content that exceed the box size of the element.
  very basic version of the `scroll` value of the `overflow` CSS property.
  You'll need to have a way to actually process input to cause scrolling, and
  also keep track of the total height (and width, for horizontal scrolling!) of
- the [*layout overflow*][overflow-doc]. One way to allow the user to scroll is
- to use built-in arrow key handlers that apply when the `overflow:scroll`
- element has focus.
+ the [*layout overflow*][overflow-doc]. (Hint: one way to allow the user to
+ scroll is to use built-in arrow key handlers that apply when the
+ `overflow:scroll` element has focus.)
 
 *Image elements*: the `<img>` element is a way (the original way, back in the
 90s, in fact) to draw an image to the screen. The image URL is specified
