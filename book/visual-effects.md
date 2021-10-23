@@ -313,10 +313,10 @@ a rectangle of a given color on the screen. That is accomplished with the
 
 For example, this HTML:
 
-<textarea style="width: 100%; height: 75px; border: 0">
-    <div style="background-color:lightblue;width:50px; height:100px"></div>
-    <div style="background-color:orange;width:50px; height:100px"></div>
-</textarea>
+    <div style="background-color:lightblue;width:50px; height:100px">
+    </div>
+    <div style="background-color:orange;width:50px; height:100px">
+    </div>
 
 should render into a light blue 50x100 rectangle, with another orange one below
 it:
@@ -400,11 +400,11 @@ purely paint-time property that adjusts the display list.[^posrel-caveat2]
 
 Here's an example:
 
-<textarea style="width: 100%; height: 100px; border: 0">
-    <div style="background-color:lightblue;width:50px; height:100px"></div>
+    <div style="background-color:lightblue;width:50px; height:100px">
+    </div>
     <div style="background-color:orange;width:50px; height:100px;
-                position:relative;top:-50px;left:50px"></div>
-</textarea>
+                position:relative;top:-50px;left:50px">
+    </div>
 
 This renders into a light blue 50x100 rectangle, with another orange one below
 it, but this time they overlap.
@@ -492,11 +492,9 @@ URL.
 
 Here is an example:
 
-<textarea style="width: 100%; height: 100px; border: 0">
-    <div style="width:194px; height:194px;
-                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+    <div style="width:194px; height:194px;background-image:
+            url('https://pavpanchekha.com/im/me-square.jpg')">
     </div>
-</textarea>
 
 It renders like this:[^exact-size]
 
@@ -729,18 +727,14 @@ restored.[^not-savelayer]
 
 This example should clip out parts of the image:
 
-<textarea style="width: 100%; height: 100px; border: 0">
-    <div style="width:100px; height:100px;
-                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+    <div style="width:100px; height:100px;background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
     </div>
-</textarea>
 
 Like this:
 
-<div style="width:100px; height:100px;
-                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+<div style="width:100px; height:100px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
 </div>
-
 
 
 The `ClipRect` class looks like this:
@@ -801,21 +795,25 @@ Opacity and Compositing
 =======================
 
 With sizing and position, we also now have the ability to make content overlap!
-[^overlap-new]. Consider this example of CSS & HTML:
+[^overlap-new]. Consider this example of CSS & HTML:[^inline-stylesheet]
 
-<textarea style="width: 300px; height: 150px">
-div { width:100px; height:100px; position:relative }
-</textarea>
-<textarea style="width: 300px; height: 150px">
+    <style>
+        div { width:100px; height:100px; position:relative }
+    </style>
     <div style="background-color:lightblue"></div>
     <div style="background-color:orange;left:50px;top:-25px"></div>
     <div style="background-color:blue;left:100px;top:-50px"></div>
-</textarea>
+
+[^inline-stylesheet]: Here I've used an inline style sheet. If you haven't
+completed the inline style sheet exercise for chapter 6, you'll need to
+convert this into a style sheet file in order to load it in your browser.
+
 
 Its rendering looks like this:
 
-<iframe class=widget style="height:316px" src="widgets/lab12-example-overlap.html">
-</iframe>
+<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
+<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px"></div>
+<div style="width:100px;height:100px;position:relative;background-color:blue;left:100px;top:-50px"></div>
 
 [^overlap-new]: That's right, it was not previously possible to do this in
 our browser. Avoiding overlap is generally good thing for text-based layouts,
@@ -1052,7 +1050,7 @@ def blend(source_color, backdrop_color, blend_mode):
         source_a)
 ```
 
-There are various values `blend_mode` could take. Examples include "multiply",
+There are various algorithms `blend_mode` could take. Examples include "multiply",
 which multiplies the colors as floating-point numbers between 0 and 1,
 and "difference", which subtracts the darker color from the ligher one. The
 default is "normal", which means to ignore the backdrop color.
@@ -1072,9 +1070,29 @@ def apply_blend(blend_mode, source_color_channel,
 ```
 
 These are specified with the `mix-blend-mode` CSS property. Let's add support
-for [multiply][mbm-mult] and [difference][mbm-diff] to our browser. This will be
-very easy, because Skia supports these blend mode natively. It's as simple
-as parsing the property and adding a parameter to `SaveLayer`:
+for [multiply][mbm-mult] and [difference][mbm-diff] to our browser. Here
+is an example of how the result should look:
+
+    <style>
+        div { width:100px; height:100px; position:relative }
+    </style>
+    <div style="background-color:white;position:relative;isolation:isolate">
+        <div style="background-color:lightblue"></div>
+        <div style="background-color:orange;left:50px;top:-25px"></div>
+        <div style="background-color:blue;left:100px;top:-50px"></div>
+    </div>
+
+This will look like:
+
+<div style="background-color:white;position:relative;isolation:isolate">
+<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
+<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px;mix-blend-mode:multiply"></div>
+<div style="width:100px;height:100px; position:relative;background-color:blue;left:100px;top:-50px;mix-blend-mode:difference"></div>
+</div>
+
+Implementing these blend modes in our browser will be very easy, because Skia
+supports these blend mode natively. It's as simple as parsing the property and
+adding a parameter to `SaveLayer`:
 
 ``` {.python}
 def parse_blend_mode(blend_mode_str):
