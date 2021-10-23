@@ -1095,6 +1095,16 @@ This will look like:
 is because `mix-blend-mode` is defined in terms of stacking contexts (see below
 for more on that topic).
 
+Here you can see that the intersection of the orange and blue[^note-yellow] rectangle renders
+as pink. Let's work through the math to see why. Here we are blending a blue
+color with orange, via the "difference" blend mode. Blue has (red, green, blue)
+color channels of (0, 0, 1.0), and orange has (1.0, 0.65, 0.0). The blended
+result will then be (1.0 - 0, 0.65 - 0, 1.0 - 0) = (1.0, 0.65, 1.0),
+which is pink.
+
+[^note-yellow]: The "difference" blend mode on the blue redctangle makes it look
+yellow over a white background!
+
 Implementing these blend modes in our browser will be very easy, because Skia
 supports these blend mode natively. It's as simple as parsing the property and
 adding a parameter to `SaveLayer`:
@@ -1137,10 +1147,12 @@ manner (hierarchical in the same way we've been using `saveLayer` and
 `restore` in this capter) in order to generate pixels on the screen.
 
 The `mix-blend-mode` CSS property's [definition][mix-blend-mode-def] actually
-says that the blending should occur with "the stacking context that contains the
-element". Now that you know how saving and resoring canvases work, you can
-see why it is defined this way. This also explains why I had to put an explicit
-white background on the `<html>` element, because that element always
+says that the blending should occur with "the stacking context that contains
+the element" (actually, it's even more complicated---earlier sibling stacking
+contexts also blend, which is why the blue and orange rectangles in the example
+above blend to pink). Now that you know how saving and resoring canvases work,
+you can see why it is defined this way. This also explains why I had to put an
+explicit white background on the `<html>` element, because that element always
 induces a [stacking context][stacking-context] in a real browser.
 
 Most stacking contexts on the web don't actually have any non-normal blend modes
