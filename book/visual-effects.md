@@ -1070,25 +1070,30 @@ def apply_blend(blend_mode, source_color_channel,
 ```
 
 These are specified with the `mix-blend-mode` CSS property. Let's add support
-for [multiply][mbm-mult] and [difference][mbm-diff] to our browser. Here
-is an example of how the result should look:
+for [multiply][mbm-mult] and [difference][mbm-diff] to our browser. Let's modify
+the previous example to see how it will look:[^isolation]
 
     <style>
-        div { width:100px; height:100px; position:relative }
+        html { background-color: white }
+        div { width:100px; height:100px }
     </style>
-    <div style="background-color:white;position:relative;isolation:isolate">
-        <div style="background-color:lightblue"></div>
-        <div style="background-color:orange;left:50px;top:-25px"></div>
-        <div style="background-color:blue;left:100px;top:-50px"></div>
-    </div>
+    <div style="background-color:lightblue"></div>
+    <div style="background-color:orange;left:50px;top:-25px"></div>
+    <div style="background-color:blue;left:100px;top:-50px"></div>
 
 This will look like:
 
-<div style="background-color:white;position:relative;isolation:isolate">
+<style>
+    html { background-color: white }
+</style>
 <div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
 <div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px;mix-blend-mode:multiply"></div>
 <div style="width:100px;height:100px; position:relative;background-color:blue;left:100px;top:-50px;mix-blend-mode:difference"></div>
-</div>
+
+[^isolation]: Here I had to explicitly set a background color of white on the
+`<html>` element, even thoiugh web pages have a default white background. This
+is because `mix-blend-mode` is defined in terms of stacking contexts (see below
+for more on that topic).
 
 Implementing these blend modes in our browser will be very easy, because Skia
 supports these blend mode natively. It's as simple as parsing the property and
@@ -1120,6 +1125,43 @@ def paint_visual_effects(node, display_list, rect):
 
 [mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
 [mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
+
+::: {.further}
+CSS has a concept that is similar in many ways to Skia's nexted canvases,
+called a *stacking context*. If an element *induces a stacking context*,
+it means that that element and its descendants (up to any descendant that
+itself induces a stacking context) paint together into one contiguous group.
+That means a browser can paint each stacking context into its own
+canvas, and composite & blend those canvses together in a hierarchical
+manner (hierarchical in the same way we've been using `saveLayer` and
+`restore` in this capter) in order to generate pixels on the screen.
+
+The `mix-blend-mode` CSS property's [definition][mix-blend-mode-def] actually
+says that the blending should occur "the stacking context that contains the
+element". Now that you've seen how saving and resoring canvases work, you can
+see why it is defined this way. This also explains why I had to put an explicit
+white background on the `<html>` element, because that element always
+induces a [stacking context][stacking-context].
+
+Most stacking contexts on the web don't actually have any non-normal blend modes
+or other complex visual effects. In those cases, these stacking contexts don't
+actually require their own canvases, and real browsers take advantage of this
+to reuse canvases thereby save time and memory. In these cases, the above
+definition for properties like `mix-blend-mode` are therefore overly strict.
+However, there is a tradeoff betweeen memory and speed for complex
+visual effects and animations in general, having to do with maximal use of
+the GPU---sometimes browsers allocate extra GPU canvases on purpose to speed up
+content, and sometimes they do it because it's necessary to perform multiple
+execution passes on the GPU for complex visual effects.
+
+There is now a [backdrop root][backdrop-root] concept for some features that
+generalizes beyond stacking contexts, but takes into account the need for
+performant use of GPUs.
+:::
+
+[mix-blend-mode-def]: https://drafts.fxtf.org/compositing-1/#propdef-mix-blend-mode
+[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+[backdrop-root]: https://drafts.fxtf.org/filter-effects-2/#BackdropRoot
 
 Non-rectangular clips
 =====================
