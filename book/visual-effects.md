@@ -831,7 +831,7 @@ easier to understand. For example, if you can see some of the content underneath
 an overlay, you know that conceptually it's there and somehow you should be
 able to make the site show it.
 
-We can easily implement that with `opacity`, a CSS property that takes a valuep
+We can easily implement that with `opacity`, a CSS property that takes a value
 from 0 to 1, 0 being completely invisible (like a window in a house) to
 completely opaque (the wall next to the window). After adding opacity, our
 example looks like:
@@ -1477,10 +1477,8 @@ Exercises
  with the same z-index paint in depth-first order. Elements with no `z-index`
  specified paint at the same time as z-index 0. And lastly, `z-index` only
  applies to elements that have a `position` value other than the default
- (meaning `relative`, for our browser's partial implementation).Implement this
- CSS property.
-
-[^nested-z-index]: You don't need to add support for nested z-index (an elemnet
+ (meaning `relative`, for our browser's partial implementation). Implement this
+ CSS property. You don't need to add support for nested z-index (an element
 with z-index that has an ancestor also witih z-index), unless you do the next
 exercise.
 
