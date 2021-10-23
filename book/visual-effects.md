@@ -736,7 +736,6 @@ Like this:
 <div style="width:100px; height:100px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
 </div>
 
-
 The `ClipRect` class looks like this:
 
 ``` {.python}
@@ -1212,6 +1211,18 @@ percentage and defines the radius of the circle. The percentage is calibrated
 so that if the layout object was a perfect square, a 100% circle would inscribe
 the bounds of the square.
 
+Let's apply a circular mask to our image example:
+
+    <div style="width:191px; height:191px;
+        clip-path:circle(50%);background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+
+Which paints like this:
+
+<div style="width:191px; height:191px;clip-path:circle(50%);background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+</div>
+
 Implementing circular clips is once again easy with Skia in our back pocket.
 We just parse the `clip-path` CSS property:
 
@@ -1341,6 +1352,19 @@ actually), there is a special kind of mask that is very common: rounded
 corners. Now that we know how to implement masks, this one is also easy to
 add to our browser. Because it's so common in fact, Skia has special-purpose
 methods to draw rounded corners: `clipRRect`.
+
+Rounded corners are specified in CSS via `border-radius`. Example
+
+    <div style="width:191px; height:191px;
+        border-radius: 20px;background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+
+Which paints like this:
+
+<div style="width:191px; height:191px;border-radius:20px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+</div>
+
 
 This call will go in `paint_visual_effects`:
 
