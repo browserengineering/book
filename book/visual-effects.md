@@ -1174,8 +1174,6 @@ performant use of GPUs.
 [mix-blend-mode-def]: https://drafts.fxtf.org/compositing-1/#propdef-mix-blend-mode
 [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 [backdrop-root]: https://drafts.fxtf.org/filter-effects-2/#BackdropRoot
-=======
->>>>>>> b1b4015eb736c4a56fa7e358ddbf7b25d9346e56
 
 Non-rectangular clips
 =====================
