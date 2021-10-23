@@ -1480,10 +1480,10 @@ Exercises
  (meaning `relative`, for our browser's partial implementation). Implement this
  CSS property. You don't need to add support for nested z-index (an element
 with z-index that has an ancestor also witih z-index), unless you do the next
-exercise.
+exercise also.
 
 *Z-order stacking contexts*: (this exercise builds on z-index) A
-stacking-context is a painting feature allowing^[Or
+stacking context is a painting feature allowing^[Or
 forcing, depending on your perspective...] web pages to specify groups of
 elements that paint contiguously. Because they paint continguously, it won't
 be possible for `z-index` specified on other elements not in the group to
