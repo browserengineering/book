@@ -1129,19 +1129,19 @@ def paint_visual_effects(node, display_list, rect):
 ::: {.further}
 CSS has a concept that is similar in many ways to Skia's nexted canvases,
 called a *stacking context*. If an element *induces a stacking context*,
-it means that that element and its descendants (up to any descendant that
-itself induces a stacking context) paint together into one contiguous group.
+it means that that element and its descendants (up to any descendants that
+themselves induce a stacking contexts) paint together into one contiguous group.
 That means a browser can paint each stacking context into its own
 canvas, and composite & blend those canvses together in a hierarchical
 manner (hierarchical in the same way we've been using `saveLayer` and
 `restore` in this capter) in order to generate pixels on the screen.
 
 The `mix-blend-mode` CSS property's [definition][mix-blend-mode-def] actually
-says that the blending should occur "the stacking context that contains the
-element". Now that you've seen how saving and resoring canvases work, you can
+says that the blending should occur with "the stacking context that contains the
+element". Now that you know how saving and resoring canvases work, you can
 see why it is defined this way. This also explains why I had to put an explicit
 white background on the `<html>` element, because that element always
-induces a [stacking context][stacking-context].
+induces a [stacking context][stacking-context] in a real browser.
 
 Most stacking contexts on the web don't actually have any non-normal blend modes
 or other complex visual effects. In those cases, these stacking contexts don't
