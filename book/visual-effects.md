@@ -1505,7 +1505,7 @@ its parent stacking context.
 
 *Filters* The `filter` CSS property allows specifying various kinds of more
  [complex effects][filter-css], such as grayscale or blur. Try to implement as
- many of these as you can. A number of them (including blur and drop shadow) do
+ many of these as you can. A number of them (including blur and drop shadow)
  have built-in support in Skia.
 
 *Overflow clipping*: As mentioned at the end of the section introducing the
