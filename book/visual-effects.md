@@ -1376,7 +1376,6 @@ acceleration.
 
 :::
 
-
 Transforms
 ==========
 
@@ -1474,34 +1473,56 @@ Exercises
 
 *z-index*: Right now, the order of paint is a depth-first traversal of the
  layout tree. By using the `z-index` CSS property, pages can change that order.
- An element with lower z-index than another one paints before it. Elements with
- the same z-index paint in depth-first order. Elements with no z-index
- specified paint at the same time as z-index 0. Implement this CSS property.
- [^nested-z-index]
+ An element with lower `z-index` than another one paints before it. Elements
+ with the same z-index paint in depth-first order. Elements with no `z-index`
+ specified paint at the same time as z-index 0. And lastly, `z-index` only
+ applies to elements that have a `position` value other than the default
+ (meaning `relative`, for our browser's partial implementation). Implement this
+ CSS property. You don't need to add support for nested z-index (an element
+with z-index that has an ancestor also witih z-index), unless you do the next
+exercise also.
 
- [^nested-z-index]: You don't need to add support for nested z-index (an
- elemnet with z-index that has an ancestor also witih z-index). In order
- to do that properly, you'd need to add support for
- [stacking contexts][stacking-context] to our browser. In addition, the true
- paint order depends not only on z-index but also on `position`, and is
- broken into multiple phases. See [here][elaborate] for the gory details.
+*Z-order stacking contexts*: (this exercise builds on z-index) A
+stacking context is a painting feature allowing^[Or
+forcing, depending on your perspective...] web pages to specify groups of
+elements that paint contiguously. Because they paint continguously, it won't
+be possible for `z-index` specified on other elements not in the group to
+paint somewhere within the group---only before the entire group or after it.
+An element induces a stacking context if one or more of the conditions listed
+[here][stacking-context] apply to it. Any descendants (up to stacking
+context-inducing descendants) with `z-index` have paint order relative to each 
+other, but not elements not in the stacking context. The stacking
+context-inducing element itself may have a `z-index`, but that only changes
+the paint order of the whole stacking context relative to other contributors to
+its parent stacking context.
+
+(Note: in addition, the true paint order for stacking contexts is quite
+[elaborate][elaborate]. You don't need to implement all those details.)
 
  [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
  [elaborate]: https://www.w3.org/TR/CSS2/zindex.html
 
+*Filters* The `filter` CSS property allows specifying various kinds of more
+ [complex effects][filter-css], such as grayscale or blur. Try to implement as
+ many of these as you can. A number of them (including blur and drop shadow)
+ have built-in support in Skia.
+
 *Overflow clipping*: As mentioned at the end of the section introducing the
 `width` and `height` CSS properties, sizing boxes with CSS means that the
 contents of a layout object can exceed its size. Implement the `clip` value of
-the `overflow` CSS property+value. When set, this should clip out the parts
-of the content that exceed the box size of the element .
+the `overflow` CSS property. When set, this should clip out the parts
+of the content that exceed the box size of the element.
 
-*Overflow scrolling*: Implement a very basic version of the `overflow:scroll` 
-property+value. (This exercise builds on the previous one). You'll need to
-have a way to actually process input to cause scrolling, and also keep
-track of the total height of the [*layout overflow*][overflow-doc]. One
-way to allow the user to scroll is to use built-in arrow key handlers
-that apply when the `overflow:scroll` element has focus.
+[filter-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
+
+*Overflow scrolling*: (this exercise builds on overflow clipping) Implement a
+ very basic version of the `scroll` value of the `overflow` CSS property.
+ You'll need to have a way to actually process input to cause scrolling, and
+ also keep track of the total height (and width, for horizontal scrolling!) of
+ the [*layout overflow*][overflow-doc]. (Hint: one way to allow the user to
+ scroll is to use built-in arrow key handlers that apply when the
+ `overflow:scroll` element has focus.)
 
 *Image elements*: the `<img>` element is a way (the original way, back in the
 90s, in fact) to draw an image to the screen. The image URL is specified
