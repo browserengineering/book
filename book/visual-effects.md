@@ -833,10 +833,30 @@ able to make the site show it.
 
 We can easily implement that with `opacity`, a CSS property that takes a value
 from 0 to 1, 0 being completely invisible (like a window in a house) to
-completely opaque (the wall next to the window). The way to do this in Skia
-is to create a new canvas, draw the overlay content into it, and then *blend*
-that canvas into the previous canvas. It's a little complicated to think
-about without first seeing it in action, so let's do that.
+completely opaque (the wall next to the window). After adding opacity, our
+example looks like:
+
+    <style>
+        div { width:100px; height:100px; position:relative }
+    </style>
+    <div style="background-color:lightblue">
+    </div>
+    <div style="background-color:orange;left:50px;top:-25px">
+    </div>
+    <div style="background-color:blue;left:100px;top:-50px; opacity: 0.5">
+    </div>
+
+<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
+<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px"></div>
+<div style="width:100px;height:100px;position:relative;background-color:blue;left:100px;top:-50px;opacity: 0.5"></div>
+
+Note that you can now see part of the orange square through the blue one, and
+part of the white background as well.
+
+The way to do this in Skia is to create a new canvas, draw the overlay content
+into it, and then *blend* that canvas into the previous canvas. It's a little
+complicated to think about without first seeing it in action, so let's do
+that.
 
 Because we'll be adding things other than opacity soon, let's put opacity
 into a new function called `paint_visual_effects` that will be called from
@@ -1096,7 +1116,7 @@ is because `mix-blend-mode` is defined in terms of stacking contexts (see below
 for more on that topic).
 
 Here you can see that the intersection of the orange and blue
-[^note-yellow] rectangle renders as pink. Let's work through the math to see
+[^note-yellow] square renders as pink. Let's work through the math to see
 why. Here we are blending a blue color with orange, via the "difference" blend
 mode. Blue has (red, green, blue) color channels of (0, 0, 1.0), and orange
 has (1.0, 0.65, 0.0). The blended result will then be (1.0 - 0, 0.65 - 0, 1.0 -
@@ -1149,7 +1169,7 @@ manner (hierarchical in the same way we've been using `saveLayer` and
 The `mix-blend-mode` CSS property's [definition][mix-blend-mode-def] actually
 says that the blending should occur with "the stacking context that contains
 the element" (actually, it's even more complicated---earlier sibling stacking
-contexts also blend, which is why the blue and orange rectangles in the example
+contexts also blend, which is why the blue and orange squares in the example
 above blend to pink). Now that you know how saving and resoring canvases work,
 you can see why it is defined this way. This also explains why I had to put an
 explicit white background on the `<html>` element, because that element always
