@@ -1410,7 +1410,7 @@ due to the very limited memory, and lack of floating-point arithmetic, of early
 personal computers (here's some [example source code][quickdraw] used on early
 Macintosh computers to implement this feature).
 
-Later on, floating-point, and then over time GPUs, because standard equipment on
+Later on, floating-point coprocessors, and then over time GPUs, because standard equipment on
 new computers. This made it much easier to implement fast rounded corners.
 However, the `border-radius` CSS property didn't appear in browsers until
 around 2010. But that didn't stop web developers from putting rounded corners
