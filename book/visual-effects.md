@@ -1405,7 +1405,7 @@ expose whether they are used to the caller.
 Rounded corners have an interesting history in computing. Their
 [inclusion][mac-story] into the original Macintosh is a fun story to read, and
 also demonstrates how computers often end up echoing reality. It also shows
-just how hard it was to implement what seem to us today to be simple features,
+just how hard it was to implement features that appear simple to us today,
 due to the very limited memory, and lack of floating-point arithmetic, of early
 personal computers (here's some [example source code][quickdraw] used on early
 Macintosh computers to implement this feature).
