@@ -1098,9 +1098,8 @@ browsers to implement.]
  as a style sheet.[^ordered] Inline style sheets are useful for
  creating self-contained example web pages, but more importantly are a way that
  web sites can load faster by reducing the number of round-trip
- network requests to the server. Since no angle brackets are allowed in a style
- sheet, you can implement this feature by consuming input charactures after
- `<style>` up to the next `<` character.
+ network requests to the server. Since stylesheets typically don't contain left angle
+ brackets, you can implement this feature without modifying the HTML parser.
 
 [^ordered]: Inline style sheets should apply after all external
 style sheets in the cascade, and apply in order of their position in the HTML.
