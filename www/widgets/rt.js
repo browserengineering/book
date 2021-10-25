@@ -31,6 +31,15 @@ rt_constants.ZOOM = 1.0;
 rt_constants.TKELEMENT = null;
 rt_constants.URLS = {};
 
+class WidgetXHRError extends Error {
+    constructor(hostname) {
+        super("This widget simulator cannot access " + hostname + " due to browser security limitations," +
+              "but the underlying Python code should work correctly.");
+        this.name = "WidgetXHRError";
+        this.description = "This in-browser";
+    }
+}
+
 class lib {
 
 static socket(URLS) {
@@ -58,7 +67,12 @@ static socket(URLS) {
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            if (typeof rt_constants.URLS[this.url] == "undefined" && this.host == "browser.engineering") {
+            if (rt_constants.URLS[this.url]) {
+                var response = rt_constants.URLS[this.urls];
+                this.output = typeof response === "function" ? response() : response;
+                this.idx = 0;
+                this.closed = false;
+            } else if (this.host == "browser.engineering") {
                 let response = await fetch(path);
                 this.output = "HTTP/1.0 " + response.status + " " + response.statusText + "\r\n";
                 for (let [header, value] of response.headers.entries()) {
@@ -70,16 +84,9 @@ static socket(URLS) {
                 this.idx = 0;
                 return this;
             } else {
-                this.output = rt_constants.URLS[this.url];
-                if (!this.output) {
-                    throw Error("Unknown URL " + this.url);               
-                } else if (typeof this.output === "function") {
-                    this.output = this.output();
-                }
-                this.idx = 0;
-                this.closed = false;
-                return this;
+                throw new WidgetXHRError(this.hostname);               
             }
+            return this;
         }
         readline() {
             console.assert(!this.closed, "Attempt to read from a closed socket")
