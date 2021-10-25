@@ -1402,20 +1402,20 @@ expose whether they are used to the caller.
 
 ::: {.further}
 
-Rounded corners have an interesting history in computing. Their
-[inclusion][mac-story] into the original Macintosh is a fun story to read, and
-also demonstrates how computers often end up echoing reality. It also shows
-just how hard it was to implement features that appear simple to us today,
-due to the very limited memory, and lack of floating-point arithmetic, of early
+Rounded corners have an interesting history in computing. Their[inclusion]
+[mac-story] into the original Macintosh is a fun story to read, and also
+demonstrates how computers often end up echoing reality. It also shows just how
+hard it was to implement features that appear simple to us today, due to the
+very limited memory, and lack of hardware floating-point arithmetic, of early
 personal computers (here's some [example source code][quickdraw] used on early
 Macintosh computers to implement this feature).
 
-Later on, floating-point coprocessors, and then over time GPUs, because standard equipment on
-new computers. This made it much easier to implement fast rounded corners.
-However, the `border-radius` CSS property didn't appear in browsers until
-around 2010. But that didn't stop web developers from putting rounded corners
-on their sites! There are a number of ways to do it; [this video][rr-video] walks
-through several.
+Later on, floating-point coprocessors, and then over time GPUs, became
+standard equipment on new computers. This made it much easier to implement fast
+rounded corners. Unfortunately, the `border-radius` CSS property didn't appear in
+browsers until around 2010, but that didn't stop web developers from putting
+rounded corners on their sites! There are a number of ways to do it even without
+`border-radius`; [this video][rr-video] walks through several.
 
 It's a good thing `border-radius` is now a fully supported browser feature,
 and not just because it saves developers a lot of time and effort.
@@ -1423,7 +1423,7 @@ More recently, the introduction of complex, mix-and-match, hardware-accelerated
 animations of visual effects, multi-process compositing, and
 [hardware overlays][hardware-overlays] have made the task of rounded corners
 harder---certainly way beyond the ability of web developers to polyfill.
-In today's browsers there is a fast path to clip to rounded corners
+In today's browsers there is a fast path to clip to rounded corners on the GPU
 without using any more memory, but this fast path can fail to apply for
 cases such as hardware video overlays and nested rounded corner clips. With
 a polyfill, the fast path would never occur, and complex visual effects would
