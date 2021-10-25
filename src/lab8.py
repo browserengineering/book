@@ -294,24 +294,26 @@ class Tab:
         self.url = url
         self.history.append(url)
         headers, body = request(url, body)
-        nodes = HTMLParser(body).parse()
+        self.nodes = HTMLParser(body).parse()
 
-        rules = self.default_style_sheet.copy()
+        self.rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
-                 for node in tree_to_list(nodes, [])
+                 for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = request(resolve_url(link, url))
+                header, body = request(resolve_url(link, self.url))
             except:
                 continue
-            rules.extend(CSSParser(body).parse())
-        style(nodes, sorted(rules, key=cascade_priority))
+            self.rules.extend(CSSParser(body).parse())
+        self.render()
 
-        self.document = DocumentLayout(nodes)
+    def render(self):
+        style(self.nodes, sorted(self.rules, key=cascade_priority))
+        self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
         self.document.paint(self.display_list)
@@ -351,6 +353,7 @@ class Tab:
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
                 self.focus = elt
+                self.render()
                 return
             elif elt.tag == "button":
                 while elt:
@@ -380,7 +383,7 @@ class Tab:
     def keypress(self, char):
         if self.focus:
             self.focus.attributes["value"] += char
-        self.document.paint(self.display_list)
+        self.render()
 
     def go_back(self):
         if len(self.history) > 1:

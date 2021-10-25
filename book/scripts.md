@@ -828,49 +828,8 @@ because, while we have changed the HTML tree, we haven't regenerated
 the layout tree or the display list, so the browser is still showing
 the old page.
 
-Right now, the layout tree and display list are computed in `load`,
-but we don't want to reload the whole page; we just want to redo the
-styling, layout, paint and draw phases. Together these are called
-*rendering*.[^why-no-draw] So let's extract these phases into a
- new `Tab` method, `render`:
-
-``` {.python}
-class Tab:
-    def load(self, url, body=None):
-        # ...
-        self.render()
-
-    def render(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
-        self.document.layout()
-        self.display_list = []
-        self.document.paint(self.display_list)
-```
-
-[^why-no-draw]: Why is `Browser.draw` not one of the phases that has to run?
-After all, running `paint` will have no visible effect until `draw` happens.
-It's technically not necessary right now because the only way to cause a script
-to run is loading or event handling, and you'll see that in  all such cases,
-such as `handle_key`, `draw` is called at the end. (Subtleties like this will be
-clarified and made more precise in [Chapter 13](scheduling-and-threading.md).)
-
-For this code to work, you'll also need to change `nodes` and `rules`
-from local variables in the `load` method to new fields on a `Tab`.
-Note that styling moved from `load` to `render`, but downloading the
-style sheets didn't. That's because `innerHTML` created new elements
-that have to be styled, but we don't need to re-download the styles to
-do that; we just need to re-apply the styles we already have.[^update-styles]
-
-[^update-styles]: Actually, using `innerHTML` you could in theory
-    delete existing `link` nodes or create new ones. Real browser
-    respond to this correctly, either removing the rules corresponding
-    to deleted `link` nodes or downloading new style sheets when new
-    `link` nodes are created. This is tricky to get right, so I'm
-    skipping it here.
-
-Now, whenever the page changes, we can update its rendering again by
-calling `render`:[^reflow]
+Whenever the page changes, we need to update its rendering by calling
+`render`:[^reflow]
 
 [^reflow]: Redoing layout for the whole page is often wasteful;
     [Chapter 11](reflow.md) explores more complicated algorithms to
