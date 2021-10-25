@@ -1426,8 +1426,8 @@ harder---certainly way beyond the ability of web developers to polyfill.
 In today's browsers there is a fast path to clip to rounded corners on the GPU
 without using any more memory, but this fast path can fail to apply for
 cases such as hardware video overlays and nested rounded corner clips. With
-a polyfill, the fast path would never occur, and complex visual effects would
-be infeasible.
+a polyfill, the fast path would never occur, and complex visual effects combined
+with rounded corners would be infeasible.
 :::
 
 [mac-story]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
