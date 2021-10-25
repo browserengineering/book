@@ -207,14 +207,24 @@ class CircleMask:
                 self.cx, self.cy - scroll,
                 self.radius, skia.Paint(Color=skia.ColorWHITE))
 
+def center_point(rect):
+    return (rect.left() + (rect.right() - rect.left()) / 2,
+        rect.top() + (rect.bottom() - rect.top()) / 2)
+
 class Rotate:
     def __init__(self, degrees, rect):
         self.degrees = degrees
         self.rect = rect
 
     def execute(self, scroll, rasterizer):
+        paint_rect = skia.Rect.MakeLTRB(
+            self.rect.left(), self.rect.top() - scroll,
+            self.rect.right(), self.rect.bottom() - scroll)
+        (center_x, center_y) = center_point(paint_rect)
         with rasterizer.surface as canvas:
+            canvas.translate(-center_x, -center_y)
             canvas.rotate(self.degrees)
+            canvas.translate(center_x, center_y)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -461,9 +471,8 @@ def paint_clip_path(node, display_list, rect):
             reference_val = \
                 math.sqrt(width * width + 
                     height * height) / math.sqrt(2)
-            center_x = rect.left() + (rect.right() - rect.left()) / 2
-            center_y = rect.top() + (rect.bottom() - rect.top()) / 2
             radius = reference_val * percent / 100
+            (center_x, center_y) = center_point(rect)
             display_list.append(CircleMask(
                 center_x, center_y, radius, rect))
             return 1
@@ -514,7 +523,6 @@ def paint_background(node, display_list, rect):
     if background_image:
         display_list.append(Save(rect))
         display_list.append(ClipRect(rect))
-        print(rect)
         display_list.append(DrawImage(node.background_image,
             rect))
         display_list.append(Restore(rect))

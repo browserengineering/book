@@ -695,7 +695,6 @@ def paint_background(node, display_list, rect):
     if background_image:
         display_list.append(Save(rect))
         display_list.append(ClipRect(rect))
-        print(rect)
         display_list.append(DrawImage(node.background_image,
             rect))
         display_list.append(Restore(rect))
@@ -1236,6 +1235,11 @@ def parse_clip_path(clip_path_str):
 and paint it:
 
 ``` {.python}
+def center_point(rect):
+    return (rect.left() + (rect.right() - rect.left()) / 2,
+        rect.top() + (rect.bottom() - rect.top()) / 2)
+# ...
+
 def paint_clip_path(node, display_list, rect):
     clip_path = node.style.get("clip-path")
     if clip_path:
@@ -1246,9 +1250,8 @@ def paint_clip_path(node, display_list, rect):
             reference_val = \
                 math.sqrt(width * width +
                     height * height) / math.sqrt(2)
-            center_x = rect.left() + (rect.right() - rect.left()) / 2
-            center_y = rect.top() + (rect.bottom() - rect.top()) / 2
             radius = reference_val * percent / 100
+            (center_x, center_y) = center_point(rect)
             display_list.append(CircleMask(
                 center_x, center_y, radius, rect))
             return 1
@@ -1435,50 +1438,68 @@ with rounded corners would be infeasible.
 [hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
 [rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
 
-Transforms
-==========
+2D Transforms
+=============
 
-The last visual effect we'll implement is 2D transforms. In computer
-graphics, a transform is a linear transformation of a point in space, typically
-represented as multiplication of that point by a transformation matrix. The
-same concept exists on the web in the `transform` CSS property. This property
-allows transforming the four points of a rectangular layout object by a
-matrix[^3d-matrix] when drawing to the screen.
+The last visual effect we'll implement is 2D transforms.[^3d-matrix] In computer
+graphics, a linear transform is a transformation of a point in space
+represented by multiplication of the point as a (x,y,z,1) vector by a
+[4x4 matrix][44matrix]. The same concept exists on the web in the `transform`
+CSS property. This property specifies a transform for the contents of a
+layout object when drawing to the screen.
 
-[^3d-matrix]: The matrix can be 3D, but we'll only discuss 2D matrices in this
-chapter. There is a lot more complexity to 3D transforms, having to do with
-the definition of 3D spaces, flatting, backfaces, and plane intersections.
+[44matrix]: https://en.wikipedia.org/wiki/Transformation_matrix
 
-[^except-scrolling]: The only exception is that transform contribute to
-[scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable).
+[^3d-matrix]: 3D is also supported in real browsers , but we'll only discuss 2D
+matrices in this chapter. There is a lot more complexity to 3D transforms
+having to do with the definition of 3D spaces, flatting, backfaces, and plane
+intersections.
+
+[^except-scrolling]: The only exception is that transforms contribute to
+[scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable),
+though we won't implement that here.
 
 By default, the origin of the coordinate space in which the transform applies is
-the center of the layout object's box[^transform-origin], which means that each
-of the four corners will be in a different quadrant of the 2D plane. The
-transform matrix specfied by the `transform` property
-[maps][applying-a-transform] each of the four points to a new 2D location.
-You can also roughly think of it also doing the same for the pixels inside
-the rectangle.[^filter-transform]
+the center of the layout object's box.[^transform-origin] The transform matrix
+specfied by the `transform` property [maps][applying-a-transform] each of the
+four points to a new 2D location. You can also roughly think of it also doing
+the same for the pixels inside the rectangle.[^filter-transform]
 
 [^transform-origin]: As you might expect, there is a CSS property called
 `transform-origin` that allows changing this default.
 
 [applying-a-transform]: https://drafts.csswg.org/css-transforms-1/#transform-rendering
 
-[^filter-transform]: In reality, the method of generating the bitmap transform
-(A) is a nuanced topic. Generating high-quality bitmaps in these situations
-involves a number of considerations, such as bilinear or trilinear filtering,
-and how to handle pixels near the edges.
+[^filter-transform]: In reality, the method of rasterng mapping a canvas across
+a transform is a nuanced topic. Generating high-quality results without visible
+blurring or distortion in these situations involves a number of considerations,
+such as the choice of filtering algorithms, and how to handle pixels near the
+edges. We won't discuss any of that here.
 
 Transforms are almost entirely a visual effect, and do not affect layout.
-[^except-scrolling] As you would expect, this means we can implement
-2D transforms with a simple addition to `paint_visual_effects`. Let's do it
-now. We'll implement just a syntax for simple rotation about the Z axis
-(which means that the element should rotate on the screen; the Z axis
-is the one that points from your eye to the screen; the X and Y axes
+[^except-scrolling] As you would expect, this means we can implement 2D
+transforms with a simple addition to `paint_visual_effects`. Let's do it now.
+We'll implement just a `rotateZ(XXdeg)` syntax for simple rotation about the Z
+axis by XX degrees (which means that the element should rotate on the screen;
+the Z axis is the one that points from your eye to the screen; the X and Y axes
 are the same ones we've been working with to this point for layout and paint).
 
-So we'll need to parse it:
+This example:
+
+    <div style="width:191px; height:191px;
+        transform:rotateZ(10deg);background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+
+renders like this:
+
+<div style="width:191px; height:191px;
+        transform:rotateZ(10deg);background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
+</div>
+
+
+First let's parse the `transform` property:
 
 ``` {.python}
 def parse_rotation_transform(transform_str):
@@ -1509,9 +1530,18 @@ class Rotate:
         self.rect = rect
 
     def execute(self, scroll, rasterizer):
+        paint_rect = skia.Rect.MakeLTRB(
+            self.rect.left(), self.rect.top() - scroll,
+            self.rect.right(), self.rect.bottom() - scroll)
+        (center_x, center_y) = center_point(paint_rect)
         with rasterizer.surface as canvas:
+            canvas.translate(-center_x, -center_y)
             canvas.rotate(self.degrees)
+            canvas.translate(center_x, center_y)
 ```
+
+Note how we first translated to put the center of the layout object at the
+origin before rotating, then translated back.
 
 Summary
 =======
@@ -1587,3 +1617,8 @@ of the content that exceed the box size of the element.
 by the `src` attribute, it has inline layout, and is by default sized to the
 intrinsic size of the image, which is its bitmap dimensions. Before an image
 has loaded, it has 0x0 intrinsic sizing. Implement this element.
+
+*Transform origin* Add support for some of the keywords of the
+[`transform-origin`][transform-origin] CSS property.
+
+[transform-origin]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform-origin
