@@ -1415,10 +1415,10 @@ acceleration.
 
 The last visual effect we'll implement is 2D transforms.[^3d-matrix] In computer
 graphics, a linear transform is a transformation of a point in space
-represented by multiplication by a [4x4 matrix][44matrix]. The same concept
-exists on the web in the `transform` CSS property. This property allows
-transforming the four corners of a layout object when
-drawing to the screen.
+represented by multiplication of the point as a (x,y,z,1) vector by a
+[4x4 matrix][44matrix]. The same concept exists on the web in the `transform`
+CSS property. This property specifies a transform for the contents of a
+layout object when drawing to the screen.
 
 [44matrix]: https://en.wikipedia.org/wiki/Transformation_matrix
 
