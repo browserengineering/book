@@ -62,6 +62,7 @@ backup:
 	rsync server:/home/www/browseng/db.pickle infra/db.$(shell date +%Y-%m-%d).pickle
 
 test:
+	set -e; \
 	for test in ${TESTS}; do \
 		(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest $$test); \
 	done
