@@ -31,7 +31,7 @@ class JSContext:
             self.querySelectorAll)
         self.interp.export_function("getAttribute",
             self.getAttribute)
-        self.interp.export_function("innerHTML", self.innerHTML_set)
+        self.interp.export_function("innerHTML_set", self.innerHTML_set)
         with open("runtime9.js") as f:
             self.interp.evaljs(f.read())
 
