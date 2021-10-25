@@ -206,7 +206,6 @@ class CircleMask:
             canvas.drawCircle(
                 self.cx, self.cy - scroll,
                 self.radius, skia.Paint(Color=skia.ColorWHITE))
-            canvas.restore()
 
 class Rotate:
     def __init__(self, degrees, rect):
@@ -422,6 +421,8 @@ class InputLayout:
             paint_x, paint_y, paint_x + self.width,
             paint_y + self.height)
 
+        restore_count = paint_visual_effects(self.node, display_list, rect)
+
         paint_background(self.node, display_list, rect)
 
         if self.node.tag == "input":
@@ -432,6 +433,12 @@ class InputLayout:
         color = self.node.style["color"]
         display_list.append(
             DrawText(self.x, self.y, text, self.font, color))
+
+        restore_count = restore_count + \
+            paint_clip_path(self.node, display_list, rect)
+
+        for i in range(0, restore_count):
+            display_list.append(Restore(rect))
 
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
@@ -451,12 +458,16 @@ def paint_clip_path(node, display_list, rect):
         if percent:
             width = rect.right() - rect.left()
             height = rect.bottom() - rect.top()
-            reference_val = math.sqrt(width * width + height * height) / math.sqrt(2)
+            reference_val = \
+                math.sqrt(width * width + 
+                    height * height) / math.sqrt(2)
             center_x = rect.left() + (rect.right() - rect.left()) / 2
             center_y = rect.top() + (rect.bottom() - rect.top()) / 2
             radius = reference_val * percent / 100
             display_list.append(CircleMask(
                 center_x, center_y, radius, rect))
+            return 1
+    return 0
 
 def paint_visual_effects(node, display_list, rect):
     restore_count = 0
@@ -476,8 +487,6 @@ def paint_visual_effects(node, display_list, rect):
     opacity = float(node.style.get("opacity", "1.0"))
     if opacity != 1.0 or blend_mode_str:
         paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
-#            ImageFilter=skia.DropShadowImageFilter.Make(5, 5, 3, 3, skia.ColorBLACK,
-#                skia.DropShadowImageFilter.kDrawShadowAndForeground_ShadowMode))
         display_list.append(SaveLayer(paint, rect))
         restore_count = restore_count + 1
 
@@ -578,7 +587,8 @@ class BlockLayout:
         for child in self.children:
             child.paint(display_list)
 
-        paint_clip_path(self.node, display_list, rect)
+        restore_count = restore_count + \
+            paint_clip_path(self.node, display_list, rect)
 
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
@@ -684,9 +694,11 @@ class InlineLayout:
         for child in self.children:
             child.paint(display_list)
 
+        restore_count = restore_count + \
+            paint_clip_path(self.node, display_list, rect)
+
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
-
 
     def __repr__(self):
         return "InlineLayout(x={}, y={}, width={}, height={})".format(

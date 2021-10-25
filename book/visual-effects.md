@@ -313,10 +313,10 @@ a rectangle of a given color on the screen. That is accomplished with the
 
 For example, this HTML:
 
-<textarea style="width: 100%; height: 75px; border: 0">
-    <div style="background-color:lightblue;width:50px; height:100px"></div>
-    <div style="background-color:orange;width:50px; height:100px"></div>
-</textarea>
+    <div style="background-color:lightblue;width:50px; height:100px">
+    </div>
+    <div style="background-color:orange;width:50px; height:100px">
+    </div>
 
 should render into a light blue 50x100 rectangle, with another orange one below
 it:
@@ -400,11 +400,11 @@ purely paint-time property that adjusts the display list.[^posrel-caveat2]
 
 Here's an example:
 
-<textarea style="width: 100%; height: 100px; border: 0">
-    <div style="background-color:lightblue;width:50px; height:100px"></div>
+    <div style="background-color:lightblue;width:50px; height:100px">
+    </div>
     <div style="background-color:orange;width:50px; height:100px;
-                position:relative;top:-50px;left:50px"></div>
-</textarea>
+                position:relative;top:-50px;left:50px">
+    </div>
 
 This renders into a light blue 50x100 rectangle, with another orange one below
 it, but this time they overlap.
@@ -492,11 +492,9 @@ URL.
 
 Here is an example:
 
-<textarea style="width: 100%; height: 100px; border: 0">
-    <div style="width:194px; height:194px;
-                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+    <div style="width:194px; height:194px;background-image:
+            url('https://pavpanchekha.com/im/me-square.jpg')">
     </div>
-</textarea>
 
 It renders like this:[^exact-size]
 
@@ -729,19 +727,14 @@ restored.[^not-savelayer]
 
 This example should clip out parts of the image:
 
-<textarea style="width: 100%; height: 100px; border: 0">
-    <div style="width:100px; height:100px;
-                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+    <div style="width:100px; height:100px;background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
     </div>
-</textarea>
 
 Like this:
 
-<div style="width:100px; height:100px;
-                background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+<div style="width:100px; height:100px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
 </div>
-
-
 
 The `ClipRect` class looks like this:
 
@@ -801,21 +794,25 @@ Opacity and Compositing
 =======================
 
 With sizing and position, we also now have the ability to make content overlap!
-[^overlap-new]. Consider this example of CSS & HTML:
+[^overlap-new]. Consider this example of CSS & HTML:[^inline-stylesheet]
 
-<textarea style="width: 300px; height: 150px">
-div { width:100px; height:100px; position:relative }
-</textarea>
-<textarea style="width: 300px; height: 150px">
+    <style>
+        div { width:100px; height:100px; position:relative }
+    </style>
     <div style="background-color:lightblue"></div>
     <div style="background-color:orange;left:50px;top:-25px"></div>
     <div style="background-color:blue;left:100px;top:-50px"></div>
-</textarea>
+
+[^inline-stylesheet]: Here I've used an inline style sheet. If you haven't
+completed the inline style sheet exercise for chapter 6, you'll need to
+convert this into a style sheet file in order to load it in your browser.
+
 
 Its rendering looks like this:
 
-<iframe class=widget style="height:316px" src="widgets/lab12-example-overlap.html">
-</iframe>
+<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
+<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px"></div>
+<div style="width:100px;height:100px;position:relative;background-color:blue;left:100px;top:-50px"></div>
 
 [^overlap-new]: That's right, it was not previously possible to do this in
 our browser. Avoiding overlap is generally good thing for text-based layouts,
@@ -835,10 +832,30 @@ able to make the site show it.
 
 We can easily implement that with `opacity`, a CSS property that takes a value
 from 0 to 1, 0 being completely invisible (like a window in a house) to
-completely opaque (the wall next to the window). The way to do this in Skia
-is to create a new canvas, draw the overlay content into it, and then *blend*
-that canvas into the previous canvas. It's a little complicated to think
-about without first seeing it in action, so let's do that.
+completely opaque (the wall next to the window). After adding opacity, our
+example looks like:
+
+    <style>
+        div { width:100px; height:100px; position:relative }
+    </style>
+    <div style="background-color:lightblue">
+    </div>
+    <div style="background-color:orange;left:50px;top:-25px">
+    </div>
+    <div style="background-color:blue;left:100px;top:-50px; opacity: 0.5">
+    </div>
+
+<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
+<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px"></div>
+<div style="width:100px;height:100px;position:relative;background-color:blue;left:100px;top:-50px;opacity: 0.5"></div>
+
+Note that you can now see part of the orange square through the blue one, and
+part of the white background as well.
+
+The way to do this in Skia is to create a new canvas, draw the overlay content
+into it, and then *blend* that canvas into the previous canvas. It's a little
+complicated to think about without first seeing it in action, so let's do
+that.
 
 Because we'll be adding things other than opacity soon, let's put opacity
 into a new function called `paint_visual_effects` that will be called from
@@ -857,6 +874,31 @@ def paint_visual_effects(node, display_list, rect):
 
     return restore_count
 ```
+
+`BlockLayout`, `InlineLayout` and `InputLayout` all need to call
+`paint_visual_effects`. Here is `BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+        restore_count = paint_visual_effects(
+            self.node, display_list, rect)
+
+        paint_background(self.node, display_list, rect)
+
+        for child in self.children:
+            child.paint(display_list)
+        # ...
+        for i in range(0, restore_count):
+            display_list.append(Restore(rect))
+```
+
+What this code does is this: if the layout object needs to be painted with
+opacity, create a new canvas that draws the layout object and its descendants,
+and then blend that canvas into the previous canvas with the provided opacity.
+
 
 This makes use of two new display list types, `SaveLayer` and `Restore`. Here
 is how they are implemented:
@@ -882,30 +924,6 @@ class Restore:
             canvas.restore()
 ```
 
-Finally, `BlockLayout`, `InlineLayout` and `InputLayout` all need to call
-`paint_visual_effects`. Here is `BlockLayout`:
-
-``` {.python}
-class BlockLayout:
-    # ...
-    def paint(self, display_list):
-        # ...
-        restore_count = paint_visual_effects(
-            self.node, display_list, rect)
-
-        paint_background(self.node, display_list, rect)
-
-        for child in self.children:
-            child.paint(display_list)
-        # ...
-        for i in range(0, restore_count):
-            display_list.append(Restore(rect))
-```
-
-What this code does is this: if the layout object needs to be painted with
-opacity, create a new canvas that draws the layout object and its descendants,
-and then blend that canvas into the previous canvas with the provided opacity.
-
 To understand why `canvas.saveLayer()` is the command that does this, and what
 it does under the hood, the first thing you have to know that Skia thinks of a
 drawing as a stack of layers (like the layers of a cake). You can, at any time,
@@ -924,19 +942,22 @@ variable of the calling code.
 
 Let's see how opacity and compositing actually work.
 
-First, opacity: let's assume that pixels are represented in a `skia.Color4f`,
-which has fields `fA` (floating-point alpha), and the three color channels:
-`fR`, `fG`, and `fB`. Alpha indicates the amount of transparency---an alpha of
-1 means fully opaque, and 0 means fully transparent, just like for
-`opacity`.[^alpha-vs-opacity]
+First, opacity: this simply multiplies the alpha channel by the given opacity.
+
+Let's assume that pixels are represented in a `skia.Color4f`, which has three
+color properties `fR`, `fG`, and `fB` (floating-point red/green/blue, between 0
+and 1), and one alpha property `fA` (floating-point alpha). Alpha indicates the
+amount of transparency---an alpha of 1 means fully opaque, and 0 means fully
+transparent, just like for `opacity`.[^alpha-vs-opacity]
 
 [^alpha-vs-opacity]: The difference between opacity and alpha is often
 confusing. To remember the difference, think of opacity as a visual effect
-*applied to* content, but alpha as a *part of* content. (In fact, whether there
+<span style="font-style: normal">applied to</span> content, but alpha as a
+<span style="font-style: normal">part of</span> content. In fact, whether there
 is an alpha channel in a color representation at all is often an implementation
-choice---n alternative to having an alpha channel is to multiply the other
-color channels by the alpha value, which is called a *premultiplied*
-representation of the color.)
+choice---sometimes graphics libraries instead multiply the other color channels
+by the alpha amount, which is called a <span style="font-style:
+normal">premultiplied</span> representation of the color.
 
 ``` {.python.example}
 # Returns |color| with opacity applied. |color| is a skia.Color4f.
@@ -954,12 +975,13 @@ canvas. Let's call the popped canvas the *source canvas* and the restored canvas
 *backdrop canvas*. Likewise each pixel in the popped canvas is a *source pixel*
 and each pixel in the restored canvas is a *backdrop pixel*.
 
-The default mode is called *simple alpha compositing* or
+The default compositing mode for the web is called *simple alpha compositing* or
 *source-over compositing*.[^other-compositing]
-In Python the code looks like this:[^simple-alpha]
+In Python, the code to implement it looks like this:[^simple-alpha]
 
 ``` {.python.example}
-# Composites |source_color| into |backdrop_color|.
+# Composites |source_color| into |backdrop_color| with simple
+# alpha compositing.
 # Each of the inputs are skia.Color4f objects.
 def composite(source_color, backdrop_color):
     (source_r, source_g, source_b, source_a) = \
@@ -969,7 +991,7 @@ def composite(source_color, backdrop_color):
     return skia.Color4f(
         backdrop_r * (1-source_a) * backdrop_a + source_r * source_a,
         backdrop_g * (1-source_a) * backdrop_a + source_g * source_a,
-        backdrop_rb * (1-source_a) * backdrop_a + source_b * source_a,
+        backdrop_b * (1-source_a) * backdrop_a + source_b * source_a,
         1 - (1 - source_a) * (1 - backdrop_a))
 ```
 
@@ -978,7 +1000,7 @@ def composite(source_color, backdrop_color):
 Putting it all together, if we were to implement the `Restore` command
 ourselves from one canvas to another, we could write the following
 (pretend we have
-a `getPixel` method that returns a `skia.Color4f` and a `setPixel` that
+a `getPixel` method that returns a `skia.Color4f` and a `setPixel` one that
 sets a pixel color):[^real-life-reading-pixels]
 
 ``` {.python.example}
@@ -992,11 +1014,11 @@ def restore(source_canvas, backdrop_canvas, width, height, opacity):
                     backdrop_canvas.getPixel(x, y)))
 ```
 
-[^real-life-reading-pixels]: In real browsers it's a bad idea to read
-canvas pixels into memory and manipulate them like this, because it would be
-very slow. So libraries such as Skia don't make it convenient to do so.
-(Skia canvases do have `peekPixels` and `readPixels` methods that
-are sometimes used, but not for this use case).
+[^real-life-reading-pixels]: In real browsers it's a bad idea to read canvas
+pixels into memory and manipulate them like this, because it would be very
+slow. Instead, it should be done on the GPU. So libraries such as Skia don't
+make it convenient to do so. (Skia canvases do have `peekPixels` and
+`readPixels` methods that are sometimes used, but not for this use case).
 
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that
@@ -1015,7 +1037,8 @@ backdrop colors. The mixed result is then composited with the backdrop pixel.
 The changes to our Python code for `restore` looks like this:
 
 ``` {.python.example}
-def restore(source_canvas, backdrop_canvas, width, height, opacity, blend_mode):
+def restore(source_canvas, backdrop_canvas,
+            width, height, opacity, blend_mode):
     # ...
             backdrop_canvas.setPixel(
                 x, y,
@@ -1031,28 +1054,32 @@ and blend is implemented like this:
 ``` {.python.example}
 def blend(source_color, backdrop_color, blend_mode):
     (source_r, source_g, source_b, source_a) = tuple(source_color)
-    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
+    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
+        tuple(backdrop_color)
     return skia.Color4f(
         (1 - backdrop_a) * source_r +
-            backdrop_a * apply_blend(blend_mode, source_r, backdrop_r),
+            backdrop_a * apply_blend(
+                blend_mode, source_r, backdrop_r),
         (1 - backdrop_a) * source_g +
-            backdrop_a * apply_blend(blend_mode, source_g, backdrop_g),
+            backdrop_a * apply_blend(
+                blend_mode, source_g, backdrop_g),
         (1 - backdrop_a) * source_b +
-            backdrop_a * apply_blend(blend_mode, source_b, backdrop_b),
+            backdrop_a * apply_blend(
+                blend_mode, source_b, backdrop_b),
         source_a)
 ```
 
-There are various values `blend_mode` could take. Examples include "multiply",
+There are various algorithms `blend_mode` could take. Examples include "multiply",
 which multiplies the colors as floating-point numbers between 0 and 1,
-and "difference", which subtracts the darker color from the ligher one.
+and "difference", which subtracts the darker color from the ligher one. The
+default is "normal", which means to ignore the backdrop color.
 
 ``` {.python.example}
-# assumes an 8-bit color channel
-def apply_blend(blend_mode, source_color_channel, backdrop_color_channel):
-    float_source = source_color_channel / 255.0
-    float_backdrop = backdrop_color_cnannel / 255.0
+# Note: this code assumes a floating-poit color channel value.
+def apply_blend(blend_mode, source_color_channel,
+                backdrop_color_channel):
     if blend_mode == "multiply":
-        return int(round(float_source * float_backdrop * 255.0))
+        return source_color_channel * backdrop_color_channel
     elif blend_mode == "difference":
         return abs(backdrop_color_channel - source_color_channel)
     else
@@ -1062,9 +1089,44 @@ def apply_blend(blend_mode, source_color_channel, backdrop_color_channel):
 ```
 
 These are specified with the `mix-blend-mode` CSS property. Let's add support
-for it to our browser:[`mix-blend-mode: multiply`][mbm-mult]. This will be
-very easy, because Skia supports this blend mode natively. It's as simple
-as parsing the property and adding a parameter to `SaveLayer`:
+for [multiply][mbm-mult] and [difference][mbm-diff] to our browser. Let's modify
+the previous example to see how it will look:[^isolation]
+
+    <style>
+        html { background-color: white }
+        div { width:100px; height:100px }
+    </style>
+    <div style="background-color:lightblue"></div>
+    <div style="background-color:orange;left:50px;top:-25px"></div>
+    <div style="background-color:blue;left:100px;top:-50px"></div>
+
+This will look like:
+
+<style>
+    html { background-color: white }
+</style>
+<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
+<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px;mix-blend-mode:multiply"></div>
+<div style="width:100px;height:100px; position:relative;background-color:blue;left:100px;top:-50px;mix-blend-mode:difference"></div>
+
+[^isolation]: Here I had to explicitly set a background color of white on the
+`<html>` element, even thoiugh web pages have a default white background. This
+is because `mix-blend-mode` is defined in terms of stacking contexts (see below
+for more on that topic).
+
+Here you can see that the intersection of the orange and blue
+[^note-yellow] square renders as pink. Let's work through the math to see
+why. Here we are blending a blue color with orange, via the "difference" blend
+mode. Blue has (red, green, blue) color channels of (0, 0, 1.0), and orange
+has (1.0, 0.65, 0.0). The blended result will then be (1.0 - 0, 0.65 - 0, 1.0 -
+0) = (1.0, 0.65, 1.0), which is pink.
+
+[^note-yellow]: The "difference" blend mode on the blue redctangle makes it look
+yellow over a white background!
+
+Implementing these blend modes in our browser will be very easy, because Skia
+supports these blend mode natively. It's as simple as parsing the property and
+adding a parameter to `SaveLayer`:
 
 ``` {.python}
 def parse_blend_mode(blend_mode_str):
@@ -1091,6 +1153,46 @@ def paint_visual_effects(node, display_list, rect):
 ```
 
 [mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
+[mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
+
+::: {.further}
+CSS has a concept that is similar in many ways to Skia's nexted canvases,
+called a *stacking context*. If an element *induces a stacking context*,
+it means that that element and its descendants (up to any descendants that
+themselves induce a stacking contexts) paint together into one contiguous group.
+That means a browser can paint each stacking context into its own
+canvas, and composite & blend those canvses together in a hierarchical
+manner (hierarchical in the same way we've been using `saveLayer` and
+`restore` in this capter) in order to generate pixels on the screen.
+
+The `mix-blend-mode` CSS property's [definition][mix-blend-mode-def] actually
+says that the blending should occur with "the stacking context that contains
+the element" (actually, it's even more complicated---earlier sibling stacking
+contexts also blend, which is why the blue and orange squares in the example
+above blend to pink). Now that you know how saving and resoring canvases work,
+you can see why it is defined this way. This also explains why I had to put an
+explicit white background on the `<html>` element, because that element always
+induces a [stacking context][stacking-context] in a real browser.
+
+Most stacking contexts on the web don't actually have any non-normal blend modes
+or other complex visual effects. In those cases, these stacking contexts don't
+actually require their own canvases, and real browsers take advantage of this
+to reuse canvases thereby save time and memory. In these cases, the above
+definition for properties like `mix-blend-mode` are therefore overly strict.
+However, there is a tradeoff betweeen memory and speed for complex
+visual effects and animations in general, having to do with maximal use of
+the GPU---sometimes browsers allocate extra GPU canvases on purpose to speed up
+content, and sometimes they do it because it's necessary to perform multiple
+execution passes on the GPU for complex visual effects.
+
+There is now a [backdrop root][backdrop-root] concept for some features that
+generalizes beyond stacking contexts, but takes into account the need for
+performant use of GPUs.
+:::
+
+[mix-blend-mode-def]: https://drafts.fxtf.org/compositing-1/#propdef-mix-blend-mode
+[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+[backdrop-root]: https://drafts.fxtf.org/filter-effects-2/#BackdropRoot
 
 Non-rectangular clips
 =====================
@@ -1101,13 +1203,25 @@ clip was to a rectangular box. But there is no particular reason that the clip
 has to be a rectangle. It could be any 2D path that encloses a region and
 finishes back where it staretd.
 
-In CSS, this is expressed with the `clip-path` property. The
+One way this is expressed in CSS is with the `clip-path` property. The
 [full definition](https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path)
 is quite complicated, so as usual we'll just implement a simple subset.
-In this case we'll only support the `circle(xx%)` syntax, where XX is a
+In this case we'll only support the `circle(XX%)` syntax, where XX is a
 percentage and defines the radius of the circle. The percentage is calibrated
 so that if the layout object was a perfect square, a 100% circle would inscribe
 the bounds of the square.
+
+Let's apply a circular mask to our image example:
+
+    <div style="width:191px; height:191px;
+        clip-path:circle(50%);background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+
+Which paints like this:
+
+<div style="width:191px; height:191px;clip-path:circle(50%);background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+</div>
 
 Implementing circular clips is once again easy with Skia in our back pocket.
 We just parse the `clip-path` CSS property:
@@ -1129,27 +1243,37 @@ def paint_clip_path(node, display_list, rect):
         if percent:
             width = rect.right() - rect.left()
             height = rect.bottom() - rect.top()
-            reference_val = math.sqrt(width * width + height * height) / math.sqrt(2)
+            reference_val = \
+                math.sqrt(width * width +
+                    height * height) / math.sqrt(2)
             center_x = rect.left() + (rect.right() - rect.left()) / 2
             center_y = rect.top() + (rect.bottom() - rect.top()) / 2
             radius = reference_val * percent / 100
             display_list.append(CircleMask(
                 center_x, center_y, radius, rect))
+            return 1
+    return 0
 ```
 
+`CircleMask` is new, and means "clip the content to a circle".^[It's called
+"mask" because masking is the generalization of clipping. A mask can be
+ an arbitrary bitmap that need not be closed or define any specific shape.]
 The only tricky part is how to implement the `CircleMask` class. This will use a
-new compositing mode[^blend-compositing] called destination-in. It is defined
+new compositing mode called [destination-in][dst-in]. It is defined
 as the backdrop color multiplied by the alpha channel of the source color.
 The circle drawn in the code above defines a region of non-zero
 alpha, and so all pixels fo the backdrop not within the circle will become
 transparent black.
+
+[dst-in]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstin
 
 Here is the implementation in Python:
 
 ``` {.python expected=False}
 def composite(source_color, backdrop_color):
     (source_r, source_g, source_b, source_a) = tuple(source_color)
-    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = tuple(backdrop_color)
+    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
+         tuple(backdrop_color)
     return skia.Color4f(
         backdrop_a * source_a * backdrop_r,
         backdrop_a * source_a * backdrop_g,
@@ -1157,11 +1281,11 @@ def composite(source_color, backdrop_color):
         backdrop_a * source_a)
 ```
 
-As a result, here is how `CircleMask` is implemented. It creates a new source
-canvas via `saveLayer` (and at the same time specifhying a `kDstIn` blend mode)
-for when it is drawn into the backdrop), draws a circle in white (or really
-any opaque color, it's only the alpha channel that matters), then `restore`.
-[^mask]
+Now let's implement `CircleMask`  in terms of destination-in compositing. It
+creates a new source canvas via `saveLayer` (and at the same time specifying a
+`kDstIn` blend mode for when it is drawn into the backdrop), then draws a
+circle in white (or really any opaque color, it's only the alpha channel that
+matters) and increments the restore count.
 
 
 ``` {.python}
@@ -1179,7 +1303,6 @@ class CircleMask:
             canvas.drawCircle(
                 self.cx, self.cy - scroll,
                 self.radius, skia.Paint(Color=skia.ColorWHITE))
-            canvas.restore()
 ```
 
 Finally, we call `paint_clip_path` for each layout object type. Note however
@@ -1203,37 +1326,45 @@ backdrop canvas before drawing the circle and applying the clip. For
 
 But we're not quite done. We still need to *isolate* the element and its
 subtree, in order to apply the clip path to only these elements, not to the
-entire web page. TO achieve that we add an extra `saveLayer` in
+entire backdrop. To achieve that we add an extra `saveLayer` in
 `paint_visual_effects`:
 
 ``` {.python}
 def paint_visual_effects(node, display_list, rect):
     # ...
 
-        clip_path = node.style.get("clip-path")
+    clip_path = node.style.get("clip-path")
     if clip_path:
         display_list.append(SaveLayer(skia.Paint(), rect))
         restore_count = restore_count + 1
 ```
 
-
-[^blend-compositing]: It's actually specified as a blend mode to Skia. TODO:
-explain why.
-
-This technique described here for implementing `clip-path` is called *masking* -
-draw an auxilliary canvas and reject all pixels of the main that don't overlap
-with the auxilliary one. The circle in this case is the mask image. In general,
-the mask image could be any arbitrary bitmap, including one that is not a
-filled shape. The[`mask`]
-(https://developer.mozilla.org/en-US/docs/Web/CSS/mask) CSS property is a way
-to do this, for example by specifying an image at a URL that supplies the
-mask.
+This technique described here for implementing `clip-path` is
+called *masking*---drawing an auxilliary canvas and reject all pixels of the
+main that don't overlap with the auxilliary one. The circle in this case is the
+mask image. The
+[`mask`](https://developer.mozilla.org/en-US/docs/Web/CSS/mask) CSS property is
+another a way to do this, for example by specifying an image at a URL that
+supplies the mask bitmap.
 
 While the `mask` CSS property is relatively uncommonly used (as is `clip-path`
 actually), there is a special kind of mask that is very common: rounded
 corners. Now that we know how to implement masks, this one is also easy to
 add to our browser. Because it's so common in fact, Skia has special-purpose
 methods to draw rounded corners: `clipRRect`.
+
+Rounded corners are specified in CSS via `border-radius`. Example
+
+    <div style="width:191px; height:191px;
+        border-radius: 20px;background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+
+Which paints like this:
+
+<div style="width:191px; height:191px;border-radius:20px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+</div>
+
 
 This call will go in `paint_visual_effects`:
 
@@ -1253,26 +1384,56 @@ on here? It is indeed the same, but Skia only optimizes for rounded rects
 because they are so common. Skia could easily add a `clipCircle` command
 if it was popular enough.
 
-What Skia does under the covers may actually equivalent to the clip path
-case, and sometimes that is indeed the case. But in other situations, various
+What Skia does under the covers may be equivalent to the clip path
+case[^skia-opts], and sometimes that is indeed the case. But in other situations, various
 optimizations can be applied to make the clip more efficient. For example,
 `clipRect` clips to a rectangle, which makes it esaier for Skia to skip
-subsequent draw operations that don't intersect that rectangle[^see-chap-1],
+subsequent draw operations that don't intersect that rectangle,[^see-chap-1]
 or dynamically draw only the parts of drawings that interset the rectangle.
 Likewise, the first optimization mentiond above also applies to
 `clipRRect` (but the second is trickier because you have to account for the
 space cut out in the corners).
+
+[^skia-opts]: Skia has many internal optimizations, and by design does not
+expose whether they are used to the caller.
 
 [^see-chap-1]: This is basically the same optimization as we added in Chapter
 1 to avoid painting offscreen text.
 
 ::: {.further}
 
-TODO: the story of rounded corners: Macintosh, early web via nine-patch, GPU
-acceleration.
+Rounded corners have an interesting history in computing. Their[inclusion]
+[mac-story] into the original Macintosh is a fun story to read, and also
+demonstrates how computers often end up echoing reality. It also shows just how
+hard it was to implement features that appear simple to us today, due to the
+very limited memory, and lack of hardware floating-point arithmetic, of early
+personal computers (here's some [example source code][quickdraw] used on early
+Macintosh computers to implement this feature).
 
+Later on, floating-point coprocessors, and then over time GPUs, became
+standard equipment on new computers. This made it much easier to implement fast
+rounded corners. Unfortunately, the `border-radius` CSS property didn't appear in
+browsers until around 2010, but that didn't stop web developers from putting
+rounded corners on their sites! There are a number of ways to do it even without
+`border-radius`; [this video][rr-video] walks through several.
+
+It's a good thing `border-radius` is now a fully supported browser feature,
+and not just because it saves developers a lot of time and effort.
+More recently, the introduction of complex, mix-and-match, hardware-accelerated
+animations of visual effects, multi-process compositing, and
+[hardware overlays][hardware-overlays] have made the task of rounded corners
+harder---certainly way beyond the ability of web developers to polyfill.
+In today's browsers there is a fast path to clip to rounded corners on the GPU
+without using any more memory, but this fast path can fail to apply for
+cases such as hardware video overlays and nested rounded corner clips. With
+a polyfill, the fast path would never occur, and complex visual effects combined
+with rounded corners would be infeasible.
 :::
 
+[mac-story]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
+[quickdraw]: https://raw.githubusercontent.com/jrk/QuickDraw/master/RRects.a
+[hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
+[rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
 
 Transforms
 ==========
@@ -1362,8 +1523,7 @@ draw simple input boxes plus text. It now supports:
 * Background images
 * Opacity
 * Blending
-* Clips
-* Masks
+* Non-rectangluar clips
 * 2D transforms
 
 Exercises
@@ -1371,34 +1531,56 @@ Exercises
 
 *z-index*: Right now, the order of paint is a depth-first traversal of the
  layout tree. By using the `z-index` CSS property, pages can change that order.
- An element with lower z-index than another one paints before it. Elements with
- the same z-index paint in depth-first order. Elements with no z-index
- specified paint at the same time as z-index 0. Implement this CSS property.
- [^nested-z-index]
+ An element with lower `z-index` than another one paints before it. Elements
+ with the same z-index paint in depth-first order. Elements with no `z-index`
+ specified paint at the same time as z-index 0. And lastly, `z-index` only
+ applies to elements that have a `position` value other than the default
+ (meaning `relative`, for our browser's partial implementation). Implement this
+ CSS property. You don't need to add support for nested z-index (an element
+with z-index that has an ancestor also witih z-index), unless you do the next
+exercise also.
 
- [^nested-z-index]: You don't need to add support for nested z-index (an
- elemnet with z-index that has an ancestor also witih z-index). In order
- to do that properly, you'd need to add support for
- [stacking contexts][stacking-context] to our browser. In addition, the true
- paint order depends not only on z-index but also on `position`, and is
- broken into multiple phases. See [here][elaborate] for the gory details.
+*Z-order stacking contexts*: (this exercise builds on z-index) A
+stacking context is a painting feature allowing^[Or
+forcing, depending on your perspective...] web pages to specify groups of
+elements that paint contiguously. Because they paint continguously, it won't
+be possible for `z-index` specified on other elements not in the group to
+paint somewhere within the group---only before the entire group or after it.
+An element induces a stacking context if one or more of the conditions listed
+[here][stacking-context] apply to it. Any descendants (up to stacking
+context-inducing descendants) with `z-index` have paint order relative to each 
+other, but not elements not in the stacking context. The stacking
+context-inducing element itself may have a `z-index`, but that only changes
+the paint order of the whole stacking context relative to other contributors to
+its parent stacking context.
+
+(Note: in addition, the true paint order for stacking contexts is quite
+[elaborate][elaborate]. You don't need to implement all those details.)
 
  [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
  [elaborate]: https://www.w3.org/TR/CSS2/zindex.html
 
+*Filters* The `filter` CSS property allows specifying various kinds of more
+ [complex effects][filter-css], such as grayscale or blur. Try to implement as
+ many of these as you can. A number of them (including blur and drop shadow)
+ have built-in support in Skia.
+
 *Overflow clipping*: As mentioned at the end of the section introducing the
 `width` and `height` CSS properties, sizing boxes with CSS means that the
 contents of a layout object can exceed its size. Implement the `clip` value of
-the `overflow` CSS property+value. When set, this should clip out the parts
-of the content that exceed the box size of the element .
+the `overflow` CSS property. When set, this should clip out the parts
+of the content that exceed the box size of the element.
 
-*Overflow scrolling*: Implement a very basic version of the `overflow:scroll` 
-property+value. (This exercise builds on the previous one). You'll need to
-have a way to actually process input to cause scrolling, and also keep
-track of the total height of the [*layout overflow*][overflow-doc]. One
-way to allow the user to scroll is to use built-in arrow key handlers
-that apply when the `overflow:scroll` element has focus.
+[filter-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
+
+*Overflow scrolling*: (this exercise builds on overflow clipping) Implement a
+ very basic version of the `scroll` value of the `overflow` CSS property.
+ You'll need to have a way to actually process input to cause scrolling, and
+ also keep track of the total height (and width, for horizontal scrolling!) of
+ the [*layout overflow*][overflow-doc]. (Hint: one way to allow the user to
+ scroll is to use built-in arrow key handlers that apply when the
+ `overflow:scroll` element has focus.)
 
 *Image elements*: the `<img>` element is a way (the original way, back in the
 90s, in fact) to draw an image to the screen. The image URL is specified
