@@ -1428,7 +1428,8 @@ having to do with the definition of 3D spaces, flatting, backfaces, and plane
 intersections.
 
 [^except-scrolling]: The only exception is that transforms contribute to
-[scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable).
+[scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable),
+though we won't implement that here.
 
 By default, the origin of the coordinate space in which the transform applies is
 the center of the layout object's box.[^transform-origin] The transform matrix
@@ -1454,6 +1455,21 @@ We'll implement just a `rotateZ(XXdeg)` syntax for simple rotation about the Z
 axis by XX degrees (which means that the element should rotate on the screen;
 the Z axis is the one that points from your eye to the screen; the X and Y axes
 are the same ones we've been working with to this point for layout and paint).
+
+This example:
+
+    <div style="width:191px; height:191px;
+        transform:rotateZ(10deg);background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+
+renders like this:
+
+<div style="width:191px; height:191px;
+        transform:rotateZ(10deg);background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
+</div>
+
 
 First let's parse the `transform` property:
 
