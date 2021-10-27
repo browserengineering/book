@@ -15,8 +15,8 @@ Skia replaces Tkinter
 =====================
 
 But before we get to how visual effects are implemented, we'll need to upgrade
-our graphics system. While Tkinter was great for basic painting and handling input,
-it has no built-in support at all for implementing many visual
+our graphics system. While Tkinter is great for basic painting and handling
+input, it has no built-in support at all for implementing many visual
 effects.[^tkinter-before-gpu] And just as implementing the details of text
 rendering or drawing rectangles is outside the scope of this book, so is
 implementing visual effects---our focus should be on how to represent and
@@ -26,22 +26,24 @@ execute visual effects for web pages specifically.
 its graphics, was built back in the early 90s, before high-performance graphics
 cards and GPUs, and their software equivalents, became widespread.
 
-So we need a new library that can perform visual effects. We'll use
+So we need a new library that can implement visual effects. We'll use
 [Skia](https://skia.org), the library that Chromium uses. However, Skia is just
-a library for raster and compositing, so we'll also use
+a library for rastering content on the CPU and GPU, so we'll also use
 [SDL](https://www.libsdl.org/) to provide windows, input events, and OS-level
 integration.
 
 ::: {.further}
 While this book is about browsers, and not how to implement high-quality
 raster libraries, that topic is very interesting in its own right.
-(todo: find a reference) and (todo: another one) are two resources you can dig
-into if you are curious to learn more about how they work. That being said,
-it is very important these days for browsers to work smoothly with the
-advanced GPUs in today's devices, and often browsers are pushing the envelope
-of graphics technology. So in practice browser teams include experts
-in these areas.
+In addition, it is very important these days for browsers to work smoothly with
+the advanced GPUs in today's devices, and often browsers are pushing the
+envelope of graphics technology. So in practice browser teams include experts
+in these areas: Skia for Chromium and [Core Graphics][core-graphics] for Webkit,
+for example. In both cases these libraries are used outside of the
+browser---Core Graphics is used for iOS and macOS apps, and Skia for Android.
 :::
+
+[core-graphics]: https://developer.apple.com/documentation/coregraphics
 
 To install Skia, you'll need to install the
 [`skia-python`](https://github.com/kyamagu/skia-python)
@@ -155,8 +157,8 @@ class Rasterizer:
                 font, paint)
 ```
 
-`DrawText` and `DrawRect` use the rasterizer in the obvious way. For exampe,
-here is `DrawText.execute`:
+Change `DrawText` and `DrawRect` to use the rasterizer in a straightforward
+way. For example, here is `DrawText.execute`:
 
 ``` {.python}
     def execute(self, scroll, rasterizer):
@@ -261,13 +263,13 @@ And here is the `to_sdl_surface` method:
 
 Finally, `handle_enter` and `handle_down` no longer need an event parameter.
 
-[^surface]: In Skia and SDL, a surface is a representation of a graphics buffer
+[^surface]: In Skia and SDL, a *surface* is a representation of a graphics buffer
 into which you can draw "pixels" (bits representing colors). A surface may or
 may not be bound to the actual pixels on the screen via a window, and there can
 be many surfaces. A *canvas* is an API interface that allows you to draw
-into a surface with higher-level commands such as for lines or text. In
+into a surface with higher-level commands such as for rectangles or text. In
 our implementation, we'll start with separate surfaces for Skia and SDL for
-simplicity. In a highly optimized browser, minimizng the number of surfaces
+simplicity. In a highly optimized browser, minimizing the number of surfaces
 is important for good performance.
 
 In the `Tab` class, the differences in `draw` is the new `rasterizer` parameter
@@ -281,8 +283,8 @@ font.
             x = obj.x + obj.font.measureText(text)
 ```
 
-Update also all the other places that `measure` was called to use the Skia
-method (and also create Skia fonts instead of Tkinter ones, of course).
+Update all the other places that `measure` was called to use the Skia method
+(and also create Skia fonts instead of Tkinter ones, of course).
 
 Skia font metrics are accessed via the `getMetrics` method on a font. Then metrics
 like ascent and descent are accessible via:
@@ -951,12 +953,10 @@ transparent, just like for `opacity`.[^alpha-vs-opacity]
 
 [^alpha-vs-opacity]: The difference between opacity and alpha is often
 confusing. To remember the difference, think of opacity as a visual effect
-<span style="font-style: normal">applied to</span> content, but alpha as a
-<span style="font-style: normal">part of</span> content. In fact, whether there
+*applied to* content, but alpha as a *part of* content. In fact, whether there
 is an alpha channel in a color representation at all is often an implementation
 choice---sometimes graphics libraries instead multiply the other color channels
-by the alpha amount, which is called a <span style="font-style:
-normal">premultiplied</span> representation of the color.
+by the alpha amount, which is called a *premultiplied* representation of the color.
 
 ``` {.python.example}
 # Returns |color| with opacity applied. |color| is a skia.Color4f.
