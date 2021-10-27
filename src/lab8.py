@@ -353,8 +353,7 @@ class Tab:
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
                 self.focus = elt
-                self.render()
-                return
+                return self.render()
             elif elt.tag == "button":
                 while elt:
                     if elt.tag == "form" and "action" in elt.attributes:
@@ -383,7 +382,7 @@ class Tab:
     def keypress(self, char):
         if self.focus:
             self.focus.attributes["value"] += char
-        self.render()
+            self.render()
 
     def go_back(self):
         if len(self.history) > 1:
