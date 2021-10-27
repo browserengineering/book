@@ -25,10 +25,10 @@ talk about the book with others in our [discussion forum][forum].
 
 If you are enjoying the book, consider supporting us on [Patreon](https://patreon.com/browserengineering).
 
+::: {.intro}
 Introduction
 ============
 
-::: {.intro}
 1. [Preface](preface.md)
 2. [Browsers and the Web](intro.md)
 3. [History of the Web](history.md)
@@ -76,17 +76,18 @@ Part 4: Modern Browsers
 (@) [Scheduling and Threading](scheduling-and-threading.md)\
     The Rendering Event Loop and Pipeline
 
+::: {.outro}
 Conclusion
 ==========
 
-::: {.outro}
 1. [What Wasn't Covered](skipped.md)
 
 2. [A Changing Landscape](change.md)
-:::
 
 Appendix
 ========
 
-(@) [Glossary](glossary.md)
-(@) [Bibliography](bibliography.md)
+3. [Glossary](glossary.md)
+4. [Bibliography](bibliography.md)
+5. [About the Authors](about.md)
+:::
