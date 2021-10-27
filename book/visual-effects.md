@@ -953,8 +953,7 @@ transparent, just like for `opacity`.[^alpha-vs-opacity]
 
 [^alpha-vs-opacity]: The difference between opacity and alpha is often
 confusing. To remember the difference, think of opacity as a visual effect
-*applied to* content, but alpha as a
-*part of* content. In fact, whether there
+*applied to* content, but alpha as a *part of* content. In fact, whether there
 is an alpha channel in a color representation at all is often an implementation
 choice---sometimes graphics libraries instead multiply the other color channels
 by the alpha amount, which is called a *premultiplied* representation of the color.
