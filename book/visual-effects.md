@@ -34,13 +34,13 @@ integration.
 
 ::: {.further}
 While this book is about browsers, and not how to implement high-quality
-raster libraries, that topic is very interesting in its own right
+raster libraries, that topic is very interesting in its own right.
 In addition, it is very important these days for browsers to work smoothly with
 the advanced GPUs in today's devices, and often browsers are pushing the
 envelope of graphics technology. So in practice browser teams include experts
-in these areas:Skia for Chromium and [Core Graphics][core-graphics] for Webkit.
-In both cases these libraries are used outside of the browser---Core Graphics
-is used for iOS and macOS apps, and Skia for Android.
+in these areas: Skia for Chromium and [Core Graphics][core-graphics] for Webkit,
+for example. In both cases these libraries are used outside of the
+browser---Core Graphics is used for iOS and macOS apps, and Skia for Android.
 :::
 
 [core-graphics]: https://developer.apple.com/documentation/coregraphics
