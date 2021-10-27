@@ -266,11 +266,11 @@ class Tab:
 For this code to work, you'll also need to change `nodes` and `rules`
 from local variables in the `load` method to new fields on a `Tab`.
 Note that styling moved from `load` to `render`, but downloading the
-style sheets didn't---we don't redownload the style sheets every time
+style sheets didn't---we don't re-download the style sheets every time
 you type![^update-styles]
 
 [^update-styles]: Actually, some changes to the web page could delete
-    existing `link` nodes or create new ones. Real browser respond to
+    existing `link` nodes or create new ones. Real browsers respond to
     this correctly, either removing the rules corresponding to deleted
     `link` nodes or downloading new style sheets when new `link` nodes
     are created. This is tricky to get right, and typing into an input
