@@ -276,6 +276,19 @@ you type![^update-styles]
     are created. This is tricky to get right, and typing into an input
     area definitely can't make such changes, so let's skip this in our
     browser.
+    
+Now when we click an `input` element and clear its contents, we can
+call `render` to redraw the page with the `input` cleared:
+
+``` {.python}
+class Tab:
+    def click(self, x, y):
+        while elt:
+            elif elt.tag == "input":
+                elt.attributes["value"] = ""
+                return self.render()
+```
+
 
 So that's clicking in an `input` area. But typing is harder. Think
 back to how we [implemented the address bar](chrome.md): we added a
@@ -301,9 +314,8 @@ class Tab:
     def click(self, x, y):
         while elt:
             elif elt.tag == "input":
-                # ...
                 self.focus = elt
-                return
+                # ...
 ```
 
 But remember that keyboard input isn't handled by the `Tab`---it's
@@ -352,9 +364,12 @@ class Tab:
     def keypress(self, char):
         if self.focus:
             self.focus.attributes["value"] += char
+            self.render()
 ```
 
-This hierarchical focus handling is an important pattern for combining
+Note that we call `render` because we've modified the web page.
+
+Hierarchical focus handling is an important pattern for combining
 graphical widgets; in a real browser, where web pages can be embedded
 into one another with `iframe`s,[^iframes] the focus tree can be
 arbitrarily deep.
