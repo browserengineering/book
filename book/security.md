@@ -1175,12 +1175,12 @@ Exercises
 Hidden inputs shouldn't show up or take up space, while password input
 elements should show ther contents as stars instead of characters.
 
-*Certificate errors*: When accessing an HTTPS page, the `wrap_socket`
-call can raise a certificate error; [badssl.com](https://badssl.com)
-hosts several bad certificates you can use for testing. Catch these
-error and show a warning message to the user instead of the web page.
-For all *other* HTTPS pages draw a padlock (spelled `\N{lock}`) in the
-address bar.
+*Certificate errors*: When accessing an HTTPS page, the web server can
+send an invalid certificate ([badssl.com](https://badssl.com) hosts
+various invalid certificates you can use for testing). In this case,
+the `wrap_socket` function will raise a certificate error; Catch these
+errors and show a warning message to the user. For all *other* HTTPS
+pages draw a padlock (spelled `\N{lock}`) in the address bar.
 
 *Script access*: Implement the [`document.cookie` JavaScript
 API][mdn-doc-cookie]. Reading this field should return a string
