@@ -238,12 +238,64 @@ class Tab:
             # ...
 ```
 
-But keyboard input is harder. Think back to how we [implemented the
-address bar](chrome.md): we added a `focus` field that remembered what
-we clicked on so we could later send it our key presses. We need
-something like that `focus` field for input areas, but it's going to
-be more complex because the input areas live inside a `Tab`, not
-inside the `Browser`.
+However, if you try this, you'll notice that clicking does not
+actually clear the `input` element. That's because the code above
+updates the HTML tree---but we need to update the layout tree and then
+the display list of the change to appear on the screen.
+
+Right now, the layout tree and display list are computed in `load`,
+but we don't want to reload the whole page; we just want to redo the
+styling, layout, paint and draw phases. Together these are called
+*rendering*. So let's extract these phases into a
+ new `Tab` method, `render`:
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        self.render()
+
+    def render(self):
+        style(self.nodes, sorted(self.rules, key=cascade_priority))
+        self.document = DocumentLayout(self.nodes)
+        self.document.layout()
+        self.display_list = []
+        self.document.paint(self.display_list)
+```
+
+For this code to work, you'll also need to change `nodes` and `rules`
+from local variables in the `load` method to new fields on a `Tab`.
+Note that styling moved from `load` to `render`, but downloading the
+style sheets didn't---we don't re-download the style sheets every time
+you type![^update-styles]
+
+[^update-styles]: Actually, some changes to the web page could delete
+    existing `link` nodes or create new ones. Real browsers respond to
+    this correctly, either removing the rules corresponding to deleted
+    `link` nodes or downloading new style sheets when new `link` nodes
+    are created. This is tricky to get right, and typing into an input
+    area definitely can't make such changes, so let's skip this in our
+    browser.
+    
+Now when we click an `input` element and clear its contents, we can
+call `render` to redraw the page with the `input` cleared:
+
+``` {.python}
+class Tab:
+    def click(self, x, y):
+        while elt:
+            elif elt.tag == "input":
+                elt.attributes["value"] = ""
+                return self.render()
+```
+
+
+So that's clicking in an `input` area. But typing is harder. Think
+back to how we [implemented the address bar](chrome.md): we added a
+`focus` field that remembered what we clicked on so we could later
+send it our key presses. We need something like that `focus` field for
+input areas, but it's going to be more complex because the input areas
+live inside a `Tab`, not inside the `Browser`.
 
 Naturally, we will need a `focus` field on each `Tab`, to remember
 which text entry (if any) we've recently clicked on:
@@ -262,9 +314,8 @@ class Tab:
     def click(self, x, y):
         while elt:
             elif elt.tag == "input":
-                # ...
                 self.focus = elt
-                return
+                # ...
 ```
 
 But remember that keyboard input isn't handled by the `Tab`---it's
@@ -313,9 +364,12 @@ class Tab:
     def keypress(self, char):
         if self.focus:
             self.focus.attributes["value"] += char
+            self.render()
 ```
 
-This hierarchical focus handling is an important pattern for combining
+Note that we call `render` because we've modified the web page.
+
+Hierarchical focus handling is an important pattern for combining
 graphical widgets; in a real browser, where web pages can be embedded
 into one another with `iframe`s,[^iframes] the focus tree can be
 arbitrarily deep.
