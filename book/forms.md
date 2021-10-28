@@ -527,6 +527,7 @@ The new argument `load` is then passed through to `request`:
 def load(self, url, body=None):
     # ...
     headers, body = request(url, body)
+    # ...
 ```
 
 In `request`, this new argument is used to decide between a `GET` and
