@@ -306,12 +306,16 @@ Skia and SDL are highly optimized libraries written in C & C++.
 Size and position
 =================
 
-Right now, block elements size to the dimensions of their inline and input
+At the moment, block elements size to the dimensions of their inline and input
 content, and input elements have a fixed size. But we're not just displaying
 text and forms any more---now we're planning to draw visual effects such as
 arbitrary colors, images and so on. So we should be able to do things like draw
 a rectangle of a given color on the screen. That is accomplished with the
-`width` and `height` CSS properties.
+`width` and `height` CSS properties.[^not-inline]
+
+[^not-inline]: Inline elements can't have their width and height overridden. For
+something like that you would need to switch them to a different layout mode
+called `inline-block`, which we have not implemented.
 
 For example, this HTML:
 
@@ -379,23 +383,23 @@ class InlineLayout:
             sum([line.height for line in self.children]))
 ```
 
-Great. We can now draw rectangles of a specified width and height. But they
-still end up positioned one after another, in a way that we can't control. It'd
-be great to be able to put the rectangle anywhere on the screen, and not just
-in a place dictated by layout. That can be done with the `position` CSS
-property. This property has a whole lot of complexity to it, so let's just add
-in a relatively simple-to-implement subset: `position:relative`,[^posrel-caveat]
- plus `top` and `left`. Setting these tells the browser that it
-should take the x, y position that the element's top-left corner had, and add
-the values of `left` to x and `top` to y. If `position` is not specified, then
-`top` and `left` are ignored.
+We can now draw rectangles of a specified width and height. But they still end
+up positioned one after another (note how the light blue and orange rectangles
+stack vertically), in a way that we can't control. It'd be great to be able to
+put the rectangle anywhere on the screen, and not just in a place dictated by
+layout. That can be done with the `position` CSS property. This property has a
+whole lot of complexity to it, so let's just add in a relatively
+simple-to-implement subset: `position:relative`,[^posrel-caveat] plus `top` and
+`left`. Setting these tells the browser that it should take the x, y position
+that the element's top-left corner had, and add the values of `left` to x and
+`top` to y. If `position` is not specified, then `top` and `left` are ignored.
 
 [^posrel-caveat]: Note that we won't even implement all of the effects of
 `position:relative`. For example, this property has an effect on paint order,
 but we'll ignore it.
 
 This will still "take up space" where it used to be, in terms of the sizing
-of the parent element. This makes it pretty easy to implement---just figure
+of its parent element. This makes it pretty easy to implement---just figure
 out the layout without taking into account this property, then add in the
 adjustments at the end. To make things even easier, we'll treat it as a
 purely paint-time property that adjusts the display list.[^posrel-caveat2]
@@ -458,7 +462,7 @@ Since we've added support for setting the size of a layout object to
 be different than the sum of its children's sizes, it's easy for there to
 be a visual mismatch. What are we supposed to do if a `LayoutBlock` is not
 as tall as the text content within it? By default, browsers draw the content
-anyway, and it might or might not paint out side the block's box.
+anyway, and it might or might not paint outside the block's box.
 This situation is called [*overflow*][overflow-doc]. There are various CSS
 properties, such as [`overflow`][overflow-prop], to control what to do with
 this situation. By far the most important (or complex, at least) value of
@@ -571,7 +575,7 @@ def request(url, headers={}, payload=None):
 ```
 
 And finally, when reading the response, we check for the `Content-Type`, and
-only decode[^image-decode] it as utf-8 if it starts with `text/`:
+only decode[^image-decode] it as `utf-8` if it starts with `text/`:
 
 ``` {.python}
 def request(url, headers={}, payload=None):
@@ -589,7 +593,7 @@ def request(url, headers={}, payload=None):
 later.
 
 Now we are ready to load the images. Each image found will be loaded and stored
-into an `images` dictionary on a `Tab` keyed by URL. However, to actually show
+in an `images` dictionary on a `Tab` keyed by URL. However, to actually show
 an image on the first screen, we have to first *decode* it. Images are sent
 over the network in one of many optimized encoding formats, such as PNG or
 JPEG; when we need to draw them to the screen, we need to convert from the
@@ -597,7 +601,7 @@ encoded format into a raw array of pixels. These pixels can then be efficiently
 drawn onto the screen.[^image-decoding]
 
 [^image-decoding]: While image decoding technologies are beyond the
-scrope of this book, it's very important for browsers to make optimized use
+scope of this book, it's very important for browsers to make optimized use
 of image decoding, because the decoded bytes are often take up *much* more
 memory than the encoded representation. For a web page with a lot
 of images, it's easy to accidentally use up too much memory unless you're very
@@ -756,10 +760,10 @@ be introduced later in this chapter). `Save` just saves off parameters;
 `SaveLayer` creates am entirely new canvas.
 
 Note how the background image is painted *before* children, just like
-`background-color`.
+`background-color`.[^paint-order]
 
 ::: {.further}
-Notice that the background image is drawn after the background
+Notice that the background image is also drawn after the background
 color. One interesting question to ask about this is:
 if the image paints on top of the background color, what's the point of 
 painting the background color in the presence of a background image? One
@@ -776,17 +780,20 @@ this, via CSS properties like [`background-size`][background-size] and
 [background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
 [background-repeat]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-repeat
 
-And this is without even getting into the complex topic of the various
-algorithms for [image scaling][image-rendering] algorithms (for situations
-where we want the image to grow or shrink to fit its container).
+In addition to these considerations, there are also cases where we want to scale
+the image to match the size of its container. This is a somewhat complex
+topic---there are various algorithms for [image scaling][image-rendering] to
+choose from, each with pros and cons.
 
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
-In its full generality, the *paint order* of drawing backgrounds and other
-painted aspects of a single element, and the interaction of its paint order
-with painting descendants, is[quite complicated]
-[paint-order-stacking-context].
 :::
+
+
+[^paint-order]: In its full generality, the *paint order* of drawing backgrounds and other
+painted aspects of a single element, and the interaction of its paint order
+with painting descendants, is [quite complicated][paint-order-stacking-context].
+
 
 [paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
 
