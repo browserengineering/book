@@ -31,12 +31,17 @@ rt_constants.ZOOM = 1.0;
 rt_constants.TKELEMENT = null;
 rt_constants.URLS = {};
 
-class WidgetXHRError extends Error {
+class ExpectedError extends Error {
+    constructor(msg) {
+        super(msg);
+    }
+}
+
+class WidgetXHRError extends ExpectedError {
     constructor(hostname) {
-        super("This widget simulator cannot access " + hostname + " due to browser security limitations," +
+        super("This widget cannot access " + hostname + " due to sandboxing, " +
               "but the underlying Python code should work correctly.");
         this.name = "WidgetXHRError";
-        this.description = "This in-browser";
     }
 }
 
@@ -84,7 +89,8 @@ static socket(URLS) {
                 this.idx = 0;
                 return this;
             } else {
-                throw new WidgetXHRError(this.hostname);               
+                console.log(this);
+                throw new WidgetXHRError(this.host);               
             }
             return this;
         }
@@ -132,36 +138,38 @@ static tkinter(options) {
                 window.addEventListener("keydown", function(e) {
                     if (e.key == 'Arrow' + key.substr(1, key.length-2)) {
                         e.preventDefault();
-                        fn({});
+                        fn({}).catch(on_error);
                     }
                 });
             } else if (key == '<Return>') {
                 window.addEventListener("keydown", function(e) {
                     if (e.key == 'Enter') {
                         e.preventDefault();
-                        fn({});
+                        fn({}).catch(on_error);
                     }
                 });
             } else if (['<Button-1>', '<Button-2>', '<Button-3>'].indexOf(key) !== -1) {
                 window.addEventListener("mousedown", function(e) {
-                    if (e.button == key.substr(8, 1) - 1) fn({ x: e.offsetX, y: e.offsetY });
+                    if (e.button == key.substr(8, 1) - 1) {
+                        fn({ x: e.offsetX, y: e.offsetY }).catch(on_error);
+                    }
                 });
             } else if (key == '<Configure>') {
                 window.addEventListener("resize", function(e) {
-                    fn({});
+                    fn({}).catch(on_error);
                 });
             } else if (key == '<Key>') {
                 window.addEventListener("keydown", function(e) {
                     if (e.key.length == 1) {
                         e.preventDefault();
-                        fn({ char: e.key });
+                        fn({ char: e.key }).catch(on_error);
                     };
                 });
             } else if (key.length == 1) {
                 window.addEventListener("keydown", function(e) {
                     if (e.key == key) {
                         e.preventDefault();
-                        fn({ char: e.key });
+                        fn({ char: e.key }).catch(on_error);
                     }
                 });
             } else {
@@ -304,6 +312,8 @@ class Breakpoint {
 
 const breakpoint = new Breakpoint();
 
+let on_error = function(e) { throw e; }
+
 class Widget {
     constructor(elt) {
         this.elt = elt;
@@ -326,6 +336,16 @@ class Widget {
         this.k = null;
         this.runner = null;
         this.timer = null;
+
+        on_error = this.on_error;
+    }
+    
+    on_error(e) {
+        if (e instanceof ExpectedError) {
+            alert(e);
+        } else {
+            throw e;
+        }
     }
 
     pause(evt, cb) {
@@ -414,8 +434,13 @@ class Widget {
     run(k) {
         let that = this;
         this.runner = async function() {
-            await k();
-            that.end();
+            try {
+                await k();
+            } catch (e) {
+                on_error(e);
+            } finally {
+                that.end();
+            }
         }
         this.reset();
         return this;
