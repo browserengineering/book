@@ -1175,6 +1175,13 @@ Exercises
 Hidden inputs shouldn't show up or take up space, while password input
 elements should show ther contents as stars instead of characters.
 
+*Certificate errors*: When accessing an HTTPS page, the web server can
+send an invalid certificate ([badssl.com](https://badssl.com) hosts
+various invalid certificates you can use for testing). In this case,
+the `wrap_socket` function will raise a certificate error; Catch these
+errors and show a warning message to the user. For all *other* HTTPS
+pages draw a padlock (spelled `\N{lock}`) in the address bar.
+
 *Script access*: Implement the [`document.cookie` JavaScript
 API][mdn-doc-cookie]. Reading this field should return a string
 containing the cookie value and parameters, formatted similarly to the
