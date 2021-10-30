@@ -250,10 +250,10 @@ class Tab:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def load(self, url):
+        headers, body = request(url)
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        headers, body = request(url)
         self.nodes = HTMLParser(body).parse()
 
         rules = self.default_style_sheet.copy()
