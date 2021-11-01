@@ -86,7 +86,7 @@ def handle_connection(conx):
 Of course, new visitors need to be told to remember their
 newly-generated token:
 
-``` {.python file=server replace={}/{};%20SameSite=Lax}
+``` {.python file=server replace=%7b%7d/%7b%7d;%20SameSite=Lax}
 def handle_connection(conx):
     # ...
     if 'cookie' not in headers:
@@ -684,7 +684,7 @@ could not embed it in their form.[^like-cookie]
     cookie, it can be stolen with cross-site scripting.
 
 To implement this fix, generate a nonce and save it in the user
-session when a form is requested:[^per-user][^hidden]
+session when a form is requested:[^hidden]
     
 [^hidden]: Usually `<input type=hidden>` is invisible, though our
     browser doesn't support this.
