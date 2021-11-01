@@ -504,10 +504,10 @@ The `load`, `scrolldown`, `click`, and `draw` methods also move to
 
 But since the `Browser` controls the canvas and handles events, it
 decides when rendering happens and which tab does the drawing. After
-all, you only want one tab drawing its contents at a
-time![^unless-windows] So let's remove the `draw` calls from the
-`load` and `scrolldown` methods, and in `draw`, let's pass the canvas
-in as an argument:
+all,[^unless-windows] you only want one tab drawing its contents at a
+time! So let's remove the `draw` calls from the `load` and
+`scrolldown` methods, and in `draw`, let's pass the canvas in as an
+argument:
 
 [^unless-windows]: Unless the browser implements multiple windows, of course.
 
