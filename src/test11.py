@@ -4,7 +4,7 @@ This file contains unittests helpers for chapters 11 and onward
 
 import builtins
 import io
-from sdl2 import *
+import sdl2
 import skia
 import sys
 import unittest
@@ -34,7 +34,7 @@ class socket:
             assert all(int(value) == len(self.body) for name, value in headers
                        if name.lower() == "content-length")
 
-    def makefile(self, mode, encoding, newline):
+    def makefile(self, mode, encoding=None, newline=None):
         assert self.connected and self.host and self.port
         if self.port == 80 and self.scheme == "http":
             url = self.scheme + "://" + self.host + self.path
@@ -47,7 +47,11 @@ class socket:
         output = self.URLs[url][1]
         if self.URLs[url][2]:
             assert self.body == self.URLs[url][2], (self.body, self.URLs[url][2])
-        return io.StringIO(output.decode(encoding).replace(newline, "\n"), newline)
+        if encoding:
+            return io.StringIO(output.decode(encoding).replace(newline, "\n"), newline)
+        else:
+            assert mode == "b"
+            return io.BytesIO(output)
 
     def close(self):
         self.connected = False
@@ -88,6 +92,17 @@ class ssl:
         return mock.patch("ssl.create_default_context", wraps=cls)
 
 def SDL_GetWindowSurfacePatched(window):
-    return {}
+    return None
 
-SDL_GetWindowSurface = SDL_GetWindowSurfacePatched
+sdl2.SDL_GetWindowSurface = SDL_GetWindowSurfacePatched
+
+def SDL_BlitSurfacePatched(surface, rect, window_surface, rect2):
+    return None
+
+sdl2.SDL_BlitSurface = SDL_BlitSurfacePatched
+
+
+def SDL_UpdateWindowSurfacePatched(window):
+    return None
+
+sdl2.SDL_UpdateWindowSurface = SDL_UpdateWindowSurfacePatched

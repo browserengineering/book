@@ -11,9 +11,10 @@ test the bitmap outputs directly, but instead the display lists generated.
 
     >>> url = 'http://test.test/example'
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
-    ... b"<div>This is a test<br>Also a test<br>And this too</div>")
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b"Test")
 
     >>> browser = lab11.Browser({})
     >>> browser.load(url)
-    >>> browser.tabs[0]
+    >>> browser.tabs[0].display_list
+    [DrawText(text=Test)]
