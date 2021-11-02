@@ -8,7 +8,7 @@ import ctypes
 import dukpy
 import io
 import math
-from sdl2 import *
+import sdl2
 import skia
 import socket
 import ssl
@@ -1036,7 +1036,7 @@ HSTEP, VSTEP = 13, 18
 class Browser:
     def __init__(self, sdl_window):
         self.sdl_window = sdl_window
-        self.window_surface = SDL_GetWindowSurface(
+        self.window_surface = sdl2.SDL_GetWindowSurface(
             self.sdl_window)
         self.skia_surface = skia.Surface(WIDTH, HEIGHT)
 
@@ -1054,7 +1054,7 @@ class Browser:
         red_mask = 0x00ff0000
         green_mask = 0x0000ff00
         blue_mask = 0x000000ff
-        return SDL_CreateRGBSurfaceFrom(
+        return sdl2.SDL_CreateRGBSurfaceFrom(
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
             red_mask, green_mask, blue_mask, alpha_mask)
 
@@ -1143,41 +1143,39 @@ class Browser:
         # Raster the results and copy to the SDL surface:
         skia_image = self.skia_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
-        rect = SDL_Rect(0, 0, WIDTH, HEIGHT)
+        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         skia_surface = Browser.to_sdl_surface(skia_bytes)
-        SDL_BlitSurface(
+        sdl2.SDL_BlitSurface(
             skia_surface, rect, self.window_surface, rect)
-        SDL_UpdateWindowSurface(self.sdl_window)
+        sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
 if __name__ == "__main__":
     import sys
 
-    SDL_Init(SDL_INIT_VIDEO)
-    sdl_window = SDL_CreateWindow(b"Browser",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        WIDTH, HEIGHT, SDL_WINDOW_SHOWN)
+    sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO)
+    sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+        sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+        WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
 
     browser = Browser(sdl_window)
     browser.load(sys.argv[1])
 
     running = True
-    event = SDL_Event()
+    event = sdl2.SDL_Event()
     while running:
-        while SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == SDL_MOUSEMOTION or event.type == SDL_WINDOWEVENT:
-                continue
-            if event.type == SDL_MOUSEBUTTONUP:
+        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            if event.type == sdl2.SDL_MOUSEBUTTONUP:
                 browser.handle_click(event.button)
-            if event.type == SDL_KEYDOWN:
-                if event.key.keysym.sym == SDLK_RETURN:
+            if event.type == sdl2.SDL_KEYDOWN:
+                if event.key.keysym.sym == sdl2.SDLK_RETURN:
                     browser.handle_enter()
-                if event.key.keysym.sym == SDLK_DOWN:
+                if event.key.keysym.sym == sdl2.SDLK_DOWN:
                     browser.handle_down()
-            if event.type == SDL_TEXTINPUT:
+            if event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
-            if event.type == SDL_QUIT:
+            if event.type == sdl2.SDL_QUIT:
                 running = False
                 break
 
-    SDL_DestroyWindow(sdl_window)
-    SDL_Quit()
+    sdl2.SDL_DestroyWindow(sdl_window)
+    sdl2.SDL_Quit()
