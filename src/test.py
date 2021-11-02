@@ -195,3 +195,7 @@ class Event:
         self.x = x
         self.y = y
 
+
+def SDL_GetWindowSurface(window):
+    return {}
+

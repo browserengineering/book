@@ -1,5 +1,5 @@
-`Tests for WBE Chapter 5
-=======================
+Tests for WBE Chapter 5
+========================
 
 Chapter 5 (Laying Out Pages) introduces inline and block layout modes on
 the document tree, and introduces the concept of the document tree, and
@@ -13,7 +13,7 @@ adds support for drawing the background colors of document tree elements.
 Testing layout_mode
 ===================
 
-The ``layout_mode` function returns "inline" if the object is a `Text` node
+The `layout_mode` function returns "inline" if the object is a `Text` node
 or has all inline children, and otherwise returns "block".
 
     >>> parser = lab5.HTMLParser("text")
