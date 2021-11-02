@@ -1,6 +1,6 @@
 """
 This file compiles the code in Web Browser Engineering,
-up to and including Chapter 12 (Adding Visual Effects),
+up to and including Chapter 11 (Adding Visual Effects),
 without exercises.
 """
 
