@@ -5,9 +5,6 @@ FLAGS=
 CHAPTERS=$(patsubst book/%.md,%,$(wildcard book/*.md))
 WIDGET_LAB_CODE=lab1 lab2 lab3 lab4 lab5 lab7
 
-TESTS=lab1-tests.md lab2-tests.md lab3-tests.md lab4-tests.md lab5-tests.md \
-lab6-tests.md lab7-tests.md lab8-tests.md lab9-tests.md lab10-tests.md
-
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
@@ -63,7 +60,7 @@ backup:
 
 test:
 	set -e; \
-	for test in ${TESTS}; do \
-		(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest $$test); \
+	for i in $$(seq 1 11); do \
+		(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest lab$$i-tests.md); \
 	done
 	python3 -m doctest infra/compiler.md
