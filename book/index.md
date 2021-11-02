@@ -69,12 +69,12 @@ Part 3: Running Applications
 Part 4: Modern Browsers
 =======================
 
-(@) [Saving Partial Layouts](reflow.md)\
-    Two-phase layout and fast rendering
 (@) [Adding Visual Effects](visual-effects.md)\
     Filters and transformations 
 (@) [Scheduling and Threading](scheduling-and-threading.md)\
     The Rendering Event Loop and Pipeline
+(@) [Saving Partial Layouts](reflow.md)\
+    Two-phase layout and fast rendering
 
 ::: {.outro}
 Conclusion
