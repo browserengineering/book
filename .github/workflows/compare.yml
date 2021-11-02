@@ -1,4 +1,4 @@
-name: Compare tangled and saved source
+name: Make and test the book
 
 on: [push]
 
