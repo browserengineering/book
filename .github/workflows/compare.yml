@@ -11,7 +11,7 @@ jobs:
         with:
           python-version: 3.9
       - name: Install dependencies
-        run: python -m pip install dukpy
+        run: python -m pip install dukpy sdl2
       - uses: r-lib/actions/setup-pandoc@v1
         with:
           pandoc-version: 2.11.4
