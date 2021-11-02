@@ -50,7 +50,7 @@ To install Skia, you'll need to install the
 library (via `pip3 install skia-python`); as explained on the linked site, you
 might need to install additional dependencies. Instructions
 [here](https://pypi.org/project/PySDL2/) explain how to install SDL on your
-computer (short version: `pip3 install PySDL2` and `pip3 install pysdp2-dll`).
+computer (short version: `pip3 install PySDL2` and `pip3 install pysdl2-dll`).
 
 Once installed, remove `tkinter` from your Python imports and replace them with:
 

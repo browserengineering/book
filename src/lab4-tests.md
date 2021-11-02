@@ -1,4 +1,4 @@
-`Tests for WBE Chapter 4
+Tests for WBE Chapter 4
 =======================
 
 Chapter 4 (Constructing a Document Tree) adds support for the document tree
@@ -15,7 +15,7 @@ Testing HTMLParser
 HTMLParser is a class whose constructor takes HTML body text as an argument, and
 can parse it.
 
-The implicit ``html` and `body` (and `head` when needed) tags are added:
+The implicit `html` and `body` (and `head` when needed) tags are added:
 
 	>>> parser = lab4.HTMLParser("<html><body>test</body></html>")
 	>>> lab4.print_tree(parser.parse())

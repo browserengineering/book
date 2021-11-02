@@ -1,9 +1,8 @@
 """
-This file contains unittests for chapter 1
+This file contains unittests helpers for chapters 1-10
 """
 
 import builtins
-import lab1
 import io
 import sys
 import tkinter
@@ -194,4 +193,3 @@ class Event:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-
