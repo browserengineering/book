@@ -1,5 +1,5 @@
 Tests for WBE Chapter 5
-========================
+=======================
 
 Chapter 5 (Laying Out Pages) introduces inline and block layout modes on
 the document tree, and introduces the concept of the document tree, and
