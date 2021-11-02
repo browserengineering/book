@@ -1164,8 +1164,6 @@ if __name__ == "__main__":
     event = sdl2.SDL_Event()
     while running:
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == sdl2.SDL_MOUSEMOTION or event.type == sdl2.SDL_WINDOWEVENT:
-                continue
             if event.type == sdl2.SDL_MOUSEBUTTONUP:
                 browser.handle_click(event.button)
             if event.type == sdl2.SDL_KEYDOWN:
