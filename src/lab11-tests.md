@@ -4,7 +4,7 @@ Tests for WBE Chapter 11
 Chapter 11 (Adding Visual Effects) is a highly visual chapter. We won't
 test the bitmap outputs directly, but instead the display lists generated.
 
-    >>> import test
+    >>> import test11 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
     >>> import lab11

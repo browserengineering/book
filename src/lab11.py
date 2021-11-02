@@ -1036,6 +1036,8 @@ HSTEP, VSTEP = 13, 18
 class Browser:
     def __init__(self, sdl_window):
         self.sdl_window = sdl_window
+        print(SDL_GetWindowSurface)
+        return
         self.window_surface = SDL_GetWindowSurface(
             self.sdl_window)
         self.skia_surface = skia.Surface(WIDTH, HEIGHT)

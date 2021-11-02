@@ -1,12 +1,12 @@
 """
-This file contains unittests helpers for chapters 1-10
+This file contains unittests helpers for chapters 11 and onward
 """
 
 import builtins
 import io
+from sdl2 import *
+import skia
 import sys
-import tkinter
-import tkinter.font
 import unittest
 from unittest import mock
 
@@ -87,109 +87,7 @@ class ssl:
     def patch(cls):
         return mock.patch("ssl.create_default_context", wraps=cls)
 
-class SilentTk:
-    def bind(self, event, callback):
-        pass
+def SDL_GetWindowSurfacePatched(window):
+    return {}
 
-tkinter.Tk = SilentTk
-
-class SilentCanvas:
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def create_text(self, x, y, text, font=None, anchor=None, fill=None):
-        pass
-
-    def create_rectangle(self, x1, y1, x2, y2, width=None, fill=None):
-        pass
-
-    def create_line(self, x1, y1, x2, y2):
-        pass
-
-    def create_line(self, x1, y1, x2, y2):
-        pass
-
-    def create_polygon(self, *args, **kwargs):
-        pass
-
-    def pack(self):
-        pass
-
-    def delete(self, v):
-        pass
-
-tkinter.Canvas = SilentCanvas
-
-class MockCanvas:
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def create_text(self, x, y, text, font=None, anchor=None):
-        if font or anchor:
-            print("create_text: x={} y={} text={} font={} anchor={}".format(
-                x, y, text, font, anchor))
-        else:
-            print("create_text: x={} y={} text={}".format(
-                x, y, text))
-
-    def pack(self):
-        pass
-
-    def delete(self, v):
-        pass
-
-original_tkinter_canvas = tkinter.Canvas
-
-def patch_canvas():
-    tkinter.Canvas = MockCanvas
-
-def unpatch_canvas():
-    tkinter.Canvas = original_tkinter_canvas
-
-class MockFont:
-    def __init__(self, size=None, weight=None, slant=None, style=None):
-        self.size = size
-        self.weight = weight
-        self.slant = slant
-        self.style = style
-
-    def measure(self, word):
-        return self.size * len(word)
-
-    def metrics(self, name=None):
-        all = {"ascent" : self.size * 0.75, "descent": self.size * 0.25,
-            "linespace": self.size}
-        if name:
-            return all[name]
-        return all
-
-    def __repr__(self):
-        return "Font size={} weight={} slant={} style={}".format(
-            self.size, self.weight, self.slant, self.style)
-
-tkinter.font.Font = MockFont
-
-def errors(f, *args, **kwargs):
-    try:
-        f(*args, **kwargs)
-    except Exception as e:
-        return True
-    else:
-        return False
-
-def breakpoint(name, *args):
-    args_str = (", " + ", ".join(["'{}'".format(arg) for arg in args]) if args else "")
-    print("breakpoint(name='{}'{})".format(name, args_str))
-
-builtin_breakpoint = builtins.breakpoint
-
-def patch_breakpoint():
-    builtins.breakpoint = breakpoint
-
-def unpatch_breakpoint():
-    builtins.breakpoint = builtin_breakpoint
-
-class Event:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+SDL_GetWindowSurface = SDL_GetWindowSurfacePatched
