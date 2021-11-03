@@ -870,7 +870,7 @@ def show_comments():
 Now the browser will request `comment.js`, so our server needs to
 *serve* that JavaScript file:
 
-``` {.python file=server replace="comment.js"/"comment9.js"}
+``` {.python file=server replace=%22comment.js%22/%22comment9.js%22}
 def do_request(method, url, headers, body):
     # ...
     elif method == "GET" and url == "/comment.js":
@@ -882,7 +882,7 @@ def do_request(method, url, headers, body):
 We can then put our little input length checker into `comment.js`,
 with the `lengthCheck` function modified to use `innerHTML`:
 
-``` {.javascript file=commentt}
+``` {.javascript file=comment}
 label = document.querySelectorAll("label")[0];
 
 function lengthCheck() {

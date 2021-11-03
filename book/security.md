@@ -181,7 +181,16 @@ ENTRIES = [
 ]
 ```
 
-When we print the guest book entries, print the username as well:
+Each user will also have a password:
+
+``` {.python file=server}
+LOGINS = {
+    "crashoverride": "0cool",
+    "cerealkiller": "emmanuel"
+}
+```
+
+When we print the guest book entries, we'll write who authored them:
 
 ``` {.python file=server replace=+%20entry/+%20html.escape(entry),+%20who/+%20html.escape(who)}
 def show_comments(session):
