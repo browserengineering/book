@@ -47,7 +47,10 @@ ENTRIES = [
     ("HACK THE PLANET!!!", "crashoverride"),
 ]
 
-LOGINS = { "crashoverride": "0cool", "cerealkiller": "emmanuel" }
+LOGINS = {
+    "crashoverride": "0cool",
+    "cerealkiller": "emmanuel"
+}
 
 def do_request(session, method, url, headers, body):
     if method == "GET" and url == "/":
