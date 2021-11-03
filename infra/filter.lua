@@ -125,7 +125,7 @@ function Doc(el)
    -- Insert it
    local items = pandoc.List()
    for i, v in ipairs(headers) do
-      local content = pandoc.Para({ pandoc.Link(v.content, "#" .. v.identifier) })
+      local content = pandoc.Para({ pandoc.Link(v.content, "#" .. v.identifier, v.target, v.attr) })
       table.insert(items, content)
    end
    local toc = pandoc.Div({ pandoc.BulletList(items) })
