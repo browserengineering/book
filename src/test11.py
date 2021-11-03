@@ -106,3 +106,73 @@ def SDL_UpdateWindowSurfacePatched(window):
     return None
 
 sdl2.SDL_UpdateWindowSurface = SDL_UpdateWindowSurfacePatched
+
+class MockSkiaImage:
+    def __init__(self):
+        pass
+
+    def tobytes(self):
+        return ""
+
+class MockCanvas:
+    def __init__(self):
+        self.commands = []
+
+    def clear(self, color):
+        self.commands.append("clear(color={:x})".format(color))
+
+    def format_paint(paint):
+        format_str = ", color={color:x}"
+        if paint.getAlpha() != 255:
+            format_str = format_str + ", alpha={alpha}"
+        if paint.getBlendMode() != skia.BlendMode.kSrcOver:
+            format_str = format_str + ", blend_mode={blend_mode}"
+        return format_str
+
+    def drawRect(self, rect, paint):
+        format_str = "drawRect(rect={rect}" + MockCanvas.format_paint(paint)
+        self.commands.append(
+            (format_str + ")").format(
+            rect=rect, color=paint.getColor(),
+            alpha=paint.getAlpha(), blend_mode=paint.getBlendMode()))
+
+    def drawPath(self, path, paint):
+        format_str = "drawPath(<path>" + MockCanvas.format_paint(paint)
+        self.commands.append(
+            (format_str + ")").format(
+            color=paint.getColor(),
+            alpha=paint.getAlpha(), blend_mode=paint.getBlendMode()))
+
+    def drawString(self, text, x, y, font, paint):
+        format_str = "drawString(text={text}, x={x}, y={y}" \
+            + MockCanvas.format_paint(paint)
+        self.commands.append((format_str + ")").format(
+            text=text, x=x, y=y,
+            color=paint.getColor(),
+            alpha=paint.getAlpha(), blend_mode=paint.getBlendMode()))
+
+class MockSkiaSurface:
+    def __init__(self, width, height):
+        self.canvas = MockCanvas()
+        pass
+
+    def __enter__(self):
+        return self.canvas
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
+
+    def makeImageSnapshot(self):
+        return MockSkiaImage();
+
+    def printTabCommands(self):
+        count = 0
+        total = len(self.canvas.commands)
+        for command in self.canvas.commands:
+            if count == total - 12:
+                break
+            if count > 0:
+                print(command)
+            count = count + 1
+
+skia.Surface = MockSkiaSurface
