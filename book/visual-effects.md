@@ -467,15 +467,16 @@ child layout objects? Consider this example:
 Shouldn't "Text" also move down the screen by `100px`, not just the div?
 If you try right now, you'll find that it won't. Oops. We've got to fix it.
 Turns out the fix won't be so hard though---we just need to pass the extra
-paint offsets recursively. to children. All `paint` methods will need
-two extra parameters: `parent_offset_x` and `parent_offset_y`. These are the
-extra paint offsets inherited from parents.
+paint offsets recursively to children. 
 
-Here's how it will look for `BlockLayout`. First we'll rename `paint_coords`
-to `paint_adjustment`, since its inputs are not the x and y, but the current
-offsets. Then use it to create an "adjusted" paint offset that includes the
-current layout object's offsets, and  can be added to `self.x` and `self.y`
-for painting. Finally, recurse with the adjusted paint offsets as parameters.
+Here's how it will work. First we'll rename `paint_coords` to
+`paint_adjustment`, since its inputs are not the x and y, but the current
+offsets. Next, change all  `paint` methods to add two extra parameters:
+`parent_offset_x` and `parent_offset_y`. These are the extra paint offsets
+inherited from parents.  Then call `paint_adjustment` paint offset that
+includes the current layout object's offsets, and can be added to `self.x` and
+`self.y` for painting. Finally, recurse with the adjusted paint offsets as
+parameters.
 
 ``` {.python}
     def paint(self, display_list, parent_offset_x, parent_offset_y):
