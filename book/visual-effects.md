@@ -424,7 +424,7 @@ suffices for playing around with visual effects.
 
 To implement `position:relative`, we'll add a new helper method `paint_coords`:
 
-``` {.python}
+``` {.python expected=False}
 def paint_coords(node, x, y):
     if not node.style.get("position") == "relative":
         return (x, y)
@@ -444,7 +444,7 @@ def paint_coords(node, x, y):
 
 Then we can use it in `BlockLayout`:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     # ...
     def paint(self, display_list):
@@ -456,6 +456,59 @@ class BlockLayout:
 ```
 
 A similar change should be made to `InlineLayout` and `InputLayout`.
+
+Now we can move a single rect around on the screen. But what about
+child layout objects? Consider this example:
+
+    <div style="position:relative; top: 100px">
+      Text
+    </div>
+
+Shouldn't "Text" also move down the screen by `100px`, not just the div?
+If you try right now, you'll find that it won't. Oops. We've got to fix it.
+Turns out the fix won't be so hard though---we just need to pass the extra
+paint offsets recursively. to children. All `paint` methods will need
+two extra parameters: `parent_offset_x` and `parent_offset_y`. These are the
+extra paint offsets inherited from parents.
+
+Here's how it will look for `BlockLayout`. First we'll rename `paint_coords`
+to `paint_adjustment`, since its inputs are not the x and y, but the current
+offsets. Then use it to create an "adjusted" paint offset that includes the
+current layout object's offsets, and  can be added to `self.x` and `self.y`
+for painting. Finally, recurse with the adjusted paint offsets as parameters.
+
+``` {.python}
+    def paint(self, display_list, parent_offset_x, parent_offset_y):
+        (paint_offset_x, paint_offset_y) = \
+            paint_adjustment(
+                self.node, parent_offset_x, parent_offset_y)
+        paint_x = self.x + paint_offset_x
+        paint_y = self.y + paint_offset_y
+    # ...
+        for child in self.children:
+            child.paint(display_list, paint_offset_x, paint_offset_y)
+```
+
+And of course, the paint methods for all other layout object types need to
+be similarly adjusted.
+
+::: {.further}
+In a real browser, you'll sometimes find code patterns
+that look a lot like this. Until recently, Chromium had a lot of it in fact.
+For real browsers, etting it just right with no errors starts to be quite
+complicated. Other use cases for computing paint offsets also come up
+(like computing invalidation regions or implementing some of the
+geometry-related APIs like[`IntersectionObserver`][intersection-observer].
+So these days Chromium has an extra rendering step between layout and
+paint called *pre-paint*. One of the tasks of pre-paint is to compute all of
+the geometry information for the web page, including paint offsets.
+
+The computed paint offsets are essentially stored on the layout objects, and
+during paint they are read off instead of being computed recursively
+on-the-fly.
+:::
+
+[intersection-observer]: https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API))
 
 ::: {.further}
 Since we've added support for setting the size of a layout object to
@@ -709,15 +762,15 @@ def paint_background(node, display_list, rect):
 This will need to be called from each of the layout object types. Here is
 `BlockLayout`:
 
-``` {.python expected=False}
+``` {.python}
 class BlockLayout:
     # ...
-    def paint(self, display_list):
+    def paint(self, display_list, parent_offset_x, parent_offset_y):
         # ...
         paint_background(self.node, display_list, rect)
         
         for child in self.children:
-            child.paint(display_list)
+            child.paint(display_list, paint_offset_x, paint_offset_y)
 ```
 
 Here we're not just drawing the image though---we're also doing something
@@ -889,7 +942,7 @@ def paint_visual_effects(node, display_list, rect):
 ``` {.python}
 class BlockLayout:
     # ...
-    def paint(self, display_list):
+    def paint(self, display_list, parent_offset_x, parent_offset_y):
         # ...
         restore_count = paint_visual_effects(
             self.node, display_list, rect)
@@ -897,7 +950,7 @@ class BlockLayout:
         paint_background(self.node, display_list, rect)
 
         for child in self.children:
-            child.paint(display_list)
+            child.paint(display_list, paint_offset_x, paint_offset_y)
         # ...
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
@@ -1322,11 +1375,11 @@ backdrop canvas before drawing the circle and applying the clip. For
 `BlockLayout`, this is:
 
 ``` {.python}
-    def paint(self, display_list):
+    def paint(self, display_list, parent_offset_x, parent_offset_y):
         # ...
 
         for child in self.children:
-            child.paint(display_list)
+            child.paint(display_list, paint_offset_x, paint_offset_y)
 
         paint_clip_path(self.node, display_list, rect)
 
