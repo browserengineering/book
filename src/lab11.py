@@ -527,12 +527,12 @@ def paint_background(node, display_list, rect):
             rect))
         display_list.append(Restore(rect))
 
-def paint_coords(node, x, y):
+def paint_adjustment(node, x_offset, y_offset):
     if not node.style.get("position") == "relative":
         return (x, y)
 
-    paint_x = x
-    paint_y = y
+    paint_x = x_offset
+    paint_y = y_offset
 
     left = node.style.get("left")
     if left:
@@ -581,8 +581,11 @@ class BlockLayout:
             sum([child.height for child in self.children]))
 
 
-    def paint(self, display_list):
-        (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
+    def paint(self, display_list, parent_offset_x, parent_offset_y):
+        (paint_offset_x, paint_offset_y) = \
+            paint_coords(self.node, parent_offset_x, parent_offset_y)
+        paint_x = self.x + paint_offset_x
+        paint_y = self.y + paint_offset_y
         rect = skia.Rect.MakeLTRB(
             paint_x, paint_y,
             paint_x + self.width, paint_y + self.height)
@@ -593,7 +596,7 @@ class BlockLayout:
         paint_background(self.node, display_list, rect)
 
         for child in self.children:
-            child.paint(display_list)
+            child.paint(display_list, paint_x, paint_y)
 
         restore_count = restore_count + \
             paint_clip_path(self.node, display_list, rect)
