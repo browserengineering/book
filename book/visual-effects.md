@@ -496,7 +496,7 @@ be similarly adjusted.
 ::: {.further}
 In a real browser, you'll sometimes find code patterns
 that look a lot like this. Until recently, Chromium had a lot of it in fact.
-For real browsers, etting it just right with no errors starts to be quite
+For real browsers, getting it just right with no errors starts to be quite
 complicated. Other use cases for computing paint offsets also come up
 (like computing invalidation regions or implementing some of the
 geometry-related APIs like[`IntersectionObserver`][intersection-observer].
@@ -504,7 +504,7 @@ So these days Chromium has an extra rendering step between layout and
 paint called *pre-paint*. One of the tasks of pre-paint is to compute all of
 the geometry information for the web page, including paint offsets.
 
-The computed paint offsets are essentially stored on the layout objects, and
+The computed paint offsets are then stored on the layout objects, and
 during paint they are read off instead of being computed recursively
 on-the-fly.
 :::
