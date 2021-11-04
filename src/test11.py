@@ -163,7 +163,7 @@ class MockSkiaSurface:
         pass
 
     def makeImageSnapshot(self):
-        return MockSkiaImage();
+        return MockSkiaImage()
 
     def printTabCommands(self):
         count = 0
