@@ -142,7 +142,9 @@ make a canvas in which to draw the circular clip mask.
     restore()
     restore()
 
-Finally, there are 2D transforms.
+Finally, there are 2D rotation transforms. There is as translate to adjust for
+transform origin, then the rotation, then a reverse translation to go from
+the transform origin back to the original origin.
 
     >>> size_and_transform_url = 'http://test.test/size_and_transform'
     >>> test.socket.respond(size_and_transform_url, b"HTTP/1.0 200 OK\r\n" +
