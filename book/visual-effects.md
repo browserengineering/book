@@ -1424,7 +1424,6 @@ Which paints like this:
 <div style="width:191px; height:191px;border-radius:20px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
 </div>
 
-
 This call will go in `paint_visual_effects`:
 
 ``` {.python}

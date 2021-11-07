@@ -76,3 +76,90 @@ color.
     restore()
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
     drawString(text=Text, x=13.0, y=136.10546875, color=ff000000)
+
+Opacity can be applied.
+
+    >>> size_and_opacity_url = 'http://test.test/size_and_opacity'
+    >>> test.socket.respond(size_and_opacity_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b"<link rel=stylesheet href='styles.css'>" +
+    ... b"<div style=\"opacity:0.5\"><div>Text</div></div>)")
+
+    >>> browser = lab11.Browser({})
+    >>> browser.load(size_and_opacity_url)
+    >>> browser.skia_surface.printTabCommands()
+    saveLayer(color=80000000, alpha=128)
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawString(text=Text, x=13.0, y=136.10546875, color=ff000000)
+    restore()
+
+So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
+
+    >>> size_and_mix_blend_mode_url = 'http://test.test/size_and_mix_blend_mode'
+    >>> test.socket.respond(size_and_mix_blend_mode_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b"<link rel=stylesheet href='styles.css'>" +
+    ... b"<div style=\"mix-blend-mode:multiply\"><div>Mult</div></div>)" +
+    ... b"<div style=\"mix-blend-mode:difference\"><div>Diff</div></div>)")
+
+    >>> browser = lab11.Browser({})
+    >>> browser.load(size_and_mix_blend_mode_url)
+    >>> browser.skia_surface.printTabCommands()
+    saveLayer(color=ff000000, blend_mode=BlendMode.kMultiply)
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawString(text=Mult, x=13.0, y=136.10546875, color=ff000000)
+    restore()
+    drawString(text=), x=13.0, y=186.10546875, color=ff000000)
+    saveLayer(color=ff000000, blend_mode=BlendMode.kDifference)
+    drawRect(rect=Rect(13, 190.344, 63, 240.344), color=ff0000ff)
+    drawRect(rect=Rect(13, 190.344, 63, 240.344), color=ff0000ff)
+    drawString(text=Diff, x=13.0, y=208.44921875, color=ff000000)
+    restore()
+
+Non-rectangular clips via `clip-path:circle` are supported.
+
+    >>> size_and_clip_path_url = 'http://test.test/size_and_clip_path'
+    >>> test.socket.respond(size_and_clip_path_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b"<link rel=stylesheet href='styles.css'>" +
+    ... b"<div style=\"clip-path:circle(40%)\"><div>Clip</div></div>)")
+
+There will be two save layers in this case---one to isolate the
+div and its children so the clip only applies ot it, and one to
+make a canvas in which to draw the circular clip mask.
+
+    >>> browser = lab11.Browser({})
+    >>> browser.load(size_and_clip_path_url)
+    >>> browser.skia_surface.printTabCommands()
+    saveLayer(color=ff000000)
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawString(text=Clip, x=13.0, y=136.10546875, color=ff000000)
+    saveLayer(color=ff000000, blend_mode=BlendMode.kDstIn)
+    drawCircle(cx=38.0, cy=143.0, radius=20.0, color=ffffffff)
+    restore()
+    restore()
+
+Finally, there are 2D rotation transforms. There is as translate to adjust for
+transform origin, then the rotation, then a reverse translation to go from
+the transform origin back to the original origin.
+
+    >>> size_and_transform_url = 'http://test.test/size_and_transform'
+    >>> test.socket.respond(size_and_transform_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b"<link rel=stylesheet href='styles.css'>" +
+    ... b"<div style=\"transform:rotateZ(45deg)\"><div>Rotate</div></div>)")
+
+    >>> browser = lab11.Browser({})
+    >>> browser.load(size_and_transform_url)
+    >>> browser.skia_surface.printTabCommands()
+    save()
+    translate(x=-38.0, y=-143.0)
+    rotate(degrees=45.0)
+    translate(x=38.0, y=143.0)
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawString(text=Rotate, x=13.0, y=136.10546875, color=ff000000)
+    restore()
