@@ -15,8 +15,8 @@ test the bitmap outputs directly, but instead the display lists generated.
     ... b"div { background-color:blue; width:50px; height:50px}")
 
 
-    >>> basic_url = 'http://test.test/basic'
-    >>> test.socket.respond(basic_url, b"HTTP/1.0 200 OK\r\n" +
+    >>> size_url = 'http://test.test/size'
+    >>> test.socket.respond(size_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n" +
     ... b"<link rel=stylesheet href='styles.css'>" +
     ... b"<div><div>Text</div></div>)")
@@ -28,7 +28,7 @@ test the bitmap outputs directly, but instead the display lists generated.
     ... b"<div style='position:relative;top:25px'><div>Text</div></div>)")
 
     >>> browser = lab11.Browser({})
-    >>> browser.load(basic_url)
+    >>> browser.load(size_url)
     >>> browser.skia_surface.printTabCommands()
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
