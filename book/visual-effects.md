@@ -843,14 +843,11 @@ choose from, each with pros and cons.
 
 :::
 
-
 [^paint-order]: In its full generality, the *paint order* of drawing backgrounds and other
 painted aspects of a single element, and the interaction of its paint order
 with painting descendants, is [quite complicated][paint-order-stacking-context].
 
-
 [paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
-
 
 Opacity and Compositing
 =======================
@@ -868,7 +865,6 @@ With sizing and position, we also now have the ability to make content overlap!
 [^inline-stylesheet]: Here I've used an inline style sheet. If you haven't
 completed the inline style sheet exercise for chapter 6, you'll need to
 convert this into a style sheet file in order to load it in your browser.
-
 
 Its rendering looks like this:
 
@@ -960,7 +956,6 @@ class BlockLayout:
 What this code does is this: if the layout object needs to be painted with
 opacity, create a new canvas that draws the layout object and its descendants,
 and then blend that canvas into the previous canvas with the provided opacity.
-
 
 This makes use of two new display list types, `SaveLayer` and `Restore`. Here
 is how they are implemented:
