@@ -49,7 +49,8 @@ text should be at a y coordinate of 136.105 + 25 = 161.105.
     drawRect(rect=Rect(13, 143, 63, 193), color=ff0000ff)
     drawString(text=Text, x=13.0, y=161.10546875, color=ff000000)
 
-Images can be specified as backgrounds.
+Images can be specified as backgrounds. The test image below is a 1x1 solid
+color.
 
     >>> image_url = 'http://test.test/image.png'
     >>> test.socket.respond(image_url, b"HTTP/1.0 200 OK\r\n" +
