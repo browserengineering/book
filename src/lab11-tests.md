@@ -142,6 +142,28 @@ make a canvas in which to draw the circular clip mask.
     restore()
     restore()
 
+`border-radius` clipping is also supported.
+
+    >>> size_and_border_radius_url = 'http://test.test/size_and_clip_path'
+    >>> test.socket.respond(size_and_border_radius_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b"<link rel=stylesheet href='styles.css'>" +
+    ... b"<div style=\"border-radius:20px\"><div>Border-radius</div></div>)")
+
+In this case there will be a `save`, but no `saveLayer`, since the latter
+is implicit/an implementation detail of Skia, and a `clipRRect` call with a
+radius equal to the `20px` radius specified above.
+
+    >>> browser = lab11.Browser({})
+    >>> browser.load(size_and_border_radius_url)
+    >>> browser.skia_surface.printTabCommands()
+    save()
+    clipRRect(bounds=Rect(13, 118, 63, 168), radius=Point(20, 20))
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawString(text=Border-radius, x=13.0, y=136.10546875, color=ff000000)
+    restore()
+
 Finally, there are 2D rotation transforms. There is as translate to adjust for
 transform origin, then the rotation, then a reverse translation to go from
 the transform origin back to the original origin.

@@ -175,6 +175,11 @@ class MockCanvas:
     def clipRect(self, rect):
         self.commands.append("clipRect(rect={rect})".format(rect=rect))
 
+    def clipRRect(self, rrect):
+        self.commands.append(
+            "clipRRect(bounds={bounds}, radius={radius})".format(
+                bounds=rrect.getBounds(), radius=rrect.getSimpleRadii()))
+
     def drawImage(self, image, left, top):
         self.commands.append("drawImage(<image>, left={left}, top={top}".format(
             left=left, top=top))
