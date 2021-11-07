@@ -151,6 +151,19 @@ class MockCanvas:
             color=paint.getColor(),
             alpha=paint.getAlpha(), blend_mode=paint.getBlendMode()))
 
+    def save(self):
+        self.commands.append("save()")
+
+    def clipRect(self, rect):
+        self.commands.append("clipRect(rect={rect})".format(rect=rect))
+
+    def drawImage(self, image, left, top):
+        self.commands.append("drawImage(<image>, left={left}, top={top}".format(
+            left=left, top=top))
+
+    def restore(self):
+        self.commands.append("restore()")
+
 class MockSkiaSurface:
     def __init__(self, width, height):
         self.canvas = MockCanvas()
