@@ -121,8 +121,11 @@ class MockCanvas:
     def clear(self, color):
         self.commands.append("clear(color={:x})".format(color))
 
-    def format_paint(paint):
-        format_str = ", color={color:x}"
+    def format_paint(paint, include_leading_comma=True):
+        format_str = ""
+        if include_leading_comma:
+            format_str = ", "
+        format_str = format_str + "color={color:x}"
         if paint.getAlpha() != 255:
             format_str = format_str + ", alpha={alpha}"
         if paint.getBlendMode() != skia.BlendMode.kSrcOver:
@@ -143,6 +146,15 @@ class MockCanvas:
             color=paint.getColor(),
             alpha=paint.getAlpha(), blend_mode=paint.getBlendMode()))
 
+    def drawCircle(self, cx, cy, radius, paint):
+        format_str = "drawCircle(cx={cx}, cy={cy}, radius={radius}" \
+            + MockCanvas.format_paint(paint)
+        self.commands.append(
+            (format_str + ")").format(
+                cx=cx, cy=cy, radius=radius,
+                color=paint.getColor(),
+                alpha=paint.getAlpha(), blend_mode=paint.getBlendMode()))
+
     def drawString(self, text, x, y, font, paint):
         format_str = "drawString(text={text}, x={x}, y={y}" \
             + MockCanvas.format_paint(paint)
@@ -154,6 +166,12 @@ class MockCanvas:
     def save(self):
         self.commands.append("save()")
 
+    def saveLayer(self, paint):
+        format_str = "saveLayer(" + MockCanvas.format_paint(paint, False)
+        self.commands.append((format_str + ")").format(
+            color=paint.getColor(),
+            alpha=paint.getAlpha(), blend_mode=paint.getBlendMode()))
+
     def clipRect(self, rect):
         self.commands.append("clipRect(rect={rect})".format(rect=rect))
 
@@ -163,6 +181,14 @@ class MockCanvas:
 
     def restore(self):
         self.commands.append("restore()")
+
+    def translate(self, x, y):
+        self.commands.append("translate(x={x}, y={y})".format(
+            x=x, y=y))
+
+    def rotate(self, degrees):
+        self.commands.append("rotate(degrees={degrees})".format(
+            degrees=degrees))
 
 class MockSkiaSurface:
     def __init__(self, width, height):
