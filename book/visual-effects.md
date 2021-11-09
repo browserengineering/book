@@ -590,10 +590,11 @@ def style(node, rules, url, images):
 ```
 
 To make non-relative URLs work, we'll also need to modify the CSS parser,
-because these urls contain the ":" character, which might get confused with
-the property-value delimiter of CSS. We can fix that by tracking whether we're
-inside a quote---if so, we treat the ":" character as part of a word; otherwise,
-not.[^only-single-quote]
+because these URLs start with "https://" or "http://". Since they contain
+the ":" character, this will confuse the parser because it thinks it's the
+property-value delimiter of CSS. We can fix that by tracking whether we're
+inside a quote---if so, we treat the ":" character as part of a word;
+otherwise, not.[^only-single-quote]
 
 [^only-single-quote]: We're only adding support for single quotes here, but
 double quotes are accepted in real CSS. Single and double quotes can be
