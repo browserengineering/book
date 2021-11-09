@@ -59,7 +59,7 @@ end
 
 function Div(el)
   if not config.show_todos and el.classes[1] == "todo" then
-    return pandoc.Div
+    return pandoc.RawBlock("html", "")
   elseif config.show_signup and el.classes[1] == "signup" then
     local signup = assert(io.open("infra/signup.html")):read("*all")
     return pandoc.RawBlock("html", signup)
@@ -125,7 +125,7 @@ function Doc(el)
    -- Insert it
    local items = pandoc.List()
    for i, v in ipairs(headers) do
-      local content = pandoc.Para({ pandoc.Link(v.content, "#" .. v.identifier, v.target, v.attr) })
+      local content = pandoc.Para({ pandoc.Link(v.content, "#" .. v.identifier) })
       table.insert(items, content)
    end
    local toc = pandoc.Div({ pandoc.BulletList(items) })
