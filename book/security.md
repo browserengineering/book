@@ -1221,13 +1221,16 @@ the CORS standard calls "simple requests".
 [cors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
 *Referer*: When your browser visits a web page, or when it loads a CSS
-or JavaScript file, it sends a `Referer` header[^referer] containing the
-URL it is coming from. Sites often use this for analytics. Implement
-this in your browser. However, some URLs contain personal data that
-they don't want revealed to other websites, so browsers support a
-`Referer-Policy` header, which can contain values like `no-referer`
-(never send the `Referer` header when leaving this page) or
-`same-origin` (only do so if navigating to another page on the same
-origin). Implement those two values for `Referer-Policy`.
+or JavaScript file, it sends a `Referer` header[^referer] containing
+the URL it is coming from. Sites often use this for analytics.
+Implement this in your browser. However, some URLs contain personal
+data that they don't want revealed to other websites, so browsers
+support a `Referrer-Policy` header,[^referer] which can contain values
+like `no-referrer`[^referer] (never send the `Referer` header when
+leaving this page) or `same-origin` (only do so if navigating to
+another page on the same origin). Implement those two values for
+`Referer-Policy`.
 
-[^referer]: Yep, spelled that way.
+[^referer]: Yep, [spelled that way][wiki-typo].
+
+[wiki-typo]: https://en.wikipedia.org/wiki/HTTP_referer#Etymology
