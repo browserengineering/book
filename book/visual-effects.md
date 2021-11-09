@@ -1609,16 +1609,6 @@ draw simple input boxes plus text. It now supports:
 * Non-rectangluar clips
 * 2D transforms
 
-Outline
-=======
-
-The complete set of functions, classes, and methods in our browser 
-should now look like:
-
-::: {.cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab11.py
-:::
-
 Exercises
 =========
 
