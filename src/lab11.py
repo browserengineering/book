@@ -761,8 +761,13 @@ class CSSParser:
 
     def word(self):
         start = self.i
+        in_quote = False
         while self.i < len(self.s):
-            if self.s[self.i].isalnum() or self.s[self.i] in "#-.%()\"'":
+            cur = self.s[self.i]
+            if cur == '\'':
+                in_quote = not in_quote
+            if cur.isalnum() or cur in "/#-.%()\"'" \
+                or (in_quote and cur == ':'):
                 self.i += 1
             else:
                 break
@@ -837,6 +842,7 @@ def parse_style_url(url_str):
 
 def get_images(image_url_strs, base_url, images):
     for image_url_str in image_url_strs:
+        print(image_url_str)
         image_url = parse_style_url(image_url_str)
         header, body_bytes = request(
             resolve_url(image_url, base_url),
@@ -867,6 +873,8 @@ def style(node, rules, url, images):
             if not computed_value: continue
             node.style[property] = computed_value
     if isinstance(node, Element) and "style" in node.attributes:
+        print('style attr:')
+        print(node.attributes["style"])
         pairs = CSSParser(node.attributes["style"]).body()
         image_url_strs = []
         for property, value in pairs.items():
