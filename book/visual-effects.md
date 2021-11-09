@@ -589,6 +589,35 @@ def style(node, rules, url, images):
                 image_url_strs.append(value)
 ```
 
+To make non-relative URLs work, we'll also need to modify the CSS parser,
+because these urls contain the ":" character, which might get confused with
+the property-value delimiter of CSS. We can fix that by tracking whether we're
+inside a quote---if so, we treat the ":" character as part of a word; otherwise,
+not.[^only-single-quote]
+
+[^only-single-quote]: We're only adding support for single quotes here, but
+double quotes are accepted in real CSS. Single and double quotes can be
+interchanged in CSS and JavaScript, just like in Python.
+
+``` {.python}
+class CSSParser:
+    # ...
+    def word(self):
+        start = self.i
+        in_quote = False
+        while self.i < len(self.s):
+            cur = self.s[self.i]
+            if cur == "'":
+                in_quote = not in_quote
+            if cur.isalnum() or cur in "/#-.%()\"'" \
+                or (in_quote and cur == ':'):
+                self.i += 1
+            else:
+                break
+        assert self.i > start
+        return self.s[start:self.i]
+```
+
 And then load them. But to load them we'll have to augment the `request`
 function to support binary image content types (currently it only supports
 `text/html` and `text/css` encoded in `utf-8`). A PNG image, for instance, has
