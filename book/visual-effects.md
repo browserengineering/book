@@ -1535,9 +1535,7 @@ Transforms are almost entirely a visual effect, and do not affect layout.
 [^except-scrolling] As you would expect, this means we can implement 2D
 transforms with a simple addition to `paint_visual_effects`. Let's do it now.
 We'll implement just a `rotate(XXdeg)` syntax for simple clockwise rotation on
-the screen; the Z axis is the one that points from your eye to the screen; the
-X and Y axes are the same ones we've been working with to this point for layout
-and paint).
+the screen.
 
 This example:
 
