@@ -174,13 +174,17 @@ the transform origin back to the original origin.
     ... b"<link rel=stylesheet href='styles.css'>" +
     ... b"<div style=\"transform:rotate(45deg)\"><div>Rotate</div></div>)")
 
+Note that the negative transform-origin translation happens last, not first,
+because transform matrices get applied in backwards order when rendering to 
+the screen.
+
     >>> browser = lab11.Browser({})
     >>> browser.load(size_and_transform_url)
     >>> browser.skia_surface.printTabCommands()
     save()
-    translate(x=-38.0, y=-143.0)
-    rotate(degrees=45.0)
     translate(x=38.0, y=143.0)
+    rotate(degrees=45.0)
+    translate(x=-38.0, y=-143.0)
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
     drawString(text=Rotate, x=13.0, y=136.10546875, color=ff000000)

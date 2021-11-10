@@ -1588,13 +1588,26 @@ class Rotate:
             self.rect.right(), self.rect.bottom() - scroll)
         (center_x, center_y) = center_point(paint_rect)
         with rasterizer.surface as canvas:
-            canvas.translate(-center_x, -center_y)
-            canvas.rotate(self.degrees)
             canvas.translate(center_x, center_y)
+            canvas.rotate(self.degrees)
+            canvas.translate(-center_x, -center_y)
 ```
 
 Note how we first translated to put the center of the layout object at the
-origin before rotating, then translated back.
+origin before rotating (this is the negative translation), then rotation, then
+translated back.
+
+Anther strange thing to get used to is that the transforms seem to be in the
+wrong order---didn't we say that first translation to apply is the negative
+one? Yes, but the way canvas APIs work is that all *preceding* transforms,
+clips etc apply to later commands. And they apply "inside-out", meaning last
+one first.
+[^transforms-hard]
+
+[^transforms-hard]: This is also how matrices work in your mathematics classes.
+Nevertheless, I find it very hard to remember this when programming; when in
+doubt work through an example, and remember that the computer is your friend to
+test if the results look correct!
 
 Summary
 =======
