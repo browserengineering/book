@@ -172,7 +172,7 @@ the transform origin back to the original origin.
     >>> test.socket.respond(size_and_transform_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n" +
     ... b"<link rel=stylesheet href='styles.css'>" +
-    ... b"<div style=\"transform:rotateZ(45deg)\"><div>Rotate</div></div>)")
+    ... b"<div style=\"transform:rotate(45deg)\"><div>Rotate</div></div>)")
 
     >>> browser = lab11.Browser({})
     >>> browser.load(size_and_transform_url)
