@@ -222,9 +222,9 @@ class Rotate:
             self.rect.right(), self.rect.bottom() - scroll)
         (center_x, center_y) = center_point(paint_rect)
         with rasterizer.surface as canvas:
-            canvas.translate(-center_x, -center_y)
-            canvas.rotate(self.degrees)
             canvas.translate(center_x, center_y)
+            canvas.rotate(self.degrees)
+            canvas.translate(-center_x, -center_y)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
