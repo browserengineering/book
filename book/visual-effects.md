@@ -1605,9 +1605,9 @@ one first.
 [^transforms-hard]
 
 [^transforms-hard]: This is also how matrix math is represented in mathematics.
-Nevertheless, I find it very hard to remember this when programming; when in
+Nevertheless, I find it very hard to remember this when programming! when in
 doubt work through an example, and remember that the computer is your friend to
-test if the results look correct!
+test if the results look correct.
 
 Summary
 =======
