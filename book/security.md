@@ -1229,7 +1229,7 @@ support a `Referrer-Policy` header,[^referer] which can contain values
 like `no-referrer`[^referer] (never send the `Referer` header when
 leaving this page) or `same-origin` (only do so if navigating to
 another page on the same origin). Implement those two values for
-`Referer-Policy`.
+`Referrer-Policy`.
 
 [^referer]: Yep, [spelled that way][wiki-typo].
 
