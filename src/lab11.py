@@ -283,8 +283,10 @@ class ClipRRect:
             canvas.clipRRect(
                 skia.RRect.MakeRectXY(
                     skia.Rect.MakeLTRB(
-                        self.rect.left(), self.rect.top() - scroll,
-                        self.rect.right(), self.rect.bottom() - scroll),
+                        self.rect.left(),
+                        self.rect.top() - scroll,
+                        self.rect.right(),
+                        self.rect.bottom() - scroll),
                     self.radius, self.radius))
 
 class DrawImage:
