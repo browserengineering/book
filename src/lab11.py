@@ -415,7 +415,8 @@ class InputLayout:
         self.font = skia.Font(
             skia.Typeface('Arial', font_style(weight, style)), size)
 
-        self.width = style_length(self.node, "width", INPUT_WIDTH_PX)
+        self.width = style_length(
+            self.node, "width", INPUT_WIDTH_PX)
         self.height = style_length(
             self.node, "height", linespace(self.font))
 
