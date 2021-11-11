@@ -805,7 +805,6 @@ class Restore:
             canvas.restore()
 ```
 
-
 This example should clip out parts of the image:
 
     <div style="width:100px; height:100px;background-image:
