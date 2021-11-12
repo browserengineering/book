@@ -764,8 +764,13 @@ class CSSParser:
 
     def word(self):
         start = self.i
+        in_quote = False
         while self.i < len(self.s):
-            if self.s[self.i].isalnum() or self.s[self.i] in "#-.%()\"'":
+            cur = self.s[self.i]
+            if cur == "'":
+                in_quote = not in_quote
+            if cur.isalnum() or cur in "/#-.%()\"'" \
+                or (in_quote and cur == ':'):
                 self.i += 1
             else:
                 break

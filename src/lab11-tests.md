@@ -77,6 +77,15 @@ color.
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
     drawString(text=Text, x=13.0, y=136.10546875, color=ff000000)
 
+Also note that urls can be non-relative. Since non-relative urls start with
+"http://" or "https://", we needed some extra logic in the CSS parser to avoid
+getting confused and thinking the colon is a property-value delimiter. Let's
+test that that works:
+
+    >>> lab11.CSSParser(
+    ...    "div { background-image:url('http://test.com/test.png') }").parse()
+    [(TagSelector(tag=div, priority=1), {'background-image': "url('http://test.com/test.png')"})]
+
 Opacity can be applied.
 
     >>> size_and_opacity_url = 'http://test.test/size_and_opacity'
