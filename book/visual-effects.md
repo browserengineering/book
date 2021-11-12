@@ -785,6 +785,26 @@ snapshot the current parameters to the canvas, so that when `Restore` is called
 later these parameters (including presence or absence of a clip) can be
 restored.[^not-savelayer]
 
+`Save` and `Restore` are implemented like this:
+
+``` {.python}
+class Save:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.save()
+
+class Restore:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.restore()
+```
+
 This example should clip out parts of the image:
 
     <div style="width:100px; height:100px;background-image:
@@ -958,8 +978,8 @@ What this code does is this: if the layout object needs to be painted with
 opacity, create a new canvas that draws the layout object and its descendants,
 and then blend that canvas into the previous canvas with the provided opacity.
 
-This makes use of two new display list types, `SaveLayer` and `Restore`. Here
-is how they are implemented:
+This makes use of a new display list type, `SaveLayer`. Here
+is how it's implemented:
 
 ``` {.python}
 class SaveLayer:
@@ -971,17 +991,6 @@ class SaveLayer:
         with rasterizer.surface as canvas:
             canvas.saveLayer(paint=self.sk_paint)
 ```
-
-``` {.python}
-class Restore:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
-            canvas.restore()
-```
-
 To understand why `canvas.saveLayer()` is the command that does this, and what
 it does under the hood, the first thing you have to know that Skia thinks of a
 drawing as a stack of layers (like the layers of a cake). You can, at any time,
@@ -1435,6 +1444,24 @@ def paint_visual_effects(node, display_list, rect):
         display_list.append(Save(rect))
         display_list.append(ClipRRect(rect, radius))
         restore_count = restore_count + 1
+```
+
+``` {.python}
+class ClipRRect:
+    def __init__(self, rect, radius):
+        self.rect = rect
+        self.radius = radius
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.clipRRect(
+                skia.RRect.MakeRectXY(
+                    skia.Rect.MakeLTRB(
+                        self.rect.left(),
+                        self.rect.top() - scroll,
+                        self.rect.right(),
+                        self.rect.bottom() - scroll),
+                    self.radius, self.radius))
 ```
 
 Now why is it that rounded rect clips are applied in `paint_visual_effects`
