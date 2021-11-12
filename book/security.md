@@ -764,7 +764,7 @@ will them not send them in cross-site form submissions.[^in-progress]
     ratified. The [MDN page][mdn-samesite] is helpful for checking the
     current status of `SameSite` cookies.
     
-[mdn-samesite]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite#secure
+[mdn-samesite]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
 
 A cookie is marked `SameSite` in the `Set-Cookie` header like this:
 

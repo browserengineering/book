@@ -948,7 +948,7 @@ slightly lighter.[^book-css]
 [^book-css]: The book's main body text [is colored](book.css) `#333`,
     or roughly 97% black after [gamma correction][gamma-correct].
     
-[gamma-correct]: https://en.wikipedia.org/wiki/SRGB#The_reverse_transformation_(sRGB_to_CIE_XYZ)
+[gamma-correct]: https://en.wikipedia.org/wiki/SRGB#From_sRGB_to_CIE_XYZ
 
 These changes obsolete all the code in `InlineLayout` that handles
 specific tags, like the `style`, `weight`, and `size` properties and

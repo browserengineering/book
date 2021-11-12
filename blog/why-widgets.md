@@ -18,7 +18,9 @@ think are quite subtle and interesting!
 Consider the following widget, which steps you through how line height
 is computed when different font sizes are mixed:
 
-<iframe class="widget" src="widgets/lab3-baselines.html" height=204></iframe>
+::: {.widget height=204}
+    lab3-baselines.html
+:::
 
 Click the buttons to start the simulations and go through the steps
 one by one. You can see how baseline computation:
@@ -43,7 +45,7 @@ on shadow DOM event propagation gave us a browser-related example to
 study. In any case, I think widgets like this will help readers better
 understand our book.
 
-[explore-explain]: http://worrydream.com/#!/ExplorableExplanations
+[explore-explain]: http://worrydream.com/ExplorableExplanations
 [bartosz]: https://ciechanow.ski
 [shadow-dom-widgets]: https://pm.dartus.fr/blog/a-complete-guide-on-shadow-dom-and-event-propagation/
 
@@ -69,7 +71,7 @@ fact, in a proper browser, the amount of leading above and below the
 text should be the same---the widget shows that (for simplicity) this
 book's toy browser doesn't do that.
 
-[leading]: ./text.html#measuring-text
+[leading]: ../text.html#measuring-text
 
 Finally, the widget can use color or shape to highlight relationships
 and states. My widget above shows the maximum ascent and descent in a

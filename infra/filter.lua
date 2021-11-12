@@ -42,8 +42,10 @@ function DisableLinks(el)
   if is_disabled(el.target) then
     el = pandoc.Span(el.content)
     el.classes = { "link" }
-  elseif el.target:find(".md$") and not el.target:find("://") then
+  elseif el.target:find("\\.md$") and not el.target:find("://") then
     el.target = string.gsub(el.target, "%.md", ".html")
+  elseif el.target:find(".md#") and not el.target:find("://") then
+    el.target = string.gsub(el.target, ".md#", ".html#")
   end
   return el
 end

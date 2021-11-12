@@ -50,7 +50,7 @@ TLS connections (Python has one built in), graphics (the text uses
 Tk), and JavaScript evaluation (the text uses DukPy).
     
 [jrw]: https://jamesrwilcox.com
-[sz]: http://www.cis.upenn.edu/~stevez/
+[sz]: https://www.cis.upenn.edu/~stevez/
 
 This book's browser is irreverent toward standards: it handles only a
 sliver of the full HTML, CSS, and JavaScript languages, mishandles
@@ -85,7 +85,7 @@ I am thankful to my wife [Sara][saras], who supported my writing the
 book, listened to countless status updates, and gave me the strength
 to finish this many-year-long project.
 
-[mwillsey]: https://mwillsey.com/
+[mwillsey]: https://www.mwillsey.com/
 [saras]: https://www.sscharmingds.com/
 [ztatlock]: https://homes.cs.washington.edu/~ztatlock/
 

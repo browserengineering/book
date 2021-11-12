@@ -452,7 +452,6 @@ def draw(self):
 
 Scrolling should now work!
 
-<a name="faster-rendering"></a>
 
 Faster Rendering
 ================
@@ -585,7 +584,7 @@ events.[^more-mousewheel]
 characters, and you can call `create_text` to draw them, but the
 results aren't very good. Instead, head to [the OpenMoji
 project](https://openmoji.org), download the emoji for ["grinning
-face"](https://openmoji.org/library/#search=smiley%20face&emoji=1F600)
+face"](https://openmoji.org/library/#emoji=1F600)
 as a PNG file, convert to GIF, resize it to 16×16 pixels, and save it
 to the same folder as the browser. Use Tk's `PhotoImage` class to load
 the image and then the `create_image` method to draw it to the canvas.
