@@ -8,6 +8,26 @@ to teach from this book, please [let us know][contact].
 
 [contact]: mailto:author@browser.engineering
 
+# CSE 490, Web Browser Engineering, University of Washington, Spring 2022
+
+Undergraduate-level course taught by [James R. Wilcox](https://jamesrwilcox.com).
+
+> We live in a world completely permeated by the internet and the web.
+> It's time to think of the web browser as a critical piece of systems
+> infrastructure, alongside compilers and operating systems. While
+> industrial strength browsers are massive and complex systems with
+> many features, the basic structure of a browser can be expressed in
+> just a thousand lines of code. In this class we will study browser
+> internals and build our own web browsers from scratch. By the end of
+> the first week, you will have a working "browser" that does nothing
+> more than download the webpage and print it as text to the console.
+> From there, each week we will extend the browser with a new feature.
+> By the end of the quarter, you will have your own graphical browser
+> supporting text layout, CSS for styling, and JavaScript for building
+> interactive pages. Weekly assignments will primarily involve
+> implementing features in your browser. Previous experience with web
+> technologies is not required.
+
 # CS 4962, Web Browser Internals, University of Utah, Fall 2021
 
 Undergraduate-level course taught by [Pavel
