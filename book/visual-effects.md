@@ -6,20 +6,90 @@ next: rendering-architecture
 ...
 
 Right now our browser can draw text and rectangles of various colors. But that's
-pretty boring! Browsers have all sorts of great ways to make content look good
-on the screen. These are called *visual effects*---visual because they affect
-how it looks, but not functionality per se, or layout. Therefore these effects are
-extensions to the *paint* and *draw* parts of rendering.
+pretty boring: our guest book demo, for example, does cool stuff but doesn't
+*look* very impressive. Real browsers have all sorts of great ways to make
+ content look good on the screen, of course. These are called *visual
+ effects*---visual because they affect how it looks, but not functionality per
+ se, or layout. Therefore these effects are extensions to the *paint*
+ and *draw* parts of rendering.
+
+But to understand how this visual effects really work, we'll need to first
+learn a bit about colors on computer screens, how pixels are drawn, and visual
+layering with canvases. Then we can proceed to implementing, but the first
+step of that will be to replace Tkinter with a rendering library with
+sufficient capabilities. Once upgraded, and once you understand the underlying
+concepts, you'll see that implementing these effects won't be too hard. And
+we'll be able to use them to make the guest book look more fun, and add
+a clickable "account info" menu to it that's similar to many real sites today.
+
+Pixels, Color, Raster
+=====================
+
+Rasterization---turning display lists into pixels---is the main sub-task of
+the "draw" rendering step. Tkinter does raster for us. But so far we just
+called Tkinter APIs, and didn't really explain what is going on at any deeper
+level. Let's start to dig into that now.
+
+As you probably already know, computer screens are a 2D array of pixels. Each
+pixel has a color, which looks that way to a human because it emits a mix of
+light at different *color channel* frequencies. For example, there could be a
+red, green and blue light embedded within the physical pixel at a frequency
+matching closely to the light-detecting [cones][cones] in a human
+eye.[^human-color] And as you learned in physics class, adding together these
+colors results in a combined color that, for different values of red, green and
+blue, looks like most any color a human can see. The three colors and how they
+mix define what is called a *color space*, and the set of colors you can
+express from them is called its *gamut*.
+
+[^human-color]: We all take color for granted in our lives. But just as
+computer screens simulate colors humans happen to be able to see, the colors
+we can see are not random at all, and have to do with the frequencies of light
+emitted by the sun. Color, and human perception of it, is a very interesting
+topic.
+
+[cones]: https://en.wikipedia.org/wiki/Cone_cell
+
+Red, green and blue was the approach taken in many computer screens, in
+particular monitors from the 80s and 90s using [CRT] technology. Since that was
+when the web came into existence, CSS uses a [sRGB] color space derived
+from and calibrated for this technology.[^other-spaces] Each of the three
+color channels (red, green and blue) have a floating-point value between 0 and
+1, with 0 being "off" 1 being "as bright as possible".
+
+[CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
+
+[^other-spaces]: Since then, there have been lots of new technologies like LCD,
+LED and so on that can achieve different and wider gamuts. And as you would
+expect, there are [ways][color-spec] now to express those colors spaces in CSS.
+
+[sRGB]: https://en.wikipedia.org/wiki/SRGB
+[color-spec]: https://drafts.csswg.org/css-color-5/
+
+To *raster* pixels, we need to determine the color channel values for each
+pixel, which ultimately come from commands in the display list. The first
+command in an empty canvas is easy---you just set the color channels directly
+in the pixels indicated by the command. But what if the next display list
+command also draws colors to the same pixel? How are they mixed? There are a
+number of options, and they go by the names
+*compositing* and *blending*.
+
+You can think of each display list command as writing into its own distinct
+buffer. Then that buffer is combined with the existing one via appropriate
+compositing/blending. The default compositing mode is called source-over, and
+for opaque content, it basically means "overwrite what's already there". That's
+why we didn't have to bother with all of this terminology in previous chapters.
+But once your display list commands have any kind of transparency, it becomes
+not quite so simple.
 
 Skia replaces Tkinter
 =====================
 
-But before we get to how visual effects are implemented, we'll need to upgrade
-our graphics system. While Tkinter is great for basic painting and handling
-input, it has no built-in support at all for implementing many visual
-effects.[^tkinter-before-gpu] And just as implementing the details of text
-rendering or drawing rectangles is outside the scope of this book, so is
-implementing visual effects---our focus should be on how to represent and
+Before we get any further defining and implementing compositing and blend modes,
+we'll need to upgrade our graphics system. While Tkinter is great for basic
+painting and handling input, it has no built-in support at all for implementing
+many visual effects.[^tkinter-before-gpu] And just as implementing the details
+of text rendering or drawing rectangles is outside the scope of this book, so
+is implementing visual effects---our focus should be on how to represent and
 execute visual effects for web pages specifically.
 
 [^tkinter-before-gpu]: That's because Tk, the library Tkinter uses to implement
@@ -303,15 +373,20 @@ Now you should be able to run the browser just as it did in previous chapters,
 and have all of the same visuals. It'll probably also feel faster, because
 Skia and SDL are highly optimized libraries written in C & C++.
 
-Size and position
-=================
+Size and transform
+==================
 
 At the moment, block elements size to the dimensions of their inline and input
-content, and input elements have a fixed size. But we're not just displaying
-text and forms any more---now we're planning to draw visual effects such as
-arbitrary colors, images and so on. So we should be able to do things like draw
-a rectangle of a given color on the screen. That is accomplished with the
-`width` and `height` CSS properties.[^not-inline]
+content, and input elements have a fixed size. But real web sites often have
+multiple layers of visuals on top of each other; we'll be adding just such a
+feature to the guest book.[^also-compositing] To achieve that kind of look,
+we'll need to add support for sizing and transforms. Sizing allows you to set a
+block elements[^not-inline] width and height to whatever you want(not just the
+layout size of descendants), and transform allows you to move it around on
+screen from where it started out.
+
+[^also-compositing]: Another reason is that it'd be really hard to explain
+compositing and blending modes without allowing content to overlap...
 
 [^not-inline]: Inline elements can't have their width and height overridden. For
 something like that you would need to switch them to a different layout mode
@@ -384,134 +459,6 @@ class InlineLayout:
             sum([line.height for line in self.children]))
 ```
 
-We can now draw rectangles of a specified width and height. But they still end
-up positioned one after another (note how the light blue and orange rectangles
-stack vertically), in a way that we can't control. It'd be great to be able to
-put the rectangle anywhere on the screen, and not just in a place dictated by
-layout. That can be done with the `position` CSS property. This property has a
-whole lot of complexity to it, so let's just add in a relatively
-simple-to-implement subset: `position:relative`,[^posrel-caveat] plus `top` and
-`left`. Setting these tells the browser that it should take the x, y position
-that the element's top-left corner had, and add the values of `left` to x and
-`top` to y. If `position` is not specified, then `top` and `left` are ignored.
-
-[^posrel-caveat]: Note that we won't even implement all of the effects of
-`position:relative`. For example, this property has an effect on paint order,
-but we'll ignore it.
-
-This will still "take up space" where it used to be, in terms of the sizing
-of its parent element. This makes it pretty easy to implement---just figure
-out the layout without taking into account this property, then add in the
-adjustments at the end. To make things even easier, we'll treat it as a
-purely paint-time property that adjusts the display list.[^posrel-caveat2]
-
-Here's an example:
-
-    <div style="background-color:lightblue;width:50px; height:100px">
-    </div>
-    <div style="background-color:orange;width:50px; height:100px;
-                position:relative;top:-50px;left:50px">
-    </div>
-
-This renders into a light blue 50x100 rectangle, with another orange one below
-it, but this time they overlap.
-
-<div style="background-color:lightblue;width:50px;height:100px"></div>
-<div style="background-color:orange;width:50px;height:100px;position:relative;top:-50px;left:25px"></div>
-
-
-[^posrel-caveat2]: Again, this is not fully correct! But it
-suffices for playing around with visual effects.
-
-To implement `position:relative`, we'll add a new helper method `paint_coords`:
-
-``` {.python expected=False}
-def paint_coords(node, x, y):
-    if not node.style.get("position") == "relative":
-        return (x, y)
-
-    paint_x = x
-    paint_y = y
-
-    left = node.style.get("left")
-    if left:
-        paint_x = paint_x + int(left[:-2])
-    top = node.style.get("top")
-    if top:
-        paint_y = paint_y + int(top[:-2])
-
-    return (paint_x, paint_y)
-```
-
-Then we can use it in `BlockLayout`:
-
-``` {.python expected=False}
-class BlockLayout:
-    # ...
-    def paint(self, display_list):
-        (paint_x, paint_y) = paint_coords(self.node, self.x, self.y)
-        rect = skia.Rect.MakeLTRB(
-            paint_x, paint_y,
-            paint_x + self.width, paint_y + self.height)
-        # ...
-```
-
-A similar change should be made to `InlineLayout` and `InputLayout`.
-
-Now we can move a single rect around on the screen. But what about
-child layout objects? Consider this example:
-
-    <div style="position:relative; top: 100px">
-      Text
-    </div>
-
-Shouldn't "Text" also move down the screen by `100px`, not just the div?
-If you try right now, you'll find that it won't. Oops. We've got to fix it.
-Turns out the fix won't be so hard though---we just need to pass the extra
-paint offsets recursively to children. 
-
-Here's how it will work. First we'll rename `paint_coords` to
-`paint_adjustment`, since its inputs are not the x and y, but the current
-offsets. Next, change all  `paint` methods to add two extra parameters:
-`parent_offset_x` and `parent_offset_y`. These are the extra paint offsets
-inherited from parents.  Then call `paint_adjustment` paint offset that
-includes the current layout object's offsets, and can be added to `self.x` and
-`self.y` for painting. Finally, recurse with the adjusted paint offsets as
-parameters.
-
-``` {.python}
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
-        (paint_offset_x, paint_offset_y) = \
-            paint_adjustment(
-                self.node, parent_offset_x, parent_offset_y)
-        paint_x = self.x + paint_offset_x
-        paint_y = self.y + paint_offset_y
-    # ...
-        for child in self.children:
-            child.paint(display_list, paint_offset_x, paint_offset_y)
-```
-
-And of course, the paint methods for all other layout object types need to
-be similarly adjusted.
-
-::: {.further}
-In a real browser, you'll sometimes find code patterns
-that look a lot like this. Until recently, Chromium had a lot of it in fact.
-For real browsers, getting it just right with no errors starts to be quite
-complicated. Other use cases for computing paint offsets also come up
-(like computing invalidation regions or implementing some of the
-geometry-related APIs like[`IntersectionObserver`][intersection-observer].
-So these days Chromium has an extra rendering step between layout and
-paint called *pre-paint*. One of the tasks of pre-paint is to compute all of
-the geometry information for the web page, including paint offsets.
-
-The computed paint offsets are then stored on the layout objects, and
-during paint they are read off instead of being computed recursively
-on-the-fly.
-:::
-
-[intersection-observer]: https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API))
-
 ::: {.further}
 Since we've added support for setting the size of a layout object to
 be different than the sum of its children's sizes, it's easy for there to
@@ -538,6 +485,117 @@ endless.
 :::
 
 [overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
+
+Now let's add (2D) transforms.[^3d-matrix] In computer
+graphics, a linear transform is a transformation of a point in space
+represented by multiplication of the point as a (x,y,z,1) vector by a
+[4x4 matrix][44matrix]. The same concept exists on the web in the `transform`
+CSS property. This property specifies a transform for the contents of a
+layout object when drawing to the screen.
+
+[44matrix]: https://en.wikipedia.org/wiki/Transformation_matrix
+
+[^3d-matrix]: 3D is also supported in real browsers , but we'll only discuss 2D
+matrices in this chapter. There is a lot more complexity to 3D transforms
+having to do with the definition of 3D spaces, flatting, backfaces, and plane
+intersections.
+
+[^except-scrolling]: The only exception is that transforms contribute to
+[scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable),
+though we won't implement that here.
+
+By default, the origin of the coordinate space in which the transform applies is
+the center of the layout object's box.[^transform-origin] The transform matrix
+specfied by the `transform` property [maps][applying-a-transform] each of the
+four points to a new 2D location. You can also roughly think of it also doing
+the same for the pixels inside the rectangle.[^filter-transform]
+
+[^transform-origin]: As you might expect, there is a CSS property called
+`transform-origin` that allows changing this default.
+
+[applying-a-transform]: https://drafts.csswg.org/css-transforms-1/#transform-rendering
+
+[^filter-transform]: In reality, the method of rasterng mapping a canvas across
+a transform is a nuanced topic. Generating high-quality results without visible
+blurring or distortion in these situations involves a number of considerations,
+such as the choice of filtering algorithms, and how to handle pixels near the
+edges. We won't discuss any of that here.
+
+Transforms are almost entirely a visual effect, and do not affect layout.
+[^except-scrolling] As you would expect, this means we can implement 2D
+transforms with a simple addition to `paint_visual_effects`. Let's do it now.
+We'll implement a `rotate(XXdeg)` and `translate(x, y)` syntax for simple
+clockwise rotation  and x/y translation on the screen.
+
+This example:
+
+    <div style="width:191px; height:191px;
+        transform:rotate(10deg);background-color:lightblue">
+    </div>
+
+renders like this:
+
+<div style="width:191px; height:191px;
+        transform:rotate(10deg);background-color:lightblue">
+</div>
+
+
+First let's parse the `transform` property:
+
+``` {.python}
+def parse_rotation_transform(transform_str):
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find('deg)')
+    return float(transform_str[left_paren + 1:right_paren])
+```
+
+Then paint it (we need to `Save` before rotating, to only rotate
+the element and its subtree, not the rest of the output):
+
+``` {.python}
+def paint_visual_effects(node, display_list, rect):
+    transform_str = node.style.get("transform", "")
+    if transform_str:
+        display_list.append(Save(rect))
+        restore_count = restore_count + 1
+        degrees = parse_rotation_transform(transform_str)
+        display_list.append(Rotate(degrees, rect))
+```
+
+The implementation of `Rotate` in Skia looks like this:
+
+``` {.python}
+class Rotate:
+    def __init__(self, degrees, rect):
+        self.degrees = degrees
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        paint_rect = skia.Rect.MakeLTRB(
+            self.rect.left(), self.rect.top() - scroll,
+            self.rect.right(), self.rect.bottom() - scroll)
+        (center_x, center_y) = center_point(paint_rect)
+        with rasterizer.surface as canvas:
+            canvas.translate(center_x, center_y)
+            canvas.rotate(self.degrees)
+            canvas.translate(-center_x, -center_y)
+```
+
+Note how we first translated to put the center of the layout object at the
+origin before rotating (this is the negative translation), then rotation, then
+translated back.
+
+Anther strange thing to get used to is that the transforms seem to be in the
+wrong order---didn't we say that first translation to apply is the negative
+one? Yes, but the way canvas APIs work is that all *preceding* transforms,
+clips etc apply to later commands. And they apply "inside-out", meaning last
+one first.
+[^transforms-hard]
+
+[^transforms-hard]: This is also how matrix math is represented in mathematics.
+Nevertheless, I find it very hard to remember this when programming! when in
+doubt work through an example, and remember that the computer is your friend to
+test if the results look correct.
 
 Background images
 =================
@@ -1550,122 +1608,6 @@ with rounded corners would be infeasible.
 [quickdraw]: https://raw.githubusercontent.com/jrk/QuickDraw/master/RRects.a
 [hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
 [rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
-
-2D Transforms
-=============
-
-The last visual effect we'll implement is 2D transforms.[^3d-matrix] In computer
-graphics, a linear transform is a transformation of a point in space
-represented by multiplication of the point as a (x,y,z,1) vector by a
-[4x4 matrix][44matrix]. The same concept exists on the web in the `transform`
-CSS property. This property specifies a transform for the contents of a
-layout object when drawing to the screen.
-
-[44matrix]: https://en.wikipedia.org/wiki/Transformation_matrix
-
-[^3d-matrix]: 3D is also supported in real browsers , but we'll only discuss 2D
-matrices in this chapter. There is a lot more complexity to 3D transforms
-having to do with the definition of 3D spaces, flatting, backfaces, and plane
-intersections.
-
-[^except-scrolling]: The only exception is that transforms contribute to
-[scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable),
-though we won't implement that here.
-
-By default, the origin of the coordinate space in which the transform applies is
-the center of the layout object's box.[^transform-origin] The transform matrix
-specfied by the `transform` property [maps][applying-a-transform] each of the
-four points to a new 2D location. You can also roughly think of it also doing
-the same for the pixels inside the rectangle.[^filter-transform]
-
-[^transform-origin]: As you might expect, there is a CSS property called
-`transform-origin` that allows changing this default.
-
-[applying-a-transform]: https://drafts.csswg.org/css-transforms-1/#transform-rendering
-
-[^filter-transform]: In reality, the method of rasterng mapping a canvas across
-a transform is a nuanced topic. Generating high-quality results without visible
-blurring or distortion in these situations involves a number of considerations,
-such as the choice of filtering algorithms, and how to handle pixels near the
-edges. We won't discuss any of that here.
-
-Transforms are almost entirely a visual effect, and do not affect layout.
-[^except-scrolling] As you would expect, this means we can implement 2D
-transforms with a simple addition to `paint_visual_effects`. Let's do it now.
-We'll implement just a `rotate(XXdeg)` syntax for simple clockwise rotation on
-the screen.
-
-This example:
-
-    <div style="width:191px; height:191px;
-        transform:rotate(10deg);background-image:
-        url('https://pavpanchekha.com/im/me-square.jpg')">
-    </div>
-
-renders like this:
-
-<div style="width:191px; height:191px;
-        transform:rotate(10deg);background-image:
-        url('https://pavpanchekha.com/im/me-square.jpg')">
-</div>
-
-
-First let's parse the `transform` property:
-
-``` {.python}
-def parse_rotation_transform(transform_str):
-    left_paren = transform_str.find('(')
-    right_paren = transform_str.find('deg)')
-    return float(transform_str[left_paren + 1:right_paren])
-```
-
-Then paint it (we need to `Save` before rotating, to only rotate
-the element and its subtree, not the rest of the output):
-
-``` {.python}
-def paint_visual_effects(node, display_list, rect):
-    transform_str = node.style.get("transform", "")
-    if transform_str:
-        display_list.append(Save(rect))
-        restore_count = restore_count + 1
-        degrees = parse_rotation_transform(transform_str)
-        display_list.append(Rotate(degrees, rect))
-```
-
-The implementation of `Rotate` in Skia looks like this:
-
-``` {.python}
-class Rotate:
-    def __init__(self, degrees, rect):
-        self.degrees = degrees
-        self.rect = rect
-
-    def execute(self, scroll, rasterizer):
-        paint_rect = skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top() - scroll,
-            self.rect.right(), self.rect.bottom() - scroll)
-        (center_x, center_y) = center_point(paint_rect)
-        with rasterizer.surface as canvas:
-            canvas.translate(center_x, center_y)
-            canvas.rotate(self.degrees)
-            canvas.translate(-center_x, -center_y)
-```
-
-Note how we first translated to put the center of the layout object at the
-origin before rotating (this is the negative translation), then rotation, then
-translated back.
-
-Anther strange thing to get used to is that the transforms seem to be in the
-wrong order---didn't we say that first translation to apply is the negative
-one? Yes, but the way canvas APIs work is that all *preceding* transforms,
-clips etc apply to later commands. And they apply "inside-out", meaning last
-one first.
-[^transforms-hard]
-
-[^transforms-hard]: This is also how matrix math is represented in mathematics.
-Nevertheless, I find it very hard to remember this when programming! when in
-doubt work through an example, and remember that the computer is your friend to
-test if the results look correct.
 
 Summary
 =======

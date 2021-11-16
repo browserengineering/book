@@ -173,7 +173,19 @@ radius equal to the `20px` radius specified above.
     drawString(text=Border-radius, x=13.0, y=136.10546875, color=ff000000)
     restore()
 
-Finally, there are 2D rotation transforms. There is as translate to adjust for
+Finally, there are transforms--translation and 3D rotation. Let's start with 
+parsing them:
+
+    >>> lab11.parse_transform("translate(2px,3px)")
+    ((2.0, 3.0), None)
+
+    >>> lab11.parse_transform("rotate(30deg)")
+    (None, 30.0)
+
+    >>> lab11.parse_transform("Nonsense")
+    (None, None)
+
+For 2D rotation, there is as translate to adjust for
 transform origin, then the rotation, then a reverse translation to go from
 the transform origin back to the original origin.
 
