@@ -255,7 +255,7 @@ _commercial browser_,[^commercial-browser] which launched in 1994.
 <figure>
 <img src="im/violawww.png">
 <figcaption>
-ViolaWWW (<a href="http://viola.org/viola/book/preface.html">Viola in a Nutshell</a>)
+ViolaWWW (<a href="https://web.archive.org/web/20200706084621/http://viola.org/viola/book/preface.html">Viola in a Nutshell</a>)
 </figcaption>
 </figure>
 <figure>
@@ -318,7 +318,7 @@ on, the HTML specification ended up moving to a different standards body called
 the [WHATWG](https://whatwg.org/), but [CSS](https://drafts.csswg.org/) and
 other features are still standardized at the W3C. JavaScript is standardized at
 [TC39](https://tc39.es/) (“Technical Committee 39” at
-[ECMA](https://www.ecma-international.org/memento/history.htm), yet another
+[ECMA](https://www.ecma-international.org/about-ecma/history/), yet another
 standards body). [HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
 the [IETF](https://www.ietf.org/about/). The point is that the standards process
 set up in the mid-nineties is still with us.

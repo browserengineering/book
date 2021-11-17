@@ -20,10 +20,7 @@ posts that eventually became this book's chapters.
 
 Now, I'm preparing to teach the class again, and as I do that I'm
 doing through the chapters, fixing mistakes, adding content, and
-clarifying the writing. Sign up for updates:
-
-::: {.signup}
-:::
+clarifying the writing.
 
 I hope you like [the book](../), and write to me if you'd teach a
 class from my book.

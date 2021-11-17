@@ -486,7 +486,7 @@ are two examples of this alternative paradigm.
 :::
 
 [widget-tree]: https://book.huihoo.com/debian-gnu-linux-desktop-survival-guide/Widget_Tree.html
-[boxes-glue]: https://www.overleaf.com/learn/latex/Articles/Boxes_and_Glue:_A_Brief,_but_Visual,_Introduction_Using_LuaTeX
+[boxes-glue]: https://www.overleaf.com/learn/latex/Articles/Boxes_and_Glue%3A_A_Brief%2C_but_Visual%2C_Introduction_Using_LuaTeX
 [auto-layout]: https://developer.apple.com/library/archive/documentation/UserExperience/Conceptual/AutolayoutPG/index.html
 
 Backgrounds

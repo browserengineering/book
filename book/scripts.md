@@ -1143,7 +1143,7 @@ on JavaScript `Node`s. `Node.children` returns the immediate `Element`
 children of a node, as an array. `Text` children are not
 included.[^text-children]
     
-[children]: https://developer.mozilla.org/en-US/docs/Web/API/ParentNode/children
+[children]: https://developer.mozilla.org/en-US/docs/Web/API/Element/children
 
 [^text-children]: The DOM method `childNodes` gives access to both elements and
     text.

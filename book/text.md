@@ -237,7 +237,7 @@ blocks that letters were carved from and not the size of the letters
 themselves.
 :::
 
-[case]: http://publicdocs.courts.mi.gov/opinions/final/sct/20120803_s145387_157_standup-op.pdf 
+[case]: https://publicdocs.courts.mi.gov/opinions/final/sct/20120803_s145387_157_standup-op.pdf 
 
 Word by word
 ============
