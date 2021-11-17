@@ -653,10 +653,10 @@ then draw the tab name:
 ``` {.python}
 for i, tab in enumerate(self.tabs):
     # ...
-    self.canvas.create_line(x1, 0, x1, 40)
-    self.canvas.create_line(x2, 0, x2, 40)
-    self.canvas.create_text(
-        x1 + 10, 10, text=name, font=tabfont, anchor="nw")
+    self.canvas.create_line(x1, 0, x1, 40, fill="black")
+    self.canvas.create_line(x2, 0, x2, 40, fill="black")
+    self.canvas.create_text(x1 + 10, 10, anchor="nw", text=name,
+        font=tabfont, fill="black")
 ```
 
 Finally, to identify which tab is the active tab, we've got to make
@@ -666,8 +666,8 @@ that file folder shape with the current tab sticking up:
 for i, tab in enumerate(self.tabs):
     # ...
     if i == self.active_tab:
-        self.canvas.create_line(0, 40, x1, 40)
-        self.canvas.create_line(x2, 40, WIDTH, 40)
+        self.canvas.create_line(0, 40, x1, 40, fill="black")
+        self.canvas.create_line(x2, 40, WIDTH, 40, fill="black")
 ```
 
 The whole point of tab support is to have more than one tab around,
@@ -679,9 +679,10 @@ class Browser:
     def draw(self):
         # ...
         buttonfont = get_font(30, "normal", "roman")
-        self.canvas.create_rectangle(10, 10, 30, 30, width=1)
-        self.canvas.create_text(
-            11, 0, font=buttonfont, text="+", anchor="nw")
+        self.canvas.create_rectangle(10, 10, 30, 30,
+            outline="black", width=1)
+        self.canvas.create_text(11, 0, anchor="nw", text="+",
+            font=buttonfont, fill="black")
 ```
 
 If you run this code, you'll see a small problem: the page contents
@@ -715,8 +716,8 @@ them:
 class Browser:
     def draw(self):
         self.tabs[self.active_tab].draw(self.canvas)
-        self.canvas.create_rectangle(
-            0, 0, WIDTH, CHROME_PX, fill="white")
+        self.canvas.create_rectangle(0, 0, WIDTH, CHROME_PX,
+            fill="white", outline="black")
         # ...
 ```
 
@@ -804,10 +805,11 @@ address bar that shows the current URL would help a lot.
 class Browser:
     def draw(self):
         # ...
-        self.canvas.create_rectangle(40, 50, WIDTH - 10, 90, width=1)
+        self.canvas.create_rectangle(40, 50, WIDTH - 10, 90,
+            outline="black", width=1)
         url = self.tabs[self.active_tab].url
-        self.canvas.create_text(
-            55, 55, anchor='nw', text=url, font=buttonfont)
+        self.canvas.create_text(55, 55, anchor='nw', text=url,
+            font=buttonfont, fill="black")
 ```
 
 To keep up appearances, the address bar needs a "back" button nearby.
@@ -817,7 +819,8 @@ I'll start by drawing the back button itself:
 class Browser:
     def draw(self):
         # ...
-        self.canvas.create_rectangle(10, 50, 35, 90, width=1)
+        self.canvas.create_rectangle(10, 50, 35, 90,
+            outline="black", width=1)
         self.canvas.create_polygon(
             15, 70, 30, 55, 30, 85, fill='black')
 ```
@@ -959,11 +962,11 @@ class Browser:
         if self.focus == "address bar":
             self.canvas.create_text(
                 55, 55, anchor='nw', text=self.address_bar,
-                font=buttonfont)
+                font=buttonfont, fill="black")
         else:
             url = self.tabs[self.active_tab].url
-            self.canvas.create_text(
-                55, 55, anchor='nw', text=url, font=buttonfont)
+            self.canvas.create_text(55, 55, anchor='nw', text=url,
+                font=buttonfont, fill="black")
 ```
 
 When the user is typing in the address bar, let's also draw a cursor.
@@ -974,7 +977,7 @@ cursor) makes the software easier to use:
 if self.focus == "address bar":
     # ...
     w = buttonfont.measure(self.address_bar)
-    self.canvas.create_line(55 + w, 55, 55 + w, 85)
+    self.canvas.create_line(55 + w, 55, 55 + w, 85, fill="black")
 ```
 
 Next, when the address bar is focused, we need to support typing in a
