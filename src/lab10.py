@@ -10,6 +10,7 @@ import tkinter
 import tkinter.font
 import urllib.parse
 import dukpy
+from lab3 import get_font
 from lab4 import print_tree
 from lab4 import Element
 from lab4 import Text

@@ -97,16 +97,16 @@ class SilentCanvas:
     def __init__(self, *args, **kwargs):
         pass
 
-    def create_text(self, x, y, text, font=None, anchor=None, fill=None):
+    def create_text(self, x, y, text, **kwargs):
         pass
 
-    def create_rectangle(self, x1, y1, x2, y2, width=None, fill=None):
+    def create_rectangle(self, x1, y1, x2, y2, **kwargs):
         pass
 
-    def create_line(self, x1, y1, x2, y2):
+    def create_line(self, x1, y1, x2, y2, **kwargs):
         pass
 
-    def create_line(self, x1, y1, x2, y2):
+    def create_line(self, x1, y1, x2, y2, **kwargs):
         pass
 
     def create_polygon(self, *args, **kwargs):
@@ -124,7 +124,7 @@ class MockCanvas:
     def __init__(self, *args, **kwargs):
         pass
 
-    def create_text(self, x, y, text, font=None, anchor=None):
+    def create_text(self, x, y, text, font=None, anchor=None, **kwargs):
         if font or anchor:
             print("create_text: x={} y={} text={} font={} anchor={}".format(
                 x, y, text, font, anchor))
