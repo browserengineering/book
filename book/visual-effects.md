@@ -617,366 +617,6 @@ Nevertheless, I find it very hard to remember this when programming! when in
 doubt work through an example, and remember that the computer is your friend to
 test if the results look correct.
 
-Background images
-=================
-
-Now let's add our first visual effect: background images. A background image is
-specified in css via the `background-image` CSS property. Its full syntax has
-[many options][background-image], so let's just implement a simple version of
-it. We'll support the `background-image: url("relative-url")` syntax, which
-says to draw an image as the background of an element, with the given relative
-URL.
-
-[background-image]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
-
-Here is an example:
-
-    <div style="width:194px; height:194px;background-image:
-            url('https://pavpanchekha.com/im/me-square.jpg')">
-    </div>
-
-It renders like this:[^exact-size]
-
-<div style="width:194px; height:194px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')"></div>
-
-[^exact-size]: Note that I cleverly chose the width and height of the `div` to
-be exactly `194px`, the dimensions of the JPEG image.
-
-To implement this property, first we'll need to load all of the image URLs
-specified in CSS rules for a `Tab`. Firt collect the image URLs:
-
-``` {.python}
-    def load(self, url, body=None):
-        # ...
-
-        image_url_strs = [rule[1]['background-image']
-                for rule in self.rules
-                if 'background-image' in rule[1]]
-```
-
-The same will need to be done for inline styles:
-
-``` {.python}
-def style(node, rules, url, images):
-    # ...
-    if isinstance(node, Element) and "style" in node.attributes:
-        pairs = CSSParser(node.attributes["style"]).body()
-        image_url_strs = []
-        for property, value in pairs.items():
-            # ...
-            if property == 'background-image':
-                image_url_strs.append(value)
-```
-
-To make non-relative URLs work, we'll also need to modify the CSS parser,
-because these URLs start with "https://" or "http://". Since they contain
-the ":" character, this will confuse the parser because it thinks it's the
-property-value delimiter of CSS. We can fix that by tracking whether we're
-inside a quote---if so, we treat the ":" character as part of a word;
-otherwise, not.[^only-single-quote]
-
-[^only-single-quote]: We're only adding support for single quotes here, but
-double quotes are accepted in real CSS. Single and double quotes can be
-interchanged in CSS and JavaScript, just like in Python.
-
-``` {.python}
-class CSSParser:
-    # ...
-    def word(self):
-        start = self.i
-        in_quote = False
-        while self.i < len(self.s):
-            cur = self.s[self.i]
-            if cur == "'":
-                in_quote = not in_quote
-            if cur.isalnum() or cur in "/#-.%()\"'" \
-                or (in_quote and cur == ':'):
-                self.i += 1
-            else:
-                break
-        assert self.i > start
-        return self.s[start:self.i]
-```
-
-And then load them. But to load them we'll have to augment the `request`
-function to support binary image content types (currently it only supports
-`text/html` and `text/css` encoded in `utf-8`). A PNG image, for instance, has
-the content type `image/png`, and is of course not `utf-8`, it's an encoded PNG
-file. To fix this, we will need to decode in smaller chunks:
-the status line and headers are still `utf-8`, but the body encoding depends
-on the image type.
-
-First, when we read from the socket with `makefile`, pass the argument
-`b` instead of `r` to request raw bytes as output:
-
-``` {.python}
-def request(url, headers={}, payload=None):
-    # ...
-    response = s.makefile("b")
-    # ...
-```
-
-Now you'll need to call `decode` every time you read from the file.
-First, when reading the status line:
-
-``` {.python}
-def request(url, headers={}, payload=None):
-    # ...
-    statusline = response.readline().decode("utf8")
-    # ...
-```
-
-Then, when reading the headers:
-
-``` {.python}
-def request(url, headers={}, payload=None):
-    # ...
-    while True:
-        line = response.readline().decode("utf8")
-        # ...
-    # ...
-```
-
-And finally, when reading the response, we check for the `Content-Type`, and
-only decode[^image-decode] it as `utf-8` if it starts with `text/`:
-
-``` {.python}
-def request(url, headers={}, payload=None):
-    # ...
-    if headers.get(
-        'content-type', 
-        'application/octet-stream').startswith("text"):
-        body = response.read().decode("utf8")
-    else:
-        body = response.read()
-    # ...
-```
-
-[^image-decode]: Not to be confused with image decoding, which will be done 
-later.
-
-Now we are ready to load the images. Each image found will be loaded and stored
-in an `images` dictionary on a `Tab` keyed by URL. However, to actually show
-an image on the first screen, we have to first *decode* it. Images are sent
-over the network in one of many optimized encoding formats, such as PNG or
-JPEG; when we need to draw them to the screen, we need to convert from the
-encoded format into a raw array of pixels. These pixels can then be efficiently
-drawn onto the screen.[^image-decoding]
-
-[^image-decoding]: While image decoding technologies are beyond the
-scope of this book, it's very important for browsers to make optimized use
-of image decoding, because the decoded bytes are often take up *much* more
-memory than the encoded representation. For a web page with a lot
-of images, it's easy to accidentally use up too much memory unless you're very
-careful.
-
-Skia doesn't come with image decoders built-in. In Python, the Pillow library is
-a convenient way to decode images.
-
-::: {.installation}
-`pip3 install Pillow` should install Pillow. See [here][install-pillow] for
-more details.
-:::
-
-[install-pillow]: https://pillow.readthedocs.io/en/stable/installation.html
-
-Here's how to load, decode and convert images into a `skia.Image` object.
-Note that there are two `Image` classes, which is a little confusing.
-The Pillow `Image` class's role is to decode the image, and the Skia `Image`
-class is an interface between the decoded bytes and Skia's internals. Note
-that nowhere do we pass the content type of the image (such as `image/png`)
-to a Pillow `Image`. Instead, the format is auto-detected by looking
-for content type [signatures] in the bytes of the encoded image.
-
-[signatures]: https://en.wikipedia.org/wiki/List_of_file_signatures
-
-``` {.python}
-def get_images(image_url_strs, base_url, images):
-    for image_url_str in image_url_strs:
-        image_url = parse_style_url(image_url_str)
-        header, body_bytes = request(
-            resolve_url(image_url, base_url),
-            headers={})
-        picture_stream = io.BytesIO(body_bytes)
-
-        pil_image = Image.open(picture_stream)
-        if pil_image.mode == "RGBA":
-            pil_image_bytes = pil_image.tobytes()
-        else:
-            pil_image_bytes = pil_image.convert("RGBA").tobytes()
-        images[image_url] = skia.Image.frombytes(
-            array=pil_image_bytes,
-            dimensions=pil_image.size,
-            colorType=skia.kRGBA_8888_ColorType)
-
-    def load(self, url, body=None):
-        # ...
-
-        self.images = {}
-        get_images(image_url_strs, url, self.images)
-```
-
-Next we need to provide access to this image from the `paint` method of a
-layout object. Since those objects don't have access to the `Tab`, the easiest
-way to do this is to save a pointer to the image on the layout object's node
-during `style`:
-
-``` {.python}
-def style(node, rules, url, images):
-    # ...
-    if isinstance(node, Element) and "style" in node.attributes:
-        # ...
-        get_images(image_url_strs, url, images)
-    if node.style.get('background-image'):
-        node.background_image = \
-            images[parse_style_url(
-                node.style.get('background-image'))]
-```
-
-Now that the images are loaded, the next step is to paint them into the display
-list. We'll need a new display list object called `DrawImage`:
-
-``` {.python}
-class DrawImage:
-    def __init__(self, image, rect):
-        self.image = image
-        self.rect = rect
-
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
-            canvas.drawImage(
-                self.image, self.rect.left(),
-                self.rect.top() - scroll)
-```
-
-Then add a `DrawImage`, plus a few additional things, to a new
-`paint_background` function that also paints other parts of the background:
-
-
-``` {.python}
-def paint_background(node, display_list, rect):
-    bgcolor = node.style.get("background-color",
-                             "transparent")
-    if bgcolor != "transparent":
-        display_list.append(DrawRect(rect, bgcolor))
-
-    background_image = node.style.get("background-image")
-    if background_image:
-        display_list.append(Save(rect))
-        display_list.append(ClipRect(rect))
-        display_list.append(DrawImage(node.background_image,
-            rect))
-        display_list.append(Restore(rect))
-```
-
-This will need to be called from each of the layout object types. Here is
-`BlockLayout`:
-
-``` {.python}
-class BlockLayout:
-    # ...
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
-        # ...
-        paint_background(self.node, display_list, rect)
-        
-        for child in self.children:
-            child.paint(display_list, paint_offset_x, paint_offset_y)
-```
-
-Here we're not just drawing the image though---we're also doing something
-new that we haven't seen before. We are applying a *clip*. A clip is a way
-to cut off parts of a drawing that exceed a given set of bounds. Here we are
-asking to clip to the rect that bounds the element, because the
-image for `background-image`  never exceeds the size of the element.
-Clips have to be preceded by a call to `Save`, which says to Skia to 
-snapshot the current parameters to the canvas, so that when `Restore` is called
-later these parameters (including presence or absence of a clip) can be
-restored.[^not-savelayer]
-
-`Save` and `Restore` are implemented like this:
-
-``` {.python}
-class Save:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
-            canvas.save()
-
-class Restore:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
-            canvas.restore()
-```
-
-This example should clip out parts of the image:
-
-    <div style="width:100px; height:100px;background-image:
-        url('https://pavpanchekha.com/im/me-square.jpg')">
-    </div>
-
-Like this:
-
-<div style="width:100px; height:100px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
-</div>
-
-The `ClipRect` class looks like this:
-
-``` {.python}
-class ClipRect:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
-            canvas.clipRect(skia.Rect.MakeLTRB(
-                self.rect.left(), self.rect.top() - scroll,
-                self.rect.right(), self.rect.bottom() - scroll))
-```
-
-[^not-savelayer]: Note: `Save` is not the same as `SaveLayer` (which will
-be introduced later in this chapter). `Save` just saves off parameters;
-`SaveLayer` creates am entirely new canvas.
-
-Note how the background image is painted *before* children, just like
-`background-color`.[^paint-order]
-
-::: {.further}
-Notice that the background image is also drawn after the background
-color. One interesting question to ask about this is:
-if the image paints on top of the background color, what's the point of 
-painting the background color in the presence of a background image? One
-reason is *transparency*, which we'll get to in a bit.
-
-Another is that the
-background image may not have the same [*intrinsic size*][intrinsic-size] as
-the element it's associated with. There are a lot of options
-in the specification for the different ways to account for
-this, via CSS properties like [`background-size`][background-size] and
-[`background-repeat`][background-repeat].
-
-[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size
-[background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
-[background-repeat]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-repeat
-
-In addition to these considerations, there are also cases where we want to scale
-the image to match the size of its container. This is a somewhat complex
-topic---there are various algorithms for [image scaling][image-rendering] to
-choose from, each with pros and cons.
-
-[image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
-
-:::
-
-[^paint-order]: In its full generality, the *paint order* of drawing backgrounds and other
-painted aspects of a single element, and the interaction of its paint order
-with painting descendants, is [quite complicated][paint-order-stacking-context].
-
-[paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
 
 Opacity and Compositing
 =======================
@@ -1628,6 +1268,368 @@ with rounded corners would be infeasible.
 [quickdraw]: https://raw.githubusercontent.com/jrk/QuickDraw/master/RRects.a
 [hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
 [rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
+
+Background images
+=================
+
+Now let's add our first visual effect: background images. A background image is
+specified in css via the `background-image` CSS property. Its full syntax has
+[many options][background-image], so let's just implement a simple version of
+it. We'll support the `background-image: url("relative-url")` syntax, which
+says to draw an image as the background of an element, with the given relative
+URL.
+
+[background-image]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
+
+Here is an example:
+
+    <div style="width:194px; height:194px;background-image:
+            url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+
+It renders like this:[^exact-size]
+
+<div style="width:194px; height:194px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')"></div>
+
+[^exact-size]: Note that I cleverly chose the width and height of the `div` to
+be exactly `194px`, the dimensions of the JPEG image.
+
+To implement this property, first we'll need to load all of the image URLs
+specified in CSS rules for a `Tab`. Firt collect the image URLs:
+
+``` {.python}
+    def load(self, url, body=None):
+        # ...
+
+        image_url_strs = [rule[1]['background-image']
+                for rule in self.rules
+                if 'background-image' in rule[1]]
+```
+
+The same will need to be done for inline styles:
+
+``` {.python}
+def style(node, rules, url, images):
+    # ...
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        image_url_strs = []
+        for property, value in pairs.items():
+            # ...
+            if property == 'background-image':
+                image_url_strs.append(value)
+```
+
+To make non-relative URLs work, we'll also need to modify the CSS parser,
+because these URLs start with "https://" or "http://". Since they contain
+the ":" character, this will confuse the parser because it thinks it's the
+property-value delimiter of CSS. We can fix that by tracking whether we're
+inside a quote---if so, we treat the ":" character as part of a word;
+otherwise, not.[^only-single-quote]
+
+[^only-single-quote]: We're only adding support for single quotes here, but
+double quotes are accepted in real CSS. Single and double quotes can be
+interchanged in CSS and JavaScript, just like in Python.
+
+``` {.python}
+class CSSParser:
+    # ...
+    def word(self):
+        start = self.i
+        in_quote = False
+        while self.i < len(self.s):
+            cur = self.s[self.i]
+            if cur == "'":
+                in_quote = not in_quote
+            if cur.isalnum() or cur in "/#-.%()\"'" \
+                or (in_quote and cur == ':'):
+                self.i += 1
+            else:
+                break
+        assert self.i > start
+        return self.s[start:self.i]
+```
+
+And then load them. But to load them we'll have to augment the `request`
+function to support binary image content types (currently it only supports
+`text/html` and `text/css` encoded in `utf-8`). A PNG image, for instance, has
+the content type `image/png`, and is of course not `utf-8`, it's an encoded PNG
+file. To fix this, we will need to decode in smaller chunks:
+the status line and headers are still `utf-8`, but the body encoding depends
+on the image type.
+
+First, when we read from the socket with `makefile`, pass the argument
+`b` instead of `r` to request raw bytes as output:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    response = s.makefile("b")
+    # ...
+```
+
+Now you'll need to call `decode` every time you read from the file.
+First, when reading the status line:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    statusline = response.readline().decode("utf8")
+    # ...
+```
+
+Then, when reading the headers:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    while True:
+        line = response.readline().decode("utf8")
+        # ...
+    # ...
+```
+
+And finally, when reading the response, we check for the `Content-Type`, and
+only decode[^image-decode] it as `utf-8` if it starts with `text/`:
+
+``` {.python}
+def request(url, headers={}, payload=None):
+    # ...
+    if headers.get(
+        'content-type', 
+        'application/octet-stream').startswith("text"):
+        body = response.read().decode("utf8")
+    else:
+        body = response.read()
+    # ...
+```
+
+[^image-decode]: Not to be confused with image decoding, which will be done 
+later.
+
+Now we are ready to load the images. Each image found will be loaded and stored
+in an `images` dictionary on a `Tab` keyed by URL. However, to actually show
+an image on the first screen, we have to first *decode* it. Images are sent
+over the network in one of many optimized encoding formats, such as PNG or
+JPEG; when we need to draw them to the screen, we need to convert from the
+encoded format into a raw array of pixels. These pixels can then be efficiently
+drawn onto the screen.[^image-decoding]
+
+[^image-decoding]: While image decoding technologies are beyond the
+scope of this book, it's very important for browsers to make optimized use
+of image decoding, because the decoded bytes are often take up *much* more
+memory than the encoded representation. For a web page with a lot
+of images, it's easy to accidentally use up too much memory unless you're very
+careful.
+
+Skia doesn't come with image decoders built-in. In Python, the Pillow library is
+a convenient way to decode images.
+
+::: {.installation}
+`pip3 install Pillow` should install Pillow. See [here][install-pillow] for
+more details.
+:::
+
+[install-pillow]: https://pillow.readthedocs.io/en/stable/installation.html
+
+Here's how to load, decode and convert images into a `skia.Image` object.
+Note that there are two `Image` classes, which is a little confusing.
+The Pillow `Image` class's role is to decode the image, and the Skia `Image`
+class is an interface between the decoded bytes and Skia's internals. Note
+that nowhere do we pass the content type of the image (such as `image/png`)
+to a Pillow `Image`. Instead, the format is auto-detected by looking
+for content type [signatures] in the bytes of the encoded image.
+
+[signatures]: https://en.wikipedia.org/wiki/List_of_file_signatures
+
+``` {.python}
+def get_images(image_url_strs, base_url, images):
+    for image_url_str in image_url_strs:
+        image_url = parse_style_url(image_url_str)
+        header, body_bytes = request(
+            resolve_url(image_url, base_url),
+            headers={})
+        picture_stream = io.BytesIO(body_bytes)
+
+        pil_image = Image.open(picture_stream)
+        if pil_image.mode == "RGBA":
+            pil_image_bytes = pil_image.tobytes()
+        else:
+            pil_image_bytes = pil_image.convert("RGBA").tobytes()
+        images[image_url] = skia.Image.frombytes(
+            array=pil_image_bytes,
+            dimensions=pil_image.size,
+            colorType=skia.kRGBA_8888_ColorType)
+
+    def load(self, url, body=None):
+        # ...
+
+        self.images = {}
+        get_images(image_url_strs, url, self.images)
+```
+
+Next we need to provide access to this image from the `paint` method of a
+layout object. Since those objects don't have access to the `Tab`, the easiest
+way to do this is to save a pointer to the image on the layout object's node
+during `style`:
+
+``` {.python}
+def style(node, rules, url, images):
+    # ...
+    if isinstance(node, Element) and "style" in node.attributes:
+        # ...
+        get_images(image_url_strs, url, images)
+    if node.style.get('background-image'):
+        node.background_image = \
+            images[parse_style_url(
+                node.style.get('background-image'))]
+```
+
+Now that the images are loaded, the next step is to paint them into the display
+list. We'll need a new display list object called `DrawImage`:
+
+``` {.python}
+class DrawImage:
+    def __init__(self, image, rect):
+        self.image = image
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.drawImage(
+                self.image, self.rect.left(),
+                self.rect.top() - scroll)
+```
+
+Then add a `DrawImage`, plus a few additional things, to a new
+`paint_background` function that also paints other parts of the background:
+
+
+``` {.python}
+def paint_background(node, display_list, rect):
+    bgcolor = node.style.get("background-color",
+                             "transparent")
+    if bgcolor != "transparent":
+        display_list.append(DrawRect(rect, bgcolor))
+
+    background_image = node.style.get("background-image")
+    if background_image:
+        display_list.append(Save(rect))
+        display_list.append(ClipRect(rect))
+        display_list.append(DrawImage(node.background_image,
+            rect))
+        display_list.append(Restore(rect))
+```
+
+This will need to be called from each of the layout object types. Here is
+`BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    # ...
+    def paint(self, display_list, parent_offset_x, parent_offset_y):
+        # ...
+        paint_background(self.node, display_list, rect)
+        
+        for child in self.children:
+            child.paint(display_list, paint_offset_x, paint_offset_y)
+```
+
+Here we're not just drawing the image though---we're also doing something
+new that we haven't seen before. We are applying a *clip*. A clip is a way
+to cut off parts of a drawing that exceed a given set of bounds. Here we are
+asking to clip to the rect that bounds the element, because the
+image for `background-image`  never exceeds the size of the element.
+Clips have to be preceded by a call to `Save`, which says to Skia to 
+snapshot the current parameters to the canvas, so that when `Restore` is called
+later these parameters (including presence or absence of a clip) can be
+restored.[^not-savelayer]
+
+`Save` and `Restore` are implemented like this:
+
+``` {.python}
+class Save:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.save()
+
+class Restore:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.restore()
+```
+
+This example should clip out parts of the image:
+
+    <div style="width:100px; height:100px;background-image:
+        url('https://pavpanchekha.com/im/me-square.jpg')">
+    </div>
+
+Like this:
+
+<div style="width:100px; height:100px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+</div>
+
+The `ClipRect` class looks like this:
+
+``` {.python}
+class ClipRect:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.clipRect(skia.Rect.MakeLTRB(
+                self.rect.left(), self.rect.top() - scroll,
+                self.rect.right(), self.rect.bottom() - scroll))
+```
+
+[^not-savelayer]: Note: `Save` is not the same as `SaveLayer` (which will
+be introduced later in this chapter). `Save` just saves off parameters;
+`SaveLayer` creates am entirely new canvas.
+
+Note how the background image is painted *before* children, just like
+`background-color`.[^paint-order]
+
+::: {.further}
+Notice that the background image is also drawn after the background
+color. One interesting question to ask about this is:
+if the image paints on top of the background color, what's the point of 
+painting the background color in the presence of a background image? One
+reason is *transparency*, which we'll get to in a bit.
+
+Another is that the
+background image may not have the same [*intrinsic size*][intrinsic-size] as
+the element it's associated with. There are a lot of options
+in the specification for the different ways to account for
+this, via CSS properties like [`background-size`][background-size] and
+[`background-repeat`][background-repeat].
+
+[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size
+[background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
+[background-repeat]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-repeat
+
+In addition to these considerations, there are also cases where we want to scale
+the image to match the size of its container. This is a somewhat complex
+topic---there are various algorithms for [image scaling][image-rendering] to
+choose from, each with pros and cons.
+
+[image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
+
+:::
+
+[^paint-order]: In its full generality, the *paint order* of drawing backgrounds and other
+painted aspects of a single element, and the interaction of its paint order
+with painting descendants, is [quite complicated][paint-order-stacking-context].
+
+[paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
+
 
 Summary
 =======
