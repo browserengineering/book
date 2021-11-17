@@ -74,12 +74,14 @@ number of options, and they go by the names
 *compositing* and *blending*.
 
 You can think of each display list command as writing into its own distinct
-buffer. Then that buffer is combined with the existing one via appropriate
-compositing/blending. The default compositing mode is called source-over, and
-for opaque content, it basically means "overwrite what's already there". That's
-why we didn't have to bother with all of this terminology in previous chapters.
-But once your display list commands have any kind of transparency, it becomes
-not quite so simple.
+*surface* (a 2D array of pixels with 3 color channels each). Then that surface
+ is combined with the one preceding it via appropriate compositing/blending.
+ The default compositing mode is more or less "overwrite what's already there",
+ as long as the content drawn is opaque. That's why we didn't have to bother
+ with all of this terminology in previous chapters. But once your display list
+ commands have any kind of transparency, it becomes not quite so simple. And
+ several of the effects in this chapter use transparency or alternate
+ compositing modes.
 
 Skia replaces Tkinter
 =====================
@@ -381,7 +383,7 @@ content, and input elements have a fixed size. But real web sites often have
 multiple layers of visuals on top of each other; we'll be adding just such a
 feature to the guest book.[^also-compositing] To achieve that kind of look,
 we'll need to add support for sizing and transforms. Sizing allows you to set a
-block elements[^not-inline] width and height to whatever you want(not just the
+block elements[^not-inline] width and height to whatever you want (not just the
 layout size of descendants), and transform allows you to move it around on
 screen from where it started out.
 
@@ -547,6 +549,20 @@ def parse_rotation_transform(transform_str):
     left_paren = transform_str.find('(')
     right_paren = transform_str.find('deg)')
     return float(transform_str[left_paren + 1:right_paren])
+
+def parse_translate_transform(transform_str):
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find(')')
+    (x_px, y_px) = transform_str[left_paren + 1:right_paren].split(",")
+    return (float(x_px[:-2]), float(y_px[:-2]))
+
+def parse_transform(transform_str):
+    if transform_str.find('translate') >= 0:
+        return (parse_translate_transform(transform_str), None)
+    elif transform_str.find('rotate') >= 0:
+        return (None, parse_rotation_transform(transform_str))
+    else:
+        return (None, None)
 ```
 
 Then paint it (we need to `Save` before rotating, to only rotate
@@ -558,8 +574,12 @@ def paint_visual_effects(node, display_list, rect):
     if transform_str:
         display_list.append(Save(rect))
         restore_count = restore_count + 1
-        degrees = parse_rotation_transform(transform_str)
-        display_list.append(Rotate(degrees, rect))
+        (translation, rotation) = parse_transform(transform_str)
+        if translation:
+            (x, y) = translation
+            display_list.append(Translate(x, y, rect))
+        elif rotation:
+            display_list.append(Rotate(rotation, rect))
 ```
 
 The implementation of `Rotate` in Skia looks like this:
