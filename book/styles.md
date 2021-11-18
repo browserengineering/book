@@ -943,12 +943,31 @@ class DrawText:
 Phew! That was a lot of coordinated changes, so test everything and
 make sure it works. You should now see links on this page appear in
 blue---and you might also notice that the rest of the text has become
-slightly lighter.[^book-css]
+slightly lighter.[^book-css] Also, now that we're explicitly setting
+the text color, we should explicitly set the background color as
+well:[^dark-mode]
 
 [^book-css]: The book's main body text [is colored](book.css) `#333`,
     or roughly 97% black after [gamma correction][gamma-correct].
     
 [gamma-correct]: https://en.wikipedia.org/wiki/SRGB#From_sRGB_to_CIE_XYZ
+
+[^dark-mode]: My Linux machine sets the default background color to a
+    light gray, while my macOS laptop has a "Dark Mode" where the
+    default background color becomes a dark gray. Setting the
+    background color explicitly avoids the browser looking strange in
+    these situations.
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.canvas = tkinter.Canvas(
+            # ...
+            bg="white",
+        )
+        # ...
+```
 
 These changes obsolete all the code in `InlineLayout` that handles
 specific tags, like the `style`, `weight`, and `size` properties and
