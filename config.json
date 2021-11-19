@@ -25,7 +25,9 @@
         "change.md": { "disabled": true },
 
         "glossary.md": { "disabled": true },
-        "bibliography.md": { "disabled": false }
+        "bibliography.md": { "disabled": false },
+        "about.md": { "disabled": false },
+        "classes.md": { "disabled": false }
     },
 
     "modes": {

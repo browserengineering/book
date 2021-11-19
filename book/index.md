@@ -90,4 +90,6 @@ Appendix
 3. [Glossary](glossary.md)
 4. [Bibliography](bibliography.md)
 5. [About the Authors](about.md)
+6. [List of courses taught from this book](classes.md)
+
 :::
