@@ -107,7 +107,8 @@ def parse_rotation_transform(transform_str):
 def parse_translate_transform(transform_str):
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
-    (x_px, y_px) = transform_str[left_paren + 1:right_paren].split(",")
+    (x_px, y_px) = \
+        transform_str[left_paren + 1:right_paren].split(",")
     return (float(x_px[:-2]), float(y_px[:-2]))
 
 def parse_transform(transform_str):

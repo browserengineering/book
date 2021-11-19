@@ -13,75 +13,20 @@ pretty boring: our guest book demo, for example, does cool stuff but doesn't
  se, or layout. Therefore these effects are extensions to the *paint*
  and *draw* parts of rendering.
 
-But to understand how this visual effects really work, we'll need to first
-learn a bit about colors on computer screens, how pixels are drawn, and visual
-layering with canvases. Then we can proceed to implementing, but the first
-step of that will be to replace Tkinter with a rendering library with
-sufficient capabilities. Once upgraded, and once you understand the underlying
-concepts, you'll see that implementing these effects won't be too hard. And
-we'll be able to use them to make the guest book look more fun, and add
-a clickable "account info" menu to it that's similar to many real sites today.
+But to understand how this visual effects really work, you'll need to learn a
+bit about colors and pixels on computer screens, and what happens when canvases
+draw multiple times into the same pixel. Then we can proceed to implementing
+some visual effects, but the first step (even before colors and pixels) will be
+to replace Tkinter with Skia, a newer rendering library with sufficient
+capabilities.
 
-Pixels, Color, Raster
-=====================
+You'll see that implementing these effects in Skia won't be too hard, and with
+prior understanding in hand, you'll know more about *how* Skia implements them
+under the hood.
 
-Rasterization---turning display lists into pixels---is the main sub-task of
-the "draw" rendering step. Tkinter does raster for us. But so far we just
-called Tkinter APIs, and didn't really explain what is going on at any deeper
-level. Let's start to dig into that now.
-
-As you probably already know, computer screens are a 2D array of pixels. Each
-pixel has a color, which looks that way to a human because it emits a mix of
-light at different *color channel* frequencies. For example, there could be a
-red, green and blue light embedded within the physical pixel at a frequency
-matching closely to the light-detecting [cones][cones] in a human
-eye.[^human-color] And as you learned in physics class, adding together these
-colors results in a combined color that, for different values of red, green and
-blue, looks like most any color a human can see. The three colors and how they
-mix define what is called a *color space*, and the set of colors you can
-express from them is called its *gamut*.
-
-[^human-color]: We all take color for granted in our lives. But just as
-computer screens simulate colors humans happen to be able to see, the colors
-we can see are not random at all, and have to do with the frequencies of light
-emitted by the sun. Color, and human perception of it, is a very interesting
-topic.
-
-[cones]: https://en.wikipedia.org/wiki/Cone_cell
-
-Red, green and blue was the approach taken in many computer screens, in
-particular monitors from the 80s and 90s using [CRT] technology. Since that was
-when the web came into existence, CSS uses a [sRGB] color space derived
-from and calibrated for this technology.[^other-spaces] Each of the three
-color channels (red, green and blue) have a floating-point value between 0 and
-1, with 0 being "off" 1 being "as bright as possible".
-
-[CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
-
-[^other-spaces]: Since then, there have been lots of new technologies like LCD,
-LED and so on that can achieve different and wider gamuts. And as you would
-expect, there are [ways][color-spec] now to express those colors spaces in CSS.
-
-[sRGB]: https://en.wikipedia.org/wiki/SRGB
-[color-spec]: https://drafts.csswg.org/css-color-5/
-
-To *raster* pixels, we need to determine the color channel values for each
-pixel, which ultimately come from commands in the display list. The first
-command in an empty canvas is easy---you just set the color channels directly
-in the pixels indicated by the command. But what if the next display list
-command also draws colors to the same pixel? How are they mixed? There are a
-number of options, and they go by the names
-*compositing* and *blending*.
-
-You can think of each display list command as writing into its own distinct
-*surface* (a 2D array of pixels with 3 color channels each). Then that surface
- is combined with the one preceding it via appropriate compositing/blending.
- The default compositing mode is more or less "overwrite what's already there",
- as long as the content drawn is opaque. That's why we didn't have to bother
- with all of this terminology in previous chapters. But once your display list
- commands have any kind of transparency, it becomes not quite so simple. And
- several of the effects in this chapter use transparency or alternate
- compositing modes.
+Then we'll be able to use these to make the guest book look more fun, by adding
+an interactive "account info" menu similar to ones present on many real sites
+today.
 
 Skia replaces Tkinter
 =====================
@@ -375,6 +320,107 @@ Now you should be able to run the browser just as it did in previous chapters,
 and have all of the same visuals. It'll probably also feel faster, because
 Skia and SDL are highly optimized libraries written in C & C++.
 
+Pixels, Color, Raster
+=====================
+
+Now that we've gotten code upgrades out of the way, it's time to learn about
+how pixels work.
+
+Rasterization---turning display lists into pixels---is the main sub-task of
+the "draw" rendering step. Skia^[And Tkinter before it, of course.] does raster
+for us. But so far we just called APIs, and didn't really explain what is
+going on at any deeper level. Let's start to dig into that now.
+
+As you probably already know, computer screens are a 2D array of pixels. Each
+pixel has a color, which looks that way to a human because it emits a mix of
+light at different *color channel* frequencies. For example, there could be a
+red, green and blue light embedded within the physical pixel at a frequency
+closely matching the light-detecting [cones][cones] in a human
+eye.[^human-color] And as you learned in physics class, adding together these
+colors results in a combined color that, for different values of red, green and
+blue, looks like most any color a human can see. The three colors and how they
+mix define what is called a *color space*, and the set of colors you can
+express from them is called its *gamut*.
+
+[^human-color]: We all take color for granted in our lives. But just as computer
+screens simulate colors humans happen to be able to see, the colors we can see
+are not random at all, and have to do with the frequencies of light emitted by
+the sun, which our brains interpret as color. Color, and human perception of
+it, is a very interesting topic.
+
+[cones]: https://en.wikipedia.org/wiki/Cone_cell
+
+Red, green and blue was the approach taken in many computer screens, in
+particular monitors from the 80s and 90s using [CRT] technology. Since that was
+when the web came into existence, CSS uses a [sRGB] color space derived
+from and calibrated for this technology.[^other-spaces] Each of the three
+color channels (red, green and blue) have a floating-point value between 0 and
+1, with 0 being "off" 1 being "as bright as possible".
+
+[CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
+
+[^other-spaces]: Since then, there have been lots of new technologies like LCD,
+LED and so on that can achieve different and wider gamuts. And as you would
+expect, there are [ways][color-spec] now to express those colors spaces in CSS.
+
+[sRGB]: https://en.wikipedia.org/wiki/SRGB
+[color-spec]: https://drafts.csswg.org/css-color-5/
+
+To *raster* pixels, we need to determine the color channel values for each
+pixel, which ultimately come from commands in the display list. The first
+command in an empty canvas is easy---you just set the color channels directly
+in the pixels indicated by the command. But what if a pixel already has a
+certain color and then another color is written to it? You might say the answer
+is obvious---just change the color to the new color, just as a variable's value
+in Python is overwritten when assigned.
+
+That is true for the situations we've seen so far,[^explains] but it gets more
+complicated when there is *transparency* "embedded" in the color, or there is
+an alternate  blending mode present. Observe that this is nothing
+new---the reason you can "add" a green light to a red light a red one on a
+computer screen and get one that [looks yellow][mixing] is that they blend
+together. In this case there is a kind of transparency to the red light, in
+that it lets the green light through it. But if you have a piece of thick red
+paper with a thick green paper behind it, the result will look red, because the
+paper is opaque. Transparency and blend modes in computer graphics
+merely model surfaces we see in the real world.[^mostly-models]
+
+[mixing]: https://en.wikipedia.org/wiki/Color_mixing
+
+[^explains]: This is why we haven't had to bother with understanding blending
+until this chapter.
+
+[^mostly-models]: Mostly. Some more advanced blending modes are difficult, or
+perhaps impossible, to represent with real-world physics.
+
+So if display list commands write multiple times to the same pixel, the result
+will in general be a mix of the colors written. But that's not all. In computer
+graphics, it's common to apply blending not command-by-command or
+pixel-by-pixel, but in groups, arranged into a tree. Each group is rastered
+into a single 2D array of pixels. Then groups are blended into its *parent* in
+reverse depth-first order of the tree. The root group is then drawn to the
+screen.[^not-sequential]
+
+[^not-sequential]: Note that we don't simply raster each group individually, and
+then do blending. Raster of a group can, and usually does, interleave with
+blending of children groups into the parent. This is not nearly as weird or
+complicated as it sounds; in our browser we encounter it all the time, such as
+when the background color of a layout object rasters into its group before the
+raster of descendant layout objectm groups blend on top.
+
+On the web, the groups are [*stacking contexts*][stacking-context], which are
+the layout object subtrees of the layout object for DOM elements with certain
+styles, up to any descendants that themselves have such styles. Since stacking
+contexts are quite complicated to define and maintain, we'll skip that
+complexity in this chapter and simply consider every layout object a stacking
+context.
+
+[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+
+This means that in our simplified model of rendering, the layout object tree
+has one raster group for each layout object, and the output of rastering
+a layout object 
+
 Size and transform
 ==================
 
@@ -524,10 +570,7 @@ such as the choice of filtering algorithms, and how to handle pixels near the
 edges. We won't discuss any of that here.
 
 Transforms are almost entirely a visual effect, and do not affect layout.
-[^except-scrolling] As you would expect, this means we can implement 2D
-transforms with a simple addition to `paint_visual_effects`. Let's do it now.
-We'll implement a `rotate(XXdeg)` and `translate(x, y)` syntax for simple
-clockwise rotation  and x/y translation on the screen.
+[^except-scrolling] 
 
 This example:
 
@@ -541,7 +584,6 @@ renders like this:
         transform:rotate(10deg);background-color:lightblue">
 </div>
 
-
 First let's parse the `transform` property:
 
 ``` {.python}
@@ -553,7 +595,8 @@ def parse_rotation_transform(transform_str):
 def parse_translate_transform(transform_str):
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
-    (x_px, y_px) = transform_str[left_paren + 1:right_paren].split(",")
+    (x_px, y_px) = \
+        transform_str[left_paren + 1:right_paren].split(",")
     return (float(x_px[:-2]), float(y_px[:-2]))
 
 def parse_transform(transform_str):
@@ -570,6 +613,8 @@ the element and its subtree, not the rest of the output):
 
 ``` {.python}
 def paint_visual_effects(node, display_list, rect):
+    restore_count = 0
+
     transform_str = node.style.get("transform", "")
     if transform_str:
         display_list.append(Save(rect))
@@ -580,6 +625,15 @@ def paint_visual_effects(node, display_list, rect):
             display_list.append(Translate(x, y, rect))
         elif rotation:
             display_list.append(Rotate(rotation, rect))
+```
+
+For the example above, the display list commands to paint the rotated light
+blue `div` are:
+
+```
+Save()
+Rotate()
+Restore()
 ```
 
 The implementation of `Rotate` in Skia looks like this:
@@ -621,15 +675,18 @@ test if the results look correct.
 Opacity and Compositing
 =======================
 
-With sizing and position, we also now have the ability to make content overlap!
+With sizing and transform, we also now have the ability to make content overlap!
 [^overlap-new]. Consider this example of CSS & HTML:[^inline-stylesheet]
 
     <style>
-        div { width:100px; height:100px; position:relative }
+        div { width:100px; height:100px }
     </style>
-    <div style="background-color:lightblue"></div>
-    <div style="background-color:orange;left:50px;top:-25px"></div>
-    <div style="background-color:blue;left:100px;top:-50px"></div>
+    <div style="background-color:lightblue">
+    </div>
+    <div style="background-color:orange;transform:translate(50px,-25px)">
+    </div>
+    <div style="background-color:blue;transform:translate(100px,-50px)">
+    </div>
 
 [^inline-stylesheet]: Here I've used an inline style sheet. If you haven't
 completed the inline style sheet exercise for chapter 6, you'll need to
@@ -637,9 +694,9 @@ convert this into a style sheet file in order to load it in your browser.
 
 Its rendering looks like this:
 
-<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
-<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px"></div>
-<div style="width:100px;height:100px;position:relative;background-color:blue;left:100px;top:-50px"></div>
+<div style="width:100px;height:100px;background-color:lightblue"></div>
+<div style="width:100px;height:100px;background-color:orange;transform:translate(50px,-25px)"></div>
+<div style="width:100px;height:100px;background-color:blue;transform:translate(100px,-50px)"></div>
 
 [^overlap-new]: That's right, it was not previously possible to do this in
 our browser. Avoiding overlap is generally good thing for text-based layouts,
@@ -649,18 +706,14 @@ content on top of other content--for instance, to show an overlap menu or
 tooltip.
 
 Right now, the blue rectangle completely obscures part of the orange one, and
-the orange one does the same to the light blue one. It would be
-nice[^why-opacity] for *some* of the orange and light blue to peek through.
-
-[^why-opacity]: Because it's a cool-looking effect, and can make sites
-easier to understand. For example, if you can see some of the content underneath
-an overlay, you know that conceptually it's there and somehow you should be
-able to make the site show it.
+the orange one does the same to the light blue one. In order to explore
+what happens with compositing and blending further, let's make the elements
+semi-transparent.
 
 We can easily implement that with `opacity`, a CSS property that takes a value
 from 0 to 1, 0 being completely invisible (like a window in a house) to
-completely opaque (the wall next to the window). After adding opacity, our
-example looks like:
+completely opaque (the wall next to the window). After adding opacity to the
+blue `div`, our example looks like:
 
     <style>
         div { width:100px; height:100px; position:relative }
@@ -669,7 +722,7 @@ example looks like:
     </div>
     <div style="background-color:orange;left:50px;top:-25px">
     </div>
-    <div style="background-color:blue;left:100px;top:-50px; opacity: 0.5">
+    <div style="background-color:blue;left:100px;top:-50px;opacity: 0.5">
     </div>
 
 <div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
@@ -679,15 +732,15 @@ example looks like:
 Note that you can now see part of the orange square through the blue one, and
 part of the white background as well.
 
-The way to do this in Skia is to create a new canvas, draw the overlay content
-into it, and then *blend* that canvas into the previous canvas. It's a little
-complicated to think about without first seeing it in action, so let's do
-that.
+Let's implement `opacity`. The way to do this is to create a new
+canvas, draw the content with opacity into it, and then composite that canvas
+into the previous canvas. It's a little complicated to think about without
+first seeing it in action, so let's do that with Skia. 
 
 Because we'll be adding things other than opacity soon, let's put opacity
 into a new function called `paint_visual_effects` that will be called from
 the `paint` method of the various layout objects, just like `paint_background`
-already is:
+already is. It returns a `restore_count`, which well get to in a moment.
 
 ``` {.python expected=False}
 def paint_visual_effects(node, display_list, rect):
@@ -722,6 +775,17 @@ class BlockLayout:
             display_list.append(Restore(rect))
 ```
 
+The display list commands for drawing the blue `div` will be:
+
+```
+Save()
+Translate(100, -50)
+SaveLayer(0.5)
+DrawRect()
+Restore()
+Restore()
+```
+
 What this code does is this: if the layout object needs to be painted with
 opacity, create a new canvas that draws the layout object and its descendants,
 and then blend that canvas into the previous canvas with the provided opacity.
@@ -739,6 +803,7 @@ class SaveLayer:
         with rasterizer.surface as canvas:
             canvas.saveLayer(paint=self.sk_paint)
 ```
+
 To understand why `canvas.saveLayer()` is the command that does this, and what
 it does under the hood, the first thing you have to know that Skia thinks of a
 drawing as a stack of layers (like the layers of a cake). You can, at any time,
