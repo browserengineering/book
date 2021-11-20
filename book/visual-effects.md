@@ -324,12 +324,13 @@ Pixels, Color, Raster
 =====================
 
 Now that we've gotten code upgrades out of the way, it's time to learn about
-how pixels work.
+how reasterization works.
 
 Rasterization---turning display lists into pixels---is the main sub-task of
-the "draw" rendering step. Skia^[And Tkinter before it, of course.] does raster
-for us. But so far we just called APIs, and didn't really explain what is
-going on at any deeper level. Let's start to dig into that now.
+the "draw" rendering step. Skia^[And Tkinter also, of course.] does raster for
+us. But so far we just called APIs on those libraries, and didn't really
+dig into what is going on at any deeper level. Let's start to do that
+now.
 
 As you probably already know, computer screens are a 2D array of pixels. Each
 pixel has a color, which looks that way to a human because it emits a mix of
@@ -352,10 +353,10 @@ it, is a very interesting topic.
 
 Red, green and blue was the approach taken in many computer screens, in
 particular monitors from the 80s and 90s using [CRT] technology. Since that was
-when the web came into existence, CSS uses a [sRGB] color space derived
-from and calibrated for this technology.[^other-spaces] Each of the three
-color channels (red, green and blue) have a floating-point value between 0 and
-1, with 0 being "off" 1 being "as bright as possible".
+when the web came into existence, CSS uses a [sRGB] color space derived from
+and calibrated for this technology.[^other-spaces] In thos color space, each of
+the three color channels (red, green and blue) have a floating-point value
+between 0 and 1, with 0 being "off" 1 being "as bright as possible".
 
 [CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
 
@@ -397,29 +398,102 @@ So if display list commands write multiple times to the same pixel, the result
 will in general be a mix of the colors written. But that's not all. In computer
 graphics, it's common to apply blending not command-by-command or
 pixel-by-pixel, but in groups, arranged into a tree. Each group is rastered
-into a single 2D array of pixels. Then groups are blended into its *parent* in
-reverse depth-first order of the tree. The root group is then drawn to the
-screen.[^not-sequential]
+into a single 2D array of pixels, including its subtree. The the group is
+blended into its *parent*. Overall, this happens in a reverse depth-first order
+of the tree. The root group is then drawn to the screen.[^not-sequential]
+
+Group-based blending will look different on the screen than individual display
+list command-based blending. The difference is a like drawing on stacks of
+semi-transparent paper and then holding the stack up to the light. As an
+example, consider painting green and red rectangles. If they were both opaque
+colors and drew on top of each other in that order on the same
+semi-transparent sheet,^[And the rectangle were made transparent by something
+about the sheet technology, perhaps by subsequently shaving the paper very
+thin.] the resulting color will be a pale red. But the rectangles were on
+separate sheets, the result would be be a pale yellow.
 
 [^not-sequential]: Note that we don't simply raster each group individually, and
 then do blending. Raster of a group can, and usually does, interleave with
 blending of children groups into the parent. This is not nearly as weird or
-complicated as it sounds; in our browser we encounter it all the time, such as
+complicated as it sounds; in our browser we alread encountered it, such as
 when the background color of a layout object rasters into its group before the
-raster of descendant layout objectm groups blend on top.
+raster of descendant layout object groups blend on top.
 
 On the web, the groups are [*stacking contexts*][stacking-context], which are
-the layout object subtrees of the layout object for DOM elements with certain
+the layout object subtrees of a layout object for DOM elements with certain
 styles, up to any descendants that themselves have such styles. Since stacking
 contexts are quite complicated to define and maintain, we'll skip that
 complexity in this chapter and simply consider every layout object a stacking
-context.
+context. This simplification is good enough for understanding all the concepts.
 
 [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
-This means that in our simplified model of rendering, the layout object tree
-has one raster group for each layout object, and the output of rastering
-a layout object 
+With this simplication, the layout object tree has one raster group for each
+layout object, and the display list commands that raster the group are the
+ones added during the call to `paint()` on that layout object.
+
+Surfaces and canvases
+=====================
+
+The 2D pixel array for a group is called a *surface*.[^or-texture] Conceptually,
+each layout object will now have its own surface,[^more-than-one] and perform a
+blending operation when being drawn into the surface for its parent.
+A *canvas*, on the other hand, is an API interface for drawing into a surface.
+As you've seen, Tkinter has a canvas API, and so does Skia. The `with surface
+as canvas` Python code pattern we've been using for Skia makes this even more
+clear---in this case, the canvas is a temporary object created for the duration
+of the `with` construct that, when its API methods are called, affect the
+pixels in the surface.
+
+[^more-than-one]: A layout object can have more than one surface, actually.
+For the cases we'll see in this chapter, it's possible to optimize most or all
+of these extra surfaces, but we won't do that in cases where it gets in the
+way of understanding blending.
+
+In practice, however, new surfaces are only created when needed to perform
+non-standard blending. For example, up to this point in the book, we could draw
+the entire browser with only one surface. It's important to avoid creating
+surfaces unless necessary, because it'll use up a ton of memory on complex
+pages. 
+
+[^or-texture]: Sometimes they are called *bitmaps* or *textures* as well, but
+these words connote specific CPU or GPU technologies for implementing surfaces.
+
+In Skia, surfaces are recursive and form a stack.[^tree] You can push a new
+surface on the stack, and pop one off. To push a surface, you call
+`BeginLayer()` on a canvas.[^layer-surface] Parameters passed to this method
+indicate the kind of blending that is desird when popped. To pop, call
+`Restore()`. Skia will keep track of the stack of surfaces for you, and perform
+blending when you call `Restore()`. (In fact, the only surface we'll create
+explicitly is `Browser.skia_surface`).
+
+[^layer-surface]: It's called `BeginLayer` instead of `BeginSurface` because Skia
+doesn't actually promise to create a surface. It will in fact optimize away
+surfaces internally if it can. So what you're really doing with `BeginLayer` is
+telling Skia that there is a new conceptual layer ("piece of paper") on the
+stack. How Skia does the rest is an implementation detail (for now!).
+
+[^tree]: A stack and a tree are very similar---the tree is a representation of
+the push/pop sequences when executing commands on the stack in the course of
+a program's execution.
+
+As we'll see shortly, Skia also has canvas APIs for performing common operations
+like clipping and transform---for example, there is a `rotate()` method
+that rotates the content on the screen. Once you call a method like that,
+all subsequent canvas commands are rotated, until you tell Skia to stop. The
+way to do that is with `Save()` and `Restore()`---you call `Save()` before
+calling `rotate()`, and `Restore()` after. `Save()` means "remember the current
+rotation, clip, etc. state of the canvas" and `Restore()` rolls back to the
+last snapshot.
+
+You've probably noticed that `Restore()` is used for both saving state and
+pushing layers---what gives? That's because there is a combined stack of layers
+and state in the Skia API. Transforms and clips sometimes do actually require
+new surfaces to implement correctly, so in fact when we use `Save` it's
+actually just a shortcut for `SaveLayer` that is often more efficient. The rule
+of thumb is: if you don't need a non-standard blend mode, then you can use
+`Save`, and you should always perfer `Save` to `SaveLayer` all things being
+equal.
 
 Size and transform
 ==================
