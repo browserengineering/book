@@ -704,7 +704,7 @@ def paint_visual_effects(node, display_list, rect):
 For the example above, the display list commands to paint the rotated light
 blue `div` are:
 
-```
+``` {.example}
 Save()
 Rotate()
 Restore()
@@ -851,7 +851,7 @@ class BlockLayout:
 
 The display list commands for drawing the blue `div` will be:
 
-```
+```  {.example}
 Save()
 Translate(100, -50)
 SaveLayer(0.5)
