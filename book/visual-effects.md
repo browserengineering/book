@@ -442,7 +442,7 @@ A *canvas*, on the other hand, is an API interface for drawing into a surface.
 As you've seen, Tkinter has a canvas API, and so does Skia. The `with surface
 as canvas` Python code pattern we've been using for Skia makes this even more
 clear---in this case, the canvas is a temporary object created for the duration
-of the `with` construct that, when its API methods are called, affect the
+of the `with` construct that, when its API methods are called, affects the
 pixels in the surface.
 
 [^more-than-one]: A layout object can have more than one surface, actually.
@@ -461,10 +461,10 @@ these words connote specific CPU or GPU technologies for implementing surfaces.
 
 In Skia, surfaces are recursive and form a stack.[^tree] You can push a new
 surface on the stack, and pop one off. To push a surface, you call
-`BeginLayer()` on a canvas.[^layer-surface] Parameters passed to this method
+`BeginLayer` on a canvas.[^layer-surface] Parameters passed to this method
 indicate the kind of blending that is desird when popped. To pop, call
-`Restore()`. Skia will keep track of the stack of surfaces for you, and perform
-blending when you call `Restore()`. (In fact, the only surface we'll create
+`Restore`. Skia will keep track of the stack of surfaces for you, and perform
+blending when you call `Restore`. (In fact, the only surface we'll create
 explicitly is `Browser.skia_surface`).
 
 [^layer-surface]: It's called `BeginLayer` instead of `BeginSurface` because Skia
@@ -475,24 +475,26 @@ stack. How Skia does the rest is an implementation detail (for now!).
 
 [^tree]: A stack and a tree are very similar---the tree is a representation of
 the push/pop sequences when executing commands on the stack in the course of
-a program's execution.
+a program's execution. In our implementation, we'll call `BeginLayer` for
+each new layout object that needs it, and `Restore` when the recursion is done.
 
 As we'll see shortly, Skia also has canvas APIs for performing common operations
-like clipping and transform---for example, there is a `rotate()` method
+like clipping and transform---for example, there is a `rotate` method
 that rotates the content on the screen. Once you call a method like that,
 all subsequent canvas commands are rotated, until you tell Skia to stop. The
-way to do that is with `Save()` and `Restore()`---you call `Save()` before
-calling `rotate()`, and `Restore()` after. `Save()` means "remember the current
-rotation, clip, etc. state of the canvas" and `Restore()` rolls back to the
-last snapshot.
+way to do that is with `Save` and `Restore`---you call `Save` before
+calling `rotate`, and `Restore` after. `Save` means "remember the current
+rotation, clip, etc. state of the canvas" and `Restore` rolls back to the
+most recent snapshot.
 
-You've probably noticed that `Restore()` is used for both saving state and
+You've probably noticed that `Restore` is used for both saving state and
 pushing layers---what gives? That's because there is a combined stack of layers
 and state in the Skia API. Transforms and clips sometimes do actually require
 new surfaces to implement correctly, so in fact when we use `Save` it's
-actually just a shortcut for `SaveLayer` that is often more efficient. The rule
-of thumb is: if you don't need a non-standard blend mode, then you can use
-`Save`, and you should always perfer `Save` to `SaveLayer` all things being
+actually just a shortcut for `SaveLayer` that is often more efficient; if Skia
+thinks it needs to, it'll make a surface. The rule
+of thumb is: if you don't need a non-default blend mode, then you can use
+`Save`, and you should always prefer `Save` to `SaveLayer`, all things being
 equal.
 
 Size and transform
