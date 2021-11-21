@@ -432,6 +432,19 @@ With this simplication, the layout object tree has one raster group for each
 layout object, and the display list commands that raster the group are the
 ones added during the call to `paint()` on that layout object.
 
+::: {.further}
+If you look at closely at the [definition][stacking-context] of stacking
+contexts in the specification, you'll see that it says the elements that
+*induce* a stacking context are exactly those that do something having to do
+with layering (`z-index`) or visual effects. With this chapter in hand, you can
+see exactly why.
+
+One case that does *not* induce a stacking context is `overflow:scroll`. Many
+browser engineers believe that was one of the biggest mistakes made when
+designing this feature for the web. This mistake has caused many complications
+when implementing high-performance browsers.
+:::
+
 Surfaces and canvases
 =====================
 
@@ -497,6 +510,9 @@ of thumb is: if you don't need a non-default blend mode, then you can use
 `Save`, and you should always prefer `Save` to `SaveLayer`, all things being
 equal.
 
+Now we're ready to implement some visual effects! Let's start with size and
+transform, and then proceed to transparency and blend modes.
+
 Size and transform
 ==================
 
@@ -505,7 +521,7 @@ content, and input elements have a fixed size. But real web sites often have
 multiple layers of visuals on top of each other; we'll be adding just such a
 feature to the guest book.[^also-compositing] To achieve that kind of look,
 we'll need to add support for sizing and transforms. Sizing allows you to set a
-block elements[^not-inline] width and height to whatever you want (not just the
+block element's[^not-inline] width and height to whatever you want (not just the
 layout size of descendants), and transform allows you to move it around on
 screen from where it started out.
 
@@ -590,7 +606,7 @@ be a visual mismatch. What are we supposed to do if a `LayoutBlock` is not
 as tall as the text content within it? By default, browsers draw the content
 anyway, and it might or might not paint outside the block's box.
 This situation is called [*overflow*][overflow-doc]. There are various CSS
-properties, such as [`overflow`][overflow-prop], to control what to do with
+properties, such as [`overflow`][overflow-prop], to control what to do in
 this situation. By far the most important (or complex, at least) value of
 this property is `scroll`.
 
@@ -610,12 +626,11 @@ endless.
 
 [overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
 
-Now let's add (2D) transforms.[^3d-matrix] In computer
-graphics, a linear transform is a transformation of a point in space
-represented by multiplication of the point as a (x,y,z,1) vector by a
-[4x4 matrix][44matrix]. The same concept exists on the web in the `transform`
-CSS property. This property specifies a transform for the contents of a
-layout object when drawing to the screen.
+Now let's add (2D) transforms.[^3d-matrix] In computer graphics, a linear
+transform is a linear transformation of a point in a geometric spaces, and
+usually represented by matrix multiplication. The same concept exists on the
+web in the `transform` CSS property. This property specifies a transform for
+a layout object's group when drawing into its parent group.
 
 [44matrix]: https://en.wikipedia.org/wiki/Transformation_matrix
 
@@ -626,41 +641,65 @@ intersections.
 
 [^except-scrolling]: The only exception is that transforms contribute to
 [scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable),
-though we won't implement that here.
+though we won't implement that.
 
 By default, the origin of the coordinate space in which the transform applies is
-the center of the layout object's box.[^transform-origin] The transform matrix
-specfied by the `transform` property [maps][applying-a-transform] each of the
-four points to a new 2D location. You can also roughly think of it also doing
-the same for the pixels inside the rectangle.[^filter-transform]
+the center of the layout object's rectangular bounds.[^transform-origin] The
+transform matrix specfied by the `transform` property
+[maps][applying-a-transform] each of the four points to a new 2D pixel location,
+and then drawing them into the parent group at that location. You
+can think of it also doing roughly the same thing for the pixels inside the
+rectangle.[^filter-transform]
 
 [^transform-origin]: As you might expect, there is a CSS property called
 `transform-origin` that allows changing this default.
 
 [applying-a-transform]: https://drafts.csswg.org/css-transforms-1/#transform-rendering
 
-[^filter-transform]: In reality, the method of rasterng mapping a canvas across
-a transform is a nuanced topic. Generating high-quality results without visible
-blurring or distortion in these situations involves a number of considerations,
-such as the choice of filtering algorithms, and how to handle pixels near the
-edges. We won't discuss any of that here.
+[^filter-transform]: In reality, methods of rastering a group across a transform
+is a nuanced topic. Generating high-quality results without visible blurring or
+distortion in these situations involves a number of considerations, such as the
+choice of filtering algorithms, pixel-snapping of lines and fonts, and how to
+handle pixels near the edges. We won't discuss any of that here.
 
 Transforms are almost entirely a visual effect, and do not affect layout.
 [^except-scrolling] 
 
 This example:
 
-    <div style="width:191px; height:191px;
+    <div style="width:200px;height:200px;
         transform:rotate(10deg);background-color:lightblue">
     </div>
 
-renders like this:
+paints like this:
 
-<div style="width:191px; height:191px;
+<div style="width:200px;height:200px;
         transform:rotate(10deg);background-color:lightblue">
 </div>
 
-First let's parse the `transform` property:
+As mentioned in the previous section, we'll need to use `save` and `restore`
+to implement transforms. Let's start by adding two new disply list commands for
+them:
+
+``` {.python}
+class Save:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.save()
+
+class Restore:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.restore()
+```
+
+Next, first let's parse the `transform` property:
 
 ``` {.python}
 def parse_rotation_transform(transform_str):
@@ -684,8 +723,10 @@ def parse_transform(transform_str):
         return (None, None)
 ```
 
-Then paint it (we need to `Save` before rotating, to only rotate
-the element and its subtree, not the rest of the output):
+Then we need paint it into the display list (we need to `Save` before rotating,
+to only rotate the element and its subtree, not the rest of the output). For
+that, we'll introduce a new method `paint_visual_efects` that is called by
+`paint` for each layout object class.
 
 ``` {.python}
 def paint_visual_effects(node, display_list, rect):
@@ -703,14 +744,34 @@ def paint_visual_effects(node, display_list, rect):
             display_list.append(Rotate(rotation, rect))
 ```
 
-For the example above, the display list commands to paint the rotated light
-blue `div` are:
+The change to `paint` for `BlockLayout` looks like this:
 
-``` {.example}
-Save()
-Rotate()
-Restore()
+``` {.python}
+class BlockLayout:
+    # ...
+    def paint(self, display_list, parent_offset_x, parent_offset_y):
+        # ...
+        restore_count = paint_visual_effects(
+            self.node, display_list, rect)
+
+        paint_background(self.node, display_list, rect)
+
+        for child in self.children:
+            child.paint(display_list, paint_offset_x, paint_offset_y)
+        # ...
+        for i in range(0, restore_count):
+            display_list.append(Restore(rect))
 ```
+
+Note how we kept track of a `restore_count` variable, and called `Restore` that
+many times. At the moment, `restore_count` can only be 0 or 1, but later on it
+might be higher.[^easy] Another thing you should notice is that the recursive
+calls to `child.paint` happen *before* `Restore`, which makes sense---a
+transform applies to the entire subtree's groups, not just the current layout
+object.
+
+[^easy]: Notice how easy and natural it is to use Skia during the recursive
+paint calls. Hurray for good API design!
 
 The implementation of `Rotate` in Skia looks like this:
 
@@ -747,6 +808,22 @@ Nevertheless, I find it very hard to remember this when programming! when in
 doubt work through an example, and remember that the computer is your friend to
 test if the results look correct.
 
+For completeness, this is `Translate` as well:
+
+``` {.python}
+class Translate:
+    def __init__(self, x, y, rect):
+        self.x = x
+        self.y = y
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        paint_rect = skia.Rect.MakeLTRB(
+            self.rect.left(), self.rect.top() - scroll,
+            self.rect.right(), self.rect.bottom() - scroll)
+        with rasterizer.surface as canvas:
+            canvas.translate(self.x, self.y)
+```
 
 Opacity and Compositing
 =======================
@@ -1685,25 +1762,6 @@ snapshot the current parameters to the canvas, so that when `Restore` is called
 later these parameters (including presence or absence of a clip) can be
 restored.[^not-savelayer]
 
-`Save` and `Restore` are implemented like this:
-
-``` {.python}
-class Save:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
-            canvas.save()
-
-class Restore:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
-            canvas.restore()
-```
 
 This example should clip out parts of the image:
 
