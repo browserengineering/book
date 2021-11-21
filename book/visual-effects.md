@@ -1205,37 +1205,43 @@ def paint_visual_effects(node, display_list, rect):
 
 [mix-blend-mode-def]: https://drafts.fxtf.org/compositing-1/#propdef-mix-blend-mode
 
-Rectangular and non-rectangular clips
-=====================================
+Non-rectangular clips and rounded corners
+=========================================
 
-When we added support for images, we also had to implement clipping in case
-the image was larger than the layout object bounds. In that case, the
-clip was to a rectangular box. But there is no particular reason that the clip
-has to be a rectangle. It could be any 2D path that encloses a region and
-finishes back where it staretd.
+Let's now explore compositing modes other than source-over. They are generally
+not very commmon, with the exception of *destination-in*. This mode is used to
+represent clipping---cutting out parts of a surface that don't intersect with a
+given shape. Clipping is like putting a second piece of paper (called a *mask*)
+over the first one, and then using scissors to cut along the edge of the
+mask.
 
 One way this is expressed in CSS is with the `clip-path` property. The
-[full definition](https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path)
-is quite complicated, so as usual we'll just implement a simple subset.
-In this case we'll only support the `circle(XX%)` syntax, where XX is a
-percentage and defines the radius of the circle. The percentage is calibrated
-so that if the layout object was a perfect square, a 100% circle would inscribe
-the bounds of the square.
+[full definition]
+(https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path) is quite
+complicated, so as usual we'll just implement a simple subset. In this case
+we'll only support the `circle(XX%)` syntax, which cuts out all the content
+that doesn't intersect a circle. XX is a percentage and defines the radius
+of the circle; the percentage is calibrated so that if the layout object was
+a perfect square, a 100% circle would inscribe the bounds of the square.
 
 Let's apply a circular mask to our image example:
 
     <div style="width:256px; height:256px;
-        clip-path:circle(50%);background-image:
-        url('/avatar.png')">
+        clip-path:circle(50%);background-color:lightblue">
     </div>
 
 Which paints like this:
 
-<div style="width:256px;height:256px;clip-path:circle(50%);background-image:url('/avatar.png')">
+<div style="width:256px;height:256px;clip-path:circle(50%);background-color:lightblue">
 </div>
 
-Implementing circular clips is once again easy with Skia in our back pocket.
-We just parse the `clip-path` CSS property:
+Implementing circular clips is once again pretty easy with Skia in our back
+pocket, but has some differences from other visual effects. We'll make a new
+surface (the mask), draw the circle into it, and then blend it with
+destination-in compositing. Let's first get the code in place and then
+investigate more about how it works.
+
+Parse the `clip-path` CSS property:
 
 ``` {.python}
 def parse_clip_path(clip_path_str):
@@ -1244,7 +1250,7 @@ def parse_clip_path(clip_path_str):
     return int(clip_path_str[7:][:-2])
 ```
 
-and paint it:
+And define how to paint it:
 
 ``` {.python}
 def center_point(rect):
@@ -1270,19 +1276,15 @@ def paint_clip_path(node, display_list, rect):
     return 0
 ```
 
-`CircleMask` is new, and means "clip the content to a circle".^[It's called
-"mask" because masking is the generalization of clipping. A mask can be
- an arbitrary bitmap that need not be closed or define any specific shape.]
-The only tricky part is how to implement the `CircleMask` class. This will use a
-new compositing mode called [destination-in][dst-in]. It is defined
-as the backdrop color multiplied by the alpha channel of the source color.
-The circle drawn in the code above defines a region of non-zero
-alpha, and so all pixels fo the backdrop not within the circle will become
-transparent black.
+Destination-in compositing is defined [here][dst-in], and basically means
+"keep the pixels of the backdrop surface that intersect with the source
+ surface". The color is not important, it's just the alpha that matters.
+In this case, the source surface is the circle, and the backdrop surface is the
+thing we want to clip, so destination-in fits perfectly.
 
 [dst-in]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstin
 
-Here is the implementation in Python:
+Here is the implementation of destination-in compositing in demo Python:
 
 ``` {.python expected=False}
 def composite(source_color, backdrop_color):
@@ -1297,11 +1299,10 @@ def composite(source_color, backdrop_color):
 ```
 
 Now let's implement `CircleMask`  in terms of destination-in compositing. It
-creates a new source canvas via `saveLayer` (and at the same time specifying a
+creates a new source surface via `saveLayer` (and at the same time specifying a
 `kDstIn` blend mode for when it is drawn into the backdrop), then draws a
 circle in white (or really any opaque color, it's only the alpha channel that
 matters) and increments the restore count.
-
 
 ``` {.python}
 class CircleMask:
@@ -1323,7 +1324,7 @@ class CircleMask:
 Finally, we call `paint_clip_path` for each layout object type. Note however
 that we have to paint it *after* painting children, unlike visual effects
 or backgrounds. This is because you have to paint the other content into the
-backdrop canvas before drawing the circle and applying the clip. For
+backdrop surface before drawing the circle and applying the clip. For
 `BlockLayout`, this is:
 
 ``` {.python}
@@ -1362,24 +1363,24 @@ mask image. The
 another a way to do this, for example by specifying an image at a URL that
 supplies the mask bitmap.
 
-While the `mask` CSS property is relatively uncommonly used (as is `clip-path`
+While the `mask` CSS property is relatively uncommon used (as is `clip-path`
 actually), there is a special kind of mask that is very common: rounded
 corners. Now that we know how to implement masks, this one is also easy to
-add to our browser. Because it's so common in fact, Skia has special-purpose
-methods to draw rounded corners: `clipRRect`.
+add to our browser. Because it's so common in fact, Skia has a special-purpose
+method to draw rounded corners: `clipRRect`.
 
 Rounded corners are specified in CSS via `border-radius`. Example
 
     <div style="width:256px; height:256px;
-        border-radius: 20px;background-image:url('/avatar.png')">
+        border-radius: 20px;background-color:lightblue">
     </div>
 
-Which paints like this:
+Which paints like this (notice the curved corners):
 
-<div style="width:256px; height:256px;border-radius:20px;background-image:url('/avatar.png')">
+<div style="width:256px; height:256px;border-radius:20px;background-color:lightblue">
 </div>
 
-This call will go in `paint_visual_effects`:
+To implement it, add a call will go in `paint_visual_effects`:
 
 ``` {.python}
 def paint_visual_effects(node, display_list, rect):
@@ -1416,14 +1417,14 @@ because they are so common. Skia could easily add a `clipCircle` command
 if it was popular enough.
 
 What Skia does under the covers may be equivalent to the clip path
-case[^skia-opts], and sometimes that is indeed the case. But in other situations, various
-optimizations can be applied to make the clip more efficient. For example,
-`clipRect` clips to a rectangle, which makes it esaier for Skia to skip
-subsequent draw operations that don't intersect that rectangle,[^see-chap-1]
-or dynamically draw only the parts of drawings that interset the rectangle.
-Likewise, the first optimization mentiond above also applies to
-`clipRRect` (but the second is trickier because you have to account for the
-space cut out in the corners).
+case,[^skia-opts] and sometimes that is indeed the case. But in other
+situations, various optimizations can be applied to make the clip more
+efficient. For example, there is another method called `clipRect` that clips to
+a rectangle, which makes it easier for Skia to skip subsequent draw operations
+that don't intersect that rectangle,[^see-chap-1] or dynamically draw only the
+parts of drawings that intersect the rectangle. Likewise, the first
+optimization mentiond above also applies to `clipRRect` (but the second is
+trickier because you have to account for the space cut out in the corners).
 
 [^skia-opts]: Skia has many internal optimizations, and by design does not
 expose whether they are used to the caller.
@@ -1431,22 +1432,29 @@ expose whether they are used to the caller.
 [^see-chap-1]: This is basically the same optimization as we added in Chapter
 1 to avoid painting offscreen text.
 
+Our journey though compositing and blending modes is now complete, and we're
+almost ready to make our guest book look more fun. But there's one visual
+conspicuously missing that would make it much more interesting---images.
+Images are visual, but aren't really effects...but hey, thet are worth a
+thousand words each, so let's add them anyway.
+
 ::: {.further}
 
-Rounded corners have an interesting history in computing. Their[inclusion]
-[mac-story] into the original Macintosh is a fun story to read, and also
-demonstrates how computers often end up echoing reality. It also shows just how
-hard it was to implement features that appear simple to us today, due to the
-very limited memory, and lack of hardware floating-point arithmetic, of early
-personal computers (here's some [example source code][quickdraw] used on early
-Macintosh computers to implement this feature).
+Rounded corners have an interesting history in computing. Their
+[inclusion][mac-story] into the original Macintosh is a fun story to read, and
+also demonstrates how computers often end up echoing reality. It also reminds us
+of just how hard it was to implement features that appear simple to us today,
+due to the very limited memory, and lack of hardware floating-point arithmetic,
+of early personal computers (here's some [example source code][quickdraw] used
+on early Macintosh computers to implement this feature).
 
-Later on, floating-point coprocessors, and then over time GPUs, became
-standard equipment on new computers. This made it much easier to implement fast
-rounded corners. Unfortunately, the `border-radius` CSS property didn't appear in
-browsers until around 2010, but that didn't stop web developers from putting
-rounded corners on their sites! There are a number of ways to do it even without
-`border-radius`; [this video][rr-video] walks through several.
+Later on, floating-point coprocessors, and then over time GPUs, became standard
+equipment on new computers. This made it much easier to implement fast rounded
+corners. Unfortunately, the `border-radius` CSS property didn't appear in
+browsers until around 2010 (but that didn't stop web developers from putting
+rounded corners on their sites before then)! There are a number of clever ways
+to do it even without `border-radius`; [this video][rr-video] walks through
+several.
 
 It's a good thing `border-radius` is now a fully supported browser feature,
 and not just because it saves developers a lot of time and effort.
@@ -1469,8 +1477,8 @@ with rounded corners would be infeasible.
 Background images
 =================
 
-Now let's add our first visual effect: background images. A background image is
-specified in css via the `background-image` CSS property. Its full syntax has
+Let's add support for background images. A background image is
+specified in CSS via the `background-image` CSS property. Its full syntax has
 [many options][background-image], so let's just implement a simple version of
 it. We'll support the `background-image: url("relative-url")` syntax, which
 says to draw an image as the background of an element, with the given relative
@@ -1484,7 +1492,7 @@ Here is an example:
             url('/avatar.png')">
     </div>
 
-It renders like this:[^exact-size]
+It paints like this:[^exact-size]
 
 <div style="width:256px;height:256px;background-image:url('/avatar.png')"></div>
 
@@ -1808,6 +1816,12 @@ with painting descendants, is [quite complicated][paint-order-stacking-context].
 
 [paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
 
+
+The Account Info demo
+=====================
+
+TODO: Implement guest book menu overlay using all of the things we've built so
+far.
 
 Summary
 =======
