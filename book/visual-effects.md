@@ -1165,14 +1165,14 @@ the bounds of the square.
 
 Let's apply a circular mask to our image example:
 
-    <div style="width:191px; height:191px;
+    <div style="width:256px; height:256px;
         clip-path:circle(50%);background-image:
-        url('https://pavpanchekha.com/im/me-square.jpg')">
+        url('/avatar.png')">
     </div>
 
 Which paints like this:
 
-<div style="width:191px; height:191px;clip-path:circle(50%);background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+<div style="width:256px;height:256px;clip-path:circle(50%);background-image:url('/avatar.png')">
 </div>
 
 Implementing circular clips is once again easy with Skia in our back pocket.
@@ -1311,14 +1311,13 @@ methods to draw rounded corners: `clipRRect`.
 
 Rounded corners are specified in CSS via `border-radius`. Example
 
-    <div style="width:191px; height:191px;
-        border-radius: 20px;background-image:
-        url('https://pavpanchekha.com/im/me-square.jpg')">
+    <div style="width:256px; height:256px;
+        border-radius: 20px;background-image:url('/avatar.png')">
     </div>
 
 Which paints like this:
 
-<div style="width:191px; height:191px;border-radius:20px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+<div style="width:256px; height:256px;border-radius:20px;background-image:url('/avatar.png')">
 </div>
 
 This call will go in `paint_visual_effects`:
