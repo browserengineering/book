@@ -377,7 +377,7 @@ in Python is overwritten when assigned.
 
 That is true for the situations we've seen so far,[^explains] but it gets more
 complicated when there is *transparency* "embedded" in the color, or there is
-an alternate  blending mode present. Observe that this is nothing
+an alternate blending mode present. Observe that this is nothing
 new---the reason you can "add" a green light to a red light a red one on a
 computer screen and get one that [looks yellow][mixing] is that they blend
 together. In this case there is a kind of transparency to the red light, in
@@ -385,6 +385,17 @@ that it lets the green light through it. But if you have a piece of thick red
 paper with a thick green paper behind it, the result will look red, because the
 paper is opaque. Transparency and blend modes in computer graphics
 merely model surfaces we see in the real world.[^mostly-models]
+
+<a name="alpha">
+In computer graphics, transparency can be modeled in multiple ways. One common
+way, which Skia, SDL and this book uses,[^example-sdl] is to add a
+fourth channel in the color representation called *alpha*. Like colors, it is
+between 0 and 1. 0 means the pixel is fully transparent (meaning, no matter
+what the colors are, you can't see then anyway), and 1 meaning fully opaque.
+</a>
+
+[^example-sdl]: For example, the `Browser.to_sdl_surface` method accounts for
+alpha.
 
 [mixing]: https://en.wikipedia.org/wiki/Color_mixing
 
@@ -430,7 +441,7 @@ context. This simplification is good enough for understanding all the concepts.
 
 With this simplication, the layout object tree has one raster group for each
 layout object, and the display list commands that raster the group are the
-ones added during the call to `paint()` on that layout object.
+ones added during the call to `paint` on that layout object.
 
 ::: {.further}
 If you look at closely at the [definition][stacking-context] of stacking
@@ -440,10 +451,24 @@ with layering (`z-index`) or visual effects. With this chapter in hand, you can
 see exactly why.
 
 One case that does *not* induce a stacking context is `overflow:scroll`. Many
-browser engineers believe that was one of the biggest mistakes made when
-designing this feature for the web. This mistake has caused many complications
-when implementing high-performance browsers.
+browser engineers believe that was a mistake made when designing this feature
+for the web,[^also-containing-block] because it resulted in many complications
+when implementing high-performance browsers. Why, you might ask? One reason is
+that a raster group is not only a convenient match for surfaces; it's also
+a convenient way to utilize GPU acceleration for moving around those surfaces.
+Without a stacking context the browser might (depending on the web page
+structure) have to move around multiple indepenent surfaces with complex paint
+orders, in lockstep.
 :::
+
+[^also-containing-block]: It would probably have been better if scrolling were a
+also a [containing block][containing-block] for descendants. Containing blocks
+haven't been discussed yet in this book, but in short, because these elements
+are not a containing block for some descendants, you can end up with elements
+that are a descendant of an `overflow:scroll` ancestor yet don't scroll.
+This situation is very complicated to handle in real browsers.
+
+[containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
 Surfaces and canvases
 =====================
@@ -474,21 +499,22 @@ these words connote specific CPU or GPU technologies for implementing surfaces.
 
 In Skia, surfaces are recursive and form a stack.[^tree] You can push a new
 surface on the stack, and pop one off. To push a surface, you call
-`BeginLayer` on a canvas.[^layer-surface] Parameters passed to this method
+`SaveLayer` on a canvas.[^layer-surface] Parameters passed to this method
 indicate the kind of blending that is desird when popped. To pop, call
 `Restore`. Skia will keep track of the stack of surfaces for you, and perform
 blending when you call `Restore`. (In fact, the only surface we'll create
 explicitly is `Browser.skia_surface`).
 
-[^layer-surface]: It's called `BeginLayer` instead of `BeginSurface` because Skia
-doesn't actually promise to create a surface. It will in fact optimize away
-surfaces internally if it can. So what you're really doing with `BeginLayer` is
+[^layer-surface]: It's called `SaveLayer` instead of `BeginSurface` because Skia
+doesn't actually promise to create a surface, it just promises not to keep
+drawing directly to the current one. It will in fact optimize away
+surfaces internally if it can. So what you're really doing with `SaveLayer` is
 telling Skia that there is a new conceptual layer ("piece of paper") on the
 stack. How Skia does the rest is an implementation detail (for now!).
 
 [^tree]: A stack and a tree are very similar---the tree is a representation of
 the push/pop sequences when executing commands on the stack in the course of
-a program's execution. In our implementation, we'll call `BeginLayer` for
+a program's execution. In our implementation, we'll call `SaveLayer` for
 each new layout object that needs it, and `Restore` when the recursion is done.
 
 As we'll see shortly, Skia also has canvas APIs for performing common operations
@@ -496,7 +522,7 @@ like clipping and transform---for example, there is a `rotate` method
 that rotates the content on the screen. Once you call a method like that,
 all subsequent canvas commands are rotated, until you tell Skia to stop. The
 way to do that is with `Save` and `Restore`---you call `Save` before
-calling `rotate`, and `Restore` after. `Save` means "remember the current
+calling `rotate`, and `Restore` after. `Save` means "snapshot the current
 rotation, clip, etc. state of the canvas" and `Restore` rolls back to the
 most recent snapshot.
 
@@ -513,17 +539,48 @@ equal.
 Now we're ready to implement some visual effects! Let's start with size and
 transform, and then proceed to transparency and blend modes.
 
+<a name="compositing-blending"></a>
+
+Compositing vs blending
+=======================
+
+In the web specifications, *compositing*[^not-to-be-confused] and *blending* are
+treated differently. In the specification, compositing defines one or more way
+of mixing colors from two groups. Blending, on the other hand, specifies more
+advanced ways of how the colors mix, but is an extra step before compositing
+(so with a blend mode, in a sense the colors mix twice). In general, you can
+have both blending and compositing for groups. Skia treats them all the same,
+via a single blend mode concept in the API. If you need to apply both blending
+and non-default compositing to groups, you just create an extra intermediate
+group.
+
+[^not-to-be-confused]: The word *compositing* here refers to the algorithm
+used for blending groups. The same word is sometimes used for multiple other
+concepts in browsers, graphics and operating systems. For example, a
+"composited" animation on the web is one that typically uses a GPU texture for
+ its contents, and an operating system "compositor" is in charge of drawing the
+ pixels from multiple appliations together onto the screen. But of course, each
+ of these situations requires the programmer to decide upon an algorithm for
+ how to mix the pixels, so all the uses of the word "compositing" are indeed
+ related.
+
+Needless to say, this is all quite confusing. To break through that confusion,
+we'll just spell out exactly what is going on mathematically later in this
+chapter. For now, just know that there are two words, and they are very similar
+concepts.
+
 Size and transform
 ==================
 
 At the moment, block elements size to the dimensions of their inline and input
 content, and input elements have a fixed size. But real web sites often have
-multiple layers of visuals on top of each other; we'll be adding just such a
-feature to the guest book.[^also-compositing] To achieve that kind of look,
-we'll need to add support for sizing and transforms. Sizing allows you to set a
-block element's[^not-inline] width and height to whatever you want (not just the
-layout size of descendants), and transform allows you to move it around on
-screen from where it started out.
+multiple layers of visuals on top of each other; for example, we'll be adding
+just such a feature to the guest book.[^also-compositing] To achieve that kind
+of look, we'll need to add support for sizing and transforms. Sizing allows you
+to set a block element's[^not-inline] width and height to whatever you want
+(not just the layout size of descendants), and transform allows you to move it
+around on screen from where it started out. Sizing only applies to the eleement
+itself, but transform applies to the entire element subtree.
 
 [^also-compositing]: Another reason is that it'd be really hard to explain
 compositing and blending modes without allowing content to overlap...
@@ -627,14 +684,14 @@ endless.
 [overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
 
 Now let's add (2D) transforms.[^3d-matrix] In computer graphics, a linear
-transform is a linear transformation of a point in a geometric spaces, and
-usually represented by matrix multiplication. The same concept exists on the
-web in the `transform` CSS property. This property specifies a transform for
-a layout object's group when drawing into its parent group.
+transformation of a point in a geometric space is usually represented by matrix
+multiplication. The same concept exists on the web in the `transform` CSS
+property. This property specifies a transform for a layout object's group when
+drawing into its parent group. There is a `matrix(...)` syntax for the value
+of `transform`, but we'll only implement `rotate(XXdeg)` and `translate(x,y)`,
+which are shorthands for rotation and translation matrices.
 
-[44matrix]: https://en.wikipedia.org/wiki/Transformation_matrix
-
-[^3d-matrix]: 3D is also supported in real browsers , but we'll only discuss 2D
+[^3d-matrix]: 3D is also supported in real browsers, but we'll only discuss 2D
 matrices in this chapter. There is a lot more complexity to 3D transforms
 having to do with the definition of 3D spaces, flatting, backfaces, and plane
 intersections.
@@ -647,9 +704,9 @@ By default, the origin of the coordinate space in which the transform applies is
 the center of the layout object's rectangular bounds.[^transform-origin] The
 transform matrix specfied by the `transform` property
 [maps][applying-a-transform] each of the four points to a new 2D pixel location,
-and then drawing them into the parent group at that location. You
+and then blends them into the parent group at that location. You
 can think of it also doing roughly the same thing for the pixels inside the
-rectangle.[^filter-transform]
+group.[^filter-transform]
 
 [^transform-origin]: As you might expect, there is a CSS property called
 `transform-origin` that allows changing this default.
@@ -699,7 +756,7 @@ class Restore:
             canvas.restore()
 ```
 
-Next, first let's parse the `transform` property:
+Next, parse the `transform` property:
 
 ``` {.python}
 def parse_rotation_transform(transform_str):
@@ -804,11 +861,11 @@ one first.
 [^transforms-hard]
 
 [^transforms-hard]: This is also how matrix math is represented in mathematics.
-Nevertheless, I find it very hard to remember this when programming! when in
-doubt work through an example, and remember that the computer is your friend to
+Nevertheless, I find it very hard to remember this when programming! When in
+doubt, work through an example, and remember that the computer is your friend to
 test if the results look correct.
 
-For completeness, this is `Translate` as well:
+Finally, here is `Translate` as well:
 
 ``` {.python}
 class Translate:
@@ -828,8 +885,8 @@ class Translate:
 Opacity and Compositing
 =======================
 
-With sizing and transform, we also now have the ability to make content overlap!
-[^overlap-new]. Consider this example of CSS & HTML:[^inline-stylesheet]
+With sizing and transform, we also now have the ability to make content
+overlap! Consider this example of CSS & HTML:[^inline-stylesheet]
 
     <style>
         div { width:100px; height:100px }
@@ -851,16 +908,9 @@ Its rendering looks like this:
 <div style="width:100px;height:100px;background-color:orange;transform:translate(50px,-25px)"></div>
 <div style="width:100px;height:100px;background-color:blue;transform:translate(100px,-50px)"></div>
 
-[^overlap-new]: That's right, it was not previously possible to do this in
-our browser. Avoiding overlap is generally good thing for text-based layouts,
-because otherwise you might accidentally obscure content and not be able
-to read it. But it's needed for many kinds of UIs that need to *layer*
-content on top of other content--for instance, to show an overlap menu or
-tooltip.
-
 Right now, the blue rectangle completely obscures part of the orange one, and
 the orange one does the same to the light blue one. In order to explore
-what happens with compositing and blending further, let's make the elements
+what happens with blending further, let's make the elements
 semi-transparent.
 
 We can easily implement that with `opacity`, a CSS property that takes a value
@@ -885,15 +935,29 @@ blue `div`, our example looks like:
 Note that you can now see part of the orange square through the blue one, and
 part of the white background as well.
 
-Let's implement `opacity`. The way to do this is to create a new
-canvas, draw the content with opacity into it, and then composite that canvas
-into the previous canvas. It's a little complicated to think about without
-first seeing it in action, so let's do that with Skia. 
+Let's implement `opacity`. The way to do this is to create a new surface with
+`SaveLayer`, draw the content with opacity into it, and then blend that
+surface into the previous one. This will be our first occasion to use
+`SaveLayer`, so let's define it:
 
-Because we'll be adding things other than opacity soon, let's put opacity
-into a new function called `paint_visual_effects` that will be called from
-the `paint` method of the various layout objects, just like `paint_background`
-already is. It returns a `restore_count`, which well get to in a moment.
+``` {.python}
+class SaveLayer:
+    def __init__(self, sk_paint, rect):
+        self.sk_paint = sk_paint
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        with rasterizer.surface as canvas:
+            canvas.saveLayer(paint=self.sk_paint)
+```
+
+Notice how `SaveLayer` takes an `SkPaint` object as a parameter. This will
+be how we'll define opacity and blend modes. In the example below, we're
+setting the `Alphaf` parameter (floating-point alpha) to apply the opacity.
+
+Adding opacity to our existing `paint_visual_effects` function is a breeze.
+We won't need to make any further changes to any of the `paint` methods,
+since they already call `paint_visual_effects`.
 
 ``` {.python expected=False}
 def paint_visual_effects(node, display_list, rect):
@@ -908,80 +972,21 @@ def paint_visual_effects(node, display_list, rect):
     return restore_count
 ```
 
-`BlockLayout`, `InlineLayout` and `InputLayout` all need to call
-`paint_visual_effects`. Here is `BlockLayout`:
+Let's see how opacity and compositing[^vs-blending] actually work under the hood, so we can
+know what is actually going on in these simple-looking Skia APIs. We'll write
+some Python functions[^pedagogical] that do the math of these operations,
+starting with `apply_opacity`, which simply multiplies the alpha channel by the
+given opacity.[^see-alpha]
 
-``` {.python}
-class BlockLayout:
-    # ...
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
-        # ...
-        restore_count = paint_visual_effects(
-            self.node, display_list, rect)
+[^see-alpha]: Now might be a good time to go back and re-read the paragraph
+about alpha [here](#alpha).
 
-        paint_background(self.node, display_list, rect)
-
-        for child in self.children:
-            child.paint(display_list, paint_offset_x, paint_offset_y)
-        # ...
-        for i in range(0, restore_count):
-            display_list.append(Restore(rect))
-```
-
-The display list commands for drawing the blue `div` will be:
-
-```  {.example}
-Save()
-Translate(100, -50)
-SaveLayer(0.5)
-DrawRect()
-Restore()
-Restore()
-```
-
-What this code does is this: if the layout object needs to be painted with
-opacity, create a new canvas that draws the layout object and its descendants,
-and then blend that canvas into the previous canvas with the provided opacity.
-
-This makes use of a new display list type, `SaveLayer`. Here
-is how it's implemented:
-
-``` {.python}
-class SaveLayer:
-    def __init__(self, sk_paint, rect):
-        self.sk_paint = sk_paint
-        self.rect = rect
-
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
-            canvas.saveLayer(paint=self.sk_paint)
-```
-
-To understand why `canvas.saveLayer()` is the command that does this, and what
-it does under the hood, the first thing you have to know that Skia thinks of a
-drawing as a stack of layers (like the layers of a cake). You can, at any time,
-stop drawing into one layer and either push a new layer on the stack
-(via `canvas.saveLayer()`), or pop up to the next lower level via
-`restore()`. The words "save" and "restore" are there because all of the state
-of the canvas is saved off before pushing the new canvas on on the stack, and
-automatically restored when popping.[^save-like-function-call]
-
-[^save-like-function-call]: This is a lot like function calls in Python or many
-other computer languages. When you call a function, the local "state"
-(variables etc) of the code that calls the function is implicitly saved, and is
-available unchanged when the call completes. The *compositing* that occurs during
-a `restore` is analogous to how a function return value is set into a local
-variable of the calling code.
-
-Let's see how opacity and compositing actually work.
-
-First, opacity: this simply multiplies the alpha channel by the given opacity.
+[^pedagogical]: These Python functions will not end up as part of your browser.
+We're writing them down only so that it's clear what exactly Skia is doing.
 
 Let's assume that pixels are represented in a `skia.Color4f`, which has three
 color properties `fR`, `fG`, and `fB` (floating-point red/green/blue, between 0
-and 1), and one alpha property `fA` (floating-point alpha). Alpha indicates the
-amount of transparency---an alpha of 1 means fully opaque, and 0 means fully
-transparent, just like for `opacity`.[^alpha-vs-opacity]
+and 1), and one alpha property `fA` (floating-point alpha).[^alpha-vs-opacity]
 
 [^alpha-vs-opacity]: The difference between opacity and alpha is often
 confusing. To remember the difference, think of opacity as a visual effect
@@ -999,16 +1004,22 @@ def apply_opacity(color, opacity):
 ```
 
 Next, compositing: let's also assume that the coordinate spaces and pixel
-densities of the two canvases are the same, and therefore their pixels overlap
+densities of the two surfaces are the same, and therefore their pixels overlap
 and have a 1:1 relationship. Therefore we can "composite" each pixel in the
-popped canvas on top of (into, really) its corresponding pixel in the restored
-canvas. Let's call the popped canvas the *source canvas* and the restored canvas the
-*backdrop canvas*. Likewise each pixel in the popped canvas is a *source pixel*
-and each pixel in the restored canvas is a *backdrop pixel*.
+popped surface on top of (into, really) its corresponding pixel in the restored
+surface. Let's call the popped surface the *source surface* and the restored
+surface the *backdrop surface*. Likewise each pixel in the popped surface is
+a *source pixel* and each pixel in the restored surface is a *backdrop pixel*.
 
 The default compositing mode for the web is called *simple alpha compositing* or
 *source-over compositing*.[^other-compositing]
 In Python, the code to implement it looks like this:[^simple-alpha]
+
+[^simple-alpha]: The formula for this code can be found
+[here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that
+that page refers to premultiplied alpha colors. Skia does not
+use premultiplied color representations.
+
 
 ``` {.python.example}
 # Composites |source_color| into |backdrop_color| with simple
@@ -1028,6 +1039,11 @@ def composite(source_color, backdrop_color):
 
 [^other-compositing]: We'll shortly encounter other compositing modes.
 
+This algorithm is basically "average the source and backdrop pixel colors,
+weighted by their their alpha".^[For example, if the alpha of the source pixel
+was 1, the result is just the source pixel color, and if it was 0 the
+result is the backdrop pixel color.]
+
 Putting it all together, if we were to implement the `Restore` command
 ourselves from one canvas to another, we could write the following
 (pretend we have
@@ -1035,14 +1051,14 @@ a `getPixel` method that returns a `skia.Color4f` and a `setPixel` one that
 sets a pixel color):[^real-life-reading-pixels]
 
 ``` {.python.example}
-def restore(source_canvas, backdrop_canvas, width, height, opacity):
+def restore(source_surface, backdrop_surface, width, height, opacity):
     for x in range(0, width):
         for y in range(0, height):
-            backdrop_canvas.setPixel(
+            backdrop_surface.setPixel(
                 x, y,
                 composite(
-                    apply_opacity(source_canvas.getPixel(x, y)),
-                    backdrop_canvas.getPixel(x, y)))
+                    apply_opacity(source_surface.getPixel(x, y)),
+                    backdrop_surface.getPixel(x, y)))
 ```
 
 [^real-life-reading-pixels]: In real browsers it's a bad idea to read canvas
@@ -1051,33 +1067,30 @@ slow. Instead, it should be done on the GPU. So libraries such as Skia don't
 make it convenient to do so. (Skia canvases do have `peekPixels` and
 `readPixels` methods that are sometimes used, but not for this use case).
 
-[^simple-alpha]: The formula for this code can be found
-[here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that
-that page refers to premultiplied alpha colors. Skia does not
-use premultiplied color representations. Graphics systems sometimes use a
-premultiplied representation of colors, because it allows them to skip storing
-the alpha channel in memory.
-
 Blending
 ========
 
-Blending is a way to mix source and backdrop colors together, but is not the
-same thing as compositing, even though they are very similar. In fact, it's a
-step before compositing but after opacity. Blending mixels the source and
-backdrop colors. The mixed result is then composited with the backdrop pixel.
-The changes to our Python code for `restore` looks like this:
+Blending, as the CSS specifications define it, is a way to mix source and
+backdrop colors together, but is not the same thing as
+compositing.[^vs-blending-2] Blending mixes the source and backdrop colors.
+The mixed result is then composited with the backdrop pixel. The changes to our
+Python code for `restore` looks like this:
+
+[^vs-blending-2]: Again, see [here](#compositing-blending) for compositing vs
+blending.
+
 
 ``` {.python.example}
-def restore(source_canvas, backdrop_canvas,
+def restore(source_surface, backdrop_surface,
             width, height, opacity, blend_mode):
     # ...
-            backdrop_canvas.setPixel(
+            backdrop_surface.setPixel(
                 x, y,
                 composite(
                     blend(
-                        apply_opacity(source_canvas.getPixel(x, y)),
-                        backdrop_canvas.getPixel(x, y), blend_mode),
-                    backdrop_canvas.getPixel(x, y)))
+                        apply_opacity(source_surface.getPixel(x, y)),
+                        backdrop_surface.getPixel(x, y), blend_mode),
+                    backdrop_surface.getPixel(x, y)))
 ```
 
 and blend is implemented like this:
@@ -1100,7 +1113,7 @@ def blend(source_color, backdrop_color, blend_mode):
         source_a)
 ```
 
-There are various algorithms `blend_mode` could take. Examples include "multiply",
+There are various algorithms `blend_mode` could use. Examples include "multiply",
 which multiplies the colors as floating-point numbers between 0 and 1,
 and "difference", which subtracts the darker color from the ligher one. The
 default is "normal", which means to ignore the backdrop color.
@@ -1119,9 +1132,9 @@ def apply_blend(blend_mode, source_color_channel,
 
 ```
 
-These are specified with the `mix-blend-mode` CSS property. Let's add support
-for [multiply][mbm-mult] and [difference][mbm-diff] to our browser. Let's modify
-the previous example to see how it will look:[^isolation]
+These are specified with the [`mix-blend-mode`][mix-blend-mode-def] CSS
+property. Add support for [multiply][mbm-mult] and [difference][mbm-diff] to
+our browser. Here's a demo to see how it will look:[^isolation]
 
     <style>
         html { background-color: white }
@@ -1141,23 +1154,27 @@ This will look like:
 <div style="width:100px;height:100px; position:relative;background-color:blue;left:100px;top:-50px;mix-blend-mode:difference"></div>
 
 [^isolation]: Here I had to explicitly set a background color of white on the
-`<html>` element, even thoiugh web pages have a default white background. This
-is because `mix-blend-mode` is defined in terms of stacking contexts (see below
-for more on that topic).
+`<html>` element, even though web pages have a default white background. This
+is because `mix-blend-mode` is defined in terms of stacking contexts. In a real
+browser, if a stacking context doesn't paint anything, then its blending
+surface is empty; in our browser, blending happens whith whatever surface
+happened to be there before `SaveLayer` was called. This is a bug in our
+browser, which can be fixed by calling `BeginLayer` on the parent layout
+object.
 
-Here you can see that the intersection of the orange and blue
-[^note-yellow] square renders as pink. Let's work through the math to see
+Here you can see that the intersection of the orange and
+blue[^note-yellow] square renders as pink. Let's work through the math to see
 why. Here we are blending a blue color with orange, via the "difference" blend
 mode. Blue has (red, green, blue) color channels of (0, 0, 1.0), and orange
 has (1.0, 0.65, 0.0). The blended result will then be (1.0 - 0, 0.65 - 0, 1.0 -
 0) = (1.0, 0.65, 1.0), which is pink.
 
-[^note-yellow]: The "difference" blend mode on the blue redctangle makes it look
+[^note-yellow]: The "difference" blend mode on the blue rectangle makes it look
 yellow over a white background!
 
 Implementing these blend modes in our browser will be very easy, because Skia
 supports these blend mode natively. It's as simple as parsing the property and
-adding a parameter to `SaveLayer`:
+adding a `blend_mode` parameter to the `Skpaint` object.
 
 ``` {.python}
 def parse_blend_mode(blend_mode_str):
@@ -1186,47 +1203,10 @@ def paint_visual_effects(node, display_list, rect):
 [mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
 [mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
 
-::: {.further}
-CSS has a concept that is similar in many ways to Skia's nexted canvases,
-called a *stacking context*. If an element *induces a stacking context*,
-it means that that element and its descendants (up to any descendants that
-themselves induce a stacking contexts) paint together into one contiguous group.
-That means a browser can paint each stacking context into its own
-canvas, and composite & blend those canvses together in a hierarchical
-manner (hierarchical in the same way we've been using `saveLayer` and
-`restore` in this capter) in order to generate pixels on the screen.
-
-The `mix-blend-mode` CSS property's [definition][mix-blend-mode-def] actually
-says that the blending should occur with "the stacking context that contains
-the element" (actually, it's even more complicated---earlier sibling stacking
-contexts also blend, which is why the blue and orange squares in the example
-above blend to pink). Now that you know how saving and resoring canvases work,
-you can see why it is defined this way. This also explains why I had to put an
-explicit white background on the `<html>` element, because that element always
-induces a [stacking context][stacking-context] in a real browser.
-
-Most stacking contexts on the web don't actually have any non-normal blend modes
-or other complex visual effects. In those cases, these stacking contexts don't
-actually require their own canvases, and real browsers take advantage of this
-to reuse canvases thereby save time and memory. In these cases, the above
-definition for properties like `mix-blend-mode` are therefore overly strict.
-However, there is a tradeoff betweeen memory and speed for complex
-visual effects and animations in general, having to do with maximal use of
-the GPU---sometimes browsers allocate extra GPU canvases on purpose to speed up
-content, and sometimes they do it because it's necessary to perform multiple
-execution passes on the GPU for complex visual effects.
-
-There is now a [backdrop root][backdrop-root] concept for some features that
-generalizes beyond stacking contexts, but takes into account the need for
-performant use of GPUs.
-:::
-
 [mix-blend-mode-def]: https://drafts.fxtf.org/compositing-1/#propdef-mix-blend-mode
-[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
-[backdrop-root]: https://drafts.fxtf.org/filter-effects-2/#BackdropRoot
 
-Non-rectangular clips
-=====================
+Rectangular and non-rectangular clips
+=====================================
 
 When we added support for images, we also had to implement clipping in case
 the image was larger than the layout object bounds. In that case, the
