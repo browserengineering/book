@@ -1421,16 +1421,16 @@ URL.
 
 Here is an example:
 
-    <div style="width:194px; height:194px;background-image:
-            url('https://pavpanchekha.com/im/me-square.jpg')">
+    <div style="width:256px;height:256px;background-image:
+            url('/avatar.png')">
     </div>
 
 It renders like this:[^exact-size]
 
-<div style="width:194px; height:194px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')"></div>
+<div style="width:256px;height:256px;background-image:url('/avatar.png')"></div>
 
 [^exact-size]: Note that I cleverly chose the width and height of the `div` to
-be exactly `194px`, the dimensions of the JPEG image.
+be exactly `256px`, the dimensions of the JPEG image.
 
 To implement this property, first we'll need to load all of the image URLs
 specified in CSS rules for a `Tab`. Firt collect the image URLs:
@@ -1706,12 +1706,12 @@ class Restore:
 This example should clip out parts of the image:
 
     <div style="width:100px; height:100px;background-image:
-        url('https://pavpanchekha.com/im/me-square.jpg')">
+        url('/avatar.png')">
     </div>
 
 Like this:
 
-<div style="width:100px; height:100px;background-image:url('https://pavpanchekha.com/im/me-square.jpg')">
+<div style="width:100px; height:100px;background-image:url('/avatar.png')">
 </div>
 
 The `ClipRect` class looks like this:
