@@ -221,6 +221,7 @@ class CircleMask:
             canvas.drawCircle(
                 self.cx, self.cy - scroll,
                 self.radius, skia.Paint(Color=skia.ColorWHITE))
+            canvas.restore()
 
 def center_point(rect):
     return (rect.left() + (rect.right() - rect.left()) / 2,
@@ -479,8 +480,7 @@ class InputLayout:
         display_list.append(
             DrawText(paint_x, paint_y, text, self.font, color))
 
-        restore_count = restore_count + \
-            paint_clip_path(self.node, display_list, rect)
+        paint_clip_path(self.node, display_list, rect)
 
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
@@ -510,8 +510,6 @@ def paint_clip_path(node, display_list, rect):
             (center_x, center_y) = center_point(rect)
             display_list.append(CircleMask(
                 center_x, center_y, radius, rect))
-            return 1
-    return 0
 
 def paint_visual_effects(node, display_list, rect):
     restore_count = 0
@@ -638,8 +636,7 @@ class BlockLayout:
         for child in self.children:
             child.paint(display_list, paint_offset_x, paint_offset_y)
 
-        restore_count = restore_count + \
-            paint_clip_path(self.node, display_list, rect)
+        paint_clip_path(self.node, display_list, rect)
 
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
@@ -748,8 +745,7 @@ class InlineLayout:
         for child in self.children:
             child.paint(display_list, paint_offset_x, paint_offset_y)
 
-        restore_count = restore_count + \
-            paint_clip_path(self.node, display_list, rect)
+        paint_clip_path(self.node, display_list, rect)
 
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
