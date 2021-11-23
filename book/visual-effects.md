@@ -387,13 +387,20 @@ Te thinner the paper, the more light gets through and blends. Transparency and
 blend modes in computer graphics merely model these surfaces we see in the real
 world.[^mostly-models]
 
-<a name="alpha">
+<a name="alpha"></a>
+
 In computer graphics, transparency can be modeled in multiple ways. One common
 way, which Skia, SDL and this book uses,[^example-sdl] is to add a
-fourth channel in the color representation called *alpha*. Like colors, it is
-between 0 and 1. 0 means the pixel is fully transparent (meaning, no matter
-what the colors are, you can't see them anyway), and 1 meaning fully opaque.
-</a>
+fourth channel in the color representation called *alpha*.[^alpha-history] Like
+colors, it is between 0 and 1. 0 means the pixel is fully transparent (meaning,
+no matter what the colors are, you can't see them anyway), and 1 meaning fully
+opaque.
+
+[^alpha-history]: You can read
+[here](http://alvyray.com/Memos/CG/Microsoft/7_alpha.pdf) a
+history of alpha, from its co-inventor (and co-founder of Pixar!). Or you could
+read this [derivation](https://jcgt.org/published/0004/02/03/paper.pdf) of
+alpha and why it works like it does.
 
 [^example-sdl]: For example, the `Browser.to_sdl_surface` method accounts for
 alpha.
@@ -537,9 +544,6 @@ of thumb is: if you don't need a non-default blend mode, then you can use
 `Save`, and you should always prefer `Save` to `SaveLayer`, all things being
 equal.
 
-Now we're ready to implement some visual effects! Let's start with size and
-transform, and then proceed to transparency and blend modes.
-
 <a name="compositing-blending"></a>
 
 Compositing vs blending
@@ -549,7 +553,7 @@ In the web specifications, *compositing*[^not-to-be-confused] and *blending* are
 treated differently. In the specification, compositing defines one or more way
 of mixing colors from two groups. Blending, on the other hand, specifies more
 advanced ways of how the colors mix, but is an extra step before compositing
-(so with a blend mode, in a sense the colors mix twice). In general, you can
+(with a blend mode, in a sense the colors mix twice). In general, you can
 have both blending and compositing for groups. Skia treats them all the same,
 via a single blend mode concept in the API. If you need to apply both blending
 and non-default compositing to groups, you just create an extra intermediate
@@ -566,9 +570,12 @@ concepts in browsers, graphics and operating systems. For example, a
  related.
 
 Needless to say, this is all quite confusing. To break through that confusion,
-we'll just spell out exactly what is going on mathematically later in this
+I'll just spell out exactly what is going on mathematically later in this
 chapter. For now, just know that there are two words, and they are very similar
 concepts.
+
+Now we're ready to implement some visual effects! Let's start with size and
+transform, and then proceed to transparency and blend modes.
 
 Size and transform
 ==================
@@ -577,11 +584,12 @@ At the moment, block elements size to the dimensions of their inline and input
 content, and input elements have a fixed size. But real web sites often have
 multiple layers of visuals on top of each other; for example, we'll be adding
 just such a feature to the guest book.[^also-compositing] To achieve that kind
-of look, we'll need to add support for sizing and transforms. Sizing allows you
-to set a block element's[^not-inline] width and height to whatever you want
-(not just the layout size of descendants), and transform allows you to move it
-around on screen from where it started out. Sizing only applies to the eleement
-itself, but transform applies to the entire element subtree.
+of look, we'll need to add support for sizing and transforms.
+
+Sizing allows you to set a block element's[^not-inline] width and height to
+whatever you want (not just the layout size of descendants), and transform
+allows you to move it around on screen from where it started out. Sizing only
+applies to the element itself.
 
 [^also-compositing]: Another reason is that it'd be really hard to explain
 compositing and blending modes without allowing content to overlap...
@@ -690,7 +698,8 @@ multiplication. The same concept exists on the web in the `transform` CSS
 property. This property specifies a transform for a layout object's group when
 drawing into its parent group. There is a `matrix(...)` syntax for the value
 of `transform`, but we'll only implement `rotate(XXdeg)` and `translate(x,y)`,
-which are shorthands for rotation and translation matrices.
+which are shorthands for rotation and translation matrices. Unlike sizing,
+transforms also apply to the entire element subtree.
 
 [^3d-matrix]: 3D is also supported in real browsers, but we'll only discuss 2D
 matrices in this chapter. There is a lot more complexity to 3D transforms
@@ -735,7 +744,7 @@ paints like this:
         transform:rotate(10deg);background-color:lightblue">
 </div>
 
-As mentioned in the previous section, we'll need to use `save` and `restore`
+As mentioned earlier, we'll need to use `save` and `restore`
 to implement transforms. Let's start by adding two new disply list commands for
 them:
 
@@ -783,7 +792,7 @@ def parse_transform(transform_str):
 
 Then we need paint it into the display list (we need to `Save` before rotating,
 to only rotate the element and its subtree, not the rest of the output). For
-that, we'll introduce a new method `paint_visual_efects` that is called by
+that, introduce a new method `paint_visual_efects` that is called by
 `paint` for each layout object class.
 
 ``` {.python}
@@ -823,13 +832,11 @@ class BlockLayout:
 
 Note how we kept track of a `restore_count` variable, and called `Restore` that
 many times. At the moment, `restore_count` can only be 0 or 1, but later on it
-might be higher.[^easy] Another thing you should notice is that the recursive
+might be higher. Another thing you should notice is that the recursive
 calls to `child.paint` happen *before* `Restore`, which makes sense---a
 transform applies to the entire subtree's groups, not just the current layout
 object.
 
-[^easy]: Notice how easy and natural it is to use Skia during the recursive
-paint calls. Hurray for good API design!
 
 The implementation of `Rotate` in Skia looks like this:
 
@@ -1836,6 +1843,16 @@ draw simple input boxes plus text. It now supports:
 * Blending
 * Non-rectangluar clips
 * 2D transforms
+
+::: {.further}
+[This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
+visual overview of many of the same concepts explored in this chapter,
+plus way more content about how a library such as Skia might implement features
+like raster sampling of vector graphics for lines and text, and interpolation
+of surfaces when their pixel arrays don't match resolution or orientation. I
+highly recommend it.
+:::
+
 
 Exercises
 =========
