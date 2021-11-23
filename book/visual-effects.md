@@ -1751,18 +1751,8 @@ class BlockLayout:
             child.paint(display_list, paint_offset_x, paint_offset_y)
 ```
 
-Here we're not just drawing the image though---we're also doing something
-new that we haven't seen before. We are applying a *clip*. A clip is a way
-to cut off parts of a drawing that exceed a given set of bounds. Here we are
-asking to clip to the rect that bounds the element, because the
-image for `background-image`  never exceeds the size of the element.
-Clips have to be preceded by a call to `Save`, which says to Skia to 
-snapshot the current parameters to the canvas, so that when `Restore` is called
-later these parameters (including presence or absence of a clip) can be
-restored.[^not-savelayer]
-
-
-This example should clip out parts of the image:
+Here we're not just drawing the image though, we're also clipping it to the
+size of the layout object. This example should clip out parts of the image:
 
     <div style="width:100px; height:100px;background-image:
         url('/avatar.png')">
@@ -1787,24 +1777,13 @@ class ClipRect:
                 self.rect.right(), self.rect.bottom() - scroll))
 ```
 
-[^not-savelayer]: Note: `Save` is not the same as `SaveLayer` (which will
-be introduced later in this chapter). `Save` just saves off parameters;
-`SaveLayer` creates am entirely new canvas.
-
 Note how the background image is painted *before* children, just like
 `background-color`.[^paint-order]
 
 ::: {.further}
-Notice that the background image is also drawn after the background
-color. One interesting question to ask about this is:
-if the image paints on top of the background color, what's the point of 
-painting the background color in the presence of a background image? One
-reason is *transparency*, which we'll get to in a bit.
-
-Another is that the
-background image may not have the same [*intrinsic size*][intrinsic-size] as
-the element it's associated with. There are a lot of options
-in the specification for the different ways to account for
+As we've seen, background images may not have the same
+[*intrinsic size*][intrinsic-size] as the element it's associated with. There
+are a lot of options in the specification for the different ways to account for
 this, via CSS properties like [`background-size`][background-size] and
 [`background-repeat`][background-repeat].
 
