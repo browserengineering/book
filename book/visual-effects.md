@@ -336,12 +336,12 @@ As you probably already know, computer screens are a 2D array of pixels. Each
 pixel has a color, which looks that way to a human because it emits a mix of
 light at different *color channel* frequencies. For example, there could be a
 red, green and blue light embedded within the physical pixel at a frequency
-closely matching the light-detecting [cones][cones] in a human
-eye.[^human-color] And as you learned in physics class, adding together these
-colors results in a combined color that, for different values of red, green and
-blue, looks like most any color a human can see. The three colors and how they
-mix define what is called a *color space*, and the set of colors you can
-express from them is called its *gamut*.
+closely matching the light-detecting [cones][cones] in a human eye, and each
+color could be set to any intensity.[^human-color] And as you learned in
+physics class, adding together these colors results in a combined color that,
+for different values of red, green and blue, looks like most any color a human
+can see. The three colors and how they mix define what is called a *color
+space*, and the set of colors you can express from them is called its *gamut*.
 
 [^human-color]: We all take color for granted in our lives. But just as computer
 screens simulate colors humans happen to be able to see, the colors we can see
@@ -377,21 +377,22 @@ in Python is overwritten when assigned.
 
 That is true for the situations we've seen so far,[^explains] but it gets more
 complicated when there is *transparency* "embedded" in the color, or there is
-an alternate blending mode present. Observe that this is nothing
-new---the reason you can "add" a green light to a red light a red one on a
-computer screen and get one that [looks yellow][mixing] is that they blend
-together. In this case there is a kind of transparency to the red light, in
-that it lets the green light through it. But if you have a piece of thick red
-paper with a thick green paper behind it, the result will look red, because the
-paper is opaque. Transparency and blend modes in computer graphics
-merely model surfaces we see in the real world.[^mostly-models]
+an alternate blending mode present. Observe that this is nothing new---the
+reason you can "add" a green light to a red light a red one on a computer
+screen and get one that [looks yellow][mixing] is that they blend together. In
+this case there is a kind of transparency to the red light, in that it lets the
+green light through it. But if you have a piece of thick red paper with a thick
+green paper behind it, the result will look red, because the paper is opaque.
+Te thinner the paper, the more light gets through and blends. Transparency and
+blend modes in computer graphics merely model these surfaces we see in the real
+world.[^mostly-models]
 
 <a name="alpha">
 In computer graphics, transparency can be modeled in multiple ways. One common
 way, which Skia, SDL and this book uses,[^example-sdl] is to add a
 fourth channel in the color representation called *alpha*. Like colors, it is
 between 0 and 1. 0 means the pixel is fully transparent (meaning, no matter
-what the colors are, you can't see then anyway), and 1 meaning fully opaque.
+what the colors are, you can't see them anyway), and 1 meaning fully opaque.
 </a>
 
 [^example-sdl]: For example, the `Browser.to_sdl_surface` method accounts for
@@ -406,21 +407,21 @@ until this chapter.
 perhaps impossible, to represent with real-world physics.
 
 So if display list commands write multiple times to the same pixel, the result
-will in general be a mix of the colors written. But that's not all. In computer
+will in general be a mix of the colors written. But that's not all! In computer
 graphics, it's common to apply blending not command-by-command or
 pixel-by-pixel, but in groups, arranged into a tree. Each group is rastered
-into a single 2D array of pixels, including its subtree. The the group is
+into a single 2D array of pixels, including its subtree. Then the group is
 blended into its *parent*. Overall, this happens in a reverse depth-first order
 of the tree. The root group is then drawn to the screen.[^not-sequential]
 
 Group-based blending will look different on the screen than individual display
 list command-based blending. The difference is a like drawing on stacks of
-semi-transparent paper and then holding the stack up to the light. As an
-example, consider painting green and red rectangles. If they were both opaque
+semi-transparent paper and then holding the stack up to the light. For example,
+consider painting green and red rectangles. If they were both opaque
 colors and drew on top of each other in that order on the same
 semi-transparent sheet,^[And the rectangle were made transparent by something
 about the sheet technology, perhaps by subsequently shaving the paper very
-thin.] the resulting color will be a pale red. But the rectangles were on
+thin...] the resulting color will be a pale red. But if the rectangles were on
 separate sheets, the result would be be a pale yellow.
 
 [^not-sequential]: Note that we don't simply raster each group individually, and
