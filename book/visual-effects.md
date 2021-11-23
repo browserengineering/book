@@ -453,13 +453,13 @@ see exactly why.
 
 One case that does *not* induce a stacking context is `overflow:scroll`. Many
 browser engineers believe that was a mistake made when designing this feature
-for the web,[^also-containing-block] because it resulted in many complications
-when implementing high-performance browsers. Why, you might ask? One reason is
-that a raster group is not only a convenient match for surfaces; it's also
-a convenient way to utilize GPU acceleration for moving around those surfaces.
-Without a stacking context the browser might (depending on the web page
-structure) have to move around multiple indepenent surfaces with complex paint
-orders, in lockstep.
+for the web,[^also-containing-block] because it resulted in complications when
+trying making the browsers scroll smoothly and efficiently. Why, you might ask?
+One reason is that a raster group is not only a convenient match for surfaces;
+it's also a convenient way to utilize GPU acceleration for moving around those
+surfaces. Without a stacking context the browser might (depending on the web
+page structure) have to move around multiple independent surfaces with complex
+paint orders, in lockstep.
 :::
 
 [^also-containing-block]: It would probably have been better if scrolling were a
@@ -478,16 +478,16 @@ The 2D pixel array for a group is called a *surface*.[^or-texture] Conceptually,
 each layout object will now have its own surface,[^more-than-one] and perform a
 blending operation when being drawn into the surface for its parent.
 A *canvas*, on the other hand, is an API interface for drawing into a surface.
-As you've seen, Tkinter has a canvas API, and so does Skia. The `with surface
-as canvas` Python code pattern we've been using for Skia makes this even more
+As you've seen, Tkinter has a canvas API, and so does Skia. The "`with surface
+as canvas`" Python code pattern we've been using for Skia makes this extra
 clear---in this case, the canvas is a temporary object created for the duration
 of the `with` construct that, when its API methods are called, affects the
 pixels in the surface.
 
-[^more-than-one]: A layout object can have more than one surface, actually.
-For the cases we'll see in this chapter, it's possible to optimize most or all
-of these extra surfaces, but we won't do that in cases where it gets in the
-way of understanding blending.
+[^more-than-one]: A layout object can have more than one surface, actually. For
+the cases we'll see in this chapter, it's possible to optimize away most
+of these extra surfaces, but we won't do that in cases where it gets in the way
+of understanding blending.
 
 In practice, however, new surfaces are only created when needed to perform
 non-standard blending. For example, up to this point in the book, we could draw
@@ -524,7 +524,7 @@ that rotates the content on the screen. Once you call a method like that,
 all subsequent canvas commands are rotated, until you tell Skia to stop. The
 way to do that is with `Save` and `Restore`---you call `Save` before
 calling `rotate`, and `Restore` after. `Save` means "snapshot the current
-rotation, clip, etc. state of the canvas" and `Restore` rolls back to the
+rotation, clip, etc. state of the canvas", and `Restore` rolls back to the
 most recent snapshot.
 
 You've probably noticed that `Restore` is used for both saving state and
