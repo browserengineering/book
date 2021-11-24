@@ -104,6 +104,21 @@ def parse_rotation_transform(transform_str):
     right_paren = transform_str.find('deg)')
     return float(transform_str[left_paren + 1:right_paren])
 
+def parse_translate_transform(transform_str):
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find(')')
+    (x_px, y_px) = \
+        transform_str[left_paren + 1:right_paren].split(",")
+    return (float(x_px[:-2]), float(y_px[:-2]))
+
+def parse_transform(transform_str):
+    if transform_str.find('translate') >= 0:
+        return (parse_translate_transform(transform_str), None)
+    elif transform_str.find('rotate') >= 0:
+        return (None, parse_rotation_transform(transform_str))
+    else:
+        return (None, None)
+
 def parse_blend_mode(blend_mode_str):
     if blend_mode_str == "multiply":
         return skia.BlendMode.kMultiply
@@ -206,6 +221,7 @@ class CircleMask:
             canvas.drawCircle(
                 self.cx, self.cy - scroll,
                 self.radius, skia.Paint(Color=skia.ColorWHITE))
+            canvas.restore()
 
 def center_point(rect):
     return (rect.left() + (rect.right() - rect.left()) / 2,
@@ -225,6 +241,19 @@ class Rotate:
             canvas.translate(center_x, center_y)
             canvas.rotate(self.degrees)
             canvas.translate(-center_x, -center_y)
+
+class Translate:
+    def __init__(self, x, y, rect):
+        self.x = x
+        self.y = y
+        self.rect = rect
+
+    def execute(self, scroll, rasterizer):
+        paint_rect = skia.Rect.MakeLTRB(
+            self.rect.left(), self.rect.top() - scroll,
+            self.rect.right(), self.rect.bottom() - scroll)
+        with rasterizer.surface as canvas:
+            canvas.translate(self.x, self.y)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -451,8 +480,7 @@ class InputLayout:
         display_list.append(
             DrawText(paint_x, paint_y, text, self.font, color))
 
-        restore_count = restore_count + \
-            paint_clip_path(self.node, display_list, rect)
+        paint_clip_path(self.node, display_list, rect)
 
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
@@ -482,8 +510,6 @@ def paint_clip_path(node, display_list, rect):
             (center_x, center_y) = center_point(rect)
             display_list.append(CircleMask(
                 center_x, center_y, radius, rect))
-            return 1
-    return 0
 
 def paint_visual_effects(node, display_list, rect):
     restore_count = 0
@@ -492,8 +518,12 @@ def paint_visual_effects(node, display_list, rect):
     if transform_str:
         display_list.append(Save(rect))
         restore_count = restore_count + 1
-        degrees = parse_rotation_transform(transform_str)
-        display_list.append(Rotate(degrees, rect))
+        (translation, rotation) = parse_transform(transform_str)
+        if translation:
+            (x, y) = translation
+            display_list.append(Translate(x, y, rect))
+        elif rotation:
+            display_list.append(Rotate(rotation, rect))
 
     blend_mode_str = node.style.get("mix-blend-mode")
     blend_mode = skia.BlendMode.kSrcOver
@@ -606,8 +636,7 @@ class BlockLayout:
         for child in self.children:
             child.paint(display_list, paint_offset_x, paint_offset_y)
 
-        restore_count = restore_count + \
-            paint_clip_path(self.node, display_list, rect)
+        paint_clip_path(self.node, display_list, rect)
 
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
@@ -716,8 +745,7 @@ class InlineLayout:
         for child in self.children:
             child.paint(display_list, paint_offset_x, paint_offset_y)
 
-        restore_count = restore_count + \
-            paint_clip_path(self.node, display_list, rect)
+        paint_clip_path(self.node, display_list, rect)
 
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
