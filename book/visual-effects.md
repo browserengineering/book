@@ -1506,6 +1506,9 @@ To implement this property, first we'll need to load the background image,
 if specified by CSS, and store it on the `node`:
 
 ``` {.python}
+def parse_style_url(url_str):
+    return url_str[5:][:-2]
+
 def style(node, rules, url):
     # ...
     if node.style.get('background-image'):
@@ -1515,6 +1518,9 @@ def style(node, rules, url):
     for child in node.children:
         style(child, rules, url)
 ```
+
+This does not yet define the `get_image` function; I'll get to that in a moment.
+This function is in charge of downloading the image and decoding it.
 
 To make non-relative URLs work, we'll also need to modify the CSS parser,
 because these URLs start with "https://" or "http://". Since they contain
@@ -1546,13 +1552,13 @@ class CSSParser:
         return self.s[start:self.i]
 ```
 
-And then load them. But to load them we'll have to augment the `request`
-function to support binary image content types (currently it only supports
-`text/html` and `text/css` encoded in `utf-8`). A PNG image, for instance, has
-the content type `image/png`, and is of course not `utf-8`, it's an encoded PNG
-file. To fix this, we will need to decode in smaller chunks:
-the status line and headers are still `utf-8`, but the body encoding depends
-on the image type.
+Now let's figure out how to load the image URL. To do this we'll have to start
+by augmenting the `request` function to support binary image content types
+(currently it only supports `text/html` and `text/css` encoded in `utf-8`). A
+PNG image, for instance, has the content type `image/png`, and is of course not
+`utf-8`, it's an encoded PNG file. To fix this, we will need to decode in
+smaller chunks: the status line and headers are still `utf-8`, but the body
+encoding depends on the image type.
 
 First, when we read from the socket with `makefile`, pass the argument
 `b` instead of `r` to request raw bytes as output:
@@ -1603,13 +1609,11 @@ def request(url, headers={}, payload=None):
 [^image-decode]: Not to be confused with image decoding, which will be done 
 later.
 
-Now we are ready to load the images. Each image found that is part of the style
-of an element will be loaded and stored on the `background_image` property on
-the `Node` object. However, to actually show an image on the first screen, we
-have to first *decode* it. Images are sent over the network in one of many
-optimized encoding formats, such as PNG or JPEG; when we need to draw them to
-the screen, we need to convert from the encoded format into a raw array of
-pixels. These pixels can then be efficiently drawn onto the screen.
+Now we are ready to actually load the images. This will involve calling
+`request` and then decoding the image. Images are sent over the network in one
+of many optimized encoding formats, such as PNG or JPEG; when we need to draw
+them to the screen, we need to convert from the encoded format into a raw array
+of pixels. These pixels can then be efficiently drawn onto the screen.
 [^image-decoding]
 
 [^image-decoding]: While image decoding technologies are beyond the
