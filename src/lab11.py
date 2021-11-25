@@ -132,52 +132,6 @@ def parse_clip_path(clip_path_str):
         return None
     return int(clip_path_str[7:][:-2])
 
-class Rasterizer:
-    def __init__(self, surface):
-        self.surface = surface
-
-    def clear(self, color):
-        with self.surface as canvas:
-            canvas.clear(color)
-
-    def draw_rect(self, rect,
-        fill=None, width=1):
-        paint = skia.Paint()
-        if fill:
-            paint.setStrokeWidth(width);
-            paint.setColor(color_to_sk_color(fill))
-        else:
-            paint.setStyle(skia.Paint.kStroke_Style)
-            paint.setStrokeWidth(1);
-            paint.setColor(skia.ColorBLACK)
-        with self.surface as canvas:
-            canvas.drawRect(rect, paint)
-
-    def draw_polyline(self, x1, y1, x2, y2, x3=None,
-        y3=None, fill=False):
-        path = skia.Path()
-        path.moveTo(x1, y1)
-        path.lineTo(x2, y2)
-        if x3:
-            path.lineTo(x3, y3)
-        paint = skia.Paint()
-        paint.setColor(skia.ColorBLACK)
-        if fill:
-            paint.setStyle(skia.Paint.kFill_Style)
-        else:
-            paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(1);
-        with self.surface as canvas:
-            canvas.drawPath(path, paint)
-
-    def draw_text(self, x, y, text, font, color=None):
-        paint = skia.Paint(
-            AntiAlias=True, Color=color_to_sk_color(color))
-        with self.surface as canvas:
-            canvas.drawString(
-                text, x, y - font.getMetrics().fAscent,
-                font, paint)
-
 def linespace(font):
     metrics = font.getMetrics()
     return metrics.fDescent - metrics.fAscent
@@ -899,6 +853,23 @@ def style(node, rules, url, images):
 SCROLL_STEP = 100
 CHROME_PX = 100
 
+def draw_polyline(surface, x1, y1, x2, y2, x3=None,
+    y3=None, fill=False):
+    path = skia.Path()
+    path.moveTo(x1, y1)
+    path.lineTo(x2, y2)
+    if x3:
+        path.lineTo(x3, y3)
+    paint = skia.Paint()
+    paint.setColor(skia.ColorBLACK)
+    if fill:
+        paint.setStyle(skia.Paint.kFill_Style)
+    else:
+        paint.setStyle(skia.Paint.kStroke_Style)
+    paint.setStrokeWidth(1);
+    with surface as canvas:
+        canvas.drawPath(path, paint)
+
 class Tab:
     def __init__(self):
         self.history = []
@@ -980,11 +951,11 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-    def draw(self, rasterizer):
+    def draw(self, surface):
         for cmd in self.display_list:
             if cmd.rect.top() > self.scroll + HEIGHT - CHROME_PX: continue
             if cmd.rect.bottom() < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, rasterizer.surface)
+            cmd.execute(self.scroll - CHROME_PX, surface)
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
@@ -992,7 +963,7 @@ class Tab:
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measureText(text)
             y = obj.y - self.scroll + CHROME_PX
-            rasterizer.draw_polyline(x, y, x, y + obj.height)
+            draw_polyline(surface, x, y, x, y + obj.height)
 
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
@@ -1126,44 +1097,64 @@ class Browser:
         self.tabs.append(new_tab)
         self.draw()
 
-    def draw(self):
-        rasterizer = Rasterizer(self.skia_surface)
-        rasterizer.clear(skia.ColorWHITE)
+    def draw_text(self, x, y, text, font, color=None):
+        paint = skia.Paint(
+            AntiAlias=True, Color=color_to_sk_color(color))
+        with self.skia_surface as canvas:
+            canvas.drawString(
+                text, x, y - font.getMetrics().fAscent,
+                font, paint)
 
-        self.tabs[self.active_tab].draw(rasterizer)
+    def draw_rect(self, rect, fill=None, width=1):
+        paint = skia.Paint()
+        if fill:
+            paint.setStrokeWidth(width);
+            paint.setColor(color_to_sk_color(fill))
+        else:
+            paint.setStyle(skia.Paint.kStroke_Style)
+            paint.setStrokeWidth(1);
+            paint.setColor(skia.ColorBLACK)
+        with self.skia_surface as canvas:
+            canvas.drawRect(rect, paint)
+
+    def draw(self):
+        with self.skia_surface as canvas:
+            canvas.clear(skia.ColorWHITE)
+
+        self.tabs[self.active_tab].draw(self.skia_surface)
     
         # Draw the tabs UI:
         tabfont = skia.Font(skia.Typeface('Arial'), 20)
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
-            rasterizer.draw_polyline(x1, 0, x1, 40)
-            rasterizer.draw_polyline(x2, 0, x2, 40)
-            rasterizer.draw_text(x1 + 10, 10, name, tabfont)
+            draw_polyline(self.skia_surface, x1, 0, x1, 40)
+            draw_polyline(self.skia_surface, x2, 0, x2, 40)
+            self.draw_text(x1 + 10, 10, name, tabfont)
             if i == self.active_tab:
-                rasterizer.draw_polyline(0, 40, x1, 40)
-                rasterizer.draw_polyline(x2, 40, WIDTH, 40)
+                draw_polyline(self.skia_surface, 0, 40, x1, 40)
+                draw_polyline(self.skia_surface, x2, 40, WIDTH, 40)
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 10, 30, 30))
-        rasterizer.draw_text(11, 0, "+", buttonfont)
+        self.draw_rect(skia.Rect.MakeLTRB(10, 10, 30, 30))
+        self.draw_text(11, 0, "+", buttonfont)
 
         # Draw the URL address bar:
-        rasterizer.draw_rect(
+        self.draw_rect(
             skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
         if self.focus == "address bar":
-            rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
+            self.draw_text(55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
-            rasterizer.draw_polyline(55 + w, 55, 55 + w, 85)
+            draw_polyline(self.skia_surface, 55 + w, 55, 55 + w, 85)
         else:
             url = self.tabs[self.active_tab].url
-            rasterizer.draw_text(55, 55, url, buttonfont)
+            self.draw_text(55, 55, url, buttonfont)
 
         # Draw the back button:
-        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
-        rasterizer.draw_polyline(
-            15, 70, 30, 55, 30, 85, True)
+        self.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
+        draw_polyline(
+            self.skia_surface, 15, 70, 30, 55, 30, 85, True)
 
         # Raster the results and copy to the SDL surface:
         skia_image = self.skia_surface.makeImageSnapshot()
