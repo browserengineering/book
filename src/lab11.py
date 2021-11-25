@@ -187,24 +187,24 @@ class SaveLayer:
         self.sk_paint = sk_paint
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.saveLayer(paint=self.sk_paint)
 
 class Save:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.save()
 
 class Restore:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.restore()
 
 class CircleMask:
@@ -214,8 +214,8 @@ class CircleMask:
         self.radius = radius
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.saveLayer(paint=skia.Paint(
                 Alphaf=1.0, BlendMode=skia.kDstIn))
             canvas.drawCircle(
@@ -232,12 +232,12 @@ class Rotate:
         self.degrees = degrees
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
+    def execute(self, scroll, surface):
         paint_rect = skia.Rect.MakeLTRB(
             self.rect.left(), self.rect.top() - scroll,
             self.rect.right(), self.rect.bottom() - scroll)
         (center_x, center_y) = center_point(paint_rect)
-        with rasterizer.surface as canvas:
+        with surface as canvas:
             canvas.translate(center_x, center_y)
             canvas.rotate(self.degrees)
             canvas.translate(-center_x, -center_y)
@@ -248,11 +248,11 @@ class Translate:
         self.y = y
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
+    def execute(self, scroll, surface):
         paint_rect = skia.Rect.MakeLTRB(
             self.rect.left(), self.rect.top() - scroll,
             self.rect.right(), self.rect.bottom() - scroll)
-        with rasterizer.surface as canvas:
+        with surface as canvas:
             canvas.translate(self.x, self.y)
 
 class DrawText:
@@ -262,10 +262,10 @@ class DrawText:
         self.text = text
         self.color = color
 
-    def execute(self, scroll, rasterizer):
+    def execute(self, scroll, surface):
         paint = skia.Paint(
             AntiAlias=True, Color=color_to_sk_color(self.color))
-        with rasterizer.surface as canvas:
+        with surface as canvas:
             canvas.drawString(
                 self.text, self.rect.left(),
                 self.rect.top() -  scroll - self.font.getMetrics().fAscent,
@@ -279,14 +279,14 @@ class DrawRect:
         self.rect = rect
         self.color = color
 
-    def execute(self, scroll, rasterizer):
+    def execute(self, scroll, surface):
         paint = skia.Paint()
         paint.setStrokeWidth(0)
         paint.setColor(color_to_sk_color(self.color))
         rect = skia.Rect.MakeLTRB(
                 self.rect.left(), self.rect.top() - scroll,
                 self.rect.right(), self.rect.bottom() - scroll)
-        with rasterizer.surface as canvas:
+        with surface as canvas:
             canvas.drawRect(rect, paint)
 
     def __repr__(self):
@@ -298,8 +298,8 @@ class ClipRect:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.clipRect(skia.Rect.MakeLTRB(
                 self.rect.left(), self.rect.top() - scroll,
                 self.rect.right(), self.rect.bottom() - scroll))
@@ -309,8 +309,8 @@ class ClipRRect:
         self.rect = rect
         self.radius = radius
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.clipRRect(
                 skia.RRect.MakeRectXY(
                     skia.Rect.MakeLTRB(
@@ -325,8 +325,8 @@ class DrawImage:
         self.image = image
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.drawImage(
                 self.image, self.rect.left(),
                 self.rect.top() - scroll)
@@ -984,7 +984,7 @@ class Tab:
         for cmd in self.display_list:
             if cmd.rect.top() > self.scroll + HEIGHT - CHROME_PX: continue
             if cmd.rect.bottom() < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, rasterizer)
+            cmd.execute(self.scroll - CHROME_PX, rasterizer.surface)
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
