@@ -119,23 +119,40 @@ In SDL, you have to implement the event loop yourself (rather than calling
     sdl2.SDL_Quit()
 ```
 
-Next factor a bunch of the tasks of drawing into a new class we'll call
-`Rasterizer`. The implementation in Skia should be relatively
-self-explanatory (there is also more complete documentation
-[here](https://kyamagu.github.io/skia-python/)
-or at the [Skia site](https://skia.org)):
+Next factor a bunch of the tasks of drawing into helper methods. The
+implementation in Skia should be relatively self-explanatory (there is also
+more complete documentation[here](https://kyamagu.github.io/skia-python/) or at
+the [Skia site](https://skia.org)):
 
 ``` {.python}
-class Rasterizer:
-    def __init__(self, surface):
-        self.surface = surface
+def draw_polyline(surface, x1, y1, x2, y2, x3=None,
+    y3=None, fill=False):
+    path = skia.Path()
+    path.moveTo(x1, y1)
+    path.lineTo(x2, y2)
+    if x3:
+        path.lineTo(x3, y3)
+    paint = skia.Paint()
+    paint.setColor(skia.ColorBLACK)
+    if fill:
+        paint.setStyle(skia.Paint.kFill_Style)
+    else:
+        paint.setStyle(skia.Paint.kStroke_Style)
+    paint.setStrokeWidth(1);
+    with surface as canvas:
+        canvas.drawPath(path, paint)
 
-    def clear(self, color):
-        with self.surface as canvas:
-            canvas.clear(color)
+class Browser:
+    # ...
+    def draw_text(self, x, y, text, font, color=None):
+        paint = skia.Paint(
+            AntiAlias=True, Color=color_to_sk_color(color))
+        with self.skia_surface as canvas:
+            canvas.drawString(
+                text, x, y - font.getMetrics().fAscent,
+                font, paint)
 
-    def draw_rect(self, rect,
-        fill=None, width=1):
+    def draw_rect(self, rect, fill=None, width=1):
         paint = skia.Paint()
         if fill:
             paint.setStrokeWidth(width);
@@ -144,47 +161,22 @@ class Rasterizer:
             paint.setStyle(skia.Paint.kStroke_Style)
             paint.setStrokeWidth(1);
             paint.setColor(skia.ColorBLACK)
-        with self.surface as canvas:
+        with self.skia_surface as canvas:
             canvas.drawRect(rect, paint)
-
-
-    def draw_polyline(self, x1, y1, x2, y2, x3=None,
-        y3=None, fill=False):
-        path = skia.Path()
-        path.moveTo(x1, y1)
-        path.lineTo(x2, y2)
-        if x3:
-            path.lineTo(x3, y3)
-        paint = skia.Paint()
-        paint.setColor(skia.ColorBLACK)
-        if fill:
-            paint.setStyle(skia.Paint.kFill_Style)
-        else:
-            paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(1);
-        with self.surface as canvas:
-            canvas.drawPath(path, paint)
-
-    def draw_text(self, x, y, text, font, color=None):
-        paint = skia.Paint(
-            AntiAlias=True, Color=color_to_sk_color(color))
-        with self.surface as canvas:
-            canvas.drawString(
-                text, x, y - font.getMetrics().fAscent,
-                font, paint)
 ```
 
-Change `DrawText` and `DrawRect` to use the rasterizer in a straightforward
+Change `DrawText` and `DrawRect` to use the surface in a straightforward
 way. For example, here is `DrawText.execute`:
 
 ``` {.python}
-    def execute(self, scroll, rasterizer):
-        rasterizer.draw_text(
-            self.rect.left(), self.rect.top() - scroll,
-            self.text,
-            self.font,
-            self.color,
-        )
+    def execute(self, scroll, surface):
+        paint = skia.Paint(
+            AntiAlias=True, Color=color_to_sk_color(self.color))
+        with surface as canvas:
+            canvas.drawString(
+                self.text, self.rect.left(),
+                self.rect.top() -  scroll - self.font.getMetrics().fAscent,
+                self.font, paint)
 ```
 
 Now integrate with the `Browser` class. We need a surface[^surface] for
@@ -199,15 +191,15 @@ class Browser:
 ```
 
 Next, re-implement the `draw` method on `Browser` using Skia. I'll
-walk through it step-by-step. First make a rasterizer and draw the current
+walk through it step-by-step. First clear the canvas and and draw the current
 `Tab` into it:
 
 ``` {.python}
     def draw(self):
-        rasterizer = Rasterizer(self.skia_surface)
-        rasterizer.clear(skia.ColorWHITE)
+        with self.skia_surface as canvas:
+            canvas.clear(skia.ColorWHITE)
 
-        self.tabs[self.active_tab].draw(rasterizer)
+        self.tabs[self.active_tab].draw(self.skia_surface)
 ```
 
 Then draw the browser UI elements:
@@ -218,33 +210,33 @@ Then draw the browser UI elements:
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
-            rasterizer.draw_polyline(x1, 0, x1, 40)
-            rasterizer.draw_polyline(x2, 0, x2, 40)
-            rasterizer.draw_text(x1 + 10, 10, name, tabfont)
+            draw_polyline(self.skia_surface, x1, 0, x1, 40)
+            draw_polyline(self.skia_surface, x2, 0, x2, 40)
+            self.draw_text(x1 + 10, 10, name, tabfont)
             if i == self.active_tab:
-                rasterizer.draw_polyline(0, 40, x1, 40)
-                rasterizer.draw_polyline(x2, 40, WIDTH, 40)
+                draw_polyline(self.skia_surface, 0, 40, x1, 40)
+                draw_polyline(self.skia_surface, x2, 40, WIDTH, 40)
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 10, 30, 30))
-        rasterizer.draw_text(11, 0, "+", buttonfont)
+        self.draw_rect(skia.Rect.MakeLTRB(10, 10, 30, 30))
+        self.draw_text(11, 0, "+", buttonfont)
 
         # Draw the URL address bar:
-        rasterizer.draw_rect(
+        self.draw_rect(
             skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
         if self.focus == "address bar":
-            rasterizer.draw_text(55, 55, self.address_bar, buttonfont)
+            self.draw_text(55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
-            rasterizer.draw_polyline(55 + w, 55, 55 + w, 85)
+            draw_polyline(self.skia_surface, 55 + w, 55, 55 + w, 85)
         else:
             url = self.tabs[self.active_tab].url
-            rasterizer.draw_text(55, 55, url, buttonfont)
+            self.draw_text(55, 55, url, buttonfont)
 
         # Draw the back button:
-        rasterizer.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
-        rasterizer.draw_polyline(
-            15, 70, 30, 55, 30, 85, True)
+        self.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
+        draw_polyline(
+            self.skia_surface, 15, 70, 30, 55, 30, 85, True)
 ```
 
 Finally perform the incantations to save off a rastered bitmap and copy it
@@ -289,13 +281,13 @@ our implementation, we'll start with separate surfaces for Skia and SDL for
 simplicity. In a highly optimized browser, minimizing the number of surfaces
 is important for good performance.
 
-In the `Tab` class, the differences in `draw` is the new `rasterizer` parameter
+In the `Tab` class, the differences in `draw` is the new `surface` parameter
 that gets passed around, and using the Skia API to measure font metrics. Skia's
 `measureText` method on a font is the same as the `measure` method on a Tkinter
 font.
 
 ``` {.python}
-    def draw(self, rasterizer):
+    def draw(self, surface):
         # ...
             x = obj.x + obj.font.measureText(text)
 ```
@@ -753,16 +745,16 @@ class Save:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.save()
 
 class Restore:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.restore()
 ```
 
@@ -846,12 +838,12 @@ class Rotate:
         self.degrees = degrees
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
+    def execute(self, scroll, surface):
         paint_rect = skia.Rect.MakeLTRB(
             self.rect.left(), self.rect.top() - scroll,
             self.rect.right(), self.rect.bottom() - scroll)
         (center_x, center_y) = center_point(paint_rect)
-        with rasterizer.surface as canvas:
+        with surface as canvas:
             canvas.translate(center_x, center_y)
             canvas.rotate(self.degrees)
             canvas.translate(-center_x, -center_y)
@@ -882,11 +874,11 @@ class Translate:
         self.y = y
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
+    def execute(self, scroll, surface):
         paint_rect = skia.Rect.MakeLTRB(
             self.rect.left(), self.rect.top() - scroll,
             self.rect.right(), self.rect.bottom() - scroll)
-        with rasterizer.surface as canvas:
+        with surface as canvas:
             canvas.translate(self.x, self.y)
 ```
 
@@ -954,8 +946,8 @@ class SaveLayer:
         self.sk_paint = sk_paint
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.saveLayer(paint=self.sk_paint)
 ```
 
@@ -1317,8 +1309,8 @@ class CircleMask:
         self.radius = radius
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.saveLayer(paint=skia.Paint(
                 Alphaf=1.0, BlendMode=skia.kDstIn))
             canvas.drawCircle(
@@ -1408,8 +1400,8 @@ class ClipRRect:
         self.rect = rect
         self.radius = radius
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.clipRRect(
                 skia.RRect.MakeRectXY(
                     skia.Rect.MakeLTRB(
@@ -1710,8 +1702,8 @@ class DrawImage:
         self.image = image
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.drawImage(
                 self.image, self.rect.left(),
                 self.rect.top() - scroll)
@@ -1770,8 +1762,8 @@ class ClipRect:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, rasterizer):
-        with rasterizer.surface as canvas:
+    def execute(self, scroll, surface):
+        with surface as canvas:
             canvas.clipRect(skia.Rect.MakeLTRB(
                 self.rect.left(), self.rect.top() - scroll,
                 self.rect.right(), self.rect.bottom() - scroll))
