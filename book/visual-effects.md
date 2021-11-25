@@ -816,7 +816,7 @@ The change to `paint` for `BlockLayout` looks like this:
 ``` {.python}
 class BlockLayout:
     # ...
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
+    def paint(self, display_list):
         # ...
         restore_count = paint_visual_effects(
             self.node, display_list, rect)
@@ -824,7 +824,7 @@ class BlockLayout:
         paint_background(self.node, display_list, rect)
 
         for child in self.children:
-            child.paint(display_list, paint_offset_x, paint_offset_y)
+            child.paint(display_list)
         # ...
         for i in range(0, restore_count):
             display_list.append(Restore(rect))
@@ -1333,11 +1333,11 @@ backdrop surface before drawing the circle and applying the clip. For
 `BlockLayout`, this is:
 
 ``` {.python}
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
+    def paint(self, display_list):
         # ...
 
         for child in self.children:
-            child.paint(display_list, paint_offset_x, paint_offset_y)
+            child.paint(display_list)
 
         paint_clip_path(self.node, display_list, rect)
 
@@ -1740,15 +1740,15 @@ def paint_background(node, display_list, rect):
 This will need to be called from each of the layout object types. Here is
 `BlockLayout`:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     # ...
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
+    def paint(self, display_list):
         # ...
         paint_background(self.node, display_list, rect)
         
         for child in self.children:
-            child.paint(display_list, paint_offset_x, paint_offset_y)
+            child.paint(display_list)
 ```
 
 Here we're not just drawing the image though, we're also clipping it to the
