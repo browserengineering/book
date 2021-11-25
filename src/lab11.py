@@ -803,52 +803,49 @@ class CSSParser:
 def parse_style_url(url_str):
     return url_str[5:][:-2]
 
-def get_images(image_url_strs, base_url, images):
-    for image_url_str in image_url_strs:
-        image_url = parse_style_url(image_url_str)
-        header, body_bytes = request(
-            resolve_url(image_url, base_url),
-            headers={})
-        picture_stream = io.BytesIO(body_bytes)
+def get_image(image_url, base_url):
+    header, body_bytes = request(
+        resolve_url(image_url, base_url),
+        headers={})
+    picture_stream = io.BytesIO(body_bytes)
 
-        pil_image = Image.open(picture_stream)
-        if pil_image.mode == "RGBA":
-            pil_image_bytes = pil_image.tobytes()
-        else:
-            pil_image_bytes = pil_image.convert("RGBA").tobytes()
-        images[image_url] = skia.Image.frombytes(
-            array=pil_image_bytes,
-            dimensions=pil_image.size,
-            colorType=skia.kRGBA_8888_ColorType)
+    pil_image = Image.open(picture_stream)
+    if pil_image.mode == "RGBA":
+        pil_image_bytes = pil_image.tobytes()
+    else:
+        pil_image_bytes = pil_image.convert("RGBA").tobytes()
+    return skia.Image.frombytes(
+        array=pil_image_bytes,
+        dimensions=pil_image.size,
+        colorType=skia.kRGBA_8888_ColorType)
 
-def style(node, rules, url, images):
+def style(node, rules, url):
     node.style = {}
     for property, default_value in INHERITED_PROPERTIES.items():
         if node.parent:
             node.style[property] = node.parent.style[property]
         else:
             node.style[property] = default_value
+    
     for selector, body in rules:
         if not selector.matches(node): continue
         for property, value in body.items():
             computed_value = compute_style(node, property, value)
             if not computed_value: continue
             node.style[property] = computed_value
+
     if isinstance(node, Element) and "style" in node.attributes:
         pairs = CSSParser(node.attributes["style"]).body()
-        image_url_strs = []
         for property, value in pairs.items():
             computed_value = compute_style(node, property, value)
             node.style[property] = computed_value
-            if property == 'background-image':
-                image_url_strs.append(value)
-        get_images(image_url_strs, url, images)
+    
     if node.style.get('background-image'):
         node.background_image = \
-            images[parse_style_url(
-                node.style.get('background-image'))]
+            get_image(parse_style_url(
+                node.style.get('background-image')), url)
     for child in node.children:
-        style(child, rules, url, images)
+        style(child, rules, url)
 
 SCROLL_STEP = 100
 CHROME_PX = 100
@@ -934,18 +931,11 @@ class Tab:
                 continue
             self.rules.extend(CSSParser(body).parse())
 
-        image_url_strs = [rule[1]['background-image']
-                 for rule in self.rules
-                 if 'background-image' in rule[1]]
-
-        self.images = {}
-        get_images(image_url_strs, url, self.images)
-
         self.render()
 
     def render(self):
         style(self.nodes, sorted(self.rules, key=cascade_priority),
-            self.url, self.images)
+            self.url)
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []

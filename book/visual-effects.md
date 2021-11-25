@@ -1615,13 +1615,14 @@ def request(url, headers={}, payload=None):
 [^image-decode]: Not to be confused with image decoding, which will be done 
 later.
 
-Now we are ready to load the images. Each image found will be loaded and stored
-in an `images` dictionary on a `Tab` keyed by URL. However, to actually show
-an image on the first screen, we have to first *decode* it. Images are sent
-over the network in one of many optimized encoding formats, such as PNG or
-JPEG; when we need to draw them to the screen, we need to convert from the
-encoded format into a raw array of pixels. These pixels can then be efficiently
-drawn onto the screen.[^image-decoding]
+Now we are ready to load the images. Each image found that is part of the style
+of an element will be loaded and stored on the `background_image` property on
+the `Node` object. However, to actually show an image on the first screen, we
+have to first *decode* it. Images are sent over the network in one of many
+optimized encoding formats, such as PNG or JPEG; when we need to draw them to
+the screen, we need to convert from the encoded format into a raw array of
+pixels. These pixels can then be efficiently drawn onto the screen.
+[^image-decoding]
 
 [^image-decoding]: While image decoding technologies are beyond the
 scope of this book, it's very important for browsers to make optimized use
