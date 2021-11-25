@@ -1502,30 +1502,18 @@ It paints like this:[^exact-size]
 [^exact-size]: Note that I cleverly chose the width and height of the `div` to
 be exactly `256px`, the dimensions of the JPEG image.
 
-To implement this property, first we'll need to load all of the image URLs
-specified in CSS rules for a `Tab`. Firt collect the image URLs:
+To implement this property, first we'll need to load the background image,
+if specified by CSS, and store it on the `node`:
 
 ``` {.python}
-    def load(self, url, body=None):
-        # ...
-
-        image_url_strs = [rule[1]['background-image']
-                for rule in self.rules
-                if 'background-image' in rule[1]]
-```
-
-The same will need to be done for inline styles:
-
-``` {.python}
-def style(node, rules, url, images):
+def style(node, rules, url):
     # ...
-    if isinstance(node, Element) and "style" in node.attributes:
-        pairs = CSSParser(node.attributes["style"]).body()
-        image_url_strs = []
-        for property, value in pairs.items():
-            # ...
-            if property == 'background-image':
-                image_url_strs.append(value)
+    if node.style.get('background-image'):
+        node.background_image = \
+            get_image(parse_style_url(
+                node.style.get('background-image')), url)
+    for child in node.children:
+        style(child, rules, url)
 ```
 
 To make non-relative URLs work, we'll also need to modify the CSS parser,
@@ -1652,46 +1640,21 @@ for content type [signatures] in the bytes of the encoded image.
 [signatures]: https://en.wikipedia.org/wiki/List_of_file_signatures
 
 ``` {.python}
-def get_images(image_url_strs, base_url, images):
-    for image_url_str in image_url_strs:
-        image_url = parse_style_url(image_url_str)
-        header, body_bytes = request(
-            resolve_url(image_url, base_url),
-            headers={})
-        picture_stream = io.BytesIO(body_bytes)
+def get_image(image_url, base_url):
+    header, body_bytes = request(
+        resolve_url(image_url, base_url),
+        headers={})
+    picture_stream = io.BytesIO(body_bytes)
 
-        pil_image = Image.open(picture_stream)
-        if pil_image.mode == "RGBA":
-            pil_image_bytes = pil_image.tobytes()
-        else:
-            pil_image_bytes = pil_image.convert("RGBA").tobytes()
-        images[image_url] = skia.Image.frombytes(
-            array=pil_image_bytes,
-            dimensions=pil_image.size,
-            colorType=skia.kRGBA_8888_ColorType)
-
-    def load(self, url, body=None):
-        # ...
-
-        self.images = {}
-        get_images(image_url_strs, url, self.images)
-```
-
-Next we need to provide access to this image from the `paint` method of a
-layout object. Since those objects don't have access to the `Tab`, the easiest
-way to do this is to save a pointer to the image on the layout object's node
-during `style`:
-
-``` {.python}
-def style(node, rules, url, images):
-    # ...
-    if isinstance(node, Element) and "style" in node.attributes:
-        # ...
-        get_images(image_url_strs, url, images)
-    if node.style.get('background-image'):
-        node.background_image = \
-            images[parse_style_url(
-                node.style.get('background-image'))]
+    pil_image = Image.open(picture_stream)
+    if pil_image.mode == "RGBA":
+        pil_image_bytes = pil_image.tobytes()
+    else:
+        pil_image_bytes = pil_image.convert("RGBA").tobytes()
+    return skia.Image.frombytes(
+        array=pil_image_bytes,
+        dimensions=pil_image.size,
+        colorType=skia.kRGBA_8888_ColorType)
 ```
 
 Now that the images are loaded, the next step is to paint them into the display
