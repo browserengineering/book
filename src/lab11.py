@@ -263,12 +263,13 @@ class DrawText:
         self.color = color
 
     def execute(self, scroll, rasterizer):
-        rasterizer.draw_text(
-            self.rect.left(), self.rect.top() - scroll,
-            self.text,
-            self.font,
-            self.color,
-        )
+        paint = skia.Paint(
+            AntiAlias=True, Color=color_to_sk_color(self.color))
+        with rasterizer.surface as canvas:
+            canvas.drawString(
+                self.text, self.rect.left(),
+                self.rect.top() -  scroll - self.font.getMetrics().fAscent,
+                self.font, paint)
 
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
