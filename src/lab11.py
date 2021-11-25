@@ -280,13 +280,14 @@ class DrawRect:
         self.color = color
 
     def execute(self, scroll, rasterizer):
-        rasterizer.draw_rect(
-            skia.Rect.MakeLTRB(
+        paint = skia.Paint()
+        paint.setStrokeWidth(0)
+        paint.setColor(color_to_sk_color(self.color))
+        rect = skia.Rect.MakeLTRB(
                 self.rect.left(), self.rect.top() - scroll,
-                self.rect.right(), self.rect.bottom() - scroll),
-            width=0,
-            fill=self.color,
-        )
+                self.rect.right(), self.rect.bottom() - scroll)
+        with rasterizer.surface as canvas:
+            canvas.drawRect(rect, paint)
 
     def __repr__(self):
         (left, top, right, bottom) = tuple(self.rect)
