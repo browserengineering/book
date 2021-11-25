@@ -367,9 +367,9 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
+    def paint(self, display_list):
         for child in self.children:
-            child.paint(display_list, parent_offset_x, parent_offset_y)
+            child.paint(display_list)
 
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={})".format(
@@ -416,11 +416,10 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
+    def paint(self, display_list):
         color = self.node.style["color"]
         display_list.append(
-            DrawText(self.x + parent_offset_x,
-                self.y + parent_offset_y, self.word, self.font, color))
+            DrawText(self.x, self.y, self.word, self.font, color))
     
     def __repr__(self):
         return "TextLayout(x={}, y={}, width={}, height={}".format(
@@ -457,11 +456,9 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
-        (paint_offset_x, paint_offset_y) = \
-            paint_adjustment(self.node, parent_offset_x, parent_offset_y)
-        paint_x = self.x + paint_offset_x
-        paint_y = self.y + paint_offset_y
+    def paint(self, display_list):
+        paint_x = self.x
+        paint_y = self.y
 
         rect = skia.Rect.MakeLTRB(
             paint_x, paint_y, paint_x + self.width,
@@ -564,22 +561,6 @@ def paint_background(node, display_list, rect):
             rect))
         display_list.append(Restore(rect))
 
-def paint_adjustment(node, x_offset, y_offset):
-    if not node.style.get("position") == "relative":
-        return (x_offset, y_offset)
-
-    paint_x = x_offset
-    paint_y = y_offset
-
-    left = node.style.get("left")
-    if left:
-        paint_x = paint_x + int(left[:-2])
-    top = node.style.get("top")
-    if top:
-        paint_y = paint_y + int(top[:-2])
-
-    return (paint_x, paint_y)
-
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -617,12 +598,9 @@ class BlockLayout:
             self.node, "height",
             sum([child.height for child in self.children]))
 
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
-        (paint_offset_x, paint_offset_y) = \
-            paint_adjustment(
-                self.node, parent_offset_x, parent_offset_y)
-        paint_x = self.x + paint_offset_x
-        paint_y = self.y + paint_offset_y
+    def paint(self, display_list):
+        paint_x = self.x
+        paint_y = self.y
 
         rect = skia.Rect.MakeLTRB(
             paint_x, paint_y,
@@ -634,7 +612,7 @@ class BlockLayout:
         paint_background(self.node, display_list, rect)
 
         for child in self.children:
-            child.paint(display_list, paint_offset_x, paint_offset_y)
+            child.paint(display_list)
 
         paint_clip_path(self.node, display_list, rect)
 
@@ -728,11 +706,9 @@ class InlineLayout:
         font = self.get_font(node)
         self.cursor_x += w + font.measureText(" ")
 
-    def paint(self, display_list, parent_offset_x, parent_offset_y):
-        (paint_offset_x, paint_offset_y) = \
-            paint_adjustment(self.node, parent_offset_x, parent_offset_y)
-        paint_x = self.x + paint_offset_x
-        paint_y = self.y + paint_offset_y
+    def paint(self, display_list):
+        paint_x = self.x
+        paint_y = self.y
 
         rect = skia.Rect.MakeLTRB(
             paint_x, paint_y, paint_x + self.width,
@@ -743,7 +719,7 @@ class InlineLayout:
         paint_background(self.node, display_list, rect)
 
         for child in self.children:
-            child.paint(display_list, paint_offset_x, paint_offset_y)
+            child.paint(display_list)
 
         paint_clip_path(self.node, display_list, rect)
 
@@ -772,7 +748,7 @@ class DocumentLayout:
         self.height = child.height + 2*VSTEP
 
     def paint(self, display_list):
-        self.children[0].paint(display_list, 0, 0)
+        self.children[0].paint(display_list)
 
     def __repr__(self):
         return "DocumentLayout()"
