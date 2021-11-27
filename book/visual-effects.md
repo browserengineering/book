@@ -1031,9 +1031,12 @@ def composite(source_color, backdrop_color, compositing_mode):
         (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
             tuple(backdrop_color)
         return skia.Color4f(
-            backdrop_r * (1-source_a) * backdrop_a + source_r * source_a,
-            backdrop_g * (1-source_a) * backdrop_a + source_g * source_a,
-            backdrop_b * (1-source_a) * backdrop_a + source_b * source_a,
+            backdrop_r * (1-source_a) * backdrop_a + \
+                source_r * source_a,
+            backdrop_g * (1-source_a) * backdrop_a + \
+                source_g * source_a,
+            backdrop_b * (1-source_a) * backdrop_a + \
+                source_b * source_a,
             1 - (1 - source_a) * (1 - backdrop_a))
 ```
 
@@ -1051,6 +1054,8 @@ a `getPixel` method that returns a `skia.Color4f` and a `setPixel` one that
 sets a pixel color):[^real-life-reading-pixels]
 
 ``` {.python.example}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def restore(source_surface, backdrop_surface, width, height, opacity):
     for x in range(0, width):
         for y in range(0, height):
@@ -1079,8 +1084,9 @@ Python code for `restore` to incorporate blending looks like this:
 [^vs-blending-2]: Again, see [here](#compositing-blending) for compositing vs
 blending.
 
-
 ``` {.python.example}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def restore(source_surface, backdrop_surface,
             width, height, opacity, blend_mode):
     # ...

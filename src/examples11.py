@@ -9,9 +9,12 @@ def composite(source_color, backdrop_color, compositing_mode):
         (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
             tuple(backdrop_color)
         return skia.Color4f(
-            backdrop_r * (1-source_a) * backdrop_a + source_r * source_a,
-            backdrop_g * (1-source_a) * backdrop_a + source_g * source_a,
-            backdrop_b * (1-source_a) * backdrop_a + source_b * source_a,
+            backdrop_r * (1-source_a) * backdrop_a + \
+                source_r * source_a,
+            backdrop_g * (1-source_a) * backdrop_a + \
+                source_g * source_a,
+            backdrop_b * (1-source_a) * backdrop_a + \
+                source_b * source_a,
             1 - (1 - source_a) * (1 - backdrop_a))
     elif compositing_mode == "destination-in":
         (source_r, source_g, source_b, source_a) = tuple(source_color)
