@@ -1025,16 +1025,17 @@ use premultiplied color representations.
 # Composites |source_color| into |backdrop_color| with simple
 # alpha compositing.
 # Each of the inputs are skia.Color4f objects.
-def composite(source_color, backdrop_color):
-    (source_r, source_g, source_b, source_a) = \
-        tuple(source_color)
-    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
-        tuple(backdrop_color)
-    return skia.Color4f(
-        backdrop_r * (1-source_a) * backdrop_a + source_r * source_a,
-        backdrop_g * (1-source_a) * backdrop_a + source_g * source_a,
-        backdrop_b * (1-source_a) * backdrop_a + source_b * source_a,
-        1 - (1 - source_a) * (1 - backdrop_a))
+def composite(source_color, backdrop_color, mode):
+    if blend_mode == "source-over":
+        (source_r, source_g, source_b, source_a) = \
+            tuple(source_color)
+        (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
+            tuple(backdrop_color)
+        return skia.Color4f(
+            backdrop_r * (1-source_a) * backdrop_a + source_r * source_a,
+            backdrop_g * (1-source_a) * backdrop_a + source_g * source_a,
+            backdrop_b * (1-source_a) * backdrop_a + source_b * source_a,
+            1 - (1 - source_a) * (1 - backdrop_a))
 ```
 
 [^other-compositing]: We'll shortly encounter other compositing modes.
@@ -1095,7 +1096,7 @@ def restore(source_surface, backdrop_surface,
 
 and blend is implemented like this:
 
-``` {.python.example}
+``` {.python file=examples}
 def blend(source_color, backdrop_color, blend_mode):
     (source_r, source_g, source_b, source_a) = tuple(source_color)
     (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
@@ -1103,13 +1104,13 @@ def blend(source_color, backdrop_color, blend_mode):
     return skia.Color4f(
         (1 - backdrop_a) * source_r +
             backdrop_a * apply_blend(
-                blend_mode, source_r, backdrop_r),
+                source_r, backdrop_r, blend_mode),
         (1 - backdrop_a) * source_g +
             backdrop_a * apply_blend(
-                blend_mode, source_g, backdrop_g),
+                source_g, backdrop_g, blend_mode),
         (1 - backdrop_a) * source_b +
             backdrop_a * apply_blend(
-                blend_mode, source_b, backdrop_b),
+                source_b, backdrop_b, blend_mode),
         source_a)
 ```
 
@@ -1118,18 +1119,17 @@ which multiplies the colors as floating-point numbers between 0 and 1,
 and "difference", which subtracts the darker color from the ligher one. The
 default is "normal", which means to ignore the backdrop color.
 
-``` {.python.example}
-# Note: this code assumes a floating-poit color channel value.
-def apply_blend(blend_mode, source_color_channel,
-                backdrop_color_channel):
+``` {.python file=examples}
+# Note: this code assumes a floating-point color channel value.
+def apply_blend(source_color_channel,
+                backdrop_color_channel, blend_mode):
     if blend_mode == "multiply":
         return source_color_channel * backdrop_color_channel
     elif blend_mode == "difference":
         return abs(backdrop_color_channel - source_color_channel)
-    else
+    else:
         # Assume "normal" blend mode.
         return source_color_channel
-
 ```
 
 These are specified with the [`mix-blend-mode`][mix-blend-mode-def] CSS
@@ -1281,18 +1281,22 @@ thing we want to clip, so destination-in fits perfectly.
 
 [dst-in]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstin
 
-Here is the implementation of destination-in compositing in demo Python:
+Here is `composite` with destination-in compositing added:
 
-``` {.python expected=False}
-def composite(source_color, backdrop_color):
-    (source_r, source_g, source_b, source_a) = tuple(source_color)
-    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
-         tuple(backdrop_color)
-    return skia.Color4f(
-        backdrop_a * source_a * backdrop_r,
-        backdrop_a * source_a * backdrop_g,
-        backdrop_a * source_a * backdrop_b,
-        backdrop_a * source_a)
+``` {.python file=examples}
+def composite(source_color, backdrop_color, compositing_mode):
+    # ...
+    elif compositing_mode == "destination-in":
+        (source_r, source_g, source_b, source_a) = tuple(source_color)
+        (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
+            tuple(backdrop_color)
+        return skia.Color4f(
+            backdrop_a * source_a * backdrop_r,
+            backdrop_a * source_a * backdrop_g,
+            backdrop_a * source_a * backdrop_b,
+            backdrop_a * source_a)
+    else:
+
 ```
 
 Now let's implement `CircleMask`  in terms of destination-in compositing. It
