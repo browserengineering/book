@@ -1021,12 +1021,11 @@ that page refers to premultiplied alpha colors. Skia does not
 use premultiplied color representations.
 
 
-``` {.python.example}
-# Composites |source_color| into |backdrop_color| with simple
-# alpha compositing.
-# Each of the inputs are skia.Color4f objects.
-def composite(source_color, backdrop_color, mode):
-    if blend_mode == "source-over":
+``` {.python file=examples}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
+def composite(source_color, backdrop_color, compositing_mode):
+    if compositing_mode == "source-over":
         (source_r, source_g, source_b, source_a) = \
             tuple(source_color)
         (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
@@ -1097,6 +1096,8 @@ def restore(source_surface, backdrop_surface,
 and blend is implemented like this:
 
 ``` {.python file=examples}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def blend(source_color, backdrop_color, blend_mode):
     (source_r, source_g, source_b, source_a) = tuple(source_color)
     (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
@@ -1120,15 +1121,15 @@ and "difference", which subtracts the darker color from the ligher one. The
 default is "normal", which means to ignore the backdrop color.
 
 ``` {.python file=examples}
-# Note: this code assumes a floating-point color channel value.
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def apply_blend(source_color_channel,
                 backdrop_color_channel, blend_mode):
     if blend_mode == "multiply":
         return source_color_channel * backdrop_color_channel
     elif blend_mode == "difference":
         return abs(backdrop_color_channel - source_color_channel)
-    else:
-        # Assume "normal" blend mode.
+    elif blend_mode == "normal":
         return source_color_channel
 ```
 
@@ -1284,6 +1285,8 @@ thing we want to clip, so destination-in fits perfectly.
 Here is `composite` with destination-in compositing added:
 
 ``` {.python file=examples}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def composite(source_color, backdrop_color, compositing_mode):
     # ...
     elif compositing_mode == "destination-in":
@@ -1295,8 +1298,6 @@ def composite(source_color, backdrop_color, compositing_mode):
             backdrop_a * source_a * backdrop_g,
             backdrop_a * source_a * backdrop_b,
             backdrop_a * source_a)
-    else:
-
 ```
 
 Now let's implement `CircleMask`  in terms of destination-in compositing. It

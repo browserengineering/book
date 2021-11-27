@@ -1,5 +1,7 @@
 import skia
 
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def composite(source_color, backdrop_color, compositing_mode):
     if compositing_mode == "source-over":
         (source_r, source_g, source_b, source_a) = \
@@ -21,17 +23,19 @@ def composite(source_color, backdrop_color, compositing_mode):
             backdrop_a * source_a * backdrop_b,
             backdrop_a * source_a)
 
-# Note: this code assumes a floating-point color channel value.
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def apply_blend(source_color_channel,
                 backdrop_color_channel, blend_mode):
     if blend_mode == "multiply":
         return source_color_channel * backdrop_color_channel
     elif blend_mode == "difference":
         return abs(backdrop_color_channel - source_color_channel)
-    else:
-        # Assume "normal" blend mode.
+    elif blend_mode == "normal":
         return source_color_channel
 
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def blend(source_color, backdrop_color, blend_mode):
     (source_r, source_g, source_b, source_a) = tuple(source_color)
     (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
