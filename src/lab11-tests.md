@@ -191,7 +191,7 @@ the screen.
     drawString(text=Rotate, x=13.0, y=136.10546875, color=ff000000)
     restore()
 
-Now let's test the example compositing and blend mode functions
+Now let's test the example compositing and blend mode functions.
 
     >>> import examples11
     >>> import skia
@@ -211,7 +211,7 @@ And the other way around yields red.
     >>> blue_semitransparent = skia.Color4f(0.0, 0.0, 1.0, 0.5)
     >>> red_semitransparent = skia.Color4f(1.0, 0.0, 0.0, 0.5)
 
-Compositing a semitransparent lbue on top of an opaque red yields a part-blue,
+Compositing a semitransparent blue on top of an opaque red yields a part-blue,
 part-red color with an opaque alpha channel.
 
     >>> examples11.composite(blue_semitransparent, red_opaque, "source-over")
@@ -228,13 +228,13 @@ colors. Likewise, the final alpha is a bit different than you might think.
 Destination-in compositing ignores the source color except for its alpha
 channel, and multiplies the color of the backdrop by that alpha.
 
-This means that compositing any opaque color on top of a backdrop yields the
-backdrop.
+This means that compositing any opaque color on top of a backdrop with
+destination-in compositing yields the backdrop.
 
     >>> examples11.composite(blue_opaque, red_opaque, "destination-in")
     Color4f(1, 0, 0, 1)
 
-But transparent multiplies.
+But transparency multiplies.
 
     >>> examples11.composite(blue_semitransparent, red_opaque, "destination-in")
     Color4f(0.5, 0, 0, 0.5)
@@ -247,7 +247,7 @@ And of course, a fully transparent source color yields a full-zero result.
 
 Now for blending. Let's start by testing the `apply_blend` function, which
 takes as input a source and backdrop color channel, and a blend mode, It applies
-the blend ot the colors.
+the blend to the color.
 
     >>> examples11.apply_blend(0.6, 0.0, "normal")
     0.6
@@ -258,7 +258,7 @@ the blend ot the colors.
     >>> examples11.apply_blend(0.0, 0.6, "difference")
     0.6
 
-Now let's test the full `blend` method
+Now let's test the full `blend` method.
 
     >>> examples11.blend(blue_opaque, red_opaque, "normal") == blue_opaque
     True
@@ -269,15 +269,15 @@ Now let's test the full `blend` method
     >>> examples11.blend(red_semitransparent, blue_semitransparent, "normal") == red_semitransparent
     True
 
-    'multiply' multiplies each channel, so like colors may combine but dislike
-    colors cancel each other out.
+'multiply' multiplies each channel, so like colors may remain brighter but
+ dislike colors tend to darken each other each other out.
 
     >>> examples11.blend(blue_opaque, red_opaque, "multiply")
     Color4f(0, 0, 0, 1)
     >>> examples11.blend(blue_opaque, blue_semitransparent, "multiply")
     Color4f(0, 0, 1, 1)
 
-    'difference' only keeps around the differences
+'difference' only keeps around the differences.
 
     >>> examples11.blend(blue_opaque, red_opaque, "difference")
     Color4f(1, 0, 1, 1)
