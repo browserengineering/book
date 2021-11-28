@@ -57,6 +57,22 @@ color.
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
     drawString(text=Text, x=13.0, y=136.10546875, color=ff000000)
 
+Specifying `background-size: contain`is supported.
+
+    >>> size_and_image_and_size_url = 'http://test.test/size_and_image_and_size'
+    >>> test.socket.respond(size_and_image_and_size_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b"<link rel=stylesheet href='styles.css'>" +
+    ... b"<div style=\"background-image:url('image.png');background-size:contain\"><div>Text</div></div>)")
+
+    >>> browser = lab11.Browser({})
+    >>> browser.load(size_and_image_and_size_url)
+    >>> browser.skia_surface.printTabCommands()
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawImageRect(<image>, src=Rect(0, 0, 1, 1), dst=Rect(13, 118, 63, 168)
+    drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
+    drawString(text=Text, x=13.0, y=136.10546875, color=ff000000)
+
 Also note that urls can be non-relative. Since non-relative urls start with
 "http://" or "https://", we needed some extra logic in the CSS parser to avoid
 getting confused and thinking the colon is a property-value delimiter. Let's
