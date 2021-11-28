@@ -1743,19 +1743,19 @@ Note how the background image is painted *before* children, just like
 Ok, we can now put background images on an element of any size, and the image
 will be clipped if it's too big (and it'll reveal the background color or
 backdrop if it's too small). But as soon as you're trying to make a web page
-(such as an extension to the guest book to show an avatar image), the
-fact that you can't resize the image to fit the size of the element is pretty
-annoying---the only way to fix is is to resize the image with a utility program
-and store an additonal resolution of it on the server.
+(such as an extension to the guest book to show an avatar image), the fact that
+you can't resize the image to fit the size of the element is pretty annoying,
+because the only way to fix it is to manually resize the image with a utility
+program and store an additional image of the new size on the server.
 
 To fix this situation, let's add support for
 [`background-size:contain`][background-size], which
 means "scale the image so it fits in the size of the element". This is super
-easy to implement in Skia, by uisng the `drawImageRect` method. This method
+easy to implement in Skia, by using the `drawImageRect` method. This method
 takes two extra `skia.Rect` arguments: a source rect and a destination rect.
 It takes the parts of the image bitmap within the source rect and rescales
-them as necesary to fit into the destination rect.
-
+it as necessary to fit into the destination rect.
+p
 [background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
 
 This modified example:
