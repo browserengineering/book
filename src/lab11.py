@@ -749,7 +749,7 @@ class CSSParser:
             cur = self.s[self.i]
             if cur == "'":
                 in_quote = not in_quote
-            if cur.isalnum() or cur in "/#-.%()\"'" \
+            if cur.isalnum() or cur in ",/#-.%()\"'" \
                 or (in_quote and cur == ':'):
                 self.i += 1
             else:

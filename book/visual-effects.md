@@ -782,6 +782,14 @@ def parse_transform(transform_str):
         return (None, None)
 ```
 
+Also add the "," character to the list of characters in a CSS word:
+
+``` {.python}
+class CSSParser:
+    # ...
+            if cur.isalnum() or cur in ",/#-.%()\"'" \
+```
+
 Then we need paint it into the display list (we need to `Save` before rotating,
 to only rotate the element and its subtree, not the rest of the output). For
 that, introduce a new method `paint_visual_efects` that is called by
@@ -1533,7 +1541,7 @@ otherwise, not.[^only-single-quote]
 double quotes are accepted in real CSS. Single and double quotes can be
 interchanged in CSS and JavaScript, just like in Python.
 
-``` {.python}
+``` {.python expected=False}
 class CSSParser:
     # ...
     def word(self):
