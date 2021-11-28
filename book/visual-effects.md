@@ -1606,6 +1606,16 @@ def request(url, top_level_url, payload=None):
     # ...
 ```
 
+While we're at it, add theh `Content-Type` header to the server response:
+
+``` {.python file=server}
+def handle_connection(conx):
+    # ...
+    response = "HTTP/1.0 {}\r\n".format(status)
+    response += "Content-Type: text/html\r\n"
+    # ...
+```
+
 [^image-decode]: Not to be confused with image decoding, which will be done 
 later.
 
