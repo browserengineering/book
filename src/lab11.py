@@ -870,22 +870,34 @@ def style(node, rules, url):
 SCROLL_STEP = 100
 CHROME_PX = 100
 
-def draw_polyline(surface, x1, y1, x2, y2, x3=None,
-    y3=None, fill=False):
-    path = skia.Path()
-    path.moveTo(x1, y1)
-    path.lineTo(x2, y2)
-    if x3:
-        path.lineTo(x3, y3)
-    paint = skia.Paint()
-    paint.setColor(skia.ColorBLACK)
-    if fill:
-        paint.setStyle(skia.Paint.kFill_Style)
-    else:
-        paint.setStyle(skia.Paint.kStroke_Style)
+def draw_line(surface, x1, y1, x2, y2):
+    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
+    paint = skia.Paint(Color=skia.ColorBLACK)
+    paint.setStyle(skia.Paint.kStroke_Style)
     paint.setStrokeWidth(1);
     with surface as canvas:
         canvas.drawPath(path, paint)
+
+def draw_text(surface, x, y, text, font, color=None):
+    sk_color = color_to_sk_color(color)
+    paint = skia.Paint(AntiAlias=True, Color=sk_color)
+    with surface as canvas:
+        canvas.drawString(
+            text, x, y - font.getMetrics().fAscent,
+            font, paint)
+
+def draw_rect(self, l, t, r, b, fill=None, width=1):
+    paint = skia.Paint()
+    if fill:
+        paint.setStrokeWidth(width);
+        paint.setColor(color_to_sk_color(fill))
+    else:
+        paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(1);
+        paint.setColor(skia.ColorBLACK)
+    rect = skia.Rect.MakeLTRB(l, t, r, b)
+    with self.skia_surface as canvas:
+        canvas.drawRect(rect, paint)
 
 class Tab:
     def __init__(self):
@@ -973,7 +985,7 @@ class Tab:
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measureText(text)
             y = obj.y - self.scroll + CHROME_PX
-            draw_polyline(surface, x, y, x, y + obj.height)
+            draw_line(surface, x, y, x, y + obj.height)
 
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
@@ -1040,8 +1052,10 @@ WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
 class Browser:
-    def __init__(self, sdl_window):
-        self.sdl_window = sdl_window
+    def __init__(self):
+        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
         self.window_surface = sdl2.SDL_GetWindowSurface(
             self.sdl_window)
         self.skia_surface = skia.Surface(WIDTH, HEIGHT)
@@ -1050,19 +1064,6 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
-
-    def to_sdl_surface(skia_bytes):
-        depth = 32 # 4 bytes per pixel
-        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen
-        # Skia uses an ARGB format - alpha first byte, then
-        # through to blue as the last byte.
-        alpha_mask = 0xff000000
-        red_mask = 0x00ff0000
-        green_mask = 0x0000ff00
-        blue_mask = 0x000000ff
-        return sdl2.SDL_CreateRGBSurfaceFrom(
-            skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            red_mask, green_mask, blue_mask, alpha_mask)
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
@@ -1138,12 +1139,12 @@ class Browser:
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_polyline(self.skia_surface, x1, 0, x1, 40)
-            draw_polyline(self.skia_surface, x2, 0, x2, 40)
+            draw_line(self.skia_surface, x1, 0, x1, 40)
+            draw_line(self.skia_surface, x2, 0, x2, 40)
             self.draw_text(x1 + 10, 10, name, tabfont)
             if i == self.active_tab:
-                draw_polyline(self.skia_surface, 0, 40, x1, 40)
-                draw_polyline(self.skia_surface, x2, 40, WIDTH, 40)
+                draw_line(self.skia_surface, 0, 40, x1, 40)
+                draw_line(self.skia_surface, x2, 40, WIDTH, 40)
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
@@ -1156,52 +1157,66 @@ class Browser:
         if self.focus == "address bar":
             self.draw_text(55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
-            draw_polyline(self.skia_surface, 55 + w, 55, 55 + w, 85)
+            draw_line(self.skia_surface, 55 + w, 55, 55 + w, 85)
         else:
             url = self.tabs[self.active_tab].url
             self.draw_text(55, 55, url, buttonfont)
 
         # Draw the back button:
         self.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
-        draw_polyline(
-            self.skia_surface, 15, 70, 30, 55, 30, 85, True)
+        path = skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
+        paint = skia.Paint(Color=skia.ColorBlack, Style=skia.Paint.kFill_Style)
+        with surface as canvas:
+            canvas.drawPath(path, paint)
 
+        self.commit_canvas()
+
+    def commit_canvas(self):
         # Raster the results and copy to the SDL surface:
         skia_image = self.skia_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
-        skia_surface = Browser.to_sdl_surface(skia_bytes)
+
+        depth = 32 # 4 bytes per pixel
+        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen
+        # Skia uses an ARGB format - alpha first byte, then
+        # through to blue as the last byte.
+        alpha_mask = 0xff000000
+        red_mask = 0x00ff0000
+        green_mask = 0x0000ff00
+        blue_mask = 0x000000ff
+        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+            skia_bytes, WIDTH, HEIGHT, depth, pitch,
+            red_mask, green_mask, blue_mask, alpha_mask)
+
         sdl2.SDL_BlitSurface(
-            skia_surface, rect, self.window_surface, rect)
+            sdl_surface, rect, self.window_surface, rect)
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
+
+    def handle_quit(self):
+        sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
     import sys
 
     sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO)
-    sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-        sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-        WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-
-    browser = Browser(sdl_window)
+    browser = Browser()
     browser.load(sys.argv[1])
 
-    running = True
     event = sdl2.SDL_Event()
-    while running:
+    while True:
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == sdl2.SDL_MOUSEBUTTONUP:
+            if event.type == sdl2.SDL_QUIT:
+                browser.handle_quit()
+                sdl2.SDL_Quit()
+                sys.exit()
+            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
                 browser.handle_click(event.button)
-            if event.type == sdl2.SDL_KEYDOWN:
+            elif event.type == sdl2.SDL_KEYDOWN:
                 if event.key.keysym.sym == sdl2.SDLK_RETURN:
                     browser.handle_enter()
-                if event.key.keysym.sym == sdl2.SDLK_DOWN:
+                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
                     browser.handle_down()
-            if event.type == sdl2.SDL_TEXTINPUT:
+            elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
-            if event.type == sdl2.SDL_QUIT:
-                running = False
-                break
 
-    sdl2.SDL_DestroyWindow(sdl_window)
-    sdl2.SDL_Quit()
