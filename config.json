@@ -17,7 +17,7 @@
         "scripts.md": { "disabled": false, "lab": "lab9.py", "server": "server9.py", "runtime": "runtime9.js" },
         "security.md": { "disabled": false, "lab": "lab10.py", "server": "server10.py", "runtime": "runtime10.js" },
 
-        "visual-effects.md": { "disabled": true, "lab": "lab11.py" },
+        "visual-effects.md": { "disabled": true, "lab": "lab11.py", "examples": "examples11.py" },
         "scheduling-and-threading.md": { "disabled": true, "lab": "lab12.py" },
         "reflow.md": { "disabled": true, "lab": "lab13.py" },
 

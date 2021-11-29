@@ -166,6 +166,7 @@ if __name__ == "__main__":
             for chapter, metadata in data["chapters"].items():
                 failure += test_entry(chapter, metadata, "lab", "python", None)
                 failure += test_entry(chapter, metadata, "server", "python", "server")
+                failure += test_entry(chapter, metadata, "examples", "python", "examples")
                 failure += test_entry(chapter, metadata, "stylesheet", "css", None)
                 failure += test_entry(chapter, metadata, "runtime", "javascript", None)
     else:

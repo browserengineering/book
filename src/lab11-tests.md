@@ -224,3 +224,96 @@ origin.
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
     drawString(text=Rotate, x=13.0, y=136.10546875, color=ff000000)
     restore()
+
+Now let's test the example compositing and blend mode functions.
+
+    >>> import examples11
+    >>> import skia
+    >>> blue_opaque = skia.Color4f(0.0, 0.0, 1.0, 1.0)
+    >>> red_opaque = skia.Color4f(1.0, 0.0, 0.0, 1.0)
+
+Source-over compositing of blue over red yields blue.
+
+    >>> examples11.composite(blue_opaque, red_opaque, "source-over") == blue_opaque
+    True
+
+And the other way around yields red.
+
+    >>> examples11.composite(red_opaque, blue_opaque, "source-over") == red_opaque
+    True
+
+    >>> blue_semitransparent = skia.Color4f(0.0, 0.0, 1.0, 0.5)
+    >>> red_semitransparent = skia.Color4f(1.0, 0.0, 0.0, 0.5)
+
+Compositing a semitransparent blue on top of an opaque red yields a part-blue,
+part-red color with an opaque alpha channel.
+
+    >>> examples11.composite(blue_semitransparent, red_opaque, "source-over")
+    Color4f(0.5, 0, 0.5, 1)
+
+Compositing the blue over red if they are both half-transparent yields a result
+that is less red then blue. This is because the definition of source-over
+compositing applies a bit differently to the background and foreground
+colors. Likewise, the final alpha is a bit different than you might think.
+
+    >>> examples11.composite(blue_semitransparent, red_semitransparent, "source-over")
+    Color4f(0.25, 0, 0.5, 0.75)
+
+Destination-in compositing ignores the source color except for its alpha
+channel, and multiplies the color of the backdrop by that alpha.
+
+This means that compositing any opaque color on top of a backdrop with
+destination-in compositing yields the backdrop.
+
+    >>> examples11.composite(blue_opaque, red_opaque, "destination-in")
+    Color4f(1, 0, 0, 1)
+
+But transparency multiplies.
+
+    >>> examples11.composite(blue_semitransparent, red_opaque, "destination-in")
+    Color4f(0.5, 0, 0, 0.5)
+
+And of course, a fully transparent source color yields a full-zero result.
+
+    >>> green_full_transparent = skia.Color4f(0.0, 1.0, 0.0, 0.0)
+    >>> examples11.composite(green_full_transparent, red_opaque, "destination-in")
+    Color4f(0, 0, 0, 0)
+
+Now for blending. Let's start by testing the `apply_blend` function, which
+takes as input a source and backdrop color channel, and a blend mode, It applies
+the blend to the color.
+
+    >>> examples11.apply_blend(0.6, 0.0, "normal")
+    0.6
+    >>> examples11.apply_blend(0.6, 0.0, "multiply")
+    0.0
+    >>> examples11.apply_blend(0.6, 0.0, "difference")
+    0.6
+    >>> examples11.apply_blend(0.0, 0.6, "difference")
+    0.6
+
+Now let's test the full `blend` method.
+
+    >>> examples11.blend(blue_opaque, red_opaque, "normal") == blue_opaque
+    True
+    >>> examples11.blend(red_opaque, blue_opaque, "normal") == red_opaque
+    True
+    >>> examples11.blend(blue_semitransparent, red_semitransparent, "normal") == blue_semitransparent
+    True
+    >>> examples11.blend(red_semitransparent, blue_semitransparent, "normal") == red_semitransparent
+    True
+
+'multiply' multiplies each channel, so like colors may remain brighter but
+ dislike colors tend to darken each other each other out.
+
+    >>> examples11.blend(blue_opaque, red_opaque, "multiply")
+    Color4f(0, 0, 0, 1)
+    >>> examples11.blend(blue_opaque, blue_semitransparent, "multiply")
+    Color4f(0, 0, 1, 1)
+
+'difference' only keeps around the differences.
+
+    >>> examples11.blend(blue_opaque, red_opaque, "difference")
+    Color4f(1, 0, 1, 1)
+    >>> examples11.blend(blue_opaque, blue_semitransparent, "difference")
+    Color4f(0, 0, 0.5, 1)
