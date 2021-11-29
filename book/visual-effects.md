@@ -782,6 +782,14 @@ def parse_transform(transform_str):
         return (None, None)
 ```
 
+Also add the "," character to the list of characters in a CSS word:
+
+``` {.python}
+class CSSParser:
+    # ...
+            if cur.isalnum() or cur in ",/#-.%()\"'" \
+```
+
 Then we need paint it into the display list (we need to `Save` before rotating,
 to only rotate the element and its subtree, not the rest of the output). For
 that, introduce a new method `paint_visual_efects` that is called by
@@ -1513,31 +1521,25 @@ It paints like this:[^exact-size]
 [^exact-size]: Note that I cleverly chose the width and height of the `div` to
 be exactly `256px`, the dimensions of the JPEG image.
 
-To implement this property, first we'll need to load all of the image URLs
-specified in CSS rules for a `Tab`. Firt collect the image URLs:
+To implement this property, first we'll need to load the background image,
+if specified by CSS, and store it on the `node`:
 
 ``` {.python}
-    def load(self, url, body=None):
-        # ...
+def parse_style_url(url_str):
+    return url_str[5:][:-2]
 
-        image_url_strs = [rule[1]['background-image']
-                for rule in self.rules
-                if 'background-image' in rule[1]]
-```
-
-The same will need to be done for inline styles:
-
-``` {.python}
-def style(node, rules, url, images):
+def style(node, rules, url):
     # ...
-    if isinstance(node, Element) and "style" in node.attributes:
-        pairs = CSSParser(node.attributes["style"]).body()
-        image_url_strs = []
-        for property, value in pairs.items():
-            # ...
-            if property == 'background-image':
-                image_url_strs.append(value)
+    if node.style.get('background-image'):
+        node.background_image = \
+            get_image(parse_style_url(
+                node.style.get('background-image')), url)
+    for child in node.children:
+        style(child, rules, url)
 ```
+
+This does not yet define the `get_image` function; I'll get to that in a moment.
+This function is in charge of downloading the image and decoding it.
 
 To make non-relative URLs work, we'll also need to modify the CSS parser,
 because these URLs start with "https://" or "http://". Since they contain
@@ -1550,7 +1552,7 @@ otherwise, not.[^only-single-quote]
 double quotes are accepted in real CSS. Single and double quotes can be
 interchanged in CSS and JavaScript, just like in Python.
 
-``` {.python}
+``` {.python expected=False}
 class CSSParser:
     # ...
     def word(self):
@@ -1569,13 +1571,13 @@ class CSSParser:
         return self.s[start:self.i]
 ```
 
-And then load them. But to load them we'll have to augment the `request`
-function to support binary image content types (currently it only supports
-`text/html` and `text/css` encoded in `utf-8`). A PNG image, for instance, has
-the content type `image/png`, and is of course not `utf-8`, it's an encoded PNG
-file. To fix this, we will need to decode in smaller chunks:
-the status line and headers are still `utf-8`, but the body encoding depends
-on the image type.
+Now let's figure out how to load the image URL. To do this we'll have to start
+by augmenting the `request` function to support binary image content types
+(currently it only supports `text/html` and `text/css` encoded in `utf-8`). A
+PNG image, for instance, has the content type `image/png`, and is of course not
+`utf-8`, it's an encoded PNG file. To fix this, we will need to decode in
+smaller chunks: the status line and headers are still `utf-8`, but the body
+encoding depends on the image type.
 
 First, when we read from the socket with `makefile`, pass the argument
 `b` instead of `r` to request raw bytes as output:
@@ -1626,13 +1628,12 @@ def request(url, headers={}, payload=None):
 [^image-decode]: Not to be confused with image decoding, which will be done 
 later.
 
-Now we are ready to load the images. Each image found will be loaded and stored
-in an `images` dictionary on a `Tab` keyed by URL. However, to actually show
-an image on the first screen, we have to first *decode* it. Images are sent
-over the network in one of many optimized encoding formats, such as PNG or
-JPEG; when we need to draw them to the screen, we need to convert from the
-encoded format into a raw array of pixels. These pixels can then be efficiently
-drawn onto the screen.[^image-decoding]
+Now we are ready to actually load the images. This will involve calling
+`request` and then decoding the image. Images are sent over the network in one
+of many optimized encoding formats, such as PNG or JPEG; when we need to draw
+them to the screen, we need to convert from the encoded format into a raw array
+of pixels. These pixels can then be efficiently drawn onto the screen.
+[^image-decoding]
 
 [^image-decoding]: While image decoding technologies are beyond the
 scope of this book, it's very important for browsers to make optimized use
@@ -1662,46 +1663,21 @@ for content type [signatures] in the bytes of the encoded image.
 [signatures]: https://en.wikipedia.org/wiki/List_of_file_signatures
 
 ``` {.python}
-def get_images(image_url_strs, base_url, images):
-    for image_url_str in image_url_strs:
-        image_url = parse_style_url(image_url_str)
-        header, body_bytes = request(
-            resolve_url(image_url, base_url),
-            headers={})
-        picture_stream = io.BytesIO(body_bytes)
+def get_image(image_url, base_url):
+    header, body_bytes = request(
+        resolve_url(image_url, base_url),
+        headers={})
+    picture_stream = io.BytesIO(body_bytes)
 
-        pil_image = Image.open(picture_stream)
-        if pil_image.mode == "RGBA":
-            pil_image_bytes = pil_image.tobytes()
-        else:
-            pil_image_bytes = pil_image.convert("RGBA").tobytes()
-        images[image_url] = skia.Image.frombytes(
-            array=pil_image_bytes,
-            dimensions=pil_image.size,
-            colorType=skia.kRGBA_8888_ColorType)
-
-    def load(self, url, body=None):
-        # ...
-
-        self.images = {}
-        get_images(image_url_strs, url, self.images)
-```
-
-Next we need to provide access to this image from the `paint` method of a
-layout object. Since those objects don't have access to the `Tab`, the easiest
-way to do this is to save a pointer to the image on the layout object's node
-during `style`:
-
-``` {.python}
-def style(node, rules, url, images):
-    # ...
-    if isinstance(node, Element) and "style" in node.attributes:
-        # ...
-        get_images(image_url_strs, url, images)
-    if node.style.get('background-image'):
-        node.background_image = \
-            images[parse_style_url(
-                node.style.get('background-image'))]
+    pil_image = Image.open(picture_stream)
+    if pil_image.mode == "RGBA":
+        pil_image_bytes = pil_image.tobytes()
+    else:
+        pil_image_bytes = pil_image.convert("RGBA").tobytes()
+    return skia.Image.frombytes(
+        array=pil_image_bytes,
+        dimensions=pil_image.size,
+        colorType=skia.kRGBA_8888_ColorType)
 ```
 
 Now that the images are loaded, the next step is to paint them into the display
@@ -1783,15 +1759,81 @@ class ClipRect:
 Note how the background image is painted *before* children, just like
 `background-color`.[^paint-order]
 
+Ok, we can now put background images on an element of any size, and the image
+will be clipped if it's too big (and it'll reveal the background color or
+backdrop if it's too small). But as soon as you're trying to make a web page
+(such as an extension to the guest book to show an avatar image), the fact that
+you can't resize the image to fit the size of the element is pretty annoying,
+because the only way to fix it is to manually resize the image with a utility
+program and store an additional image of the new size on the server.
+
+To fix this situation, let's add support for
+[`background-size:contain`][background-size], which
+means "scale the image so it fits in the size of the element". This is super
+easy to implement in Skia, by using the `drawImageRect` method. This method
+takes two extra `skia.Rect` arguments: a source rect and a destination rect.
+It takes the parts of the image bitmap within the source rect and rescales
+it as necessary to fit into the destination rect.
+p
+[background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
+
+This modified example:
+
+    <div style="width:100px; height:100px;background-image:
+        url('/avatar.png');background-size:contain">
+    </div>
+
+Paints like:
+
+<div style="width:100px; height:100px;
+    background-image:url('/avatar.png');background-size:contain">
+</div>
+
+The code to add it requires a slight tweak to `paint_background` (note how
+we were able to optimize away the save and clip):
+
+``` {.python}
+def paint_background(node, display_list, rect):
+    # ...
+    if background_image:
+        background_size = node.style.get("background-size")
+        if background_size and background_size == "contain":
+            display_list.append(DrawImageRect(node.background_image, rect))
+        else:
+            display_list.append(Save(rect))
+            display_list.append(ClipRect(rect))
+            display_list.append(DrawImage(node.background_image,
+                rect))
+            display_list.append(Restore(rect))
+```
+
+and a new display list command:
+
+``` {.python}
+class DrawImageRect:
+    def __init__(self, image, rect):
+        self.image = image
+        self.rect = rect
+
+    def execute(self, scroll, surface):
+        with surface as canvas:
+            source_rect = skia.Rect.Make(self.image.bounds())
+            dest_rect = skia.Rect.MakeLTRB(
+                self.rect.left(),
+                self.rect.top() - scroll,
+                self.rect.right(),
+                self.rect.bottom() - scroll)
+            canvas.drawImageRect(
+                self.image, source_rect, dest_rect)
+```
+
 ::: {.further}
-As we've seen, background images may not have the same
-[*intrinsic size*][intrinsic-size] as the element it's associated with. There
-are a lot of options in the specification for the different ways to account for
-this, via CSS properties like [`background-size`][background-size] and
+
+There are a lot more options in the specification for the different ways to
+account for this, via additional CSS properties like 
 [`background-repeat`][background-repeat].
 
 [intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size
-[background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
 [background-repeat]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-repeat
 
 In addition to these considerations, there are also cases where we want to scale
