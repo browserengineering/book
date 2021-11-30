@@ -44,7 +44,7 @@ Python bindings like so:
 As elsewhere in this book, you may need to use `pip`, `easy_install`,
 or `python3 -m pip` instead of `pip3` as your installer, or use your
 IDE's package installer. If you're on Linux, you'll need to install
-additional dependencies, like OpenGL, fontconfig. Also, you may not be
+additional dependencies, like OpenGL and fontconfig. Also, you may not be
 able to install `pysdl2-dll`; you'll need to find SDL in your system
 package manager instead. Consult the [`skia-python`][skia-python] and
 [`pysdl2`][sdl-python] web pages for more details.
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     # ...
 ```
 
-Next, we need create an SDL window, instead of a Tkinter window,
+Next, we need to create an SDL window, instead of a Tkinter window,
 inside the Browser, and set up Skia to draw to it. Here's the SDL
 incantation to create a window:
 
@@ -98,7 +98,7 @@ colors). A surface may or may not be bound to the actual pixels on the
 screen via a window, and there can be many surfaces. A *canvas* is an
 API interface that allows you to draw into a surface with higher-level
 commands such as for rectangles or text. Our browser uses separate
-Skia and SDL surface for simplicity, but in a highly optimized
+Skia and SDL surfaces for simplicity, but in a highly optimized
 browser, minimizing the number of surfaces is important for good
 performance.
 
@@ -118,7 +118,7 @@ place to another:
 
 ``` {.python}
 class Browser:
-    def commit_canvas(self):
+    def draw_to_screen(self):
         # Raster the results and copy to the SDL surface:
         skia_image = self.skia_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
@@ -339,7 +339,7 @@ Once this is done, we need to copy from the Skia surface to the SDL window:
 class Browser:
     def draw(self):
         # ...
-        self.commit_canvas()
+        self.draw_to_screen()
 ```
 
 We've only got a few minor changes left elsewhere in the browser.
@@ -385,7 +385,7 @@ behave just as it did in previous chapters, and it'll probably feel
 faster, because Skia and SDL are faster than Tkinter.
 
 ::: {.further}
-Implement high-quality raster libraries is very interesting in its own
+Implementing high-quality raster libraries is very interesting in its own
 right. These days, it's especially important to leverage GPUs when
 they're available, and browsers often push the envelope. Browser teams
 typically include raster library experts: Skia for Chromium and [Core

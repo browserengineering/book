@@ -1169,9 +1169,9 @@ class Browser:
         with surface as canvas:
             canvas.drawPath(path, paint)
 
-        self.commit_canvas()
+        self.draw_to_screen()
 
-    def commit_canvas(self):
+    def draw_to_screen(self):
         # Raster the results and copy to the SDL surface:
         skia_image = self.skia_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
