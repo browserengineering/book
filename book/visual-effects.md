@@ -89,8 +89,8 @@ class Browser:
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
 ```
 
-To set up Skia to draw to this window, we need to create two
-"surfaces":[^surface]
+To set up Skia to draw to this window, we also need create a
+"surface" for it:[^surface]
 
 [^surface]: In Skia and SDL, a *surface* is a representation of a
 graphics buffer into which you can draw "pixels" (bits representing
@@ -106,12 +106,10 @@ performance.
 ``` {.python}
 class Browser:
     def __init__(self):
-        self.window_surface = sdl2.SDL_GetWindowSurface(
-            self.sdl_window)
         self.skia_surface = skia.Surface(WIDTH, HEIGHT)
 ```
 
-Typically, we'lll draw to the Skia surface, and then once we're done
+Typically, we'll draw to the Skia surface, and then once we're done
 with it we'll copy it to the SDL surface to display on the screen.
 This looks a little hairy but really it's just copying pixels from one
 place to another:
@@ -136,8 +134,8 @@ class Browser:
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
             red_mask, green_mask, blue_mask, alpha_mask)
 
-        sdl2.SDL_BlitSurface(
-            sdl_surface, rect, self.window_surface, rect)
+        window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
+        sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 ```
 
@@ -153,7 +151,7 @@ if __name__ == "__main__":
             if event.type == sdl2.SDL_QUIT:
                 browser.handle_quit()
                 sdl2.SDL_Quit()
-                sys.exit(0)
+                sys.exit()
             # ...
 ```
 
@@ -203,31 +201,29 @@ documentation for more on the Skia API.
 To draw a line, you use Skia's `Path` object:
 
 ``` {.python}
-def draw_line(surface, x1, y1, x2, y2):
+def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
     paint = skia.Paint(Color=skia.ColorBLACK)
     paint.setStyle(skia.Paint.kStroke_Style)
     paint.setStrokeWidth(1);
-    with surface as canvas:
-        canvas.drawPath(path, paint)
+    canvas.drawPath(path, paint)
 ```
 
 To draw text, you use `drawString`:
 
 ``` {.python}
-def draw_text(surface, x, y, text, font, color=None):
+def draw_text(canvas, x, y, text, font, color=None):
     sk_color = color_to_sk_color(color)
     paint = skia.Paint(AntiAlias=True, Color=sk_color)
-    with surface as canvas:
-        canvas.drawString(
-            text, x, y - font.getMetrics().fAscent,
-            font, paint)
+    canvas.drawString(
+        text, float(x), y - font.getMetrics().fAscent,
+        font, paint)
 ```
 
 Finally, for drawing rectangles we use `drawRect`:
 
 ``` {.python}
-def draw_rect(surface, l, t, r, b, fill=None, width=1):
+def draw_rect(canvas, l, t, r, b, fill=None, width=1):
     paint = skia.Paint()
     if fill:
         paint.setStrokeWidth(width);
@@ -237,8 +233,7 @@ def draw_rect(surface, l, t, r, b, fill=None, width=1):
         paint.setStrokeWidth(1);
         paint.setColor(skia.ColorBLACK)
     rect = skia.Rect.MakeLTRB(l, t, r, b)
-    with surface as canvas:
-        canvas.drawRect(rect, paint)
+    canvas.drawRect(rect, paint)
 ```
 
 If you look at the details of these helper methods, you'll see that
@@ -250,13 +245,15 @@ commands to use Skia:
 
 ``` {.python}
 class DrawText:
-    def execute(self, scroll, surface):
-        draw_text(surface, self.left, self.top - scroll, font)
+    def execute(self, scroll, canvas):
+        draw_text(canvas, self.left, self.top - scroll,
+            self.text, self.font)
 
 class DrawRect:
-    def execute(self, scroll, surface):
-        draw_rect(surface,
-            self.left, self.top, self.right, self.bottom,
+    def execute(self, scroll, canvas):
+        draw_rect(canvas,
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
             fill=self.color, width=0)
 ```
 
@@ -269,10 +266,10 @@ First, clear the canvas and and draw the current `Tab` into it:
 ``` {.python}
 class Browser:
     def draw(self):
-        with self.skia_surface as canvas:
-            canvas.clear(skia.ColorWHITE)
+        canvas = self.skia_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
 
-        self.tabs[self.active_tab].draw(self.skia_surface)
+        self.tabs[self.active_tab].draw(canvas)
 ```
 
 Then draw the browser UI elements. First, the tabs:
@@ -285,23 +282,27 @@ class Browser:
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_line(self.skia_surface, x1, 0, x1, 40)
-            draw_line(self.skia_surface, x2, 0, x2, 40)
-            draw_text(self.skia_surface, x1 + 10, 10, name, tabfont)
+            draw_line(canvas, x1, 0, x1, 40)
+            draw_line(canvas, x2, 0, x2, 40)
+            draw_text(canvas, x1 + 10, 10, name, tabfont)
             if i == self.active_tab:
-                draw_line(self.skia_surface, 0, 40, x1, 40)
-                draw_line(self.skia_surface, x2, 40, WIDTH, 40)
+                draw_line(canvas, 0, 40, x1, 40)
+                draw_line(canvas, x2, 40, WIDTH, 40)
 ```
 
-Next, the plus button for adding a new tab:
+Next, the plus button for adding a new tab:[^move-plus]
+
+[^move-plus]: I also changed the *y* position of the plus sign. The
+    change from Tkinter to Skia changes how fonts are drawn, and the
+    new *y* position keeps the plus centered in the box.
 
 ``` {.python}
 class Browser:
     def draw(self):
         # ...
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        draw_rect(self.skia_surface, 10, 10, 30, 30)
-        draw_text(self.skia_surface, 11, 0, "+", buttonfont)
+        draw_rect(canvas, 10, 10, 30, 30)
+        draw_text(canvas, 11, 4, "+", buttonfont)
 ```
 
 Then the address bar, including text and cursor:
@@ -310,14 +311,14 @@ Then the address bar, including text and cursor:
 class Browser:
     def draw(self):
         # ...
-        draw_rect(self.skia_surface, 40, 50, WIDTH - 10, 90)
+        draw_rect(canvas, 40, 50, WIDTH - 10, 90)
         if self.focus == "address bar":
-            draw_text(self.skia_surface, 55, 55, self.address_bar, buttonfont)
+            draw_text(canvas, 55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
-            draw_line(self.skia_surface, 55 + w, 55, 55 + w, 85)
+            draw_line(canvas, 55 + w, 55, 55 + w, 85)
         else:
             url = self.tabs[self.active_tab].url
-            draw_text(self.skia_surface, 55, 55, url, buttonfont)
+            draw_text(canvas, 55, 55, url, buttonfont)
 ```
 
 And finally the "back" button:
@@ -326,11 +327,10 @@ And finally the "back" button:
 class Browser:
     def draw(self):
         # ...
-        draw_rect(self.skia_surface, 10, 50, 35, 90)
+        draw_rect(canvas, 10, 50, 35, 90)
         path = skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
-        paint = skia.Paint(Color=skia.ColorBlack, Style=skia.Paint.kFill_Style)
-        with surface as canvas:
-            canvas.drawPath(path, paint)
+        paint = skia.Paint(Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
+        canvas.drawPath(path, paint)
 ```
 
 Once this is done, we need to copy from the Skia surface to the SDL window:
@@ -348,23 +348,20 @@ We've only got a few minor changes left elsewhere in the browser.
 
 ``` {.python}
 class Tab:
-    def draw(self, surface):
-        is self.focus:
+    def draw(self, canvas):
+        if self.focus:
             # ...
             x = obj.x + obj.font.measureText(text)
             y = obj.y - self.scroll + CHROME_PX
-            draw_line(surface, x, y, x, y + obj.height)
+            draw_line(canvas, x, y, x, y + obj.height)
 ```
 
-Note that I've renamed `draw`'s argument from `surface` to `canvas`
-and I've also replace the Tkinter `measure` call with Skia's
-`measureText` equivalent.
-
-On that note, we'll need to create Skia fonts instead of Tkinter ones.
-Update all the other places that `measure` was called to use
-`measureText`. We also need to change everywhere `metrics` is called
-to instead use Skia's `getMetrics`, which works a little differently.
-In Skia, ascent and descent are accessible via:
+Note that I've also replaced Tkinter's `measure` call with Skia's
+`measureText` equivalent. We'll also need to create Skia fonts instead
+of Tkinter ones. Update all the other places that `measure` was called
+to use `measureText`. We also need to change everywhere `metrics` is
+called to instead use Skia's `getMetrics`, which works a little
+differently. In Skia, ascent and descent are accessible via:
 
 ``` {.python expected=False}
     -font.getMetrics().fAscent
@@ -829,17 +826,15 @@ class Save:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.save()
+    def execute(self, scroll, canvas):
+        canvas.save()
 
 class Restore:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.restore()
+    def execute(self, scroll, canvas):
+        canvas.restore()
 ```
 
 Next, parse the `transform` property:
@@ -930,15 +925,14 @@ class Rotate:
         self.degrees = degrees
         self.rect = rect
 
-    def execute(self, scroll, surface):
+    def execute(self, scroll, canvas):
         paint_rect = skia.Rect.MakeLTRB(
             self.rect.left(), self.rect.top() - scroll,
             self.rect.right(), self.rect.bottom() - scroll)
         (center_x, center_y) = center_point(paint_rect)
-        with surface as canvas:
-            canvas.translate(center_x, center_y)
-            canvas.rotate(self.degrees)
-            canvas.translate(-center_x, -center_y)
+        canvas.translate(center_x, center_y)
+        canvas.rotate(self.degrees)
+        canvas.translate(-center_x, -center_y)
 ```
 
 Note how we first translated to put the center of the layout object at the
@@ -966,12 +960,11 @@ class Translate:
         self.y = y
         self.rect = rect
 
-    def execute(self, scroll, surface):
+    def execute(self, scroll, canvas):
         paint_rect = skia.Rect.MakeLTRB(
             self.rect.left(), self.rect.top() - scroll,
             self.rect.right(), self.rect.bottom() - scroll)
-        with surface as canvas:
-            canvas.translate(self.x, self.y)
+        canvas.translate(self.x, self.y)
 ```
 
 Opacity and Compositing
@@ -1038,9 +1031,8 @@ class SaveLayer:
         self.sk_paint = sk_paint
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.saveLayer(paint=self.sk_paint)
+    def execute(self, scroll, canvas):
+        canvas.saveLayer(paint=self.sk_paint)
 ```
 
 Notice how `SaveLayer` takes an `SkPaint` object as a parameter. This will
@@ -1412,13 +1404,12 @@ class CircleMask:
         self.radius = radius
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.saveLayer(paint=skia.Paint(
-                Alphaf=1.0, BlendMode=skia.kDstIn))
-            canvas.drawCircle(
-                self.cx, self.cy - scroll,
-                self.radius, skia.Paint(Color=skia.ColorWHITE))
+    def execute(self, scroll, canvas):
+        canvas.saveLayer(paint=skia.Paint(
+            Alphaf=1.0, BlendMode=skia.kDstIn))
+        canvas.drawCircle(
+            self.cx, self.cy - scroll,
+            self.radius, skia.Paint(Color=skia.ColorWHITE))
 ```
 
 Finally, we call `paint_clip_path` for each layout object type. Note however
@@ -1503,16 +1494,15 @@ class ClipRRect:
         self.rect = rect
         self.radius = radius
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.clipRRect(
-                skia.RRect.MakeRectXY(
-                    skia.Rect.MakeLTRB(
-                        self.rect.left(),
-                        self.rect.top() - scroll,
-                        self.rect.right(),
-                        self.rect.bottom() - scroll),
-                    self.radius, self.radius))
+    def execute(self, scroll, canvas):
+        canvas.clipRRect(
+            skia.RRect.MakeRectXY(
+                skia.Rect.MakeLTRB(
+                    self.rect.left(),
+                    self.rect.top() - scroll,
+                    self.rect.right(),
+                    self.rect.bottom() - scroll),
+                self.radius, self.radius))
 ```
 
 Now why is it that rounded rect clips are applied in `paint_visual_effects` but
@@ -1773,11 +1763,10 @@ class DrawImage:
         self.image = image
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.drawImage(
-                self.image, self.rect.left(),
-                self.rect.top() - scroll)
+    def execute(self, scroll, canvas):
+        canvas.drawImage(
+            self.image, self.rect.left(),
+            self.rect.top() - scroll)
 ```
 
 Then add a `DrawImage`, plus a few additional things, to a new
@@ -1833,11 +1822,10 @@ class ClipRect:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.clipRect(skia.Rect.MakeLTRB(
-                self.rect.left(), self.rect.top() - scroll,
-                self.rect.right(), self.rect.bottom() - scroll))
+    def execute(self, scroll, canvas):
+        canvas.clipRect(skia.Rect.MakeLTRB(
+            self.rect.left(), self.rect.top() - scroll,
+            self.rect.right(), self.rect.bottom() - scroll))
 ```
 
 Note how the background image is painted *before* children, just like
@@ -1899,16 +1887,15 @@ class DrawImageRect:
         self.image = image
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            source_rect = skia.Rect.Make(self.image.bounds())
-            dest_rect = skia.Rect.MakeLTRB(
-                self.rect.left(),
-                self.rect.top() - scroll,
-                self.rect.right(),
-                self.rect.bottom() - scroll)
-            canvas.drawImageRect(
-                self.image, source_rect, dest_rect)
+    def execute(self, scroll, canvas):
+        source_rect = skia.Rect.Make(self.image.bounds())
+        dest_rect = skia.Rect.MakeLTRB(
+            self.rect.left(),
+            self.rect.top() - scroll,
+            self.rect.right(),
+            self.rect.bottom() - scroll)
+        canvas.drawImageRect(
+            self.image, source_rect, dest_rect)
 ```
 
 ::: {.further}

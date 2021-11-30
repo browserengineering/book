@@ -205,11 +205,8 @@ class MockSkiaSurface:
         self.canvas = MockCanvas()
         pass
 
-    def __enter__(self):
+    def getCanvas(self):
         return self.canvas
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        pass
 
     def makeImageSnapshot(self):
         return MockSkiaImage()

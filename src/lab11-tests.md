@@ -22,7 +22,7 @@ Elements can override their size...
     ... b"<link rel=stylesheet href='styles.css'>" +
     ... b"<div><div>Text</div></div>)")
 
-    >>> browser = lab11.Browser({})
+    >>> browser = lab11.Browser()
     >>> browser.load(size_url)
     >>> browser.skia_surface.printTabCommands()
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
@@ -46,7 +46,7 @@ color.
     ... b"<link rel=stylesheet href='styles.css'>" +
     ... b"<div style=\"background-image:url('image.png')\"><div>Text</div></div>)")
 
-    >>> browser = lab11.Browser({})
+    >>> browser = lab11.Browser()
     >>> browser.load(size_and_image_url)
     >>> browser.skia_surface.printTabCommands()
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
@@ -65,7 +65,7 @@ Specifying `background-size: contain`is supported.
     ... b"<link rel=stylesheet href='styles.css'>" +
     ... b"<div style=\"background-image:url('image.png');background-size:contain\"><div>Text</div></div>)")
 
-    >>> browser = lab11.Browser({})
+    >>> browser = lab11.Browser()
     >>> browser.load(size_and_image_and_size_url)
     >>> browser.skia_surface.printTabCommands()
     drawRect(rect=Rect(13, 118, 63, 168), color=ff0000ff)
@@ -90,7 +90,7 @@ Opacity can be applied.
     ... b"<link rel=stylesheet href='styles.css'>" +
     ... b"<div style=\"opacity:0.5\"><div>Text</div></div>)")
 
-    >>> browser = lab11.Browser({})
+    >>> browser = lab11.Browser()
     >>> browser.load(size_and_opacity_url)
     >>> browser.skia_surface.printTabCommands()
     saveLayer(color=80000000, alpha=128)
@@ -108,7 +108,7 @@ So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
     ... b"<div style=\"mix-blend-mode:multiply\"><div>Mult</div></div>)" +
     ... b"<div style=\"mix-blend-mode:difference\"><div>Diff</div></div>)")
 
-    >>> browser = lab11.Browser({})
+    >>> browser = lab11.Browser()
     >>> browser.load(size_and_mix_blend_mode_url)
     >>> browser.skia_surface.printTabCommands()
     saveLayer(color=ff000000, blend_mode=BlendMode.kMultiply)
@@ -135,7 +135,7 @@ There will be two save layers in this case---one to isolate the
 div and its children so the clip only applies ot it, and one to
 make a canvas in which to draw the circular clip mask.
 
-    >>> browser = lab11.Browser({})
+    >>> browser = lab11.Browser()
     >>> browser.load(size_and_clip_path_url)
     >>> browser.skia_surface.printTabCommands()
     saveLayer(color=ff000000)
@@ -159,7 +159,7 @@ In this case there will be a `save`, but no `saveLayer`, since the latter
 is implicit/an implementation detail of Skia, and a `clipRRect` call with a
 radius equal to the `20px` radius specified above.
 
-    >>> browser = lab11.Browser({})
+    >>> browser = lab11.Browser()
     >>> browser.load(size_and_border_radius_url)
     >>> browser.skia_surface.printTabCommands()
     save()
@@ -195,7 +195,7 @@ Note that the negative transform-origin translation happens last, not first,
 because transform matrices get applied in backwards order when rendering to 
 the screen.
 
-    >>> browser = lab11.Browser({})
+    >>> browser = lab11.Browser()
     >>> browser.load(size_and_rotate_url)
     >>> browser.skia_surface.printTabCommands()
     save()
@@ -215,7 +215,7 @@ origin.
     ... b"content-type: text/html\r\n\r\n" +
     ... b"<link rel=stylesheet href='styles.css'>" +
     ... b"<div style=\"transform:translate(5px,6px)\"><div>Rotate</div></div>)")
-    >>> browser = lab11.Browser({})
+    >>> browser = lab11.Browser()
     >>> browser.load(size_and_translate_url)
     >>> browser.skia_surface.printTabCommands()
     save()
