@@ -141,25 +141,22 @@ class SaveLayer:
         self.sk_paint = sk_paint
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.saveLayer(paint=self.sk_paint)
+    def execute(self, scroll, canvas):
+        canvas.saveLayer(paint=self.sk_paint)
 
 class Save:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.save()
+    def execute(self, scroll, canvas):
+        canvas.save()
 
 class Restore:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.restore()
+    def execute(self, scroll, canvas):
+        canvas.restore()
 
 class CircleMask:
     def __init__(self, cx, cy, radius, rect):
@@ -168,14 +165,13 @@ class CircleMask:
         self.radius = radius
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.saveLayer(paint=skia.Paint(
-                Alphaf=1.0, BlendMode=skia.kDstIn))
-            canvas.drawCircle(
-                self.cx, self.cy - scroll,
-                self.radius, skia.Paint(Color=skia.ColorWHITE))
-            canvas.restore()
+    def execute(self, scroll, canvas):
+        canvas.saveLayer(paint=skia.Paint(
+            Alphaf=1.0, BlendMode=skia.kDstIn))
+        canvas.drawCircle(
+            self.cx, self.cy - scroll,
+            self.radius, skia.Paint(Color=skia.ColorWHITE))
+        canvas.restore()
 
 def center_point(rect):
     return (rect.left() + (rect.right() - rect.left()) / 2,
@@ -186,15 +182,14 @@ class Rotate:
         self.degrees = degrees
         self.rect = rect
 
-    def execute(self, scroll, surface):
+    def execute(self, scroll, canvas):
         paint_rect = skia.Rect.MakeLTRB(
             self.rect.left(), self.rect.top() - scroll,
             self.rect.right(), self.rect.bottom() - scroll)
         (center_x, center_y) = center_point(paint_rect)
-        with surface as canvas:
-            canvas.translate(center_x, center_y)
-            canvas.rotate(self.degrees)
-            canvas.translate(-center_x, -center_y)
+        canvas.translate(center_x, center_y)
+        canvas.rotate(self.degrees)
+        canvas.translate(-center_x, -center_y)
 
 class Translate:
     def __init__(self, x, y, rect):
@@ -202,28 +197,26 @@ class Translate:
         self.y = y
         self.rect = rect
 
-    def execute(self, scroll, surface):
+    def execute(self, scroll, canvas):
         paint_rect = skia.Rect.MakeLTRB(
             self.rect.left(), self.rect.top() - scroll,
             self.rect.right(), self.rect.bottom() - scroll)
-        with surface as canvas:
-            canvas.translate(self.x, self.y)
+        canvas.translate(self.x, self.y)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
+        self.top = y1
+        self.left = x1
+        self.right = x1 + font.measureText(text)
+        self.bottom = self.top - font.getMetrics().fAscent + font.getMetrics().fDescent
+        self.rect = skia.Rect.MakeLTRB(self.top, self.right, self.right, self.bottom)
         self.font = font
-        self.rect = skia.Rect.MakeLTRB(x1, y1, x1, y1 + linespace(self.font))
         self.text = text
         self.color = color
 
-    def execute(self, scroll, surface):
-        paint = skia.Paint(
-            AntiAlias=True, Color=color_to_sk_color(self.color))
-        with surface as canvas:
-            canvas.drawString(
-                self.text, self.rect.left(),
-                self.rect.top() -  scroll - self.font.getMetrics().fAscent,
-                self.font, paint)
+    def execute(self, scroll, canvas):
+        draw_text(canvas, self.left, self.top - scroll,
+            self.text, self.font)
 
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
@@ -231,75 +224,96 @@ class DrawText:
 class DrawRect:
     def __init__(self, rect, color):
         self.rect = rect
+        self.top = rect.top()
+        self.left = rect.left()
+        self.bottom = rect.bottom()
+        self.right = rect.right()
         self.color = color
 
-    def execute(self, scroll, surface):
-        paint = skia.Paint()
-        paint.setStrokeWidth(0)
-        paint.setColor(color_to_sk_color(self.color))
-        rect = skia.Rect.MakeLTRB(
-                self.rect.left(), self.rect.top() - scroll,
-                self.rect.right(), self.rect.bottom() - scroll)
-        with surface as canvas:
-            canvas.drawRect(rect, paint)
+    def execute(self, scroll, canvas):
+        draw_rect(canvas,
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
+            fill=self.color, width=0)
 
     def __repr__(self):
-        (left, top, right, bottom) = tuple(self.rect)
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
-            left, top, right, bottom, self.color)
+            self.left, self.top, self.right, self.bottom, self.color)
+
+def draw_line(canvas, x1, y1, x2, y2):
+    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
+    paint = skia.Paint(Color=skia.ColorBLACK)
+    paint.setStyle(skia.Paint.kStroke_Style)
+    paint.setStrokeWidth(1);
+    canvas.drawPath(path, paint)
+
+def draw_text(canvas, x, y, text, font, color=None):
+    sk_color = color_to_sk_color(color)
+    paint = skia.Paint(AntiAlias=True, Color=sk_color)
+    canvas.drawString(
+        text, float(x), y - font.getMetrics().fAscent,
+        font, paint)
+
+def draw_rect(canvas, l, t, r, b, fill=None, width=1):
+    paint = skia.Paint()
+    if fill:
+        paint.setStrokeWidth(width);
+        paint.setColor(color_to_sk_color(fill))
+    else:
+        paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(1);
+        paint.setColor(skia.ColorBLACK)
+    rect = skia.Rect.MakeLTRB(l, t, r, b)
+    canvas.drawRect(rect, paint)
 
 class ClipRect:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.clipRect(skia.Rect.MakeLTRB(
-                self.rect.left(), self.rect.top() - scroll,
-                self.rect.right(), self.rect.bottom() - scroll))
+    def execute(self, scroll, canvas):
+        canvas.clipRect(skia.Rect.MakeLTRB(
+            self.rect.left(), self.rect.top() - scroll,
+            self.rect.right(), self.rect.bottom() - scroll))
 
 class ClipRRect:
     def __init__(self, rect, radius):
         self.rect = rect
         self.radius = radius
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.clipRRect(
-                skia.RRect.MakeRectXY(
-                    skia.Rect.MakeLTRB(
-                        self.rect.left(),
-                        self.rect.top() - scroll,
-                        self.rect.right(),
-                        self.rect.bottom() - scroll),
-                    self.radius, self.radius))
+    def execute(self, scroll, canvas):
+        canvas.clipRRect(
+            skia.RRect.MakeRectXY(
+                skia.Rect.MakeLTRB(
+                    self.rect.left(),
+                    self.rect.top() - scroll,
+                    self.rect.right(),
+                    self.rect.bottom() - scroll),
+                self.radius, self.radius))
 
 class DrawImage:
     def __init__(self, image, rect):
         self.image = image
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.drawImage(
-                self.image, self.rect.left(),
-                self.rect.top() - scroll)
+    def execute(self, scroll, canvas):
+        canvas.drawImage(
+            self.image, self.rect.left(),
+            self.rect.top() - scroll)
 
 class DrawImageRect:
     def __init__(self, image, rect):
         self.image = image
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            source_rect = skia.Rect.Make(self.image.bounds())
-            dest_rect = skia.Rect.MakeLTRB(
-                self.rect.left(),
-                self.rect.top() - scroll,
-                self.rect.right(),
-                self.rect.bottom() - scroll)
-            canvas.drawImageRect(
-                self.image, source_rect, dest_rect)
+    def execute(self, scroll, canvas):
+        source_rect = skia.Rect.Make(self.image.bounds())
+        dest_rect = skia.Rect.MakeLTRB(
+            self.rect.left(),
+            self.rect.top() - scroll,
+            self.rect.right(),
+            self.rect.bottom() - scroll)
+        canvas.drawImageRect(
+            self.image, source_rect, dest_rect)
 
 INPUT_WIDTH_PX = 200
 
@@ -373,7 +387,7 @@ class TextLayout:
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = int(self.node.style["font-size"][:-2])
+        size = float(self.node.style["font-size"][:-2])
         self.font = skia.Font(
             skia.Typeface('Arial', font_style(weight, style)), size)
 
@@ -654,7 +668,7 @@ class InlineLayout:
     def get_font(self, node):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = int(node.style["font-size"][:-2])
+        size = float(node.style["font-size"][:-2])
         return skia.Font(
             skia.Typeface('Arial', font_style(weight, style)), size)
 
@@ -870,23 +884,6 @@ def style(node, rules, url):
 SCROLL_STEP = 100
 CHROME_PX = 100
 
-def draw_polyline(surface, x1, y1, x2, y2, x3=None,
-    y3=None, fill=False):
-    path = skia.Path()
-    path.moveTo(x1, y1)
-    path.lineTo(x2, y2)
-    if x3:
-        path.lineTo(x3, y3)
-    paint = skia.Paint()
-    paint.setColor(skia.ColorBLACK)
-    if fill:
-        paint.setStyle(skia.Paint.kFill_Style)
-    else:
-        paint.setStyle(skia.Paint.kStroke_Style)
-    paint.setStrokeWidth(1);
-    with surface as canvas:
-        canvas.drawPath(path, paint)
-
 class Tab:
     def __init__(self):
         self.history = []
@@ -961,11 +958,11 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-    def draw(self, surface):
+    def draw(self, canvas):
         for cmd in self.display_list:
             if cmd.rect.top() > self.scroll + HEIGHT - CHROME_PX: continue
             if cmd.rect.bottom() < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, surface)
+            cmd.execute(self.scroll - CHROME_PX, canvas)
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
@@ -973,7 +970,7 @@ class Tab:
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measureText(text)
             y = obj.y - self.scroll + CHROME_PX
-            draw_polyline(surface, x, y, x, y + obj.height)
+            draw_line(canvas, x, y, x, y + obj.height)
 
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
@@ -1040,29 +1037,16 @@ WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
 class Browser:
-    def __init__(self, sdl_window):
-        self.sdl_window = sdl_window
-        self.window_surface = sdl2.SDL_GetWindowSurface(
-            self.sdl_window)
+    def __init__(self):
+        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
         self.skia_surface = skia.Surface(WIDTH, HEIGHT)
 
         self.tabs = []
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
-
-    def to_sdl_surface(skia_bytes):
-        depth = 32 # 4 bytes per pixel
-        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen
-        # Skia uses an ARGB format - alpha first byte, then
-        # through to blue as the last byte.
-        alpha_mask = 0xff000000
-        red_mask = 0x00ff0000
-        green_mask = 0x0000ff00
-        blue_mask = 0x000000ff
-        return sdl2.SDL_CreateRGBSurfaceFrom(
-            skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            red_mask, green_mask, blue_mask, alpha_mask)
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
@@ -1107,101 +1091,94 @@ class Browser:
         self.tabs.append(new_tab)
         self.draw()
 
-    def draw_text(self, x, y, text, font, color=None):
-        paint = skia.Paint(
-            AntiAlias=True, Color=color_to_sk_color(color))
-        with self.skia_surface as canvas:
-            canvas.drawString(
-                text, x, y - font.getMetrics().fAscent,
-                font, paint)
-
-    def draw_rect(self, rect, fill=None, width=1):
-        paint = skia.Paint()
-        if fill:
-            paint.setStrokeWidth(width);
-            paint.setColor(color_to_sk_color(fill))
-        else:
-            paint.setStyle(skia.Paint.kStroke_Style)
-            paint.setStrokeWidth(1);
-            paint.setColor(skia.ColorBLACK)
-        with self.skia_surface as canvas:
-            canvas.drawRect(rect, paint)
-
     def draw(self):
-        with self.skia_surface as canvas:
-            canvas.clear(skia.ColorWHITE)
+        canvas = self.skia_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
 
-        self.tabs[self.active_tab].draw(self.skia_surface)
+        self.tabs[self.active_tab].draw(canvas)
     
         # Draw the tabs UI:
         tabfont = skia.Font(skia.Typeface('Arial'), 20)
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_polyline(self.skia_surface, x1, 0, x1, 40)
-            draw_polyline(self.skia_surface, x2, 0, x2, 40)
-            self.draw_text(x1 + 10, 10, name, tabfont)
+            draw_line(canvas, x1, 0, x1, 40)
+            draw_line(canvas, x2, 0, x2, 40)
+            draw_text(canvas, x1 + 10, 10, name, tabfont)
             if i == self.active_tab:
-                draw_polyline(self.skia_surface, 0, 40, x1, 40)
-                draw_polyline(self.skia_surface, x2, 40, WIDTH, 40)
+                draw_line(canvas, 0, 40, x1, 40)
+                draw_line(canvas, x2, 40, WIDTH, 40)
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        self.draw_rect(skia.Rect.MakeLTRB(10, 10, 30, 30))
-        self.draw_text(11, 0, "+", buttonfont)
+        draw_rect(canvas, 10, 10, 30, 30)
+        draw_text(canvas, 11, 4, "+", buttonfont)
 
         # Draw the URL address bar:
-        self.draw_rect(
-            skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
+        draw_rect(canvas, 40, 50, WIDTH - 10, 90)
         if self.focus == "address bar":
-            self.draw_text(55, 55, self.address_bar, buttonfont)
+            draw_text(canvas, 55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
-            draw_polyline(self.skia_surface, 55 + w, 55, 55 + w, 85)
+            draw_line(canvas, 55 + w, 55, 55 + w, 85)
         else:
             url = self.tabs[self.active_tab].url
-            self.draw_text(55, 55, url, buttonfont)
+            draw_text(canvas, 55, 55, url, buttonfont)
 
         # Draw the back button:
-        self.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
-        draw_polyline(
-            self.skia_surface, 15, 70, 30, 55, 30, 85, True)
+        draw_rect(canvas, 10, 50, 35, 90)
+        path = skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
+        paint = skia.Paint(Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
+        canvas.drawPath(path, paint)
 
+        self.draw_to_screen()
+
+    def draw_to_screen(self):
         # Raster the results and copy to the SDL surface:
         skia_image = self.skia_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
-        skia_surface = Browser.to_sdl_surface(skia_bytes)
-        sdl2.SDL_BlitSurface(
-            skia_surface, rect, self.window_surface, rect)
+
+        depth = 32 # 4 bytes per pixel
+        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen
+        # Skia uses an ARGB format - alpha first byte, then
+        # through to blue as the last byte.
+        alpha_mask = 0xff000000
+        red_mask = 0x00ff0000
+        green_mask = 0x0000ff00
+        blue_mask = 0x000000ff
+        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+            skia_bytes, WIDTH, HEIGHT, depth, pitch,
+            red_mask, green_mask, blue_mask, alpha_mask)
+
+
+        window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
+        sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
+
+    def handle_quit(self):
+        sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
     import sys
 
     sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO)
-    sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-        sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-        WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-
-    browser = Browser(sdl_window)
+    browser = Browser()
     browser.load(sys.argv[1])
 
-    running = True
     event = sdl2.SDL_Event()
-    while running:
+    while True:
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == sdl2.SDL_MOUSEBUTTONUP:
+            if event.type == sdl2.SDL_QUIT:
+                browser.handle_quit()
+                sdl2.SDL_Quit()
+                sys.exit()
+            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
                 browser.handle_click(event.button)
-            if event.type == sdl2.SDL_KEYDOWN:
+            elif event.type == sdl2.SDL_KEYDOWN:
                 if event.key.keysym.sym == sdl2.SDLK_RETURN:
                     browser.handle_enter()
-                if event.key.keysym.sym == sdl2.SDLK_DOWN:
+                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
                     browser.handle_down()
-            if event.type == sdl2.SDL_TEXTINPUT:
+            elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
-            if event.type == sdl2.SDL_QUIT:
-                running = False
-                break
 
-    sdl2.SDL_DestroyWindow(sdl_window)
-    sdl2.SDL_Quit()

@@ -5,69 +5,50 @@ prev: security
 next: rendering-architecture
 ...
 
-Right now our browser can draw text and rectangles of various colors. But that's
-pretty boring: our guest book demo, for example, does cool stuff but doesn't
-*look* very impressive. Real browsers have all sorts of great ways to make
- content look good on the screen, of course. These are called *visual
- effects*---visual because they affect how it looks, but not functionality per
- se, or layout. Therefore these effects are extensions to the *paint*
- and *draw* parts of rendering.
+Right now our browser's visual capabilities are pretty boring, just
+colored rectangles and text. Real browsers, one the other hand,
+support all kinds of *visual effects* that affect how elements look.
+Before we add these to our browser, we'll need to learn a bit about
+pixels, colors, and blending on computer screens. We'll then be able
+to implement these effects using the Skia graphics library, and you'll
+see a bit of how Skia is implemented under the hood.
 
-But to understand how this visual effects really work, you'll need to learn a
-bit about colors and pixels on computer screens, and what happens when canvases
-draw multiple times into the same pixel. Then we can proceed to implementing
-some visual effects, but the first step (even before colors and pixels) will be
-to replace Tkinter with Skia, a newer rendering library with sufficient
-capabilities.
+Installing Skia and SDL
+=======================
 
-You'll see that implementing these effects in Skia won't be too hard, and with
-prior understanding in hand, you'll know more about *how* Skia implements them
-under the hood.
+Before we get any further, we'll need to upgrade our graphics system.
+While Tkinter is great for basic shapes and handling input, it lacks
+built-in visual effects routines.[^tkinter-before-gpu] Implementing
+fast visual effects routines is fun, but it's outside the scope of
+this book, so we need a new graphics library. Let's use [Skia][skia],
+the library that Chromium uses. Unlike Tkinter, Skia doesn't handle
+inputs or create graphical windows, so we'll pair it with the
+[SDL][sdl] GUI library.
 
-Then we'll be able to use these to make the guest book look more fun, by adding
-an interactive "account info" menu similar to ones present on many real sites
-today.
+[skia]: https://skia.org
+[sdl]: https://www.libsdl.org/
 
-Skia replaces Tkinter
-=====================
+[^tkinter-before-gpu]: That's because Tk, the graphics library that
+Tkinter uses, dates from the early 90s, before high-performance
+graphics cards and GPUs became widespread.
 
-Before we get any further defining and implementing compositing and blend modes,
-we'll need to upgrade our graphics system. While Tkinter is great for basic
-painting and handling input, it has no built-in support at all for implementing
-many visual effects.[^tkinter-before-gpu] And just as implementing the details
-of text rendering or drawing rectangles is outside the scope of this book, so
-is implementing visual effects---our focus should be on how to represent and
-execute visual effects for web pages specifically.
+Start by installing [Skia's][skia-python] and [SDL's][sdl-python]
+Python bindings like so:
 
-[^tkinter-before-gpu]: That's because Tk, the library Tkinter uses to implement
-its graphics, was built back in the early 90s, before high-performance graphics
-cards and GPUs, and their software equivalents, became widespread.
+    pip3 install skia-python pysdl2 pysdl2-dll
 
-So we need a new library that can implement visual effects. We'll use
-[Skia](https://skia.org), the library that Chromium uses. However, Skia is just
-a library for rastering content on the CPU and GPU, so we'll also use
-[SDL](https://www.libsdl.org/) to provide windows, input events, and OS-level
-integration.
+[skia-python]: https://github.com/kyamagu/skia-python
+[sdl-python]: https://pypi.org/project/PySDL2/
 
-::: {.further}
-While this book is about browsers, and not how to implement high-quality
-raster libraries, that topic is very interesting in its own right.
-In addition, it is very important these days for browsers to work smoothly with
-the advanced GPUs in today's devices, and often browsers are pushing the
-envelope of graphics technology. So in practice browser teams include experts
-in these areas: Skia for Chromium and [Core Graphics][core-graphics] for Webkit,
-for example. In both cases these libraries are used outside of the
-browser---Core Graphics is used for iOS and macOS apps, and Skia for Android.
+::: {.install}
+As elsewhere in this book, you may need to use `pip`, `easy_install`,
+or `python3 -m pip` instead of `pip3` as your installer, or use your
+IDE's package installer. If you're on Linux, you'll need to install
+additional dependencies, like OpenGL and fontconfig. Also, you may not be
+able to install `pysdl2-dll`; you'll need to find SDL in your system
+package manager instead. Consult the [`skia-python`][skia-python] and
+[`pysdl2`][sdl-python] web pages for more details.
 :::
-
-[core-graphics]: https://developer.apple.com/documentation/coregraphics
-
-To install Skia, you'll need to install the
-[`skia-python`](https://github.com/kyamagu/skia-python)
-library (via `pip3 install skia-python`); as explained on the linked site, you
-might need to install additional dependencies. Instructions
-[here](https://pypi.org/project/PySDL2/) explain how to install SDL on your
-computer (short version: `pip3 install PySDL2` and `pip3 install pysdl2-dll`).
 
 Once installed, remove `tkinter` from your Python imports and replace them with:
 
@@ -77,186 +58,70 @@ import sdl2
 import skia
 ```
 
-The additional `ctypes` module is for interfacing between Python types and C
-types.
+If any of these imports fail, you probably need to check that Skia and
+SDL were installed correctly. Note that the `ctypes` module comes
+standard in Python; it helps convert between Python and C types.
 
-The main loop of the browser first needs some boilerplate to get SDL started:
+Skia replaces Tkinter
+=====================
+
+The main loop of the browser first needs some boilerplate to get SDL
+started:
 
 ``` {.python}
 if __name__ == "__main__":
-    # ...
+    import sys
     sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO)
-    sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-        sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-        WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-
-    browser = Browser(sdl_window)
+    browser = Browser()
     browser.load(sys.argv[1])
-```
-
-In SDL, you have to implement the event loop yourself (rather than calling
-`tkinter.mainloop()`). This loop also has to handle input events:
-
-``` {.python}
-    running = True
-    event = sdl2.SDL_Event()
-    while running:
-        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == sdl2.SDL_MOUSEBUTTONUP:
-                browser.handle_click(event.button)
-            if event.type == sdl2.SDL_KEYDOWN:
-                if event.key.keysym.sym == sdl2.SDLK_RETURN:
-                    browser.handle_enter()
-                if event.key.keysym.sym == sdl2.SDLK_DOWN:
-                    browser.handle_down()
-            if event.type == sdl2.SDL_TEXTINPUT:
-                browser.handle_key(event.text.text.decode('utf8'))
-            if event.type == sdl2.SDL_QUIT:
-                running = False
-                break
-
-    sdl2.SDL_DestroyWindow(sdl_window)
-    sdl2.SDL_Quit()
-```
-
-Next factor a bunch of the tasks of drawing into helper methods. The
-implementation in Skia should be relatively self-explanatory (there is also
-more complete documentation[here](https://kyamagu.github.io/skia-python/) or at
-the [Skia site](https://skia.org)):
-
-``` {.python}
-def draw_polyline(surface, x1, y1, x2, y2, x3=None,
-    y3=None, fill=False):
-    path = skia.Path()
-    path.moveTo(x1, y1)
-    path.lineTo(x2, y2)
-    if x3:
-        path.lineTo(x3, y3)
-    paint = skia.Paint()
-    paint.setColor(skia.ColorBLACK)
-    if fill:
-        paint.setStyle(skia.Paint.kFill_Style)
-    else:
-        paint.setStyle(skia.Paint.kStroke_Style)
-    paint.setStrokeWidth(1);
-    with surface as canvas:
-        canvas.drawPath(path, paint)
-
-class Browser:
     # ...
-    def draw_text(self, x, y, text, font, color=None):
-        paint = skia.Paint(
-            AntiAlias=True, Color=color_to_sk_color(color))
-        with self.skia_surface as canvas:
-            canvas.drawString(
-                text, x, y - font.getMetrics().fAscent,
-                font, paint)
-
-    def draw_rect(self, rect, fill=None, width=1):
-        paint = skia.Paint()
-        if fill:
-            paint.setStrokeWidth(width);
-            paint.setColor(color_to_sk_color(fill))
-        else:
-            paint.setStyle(skia.Paint.kStroke_Style)
-            paint.setStrokeWidth(1);
-            paint.setColor(skia.ColorBLACK)
-        with self.skia_surface as canvas:
-            canvas.drawRect(rect, paint)
 ```
 
-Change `DrawText` and `DrawRect` to use the surface in a straightforward
-way. For example, here is `DrawText.execute`:
-
-``` {.python}
-    def execute(self, scroll, surface):
-        paint = skia.Paint(
-            AntiAlias=True, Color=color_to_sk_color(self.color))
-        with surface as canvas:
-            canvas.drawString(
-                self.text, self.rect.left(),
-                self.rect.top() -  scroll - self.font.getMetrics().fAscent,
-                self.font, paint)
-```
-
-Now integrate with the `Browser` class. We need a surface[^surface] for
-drawing to the window, and a surface into which Skia will draw.
+Next, we need to create an SDL window, instead of a Tkinter window,
+inside the Browser, and set up Skia to draw to it. Here's the SDL
+incantation to create a window:
 
 ``` {.python}
 class Browser:
-    def __init__(self, sdl_window):
-        self.window_surface = sdl2.SDL_GetWindowSurface(
-            self.sdl_window)
+    def __init__(self):
+        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
+```
+
+To set up Skia to draw to this window, we also need create a
+"surface" for it:[^surface]
+
+[^surface]: In Skia and SDL, a *surface* is a representation of a
+graphics buffer into which you can draw "pixels" (bits representing
+colors). A surface may or may not be bound to the actual pixels on the
+screen via a window, and there can be many surfaces. A *canvas* is an
+API interface that allows you to draw into a surface with higher-level
+commands such as for rectangles or text. Our browser uses separate
+Skia and SDL surfaces for simplicity, but in a highly optimized
+browser, minimizing the number of surfaces is important for good
+performance.
+
+
+``` {.python}
+class Browser:
+    def __init__(self):
         self.skia_surface = skia.Surface(WIDTH, HEIGHT)
 ```
 
-Next, re-implement the `draw` method on `Browser` using Skia. I'll
-walk through it step-by-step. First clear the canvas and and draw the current
-`Tab` into it:
+Typically, we'll draw to the Skia surface, and then once we're done
+with it we'll copy it to the SDL surface to display on the screen.
+This looks a little hairy but really it's just copying pixels from one
+place to another:
 
 ``` {.python}
-    def draw(self):
-        with self.skia_surface as canvas:
-            canvas.clear(skia.ColorWHITE)
-
-        self.tabs[self.active_tab].draw(self.skia_surface)
-```
-
-Then draw the browser UI elements:
-
-``` {.python}
-        # Draw the tabs UI:
-        tabfont = skia.Font(skia.Typeface('Arial'), 20)
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_polyline(self.skia_surface, x1, 0, x1, 40)
-            draw_polyline(self.skia_surface, x2, 0, x2, 40)
-            self.draw_text(x1 + 10, 10, name, tabfont)
-            if i == self.active_tab:
-                draw_polyline(self.skia_surface, 0, 40, x1, 40)
-                draw_polyline(self.skia_surface, x2, 40, WIDTH, 40)
-
-        # Draw the plus button to add a tab:
-        buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        self.draw_rect(skia.Rect.MakeLTRB(10, 10, 30, 30))
-        self.draw_text(11, 0, "+", buttonfont)
-
-        # Draw the URL address bar:
-        self.draw_rect(
-            skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90))
-        if self.focus == "address bar":
-            self.draw_text(55, 55, self.address_bar, buttonfont)
-            w = buttonfont.measureText(self.address_bar)
-            draw_polyline(self.skia_surface, 55 + w, 55, 55 + w, 85)
-        else:
-            url = self.tabs[self.active_tab].url
-            self.draw_text(55, 55, url, buttonfont)
-
-        # Draw the back button:
-        self.draw_rect(skia.Rect.MakeLTRB(10, 50, 35, 90))
-        draw_polyline(
-            self.skia_surface, 15, 70, 30, 55, 30, 85, True)
-```
-
-Finally perform the incantations to save off a rastered bitmap and copy it
-from the Skia surface to the SDL surface:
-
-``` {.python}
+class Browser:
+    def draw_to_screen(self):
         # Raster the results and copy to the SDL surface:
         skia_image = self.skia_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
-        skia_surface = Browser.to_sdl_surface(skia_bytes)
-        sdl2.SDL_BlitSurface(
-            skia_surface, rect, self.window_surface, rect)
-        sdl2.SDL_UpdateWindowSurface(self.sdl_window)
-```
 
-And here is the `to_sdl_surface` method:
-
-``` {.python}
-    def to_sdl_surface(skia_bytes):
         depth = 32 # 4 bytes per pixel
         pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen
         # Skia uses an ARGB format - alpha first byte, then
@@ -265,52 +130,285 @@ And here is the `to_sdl_surface` method:
         red_mask = 0x00ff0000
         green_mask = 0x0000ff00
         blue_mask = 0x000000ff
-        return sdl2.SDL_CreateRGBSurfaceFrom(
+        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
             red_mask, green_mask, blue_mask, alpha_mask)
+
+        window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
+        sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
+        sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 ```
 
-Finally, `handle_enter` and `handle_down` no longer need an event parameter.
-
-[^surface]: In Skia and SDL, a *surface* is a representation of a graphics buffer
-into which you can draw "pixels" (bits representing colors). A surface may or
-may not be bound to the actual pixels on the screen via a window, and there can
-be many surfaces. A *canvas* is an API interface that allows you to draw
-into a surface with higher-level commands such as for rectangles or text. In
-our implementation, we'll start with separate surfaces for Skia and SDL for
-simplicity. In a highly optimized browser, minimizing the number of surfaces
-is important for good performance.
-
-In the `Tab` class, the differences in `draw` is the new `surface` parameter
-that gets passed around, and using the Skia API to measure font metrics. Skia's
-`measureText` method on a font is the same as the `measure` method on a Tkinter
-font.
+SDL doesn't have a `mainloop` or `bind` method; we have to implement
+it ourselves:
 
 ``` {.python}
-    def draw(self, surface):
+if __name__ == "__main__":
+    # ...
+    event = sdl2.SDL_Event()
+    while True:
+        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            if event.type == sdl2.SDL_QUIT:
+                browser.handle_quit()
+                sdl2.SDL_Quit()
+                sys.exit()
+            # ...
+```
+
+The details of `ctypes` and `PollEvent` aren't too important here, but
+note that `SDL_QUIT` is an event, sent when the user closes the last
+open window. The `handle_quit` method it calls just cleans up the
+window object:
+
+``` {.python}
+class Browser:
+    def handle_quit(self):
+        sdl2.SDL_DestroyWindow(self.sdl_window)
+```
+
+We'll also need to handle all of the other events in this
+loop---clicks, typing, and so on:
+
+``` {.python}
+if __name__ == "__main__":
+    while True:
+        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
+                browser.handle_click(event.button)
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if event.key.keysym.sym == sdl2.SDLK_RETURN:
+                    browser.handle_enter()
+                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
+                    browser.handle_down()
+            elif event.type == sdl2.SDL_TEXTINPUT:
+                browser.handle_key(event.text.text.decode('utf8'))
+```
+
+You can now remove all of the `bind` calls in the `Browser`
+constructor; this main loop replaces them. Also note that I've changed
+the signatures of the various `handle_xxx` methods; you'll need to
+make analogous changes in `Browser` where they are defined.
+
+Now our browser is creating an SDL window can draw to it via Skia. But
+most of the browser codebase is still using Tkinter drawing commands,
+which we now need to replace. Skia is a bit more verbose than Tkinter,
+so let's abstract over some details with helper functions.[^skia-docs]
+First, a helper function to convert colors to Skia colors:
+
+[^skia-docs]: Consult the [Skia][skia] and [Skia-Python][skia-python]
+documentation for more on the Skia API.
+
+``` {.python}
+def color_to_sk_color(color):
+    if color == "white":
+        return skia.ColorWHITE
+    elif color == "lightblue":
+        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
+    # ...
+    else:
+        return skia.ColorBLACK
+```
+
+You can add more "elif" blocks to support your favorite color names;
+modern browsers support [quite a lot][css-colors].
+
+[css-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
+
+To draw a line, you use Skia's `Path` object:
+
+``` {.python}
+def draw_line(canvas, x1, y1, x2, y2):
+    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
+    paint = skia.Paint(Color=skia.ColorBLACK)
+    paint.setStyle(skia.Paint.kStroke_Style)
+    paint.setStrokeWidth(1);
+    canvas.drawPath(path, paint)
+```
+
+To draw text, you use `drawString`:
+
+``` {.python}
+def draw_text(canvas, x, y, text, font, color=None):
+    sk_color = color_to_sk_color(color)
+    paint = skia.Paint(AntiAlias=True, Color=sk_color)
+    canvas.drawString(
+        text, float(x), y - font.getMetrics().fAscent,
+        font, paint)
+```
+
+Finally, for drawing rectangles we use `drawRect`:
+
+``` {.python}
+def draw_rect(canvas, l, t, r, b, fill=None, width=1):
+    paint = skia.Paint()
+    if fill:
+        paint.setStrokeWidth(width);
+        paint.setColor(color_to_sk_color(fill))
+    else:
+        paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(1);
+        paint.setColor(skia.ColorBLACK)
+    rect = skia.Rect.MakeLTRB(l, t, r, b)
+    canvas.drawRect(rect, paint)
+```
+
+If you look at the details of these helper methods, you'll see that
+they all use a Skia `Paint` object to describe a shape's borders and
+colors. We'll be seeing a lot more features of `Paint` in this chapter.
+
+With these helper methods we can now upgrade our browser's drawing
+commands to use Skia:
+
+``` {.python}
+class DrawText:
+    def execute(self, scroll, canvas):
+        draw_text(canvas, self.left, self.top - scroll,
+            self.text, self.font)
+
+class DrawRect:
+    def execute(self, scroll, canvas):
+        draw_rect(canvas,
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
+            fill=self.color, width=0)
+```
+
+Finally, the `Browser` class also uses Tkinter commands in its `draw`
+method, which we'll also need to change to use Skia. It's a long
+method, so we'll need to go step by step.
+
+First, clear the canvas and and draw the current `Tab` into it:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        canvas = self.skia_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+
+        self.tabs[self.active_tab].draw(canvas)
+```
+
+Then draw the browser UI elements. First, the tabs:
+
+``` {.python}
+class Browser:
+    def draw(self):
         # ...
+        tabfont = skia.Font(skia.Typeface('Arial'), 20)
+        for i, tab in enumerate(self.tabs):
+            name = "Tab {}".format(i)
+            x1, x2 = 40 + 80 * i, 120 + 80 * i
+            draw_line(canvas, x1, 0, x1, 40)
+            draw_line(canvas, x2, 0, x2, 40)
+            draw_text(canvas, x1 + 10, 10, name, tabfont)
+            if i == self.active_tab:
+                draw_line(canvas, 0, 40, x1, 40)
+                draw_line(canvas, x2, 40, WIDTH, 40)
+```
+
+Next, the plus button for adding a new tab:[^move-plus]
+
+[^move-plus]: I also changed the *y* position of the plus sign. The
+    change from Tkinter to Skia changes how fonts are drawn, and the
+    new *y* position keeps the plus centered in the box.
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        buttonfont = skia.Font(skia.Typeface('Arial'), 30)
+        draw_rect(canvas, 10, 10, 30, 30)
+        draw_text(canvas, 11, 4, "+", buttonfont)
+```
+
+Then the address bar, including text and cursor:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        draw_rect(canvas, 40, 50, WIDTH - 10, 90)
+        if self.focus == "address bar":
+            draw_text(canvas, 55, 55, self.address_bar, buttonfont)
+            w = buttonfont.measureText(self.address_bar)
+            draw_line(canvas, 55 + w, 55, 55 + w, 85)
+        else:
+            url = self.tabs[self.active_tab].url
+            draw_text(canvas, 55, 55, url, buttonfont)
+```
+
+And finally the "back" button:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        draw_rect(canvas, 10, 50, 35, 90)
+        path = skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
+        paint = skia.Paint(Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
+        canvas.drawPath(path, paint)
+```
+
+Once this is done, we need to copy from the Skia surface to the SDL window:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        self.draw_to_screen()
+```
+
+We've only got a few minor changes left elsewhere in the browser.
+`Tab` also has a `draw` method and draws a cursor; it needs to use
+`draw_line` for that:
+
+``` {.python}
+class Tab:
+    def draw(self, canvas):
+        if self.focus:
+            # ...
             x = obj.x + obj.font.measureText(text)
+            y = obj.y - self.scroll + CHROME_PX
+            draw_line(canvas, x, y, x, y + obj.height)
 ```
 
-Update all the other places that `measure` was called to use the Skia method
-(and also create Skia fonts instead of Tkinter ones, of course).
+Note that I've also replaced Tkinter's `measure` call with Skia's
+`measureText` equivalent. We'll also need to create Skia fonts instead
+of Tkinter ones. Update all the other places that `measure` was called
+to use `measureText`. We also need to change everywhere `metrics` is
+called to instead use Skia's `getMetrics`, which works a little
+differently. In Skia, ascent and descent are accessible via:
 
-Skia font metrics are accessed via the `getMetrics` method on a font. Then metrics
-like ascent and descent are accessible via:
 ``` {.python expected=False}
-    font.getMetrics().fAscent
+    -font.getMetrics().fAscent
 ```
+
 and
+
 ``` {.python expected=False}
     font.getMetrics().fDescent
 ```
 
-Note that in Skia, ascent and descent are baseline-relative---positive if they
-go downward and negative if upward, so ascents will normally be negative.
+Note the negative sign when accessing the ascent. In Skia, ascent and
+descent positive if they go downward and negative if they go upward,
+so ascents will normally be negative, the opposite of Tkinter.
 
-Now you should be able to run the browser just as it did in previous chapters,
-and have all of the same visuals. It'll probably also feel faster, because
-Skia and SDL are highly optimized libraries written in C & C++.
+You should now be able to run the browser again. It should look and
+behave just as it did in previous chapters, and it'll probably feel
+faster, because Skia and SDL are faster than Tkinter.
+
+::: {.further}
+Implementing high-quality raster libraries is very interesting in its own
+right. These days, it's especially important to leverage GPUs when
+they're available, and browsers often push the envelope. Browser teams
+typically include raster library experts: Skia for Chromium and [Core
+Graphics][core-graphics] for Webkit, for example. Both of these
+libraries are used outside of the browser, too: Core Graphics in iOS
+and macOS, and Skia in Android.
+:::
+
+[core-graphics]: https://developer.apple.com/documentation/coregraphics
 
 Pixels, Color, Raster
 =====================
@@ -745,17 +843,15 @@ class Save:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.save()
+    def execute(self, scroll, canvas):
+        canvas.save()
 
 class Restore:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.restore()
+    def execute(self, scroll, canvas):
+        canvas.restore()
 ```
 
 Next, parse the `transform` property:
@@ -846,15 +942,14 @@ class Rotate:
         self.degrees = degrees
         self.rect = rect
 
-    def execute(self, scroll, surface):
+    def execute(self, scroll, canvas):
         paint_rect = skia.Rect.MakeLTRB(
             self.rect.left(), self.rect.top() - scroll,
             self.rect.right(), self.rect.bottom() - scroll)
         (center_x, center_y) = center_point(paint_rect)
-        with surface as canvas:
-            canvas.translate(center_x, center_y)
-            canvas.rotate(self.degrees)
-            canvas.translate(-center_x, -center_y)
+        canvas.translate(center_x, center_y)
+        canvas.rotate(self.degrees)
+        canvas.translate(-center_x, -center_y)
 ```
 
 Note how we first translated to put the center of the layout object at the
@@ -882,12 +977,11 @@ class Translate:
         self.y = y
         self.rect = rect
 
-    def execute(self, scroll, surface):
+    def execute(self, scroll, canvas):
         paint_rect = skia.Rect.MakeLTRB(
             self.rect.left(), self.rect.top() - scroll,
             self.rect.right(), self.rect.bottom() - scroll)
-        with surface as canvas:
-            canvas.translate(self.x, self.y)
+        canvas.translate(self.x, self.y)
 ```
 
 Opacity and Compositing
@@ -954,9 +1048,8 @@ class SaveLayer:
         self.sk_paint = sk_paint
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.saveLayer(paint=self.sk_paint)
+    def execute(self, scroll, canvas):
+        canvas.saveLayer(paint=self.sk_paint)
 ```
 
 Notice how `SaveLayer` takes an `SkPaint` object as a parameter. This will
@@ -1328,13 +1421,12 @@ class CircleMask:
         self.radius = radius
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.saveLayer(paint=skia.Paint(
-                Alphaf=1.0, BlendMode=skia.kDstIn))
-            canvas.drawCircle(
-                self.cx, self.cy - scroll,
-                self.radius, skia.Paint(Color=skia.ColorWHITE))
+    def execute(self, scroll, canvas):
+        canvas.saveLayer(paint=skia.Paint(
+            Alphaf=1.0, BlendMode=skia.kDstIn))
+        canvas.drawCircle(
+            self.cx, self.cy - scroll,
+            self.radius, skia.Paint(Color=skia.ColorWHITE))
 ```
 
 Finally, we call `paint_clip_path` for each layout object type. Note however
@@ -1419,16 +1511,15 @@ class ClipRRect:
         self.rect = rect
         self.radius = radius
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.clipRRect(
-                skia.RRect.MakeRectXY(
-                    skia.Rect.MakeLTRB(
-                        self.rect.left(),
-                        self.rect.top() - scroll,
-                        self.rect.right(),
-                        self.rect.bottom() - scroll),
-                    self.radius, self.radius))
+    def execute(self, scroll, canvas):
+        canvas.clipRRect(
+            skia.RRect.MakeRectXY(
+                skia.Rect.MakeLTRB(
+                    self.rect.left(),
+                    self.rect.top() - scroll,
+                    self.rect.right(),
+                    self.rect.bottom() - scroll),
+                self.radius, self.radius))
 ```
 
 Now why is it that rounded rect clips are applied in `paint_visual_effects` but
@@ -1689,11 +1780,10 @@ class DrawImage:
         self.image = image
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.drawImage(
-                self.image, self.rect.left(),
-                self.rect.top() - scroll)
+    def execute(self, scroll, canvas):
+        canvas.drawImage(
+            self.image, self.rect.left(),
+            self.rect.top() - scroll)
 ```
 
 Then add a `DrawImage`, plus a few additional things, to a new
@@ -1749,11 +1839,10 @@ class ClipRect:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            canvas.clipRect(skia.Rect.MakeLTRB(
-                self.rect.left(), self.rect.top() - scroll,
-                self.rect.right(), self.rect.bottom() - scroll))
+    def execute(self, scroll, canvas):
+        canvas.clipRect(skia.Rect.MakeLTRB(
+            self.rect.left(), self.rect.top() - scroll,
+            self.rect.right(), self.rect.bottom() - scroll))
 ```
 
 Note how the background image is painted *before* children, just like
@@ -1815,16 +1904,15 @@ class DrawImageRect:
         self.image = image
         self.rect = rect
 
-    def execute(self, scroll, surface):
-        with surface as canvas:
-            source_rect = skia.Rect.Make(self.image.bounds())
-            dest_rect = skia.Rect.MakeLTRB(
-                self.rect.left(),
-                self.rect.top() - scroll,
-                self.rect.right(),
-                self.rect.bottom() - scroll)
-            canvas.drawImageRect(
-                self.image, source_rect, dest_rect)
+    def execute(self, scroll, canvas):
+        source_rect = skia.Rect.Make(self.image.bounds())
+        dest_rect = skia.Rect.MakeLTRB(
+            self.rect.left(),
+            self.rect.top() - scroll,
+            self.rect.right(),
+            self.rect.bottom() - scroll)
+        canvas.drawImageRect(
+            self.image, source_rect, dest_rect)
 ```
 
 ::: {.further}
