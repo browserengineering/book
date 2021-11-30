@@ -194,9 +194,26 @@ Now our browser is creating an SDL window can draw to it via Skia. But
 most of the browser codebase is still using Tkinter drawing commands,
 which we now need to replace. Skia is a bit more verbose than Tkinter,
 so let's abstract over some details with helper functions.[^skia-docs]
+First, a helper function to convert colors to Skia colors:
 
-[skia-docs]: Consult the [Skia][skia] and [Skia-Python][skia-python]
+[^skia-docs]: Consult the [Skia][skia] and [Skia-Python][skia-python]
 documentation for more on the Skia API.
+
+``` {.python}
+def color_to_sk_color(color):
+    if color == "white":
+        return skia.ColorWHITE
+    elif color == "lightblue":
+        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
+    # ...
+    else:
+        return skia.ColorBLACK
+```
+
+You can add more "elif" blocks to support your favorite color names;
+modern browsers support [quite a lot][css-colors].
+
+[css-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
 
 To draw a line, you use Skia's `Path` object:
 
