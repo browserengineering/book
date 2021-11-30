@@ -73,7 +73,7 @@ static socket(URLS) {
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
             if (rt_constants.URLS[this.url]) {
-                var response = rt_constants.URLS[this.urls];
+                var response = rt_constants.URLS[this.url];
                 this.output = typeof response === "function" ? response() : response;
                 this.idx = 0;
                 this.closed = false;
