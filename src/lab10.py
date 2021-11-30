@@ -127,7 +127,7 @@ class JSContext:
         self.interp.evaljs(code)
 
     def dispatch_event(self, type, elt):
-        handle = self.node_to_handle.get(elt, -1)
+        handle = self.node_to_handle.get(id(elt), -1)
         do_default = self.interp.evaljs(
             EVENT_DISPATCH_CODE, type=type, handle=handle)
         return not do_default
