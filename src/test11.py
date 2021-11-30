@@ -184,6 +184,11 @@ class MockCanvas:
         self.commands.append("drawImage(<image>, left={left}, top={top}".format(
             left=left, top=top))
 
+    def drawImageRect(self, image, src, dst):
+        self.commands.append(
+            "drawImageRect(<image>, src={src}, dst={dst}".format(
+                src=src, dst=dst))
+
     def restore(self):
         self.commands.append("restore()")
 

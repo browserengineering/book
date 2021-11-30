@@ -294,6 +294,22 @@ class DrawImage:
                 self.image, self.rect.left(),
                 self.rect.top() - scroll)
 
+class DrawImageRect:
+    def __init__(self, image, rect):
+        self.image = image
+        self.rect = rect
+
+    def execute(self, scroll, surface):
+        with surface as canvas:
+            source_rect = skia.Rect.Make(self.image.bounds())
+            dest_rect = skia.Rect.MakeLTRB(
+                self.rect.left(),
+                self.rect.top() - scroll,
+                self.rect.right(),
+                self.rect.bottom() - scroll)
+            canvas.drawImageRect(
+                self.image, source_rect, dest_rect)
+
 INPUT_WIDTH_PX = 200
 
 class LineLayout:
@@ -520,11 +536,15 @@ def paint_background(node, display_list, rect):
 
     background_image = node.style.get("background-image")
     if background_image:
-        display_list.append(Save(rect))
-        display_list.append(ClipRect(rect))
-        display_list.append(DrawImage(node.background_image,
-            rect))
-        display_list.append(Restore(rect))
+        background_size = node.style.get("background-size")
+        if background_size and background_size == "contain":
+            display_list.append(DrawImageRect(node.background_image, rect))
+        else:
+            display_list.append(Save(rect))
+            display_list.append(ClipRect(rect))
+            display_list.append(DrawImage(node.background_image,
+                rect))
+            display_list.append(Restore(rect))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -738,7 +758,7 @@ class CSSParser:
             cur = self.s[self.i]
             if cur == "'":
                 in_quote = not in_quote
-            if cur.isalnum() or cur in "/#-.%()\"'" \
+            if cur.isalnum() or cur in ",/#-.%()\"'" \
                 or (in_quote and cur == ':'):
                 self.i += 1
             else:

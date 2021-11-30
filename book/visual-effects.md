@@ -782,6 +782,14 @@ def parse_transform(transform_str):
         return (None, None)
 ```
 
+Also add the "," character to the list of characters in a CSS word:
+
+``` {.python}
+class CSSParser:
+    # ...
+            if cur.isalnum() or cur in ",/#-.%()\"'" \
+```
+
 Then we need paint it into the display list (we need to `Save` before rotating,
 to only rotate the element and its subtree, not the rest of the output). For
 that, introduce a new method `paint_visual_efects` that is called by
@@ -1021,20 +1029,23 @@ that page refers to premultiplied alpha colors. Skia does not
 use premultiplied color representations.
 
 
-``` {.python.example}
-# Composites |source_color| into |backdrop_color| with simple
-# alpha compositing.
-# Each of the inputs are skia.Color4f objects.
-def composite(source_color, backdrop_color):
-    (source_r, source_g, source_b, source_a) = \
-        tuple(source_color)
-    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
-        tuple(backdrop_color)
-    return skia.Color4f(
-        backdrop_r * (1-source_a) * backdrop_a + source_r * source_a,
-        backdrop_g * (1-source_a) * backdrop_a + source_g * source_a,
-        backdrop_b * (1-source_a) * backdrop_a + source_b * source_a,
-        1 - (1 - source_a) * (1 - backdrop_a))
+``` {.python file=examples}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
+def composite(source_color, backdrop_color, compositing_mode):
+    if compositing_mode == "source-over":
+        (source_r, source_g, source_b, source_a) = \
+            tuple(source_color)
+        (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
+            tuple(backdrop_color)
+        return skia.Color4f(
+            backdrop_r * (1-source_a) * backdrop_a + \
+                source_r * source_a,
+            backdrop_g * (1-source_a) * backdrop_a + \
+                source_g * source_a,
+            backdrop_b * (1-source_a) * backdrop_a + \
+                source_b * source_a,
+            1 - (1 - source_a) * (1 - backdrop_a))
 ```
 
 [^other-compositing]: We'll shortly encounter other compositing modes.
@@ -1051,6 +1062,8 @@ a `getPixel` method that returns a `skia.Color4f` and a `setPixel` one that
 sets a pixel color):[^real-life-reading-pixels]
 
 ``` {.python.example}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def restore(source_surface, backdrop_surface, width, height, opacity):
     for x in range(0, width):
         for y in range(0, height):
@@ -1079,8 +1092,9 @@ Python code for `restore` to incorporate blending looks like this:
 [^vs-blending-2]: Again, see [here](#compositing-blending) for compositing vs
 blending.
 
-
 ``` {.python.example}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def restore(source_surface, backdrop_surface,
             width, height, opacity, blend_mode):
     # ...
@@ -1095,7 +1109,9 @@ def restore(source_surface, backdrop_surface,
 
 and blend is implemented like this:
 
-``` {.python.example}
+``` {.python file=examples}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
 def blend(source_color, backdrop_color, blend_mode):
     (source_r, source_g, source_b, source_a) = tuple(source_color)
     (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
@@ -1103,13 +1119,13 @@ def blend(source_color, backdrop_color, blend_mode):
     return skia.Color4f(
         (1 - backdrop_a) * source_r +
             backdrop_a * apply_blend(
-                blend_mode, source_r, backdrop_r),
+                source_r, backdrop_r, blend_mode),
         (1 - backdrop_a) * source_g +
             backdrop_a * apply_blend(
-                blend_mode, source_g, backdrop_g),
+                source_g, backdrop_g, blend_mode),
         (1 - backdrop_a) * source_b +
             backdrop_a * apply_blend(
-                blend_mode, source_b, backdrop_b),
+                source_b, backdrop_b, blend_mode),
         source_a)
 ```
 
@@ -1118,18 +1134,17 @@ which multiplies the colors as floating-point numbers between 0 and 1,
 and "difference", which subtracts the darker color from the ligher one. The
 default is "normal", which means to ignore the backdrop color.
 
-``` {.python.example}
-# Note: this code assumes a floating-poit color channel value.
-def apply_blend(blend_mode, source_color_channel,
-                backdrop_color_channel):
+``` {.python file=examples}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
+def apply_blend(source_color_channel,
+                backdrop_color_channel, blend_mode):
     if blend_mode == "multiply":
         return source_color_channel * backdrop_color_channel
     elif blend_mode == "difference":
         return abs(backdrop_color_channel - source_color_channel)
-    else
-        # Assume "normal" blend mode.
+    elif blend_mode == "normal":
         return source_color_channel
-
 ```
 
 These are specified with the [`mix-blend-mode`][mix-blend-mode-def] CSS
@@ -1281,18 +1296,22 @@ thing we want to clip, so destination-in fits perfectly.
 
 [dst-in]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstin
 
-Here is the implementation of destination-in compositing in demo Python:
+Here is `composite` with destination-in compositing added:
 
-``` {.python expected=False}
-def composite(source_color, backdrop_color):
-    (source_r, source_g, source_b, source_a) = tuple(source_color)
-    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
-         tuple(backdrop_color)
-    return skia.Color4f(
-        backdrop_a * source_a * backdrop_r,
-        backdrop_a * source_a * backdrop_g,
-        backdrop_a * source_a * backdrop_b,
-        backdrop_a * source_a)
+``` {.python file=examples}
+# Note: this is sample code to explain the concept, it is not part
+# of the actual browser.
+def composite(source_color, backdrop_color, compositing_mode):
+    # ...
+    elif compositing_mode == "destination-in":
+        (source_r, source_g, source_b, source_a) = tuple(source_color)
+        (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
+            tuple(backdrop_color)
+        return skia.Color4f(
+            backdrop_a * source_a * backdrop_r,
+            backdrop_a * source_a * backdrop_g,
+            backdrop_a * source_a * backdrop_b,
+            backdrop_a * source_a)
 ```
 
 Now let's implement `CircleMask`  in terms of destination-in compositing. It
@@ -1533,7 +1552,7 @@ otherwise, not.[^only-single-quote]
 double quotes are accepted in real CSS. Single and double quotes can be
 interchanged in CSS and JavaScript, just like in Python.
 
-``` {.python}
+``` {.python expected=False}
 class CSSParser:
     # ...
     def word(self):
@@ -1749,15 +1768,81 @@ class ClipRect:
 Note how the background image is painted *before* children, just like
 `background-color`.[^paint-order]
 
+Ok, we can now put background images on an element of any size, and the image
+will be clipped if it's too big (and it'll reveal the background color or
+backdrop if it's too small). But as soon as you're trying to make a web page
+(such as an extension to the guest book to show an avatar image), the fact that
+you can't resize the image to fit the size of the element is pretty annoying,
+because the only way to fix it is to manually resize the image with a utility
+program and store an additional image of the new size on the server.
+
+To fix this situation, let's add support for
+[`background-size:contain`][background-size], which
+means "scale the image so it fits in the size of the element". This is super
+easy to implement in Skia, by using the `drawImageRect` method. This method
+takes two extra `skia.Rect` arguments: a source rect and a destination rect.
+It takes the parts of the image bitmap within the source rect and rescales
+it as necessary to fit into the destination rect.
+p
+[background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
+
+This modified example:
+
+    <div style="width:100px; height:100px;background-image:
+        url('/avatar.png');background-size:contain">
+    </div>
+
+Paints like:
+
+<div style="width:100px; height:100px;
+    background-image:url('/avatar.png');background-size:contain">
+</div>
+
+The code to add it requires a slight tweak to `paint_background` (note how
+we were able to optimize away the save and clip):
+
+``` {.python}
+def paint_background(node, display_list, rect):
+    # ...
+    if background_image:
+        background_size = node.style.get("background-size")
+        if background_size and background_size == "contain":
+            display_list.append(DrawImageRect(node.background_image, rect))
+        else:
+            display_list.append(Save(rect))
+            display_list.append(ClipRect(rect))
+            display_list.append(DrawImage(node.background_image,
+                rect))
+            display_list.append(Restore(rect))
+```
+
+and a new display list command:
+
+``` {.python}
+class DrawImageRect:
+    def __init__(self, image, rect):
+        self.image = image
+        self.rect = rect
+
+    def execute(self, scroll, surface):
+        with surface as canvas:
+            source_rect = skia.Rect.Make(self.image.bounds())
+            dest_rect = skia.Rect.MakeLTRB(
+                self.rect.left(),
+                self.rect.top() - scroll,
+                self.rect.right(),
+                self.rect.bottom() - scroll)
+            canvas.drawImageRect(
+                self.image, source_rect, dest_rect)
+```
+
 ::: {.further}
-As we've seen, background images may not have the same
-[*intrinsic size*][intrinsic-size] as the element it's associated with. There
-are a lot of options in the specification for the different ways to account for
-this, via CSS properties like [`background-size`][background-size] and
+
+There are a lot more options in the specification for the different ways to
+account for this, via additional CSS properties like 
 [`background-repeat`][background-repeat].
 
 [intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size
-[background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
 [background-repeat]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-repeat
 
 In addition to these considerations, there are also cases where we want to scale
