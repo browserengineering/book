@@ -114,7 +114,7 @@ class JSContext:
             self.querySelectorAll)
         self.interp.export_function("getAttribute",
             self.getAttribute)
-        self.interp.export_function("innerHTML", self.innerHTML)
+        self.interp.export_function("innerHTML_set", self.innerHTML_set)
         self.interp.export_function("XMLHttpRequest_send",
             self.XMLHttpRequest_send)
         with open("runtime10.js") as f:
@@ -135,7 +135,7 @@ class JSContext:
     def get_handle(self, elt):
         if elt not in self.node_to_handle:
             handle = len(self.node_to_handle)
-            self.node_to_handle[id(elt)] = handle
+            self.node_to_handle[elt] = handle
             self.handle_to_node[handle] = elt
         else:
             handle = self.node_to_handle[elt]
@@ -152,7 +152,7 @@ class JSContext:
         elt = self.handle_to_node[handle]
         return elt.attributes.get(attr, None)
 
-    def innerHTML(self, handle, s):
+    def innerHTML_set(self, handle, s):
         doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
