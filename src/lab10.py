@@ -127,7 +127,7 @@ class JSContext:
         self.interp.evaljs(code)
 
     def dispatch_event(self, type, elt):
-        handle = self.node_to_handle.get(id(elt), -1)
+        handle = self.node_to_handle.get(elt, -1)
         do_default = self.interp.evaljs(
             EVENT_DISPATCH_CODE, type=type, handle=handle)
         return not do_default
@@ -135,7 +135,7 @@ class JSContext:
     def get_handle(self, elt):
         if elt not in self.node_to_handle:
             handle = len(self.node_to_handle)
-            self.node_to_handle[id(elt)] = handle
+            self.node_to_handle[elt] = handle
             self.handle_to_node[handle] = elt
         else:
             handle = self.node_to_handle[elt]
