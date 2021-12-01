@@ -851,7 +851,7 @@ def get_image(image_url, base_url):
         resolve_url(image_url, base_url), base_url)
     picture_stream = io.BytesIO(body_bytes)
 
-    pil_image = Image.open(picture_stream)
+    pil_image = PIL.Image.open(picture_stream)
     if pil_image.mode == "RGBA":
         pil_image_bytes = pil_image.tobytes()
     else:

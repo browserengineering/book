@@ -23,22 +23,25 @@ fast visual effects routines is fun, but it's outside the scope of
 this book, so we need a new graphics library. Let's use [Skia][skia],
 the library that Chromium uses. Unlike Tkinter, Skia doesn't handle
 inputs or create graphical windows, so we'll pair it with the
-[SDL][sdl] GUI library.
+[SDL][sdl] GUI library. We'll also add the [Pillow][pillow] library
+for handling images.
 
 [skia]: https://skia.org
 [sdl]: https://www.libsdl.org/
+[pillow]: https://python-pillow.org
 
 [^tkinter-before-gpu]: That's because Tk, the graphics library that
 Tkinter uses, dates from the early 90s, before high-performance
 graphics cards and GPUs became widespread.
 
-Start by installing [Skia's][skia-python] and [SDL's][sdl-python]
-Python bindings like so:
+Start by installing [Pillow][install-pillow] and [Skia's][skia-python]
+and [SDL's][sdl-python] Python bindings like so:
 
-    pip3 install skia-python pysdl2 pysdl2-dll
+    pip3 install skia-python pysdl2 pysdl2-dll pillow
 
 [skia-python]: https://github.com/kyamagu/skia-python
 [sdl-python]: https://pypi.org/project/PySDL2/
+[install-pillow]: https://pillow.readthedocs.io/en/stable/installation.html
 
 ::: {.install}
 As elsewhere in this book, you may need to use `pip`, `easy_install`,
@@ -46,8 +49,9 @@ or `python3 -m pip` instead of `pip3` as your installer, or use your
 IDE's package installer. If you're on Linux, you'll need to install
 additional dependencies, like OpenGL and fontconfig. Also, you may not be
 able to install `pysdl2-dll`; you'll need to find SDL in your system
-package manager instead. Consult the [`skia-python`][skia-python] and
-[`pysdl2`][sdl-python] web pages for more details.
+package manager instead. Consult the [`pillow`][install-pillow],
+[`skia-python`][skia-python], and [`pysdl2`][sdl-python] web pages for
+more details.
 :::
 
 Once installed, remove `tkinter` from your Python imports and replace them with:
@@ -56,6 +60,7 @@ Once installed, remove `tkinter` from your Python imports and replace them with:
 import ctypes
 import sdl2
 import skia
+import PIL.Image
 ```
 
 If any of these imports fail, you probably need to check that Skia and
@@ -1743,16 +1748,6 @@ memory than the encoded representation. For a web page with a lot
 of images, it's easy to accidentally use up too much memory unless you're very
 careful.
 
-Skia doesn't come with image decoders built-in. In Python, the Pillow library is
-a convenient way to decode images.
-
-::: {.installation}
-`pip3 install Pillow` should install Pillow. See [here][install-pillow] for
-more details.
-:::
-
-[install-pillow]: https://pillow.readthedocs.io/en/stable/installation.html
-
 Here's how to load, decode and convert images into a `skia.Image` object.
 Note that there are two `Image` classes, which is a little confusing.
 The Pillow `Image` class's role is to decode the image, and the Skia `Image`
@@ -1769,7 +1764,7 @@ def get_image(image_url, base_url):
         resolve_url(image_url, base_url), base_url)
     picture_stream = io.BytesIO(body_bytes)
 
-    pil_image = Image.open(picture_stream)
+    pil_image = PIL.Image.open(picture_stream)
     if pil_image.mode == "RGBA":
         pil_image_bytes = pil_image.tobytes()
     else:
