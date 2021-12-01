@@ -29,7 +29,9 @@ from lab6 import DescendantSelector
 from lab10 import url_origin
 from lab10 import JSContext
 
-def request(url, headers={}, payload=None):
+COOKIE_JAR = {}
+
+def request(url, top_level_url, payload=None):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
@@ -48,6 +50,7 @@ def request(url, headers={}, payload=None):
         proto=socket.IPPROTO_TCP,
     )
     s.connect((host, port))
+
     if scheme == "https":
         ctx = ssl.create_default_context()
         s = ctx.wrap_socket(s, server_hostname=host)
@@ -55,8 +58,14 @@ def request(url, headers={}, payload=None):
     method = "POST" if payload else "GET"
     body = "{} {} HTTP/1.0\r\n".format(method, path)
     body += "Host: {}\r\n".format(host)
-    for header, value in headers.items():
-        body += "{}: {}\r\n".format(header, value)
+    if host in COOKIE_JAR:
+        cookie, params = COOKIE_JAR[host]
+        allow_cookie = True
+        if top_level_url and params.get("samesite", "none") == "lax":
+            _, _, top_level_host, _ = top_level_url.split("/", 3)
+            allow_cookie = (host == top_level_host or method == "GET")
+        if allow_cookie:
+            body += "Cookie: {}\r\n".format(cookie)
     if payload:
         content_length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(content_length)
@@ -839,8 +848,7 @@ def parse_style_url(url_str):
 
 def get_image(image_url, base_url):
     header, body_bytes = request(
-        resolve_url(image_url, base_url),
-        headers={})
+        resolve_url(image_url, base_url), base_url)
     picture_stream = io.BytesIO(body_bytes)
 
     pil_image = Image.open(picture_stream)
@@ -888,10 +896,14 @@ class Tab:
     def __init__(self):
         self.history = []
         self.focus = None
-        self.cookies = {}
+        self.url = None
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
+
+    def allowed_request(self, url):
+        return self.allowed_origins == None or \
+            url_origin(url) in self.allowed_origins
 
     def cookie_string(self):
         origin = url_origin(self.history[-1])
@@ -903,19 +915,16 @@ class Tab:
         return cookie_string[1:]
 
     def load(self, url, body=None):
+        headers, body = request(url, self.url, payload=body)
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        req_headers = { "Cookie": self.cookie_string() }        
-        headers, body = request(url, headers=req_headers, payload=body)
-        if "set-cookie" in headers:
-            if ";" in headers["set-cookie"]:
-                kv, params = headers["set-cookie"].split(";", 1)
-            else:
-                kv = headers["set-cookie"]
-            key, value = kv.split("=", 1)
-            origin = url_origin(self.history[-1])
-            self.cookies.setdefault(origin, {})[key] = value
+
+        self.allowed_origins = None
+        if "content-security-policy" in headers:
+           csp = headers["content-security-policy"].split()
+           if len(csp) > 0 and csp[0] == "default-src":
+               self.allowed_origins = csp[1:]
 
         self.nodes = HTMLParser(body).parse()
 
@@ -926,8 +935,11 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            header, body = request(resolve_url(script, url),
-                headers=req_headers)
+            script_url = resolve_url(script, url)
+            if not self.allowed_request(script_url):
+                print("Blocked script", script, "due to CSP")
+                continue
+            header, body = request(script_url, url)
             try:
                 print("Script returned: ", self.js.run(body))
             except dukpy.JSRuntimeError as e:
@@ -941,9 +953,12 @@ class Tab:
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
+            style_url = resolve_url(link, url)
+            if not self.allowed_request(style_url):
+                print("Blocked style", link, "due to CSP")
+                continue
             try:
-                header, body = request(resolve_url(link, url),
-                    headers=req_headers)
+                header, body = request(style_url, url)
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
