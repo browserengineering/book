@@ -67,8 +67,8 @@ If any of these imports fail, you probably need to check that Skia and
 SDL were installed correctly. Note that the `ctypes` module comes
 standard in Python; it helps convert between Python and C types.
 
-Skia replaces Tkinter
-=====================
+SDL replaces Tkinter
+====================
 
 The main loop of the browser first needs some boilerplate to get SDL
 started:
@@ -194,6 +194,9 @@ You can now remove all of the `bind` calls in the `Browser`
 constructor; this main loop replaces them. Also note that I've changed
 the signatures of the various `handle_xxx` methods; you'll need to
 make analogous changes in `Browser` where they are defined.
+
+Skia replace Tkinter
+====================
 
 Now our browser is creating an SDL window can draw to it via Skia. But
 most of the browser codebase is still using Tkinter drawing commands,
@@ -418,158 +421,155 @@ and macOS, and Skia in Android.
 Pixels, Color, Raster
 =====================
 
-Now that we've gotten code upgrades out of the way, it's time to learn about
-how reasterization works.
+Skia, like the Tkinter canvas we've been using until now, is a
+_rasterization_ library: it converts shapes like rectangles and text
+into pixels. Before we move on to Skia's advanced features, let's look
+at how rasterization works at a deeper level.
 
-Rasterization---turning display lists into pixels---is the main sub-task of
-the "draw" rendering step. Skia^[And Tkinter also, of course.] does raster for
-us. But so far we just called APIs on those libraries, and didn't really
-dig into what is going on at any deeper level. Let's start to do that
-now.
+You probably already know that computer screens are a 2D array of
+pixels. Each pixel contains red, green and blue lights,[^lcd-design]
+or _color channels_, that can shine with an intensity between 0 (off)
+and 1 (fully on). By mixing red, green, and blue, any color can be
+made. More precisely, the set of colors that can be made this way is
+called the [sRGB color space][srgb], and web pages use those colors
+via CSS.[^other-spaces]
 
-As you probably already know, computer screens are a 2D array of pixels. Each
-pixel has a color, which looks that way to a human because it emits a mix of
-light at different *color channel* frequencies. For example, there could be a
-red, green and blue light embedded within the physical pixel at a frequency
-closely matching the light-detecting [cones][cones] in a human eye, and each
-color could be set to any intensity.[^human-color] And as you learned in
-physics class, adding together these colors results in a combined color that,
-for different values of red, green and blue, looks like most any color a human
-can see. The three colors and how they mix define what is called a *color
-space*, and the set of colors you can express from them is called its *gamut*.
-
-[^human-color]: We all take color for granted in our lives. But just as computer
-screens simulate colors humans happen to be able to see, the colors we can see
-are not random at all, and have to do with the frequencies of light emitted by
-the sun, which our brains interpret as color. Color, and human perception of
-it, is a very interesting topic.
-
-[cones]: https://en.wikipedia.org/wiki/Cone_cell
-
-Red, green and blue was the approach taken in many computer screens, in
-particular monitors from the 80s and 90s using [CRT] technology. Since that was
-when the web came into existence, CSS uses a [sRGB] color space derived from
-and calibrated for this technology.[^other-spaces] In thos color space, each of
-the three color channels (red, green and blue) have a floating-point value
-between 0 and 1, with 0 being "off" 1 being "as bright as possible".
-
+[^lcd-design]: Actually, some screens contain [pixels besides red,
+    green, and blue][lcd-design], including white, cyan, or yellow.
+    Moreover, different screens can use slightly different reds,
+    greens, or blues; professional color designers typically have to
+    [calibrate their screen][calibrate] to display colors accurately.
+    For the rest of us, the software still communicates with the
+    display in terms of standard red, green, and blue colors, and the
+    display hardware converts to whatever pixels it uses.
+    
+[lcd-design]: https://geometrian.com/programming/reference/subpixelzoo/index.php
+[calibrate]: https://en.wikipedia.org/wiki/Color_calibration
+[srgb]: https://en.wikipedia.org/wiki/SRGB
 [CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
-
-[^other-spaces]: Since then, there have been lots of new technologies like LCD,
-LED and so on that can achieve different and wider gamuts. And as you would
-expect, there are [ways][color-spec] now to express those colors spaces in CSS.
-
-[sRGB]: https://en.wikipedia.org/wiki/SRGB
 [color-spec]: https://drafts.csswg.org/css-color-5/
 
-To *raster* pixels, we need to determine the color channel values for each
-pixel, which ultimately come from commands in the display list. The first
-command in an empty canvas is easy---you just set the color channels directly
-in the pixels indicated by the command. But what if a pixel already has a
-certain color and then another color is written to it? You might say the answer
-is obvious---just change the color to the new color, just as a variable's value
-in Python is overwritten when assigned.
+[^other-spaces]: The sRGB color space dates back to [CRT displays].
+New technologies like LCD, LED, and OLED and new pixel chemistries and
+can display more colors, and CSS now includes [new syntax][color-spec]
+for expressing these new colors.
 
-That is true for the situations we've seen so far,[^explains] but it gets more
-complicated when there is *transparency* "embedded" in the color, or there is
-an alternate blending mode present. Observe that this is nothing new---the
-reason you can "add" a green light to a red light a red one on a computer
-screen and get one that [looks yellow][mixing] is that they blend together. In
-this case there is a kind of transparency to the red light, in that it lets the
-green light through it. But if you have a piece of thick red paper with a thick
-green paper behind it, the result will look red, because the paper is opaque.
-Te thinner the paper, the more light gets through and blends. Transparency and
-blend modes in computer graphics merely model these surfaces we see in the real
-world.[^mostly-models]
+The job of a rasterization library is to determine the red, green, and
+blue intensity of each pixel on the screen, based on the
+shapes---lines, rectangles, text---that the application wants to
+display. This is [already a challenge][rounded-rects] for a single
+shape, but with multiple shapes there's an additional question: what
+color should the pixel be when two shapes overlap? So far, our browser
+has only handled opaque shapes, and the answer has been simple: take
+the color of the top shape. But now we need more nuance.
 
-<a name="alpha"></a>
+[rounded-rects]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
 
-In computer graphics, transparency can be modeled in multiple ways. One common
-way, which Skia, SDL and this book uses,[^example-sdl] is to add a
-fourth channel in the color representation called *alpha*.[^alpha-history] Like
-colors, it is between 0 and 1. 0 means the pixel is fully transparent (meaning,
-no matter what the colors are, you can't see them anyway), and 1 meaning fully
-opaque.
-
-[^alpha-history]: You can read
-[here](http://alvyray.com/Memos/CG/Microsoft/7_alpha.pdf) a
-history of alpha, from its co-inventor (and co-founder of Pixar!). Or you could
-read this [derivation](https://jcgt.org/published/0004/02/03/paper.pdf) of
-alpha and why it works like it does.
-
-[^example-sdl]: For example, the `Browser.to_sdl_surface` method accounts for
-alpha.
+Many objects in nature are partially transparent: frosted glass,
+clouds, or colored paper, for example. Looking through one, you see
+two colors *blended* together. That's also why computer screens work:
+the red, green, and blue lights [blend together][mixing] and appear to
+our eyes as another color. Designers use this effect[^mostly-models]
+in overlays, shadows, and tooltips, so our browser needs to support
+color mixing.
 
 [mixing]: https://en.wikipedia.org/wiki/Color_mixing
 
-[^explains]: This is why we haven't had to bother with understanding blending
-until this chapter.
+[^mostly-models]: Mostly. Some more advanced blending modes are
+difficult, or perhaps impossible, in real-world physics.
 
-[^mostly-models]: Mostly. Some more advanced blending modes are difficult, or
-perhaps impossible, to represent with real-world physics.
+<a name="alpha"></a>
 
-So if display list commands write multiple times to the same pixel, the result
-will in general be a mix of the colors written. But that's not all! In computer
-graphics, it's common to apply blending not command-by-command or
-pixel-by-pixel, but in groups, arranged into a tree. Each group is rastered
-into a single 2D array of pixels, including its subtree. Then the group is
-blended into its *parent*. Overall, this happens in a reverse depth-first order
-of the tree. The root group is then drawn to the screen.[^not-sequential]
+The most important type of color mixing is transparency. Skia, SDL,
+and many other color libraries account for transparency with a fourth
+channel *alpha*.[^alpha-history] An alpha of 0 means the pixel is
+fully transparent (meaning, no matter what the colors are, you can't
+see them anyway), and an alpha of 1 means a fully opaque like the ones
+we've been working with so far. When a pixel with alpha overlaps
+another pixel, the final color of their two colors.
 
-Group-based blending will look different on the screen than individual display
-list command-based blending. The difference is a like drawing on stacks of
-semi-transparent paper and then holding the stack up to the light. For example,
-consider painting green and red rectangles. If they were both opaque
-colors and drew on top of each other in that order on the same
-semi-transparent sheet,^[And the rectangle were made transparent by something
-about the sheet technology, perhaps by subsequently shaving the paper very
-thin...] the resulting color will be a pale red. But if the rectangles were on
-separate sheets, the result would be be a pale yellow.
+[^alpha-history]: Check out this [history of alpha][alpha-history],
+written by its co-inventor (and co-founder of Pixar), or read this
+[derivation of alpha][alpha-deriv] for how it is computed.
 
-[^not-sequential]: Note that we don't simply raster each group individually, and
-then do blending. Raster of a group can, and usually does, interleave with
-blending of children groups into the parent. This is not nearly as weird or
-complicated as it sounds; in our browser we alread encountered it, such as
-when the background color of a layout object rasters into its group before the
-raster of descendant layout object groups blend on top.
+[alpha-history]: http://alvyray.com/Memos/CG/Microsoft/7_alpha.pdf
+[alpha-deriv]: https://jcgt.org/published/0004/02/03/paper.pdf
 
-On the web, the groups are [*stacking contexts*][stacking-context], which are
-the layout object subtrees of a layout object for DOM elements with certain
-styles, up to any descendants that themselves have such styles. Since stacking
-contexts are quite complicated to define and maintain, we'll skip that
-complexity in this chapter and simply consider every layout object a stacking
-context. This simplification is good enough for understanding all the concepts.
+::: {.further}
+Screens use red, green, and blue color channels to match the three
+types of [cone cells][cones] in a human eye. We take it for granted,
+but color standards like [CIELAB][cielab] derive from attempts to
+[reverse-engineer human vision][opponent-process]. These cone cells
+vary between people: some have [more][tetrachromats] or
+[fewer][colorblind] (typically an inherited condition carried on the X
+chromosome). Moreover, different people have different ratios of cone
+types and those cone types use different protein structures that vary
+the exact frequency of green, red, and blue that they respond to. The
+human perception of color is a topic that combines software, hardware,
+chemistry, biology, and psychology.
+:::
+
+[cones]: https://en.wikipedia.org/wiki/Cone_cell
+[cielab]: https://en.wikipedia.org/wiki/CIELAB_color_space
+[opponent-process]: https://en.wikipedia.org/wiki/Opponent_process
+[colorblind]: https://en.wikipedia.org/wiki/Color_blindness
+[tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
+
+Stacking contexts
+=================
+
+Color mixing means we need to think carefully about the order of
+operations. For example, consider black text on an orange background,
+placed semi-transparenly over a white background.[^example-1] The text
+is gray while the background is yellow-orange. That's due to blending:
+the text and the background are both partially transparent and let
+through some of the underlying white:
+
+<div style="opacity: 0.5; background: orange; color: black; font-size: 50px; padding: 15px; text-align: center;flex:1;">Test</div>
+
+But importantly, the text isn't orange-gray: even though the text is
+partially transparent, none of the orange shines through. That's
+because the order matters. First, the text is blended with the
+background; since the text is opaque, its pixels are black, while the
+rest of the background is orange. Then, this black-and-orange is
+blended with the white background. Doing the operations in a different
+order would lead to dark-orange or black text.
+
+To handle this properly, computers apply blending not to individual
+shapes but to a tree of [*stacking contexts*][stacking-context]. Each
+stacking context is rastered into a single 2D array of pixels and then
+blended into its parent stacking context. Note that to raster a
+stacking context you first need to raster in and child stacking
+contexts, so they can be blended into the stacking context. In other
+words, rastering a web page requires a bottom-up traversal of the tree
+of stacking contexts.
 
 [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
-With this simplication, the layout object tree has one raster group for each
-layout object, and the display list commands that raster the group are the
-ones added during the call to `paint` on that layout object.
+In real browsers, stacking contexts are created by HTML elements with
+certain styles, up to any descendants that themselves have such
+styles. The full definition is actually quite complicated, so in this
+chapter we'll simplify by treating every layout object a stacking
+context.
 
 ::: {.further}
-If you look at closely at the [definition][stacking-context] of stacking
-contexts in the specification, you'll see that it says the elements that
-*induce* a stacking context are exactly those that do something having to do
-with layering (`z-index`) or visual effects. With this chapter in hand, you can
-see exactly why.
-
-One case that does *not* induce a stacking context is `overflow:scroll`. Many
-browser engineers believe that was a mistake made when designing this feature
-for the web,[^also-containing-block] because it resulted in complications when
-trying making the browsers scroll smoothly and efficiently. Why, you might ask?
-One reason is that a raster group is not only a convenient match for surfaces;
-it's also a convenient way to utilize GPU acceleration for moving around those
-surfaces. Without a stacking context the browser might (depending on the web
-page structure) have to move around multiple independent surfaces with complex
-paint orders, in lockstep.
+Mostly, element [induce a stacking context][stacking-context] because
+of CSS properties that have something to do with layering (like
+`z-index`) or visual effects (like `mix-blend-mode`). On the other
+hand, the `overflow` property, which can make an element scrollable,
+does not induce a stacking context, which I think was a
+mistake.[^also-containing-block] Inside a modern browser, scrolling is
+done on the GPU by offsetting two surfaces. Without a stacking context
+the browser might (depending on the web page structure) have to move
+around multiple independent surfaces with complex paint orders, in
+lockstep, to achieve scrolling.
 :::
 
-[^also-containing-block]: It would probably have been better if scrolling were a
-also a [containing block][containing-block] for descendants. Containing blocks
-haven't been discussed yet in this book, but in short, because these elements
-are not a containing block for some descendants, you can end up with elements
-that are a descendant of an `overflow:scroll` ancestor yet don't scroll.
-This situation is very complicated to handle in real browsers.
+[^also-containing-block]: While we're at it, perhaps scrollable
+elements should also be a [containing block][containing-block] for
+descendants. Otherwise, a scrollable element can have non-scrolling
+children via properties like `position`. This situation is very
+complicated to handle in real browsers.
 
 [containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 

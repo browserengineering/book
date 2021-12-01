@@ -154,7 +154,7 @@ trickier][speculative] to implement efficiently.
 [speculative]: https://developer.mozilla.org/en-US/docs/Glossary/speculative_parsing
 
 Exporting functions
-=====================
+===================
 
 Right now our browser just prints the last expression in a script; but
 in a real browser scripts must call the `console.log` function to
@@ -286,7 +286,7 @@ deal with slow user scripts.
 [rtc]: https://en.wikipedia.org/wiki/Run_to_completion_scheduling
 [webworkers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 
-Handling Crashes
+Handling crashes
 ================
 
 Crashes in JavaScript code are frustrating to debug. You can cause a
