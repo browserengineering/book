@@ -73,7 +73,7 @@ static socket(URLS) {
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
             if (rt_constants.URLS[this.url]) {
-                var response = rt_constants.URLS[this.urls];
+                var response = rt_constants.URLS[this.url];
                 this.output = typeof response === "function" ? response() : response;
                 this.idx = 0;
                 this.closed = false;
@@ -184,7 +184,7 @@ static tkinter(options) {
             this.tk.elt.width = params.width * rt_constants.ZOOM;
             this.tk.elt.height = params.height * rt_constants.ZOOM;
             this.ctx = tk.elt.getContext('2d');
-            this.ctx.font = "normal normal " + 16 * rt_constants.ZOOM + "px serif"
+            this.ctx.font = "normal normal " + 16 * rt_constants.ZOOM + "px Merriweather"
         }
 
         pack() {}
@@ -249,7 +249,7 @@ static tkinter(options) {
             this.weight = params.weight ?? "normal";
             this.style = params.style ?? "normal";
             this.string = (this.style == "roman" ? "normal" : this.style) + 
-                " " + this.weight + " " + this.size * rt_constants.ZOOM + "px serif";
+                " " + this.weight + " " + this.size * rt_constants.ZOOM + "px Merriweather";
 
             this.$metrics = null;
         }

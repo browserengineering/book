@@ -2,7 +2,11 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="widget.css" />
-
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300&display=swap">
+<script>
+    // Make sure the web font loads before we use it in canvas or SVG.
+    document.fonts.load("24px Merriweather")
+</script>
 <style>
 figure { display: flex; flex-wrap: wrap; justify-content: space-between; }
 #phases {
@@ -12,10 +16,6 @@ figure { display: flex; flex-wrap: wrap; justify-content: space-between; }
 #phases:after { content: ""; } /* Adds an extra gap */
 
 text.drawn { dominant-baseline: text-before-edge; }
-/* This nasty hack corrects for some weird difference in Chrome */
-@media screen and (-webkit-min-device-pixel-ratio:0) and (min-resolution:.001dpcm) {
-text.drawn { alignment-baseline: hanging; }
-}
 text.varname { fill: #444; font-family: monospace; text-anchor: end; transform: translate(-10px, 0); }
 text.title { font: bold 16px serif; text-transform: uppercase; fill: steelblue; letter-spacing: .1ex; }
 text.label { fill: #444; }
@@ -25,8 +25,8 @@ line.baseline { stroke-dasharray: 5, 5; }
 .amax { fill: darkred; stroke: darkred; }
 .dreg { fill: lightblue; stroke: lightblue; }
 .dmax { fill: darkblue; stroke: darkblue }
-#g1 { transform: translate(80px, 0); }
-#g2 { transform: translate(80px, 0); }
+#g1 { transform: translate(50px, 0); }
+#g2 { transform: translate(72px, 0); }
 </style>
 
 <form id="controls">
@@ -43,10 +43,10 @@ line.baseline { stroke-dasharray: 5, 5; }
 </form>
 <figure id="widget">
   <div id="phases">
-    <svg width="300" height="100">
+    <svg width="320" height="100">
       <g id="g1"></g>
     </svg>
-    <svg width="300" height="120">
+    <svg width="320" height="120">
       <g id="g2"></g>
     </svg>
   </div>
@@ -118,7 +118,7 @@ function draw_widget() {
     while (g1.children.length) g1.removeChild(g1.children[0]);
     while (g2.children.length) g2.removeChild(g2.children[0]);
 
-    let width = 220;
+    let width = 250;
     let tmargin = 30;
     let y1 = tmargin;
     let b = y1 + 1.2 * STATE.max_asc * rt_constants.ZOOM;
