@@ -10,10 +10,10 @@ import io
 import math
 import sdl2
 import skia
+import PIL.Image
 import socket
 import ssl
 import urllib.parse
-from PIL import Image
 from lab4 import print_tree
 from lab4 import Element
 from lab4 import Text
