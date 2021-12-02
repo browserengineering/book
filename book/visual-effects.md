@@ -1674,7 +1674,7 @@ First, when we read from the socket with `makefile`, pass the argument
 `b` instead of `r` to request raw bytes as output:
 
 ``` {.python}
-def request(url, headers={}, payload=None):
+def request(url, top_level_url, payload=None):
     # ...
     response = s.makefile("b")
     # ...
@@ -1684,7 +1684,7 @@ Now you'll need to call `decode` every time you read from the file.
 First, when reading the status line:
 
 ``` {.python}
-def request(url, headers={}, payload=None):
+def request(url, top_level_url, payload=None):
     # ...
     statusline = response.readline().decode("utf8")
     # ...
@@ -1693,7 +1693,7 @@ def request(url, headers={}, payload=None):
 Then, when reading the headers:
 
 ``` {.python}
-def request(url, headers={}, payload=None):
+def request(url, top_level_url, payload=None):
     # ...
     while True:
         line = response.readline().decode("utf8")
@@ -1705,7 +1705,7 @@ And finally, when reading the response, we check for the `Content-Type`, and
 only decode[^image-decode] it as `utf-8` if it starts with `text/`:
 
 ``` {.python}
-def request(url, headers={}, payload=None):
+def request(url, top_level_url, payload=None):
     # ...
     if headers.get(
         'content-type', 
@@ -1713,6 +1713,16 @@ def request(url, headers={}, payload=None):
         body = response.read().decode("utf8")
     else:
         body = response.read()
+    # ...
+```
+
+While we're at it, add theh `Content-Type` header to the server response:
+
+``` {.python file=server}
+def handle_connection(conx):
+    # ...
+    response = "HTTP/1.0 {}\r\n".format(status)
+    response += "Content-Type: text/html\r\n"
     # ...
 ```
 
@@ -1756,8 +1766,7 @@ for content type [signatures] in the bytes of the encoded image.
 ``` {.python}
 def get_image(image_url, base_url):
     header, body_bytes = request(
-        resolve_url(image_url, base_url),
-        headers={})
+        resolve_url(image_url, base_url), base_url)
     picture_stream = io.BytesIO(body_bytes)
 
     pil_image = Image.open(picture_stream)
