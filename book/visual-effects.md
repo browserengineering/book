@@ -34,8 +34,8 @@ for handling images.
 Tkinter uses, dates from the early 90s, before high-performance
 graphics cards and GPUs became widespread.
 
-Start by installing [Pillow][install-pillow] and [Skia's][skia-python]
-and [SDL's][sdl-python] Python bindings like so:
+Start by installing [Pillow][install-pillow], [Skia][skia-python], and
+[SDL][sdl-python]:
 
     pip3 install skia-python pysdl2 pysdl2-dll pillow
 
@@ -195,8 +195,8 @@ constructor; this main loop replaces them. Also note that I've changed
 the signatures of the various `handle_xxx` methods; you'll need to
 make analogous changes in `Browser` where they are defined.
 
-Skia replace Tkinter
-====================
+Skia replaces Tkinter
+=====================
 
 Now our browser is creating an SDL window can draw to it via Skia. But
 most of the browser codebase is still using Tkinter drawing commands,
@@ -429,10 +429,9 @@ at how rasterization works at a deeper level.
 You probably already know that computer screens are a 2D array of
 pixels. Each pixel contains red, green and blue lights,[^lcd-design]
 or _color channels_, that can shine with an intensity between 0 (off)
-and 1 (fully on). By mixing red, green, and blue, any color can be
-made. More precisely, the set of colors that can be made this way is
-called the [sRGB color space][srgb], and web pages use those colors
-via CSS.[^other-spaces]
+and 1 (fully on). By mixing red, green, and blue, which is formally
+known as the [sRGB color space][srgb], any color can be
+made.[^other-spaces]
 
 [^lcd-design]: Actually, some screens contain [pixels besides red,
     green, and blue][lcd-design], including white, cyan, or yellow.
@@ -447,23 +446,24 @@ via CSS.[^other-spaces]
 [calibrate]: https://en.wikipedia.org/wiki/Color_calibration
 [srgb]: https://en.wikipedia.org/wiki/SRGB
 [CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
-[color-spec]: https://drafts.csswg.org/css-color-5/
+[color-spec]: https://drafts.csswg.org/css-color-4/
 
-[^other-spaces]: The sRGB color space dates back to [CRT displays].
-New technologies like LCD, LED, and OLED and new pixel chemistries and
-can display more colors, and CSS now includes [new syntax][color-spec]
-for expressing these new colors.
+[^other-spaces]: The sRGB color space dates back to [CRT
+displays][CRT]. New technologies like LCD, LED, and OLED can display
+more colors, so CSS now includes [new syntax][color-spec] for
+expressing these new colors.
 
 The job of a rasterization library is to determine the red, green, and
 blue intensity of each pixel on the screen, based on the
 shapes---lines, rectangles, text---that the application wants to
-display. This is [already a challenge][rounded-rects] for a single
-shape, but with multiple shapes there's an additional question: what
-color should the pixel be when two shapes overlap? So far, our browser
-has only handled opaque shapes, and the answer has been simple: take
-the color of the top shape. But now we need more nuance.
+display. This is already a challenge for a single shape, but with
+multiple shapes there's an additional question: what color should the
+pixel be when two shapes overlap? So far, our browser has only handled
+opaque shapes,[^nor-subpixel] and the answer has been simple: take the
+color of the top shape. But now we need more nuance.
 
-[rounded-rects]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
+[^nor-subpixel]: Nor has our browser yet thought about subpixel
+    geometry or anti-aliasing, which also rely on color mixing.
 
 Many objects in nature are partially transparent: frosted glass,
 clouds, or colored paper, for example. Looking through one, you see
@@ -486,7 +486,7 @@ channel *alpha*.[^alpha-history] An alpha of 0 means the pixel is
 fully transparent (meaning, no matter what the colors are, you can't
 see them anyway), and an alpha of 1 means a fully opaque like the ones
 we've been working with so far. When a pixel with alpha overlaps
-another pixel, the final color of their two colors.
+another pixel, the final color is a mix of their two colors.
 
 [^alpha-history]: Check out this [history of alpha][alpha-history],
 written by its co-inventor (and co-founder of Pixar), or read this
@@ -504,9 +504,9 @@ vary between people: some have [more][tetrachromats] or
 [fewer][colorblind] (typically an inherited condition carried on the X
 chromosome). Moreover, different people have different ratios of cone
 types and those cone types use different protein structures that vary
-the exact frequency of green, red, and blue that they respond to. The
-human perception of color is a topic that combines software, hardware,
-chemistry, biology, and psychology.
+in the exact frequency of green, red, and blue that they respond to.
+The human perception of color is a topic that combines software,
+hardware, chemistry, biology, and psychology.
 :::
 
 [cones]: https://en.wikipedia.org/wiki/Cone_cell
@@ -530,12 +530,12 @@ through some of the underlying white:
 But importantly, the text isn't orange-gray: even though the text is
 partially transparent, none of the orange shines through. That's
 because the order matters. First, the text is blended with the
-background; since the text is opaque, its pixels are black, while the
-rest of the background is orange. Then, this black-and-orange is
+background; since the text is opaque, its blended pixels are black and
+overwrite the orange background. Then, this black-and-orange is
 blended with the white background. Doing the operations in a different
 order would lead to dark-orange or black text.
 
-To handle this properly, computers apply blending not to individual
+To handle this properly, browsers apply blending not to individual
 shapes but to a tree of [*stacking contexts*][stacking-context]. Each
 stacking context is rastered into a single 2D array of pixels and then
 blended into its parent stacking context. Note that to raster a
@@ -546,23 +546,23 @@ of stacking contexts.
 
 [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
-In real browsers, stacking contexts are created by HTML elements with
+In real browsers, stacking contexts are formed by HTML elements with
 certain styles, up to any descendants that themselves have such
 styles. The full definition is actually quite complicated, so in this
-chapter we'll simplify by treating every layout object a stacking
+chapter we'll simplify by treating every layout object as a stacking
 context.
 
 ::: {.further}
-Mostly, element [induce a stacking context][stacking-context] because
+Mostly, elements [form a stacking context][stacking-context] because
 of CSS properties that have something to do with layering (like
 `z-index`) or visual effects (like `mix-blend-mode`). On the other
 hand, the `overflow` property, which can make an element scrollable,
 does not induce a stacking context, which I think was a
-mistake.[^also-containing-block] Inside a modern browser, scrolling is
-done on the GPU by offsetting two surfaces. Without a stacking context
-the browser might (depending on the web page structure) have to move
-around multiple independent surfaces with complex paint orders, in
-lockstep, to achieve scrolling.
+mistake.[^also-containing-block] The reason is that inside a modern
+browser, scrolling is done on the GPU by offsetting two surfaces.
+Without a stacking context the browser might (depending on the web
+page structure) have to move around multiple independent surfaces with
+complex paint orders, in lockstep, to achieve scrolling.
 :::
 
 [^also-containing-block]: While we're at it, perhaps scrollable
