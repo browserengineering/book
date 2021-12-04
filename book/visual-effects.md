@@ -562,8 +562,9 @@ mistake.[^also-containing-block] The reason is that inside a modern
 browser, scrolling is done on the GPU by offsetting two surfaces.
 Without a stacking context the browser might (depending on the web
 page structure) have to move around multiple independent surfaces with
-complex paint orders, in lockstep, to achieve scrolling. Fixed- and sticky-positioned elements also form a stacking
-context because of their interaction with scrolling.
+complex paint orders, in lockstep, to achieve scrolling. Fixed- and
+sticky-positioned elements also form a stacking context because of
+their interaction with scrolling.
 :::
 
 [^also-containing-block]: While we're at it, perhaps scrollable
@@ -672,323 +673,6 @@ concepts.
 
 Now we're ready to implement some visual effects! Let's start with size and
 transform, and then proceed to transparency and blend modes.
-
-Size and transform
-==================
-
-At the moment, block elements size to the dimensions of their inline and input
-content, and input elements have a fixed size. But real web sites often have
-multiple layers of visuals on top of each other; for example, we'll be adding
-just such a feature to the guest book.[^also-compositing] To achieve that kind
-of look, we'll need to add support for sizing and transforms.
-
-Sizing allows you to set a block element's[^not-inline] width and height to
-whatever you want (not just the layout size of descendants), and transform
-allows you to move it around on screen from where it started out. Sizing only
-applies to the element itself.
-
-[^also-compositing]: Another reason is that it'd be really hard to explain
-compositing and blending modes without allowing content to overlap...
-
-[^not-inline]: Inline elements can't have their width and height overridden. For
-something like that you would need to switch them to a different layout mode
-called `inline-block`, which we have not implemented.
-
-For example, this HTML:
-
-    <div style="background-color:lightblue;width:50px; height:100px">
-    </div>
-    <div style="background-color:orange;width:50px; height:100px">
-    </div>
-
-should render into a light blue 50x100 rectangle, with another orange one below
-it:
-
-<div style="background-color:lightblue;width:50px;height:100px"></div>
-<div style="background-color:orange;width:50px;height:100px"></div>
-
-Support for these properties turns out to be easy[^not-easy]---if `width` or
-`height` is set, use it, and otherwise use the built-in sizing. For
-`BlockLayout`:
-
-[^not-easy]: Or more precisely, easy only because the layout engine of our
-browser only has a few modes implemented.
-
-``` {.python}
-def style_length(node, style_name, default_value):
-    style_val = node.style.get(style_name)
-    if style_val:
-        return int(style_val[:-2])
-    else:
-        return default_value
-
-class BlockLayout:
-    # ...
-    def layout(self):
-        # ...
-        self.width = style_length(
-            self.node, "width", self.parent.width)
-        # ...
-        self.height = style_length(
-            self.node, "height",
-            sum([child.height for child in self.children]))
-```
-
-And `InputLayout`:
-
-``` {.python}
-class InputLayout:
-    # ...
-    def layout(self):
-        # ...
-        self.width = style_length(
-            self.node, "width", INPUT_WIDTH_PX)
-        self.height = style_length(
-            self.node, "height", linespace(self.font))
-```
-
-And `InlineLayout`:
-
-``` {.python}
-class InlineLayout:
-    # ...
-    def layout(self):
-        self.width = style_length(
-            self.node, "width", self.parent.width)
-        # ...
-        self.height = style_length(
-            self.node, "height",
-            sum([line.height for line in self.children]))
-```
-
-::: {.further}
-Since we've added support for setting the size of a layout object to
-be different than the sum of its children's sizes, it's easy for there to
-be a visual mismatch. What are we supposed to do if a `LayoutBlock` is not
-as tall as the text content within it? By default, browsers draw the content
-anyway, and it might or might not paint outside the block's box.
-This situation is called [*overflow*][overflow-doc]. There are various CSS
-properties, such as [`overflow`][overflow-prop], to control what to do in
-this situation. By far the most important (or complex, at least) value of
-this property is `scroll`.
-
-[overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow
-
-This value means, of course, for the browser to allow the user to scroll
-the content in order to see it; the parts that don't overlap the block
-are *clipped* out (we'll cover clipping later in this chater).
-
-Basic scrolling for DOM elements is very similar to the scrolling you already
-implemented in [Chapter 2](graphics.html#graphics-scrolling). But implementing
-it in its full generality, and with excellent performance, is *extremely*
-challenging. Scrolling is probably the single most complicated feature in a
-browser rendering engine. The corner cases and subtleties involved are almost
-endless.
-:::
-
-[overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
-
-Now let's add (2D) transforms.[^3d-matrix] In computer graphics, a linear
-transformation of a point in a geometric space is usually represented by matrix
-multiplication. The same concept exists on the web in the `transform` CSS
-property. This property specifies a transform for a layout object's group when
-drawing into its parent group. There is a `matrix(...)` syntax for the value
-of `transform`, but we'll only implement `rotate(XXdeg)` and `translate(x,y)`,
-which are shorthands for rotation and translation matrices. Unlike sizing,
-transforms also apply to the entire element subtree.
-
-[^3d-matrix]: 3D is also supported in real browsers, but we'll only discuss 2D
-matrices in this chapter. There is a lot more complexity to 3D transforms
-having to do with the definition of 3D spaces, flatting, backfaces, and plane
-intersections.
-
-[^except-scrolling]: The only exception is that transforms contribute to
-[scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable),
-though we won't implement that.
-
-By default, the origin of the coordinate space in which the transform applies is
-the center of the layout object's rectangular bounds.[^transform-origin] The
-transform matrix specfied by the `transform` property
-[maps][applying-a-transform] each of the four points to a new 2D pixel location,
-and then blends them into the parent group at that location. You
-can think of it also doing roughly the same thing for the pixels inside the
-group.[^filter-transform]
-
-[^transform-origin]: As you might expect, there is a CSS property called
-`transform-origin` that allows changing this default.
-
-[applying-a-transform]: https://drafts.csswg.org/css-transforms-1/#transform-rendering
-
-[^filter-transform]: In reality, methods of rastering a group across a transform
-is a nuanced topic. Generating high-quality results without visible blurring or
-distortion in these situations involves a number of considerations, such as the
-choice of filtering algorithms, pixel-snapping of lines and fonts, and how to
-handle pixels near the edges. We won't discuss any of that here.
-
-Transforms are almost entirely a visual effect, and do not affect layout.
-[^except-scrolling] 
-
-This example:
-
-    <div style="width:200px;height:200px;
-        transform:rotate(10deg);background-color:lightblue">
-    </div>
-
-paints like this:
-
-<div style="width:200px;height:200px;
-        transform:rotate(10deg);background-color:lightblue">
-</div>
-
-As mentioned earlier, we'll need to use `save` and `restore`
-to implement transforms. Let's start by adding two new disply list commands for
-them:
-
-``` {.python}
-class Save:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        canvas.save()
-
-class Restore:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        canvas.restore()
-```
-
-Next, parse the `transform` property:
-
-``` {.python}
-def parse_rotation_transform(transform_str):
-    left_paren = transform_str.find('(')
-    right_paren = transform_str.find('deg)')
-    return float(transform_str[left_paren + 1:right_paren])
-
-def parse_translate_transform(transform_str):
-    left_paren = transform_str.find('(')
-    right_paren = transform_str.find(')')
-    (x_px, y_px) = \
-        transform_str[left_paren + 1:right_paren].split(",")
-    return (float(x_px[:-2]), float(y_px[:-2]))
-
-def parse_transform(transform_str):
-    if transform_str.find('translate') >= 0:
-        return (parse_translate_transform(transform_str), None)
-    elif transform_str.find('rotate') >= 0:
-        return (None, parse_rotation_transform(transform_str))
-    else:
-        return (None, None)
-```
-
-Also add the "," character to the list of characters in a CSS word:
-
-``` {.python}
-class CSSParser:
-    # ...
-            if cur.isalnum() or cur in ",/#-.%()\"'" \
-```
-
-Then we need paint it into the display list (we need to `Save` before rotating,
-to only rotate the element and its subtree, not the rest of the output). For
-that, introduce a new method `paint_visual_efects` that is called by
-`paint` for each layout object class.
-
-``` {.python}
-def paint_visual_effects(node, display_list, rect):
-    restore_count = 0
-
-    transform_str = node.style.get("transform", "")
-    if transform_str:
-        display_list.append(Save(rect))
-        restore_count = restore_count + 1
-        (translation, rotation) = parse_transform(transform_str)
-        if translation:
-            (x, y) = translation
-            display_list.append(Translate(x, y, rect))
-        elif rotation:
-            display_list.append(Rotate(rotation, rect))
-```
-
-The change to `paint` for `BlockLayout` looks like this:
-
-``` {.python}
-class BlockLayout:
-    # ...
-    def paint(self, display_list):
-        # ...
-        restore_count = paint_visual_effects(
-            self.node, display_list, rect)
-
-        paint_background(self.node, display_list, rect)
-
-        for child in self.children:
-            child.paint(display_list)
-        # ...
-        for i in range(0, restore_count):
-            display_list.append(Restore(rect))
-```
-
-Note how we kept track of a `restore_count` variable, and called `Restore` that
-many times. At the moment, `restore_count` can only be 0 or 1, but later on it
-might be higher. Another thing you should notice is that the recursive
-calls to `child.paint` happen *before* `Restore`, which makes sense---a
-transform applies to the entire subtree's groups, not just the current layout
-object.
-
-
-The implementation of `Rotate` in Skia looks like this:
-
-``` {.python}
-class Rotate:
-    def __init__(self, degrees, rect):
-        self.degrees = degrees
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        paint_rect = skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top() - scroll,
-            self.rect.right(), self.rect.bottom() - scroll)
-        (center_x, center_y) = center_point(paint_rect)
-        canvas.translate(center_x, center_y)
-        canvas.rotate(self.degrees)
-        canvas.translate(-center_x, -center_y)
-```
-
-Note how we first translated to put the center of the layout object at the
-origin before rotating (this is the negative translation), then rotation, then
-translated back.
-
-Anther strange thing to get used to is that the transforms seem to be in the
-wrong order---didn't we say that first translation to apply is the negative
-one? Yes, but the way canvas APIs work is that all *preceding* transforms,
-clips etc apply to later commands. And they apply "inside-out", meaning last
-one first.
-[^transforms-hard]
-
-[^transforms-hard]: This is also how matrix math is represented in mathematics.
-Nevertheless, I find it very hard to remember this when programming! When in
-doubt, work through an example, and remember that the computer is your friend to
-test if the results look correct.
-
-Finally, here is `Translate` as well:
-
-``` {.python}
-class Translate:
-    def __init__(self, x, y, rect):
-        self.x = x
-        self.y = y
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        paint_rect = skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top() - scroll,
-            self.rect.right(), self.rect.bottom() - scroll)
-        canvas.translate(self.x, self.y)
-```
 
 Opacity and Compositing
 =======================
@@ -1593,15 +1277,345 @@ with rounded corners would be infeasible.
 [hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
 [rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
 
-Background images
-=================
+Animating & GPU compositing
+===========================
 
-Let's add support for background images. A background image is
-specified in CSS via the `background-image` CSS property. Its full syntax has
-[many options][background-image], so let's just implement a simple version of
-it. We'll support the `background-image: url("relative-url")` syntax, which
-says to draw an image as the background of an element, with the given relative
-URL.
+TODO: explain how surfaces are also a primitive for using the GPU, to
+implement scrolling and other layering of browser and page UI.
+
+Size and transform
+==================
+
+TODO: remove size, and change transform to scrolling
+
+At the moment, block elements size to the dimensions of their inline and input
+content, and input elements have a fixed size. But real web sites often have
+multiple layers of visuals on top of each other; for example, we'll be adding
+just such a feature to the guest book.[^also-compositing] To achieve that kind
+of look, we'll need to add support for sizing and transforms.
+
+Sizing allows you to set a block element's[^not-inline] width and height to
+whatever you want (not just the layout size of descendants), and transform
+allows you to move it around on screen from where it started out. Sizing only
+applies to the element itself.
+
+[^also-compositing]: Another reason is that it'd be really hard to explain
+compositing and blending modes without allowing content to overlap...
+
+[^not-inline]: Inline elements can't have their width and height overridden. For
+something like that you would need to switch them to a different layout mode
+called `inline-block`, which we have not implemented.
+
+For example, this HTML:
+
+    <div style="background-color:lightblue;width:50px; height:100px">
+    </div>
+    <div style="background-color:orange;width:50px; height:100px">
+    </div>
+
+should render into a light blue 50x100 rectangle, with another orange one below
+it:
+
+<div style="background-color:lightblue;width:50px;height:100px"></div>
+<div style="background-color:orange;width:50px;height:100px"></div>
+
+Support for these properties turns out to be easy[^not-easy]---if `width` or
+`height` is set, use it, and otherwise use the built-in sizing. For
+`BlockLayout`:
+
+[^not-easy]: Or more precisely, easy only because the layout engine of our
+browser only has a few modes implemented.
+
+``` {.python}
+def style_length(node, style_name, default_value):
+    style_val = node.style.get(style_name)
+    if style_val:
+        return int(style_val[:-2])
+    else:
+        return default_value
+
+class BlockLayout:
+    # ...
+    def layout(self):
+        # ...
+        self.width = style_length(
+            self.node, "width", self.parent.width)
+        # ...
+        self.height = style_length(
+            self.node, "height",
+            sum([child.height for child in self.children]))
+```
+
+And `InputLayout`:
+
+``` {.python}
+class InputLayout:
+    # ...
+    def layout(self):
+        # ...
+        self.width = style_length(
+            self.node, "width", INPUT_WIDTH_PX)
+        self.height = style_length(
+            self.node, "height", linespace(self.font))
+```
+
+And `InlineLayout`:
+
+``` {.python}
+class InlineLayout:
+    # ...
+    def layout(self):
+        self.width = style_length(
+            self.node, "width", self.parent.width)
+        # ...
+        self.height = style_length(
+            self.node, "height",
+            sum([line.height for line in self.children]))
+```
+
+::: {.further}
+Since we've added support for setting the size of a layout object to
+be different than the sum of its children's sizes, it's easy for there to
+be a visual mismatch. What are we supposed to do if a `LayoutBlock` is not
+as tall as the text content within it? By default, browsers draw the content
+anyway, and it might or might not paint outside the block's box.
+This situation is called [*overflow*][overflow-doc]. There are various CSS
+properties, such as [`overflow`][overflow-prop], to control what to do in
+this situation. By far the most important (or complex, at least) value of
+this property is `scroll`.
+
+[overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow
+
+This value means, of course, for the browser to allow the user to scroll
+the content in order to see it; the parts that don't overlap the block
+are *clipped* out (we'll cover clipping later in this chater).
+
+Basic scrolling for DOM elements is very similar to the scrolling you already
+implemented in [Chapter 2](graphics.html#graphics-scrolling). But implementing
+it in its full generality, and with excellent performance, is *extremely*
+challenging. Scrolling is probably the single most complicated feature in a
+browser rendering engine. The corner cases and subtleties involved are almost
+endless.
+:::
+
+[overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
+
+Now let's add (2D) transforms.[^3d-matrix] In computer graphics, a linear
+transformation of a point in a geometric space is usually represented by matrix
+multiplication. The same concept exists on the web in the `transform` CSS
+property. This property specifies a transform for a layout object's group when
+drawing into its parent group. There is a `matrix(...)` syntax for the value
+of `transform`, but we'll only implement `rotate(XXdeg)` and `translate(x,y)`,
+which are shorthands for rotation and translation matrices. Unlike sizing,
+transforms also apply to the entire element subtree.
+
+[^3d-matrix]: 3D is also supported in real browsers, but we'll only discuss 2D
+matrices in this chapter. There is a lot more complexity to 3D transforms
+having to do with the definition of 3D spaces, flatting, backfaces, and plane
+intersections.
+
+[^except-scrolling]: The only exception is that transforms contribute to
+[scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable),
+though we won't implement that.
+
+By default, the origin of the coordinate space in which the transform applies is
+the center of the layout object's rectangular bounds.[^transform-origin] The
+transform matrix specfied by the `transform` property
+[maps][applying-a-transform] each of the four points to a new 2D pixel location,
+and then blends them into the parent group at that location. You
+can think of it also doing roughly the same thing for the pixels inside the
+group.[^filter-transform]
+
+[^transform-origin]: As you might expect, there is a CSS property called
+`transform-origin` that allows changing this default.
+
+[applying-a-transform]: https://drafts.csswg.org/css-transforms-1/#transform-rendering
+
+[^filter-transform]: In reality, methods of rastering a group across a transform
+is a nuanced topic. Generating high-quality results without visible blurring or
+distortion in these situations involves a number of considerations, such as the
+choice of filtering algorithms, pixel-snapping of lines and fonts, and how to
+handle pixels near the edges. We won't discuss any of that here.
+
+Transforms are almost entirely a visual effect, and do not affect layout.
+[^except-scrolling] 
+
+This example:
+
+    <div style="width:200px;height:200px;
+        transform:rotate(10deg);background-color:lightblue">
+    </div>
+
+paints like this:
+
+<div style="width:200px;height:200px;
+        transform:rotate(10deg);background-color:lightblue">
+</div>
+
+As mentioned earlier, we'll need to use `save` and `restore`
+to implement transforms. Let's start by adding two new disply list commands for
+them:
+
+``` {.python}
+class Save:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, canvas):
+        canvas.save()
+
+class Restore:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, canvas):
+        canvas.restore()
+```
+
+Next, parse the `transform` property:
+
+``` {.python}
+def parse_rotation_transform(transform_str):
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find('deg)')
+    return float(transform_str[left_paren + 1:right_paren])
+
+def parse_translate_transform(transform_str):
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find(')')
+    (x_px, y_px) = \
+        transform_str[left_paren + 1:right_paren].split(",")
+    return (float(x_px[:-2]), float(y_px[:-2]))
+
+def parse_transform(transform_str):
+    if transform_str.find('translate') >= 0:
+        return (parse_translate_transform(transform_str), None)
+    elif transform_str.find('rotate') >= 0:
+        return (None, parse_rotation_transform(transform_str))
+    else:
+        return (None, None)
+```
+
+Also add the "," character to the list of characters in a CSS word:
+
+``` {.python}
+class CSSParser:
+    # ...
+            if cur.isalnum() or cur in ",/#-.%()\"'" \
+```
+
+Then we need paint it into the display list (we need to `Save` before rotating,
+to only rotate the element and its subtree, not the rest of the output). For
+that, introduce a new method `paint_visual_efects` that is called by
+`paint` for each layout object class.
+
+``` {.python}
+def paint_visual_effects(node, display_list, rect):
+    restore_count = 0
+
+    transform_str = node.style.get("transform", "")
+    if transform_str:
+        display_list.append(Save(rect))
+        restore_count = restore_count + 1
+        (translation, rotation) = parse_transform(transform_str)
+        if translation:
+            (x, y) = translation
+            display_list.append(Translate(x, y, rect))
+        elif rotation:
+            display_list.append(Rotate(rotation, rect))
+```
+
+The change to `paint` for `BlockLayout` looks like this:
+
+``` {.python}
+class BlockLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+        restore_count = paint_visual_effects(
+            self.node, display_list, rect)
+
+        paint_background(self.node, display_list, rect)
+
+        for child in self.children:
+            child.paint(display_list)
+        # ...
+        for i in range(0, restore_count):
+            display_list.append(Restore(rect))
+```
+
+Note how we kept track of a `restore_count` variable, and called `Restore` that
+many times. At the moment, `restore_count` can only be 0 or 1, but later on it
+might be higher. Another thing you should notice is that the recursive
+calls to `child.paint` happen *before* `Restore`, which makes sense---a
+transform applies to the entire subtree's groups, not just the current layout
+object.
+
+
+The implementation of `Rotate` in Skia looks like this:
+
+``` {.python}
+class Rotate:
+    def __init__(self, degrees, rect):
+        self.degrees = degrees
+        self.rect = rect
+
+    def execute(self, scroll, canvas):
+        paint_rect = skia.Rect.MakeLTRB(
+            self.rect.left(), self.rect.top() - scroll,
+            self.rect.right(), self.rect.bottom() - scroll)
+        (center_x, center_y) = center_point(paint_rect)
+        canvas.translate(center_x, center_y)
+        canvas.rotate(self.degrees)
+        canvas.translate(-center_x, -center_y)
+```
+
+Note how we first translated to put the center of the layout object at the
+origin before rotating (this is the negative translation), then rotation, then
+translated back.
+
+Anther strange thing to get used to is that the transforms seem to be in the
+wrong order---didn't we say that first translation to apply is the negative
+one? Yes, but the way canvas APIs work is that all *preceding* transforms,
+clips etc apply to later commands. And they apply "inside-out", meaning last
+one first.
+[^transforms-hard]
+
+[^transforms-hard]: This is also how matrix math is represented in mathematics.
+Nevertheless, I find it very hard to remember this when programming! When in
+doubt, work through an example, and remember that the computer is your friend to
+test if the results look correct.
+
+Finally, here is `Translate` as well:
+
+``` {.python}
+class Translate:
+    def __init__(self, x, y, rect):
+        self.x = x
+        self.y = y
+        self.rect = rect
+
+    def execute(self, scroll, canvas):
+        paint_rect = skia.Rect.MakeLTRB(
+            self.rect.left(), self.rect.top() - scroll,
+            self.rect.right(), self.rect.bottom() - scroll)
+        canvas.translate(self.x, self.y)
+```
+
+Bonus material: Background images
+=================================
+
+Note: this section is not critical this chapter's core concepts of pixels,
+blending and surfaces. If you want, you can skip this section and not lose out
+on any core concepts. But basic support for images is a fun (as they say, an
+image is worth a thousand words) addition to the browser, so I wanted to
+include it anyway.
+
+A background image is specified in CSS via the `background-image` CSS property.
+Its full syntax has[many options][background-image], so let's just implement a
+simple version of it. We'll support the `background-image: url
+("relative-url")` syntax, which says to draw an image as the background of an
+element, with the given relative URL.
 
 [background-image]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
 
@@ -1944,12 +1958,6 @@ with painting descendants, is [quite complicated][paint-order-stacking-context].
 
 [paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
 
-
-The Account Info demo
-=====================
-
-TODO: Implement guest book menu overlay using all of the things we've built so
-far.
 
 Summary
 =======
