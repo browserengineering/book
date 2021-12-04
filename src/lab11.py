@@ -10,10 +10,10 @@ import io
 import math
 import sdl2
 import skia
+import PIL.Image
 import socket
 import ssl
 import urllib.parse
-from PIL import Image
 from lab4 import print_tree
 from lab4 import Element
 from lab4 import Text
@@ -851,7 +851,7 @@ def get_image(image_url, base_url):
         resolve_url(image_url, base_url), base_url)
     picture_stream = io.BytesIO(body_bytes)
 
-    pil_image = Image.open(picture_stream)
+    pil_image = PIL.Image.open(picture_stream)
     if pil_image.mode == "RGBA":
         pil_image_bytes = pil_image.tobytes()
     else:
