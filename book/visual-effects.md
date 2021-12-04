@@ -562,7 +562,8 @@ mistake.[^also-containing-block] The reason is that inside a modern
 browser, scrolling is done on the GPU by offsetting two surfaces.
 Without a stacking context the browser might (depending on the web
 page structure) have to move around multiple independent surfaces with
-complex paint orders, in lockstep, to achieve scrolling.
+complex paint orders, in lockstep, to achieve scrolling. Fixed- and sticky-positioned elements also form a stacking
+context because of their interaction with scrolling.
 :::
 
 [^also-containing-block]: While we're at it, perhaps scrollable
