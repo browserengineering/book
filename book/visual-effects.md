@@ -430,7 +430,7 @@ You probably already know that computer screens are a 2D array of
 pixels. Each pixel contains red, green and blue lights,[^lcd-design]
 or _color channels_, that can shine with an intensity between 0 (off)
 and 1 (fully on). By mixing red, green, and blue, which is formally
-known as the [sRGB color space][srgb], any color can be
+known as the [sRGB color space][srgb], any color in that space's _gamut_ can be
 made.[^other-spaces]
 
 [^lcd-design]: Actually, some screens contain [pixels besides red,
