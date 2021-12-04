@@ -578,8 +578,6 @@ complicated to handle in real browsers.
 Surfaces and canvases
 =====================
 
-<a name="surfaces-canvases"></a>
-
 The 2D pixel array for a group is called a *surface*.[^or-texture] Conceptually,
 each layout object will now have its own surface,[^more-than-one] and perform a
 blending operation when being drawn into the surface for its parent.
@@ -1201,7 +1199,7 @@ For this, we'll need new `Save` and `Restore` display list
 commands. [^refer-back-save]
 
 [^refer-back-save]: Recall from the [Surfaces and canvases]
-[#surfaces-canvases] section the difference between `Save` and `SaveLayer`.
+[#surfaces-and-canvases] section the difference between `Save` and `SaveLayer`.
 
 ``` {.python}
 class Save:
