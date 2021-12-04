@@ -575,7 +575,7 @@ complicated to handle in real browsers.
 
 [containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-Surfaces and Canvases
+Surfaces and canvases
 =====================
 
 <a name="surfaces-canvases"></a>
@@ -1200,7 +1200,7 @@ def paint_visual_effects(node, display_list, rect):
 For this, we'll need new `Save` and `Restore` display list
 commands. [^refer-back-save]
 
-[^refer-back-save]: Recall from the [Surfaces and Canvases]
+[^refer-back-save]: Recall from the [Surfaces and canvases]
 [#surfaces-canvases] section the difference between `Save` and `SaveLayer`.
 
 ``` {.python}
