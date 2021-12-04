@@ -575,8 +575,10 @@ complicated to handle in real browsers.
 
 [containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-Surfaces and canvases
+Surfaces and Canvases
 =====================
+
+<a name="surfaces-canvases"></a>
 
 The 2D pixel array for a group is called a *surface*.[^or-texture] Conceptually,
 each layout object will now have its own surface,[^more-than-one] and perform a
@@ -1003,8 +1005,8 @@ def paint_visual_effects(node, display_list, rect):
 
 [mix-blend-mode-def]: https://drafts.fxtf.org/compositing-1/#propdef-mix-blend-mode
 
-Non-rectangular clips and rounded corners
-=========================================
+Clipping and masking
+====================
 
 Let's now explore compositing modes other than source-over. They are generally
 not very common, with the exception of *destination-in*. This mode is used to
@@ -1195,6 +1197,28 @@ def paint_visual_effects(node, display_list, rect):
         restore_count = restore_count + 1
 ```
 
+For this, we'll need new `Save` and `Restore` display list
+commands. [^refer-back-save]
+
+[^refer-back-save]: Recall from the [Surfaces and Canvases]
+[#surfaces-canvases] section the difference between `Save` and `SaveLayer`.
+
+``` {.python}
+class Save:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, canvas):
+        canvas.save()
+
+class Restore:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, canvas):
+        canvas.restore()
+```
+
 ``` {.python}
 class ClipRRect:
     def __init__(self, rect, radius):
@@ -1277,687 +1301,28 @@ with rounded corners would be infeasible.
 [hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
 [rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
 
-Animating & GPU compositing
-===========================
+Surface compositing
+===================
 
 TODO: explain how surfaces are also a primitive for using the GPU, to
 implement scrolling and other layering of browser and page UI.
 
-Size and transform
-==================
-
-TODO: remove size, and change transform to scrolling
-
-At the moment, block elements size to the dimensions of their inline and input
-content, and input elements have a fixed size. But real web sites often have
-multiple layers of visuals on top of each other; for example, we'll be adding
-just such a feature to the guest book.[^also-compositing] To achieve that kind
-of look, we'll need to add support for sizing and transforms.
-
-Sizing allows you to set a block element's[^not-inline] width and height to
-whatever you want (not just the layout size of descendants), and transform
-allows you to move it around on screen from where it started out. Sizing only
-applies to the element itself.
-
-[^also-compositing]: Another reason is that it'd be really hard to explain
-compositing and blending modes without allowing content to overlap...
-
-[^not-inline]: Inline elements can't have their width and height overridden. For
-something like that you would need to switch them to a different layout mode
-called `inline-block`, which we have not implemented.
-
-For example, this HTML:
-
-    <div style="background-color:lightblue;width:50px; height:100px">
-    </div>
-    <div style="background-color:orange;width:50px; height:100px">
-    </div>
-
-should render into a light blue 50x100 rectangle, with another orange one below
-it:
-
-<div style="background-color:lightblue;width:50px;height:100px"></div>
-<div style="background-color:orange;width:50px;height:100px"></div>
-
-Support for these properties turns out to be easy[^not-easy]---if `width` or
-`height` is set, use it, and otherwise use the built-in sizing. For
-`BlockLayout`:
-
-[^not-easy]: Or more precisely, easy only because the layout engine of our
-browser only has a few modes implemented.
-
-``` {.python}
-def style_length(node, style_name, default_value):
-    style_val = node.style.get(style_name)
-    if style_val:
-        return int(style_val[:-2])
-    else:
-        return default_value
-
-class BlockLayout:
-    # ...
-    def layout(self):
-        # ...
-        self.width = style_length(
-            self.node, "width", self.parent.width)
-        # ...
-        self.height = style_length(
-            self.node, "height",
-            sum([child.height for child in self.children]))
-```
-
-And `InputLayout`:
-
-``` {.python}
-class InputLayout:
-    # ...
-    def layout(self):
-        # ...
-        self.width = style_length(
-            self.node, "width", INPUT_WIDTH_PX)
-        self.height = style_length(
-            self.node, "height", linespace(self.font))
-```
-
-And `InlineLayout`:
-
-``` {.python}
-class InlineLayout:
-    # ...
-    def layout(self):
-        self.width = style_length(
-            self.node, "width", self.parent.width)
-        # ...
-        self.height = style_length(
-            self.node, "height",
-            sum([line.height for line in self.children]))
-```
 
 ::: {.further}
-Since we've added support for setting the size of a layout object to
-be different than the sum of its children's sizes, it's easy for there to
-be a visual mismatch. What are we supposed to do if a `LayoutBlock` is not
-as tall as the text content within it? By default, browsers draw the content
-anyway, and it might or might not paint outside the block's box.
-This situation is called [*overflow*][overflow-doc]. There are various CSS
-properties, such as [`overflow`][overflow-prop], to control what to do in
-this situation. By far the most important (or complex, at least) value of
-this property is `scroll`.
-
-[overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow
-
+Scrolling of arbitray DOM elements is possible via the
+[`overflow`][overflow-prop] CSS propery, and in particular `overflow:scroll`.
 This value means, of course, for the browser to allow the user to scroll
 the content in order to see it; the parts that don't overlap the block
-are *clipped* out (we'll cover clipping later in this chater).
+are clipped out.
 
-Basic scrolling for DOM elements is very similar to the scrolling you already
-implemented in [Chapter 2](graphics.html#graphics-scrolling). But implementing
-it in its full generality, and with excellent performance, is *extremely*
-challenging. Scrolling is probably the single most complicated feature in a
-browser rendering engine. The corner cases and subtleties involved are almost
-endless.
+Basic scrolling for DOM elements is very similar to what we've just implemented.
+But implementing it in its full generality, and with excellent performance,
+is *extremely* challenging. Scrolling is probably the single most complicated
+feature in a browser rendering engine. The corner cases and subtleties involved
+are almost endless.
 :::
 
 [overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
-
-Now let's add (2D) transforms.[^3d-matrix] In computer graphics, a linear
-transformation of a point in a geometric space is usually represented by matrix
-multiplication. The same concept exists on the web in the `transform` CSS
-property. This property specifies a transform for a layout object's group when
-drawing into its parent group. There is a `matrix(...)` syntax for the value
-of `transform`, but we'll only implement `rotate(XXdeg)` and `translate(x,y)`,
-which are shorthands for rotation and translation matrices. Unlike sizing,
-transforms also apply to the entire element subtree.
-
-[^3d-matrix]: 3D is also supported in real browsers, but we'll only discuss 2D
-matrices in this chapter. There is a lot more complexity to 3D transforms
-having to do with the definition of 3D spaces, flatting, backfaces, and plane
-intersections.
-
-[^except-scrolling]: The only exception is that transforms contribute to
-[scrollable overflow](https://drafts.csswg.org/css-overflow/#scrollable),
-though we won't implement that.
-
-By default, the origin of the coordinate space in which the transform applies is
-the center of the layout object's rectangular bounds.[^transform-origin] The
-transform matrix specfied by the `transform` property
-[maps][applying-a-transform] each of the four points to a new 2D pixel location,
-and then blends them into the parent group at that location. You
-can think of it also doing roughly the same thing for the pixels inside the
-group.[^filter-transform]
-
-[^transform-origin]: As you might expect, there is a CSS property called
-`transform-origin` that allows changing this default.
-
-[applying-a-transform]: https://drafts.csswg.org/css-transforms-1/#transform-rendering
-
-[^filter-transform]: In reality, methods of rastering a group across a transform
-is a nuanced topic. Generating high-quality results without visible blurring or
-distortion in these situations involves a number of considerations, such as the
-choice of filtering algorithms, pixel-snapping of lines and fonts, and how to
-handle pixels near the edges. We won't discuss any of that here.
-
-Transforms are almost entirely a visual effect, and do not affect layout.
-[^except-scrolling] 
-
-This example:
-
-    <div style="width:200px;height:200px;
-        transform:rotate(10deg);background-color:lightblue">
-    </div>
-
-paints like this:
-
-<div style="width:200px;height:200px;
-        transform:rotate(10deg);background-color:lightblue">
-</div>
-
-As mentioned earlier, we'll need to use `save` and `restore`
-to implement transforms. Let's start by adding two new disply list commands for
-them:
-
-``` {.python}
-class Save:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        canvas.save()
-
-class Restore:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        canvas.restore()
-```
-
-Next, parse the `transform` property:
-
-``` {.python}
-def parse_rotation_transform(transform_str):
-    left_paren = transform_str.find('(')
-    right_paren = transform_str.find('deg)')
-    return float(transform_str[left_paren + 1:right_paren])
-
-def parse_translate_transform(transform_str):
-    left_paren = transform_str.find('(')
-    right_paren = transform_str.find(')')
-    (x_px, y_px) = \
-        transform_str[left_paren + 1:right_paren].split(",")
-    return (float(x_px[:-2]), float(y_px[:-2]))
-
-def parse_transform(transform_str):
-    if transform_str.find('translate') >= 0:
-        return (parse_translate_transform(transform_str), None)
-    elif transform_str.find('rotate') >= 0:
-        return (None, parse_rotation_transform(transform_str))
-    else:
-        return (None, None)
-```
-
-Also add the "," character to the list of characters in a CSS word:
-
-``` {.python}
-class CSSParser:
-    # ...
-            if cur.isalnum() or cur in ",/#-.%()\"'" \
-```
-
-Then we need paint it into the display list (we need to `Save` before rotating,
-to only rotate the element and its subtree, not the rest of the output). For
-that, introduce a new method `paint_visual_efects` that is called by
-`paint` for each layout object class.
-
-``` {.python}
-def paint_visual_effects(node, display_list, rect):
-    restore_count = 0
-
-    transform_str = node.style.get("transform", "")
-    if transform_str:
-        display_list.append(Save(rect))
-        restore_count = restore_count + 1
-        (translation, rotation) = parse_transform(transform_str)
-        if translation:
-            (x, y) = translation
-            display_list.append(Translate(x, y, rect))
-        elif rotation:
-            display_list.append(Rotate(rotation, rect))
-```
-
-The change to `paint` for `BlockLayout` looks like this:
-
-``` {.python}
-class BlockLayout:
-    # ...
-    def paint(self, display_list):
-        # ...
-        restore_count = paint_visual_effects(
-            self.node, display_list, rect)
-
-        paint_background(self.node, display_list, rect)
-
-        for child in self.children:
-            child.paint(display_list)
-        # ...
-        for i in range(0, restore_count):
-            display_list.append(Restore(rect))
-```
-
-Note how we kept track of a `restore_count` variable, and called `Restore` that
-many times. At the moment, `restore_count` can only be 0 or 1, but later on it
-might be higher. Another thing you should notice is that the recursive
-calls to `child.paint` happen *before* `Restore`, which makes sense---a
-transform applies to the entire subtree's groups, not just the current layout
-object.
-
-
-The implementation of `Rotate` in Skia looks like this:
-
-``` {.python}
-class Rotate:
-    def __init__(self, degrees, rect):
-        self.degrees = degrees
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        paint_rect = skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top() - scroll,
-            self.rect.right(), self.rect.bottom() - scroll)
-        (center_x, center_y) = center_point(paint_rect)
-        canvas.translate(center_x, center_y)
-        canvas.rotate(self.degrees)
-        canvas.translate(-center_x, -center_y)
-```
-
-Note how we first translated to put the center of the layout object at the
-origin before rotating (this is the negative translation), then rotation, then
-translated back.
-
-Anther strange thing to get used to is that the transforms seem to be in the
-wrong order---didn't we say that first translation to apply is the negative
-one? Yes, but the way canvas APIs work is that all *preceding* transforms,
-clips etc apply to later commands. And they apply "inside-out", meaning last
-one first.
-[^transforms-hard]
-
-[^transforms-hard]: This is also how matrix math is represented in mathematics.
-Nevertheless, I find it very hard to remember this when programming! When in
-doubt, work through an example, and remember that the computer is your friend to
-test if the results look correct.
-
-Finally, here is `Translate` as well:
-
-``` {.python}
-class Translate:
-    def __init__(self, x, y, rect):
-        self.x = x
-        self.y = y
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        paint_rect = skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top() - scroll,
-            self.rect.right(), self.rect.bottom() - scroll)
-        canvas.translate(self.x, self.y)
-```
-
-Bonus material: Background images
-=================================
-
-Note: this section is not critical this chapter's core concepts of pixels,
-blending and surfaces. If you want, you can skip this section and not lose out
-on any core concepts. But basic support for images is a fun (as they say, an
-image is worth a thousand words) addition to the browser, so I wanted to
-include it anyway.
-
-A background image is specified in CSS via the `background-image` CSS property.
-Its full syntax has[many options][background-image], so let's just implement a
-simple version of it. We'll support the `background-image: url
-("relative-url")` syntax, which says to draw an image as the background of an
-element, with the given relative URL.
-
-[background-image]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
-
-Here is an example:
-
-    <div style="width:256px;height:256px;background-image:
-            url('/avatar.png')">
-    </div>
-
-It paints like this:[^exact-size]
-
-<div style="width:256px;height:256px;background-image:url('/avatar.png')"></div>
-
-[^exact-size]: Note that I cleverly chose the width and height of the `div` to
-be exactly `256px`, the dimensions of the JPEG image.
-
-To implement this property, first we'll need to load the background image,
-if specified by CSS, and store it on the `node`:
-
-``` {.python}
-def parse_style_url(url_str):
-    return url_str[5:][:-2]
-
-def style(node, rules, url):
-    # ...
-    if node.style.get('background-image'):
-        node.background_image = \
-            get_image(parse_style_url(
-                node.style.get('background-image')), url)
-    for child in node.children:
-        style(child, rules, url)
-```
-
-This does not yet define the `get_image` function; I'll get to that in a moment.
-This function is in charge of downloading the image and decoding it.
-
-To make non-relative URLs work, we'll also need to modify the CSS parser,
-because these URLs start with "https://" or "http://". Since they contain
-the ":" character, this will confuse the parser because it thinks it's the
-property-value delimiter of CSS. We can fix that by tracking whether we're
-inside a quote---if so, we treat the ":" character as part of a word;
-otherwise, not.[^only-single-quote]
-
-[^only-single-quote]: We're only adding support for single quotes here, but
-double quotes are accepted in real CSS. Single and double quotes can be
-interchanged in CSS and JavaScript, just like in Python.
-
-``` {.python expected=False}
-class CSSParser:
-    # ...
-    def word(self):
-        start = self.i
-        in_quote = False
-        while self.i < len(self.s):
-            cur = self.s[self.i]
-            if cur == "'":
-                in_quote = not in_quote
-            if cur.isalnum() or cur in "/#-.%()\"'" \
-                or (in_quote and cur == ':'):
-                self.i += 1
-            else:
-                break
-        assert self.i > start
-        return self.s[start:self.i]
-```
-
-Now let's figure out how to load the image URL. To do this we'll have to start
-by augmenting the `request` function to support binary image content types
-(currently it only supports `text/html` and `text/css` encoded in `utf-8`). A
-PNG image, for instance, has the content type `image/png`, and is of course not
-`utf-8`, it's an encoded PNG file. To fix this, we will need to decode in
-smaller chunks: the status line and headers are still `utf-8`, but the body
-encoding depends on the image type.
-
-First, when we read from the socket with `makefile`, pass the argument
-`b` instead of `r` to request raw bytes as output:
-
-``` {.python}
-def request(url, top_level_url, payload=None):
-    # ...
-    response = s.makefile("b")
-    # ...
-```
-
-Now you'll need to call `decode` every time you read from the file.
-First, when reading the status line:
-
-``` {.python}
-def request(url, top_level_url, payload=None):
-    # ...
-    statusline = response.readline().decode("utf8")
-    # ...
-```
-
-Then, when reading the headers:
-
-``` {.python}
-def request(url, top_level_url, payload=None):
-    # ...
-    while True:
-        line = response.readline().decode("utf8")
-        # ...
-    # ...
-```
-
-And finally, when reading the response, we check for the `Content-Type`, and
-only decode[^image-decode] it as `utf-8` if it starts with `text/`:
-
-``` {.python}
-def request(url, top_level_url, payload=None):
-    # ...
-    if headers.get(
-        'content-type', 
-        'application/octet-stream').startswith("text"):
-        body = response.read().decode("utf8")
-    else:
-        body = response.read()
-    # ...
-```
-
-While we're at it, add theh `Content-Type` header to the server response:
-
-``` {.python file=server}
-def handle_connection(conx):
-    # ...
-    response = "HTTP/1.0 {}\r\n".format(status)
-    response += "Content-Type: text/html\r\n"
-    # ...
-```
-
-[^image-decode]: Not to be confused with image decoding, which will be done 
-later.
-
-Now we are ready to actually load the images. This will involve calling
-`request` and then decoding the image. Images are sent over the network in one
-of many optimized encoding formats, such as PNG or JPEG; when we need to draw
-them to the screen, we need to convert from the encoded format into a raw array
-of pixels. These pixels can then be efficiently drawn onto the screen.
-[^image-decoding]
-
-[^image-decoding]: While image decoding technologies are beyond the
-scope of this book, it's very important for browsers to make optimized use
-of image decoding, because the decoded bytes are often take up *much* more
-memory than the encoded representation. For a web page with a lot
-of images, it's easy to accidentally use up too much memory unless you're very
-careful.
-
-Here's how to load, decode and convert images into a `skia.Image` object.
-Note that there are two `Image` classes, which is a little confusing.
-The Pillow `Image` class's role is to decode the image, and the Skia `Image`
-class is an interface between the decoded bytes and Skia's internals. Note
-that nowhere do we pass the content type of the image (such as `image/png`)
-to a Pillow `Image`. Instead, the format is auto-detected by looking
-for content type [signatures] in the bytes of the encoded image.
-
-[signatures]: https://en.wikipedia.org/wiki/List_of_file_signatures
-
-``` {.python}
-def get_image(image_url, base_url):
-    header, body_bytes = request(
-        resolve_url(image_url, base_url), base_url)
-    picture_stream = io.BytesIO(body_bytes)
-
-    pil_image = PIL.Image.open(picture_stream)
-    if pil_image.mode == "RGBA":
-        pil_image_bytes = pil_image.tobytes()
-    else:
-        pil_image_bytes = pil_image.convert("RGBA").tobytes()
-    return skia.Image.frombytes(
-        array=pil_image_bytes,
-        dimensions=pil_image.size,
-        colorType=skia.kRGBA_8888_ColorType)
-```
-
-Now that the images are loaded, the next step is to paint them into the display
-list. We'll need a new display list object called `DrawImage`:
-
-``` {.python}
-class DrawImage:
-    def __init__(self, image, rect):
-        self.image = image
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        canvas.drawImage(
-            self.image, self.rect.left(),
-            self.rect.top() - scroll)
-```
-
-Then add a `DrawImage`, plus a few additional things, to a new
-`paint_background` function that also paints other parts of the background:
-
-
-``` {.python}
-def paint_background(node, display_list, rect):
-    bgcolor = node.style.get("background-color",
-                             "transparent")
-    if bgcolor != "transparent":
-        display_list.append(DrawRect(rect, bgcolor))
-
-    background_image = node.style.get("background-image")
-    if background_image:
-        display_list.append(Save(rect))
-        display_list.append(ClipRect(rect))
-        display_list.append(DrawImage(node.background_image,
-            rect))
-        display_list.append(Restore(rect))
-```
-
-This will need to be called from each of the layout object types. Here is
-`BlockLayout`:
-
-``` {.python expected=False}
-class BlockLayout:
-    # ...
-    def paint(self, display_list):
-        # ...
-        paint_background(self.node, display_list, rect)
-        
-        for child in self.children:
-            child.paint(display_list)
-```
-
-Here we're not just drawing the image though, we're also clipping it to the
-size of the layout object. This example should clip out parts of the image:
-
-    <div style="width:100px; height:100px;background-image:
-        url('/avatar.png')">
-    </div>
-
-Like this:
-
-<div style="width:100px; height:100px;background-image:url('/avatar.png')">
-</div>
-
-The `ClipRect` class looks like this:
-
-``` {.python}
-class ClipRect:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        canvas.clipRect(skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top() - scroll,
-            self.rect.right(), self.rect.bottom() - scroll))
-```
-
-Note how the background image is painted *before* children, just like
-`background-color`.[^paint-order]
-
-Ok, we can now put background images on an element of any size, and the image
-will be clipped if it's too big (and it'll reveal the background color or
-backdrop if it's too small). But as soon as you're trying to make a web page
-(such as an extension to the guest book to show an avatar image), the fact that
-you can't resize the image to fit the size of the element is pretty annoying,
-because the only way to fix it is to manually resize the image with a utility
-program and store an additional image of the new size on the server.
-
-To fix this situation, let's add support for
-[`background-size:contain`][background-size], which
-means "scale the image so it fits in the size of the element". This is super
-easy to implement in Skia, by using the `drawImageRect` method. This method
-takes two extra `skia.Rect` arguments: a source rect and a destination rect.
-It takes the parts of the image bitmap within the source rect and rescales
-it as necessary to fit into the destination rect.
-p
-[background-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
-
-This modified example:
-
-    <div style="width:100px; height:100px;background-image:
-        url('/avatar.png');background-size:contain">
-    </div>
-
-Paints like:
-
-<div style="width:100px; height:100px;
-    background-image:url('/avatar.png');background-size:contain">
-</div>
-
-The code to add it requires a slight tweak to `paint_background` (note how
-we were able to optimize away the save and clip):
-
-``` {.python}
-def paint_background(node, display_list, rect):
-    # ...
-    if background_image:
-        background_size = node.style.get("background-size")
-        if background_size and background_size == "contain":
-            display_list.append(DrawImageRect(node.background_image, rect))
-        else:
-            display_list.append(Save(rect))
-            display_list.append(ClipRect(rect))
-            display_list.append(DrawImage(node.background_image,
-                rect))
-            display_list.append(Restore(rect))
-```
-
-and a new display list command:
-
-``` {.python}
-class DrawImageRect:
-    def __init__(self, image, rect):
-        self.image = image
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        source_rect = skia.Rect.Make(self.image.bounds())
-        dest_rect = skia.Rect.MakeLTRB(
-            self.rect.left(),
-            self.rect.top() - scroll,
-            self.rect.right(),
-            self.rect.bottom() - scroll)
-        canvas.drawImageRect(
-            self.image, source_rect, dest_rect)
-```
-
-::: {.further}
-
-There are a lot more options in the specification for the different ways to
-account for this, via additional CSS properties like 
-[`background-repeat`][background-repeat].
-
-[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size
-[background-repeat]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-repeat
-
-In addition to these considerations, there are also cases where we want to scale
-the image to match the size of its container. This is a somewhat complex
-topic---there are various algorithms for [image scaling][image-rendering] to
-choose from, each with pros and cons.
-
-[image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
-
-:::
-
-[^paint-order]: In its full generality, the *paint order* of drawing backgrounds and other
-painted aspects of a single element, and the interaction of its paint order
-with painting descendants, is [quite complicated][paint-order-stacking-context].
-
-[paint-order-stacking-context]: https://www.w3.org/TR/CSS2/zindex.html
-
 
 Summary
 =======
@@ -1965,12 +1330,10 @@ Summary
 So there you have it. Now we don't have just a boring browser that can only
 draw simple input boxes plus text. It now supports:
 
-* Arbitrary position and size of boxes
-* Background images
 * Opacity
 * Blending
 * Non-rectangluar clips
-* 2D transforms
+* Surfaces for scrolling and animations
 
 ::: {.further}
 [This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
@@ -2017,34 +1380,49 @@ its parent stacking context.
 
  [elaborate]: https://www.w3.org/TR/CSS2/zindex.html
 
-*Filters* The `filter` CSS property allows specifying various kinds of more
+*Filters*: The `filter` CSS property allows specifying various kinds of more
  [complex effects][filter-css], such as grayscale or blur. Try to implement as
  many of these as you can. A number of them (including blur and drop shadow)
  have built-in support in Skia.
 
-*Overflow clipping*: As mentioned at the end of the section introducing the
-`width` and `height` CSS properties, sizing boxes with CSS means that the
-contents of a layout object can exceed its size. Implement the `clip` value of
-the `overflow` CSS property. When set, this should clip out the parts
-of the content that exceed the box size of the element.
+*Width and height*: Add support for setting the [width][width-css] and
+[height][height-css] of block elements. This should be a straightforward
+modification of the `layout` method to override the `width` and `height`
+properties on a `LayoutBlock`.
+
+[width-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/width
+
+[height-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/height
+
+*Overflow clipping*: (this exercise builds on sizing) Since we've added support
+ for setting the size of a layout object to be different than the sum of its
+ children's sizes, it's easy for there to be a visual mismatch. What are we
+ supposed to do if a `LayoutBlock` is not as tall as the text content within
+ it? By default, browsers draw the content anyway, and it might or might not
+ paint outside the block's box. This situation is called
+ [*overflow*][overflow-doc]. The [`overflow`][overflow-prop] CSS property
+ allows control for what to do in this situation. Implement
+ the `clip` value of the `overflow` CSS property. When set, this should clip out
+ the parts of the content that exceed the box size of the element.
 
 [filter-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
 
 *Overflow scrolling*: (this exercise builds on overflow clipping) Implement a
  very basic version of the `scroll` value of the `overflow` CSS property.
  You'll need to have a way to actually process input to cause scrolling, and
- also keep track of the total height (and width, for horizontal scrolling!) of
+ also keep track of the total height (and width, for horizontal scrolling) of
  the [*layout overflow*][overflow-doc]. (Hint: one way to allow the user to
  scroll is to use built-in arrow key handlers that apply when the
  `overflow:scroll` element has focus.)
 
-*Image elements*: the `<img>` element is a way (the original way, back in the
-90s, in fact) to draw an image to the screen. The image URL is specified
-by the `src` attribute, it has inline layout, and is by default sized to the
-intrinsic size of the image, which is its bitmap dimensions. Before an image
-has loaded, it has 0x0 intrinsic sizing. Implement this element.
+ [overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow
 
-*Transform origin* Add support for some of the keywords of the
-[`transform-origin`][transform-origin] CSS property.
+*CSS transforms*: Add support for the 2D transforms of content, via the
+ [transform][transform-css] CSS property.[^3d] Scrolling can be seen as a
+ special case of transform, and adding support is relatively straightforward.
 
-[transform-origin]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform-origin
+[transform-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
+
+[^3d]: There is a lot more complexity to 3D transforms
+having to do with the definition of 3D spaces, flatting, backfaces, and plane
+intersections.
