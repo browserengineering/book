@@ -108,26 +108,6 @@ def color_to_sk_color(color):
     else:
         return skia.ColorBLACK
 
-def parse_rotation_transform(transform_str):
-    left_paren = transform_str.find('(')
-    right_paren = transform_str.find('deg)')
-    return float(transform_str[left_paren + 1:right_paren])
-
-def parse_translate_transform(transform_str):
-    left_paren = transform_str.find('(')
-    right_paren = transform_str.find(')')
-    (x_px, y_px) = \
-        transform_str[left_paren + 1:right_paren].split(",")
-    return (float(x_px[:-2]), float(y_px[:-2]))
-
-def parse_transform(transform_str):
-    if transform_str.find('translate') >= 0:
-        return (parse_translate_transform(transform_str), None)
-    elif transform_str.find('rotate') >= 0:
-        return (None, parse_rotation_transform(transform_str))
-    else:
-        return (None, None)
-
 def parse_blend_mode(blend_mode_str):
     if blend_mode_str == "multiply":
         return skia.BlendMode.kMultiply
@@ -185,20 +165,6 @@ class CircleMask:
 def center_point(rect):
     return (rect.left() + (rect.right() - rect.left()) / 2,
         rect.top() + (rect.bottom() - rect.top()) / 2)
-
-class Rotate:
-    def __init__(self, degrees, rect):
-        self.degrees = degrees
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        paint_rect = skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top() - scroll,
-            self.rect.right(), self.rect.bottom() - scroll)
-        (center_x, center_y) = center_point(paint_rect)
-        canvas.translate(center_x, center_y)
-        canvas.rotate(self.degrees)
-        canvas.translate(-center_x, -center_y)
 
 class Translate:
     def __init__(self, x, y, rect):
@@ -506,17 +472,6 @@ def paint_clip_path(node, display_list, rect):
 def paint_visual_effects(node, display_list, rect):
     restore_count = 0
     
-    transform_str = node.style.get("transform", "")
-    if transform_str:
-        display_list.append(Save(rect))
-        restore_count = restore_count + 1
-        (translation, rotation) = parse_transform(transform_str)
-        if translation:
-            (x, y) = translation
-            display_list.append(Translate(x, y, rect))
-        elif rotation:
-            display_list.append(Rotate(rotation, rect))
-
     blend_mode_str = node.style.get("mix-blend-mode")
     blend_mode = skia.BlendMode.kSrcOver
     if blend_mode_str:
@@ -767,13 +722,9 @@ class CSSParser:
 
     def word(self):
         start = self.i
-        in_quote = False
         while self.i < len(self.s):
             cur = self.s[self.i]
-            if cur == "'":
-                in_quote = not in_quote
-            if cur.isalnum() or cur in ",/#-.%()\"'" \
-                or (in_quote and cur == ':'):
+            if cur.isalnum() or cur in "/#-.%()\"'":
                 self.i += 1
             else:
                 break
