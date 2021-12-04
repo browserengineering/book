@@ -482,7 +482,7 @@ difficult, or perhaps impossible, in real-world physics.
 
 The most important type of color mixing is transparency. Skia, SDL,
 and many other color libraries account for transparency with a fourth
-channel *alpha*.[^alpha-history] An alpha of 0 means the pixel is
+*alpha* channel.[^alpha-history] An alpha of 0 means the pixel is
 fully transparent (meaning, no matter what the colors are, you can't
 see them anyway), and an alpha of 1 means a fully opaque like the ones
 we've been working with so far. When a pixel with alpha overlaps
