@@ -467,7 +467,7 @@ color of the top shape. But now we need more nuance.
 
 Many objects in nature are partially transparent: frosted glass,
 clouds, or colored paper, for example. Looking through one, you see
-two colors *blended* together. That's also why computer screens work:
+multiple colors *blended* together. That's also why computer screens work:
 the red, green, and blue lights [blend together][mixing] and appear to
 our eyes as another color. Designers use this effect[^mostly-models]
 in overlays, shadows, and tooltips, so our browser needs to support
