@@ -539,7 +539,7 @@ To handle this properly, browsers apply blending not to individual
 shapes but to a tree of [*stacking contexts*][stacking-context]. Each
 stacking context is rastered into a single 2D array of pixels and then
 blended into its parent stacking context. Note that to raster a
-stacking context you first need to raster in and child stacking
+stacking context you first need to raster it *and* its child stacking
 contexts, so they can be blended into the stacking context. In other
 words, rastering a web page requires a bottom-up traversal of the tree
 of stacking contexts.
