@@ -451,7 +451,7 @@ made.[^other-spaces]
 [^other-spaces]: The sRGB color space dates back to [CRT
 displays][CRT]. New technologies like LCD, LED, and OLED can display
 more colors, so CSS now includes [new syntax][color-spec] for
-expressing these new colors.
+expressing these new colors. All color spaces have a limited gamut of expressible colors.
 
 The job of a rasterization library is to determine the red, green, and
 blue intensity of each pixel on the screen, based on the
