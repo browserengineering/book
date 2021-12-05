@@ -1299,12 +1299,37 @@ with rounded corners would be infeasible.
 [hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
 [rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
 
-Surface compositing
+Browser compositing
 ===================
 
-TODO: explain how surfaces are also a primitive for using the GPU, to
-implement scrolling and other layering of browser and page UI.
+Chapter 2 introduced the Tkinter canvas associated with the browser window.
+Chapter 7 added in browser chrome, also drawing to the same canvas. Any time
+anything changed, we had to clear the canvas and draw everything from scratch.
+This is quite inefficient---ideally, pixels should be re-rastered only if their
+colors actually change, and pixels that "move around" on the screen, such as
+with scrolling, should not need re-raster either.
 
+Real browsers optimize these situations by using a technique I'll call
+*browser compositing*. The idea is to create a tree of explicitly cached
+ surfaces for different pieces of content. Whenever content needs to re-raster,
+ we'll re-raster only the surface for that ocntent, and then draw the entire
+ tree to the screen. For example, if we had a surface for browser chrome and a
+ surface for the `Tab`'s' contents, we'd only need to re-raster the `Tab`
+ surface if page contents needed update, and vice-versa. This will also allow
+ us to scroll the `Tab` without any raster at all---we can just apply an
+ adjusted transform on the surface when drawing it.
+
+Let's see how to implement this with Skia. We'll store two new surfaces on
+`Browser`: `chrome_surface` and `tab_surface`.[^multiple-tabs] These will
+raster independently, and draw into `skia_surface` with the `skia.Surface.draw`
+method. A call to the `translate` and `clipRect` methods on `skia_surface` will
+position and clip `tab_surface` according to scroll offset.
+
+[^multiple-tabs]: We could even store a different surface for each `Tab`; this
+would make switching between tabs faster. Real browsers don't do this, however,
+since storing the pixels for a surface uses up a lot of memory, and raster is
+fast enough in today's computers that switching between tabs is already quite
+fast.
 
 ::: {.further}
 Scrolling of arbitray DOM elements is possible via the
