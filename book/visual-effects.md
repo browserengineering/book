@@ -23,25 +23,22 @@ fast visual effects routines is fun, but it's outside the scope of
 this book, so we need a new graphics library. Let's use [Skia][skia],
 the library that Chromium uses. Unlike Tkinter, Skia doesn't handle
 inputs or create graphical windows, so we'll pair it with the
-[SDL][sdl] GUI library. We'll also add the [Pillow][pillow] library
-for handling images.
+[SDL][sdl] GUI library.
 
 [skia]: https://skia.org
 [sdl]: https://www.libsdl.org/
-[pillow]: https://python-pillow.org
 
 [^tkinter-before-gpu]: That's because Tk, the graphics library that
 Tkinter uses, dates from the early 90s, before high-performance
 graphics cards and GPUs became widespread.
 
-Start by installing [Pillow][install-pillow], [Skia][skia-python], and
+Start by installing [Skia][skia-python] and
 [SDL][sdl-python]:
 
-    pip3 install skia-python pysdl2 pysdl2-dll pillow
+    pip3 install skia-python pysdl2 pysdl2-dll
 
 [skia-python]: https://github.com/kyamagu/skia-python
 [sdl-python]: https://pypi.org/project/PySDL2/
-[install-pillow]: https://pillow.readthedocs.io/en/stable/installation.html
 
 ::: {.install}
 As elsewhere in this book, you may need to use `pip`, `easy_install`,
@@ -49,9 +46,8 @@ or `python3 -m pip` instead of `pip3` as your installer, or use your
 IDE's package installer. If you're on Linux, you'll need to install
 additional dependencies, like OpenGL and fontconfig. Also, you may not be
 able to install `pysdl2-dll`; you'll need to find SDL in your system
-package manager instead. Consult the [`pillow`][install-pillow],
-[`skia-python`][skia-python], and [`pysdl2`][sdl-python] web pages for
-more details.
+package manager instead. Consult the  [`skia-python`][skia-python] and
+[`pysdl2`][sdl-python] web pages for more details.
 :::
 
 Once installed, remove `tkinter` from your Python imports and replace them with:
@@ -60,7 +56,6 @@ Once installed, remove `tkinter` from your Python imports and replace them with:
 import ctypes
 import sdl2
 import skia
-import PIL.Image
 ```
 
 If any of these imports fail, you probably need to check that Skia and
@@ -1021,7 +1016,7 @@ that doesn't intersect a circle. XX is a percentage and defines the radius
 of the circle; the percentage is calibrated so that if the layout object was
 a perfect square, a 100% circle would inscribe the bounds of the square.
 
-Let's apply a circular mask to our image example:
+Let's apply a circular mask:
 
     <div style="width:256px; height:256px;
         clip-path:circle(50%);background-color:lightblue">
@@ -1256,12 +1251,6 @@ expose whether they are used to the caller.
 
 [^see-chap-1]: This is basically the same optimization as we added in Chapter
 1 to avoid painting offscreen text.
-
-Our journey though compositing and blending modes is now complete, and we're
-almost ready to make our guest book look more fun. But there's one visual
-conspicuously missing that would make it much more interesting---images.
-Images are visual, but aren't really effects...but hey, thet are worth a
-thousand words each, so let's add them anyway.
 
 ::: {.further}
 
