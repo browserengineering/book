@@ -1079,9 +1079,9 @@ class Browser:
                 math.ceil(tab_bounds.right()),
                 math.ceil(tab_bounds.bottom()))
 
-        with self.tab_surface as tab_canvas:
-            tab_canvas.clear(skia.ColorWHITE)
-            active_tab.raster(tab_canvas)
+        tab_canvas = self.tab_surface.getCanvas()
+        tab_canvas.clear(skia.ColorWHITE)
+        active_tab.raster(tab_canvas)
 
         self.raster_browser_chrome()
 

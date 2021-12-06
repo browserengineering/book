@@ -25,11 +25,13 @@ Opacity can be applied.
     >>> browser = lab11.Browser()
     >>> browser.load(size_and_opacity_url)
     >>> browser.tab_surface.printTabCommands()
+    clear(color=ffffffff)
     saveLayer(color=80000000, alpha=128)
-    drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
-    drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
-    drawString(text=Text, x=13.0, y=136.10546875, color=ff000000)
+    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawString(text=Text, x=13.0, y=36.10546875, color=ff000000)
     restore()
+    drawString(text=), x=13.0, y=58.44921875, color=ff000000)
 
 So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
 
@@ -43,17 +45,19 @@ So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
     >>> browser = lab11.Browser()
     >>> browser.load(size_and_mix_blend_mode_url)
     >>> browser.tab_surface.printTabCommands()
+    clear(color=ffffffff)
     saveLayer(color=ff000000, blend_mode=BlendMode.kMultiply)
-    drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
-    drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
-    drawString(text=Mult, x=13.0, y=136.10546875, color=ff000000)
+    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawString(text=Mult, x=13.0, y=36.10546875, color=ff000000)
     restore()
-    drawString(text=), x=13.0, y=158.44921875, color=ff000000)
+    drawString(text=), x=13.0, y=58.44921875, color=ff000000)
     saveLayer(color=ff000000, blend_mode=BlendMode.kDifference)
-    drawRect(rect=Rect(13, 162.688, 787, 185.031), color=ff0000ff)
-    drawRect(rect=Rect(13, 162.688, 787, 185.031), color=ff0000ff)
-    drawString(text=Diff, x=13.0, y=180.79296875, color=ff000000)
+    drawRect(rect=Rect(13, 62.6875, 787, 85.0312), color=ff0000ff)
+    drawRect(rect=Rect(13, 62.6875, 787, 85.0312), color=ff0000ff)
+    drawString(text=Diff, x=13.0, y=80.79296875, color=ff000000)
     restore()
+    drawString(text=), x=13.0, y=103.13671875, color=ff000000)
 
 Non-rectangular clips via `clip-path:circle` are supported.
 
@@ -70,14 +74,16 @@ make a canvas in which to draw the circular clip mask.
     >>> browser = lab11.Browser()
     >>> browser.load(size_and_clip_path_url)
     >>> browser.tab_surface.printTabCommands()
+    clear(color=ffffffff)
     saveLayer(color=ff000000)
-    drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
-    drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
-    drawString(text=Clip, x=13.0, y=136.10546875, color=ff000000)
+    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawString(text=Clip, x=13.0, y=36.10546875, color=ff000000)
     saveLayer(color=ff000000, blend_mode=BlendMode.kDstIn)
-    drawCircle(cx=400.0, cy=129.171875, radius=219.0114596388166, color=ffffffff)
+    drawCircle(cx=400.0, cy=29.171875, radius=219.0114596388166, color=ffffffff)
     restore()
     restore()
+    drawString(text=), x=13.0, y=58.44921875, color=ff000000)
 
 `border-radius` clipping is also supported.
 
@@ -94,12 +100,14 @@ radius equal to the `20px` radius specified above.
     >>> browser = lab11.Browser()
     >>> browser.load(size_and_border_radius_url)
     >>> browser.tab_surface.printTabCommands()
+    clear(color=ffffffff)
     save()
-    clipRRect(bounds=Rect(13, 118, 787, 140.344), radius=Point(11.1719, 11.1719))
-    drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
-    drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
-    drawString(text=Border-radius, x=13.0, y=136.10546875, color=ff000000)
+    clipRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(11.1719, 11.1719))
+    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawString(text=Border-radius, x=13.0, y=36.10546875, color=ff000000)
     restore()
+    drawString(text=), x=13.0, y=58.44921875, color=ff000000)
 
 Now let's test the example compositing and blend mode functions.
 
