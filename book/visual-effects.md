@@ -1344,23 +1344,22 @@ bounds.
 ``` {.python}
 class Browser:
     def draw(self):
-        with self.root_surface as root_canvas:
-            root_canvas = self.root_surface.getCanvas()
-            root_canvas.clear(skia.ColorWHITE)
-            
-            root_canvas.save()
-            root_canvas.clipRect(skia.Rect.MakeLTRB(
-                0, CHROME_PX, WIDTH, HEIGHT))
-            root_canvas.translate(
-                0, CHROME_PX- self.tabs[self.active_tab].scroll)
-            self.tab_surface.draw(root_canvas, 0, 0)
-            root_canvas.restore()
+        root_canvas = self.root_surface.getCanvas()
+        root_canvas.clear(skia.ColorWHITE)
+        
+        root_canvas.save()
+        root_canvas.clipRect(skia.Rect.MakeLTRB(
+            0, CHROME_PX, WIDTH, HEIGHT))
+        root_canvas.translate(
+            0, CHROME_PX- self.tabs[self.active_tab].scroll)
+        self.tab_surface.draw(root_canvas, 0, 0)
+        root_canvas.restore()
 
-            root_canvas.save()
-            root_canvas.clipRect(skia.Rect.MakeLTRB(
-                0, 0, WIDTH, CHROME_PX))
-            self.chrome_surface.draw(root_canvas, 0, 0)
-            root_canvas.restore()
+        root_canvas.save()
+        root_canvas.clipRect(skia.Rect.MakeLTRB(
+            0, 0, WIDTH, CHROME_PX))
+        self.chrome_surface.draw(root_canvas, 0, 0)
+        root_canvas.restore()
 
         # Copy the results to the SDL surface:
         # ...
@@ -1393,9 +1392,9 @@ class Browser:
                 math.ceil(tab_bounds.right()),
                 math.ceil(tab_bounds.bottom()))
 
-        with self.tab_surface as tab_canvas:
-            tab_canvas.clear(skia.ColorWHITE)
-            active_tab.raster(tab_canvas)
+        tab_canvas = self.tab_surface.getCanvas()
+        tab_canvas.clear(skia.ColorWHITE)
+        active_tab.raster(tab_canvas)
 
         self.raster_browser_chrome()
 

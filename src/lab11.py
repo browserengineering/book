@@ -1124,7 +1124,6 @@ class Browser:
 
     def draw(self):
         root_canvas = self.root_surface.getCanvas()
-        root_canvas = self.root_surface.getCanvas()
         root_canvas.clear(skia.ColorWHITE)
         
         root_canvas.save()
