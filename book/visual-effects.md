@@ -1304,41 +1304,42 @@ Browser compositing
 
 Chapter 2 introduced the Tkinter canvas associated with the browser window.
 Chapter 7 added in browser chrome, also drawing to the same canvas. Any time
-anything changed, we had to clear the canvas and draw everything from scratch.
-This is inefficient---ideally, pixels should be re-rastered only if their
-colors actually change, and pixels that "move around" on the screen, such as
-with scrolling, should not need re-raster either. When context is complex or
-the screen is large, the slowdown becomes visible, and also significantly
-drains laptop and mobile batteries.
+anything changed, we had to clear the canvasm and paint & raster everything
+from scratch. This is inefficient---ideally, pixels should be re-rastered only
+if their colors actually change, and pixels that "move around" on the screen,
+such as with scrolling, should not need re-raster either. When context is
+complex or the screen is large, the slowdown becomes visible, the browser takes
+up too much system memory, and laptop and mobile batteries are drained.
 
 Real browsers optimize these situations by using a technique I'll call
 *browser compositing*. The idea is to create a tree of explicitly cached
  surfaces for different pieces of content. Whenever content needs to re-raster,
- we'll re-raster only the surface for that ocntent, and then draw the entire
+ we'll re-raster only the surface for that content, and then draw the entire
  tree to the screen. For example, if we had a surface for browser chrome and a
- surface for the `Tab`'s' contents, we'd only need to re-raster the `Tab`
- surface if page contents needed update, and vice-versa. This will also allow
- us to scroll the `Tab` without any raster at all---we can just apply an
- adjusted transform on the surface when drawing it.
+ surface for the `Tab`'s contents, we'd only need to re-raster the `Tab`
+ surface if page contents needed update, and vice-versa. This technique
+ also allows us to scroll the `Tab` without any raster at all---we can just
+ apply an adjusted transform on the surface when drawing it.
 
 Let's see how to implement this with Skia. We'll store two new surfaces on
 `Browser`: `chrome_surface` and `tab_surface`.[^multiple-tabs] These will
 raster independently, in a new `raster` method on `Browser` and `Tab`, and draw
-into `root_surface` with the `skia.Surface.draw` method, via `Browser`'s `draw`
-method.
+into `root_surface` with the `skia.Surface.draw` method, via a renamed `draw`
+method on `Browser` (what used to be called `draw_to_screen`.
 
 [^multiple-tabs]: We could even store a different surface for each `Tab`; this
 would make switching between tabs faster. Real browsers don't do this, however,
 since storing the pixels for a surface uses up a lot of memory, and raster is
 fast enough in today's computers that switching between tabs is already quite
-fast.
+fast, compared with a human's typical ability to detect a delay in responding
+to a click.
 
-Implement modifications to `draw` (what used to be called `draw_to_screen`)
-first.  A call to the `translate` and `clipRect` methods on `root_surface`
-first shifts the `tab_surface` down by `CHROME_PX` and up by `-scroll`, then
-clips it to only the area of the window that doesn't overlap the browser
-chrome. Then `chrome_surface` is drawn, with a clip to also ensure it doesn't
-exceed its bounds.
+Implement modifications to `draw` first.  A call to the `translate` and
+`clipRect` methods on the canvas for `root_surface` first shifts the
+`tab_surface` down by `CHROME_PX` and up by `-scroll`, then clips it to only
+the area of the window that doesn't overlap the browser chrome. Then
+`chrome_surface` is drawn, with a clip to also ensure it doesn't exceed its
+bounds.
 
 ``` {.python}
 class Browser:
@@ -1366,14 +1367,15 @@ class Browser:
 ```
 
 Next up are the changes to introduce `raster`; this is mainly a refactoring
-and rename of the method previously called `draw`. On `Browser`. The only
-new tricky part is the need to make sure that `tab_surface` large enough
+and rename of the method previously called `draw`. The only
+new tricky part is the need to make sure that `tab_surface` is large enough
 to contain all of the web page contents.[^really-big-surface]
 
-[^really-big-surface]: For a very big web page, this means `tab_surface` can
-be much larger than the size of the SDL window. We'll ignore that, but a real
-browser would not. Real browsers optimize this to only paint and raster up
-to a certain distance from the visible parts of the surface.
+[^really-big-surface]: For a very big web page, this means `tab_surface` can be
+much larger than the size of the SDL window, and therefore take up a very large
+amount of memory. We'll ignore that, but a real browser would not. Real
+browsers optimize this to only paint and raster up to a certain distance from
+the visible parts of the surface.
 
 ``` {.python}
 class Browser:
@@ -1388,7 +1390,8 @@ class Browser:
                 tab_bounds.bottom() != self.tab_surface.height() or \
                 tab_bounds.right() != self.tab_surface.width():
             self.tab_surface = skia.Surface(
-                math.ceil(tab_bounds.right()), math.ceil(tab_bounds.bottom()))
+                math.ceil(tab_bounds.right()),
+                math.ceil(tab_bounds.bottom()))
 
         with self.tab_surface as tab_canvas:
             tab_canvas.clear(skia.ColorWHITE)
@@ -1406,11 +1409,11 @@ class Browser:
 
 On `Tab`, there are two changes other than renaming `draw` to `raster`: first,
 we no longer need to pass around the scroll offset to the `execute`
-methods:[^why-no-scroll]
+methods, or account for `CHROME_PX`:[^why-no-scroll]
 
 [^why-no-scroll]: Previously, we had baked the scroll offset into the display
 list, which is why it had to be re-painted on every scroll. Now we only need
-to re-run draw!
+to re-run draw, and the code here is simpler than before!
 
 ``` {.python}
 class Tab:
@@ -1457,12 +1460,14 @@ That isn't too hard either, but let's leave that for the next chapter.
 
 ::: {.further}
 In terms of conceptual phases of execution, our browser is now very close to
-real browsers: they paint display lists, break content up into different
-rastered surfaces, and finly draw the tree of surfaces to the screen. We only
-did it for browser chrome vs web content, but browsers allocate new surfaces
-for various different situations, such as implementing accelerated overflow
-scrolling and animations of certain CSS properties such as
-[transform][transform-link] and opacity that can be done without raster.
+real browsers: real browsers paint display lists, break content up into
+different rastered surfaces, and finally draw the tree of surfaces to the
+screen. We only did it for browser chrome vs web content, but browsers allocate
+new surfaces for various different situations, such as implementing accelerated
+overflow scrolling and animations of certain CSS properties such as
+[transform][transform-link] and opacity that can be done without raster, as
+long as the content being transformed or made transparent has its own surface
+in memory.
 
 In addition, real browsers use *tiling* to solve the problem of surfaces getting
 too big, or the desire to only re-raster the parts that actually changed
@@ -1471,7 +1476,7 @@ the name, the surface is broken up into a grid of tiles which have their own
 raster surface. Whenever content that intersects a tile changes its display
 list, the tile is re-rastered. Tiles are draw into their parent surface with
 an x and y offset according to their position in the grid. Tiles that are not
-on or "near"^[For example, scrolled just offscreen] the screen are not rastered
+on or "near"^[For example, scrolled just offscreen.] the screen are not rastered
 at all.
 
 Finally, all of this lends itself naturally to hardware acceleration with a GPU,

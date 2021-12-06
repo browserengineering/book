@@ -24,7 +24,7 @@ Opacity can be applied.
 
     >>> browser = lab11.Browser()
     >>> browser.load(size_and_opacity_url)
-    >>> browser.skia_surface.printTabCommands()
+    >>> browser.tab_surface.printTabCommands()
     saveLayer(color=80000000, alpha=128)
     drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
     drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
@@ -42,7 +42,7 @@ So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
 
     >>> browser = lab11.Browser()
     >>> browser.load(size_and_mix_blend_mode_url)
-    >>> browser.skia_surface.printTabCommands()
+    >>> browser.tab_surface.printTabCommands()
     saveLayer(color=ff000000, blend_mode=BlendMode.kMultiply)
     drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
     drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
@@ -69,7 +69,7 @@ make a canvas in which to draw the circular clip mask.
 
     >>> browser = lab11.Browser()
     >>> browser.load(size_and_clip_path_url)
-    >>> browser.skia_surface.printTabCommands()
+    >>> browser.tab_surface.printTabCommands()
     saveLayer(color=ff000000)
     drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
     drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)
@@ -93,7 +93,7 @@ radius equal to the `20px` radius specified above.
 
     >>> browser = lab11.Browser()
     >>> browser.load(size_and_border_radius_url)
-    >>> browser.skia_surface.printTabCommands()
+    >>> browser.tab_surface.printTabCommands()
     save()
     clipRRect(bounds=Rect(13, 118, 787, 140.344), radius=Point(11.1719, 11.1719))
     drawRect(rect=Rect(13, 118, 787, 140.344), color=ff0000ff)

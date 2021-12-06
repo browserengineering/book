@@ -1076,7 +1076,8 @@ class Browser:
                 tab_bounds.bottom() != self.tab_surface.height() or \
                 tab_bounds.right() != self.tab_surface.width():
             self.tab_surface = skia.Surface(
-                math.ceil(tab_bounds.right()), math.ceil(tab_bounds.bottom()))
+                math.ceil(tab_bounds.right()),
+                math.ceil(tab_bounds.bottom()))
 
         with self.tab_surface as tab_canvas:
             tab_canvas.clear(skia.ColorWHITE)
