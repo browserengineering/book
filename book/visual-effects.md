@@ -111,7 +111,7 @@ performance.
 ``` {.python}
 class Browser:
     def __init__(self):
-        self.skia_surface = skia.Surface(WIDTH, HEIGHT)
+        self.root_surface = skia.Surface(WIDTH, HEIGHT)
 ```
 
 Typically, we'll draw to the Skia surface, and then once we're done
@@ -119,11 +119,11 @@ with it we'll copy it to the SDL surface to display on the screen.
 This looks a little hairy but really it's just copying pixels from one
 place to another:
 
-``` {.python}
+``` {.python replace=draw_to_screen/draw}
 class Browser:
     def draw_to_screen(self):
-        # Raster the results and copy to the SDL surface:
-        skia_image = self.skia_surface.makeImageSnapshot()
+        # Copy the results to the SDL surface:
+        skia_image = self.root_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
 
@@ -268,7 +268,7 @@ colors. We'll be seeing a lot more features of `Paint` in this chapter.
 With these helper methods we can now upgrade our browser's drawing
 commands to use Skia:
 
-``` {.python}
+``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawText:
     def execute(self, scroll, canvas):
         draw_text(canvas, self.left, self.top - scroll,
@@ -288,10 +288,10 @@ method, so we'll need to go step by step.
 
 First, clear the canvas and and draw the current `Tab` into it:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def draw(self):
-        canvas = self.skia_surface.getCanvas()
+        canvas = self.root_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
 
         self.tabs[self.active_tab].draw(canvas)
@@ -299,7 +299,7 @@ class Browser:
 
 Then draw the browser UI elements. First, the tabs:
 
-``` {.python}
+``` {.python replace=draw%28/raster%28}
 class Browser:
     def draw(self):
         # ...
@@ -321,7 +321,7 @@ Next, the plus button for adding a new tab:[^move-plus]
     change from Tkinter to Skia changes how fonts are drawn, and the
     new *y* position keeps the plus centered in the box.
 
-``` {.python}
+``` {.python replace=draw%28/raster%28}
 class Browser:
     def draw(self):
         # ...
@@ -332,7 +332,7 @@ class Browser:
 
 Then the address bar, including text and cursor:
 
-``` {.python}
+``` {.python replace=draw%28/raster%28}
 class Browser:
     def draw(self):
         # ...
@@ -348,7 +348,7 @@ class Browser:
 
 And finally the "back" button:
 
-``` {.python}
+``` {.python replace=draw%28/raster%28}
 class Browser:
     def draw(self):
         # ...
@@ -360,7 +360,7 @@ class Browser:
 
 Once this is done, we need to copy from the Skia surface to the SDL window:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def draw(self):
         # ...
@@ -371,7 +371,7 @@ We've only got a few minor changes left elsewhere in the browser.
 `Tab` also has a `draw` method and draws a cursor; it needs to use
 `draw_line` for that:
 
-``` {.python}
+``` {.python replace=draw%28/raster%28,%20-%20self.scroll%20+%20CHROME_PX/}
 class Tab:
     def draw(self, canvas):
         if self.focus:
@@ -608,7 +608,7 @@ surface on the stack, and pop one off. To push a surface, you call
 indicate the kind of blending that is desird when popped. To pop, call
 `Restore`. Skia will keep track of the stack of surfaces for you, and perform
 blending when you call `Restore`. (In fact, the only surface we'll create
-explicitly is `Browser.skia_surface`).
+explicitly is `Browser.root_surface`).
 
 [^layer-surface]: It's called `SaveLayer` instead of `BeginSurface` because Skia
 doesn't actually promise to create a surface, it just promises not to keep
@@ -732,7 +732,7 @@ Let's implement `opacity`. The way to do this is to create a new surface with
 surface into the previous one. This will be our first occasion to use
 `saveLayer`, so let's define a display list command for it:
 
-``` {.python}
+``` {.python replace=%2c%20scroll/}
 class SaveLayer:
     def __init__(self, sk_paint, rect):
         self.sk_paint = sk_paint
@@ -1103,7 +1103,7 @@ creates a new source surface via `saveLayer` (and at the same time specifying a
 circle in white (or really any opaque color, it's only the alpha channel that
 matters).
 
-``` {.python}
+``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class CircleMask:
     def __init__(self, cx, cy, radius, rect):
         self.cx = cx
@@ -1201,7 +1201,7 @@ commands. [^refer-back-save]
 [^refer-back-save]: Recall from the [Surfaces and canvases]
 [#surfaces-and-canvases] section the difference between `Save` and `SaveLayer`.
 
-``` {.python}
+``` {.python replace=%2c%20scroll/}
 class Save:
     def __init__(self, rect):
         self.rect = rect
@@ -1217,7 +1217,7 @@ class Restore:
         canvas.restore()
 ```
 
-``` {.python}
+``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class ClipRRect:
     def __init__(self, rect, radius):
         self.rect = rect
@@ -1305,9 +1305,11 @@ Browser compositing
 Chapter 2 introduced the Tkinter canvas associated with the browser window.
 Chapter 7 added in browser chrome, also drawing to the same canvas. Any time
 anything changed, we had to clear the canvas and draw everything from scratch.
-This is quite inefficient---ideally, pixels should be re-rastered only if their
+This is inefficient---ideally, pixels should be re-rastered only if their
 colors actually change, and pixels that "move around" on the screen, such as
-with scrolling, should not need re-raster either.
+with scrolling, should not need re-raster either. When context is complex or
+the screen is large, the slowdown becomes visible, and also significantly
+drains laptop and mobile batteries.
 
 Real browsers optimize these situations by using a technique I'll call
 *browser compositing*. The idea is to create a tree of explicitly cached
@@ -1321,15 +1323,165 @@ Real browsers optimize these situations by using a technique I'll call
 
 Let's see how to implement this with Skia. We'll store two new surfaces on
 `Browser`: `chrome_surface` and `tab_surface`.[^multiple-tabs] These will
-raster independently, and draw into `skia_surface` with the `skia.Surface.draw`
-method. A call to the `translate` and `clipRect` methods on `skia_surface` will
-position and clip `tab_surface` according to scroll offset.
+raster independently, in a new `raster` method on `Browser` and `Tab`, and draw
+into `root_surface` with the `skia.Surface.draw` method, via `Browser`'s `draw`
+method.
 
 [^multiple-tabs]: We could even store a different surface for each `Tab`; this
 would make switching between tabs faster. Real browsers don't do this, however,
 since storing the pixels for a surface uses up a lot of memory, and raster is
 fast enough in today's computers that switching between tabs is already quite
 fast.
+
+Implement modifications to `draw` (what used to be called `draw_to_screen`)
+first.  A call to the `translate` and `clipRect` methods on `root_surface`
+first shifts the `tab_surface` down by `CHROME_PX` and up by `-scroll`, then
+clips it to only the area of the window that doesn't overlap the browser
+chrome. Then `chrome_surface` is drawn, with a clip to also ensure it doesn't
+exceed its bounds.
+
+``` {.python}
+class Browser:
+    def draw(self):
+        with self.root_surface as root_canvas:
+            root_canvas = self.root_surface.getCanvas()
+            root_canvas.clear(skia.ColorWHITE)
+            
+            root_canvas.save()
+            root_canvas.clipRect(skia.Rect.MakeLTRB(
+                0, CHROME_PX, WIDTH, HEIGHT))
+            root_canvas.translate(
+                0, CHROME_PX- self.tabs[self.active_tab].scroll)
+            self.tab_surface.draw(root_canvas, 0, 0)
+            root_canvas.restore()
+
+            root_canvas.save()
+            root_canvas.clipRect(skia.Rect.MakeLTRB(
+                0, 0, WIDTH, CHROME_PX))
+            self.chrome_surface.draw(root_canvas, 0, 0)
+            root_canvas.restore()
+
+        # Copy the results to the SDL surface:
+        # ...
+```
+
+Next up are the changes to introduce `raster`; this is mainly a refactoring
+and rename of the method previously called `draw`. On `Browser`. The only
+new tricky part is the need to make sure that `tab_surface` large enough
+to contain all of the web page contents.[^really-big-surface]
+
+[^really-big-surface]: For a very big web page, this means `tab_surface` can
+be much larger than the size of the SDL window. We'll ignore that, but a real
+browser would not. Real browsers optimize this to only paint and raster up
+to a certain distance from the visible parts of the surface.
+
+``` {.python}
+class Browser:
+        def raster(self):
+        active_tab = self.tabs[self.active_tab]
+
+        # Re-allocate the tab surface if its size changes.
+        tab_bounds = active_tab.display_list_bounds()
+        assert tab_bounds.top() >= 0
+        assert tab_bounds.left() >= 0
+        if not self.tab_surface or \
+                tab_bounds.bottom() != self.tab_surface.height() or \
+                tab_bounds.right() != self.tab_surface.width():
+            self.tab_surface = skia.Surface(
+                math.ceil(tab_bounds.right()), math.ceil(tab_bounds.bottom()))
+
+        with self.tab_surface as tab_canvas:
+            tab_canvas.clear(skia.ColorWHITE)
+            active_tab.raster(tab_canvas)
+
+        self.raster_browser_chrome()
+
+    def raster_browser_chrome(self):
+        canvas = self.chrome_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+    
+        # Draw the tabs UI:
+        # ...
+```
+
+On `Tab`, there are two changes other than renaming `draw` to `raster`: first,
+we no longer need to pass around the scroll offset to the `execute`
+methods:[^why-no-scroll]
+
+[^why-no-scroll]: Previously, we had baked the scroll offset into the display
+list, which is why it had to be re-painted on every scroll. Now we only need
+to re-run draw!
+
+``` {.python}
+class Tab:
+    def raster(self, canvas):
+        for cmd in self.display_list:
+            cmd.execute(canvas)
+
+        if self.focus:
+            obj = [obj for obj in tree_to_list(self.document, [])
+                   if obj.node == self.focus][0]
+            text = self.focus.attributes.get("value", "")
+            x = obj.x + obj.font.measureText(text)
+            y = obj.y
+            draw_line(canvas, x, y, x, y + obj.height)
+```
+
+Likewise, each of the display list commands should have the `scroll` parameter
+removed from their `execute` methods. Here's `DrawRect`, for example:
+
+``` {.python}
+class DrawRect:
+    def execute(self, canvas):
+        draw_rect(canvas,
+            self.left, self.top,
+            self.right, self.bottom,
+            fill=self.color, width=0)
+```
+
+The second is the new `display_list_bounds` method,
+which is used to determine the size of `tab_surface`:
+
+``` {.python}
+class Tab:
+    def display_list_bounds(self):
+        bounds = skia.Rect()
+        for cmd in self.display_list:
+            bounds.join(cmd.rect)
+        return bounds
+```
+
+As far as correctness goes, we're done! To get the desired performance in
+reality, we'd need to avoid `paint` and `raster` when they aren't needed.
+That isn't too hard either, but let's leave that for the next chapter.
+
+::: {.further}
+In terms of conceptual phases of execution, our browser is now very close to
+real browsers: they paint display lists, break content up into different
+rastered surfaces, and finly draw the tree of surfaces to the screen. We only
+did it for browser chrome vs web content, but browsers allocate new surfaces
+for various different situations, such as implementing accelerated overflow
+scrolling and animations of certain CSS properties such as
+[transform][transform-link] and opacity that can be done without raster.
+
+In addition, real browsers use *tiling* to solve the problem of surfaces getting
+too big, or the desire to only re-raster the parts that actually changed
+(instead of the whole surface, like our browser does). As you might guess from
+the name, the surface is broken up into a grid of tiles which have their own
+raster surface. Whenever content that intersects a tile changes its display
+list, the tile is re-rastered. Tiles are draw into their parent surface with
+an x and y offset according to their position in the grid. Tiles that are not
+on or "near"^[For example, scrolled just offscreen] the screen are not rastered
+at all.
+
+Finally, all of this lends itself naturally to hardware acceleration with a GPU,
+since surfaces (Skia ones [in particular][gpu-surface]) can be easily
+represented on the GPU, making the execution of `draw` extremely efficent.
+:::
+
+[gpu-surface]: https://kyamagu.github.io/skia-python/reference/skia.Surface.html
+
+[transform-link]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
 ::: {.further}
 Scrolling of arbitray DOM elements is possible via the
