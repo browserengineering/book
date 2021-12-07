@@ -10,7 +10,6 @@ import io
 import math
 import sdl2
 import skia
-import PIL.Image
 import socket
 import ssl
 import urllib.parse
@@ -265,31 +264,6 @@ class ClipRRect:
                     self.rect.bottom()),
                 self.radius, self.radius))
 
-class DrawImage:
-    def __init__(self, image, rect):
-        self.image = image
-        self.rect = rect
-
-    def execute(self, canvas):
-        canvas.drawImage(
-            self.image, self.rect.left(),
-            self.rect.top())
-
-class DrawImageRect:
-    def __init__(self, image, rect):
-        self.image = image
-        self.rect = rect
-
-    def execute(self, canvas):
-        source_rect = skia.Rect.Make(self.image.bounds())
-        dest_rect = skia.Rect.MakeLTRB(
-            self.rect.left(),
-            self.rect.top(),
-            self.rect.right(),
-            self.rect.bottom())
-        canvas.drawImageRect(
-            self.image, source_rect, dest_rect)
-
 INPUT_WIDTH_PX = 200
 
 class LineLayout:
@@ -502,18 +476,6 @@ def paint_background(node, display_list, rect):
                              "transparent")
     if bgcolor != "transparent":
         display_list.append(DrawRect(rect, bgcolor))
-
-    background_image = node.style.get("background-image")
-    if background_image:
-        background_size = node.style.get("background-size")
-        if background_size and background_size == "contain":
-            display_list.append(DrawImageRect(node.background_image, rect))
-        else:
-            display_list.append(Save(rect))
-            display_list.append(ClipRect(rect))
-            display_list.append(DrawImage(node.background_image,
-                rect))
-            display_list.append(Restore(rect))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -797,21 +759,6 @@ class CSSParser:
 def parse_style_url(url_str):
     return url_str[5:][:-2]
 
-def get_image(image_url, base_url):
-    header, body_bytes = request(
-        resolve_url(image_url, base_url), base_url)
-    picture_stream = io.BytesIO(body_bytes)
-
-    pil_image = PIL.Image.open(picture_stream)
-    if pil_image.mode == "RGBA":
-        pil_image_bytes = pil_image.tobytes()
-    else:
-        pil_image_bytes = pil_image.convert("RGBA").tobytes()
-    return skia.Image.frombytes(
-        array=pil_image_bytes,
-        dimensions=pil_image.size,
-        colorType=skia.kRGBA_8888_ColorType)
-
 def style(node, rules, url):
     node.style = {}
     for property, default_value in INHERITED_PROPERTIES.items():
@@ -833,10 +780,6 @@ def style(node, rules, url):
             computed_value = compute_style(node, property, value)
             node.style[property] = computed_value
     
-    if node.style.get('background-image'):
-        node.background_image = \
-            get_image(parse_style_url(
-                node.style.get('background-image')), url)
     for child in node.children:
         style(child, rules, url)
 
