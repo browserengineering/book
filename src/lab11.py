@@ -884,7 +884,7 @@ class Tab:
         bounds = skia.Rect()
         for cmd in self.display_list:
             bounds.join(cmd.rect)
-        return bounds
+        return bounds.roundOut()
 
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
@@ -1019,8 +1019,8 @@ class Browser:
                 tab_bounds.bottom() != self.tab_surface.height() or \
                 tab_bounds.right() != self.tab_surface.width():
             self.tab_surface = skia.Surface(
-                math.ceil(tab_bounds.right()),
-                math.ceil(tab_bounds.bottom()))
+                tab_bounds.right(),
+                tab_bounds.bottom())
 
         tab_canvas = self.tab_surface.getCanvas()
         tab_canvas.clear(skia.ColorWHITE)
@@ -1061,8 +1061,10 @@ class Browser:
 
         # Draw the back button:
         draw_rect(canvas, 10, 50, 35, 90)
-        path = skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
-        paint = skia.Paint(Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
+        path = \
+            skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
+        paint = skia.Paint(
+            Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
         canvas.drawPath(path, paint)
 
     def draw(self):
@@ -1083,13 +1085,14 @@ class Browser:
         self.chrome_surface.draw(root_canvas, 0, 0)
         root_canvas.restore()
 
-        # Copy the results to the SDL surface:
+        # This makes an image interface to the Skia surface, but
+        # doesn't actually copy anything yet.
         skia_image = self.root_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
 
-        depth = 32 # 4 bytes per pixel
-        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen
+        depth = 32 # 4 bytes per pixel.
+        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen.
         # Skia uses an ARGB format - alpha first byte, then
         # through to blue as the last byte.
         alpha_mask = 0xff000000
@@ -1102,6 +1105,7 @@ class Browser:
 
 
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
+        # SDL_BlitSurface is what actually does the copy.
         sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
