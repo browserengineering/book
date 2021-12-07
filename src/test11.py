@@ -215,10 +215,10 @@ class MockSkiaSurface:
         count = 0
         total = len(self.canvas.commands)
         for command in self.canvas.commands:
-            if count == total - 12:
-                break
-            if count > 0:
-                print(command)
+            print(command)
             count = count + 1
+
+    def draw(self, canvas, x, y):
+        pass
 
 skia.Surface = MockSkiaSurface

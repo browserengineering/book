@@ -129,21 +129,21 @@ class SaveLayer:
         self.sk_paint = sk_paint
         self.rect = rect
 
-    def execute(self, scroll, canvas):
+    def execute(self, canvas):
         canvas.saveLayer(paint=self.sk_paint)
 
 class Save:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, canvas):
+    def execute(self, canvas):
         canvas.save()
 
 class Restore:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, canvas):
+    def execute(self, canvas):
         canvas.restore()
 
 class CircleMask:
@@ -153,11 +153,11 @@ class CircleMask:
         self.radius = radius
         self.rect = rect
 
-    def execute(self, scroll, canvas):
+    def execute(self, canvas):
         canvas.saveLayer(paint=skia.Paint(
             Alphaf=1.0, BlendMode=skia.kDstIn))
         canvas.drawCircle(
-            self.cx, self.cy - scroll,
+            self.cx, self.cy,
             self.radius, skia.Paint(Color=skia.ColorWHITE))
         canvas.restore()
 
@@ -171,10 +171,10 @@ class Translate:
         self.y = y
         self.rect = rect
 
-    def execute(self, scroll, canvas):
+    def execute(self, canvas):
         paint_rect = skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top() - scroll,
-            self.rect.right(), self.rect.bottom() - scroll)
+            self.rect.left(), self.rect.top(),
+            self.rect.right(), self.rect.bottom())
         canvas.translate(self.x, self.y)
 
 class DrawText:
@@ -188,8 +188,8 @@ class DrawText:
         self.text = text
         self.color = color
 
-    def execute(self, scroll, canvas):
-        draw_text(canvas, self.left, self.top - scroll,
+    def execute(self, canvas):
+        draw_text(canvas, self.left, self.top,
             self.text, self.font)
 
     def __repr__(self):
@@ -204,10 +204,10 @@ class DrawRect:
         self.right = rect.right()
         self.color = color
 
-    def execute(self, scroll, canvas):
+    def execute(self, canvas):
         draw_rect(canvas,
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
+            self.left, self.top,
+            self.right, self.bottom,
             fill=self.color, width=0)
 
     def __repr__(self):
@@ -244,24 +244,24 @@ class ClipRect:
     def __init__(self, rect):
         self.rect = rect
 
-    def execute(self, scroll, canvas):
+    def execute(self, canvas):
         canvas.clipRect(skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top() - scroll,
-            self.rect.right(), self.rect.bottom() - scroll))
+            self.rect.left(), self.rect.top(),
+            self.rect.right(), self.rect.bottom()))
 
 class ClipRRect:
     def __init__(self, rect, radius):
         self.rect = rect
         self.radius = radius
 
-    def execute(self, scroll, canvas):
+    def execute(self, canvas):
         canvas.clipRRect(
             skia.RRect.MakeRectXY(
                 skia.Rect.MakeLTRB(
                     self.rect.left(),
-                    self.rect.top() - scroll,
+                    self.rect.top(),
                     self.rect.right(),
-                    self.rect.bottom() - scroll),
+                    self.rect.bottom()),
                 self.radius, self.radius))
 
 INPUT_WIDTH_PX = 200
@@ -791,6 +791,7 @@ class Tab:
         self.history = []
         self.focus = None
         self.url = None
+        self.scroll = 0
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -867,19 +868,23 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-    def draw(self, canvas):
+    def raster(self, canvas):
         for cmd in self.display_list:
-            if cmd.rect.top() > self.scroll + HEIGHT - CHROME_PX: continue
-            if cmd.rect.bottom() < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, canvas)
+            cmd.execute(canvas)
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
                    if obj.node == self.focus][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measureText(text)
-            y = obj.y - self.scroll + CHROME_PX
+            y = obj.y
             draw_line(canvas, x, y, x, y + obj.height)
+
+    def display_list_bounds(self):
+        bounds = skia.Rect()
+        for cmd in self.display_list:
+            bounds.join(cmd.rect)
+        return bounds
 
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
@@ -950,7 +955,9 @@ class Browser:
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-        self.skia_surface = skia.Surface(WIDTH, HEIGHT)
+        self.root_surface = skia.Surface(WIDTH, HEIGHT)
+        self.chrome_surface = skia.Surface(WIDTH, HEIGHT)
+        self.tab_surface = None
 
         self.tabs = []
         self.active_tab = None
@@ -998,13 +1005,32 @@ class Browser:
         new_tab.load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)
+        self.raster()
         self.draw()
 
-    def draw(self):
-        canvas = self.skia_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
+    def raster(self):
+        active_tab = self.tabs[self.active_tab]
 
-        self.tabs[self.active_tab].draw(canvas)
+        # Re-allocate the tab surface if its size changes.
+        tab_bounds = active_tab.display_list_bounds()
+        assert tab_bounds.top() >= 0
+        assert tab_bounds.left() >= 0
+        if not self.tab_surface or \
+                tab_bounds.bottom() != self.tab_surface.height() or \
+                tab_bounds.right() != self.tab_surface.width():
+            self.tab_surface = skia.Surface(
+                math.ceil(tab_bounds.right()),
+                math.ceil(tab_bounds.bottom()))
+
+        tab_canvas = self.tab_surface.getCanvas()
+        tab_canvas.clear(skia.ColorWHITE)
+        active_tab.raster(tab_canvas)
+
+        self.raster_browser_chrome()
+
+    def raster_browser_chrome(self):
+        canvas = self.chrome_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
     
         # Draw the tabs UI:
         tabfont = skia.Font(skia.Typeface('Arial'), 20)
@@ -1039,11 +1065,26 @@ class Browser:
         paint = skia.Paint(Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
         canvas.drawPath(path, paint)
 
-        self.draw_to_screen()
+    def draw(self):
+        root_canvas = self.root_surface.getCanvas()
+        root_canvas.clear(skia.ColorWHITE)
+        
+        root_canvas.save()
+        root_canvas.clipRect(skia.Rect.MakeLTRB(
+            0, CHROME_PX, WIDTH, HEIGHT))
+        root_canvas.translate(
+            0, CHROME_PX- self.tabs[self.active_tab].scroll)
+        self.tab_surface.draw(root_canvas, 0, 0)
+        root_canvas.restore()
 
-    def draw_to_screen(self):
-        # Raster the results and copy to the SDL surface:
-        skia_image = self.skia_surface.makeImageSnapshot()
+        root_canvas.save()
+        root_canvas.clipRect(skia.Rect.MakeLTRB(
+            0, 0, WIDTH, CHROME_PX))
+        self.chrome_surface.draw(root_canvas, 0, 0)
+        root_canvas.restore()
+
+        # Copy the results to the SDL surface:
+        skia_image = self.root_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
 
