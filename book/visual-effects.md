@@ -270,7 +270,7 @@ commands to use Skia:
 class DrawText:
     def execute(self, scroll, canvas):
         draw_text(canvas, self.left, self.top - scroll,
-            self.text, self.font)
+            self.text, self.font, self.color)
 
 class DrawRect:
     def execute(self, scroll, canvas):
@@ -701,7 +701,7 @@ no longer just a linear sequence of drawing operations, but a tree.
 The `SaveLayer` drawing operation reflects this by taking a sequence
 of other drawing commands as an argument:
 
-``` {.python replace=%2c%20scroll/}
+``` {.python replace=scroll%2c%20/}
 class SaveLayer:
     def __init__(self, sk_paint, cmds):
         self.sk_paint = sk_paint
@@ -940,7 +940,7 @@ def parse_blend_mode(blend_mode_str):
     else:
         return skia.BlendMode.kSrcOver
 
-def paint_visual_effects(node, display_list, rect):
+def paint_visual_effects(node, cmds, rect):
     # ...
 
     blend_mode_str = node.style.get("mix-blend-mode")
@@ -1001,8 +1001,8 @@ is quite complicated, so let's just implement circular clips via the
 That HTML looks like this:
 
 <div style="clip-path:circle(20px);background-color:lightblue">
-    This test text exists here to ensure that the "div" element is
-    large enough that a reasonably large circle is drawn to your screen.
+This test text exists here to ensure that the "div" element is
+large enough that a reasonably large circle is drawn to your screen.
 </div>
 
 Here, the percentage defines the radius of the circle, and is
@@ -1052,7 +1052,7 @@ def paint_visual_effects(node, cmds, rect):
     # ...
     clip_path = node.style.get("clip-path", "")
     circle_radius = parse_clip_path(clip_path)
-    if percent_circle_clip:
+    if circle_radius:
         width = rect.right() - rect.left()
         height = rect.bottom() - rect.top()
         center_x = rect.left() + width / 2
@@ -1063,9 +1063,9 @@ Next, we'll draw a circle on a new surface:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
-    if percent_circle_clip:
+    if circle_radius:
         # ...
-        mask_cmds = [DrawCircle(center_x, center_y, radius, skia.ColorWHITE)]
+        mask_cmds = [DrawCircle(center_x, center_y, circle_radius, skia.ColorWHITE)]
 ```
 
 Here I chose to draw the circle in white, but the color doesn't matter
@@ -1099,10 +1099,10 @@ for the element, and one for the mask:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
-    if percent_circle_clip:
+    if circle_radius:
         # ...
         paint = skia.Paint(BlendMode=skia.kDstIn)
-        cmds.append(SaveLayer(paint, mask))
+        cmds.append(SaveLayer(paint, mask_cmds))
         cmds = [SaveLayer(skia.Paint(), cmds)]
 ```
 

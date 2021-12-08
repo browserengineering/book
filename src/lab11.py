@@ -117,7 +117,7 @@ def parse_blend_mode(blend_mode_str):
 
 def parse_clip_path(clip_path_str):
     if clip_path_str.startswith("circle"):
-        return int(clip_path_str[7:][:-2])
+        return float(clip_path_str[7:][:-3])
     else:
         return None
 
@@ -129,11 +129,14 @@ class SaveLayer:
     def __init__(self, sk_paint, cmds):
         self.sk_paint = sk_paint
         self.cmds = cmds
+        self.rect = skia.Rect.MakeEmpty()
+        for cmd in self.cmds:
+            self.rect.join(cmd.rect)
 
     def execute(self, canvas):
         canvas.saveLayer(paint=self.sk_paint)
         for cmd in self.cmds:
-            cmd.execute(scroll, canvas)
+            cmd.execute(canvas)
         canvas.restore()
 
 class Save:
@@ -407,27 +410,27 @@ def style_length(node, style_name, default_value):
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    if opacity != 1.0 or blend_mode_str:
-        paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
-        cmds = [SaveLayer(paint, cmds)]
+    paint = skia.Paint(Alphaf=opacity)
+    cmds = [SaveLayer(paint, cmds)]
 
     blend_mode_str = node.style.get("mix-blend-mode")
-    blend_mode = skia.BlendMode.kSrcOver
     if blend_mode_str:
         blend_mode = parse_blend_mode(blend_mode_str)
+        paint = skia.Paint(BlendMode=blend_mode)
+        cmds = [SaveLayer(paint, cmds)]
 
     clip_path = node.style.get("clip-path", "")
     circle_radius = parse_clip_path(clip_path)
-    if percent_circle_clip:
+    if circle_radius:
         width = rect.right() - rect.left()
         height = rect.bottom() - rect.top()
-        radius = 
         center_x = rect.left() + width / 2
         center_y = rect.top() + height / 2
 
-        mask = [DrawCircle(center_x, center_y, radius, skia.ColorWHITE)]
-        paint = skia.Paint(Alphaf=1.0, BlendMode=skia.kDstIn)
-        cmds.append(SaveLayer(paint, mask))
+        mask_cmds = [DrawCircle(center_x, center_y, circle_radius, skia.ColorWHITE)]
+        paint = skia.Paint(BlendMode=skia.kDstIn)
+        cmds.append(SaveLayer(paint, mask_cmds))
+        cmds = [SaveLayer(skia.Paint(), cmds)]
 
     #border_radius = node.style.get("border-radius")
     #if border_radius:
