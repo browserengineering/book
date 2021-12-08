@@ -116,21 +116,25 @@ def parse_blend_mode(blend_mode_str):
         return skia.BlendMode.kSrcOver
 
 def parse_clip_path(clip_path_str):
-    if clip_path_str.find("circle") != 0:
+    if clip_path_str.startswith("circle"):
+        return int(clip_path_str[7:][:-2])
+    else:
         return None
-    return int(clip_path_str[7:][:-2])
 
 def linespace(font):
     metrics = font.getMetrics()
     return metrics.fDescent - metrics.fAscent
 
 class SaveLayer:
-    def __init__(self, sk_paint, rect):
+    def __init__(self, sk_paint, cmds):
         self.sk_paint = sk_paint
-        self.rect = rect
+        self.cmds = cmds
 
     def execute(self, canvas):
         canvas.saveLayer(paint=self.sk_paint)
+        for cmd in self.cmds:
+            cmd.execute(scroll, canvas)
+        canvas.restore()
 
 class Save:
     def __init__(self, rect):
@@ -146,36 +150,20 @@ class Restore:
     def execute(self, canvas):
         canvas.restore()
 
-class CircleMask:
-    def __init__(self, cx, cy, radius, rect):
+class DrawCircle:
+    def __init__(self, cx, cy, radius, color):
         self.cx = cx
         self.cy = cy
         self.radius = radius
-        self.rect = rect
+        self.rect = skia.Rect.MakeLTRB(
+            cx - radius, cy - radius,
+            cx + radius, cy + radius)
+        self.color = color
 
     def execute(self, canvas):
-        canvas.saveLayer(paint=skia.Paint(
-            Alphaf=1.0, BlendMode=skia.kDstIn))
         canvas.drawCircle(
             self.cx, self.cy,
-            self.radius, skia.Paint(Color=skia.ColorWHITE))
-        canvas.restore()
-
-def center_point(rect):
-    return (rect.left() + (rect.right() - rect.left()) / 2,
-        rect.top() + (rect.bottom() - rect.top()) / 2)
-
-class Translate:
-    def __init__(self, x, y, rect):
-        self.x = x
-        self.y = y
-        self.rect = rect
-
-    def execute(self, canvas):
-        paint_rect = skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top(),
-            self.rect.right(), self.rect.bottom())
-        canvas.translate(self.x, self.y)
+            self.radius, skia.Paint(Color=self.color))
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -190,7 +178,7 @@ class DrawText:
 
     def execute(self, canvas):
         draw_text(canvas, self.left, self.top,
-            self.text, self.font)
+            self.text, self.font, self.color)
 
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
@@ -213,6 +201,21 @@ class DrawRect:
     def __repr__(self):
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
             self.left, self.top, self.right, self.bottom, self.color)
+
+class ClipRRect:
+    def __init__(self, rect, radius):
+        self.rect = rect
+        self.radius = radius
+
+    def execute(self, canvas):
+        canvas.clipRRect(
+            skia.RRect.MakeRectXY(
+                skia.Rect.MakeLTRB(
+                    self.rect.left(),
+                    self.rect.top(),
+                    self.rect.right(),
+                    self.rect.bottom()),
+                self.radius, self.radius))
 
 def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
@@ -239,30 +242,6 @@ def draw_rect(canvas, l, t, r, b, fill=None, width=1):
         paint.setColor(skia.ColorBLACK)
     rect = skia.Rect.MakeLTRB(l, t, r, b)
     canvas.drawRect(rect, paint)
-
-class ClipRect:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, canvas):
-        canvas.clipRect(skia.Rect.MakeLTRB(
-            self.rect.left(), self.rect.top(),
-            self.rect.right(), self.rect.bottom()))
-
-class ClipRRect:
-    def __init__(self, rect, radius):
-        self.rect = rect
-        self.radius = radius
-
-    def execute(self, canvas):
-        canvas.clipRRect(
-            skia.RRect.MakeRectXY(
-                skia.Rect.MakeLTRB(
-                    self.rect.left(),
-                    self.rect.top(),
-                    self.rect.right(),
-                    self.rect.bottom()),
-                self.radius, self.radius))
 
 INPUT_WIDTH_PX = 200
 
@@ -392,16 +371,16 @@ class InputLayout:
             self.x = self.parent.x
 
     def paint(self, display_list):
-        paint_x = self.x
-        paint_y = self.y
+        cmds = []
 
         rect = skia.Rect.MakeLTRB(
-            paint_x, paint_y, paint_x + self.width,
-            paint_y + self.height)
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
 
-        restore_count = paint_visual_effects(self.node, display_list, rect)
-
-        paint_background(self.node, display_list, rect)
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            cmds.append(DrawRect(rect, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -409,13 +388,11 @@ class InputLayout:
             text = self.node.children[0].text
 
         color = self.node.style["color"]
-        display_list.append(
-            DrawText(paint_x, paint_y, text, self.font, color))
+        cmds.append(DrawText(self.x, self.y,
+                             text, self.font, color))
 
-        paint_clip_path(self.node, display_list, rect)
-
-        for i in range(0, restore_count):
-            display_list.append(Restore(rect))
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
 
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
@@ -428,54 +405,38 @@ def style_length(node, style_name, default_value):
     else:
         return default_value
 
-def paint_clip_path(node, display_list, rect):
-    clip_path = node.style.get("clip-path")
-    if clip_path:
-        percent = parse_clip_path(clip_path)
-        if percent:
-            width = rect.right() - rect.left()
-            height = rect.bottom() - rect.top()
-            reference_val = \
-                math.sqrt(width * width + 
-                    height * height) / math.sqrt(2)
-            radius = reference_val * percent / 100
-            (center_x, center_y) = center_point(rect)
-            display_list.append(CircleMask(
-                center_x, center_y, radius, rect))
+def paint_visual_effects(node, cmds, rect):
+    opacity = float(node.style.get("opacity", "1.0"))
+    if opacity != 1.0 or blend_mode_str:
+        paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
+        cmds = [SaveLayer(paint, cmds)]
 
-def paint_visual_effects(node, display_list, rect):
-    restore_count = 0
-    
     blend_mode_str = node.style.get("mix-blend-mode")
     blend_mode = skia.BlendMode.kSrcOver
     if blend_mode_str:
         blend_mode = parse_blend_mode(blend_mode_str)
 
-    opacity = float(node.style.get("opacity", "1.0"))
-    if opacity != 1.0 or blend_mode_str:
-        paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
-        display_list.append(SaveLayer(paint, rect))
-        restore_count = restore_count + 1
+    clip_path = node.style.get("clip-path", "")
+    circle_radius = parse_clip_path(clip_path)
+    if percent_circle_clip:
+        width = rect.right() - rect.left()
+        height = rect.bottom() - rect.top()
+        radius = 
+        center_x = rect.left() + width / 2
+        center_y = rect.top() + height / 2
 
-    clip_path = node.style.get("clip-path")
-    if clip_path:
-        display_list.append(SaveLayer(skia.Paint(), rect))
-        restore_count = restore_count + 1
+        mask = [DrawCircle(center_x, center_y, radius, skia.ColorWHITE)]
+        paint = skia.Paint(Alphaf=1.0, BlendMode=skia.kDstIn)
+        cmds.append(SaveLayer(paint, mask))
 
-    border_radius = node.style.get("border-radius")
-    if border_radius:
-        radius = int(border_radius[:-2])
-        display_list.append(Save(rect))
-        display_list.append(ClipRRect(rect, radius))
-        restore_count = restore_count + 1
+    #border_radius = node.style.get("border-radius")
+    #if border_radius:
+    #    radius = int(border_radius[:-2])
+    #    display_list.append(Save(rect))
+    #    display_list.append(ClipRRect(rect, radius))
+    #    restore_count = restore_count + 1
 
-    return restore_count
-
-def paint_background(node, display_list, rect):
-    bgcolor = node.style.get("background-color",
-                             "transparent")
-    if bgcolor != "transparent":
-        display_list.append(DrawRect(rect, bgcolor))
+    return cmds
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -515,25 +476,21 @@ class BlockLayout:
             sum([child.height for child in self.children]))
 
     def paint(self, display_list):
-        paint_x = self.x
-        paint_y = self.y
+        cmds = []
 
         rect = skia.Rect.MakeLTRB(
-            paint_x, paint_y,
-            paint_x + self.width, paint_y + self.height)
-
-        restore_count = paint_visual_effects(
-            self.node, display_list, rect)
-
-        paint_background(self.node, display_list, rect)
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            cmds.append(DrawRect(rect, bgcolor))
 
         for child in self.children:
-            child.paint(display_list)
+            child.paint(cmds)
 
-        paint_clip_path(self.node, display_list, rect)
-
-        for i in range(0, restore_count):
-            display_list.append(Restore(rect))
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
 
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={})".format(
@@ -623,24 +580,22 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
-        paint_x = self.x
-        paint_y = self.y
+        cmds = []
 
         rect = skia.Rect.MakeLTRB(
-            paint_x, paint_y, paint_x + self.width,
-            paint_y + self.height)
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
 
-        restore_count = paint_visual_effects(self.node, display_list, rect)
-
-        paint_background(self.node, display_list, rect)
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            cmds.append(DrawRect(rect, bgcolor))
 
         for child in self.children:
-            child.paint(display_list)
+            child.paint(cmds)
 
-        paint_clip_path(self.node, display_list, rect)
-
-        for i in range(0, restore_count):
-            display_list.append(Restore(rect))
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
 
     def __repr__(self):
         return "InlineLayout(x={}, y={}, width={}, height={})".format(

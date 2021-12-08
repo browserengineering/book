@@ -439,8 +439,8 @@ You probably already know that computer screens are a 2D array of
 pixels. Each pixel contains red, green and blue lights,[^lcd-design]
 or _color channels_, that can shine with an intensity between 0 (off)
 and 1 (fully on). By mixing red, green, and blue, which is formally
-known as the [sRGB color space][srgb], any color in that space's _gamut_ can be
-made.[^other-spaces]
+known as the [sRGB color space][srgb], any color in that space's
+_gamut_ can be made.[^other-spaces]
 
 [^lcd-design]: Actually, some screens contain [pixels besides red,
     green, and blue][lcd-design], including white, cyan, or yellow.
@@ -459,9 +459,9 @@ made.[^other-spaces]
 
 [^other-spaces]: The sRGB color space dates back to [CRT
 displays][CRT]. New technologies like LCD, LED, and OLED can display
-more colors, so CSS now includes [ syntax][color-spec] for
-expressing these new colors. All color spaces have a limited gamut of
-expressible colors.
+more colors, so CSS now includes [syntax][color-spec] for expressing
+these new colors. All color spaces have a limited gamut of expressible
+colors.
 
 The job of a rasterization library is to determine the red, green, and
 blue intensity of each pixel on the screen, based on the
@@ -487,23 +487,6 @@ color mixing.
 
 [^mostly-models]: Mostly. Some more advanced blending modes are
 difficult, or perhaps impossible, in real-world physics.
-
-<a name="alpha"></a>
-
-The most important type of color mixing is transparency. Skia, SDL,
-and many other color libraries account for transparency with a fourth
-*alpha* channel.[^alpha-history] An alpha of 0 means the pixel is
-fully transparent (meaning, no matter what the colors are, you can't
-see them anyway), and an alpha of 1 means a fully opaque like the ones
-we've been working with so far. When a pixel with alpha overlaps
-another pixel, the final color is a mix of their two colors.
-
-[^alpha-history]: Check out this [history of alpha][alpha-history],
-written by its co-inventor (and co-founder of Pixar), or read this
-[derivation of alpha][alpha-deriv] for how it is computed.
-
-[alpha-history]: http://alvyray.com/Memos/CG/Microsoft/7_alpha.pdf
-[alpha-deriv]: https://jcgt.org/published/0004/02/03/paper.pdf
 
 ::: {.further}
 Screens use red, green, and blue color channels to match the three
@@ -648,338 +631,305 @@ of thumb is: if you don't need a non-default blend mode, then you can use
 `Save`, and you should always prefer `Save` to `SaveLayer`, all things being
 equal.
 
-<a name="compositing-blending"></a>
+Compositing with SaveLayer
+==========================
 
-Compositing vs blending
-=======================
+Color mixing happens when multiple page elements overlap. The easiest
+way that happens in our browser is child elements overlapping their
+parents, like this:[^transforms-etc]
 
-In the web specifications, *compositing*[^not-to-be-confused] and *blending* are
-treated differently. In the specification, compositing defines one or more way
-of mixing colors from two groups. Blending, on the other hand, specifies more
-advanced ways of how the colors mix, but is an extra step before compositing
-(with a blend mode, in a sense the colors mix twice). In general, you can
-have both blending and compositing for groups. Skia treats them all the same,
-via a single blend mode concept in the API. If you need to apply both blending
-and non-default compositing to groups, you just create an extra intermediate
-group.
+[^transforms-etc]: There are way more ways elements can overlap in a
+real browser: the `transform` property, `position`ed elements,
+negative margins, and so many more. But color mixing works the same
+way each time.
 
-[^not-to-be-confused]: The word *compositing* here refers to the algorithm
-used for blending groups. The same word is sometimes used for multiple other
-concepts in browsers, graphics and operating systems. For example, a
-"composited" animation on the web is one that typically uses a GPU texture for
- its contents, and an operating system "compositor" is in charge of drawing the
- pixels from multiple appliations together onto the screen. But of course, each
- of these situations requires the programmer to decide upon an algorithm for
- how to mix the pixels, so all the uses of the word "compositing" are indeed
- related.
+``` {.html.example}
+<div style="background-color:orange">
+    Parent
+    <div style="background-color:white">Child</div>
+    Parent
+</div>
+```
 
-Needless to say, this is all quite confusing. To break through that confusion,
-I'll just spell out exactly what is going on mathematically later in this
-chapter. For now, just know that there are two words, and they are very similar
-concepts.
+It looks like this:
 
-Now we're ready to implement some visual effects! Let's start with size and
-transform, and then proceed to transparency and blend modes.
+<div style="background-color:orange">
+Parent
+<div style="background-color:white">Child</div>
+Parent
+</div>
 
-Opacity and Compositing
-=======================
+Right now, the white rectangle completely obscures part of the orange
+one; The two colors don't really need to "mix", and in fact it kind of
+looks like two orange rectangles instead of an orange rectangle with a
+white one on top. Now let's make the white child element
+semi-transparent, so the colors have to mix. In CSS, that requires
+adding an `opacity` property with a value somewhere in between 0
+(completely transparent) to 1 (totally opaque). With 50% opacity on
+the white child element, it looks like this:
 
-With sizing and transform, we also now have the ability to make content
-overlap! Consider this example of CSS & HTML:[^inline-stylesheet]
+<div style="background-color:orange">
+Parent
+<div style="background-color:white;opacity:0.5">Child</div>
+Parent
+</div>
 
-    <style>
-        div { width:100px; height:100px }
-    </style>
-    <div style="background-color:lightblue">
-    </div>
-    <div style="background-color:orange;transform:translate(50px,-25px)">
-    </div>
-    <div style="background-color:blue;transform:translate(100px,-50px)">
-    </div>
+Notice that instead of being pure white, the child element now has a
+light-orange background color, resulting from orange and white mixing.
+Let's implement this in our browser.
 
-[^inline-stylesheet]: Here I've used an inline style sheet. If you haven't
-completed the inline style sheet exercise for chapter 6, you'll need to
-convert this into a style sheet file in order to load it in your browser.
+The way to mix colors in Skia is to first create two surfaces, and
+then draw one into the other. The most convenient way to do that is
+with `saveLayer` and `restore`:
 
-Its rendering looks like this:
+``` {.python.example}
+# draw parent
+canvas.saveLayer(paint=skia.Paint(Alphaf=0.5))
+# draw child
+canvas.restore()
+```
 
-<div style="width:100px;height:100px;background-color:lightblue"></div>
-<div style="width:100px;height:100px;background-color:orange;transform:translate(50px,-25px)"></div>
-<div style="width:100px;height:100px;background-color:blue;transform:translate(100px,-50px)"></div>
+We first draw the parent, then create a new surface with `saveLayer`
+to draw the child into, and then when the `restore` call is made the
+`paint` parameters passed into `saveLayer` are used to mix the colors
+in the two surfaces together. Here we're using the `Alphaf` parameter,
+which describes the alpha as a floating-point number.
 
-Right now, the blue rectangle completely obscures part of the orange one, and
-the orange one does the same to the light blue one. In order to explore
-what happens with blending further, let's make the elements
-semi-transparent.
-
-We can easily implement that with `opacity`, a CSS property that takes a value
-from 0 to 1, 0 being completely invisible (like a window in a house) to
-completely opaque (the wall next to the window). After adding opacity to the
-blue `div`, our example looks like:
-
-    <style>
-        div { width:100px; height:100px; position:relative }
-    </style>
-    <div style="background-color:lightblue">
-    </div>
-    <div style="background-color:orange;left:50px;top:-25px">
-    </div>
-    <div style="background-color:blue;left:100px;top:-50px;opacity: 0.5">
-    </div>
-
-<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
-<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px"></div>
-<div style="width:100px;height:100px;position:relative;background-color:blue;left:100px;top:-50px;opacity: 0.5"></div>
-
-Note that you can now see part of the orange square through the blue one, and
-part of the white background as well.
-
-Let's implement `opacity`. The way to do this is to create a new surface with
-`saveLayer`, draw the content with opacity into it, and then blend that
-surface into the previous one. This will be our first occasion to use
-`saveLayer`, so let's define a display list command for it:
+Note that `saveLayer` and `restore` are like a pair of parentheses
+enclosing the child drawing operations. This means our display list is
+no longer just a linear sequence of drawing operations, but a tree.
+The `SaveLayer` drawing operation reflects this by taking a sequence
+of other drawing commands as an argument:
 
 ``` {.python replace=%2c%20scroll/}
 class SaveLayer:
-    def __init__(self, sk_paint, rect):
+    def __init__(self, sk_paint, cmds):
         self.sk_paint = sk_paint
-        self.rect = rect
+        self.cmds = cmds
 
     def execute(self, scroll, canvas):
         canvas.saveLayer(paint=self.sk_paint)
+        for cmd in self.cmds:
+            cmd.execute(scroll, canvas)
+        canvas.restore()
 ```
 
-Notice how `SaveLayer` takes an `SkPaint` object as a parameter. This will
-be how we'll define opacity and blend modes. In the example below, we're
-setting the `Alphaf` parameter (floating-point alpha) to apply the opacity.
+Now let's look at how we can add this to our existing `paint` method
+for `BlockLayout`s. Right now, this method draws a background and then
+recurses into its children, adding each drawing command straight to
+the global display list. Let's instead add those drawing commands to a
+temporary list first:
 
-Adding opacity to our existing `paint_visual_effects` function is a breeze.
-We won't need to make any further changes to any of the `paint` methods,
-since they already call `paint_visual_effects`.
+``` {.python}
+class BlockLayout:
+    def paint(self, display_list):
+        cmds = []
 
-``` {.python expected=False}
-def paint_visual_effects(node, display_list, rect):
-    restore_count = 0
-    # ...
+        # ...
+        if bgcolor != "transparent":
+            cmds.append(DrawRect(rect, bgcolor))
+
+        for child in self.children:
+            child.paint(cmds)
+        
+        display_list.extend(cmds)
+```
+
+Now, _before_ we add our temporary command list to the overall display
+list, we can use `SaveLayer` to add transparency to the whole element.
+I'm going to do this in a new `paint_visual_effects` method, because
+we'll want to make the same changes to all of our other layout
+objects:
+
+``` {.python}
+class BlockLayout:
+    def paint(self, display_list):
+        # ...
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+```
+
+Inside `paint_visual_effects`, we'll parse the opacity value and
+construct the appropriate `SaveLayer`:
+
+``` {.python}
+def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    if opacity != 1.0:
-        paint = skia.Paint(Alphaf=opacity
-        display_list.append(SaveLayer(paint, rect))
-        restore_count = restore_count + 1
-
-    return restore_count
+    paint = skia.Paint(Alphaf=opacity)
+    cmds = [SaveLayer(paint, cmds)]
+    return cmds
 ```
 
-Let's see how opacity and compositing actually work under the hood, so we can
-know what is actually going on in these simple-looking Skia APIs. We'll write
-some Python functions[^pedagogical] that do the math of these operations,
-starting with `apply_opacity`, which simply multiplies the alpha channel by the
-given opacity.[^see-alpha]
+Note that `paint_visual_effects` receives a list of commands and
+returns another list of commands. It's just that the output list is
+always a single `SaveLayer` command.
 
-[^see-alpha]: Now might be a good time to go back and re-read the paragraph
-about alpha [here](#alpha).
+Compositing Pixels
+==================
 
-[^pedagogical]: These Python functions will not end up as part of your browser.
-We're writing them down only so that it's clear what exactly Skia is doing.
+Let's pause and explore how opacity actually works under the hood.
+Skia, SDL, and many other color libraries account for opacity with a
+fourth *alpha* value for each pixel.[^alpha-vs-opacity] An alpha of 0
+means the pixel is fully transparent (meaning, no matter what the
+colors are, you can't see them anyway), and an alpha of 1 means a
+fully opaque.
 
-Let's assume that pixels are represented in a `skia.Color4f`, which has three
-color properties `fR`, `fG`, and `fB` (floating-point red/green/blue, between 0
-and 1), and one alpha property `fA` (floating-point alpha).[^alpha-vs-opacity]
+[^alpha-vs-opacity]: The difference between opacity and alpha can be
+confusing. Think of opacity as a visual effect *applied to* content,
+but alpha as a *part of* content. Think of alpha as implementation
+technique[^alpha-history] for representing opacity. In fact, some
+graphics libraries don't have a separate alpha channel, and instead
+multiply the color channels by the opacity, which is called a
+*premultiplied* representation of the color.
 
-[^alpha-vs-opacity]: The difference between opacity and alpha is often
-confusing. To remember the difference, think of opacity as a visual effect
-*applied to* content, but alpha as a *part of* content. In fact, whether there
-is an alpha channel in a color representation at all is often an implementation
-choice---sometimes graphics libraries instead multiply the other color channels
-by the alpha amount, which is called a *premultiplied* representation of the color.
+[^alpha-history]: Check out this [history of alpha][alpha-history],
+written by its co-inventor (and co-founder of Pixar), or read this
+[derivation of alpha][alpha-deriv] for how it is computed.
 
-``` {.python.example}
-# Returns |color| with opacity applied. |color| is a skia.Color4f.
-def apply_opacity(color, opacity):
-    new_color = color
-    new_color.fA = color.fA * opacity
-    return new_color
+[alpha-history]: http://alvyray.com/Memos/CG/Microsoft/7_alpha.pdf
+[alpha-deriv]: https://jcgt.org/published/0004/02/03/paper.pdf
+
+When a pixel with alpha overlaps another pixel, the final color is a
+mix of their two colors. How exactly the colors are mixed is defined
+by Skia's `Paint` objects. Of course, Skia is pretty complex, but we
+can sketch these paint operations in Python as methods on an imaginary
+`Pixel` class.
+
+``` {.python file=examples}
+class Pixel:
+    def __init__(self, r, g, b, a):
+        self.r = r
+        self.g = g
+        self.b = b
+        self.a = a
 ```
 
-Next, compositing: let's also assume that the coordinate spaces and pixel
-densities of the two surfaces are the same, and therefore their pixels overlap
-and have a 1:1 relationship. Therefore we can "composite" each pixel in the
-popped surface on top of (into, really) its corresponding pixel in the restored
-surface. Let's call the popped surface the *source surface* and the restored
-surface the *backdrop surface*. Likewise each pixel in the popped surface is
-a *source pixel* and each pixel in the restored surface is a *backdrop pixel*.
+When we apply a `Paint` with an `Alphaf` parameter, the first thing
+Skia does is add the requested opacity to each pixel:
 
-The default compositing mode for the web is called *simple alpha compositing* or
-*source-over compositing*.[^other-compositing]
-In Python, the code to implement it looks like this:[^simple-alpha]
+``` {.python file=examples}
+class Pixel:
+    def alphaf(self, opacity):
+        self.a = self.a * opacity
+```
+
+I want to emphasize that this code is not a part of our browser---I'm
+simply using Python code to illustrate what Skia is doing internally.
+
+That `Alphaf` operation applies to pixel in one surface. But with
+`SaveLayer` we will end up with two surfaces, with all of their pixels
+aligned, and therefore we will need to combined, or *blend* pairs of
+corresponding pixels.
+
+Here the terminology can get confusing: we imagine that the pixels "on
+top" are blending into the pixels "below", so we call the top surface
+the *source surface*, with source pixels, and the bottom surface the
+*destination surface*, with destination pixels. When we combine them,
+there are lots of ways we could do it, but the default on the web is
+called "simple alpha compositing" or *source-over* compositing. In
+Python, the code to implement it looks like this:[^simple-alpha]
 
 [^simple-alpha]: The formula for this code can be found
-[here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that
-that page refers to premultiplied alpha colors. Skia does not
-use premultiplied color representations.
+[here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
+Note that that page refers to premultiplied alpha colors, but Skia
+does not use premultiplied color representations internally.
 
 
 ``` {.python file=examples}
-# Note: this is sample code to explain the concept, it is not part
-# of the actual browser.
-def composite(source_color, backdrop_color, compositing_mode):
-    if compositing_mode == "source-over":
-        (source_r, source_g, source_b, source_a) = \
-            tuple(source_color)
-        (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
-            tuple(backdrop_color)
-        return skia.Color4f(
-            backdrop_r * (1-source_a) * backdrop_a + \
-                source_r * source_a,
-            backdrop_g * (1-source_a) * backdrop_a + \
-                source_g * source_a,
-            backdrop_b * (1-source_a) * backdrop_a + \
-                source_b * source_a,
-            1 - (1 - source_a) * (1 - backdrop_a))
+class Pixel:
+    def source_over(self, source):
+        self.r = self.r * (1 - source.a) * self.a + source.r * source.a
+        self.g = self.g * (1 - source.a) * self.a + source.g * source.a
+        self.b = self.b * (1 - source.a) * self.a + source.b * source.a
+        self.a = 1 - (1 - source.a) * (1 - self.a))
 ```
 
-[^other-compositing]: We'll shortly encounter other compositing modes.
-
-This algorithm is basically "average the source and backdrop pixel colors,
-weighted by their their alpha".^[Examples: if the alpha of the source pixel
-was 1, the result is just the source pixel color, and if it was 0 the
-result is the backdrop pixel color.]
-
-Putting it all together, if we were to implement the `restore` command
-ourselves from one canvas to another, we could write the following
-(pretend we have
-a `getPixel` method that returns a `skia.Color4f` and a `setPixel` one that
-sets a pixel color):[^real-life-reading-pixels]
+Here the destination pixel `self` is modified to blend in the source
+pixel `source`. The mathematical expressions for the red, green, and
+blue color channels are identical, and basically average the source
+and destination colors, weighted by alpha.[^source-over-example] You
+might imagine the overall operation of `SaveLayer` with an `Alphaf`
+parameter as something like this:
 
 ``` {.python.example}
-# Note: this is sample code to explain the concept, it is not part
-# of the actual browser.
-def restore(source_surface, backdrop_surface, width, height, opacity):
-    for x in range(0, width):
-        for y in range(0, height):
-            backdrop_surface.setPixel(
-                x, y,
-                composite(
-                    apply_opacity(source_surface.getPixel(x, y)),
-                    backdrop_surface.getPixel(x, y)))
+for (x, y) in destination.coordinates():
+    source[x, y].alphaf(opacity)
+    destination[x, y].source_over(source[x, y])
 ```
 
-[^real-life-reading-pixels]: In real browsers it's a bad idea to read canvas
-pixels into memory and manipulate them like this, because it would be very
-slow. Instead, it should be done on the GPU. So libraries such as Skia don't
-make it convenient to do so. (Skia canvases do have `peekPixels` and
-`readPixels` methods that are sometimes used, but not for this use case).
-
-Blending
-========
-
-Blending, as the CSS specifications define it, is a way to mix source and
-backdrop colors together, but is not the same thing as
-compositing.[^vs-blending-2] Blending mixes the source and backdrop colors.
-The mixed result is then composited with the backdrop pixel. The changes to our
-Python code for `restore` to incorporate blending looks like this:
-
-[^vs-blending-2]: Again, see [here](#compositing-blending) for compositing vs
-blending.
+Source-over compositing is one way to combine two pixel values. But
+it's not the only method---you could write literally any computation
+that combines two pixel values if you wanted. Two computations that
+produce interesting effects are traditionally called "multiply" and
+"difference" and use simple mathematical operations. "Multiply"
+multiplies the color values:
 
 ``` {.python.example}
-# Note: this is sample code to explain the concept, it is not part
-# of the actual browser.
-def restore(source_surface, backdrop_surface,
-            width, height, opacity, blend_mode):
-    # ...
-            backdrop_surface.setPixel(
-                x, y,
-                composite(
-                    blend(
-                        apply_opacity(source_surface.getPixel(x, y)),
-                        backdrop_surface.getPixel(x, y), blend_mode),
-                    backdrop_surface.getPixel(x, y)))
+class Pixel:
+    def multiply(self, source):
+        self.r = self.r * source.r
+        self.g = self.g * source.g
+        self.b = self.b * source.b
 ```
 
-and blend is implemented like this:
+And "difference" computes their absolute differences:
 
-``` {.python file=examples}
-# Note: this is sample code to explain the concept, it is not part
-# of the actual browser.
-def blend(source_color, backdrop_color, blend_mode):
-    (source_r, source_g, source_b, source_a) = tuple(source_color)
-    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
-        tuple(backdrop_color)
-    return skia.Color4f(
-        (1 - backdrop_a) * source_r +
-            backdrop_a * apply_blend(
-                source_r, backdrop_r, blend_mode),
-        (1 - backdrop_a) * source_g +
-            backdrop_a * apply_blend(
-                source_g, backdrop_g, blend_mode),
-        (1 - backdrop_a) * source_b +
-            backdrop_a * apply_blend(
-                source_b, backdrop_b, blend_mode),
-        source_a)
+``` {.python.example}
+class Pixel:
+    def difference(self, source):
+        self.r = abs(self.r - source.r)
+        self.g = abs(self.g - source.g)
+        self.b = abs(self.b - source.b)
 ```
 
-There are various algorithms `blend_mode` could use. Examples include "multiply",
-which multiplies the colors as floating-point numbers between 0 and 1,
-and "difference", which subtracts the darker color from the ligher one. The
-default is "normal", which means to ignore the backdrop color.
+CSS supports these and many other blending modes[^photoshop-panel] via
+the [`mix-blend-mode` property][mix-blend-mode-def], like this:
 
-``` {.python file=examples}
-# Note: this is sample code to explain the concept, it is not part
-# of the actual browser.
-def apply_blend(source_color_channel,
-                backdrop_color_channel, blend_mode):
-    if blend_mode == "multiply":
-        return source_color_channel * backdrop_color_channel
-    elif blend_mode == "difference":
-        return abs(backdrop_color_channel - source_color_channel)
-    elif blend_mode == "normal":
-        return source_color_channel
+[^photoshop-panel]: Many of these blending modes are
+    [common][wiki-blend-mode] to other graphics editing programs like
+    Photoshop and GIMP. Some, like ["dodge" and "burn"][dodge-burn],
+    go back to analog photography, where photographers would expose
+    some parts of the image more than others to manipulate their
+    brightness.
+
+[mix-blend-mode-def]: https://drafts.fxtf.org/compositing-1/#propdef-mix-blend-mode
+
+``` {.html.example}
+<div style="background-color:orange">
+    Parent
+    <div style="background-color:blue;mix-blend-mode:difference">Child</div>
+    Parent
+</div>
 ```
 
-These are specified with the [`mix-blend-mode`][mix-blend-mode-def] CSS
-property. Here's a demo to see how it will look:[^isolation]
+This HTML will look like:
 
-    <style>
-        html { background-color: white }
-        div { width:100px; height:100px }
-    </style>
-    <div style="background-color:lightblue"></div>
-    <div style="background-color:orange;left:50px;top:-25px"></div>
-    <div style="background-color:blue;left:100px;top:-50px"></div>
+<div style="background-color:orange">
+Parent
+<div style="background-color:blue;mix-blend-mode:difference">Child</div>
+Parent
+</div>
 
-This will look like:
+Here, when blue overlaps with orange, we see pink: blue has (red,
+green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
+0)`, so with "difference" blending the resulting pixel will be `(1,
+0.65, 1)`, which is pink. On a pixel level, what's happening is
+something like this:
 
-<style>
-    html { background-color: white }
-</style>
-<div style="width:100px;height:100px;position:relative;background-color:lightblue"></div>
-<div style="width:100px;height:100px;position:relative;background-color:orange;left:50px;top:-25px;mix-blend-mode:multiply"></div>
-<div style="width:100px;height:100px; position:relative;background-color:blue;left:100px;top:-50px;mix-blend-mode:difference"></div>
+``` {.python.example}
+for (x, y) in destination.coordinates():
+    source[x, y].alphaf(opacity)
+    destination[x, y].difference(source[x, y])
+    destination[x, y].source_over(source[x, y])
+```
 
-[^isolation]: Here I had to explicitly set a background color of white on the
-`<html>` element, even though web pages have a default white background. This
-is because `mix-blend-mode` is defined in terms of stacking contexts. In a real
-browser, if a stacking context doesn't paint anything, then its blending
-surface is empty; in our browser, blending happens whith whatever surface
-happened to be there before `saveLayer` was called. This is a bug in our
-browser, which can be fixed by calling `saveLayer` on the parent layout
-object.
+[wiki-blend-mode]: https://en.wikipedia.org/wiki/Blend_modes
 
-Here you can see that the intersection of the orange and
-blue[^note-yellow] square renders as pink. Let's work through the math to see
-why. Here we are blending a blue color with orange, via the "difference" blend
-mode. Blue has (red, green, blue) color channels of (0, 0, 1.0), and orange
-has (1.0, 0.65, 0.0). The blended result will then be (1.0 - 0, 0.65 - 0, 1.0 -
-0) = (1.0, 0.65, 1.0), which is pink.
+[dodge-burn]: https://en.wikipedia.org/wiki/Dodging_and_burning
 
-[^note-yellow]: The "difference" blend mode on the blue rectangle makes it look
-yellow over a white background!
-
-Now add support for [multiply][mbm-mult] and [difference][mbm-diff] to our
-browser. Implementing these blend modes in our browser will be very easy,
-because Skia supports these blend mode natively. It's as simple as parsing the
-property and adding a `blend_mode` parameter to the `Skpaint` object.
+Skia supports the [multiply][mbm-mult] and [difference][mbm-diff]
+blend modes natively, so adding them to our browser is as simple as
+passing the `BlendMode` parameter to the `Paint` object:
 
 ``` {.python}
 def parse_blend_mode(blend_mode_str):
@@ -994,311 +944,177 @@ def paint_visual_effects(node, display_list, rect):
     # ...
 
     blend_mode_str = node.style.get("mix-blend-mode")
-    blend_mode = skia.BlendMode.kSrcOver
     if blend_mode_str:
         blend_mode = parse_blend_mode(blend_mode_str)
+        paint = skia.Paint(BlendMode=blend_mode)
+        cmds = [SaveLayer(paint, cmds)]
 
-    opacity = float(node.style.get("opacity", "1.0"))
-    if opacity != 1.0 or blend_mode_str:
-        paint = skia.Paint(Alphaf=opacity, BlendMode=blend_mode)
-        display_list.append(SaveLayer(paint, rect))
-        restore_count = restore_count + 1
+    # ...
 ```
 
 [mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
 [mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
 
-[mix-blend-mode-def]: https://drafts.fxtf.org/compositing-1/#propdef-mix-blend-mode
+::: {.further}
+In reality, reading individual pixels into memory and manipulate them
+like this is slow. Instead, it should be done on the GPU. So libraries
+such as Skia don't make it convenient to do so. (Skia canvases do have
+`peekPixels` and `readPixels` methods that are sometimes used, but not
+for this use case).
+:::
+
+::: {.todo}
+<!-- There's nothing for this comment to describe anymore, but it's -->
+<!-- useful information so I'm keeping it in a todo block for now-->
+Here I had to explicitly set a background color of white on the
+`<html>` element, even though web pages have a default white background. This
+is because `mix-blend-mode` is defined in terms of stacking contexts. In a real
+browser, if a stacking context doesn't paint anything, then its blending
+surface is empty; in our browser, blending happens whith whatever surface
+happened to be there before `saveLayer` was called. This is a bug in our
+browser, which can be fixed by calling `saveLayer` on the parent layout
+object.
+:::
 
 Clipping and masking
 ====================
 
-Let's now explore compositing modes other than source-over. They are generally
-not very common, with the exception of *destination-in*. This mode is used to
-represent clipping---cutting out parts of a surface that don't intersect with a
-given shape. Clipping is like putting a second piece of paper (called a *mask*)
-over the first one, and then using scissors to cut along the edge of the
-mask.
+The "multiply" and "difference" blend modes can seem kind of obscure,
+but blend modes are a flexible way to implement per-pixel operations.
+One common use case is clipping---erasing the pixels in a surface that
+don't intersect with a given shape. It's called clipping because it's
+like putting a second piece of paper (called a *mask*) over the first
+one, and then using scissors to cut along the mask's edge.
 
-One way this is expressed in CSS is with the `clip-path` property. The
-[full definition](https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path)
-is quite complicated, so as usual we'll just implement a simple subset. In this
-case we'll only support the `circle(XX%)` syntax, which cuts out all the content
-that doesn't intersect a circle. XX is a percentage and defines the radius
-of the circle; the percentage is calibrated so that if the layout object was
-a perfect square, a 100% circle would inscribe the bounds of the square.
+Clipping can be used via the CSS `clip-path` property. The [full
+definition](https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path)
+is quite complicated, so let's just implement circular clips via the
+`circle(XXpx)`, which is used like this:
 
-Let's apply a circular mask:
+``` {.html.example}
+<div style="clip-path:circle(20px);background-color:lightblue">
+    This test text exists here to ensure that the "div" element is
+    large enough that a reasonably large circle is drawn to your screen.
+</div>
+```
 
-    <div style="width:256px; height:256px;
-        clip-path:circle(50%);background-color:lightblue">
-    </div>
+That HTML looks like this:
 
-Which paints like this:
-
-<div style="width:256px;height:256px;clip-path:circle(50%);background-color:lightblue">
+<div style="clip-path:circle(20px);background-color:lightblue">
+    This test text exists here to ensure that the "div" element is
+    large enough that a reasonably large circle is drawn to your screen.
 </div>
 
-Implementing circular clips is once again pretty easy with Skia in our back
-pocket, but has some differences from other visual effects. We'll make a new
-surface (the mask), draw the circle into it, and then blend it with
-destination-in compositing. Let's first get the code in place and then
-investigate more about how it works.
+Here, the percentage defines the radius of the circle, and is
+calculated so that, if you were clipping a perfect square, a radius of
+100% would inscribe the bounds of the square.
 
-Parse the `clip-path` CSS property:
+To implement circular clips, we'll again use blending modes, but this
+use will be a little unintuitive. We'll make a new surface (the mask),
+draw a circle into it, and then blend it with the element contents.
+But we want to see the element contents, not the mask, so when we do
+this blending we will use *destination-in* compositing.
 
-``` {.python}
-def parse_clip_path(clip_path_str):
-    if clip_path_str.find("circle") != 0:
-        return None
-    return int(clip_path_str[7:][:-2])
-```
-
-And define how to paint it:
-
-``` {.python}
-def center_point(rect):
-    return (rect.left() + (rect.right() - rect.left()) / 2,
-        rect.top() + (rect.bottom() - rect.top()) / 2)
-# ...
-
-def paint_clip_path(node, display_list, rect):
-    clip_path = node.style.get("clip-path")
-    if clip_path:
-        percent = parse_clip_path(clip_path)
-        if percent:
-            width = rect.right() - rect.left()
-            height = rect.bottom() - rect.top()
-            reference_val = \
-                math.sqrt(width * width +
-                    height * height) / math.sqrt(2)
-            radius = reference_val * percent / 100
-            (center_x, center_y) = center_point(rect)
-            display_list.append(CircleMask(
-                center_x, center_y, radius, rect))
-```
-
-Destination-in compositing is defined [here][dst-in], and basically means
-"keep the pixels of the backdrop surface that intersect with the source
- surface". The color is not important, it's just the alpha that matters.
-In this case, the source surface is the circle, and the backdrop surface is the
-thing we want to clip, so destination-in fits perfectly.
+[Destination-in compositing][dst-in] basically means keeping the
+pixels of the backdrop surface that intersect with the source surface.
+The source surface's color is not used---just its alpha. In our case,
+the source surface is the circular mask and the backdrop surface is
+the content we want to clip, so destination-in fits perfectly. In
+code, destination-in looks like this:
 
 [dst-in]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstin
 
-Here is `composite` with destination-in compositing added:
-
 ``` {.python file=examples}
-# Note: this is sample code to explain the concept, it is not part
-# of the actual browser.
-def composite(source_color, backdrop_color, compositing_mode):
-    # ...
-    elif compositing_mode == "destination-in":
-        (source_r, source_g, source_b, source_a) = tuple(source_color)
-        (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
-            tuple(backdrop_color)
-        return skia.Color4f(
-            backdrop_a * source_a * backdrop_r,
-            backdrop_a * source_a * backdrop_g,
-            backdrop_a * source_a * backdrop_b,
-            backdrop_a * source_a)
+class Pixel:
+    def destination_in(self, source):
+        self.r = self.r * self.a * source.a
+        self.g = self.g * self.a * source.a
+        self.b = self.b * self.a * source.a
+        self.a = self.a * source.a
 ```
 
-Now let's implement `CircleMask`  in terms of destination-in compositing. It
-creates a new source surface via `saveLayer` (and at the same time specifying a
-`kDstIn` blend mode for when it is drawn into the backdrop), then draws a
-circle in white (or really any opaque color, it's only the alpha channel that
-matters).
+Let's implement this. First, we'll need to parse the `clip-path` CSS
+property:
 
-``` {.python replace=%2c%20scroll/,%20-%20scroll/}
-class CircleMask:
-    def __init__(self, cx, cy, radius, rect):
+``` {.python}
+def parse_clip_path(clip_path_str):
+    if clip_path_str.startswith("circle"):
+        return float(clip_path_str[7:][:-3])
+    else:
+        return None
+```
+
+Then, we'll need to do a little math to compute the circle's center
+and radius:
+
+``` {.python}
+def paint_visual_effects(node, cmds, rect):
+    # ...
+    clip_path = node.style.get("clip-path", "")
+    circle_radius = parse_clip_path(clip_path)
+    if percent_circle_clip:
+        width = rect.right() - rect.left()
+        height = rect.bottom() - rect.top()
+        center_x = rect.left() + width / 2
+        center_y = rect.top() + height / 2
+```
+
+Next, we'll draw a circle on a new surface:
+
+``` {.python}
+def paint_visual_effects(node, cmds, rect):
+    if percent_circle_clip:
+        # ...
+        mask_cmds = [DrawCircle(center_x, center_y, radius, skia.ColorWHITE)]
+```
+
+Here I chose to draw the circle in white, but the color doesn't matter
+as long as it's opaque. The `DrawCircle` command is straightforward:
+
+``` {.python}
+class DrawCircle:
+    def __init__(self, cx, cy, radius, color):
         self.cx = cx
         self.cy = cy
         self.radius = radius
-        self.rect = rect
+        self.rect = skia.Rect.MakeLTRB(
+            cx - radius, cy - radius,
+            cx + radius, cy + radius)
+        self.color = color
 
-    def execute(self, scroll, canvas):
-        canvas.saveLayer(paint=skia.Paint(
-            Alphaf=1.0, BlendMode=skia.kDstIn))
+    def execute(self, canvas):
         canvas.drawCircle(
-            self.cx, self.cy - scroll,
-            self.radius, skia.Paint(Color=skia.ColorWHITE))
+            self.cx, self.cy,
+            self.radius, skia.Paint(Color=self.color))
 ```
 
-Finally, we call `paint_clip_path` for each layout object type. Note however
-that we have to paint it *after* painting children, unlike visual effects
-or backgrounds. This is because you have to paint the other content into the
-backdrop surface before drawing the circle and applying the clip. For
-`BlockLayout`, this is:
+Finally, we need to use the mask to clip the element contents. To do
+that, we need to *isolate* the element, in order to apply the clip
+path to only these elements, not to everything we've drawn on the
+page. That's going to require two `SaveLayer`s:[^extra-surface] one
+for the element, and one for the mask:
+
+[^extra-surface]: This is one reason there may be more surfaces than
+    groups.
 
 ``` {.python}
-    def paint(self, display_list):
+def paint_visual_effects(node, cmds, rect):
+    if percent_circle_clip:
         # ...
-
-        for child in self.children:
-            child.paint(display_list)
-
-        paint_clip_path(self.node, display_list, rect)
-
-        for i in range(0, restore_count):
-            display_list.append(Restore(rect))
+        paint = skia.Paint(BlendMode=skia.kDstIn)
+        cmds.append(SaveLayer(paint, mask))
+        cmds = [SaveLayer(skia.Paint(), cmds)]
 ```
 
-But we're not quite done. We still need to *isolate* the element and its
-subtree, in order to apply the clip path to only these elements, not to the
-entire backdrop.[^extra-surface] To achieve that we add an extra `saveLayer` in
-`paint_visual_effects`:
-
-[^extra-surface]: This is one of the extra surfaces I mentioned earlier,
-and an example of why there may be more surfaces than groups.
-
-``` {.python}
-def paint_visual_effects(node, display_list, rect):
-    # ...
-
-    clip_path = node.style.get("clip-path")
-    if clip_path:
-        display_list.append(SaveLayer(skia.Paint(), rect))
-        restore_count = restore_count + 1
-```
-
-This technique described here for implementing `clip-path` is
-called *masking*---drawing to an auxiliary image and removing all pixels of
-the backdrop that don't overlap with the image. The circle in this
-case is the mask image. The
-[`mask`](https://developer.mozilla.org/en-US/docs/Web/CSS/mask) CSS property is
-another a way to do this, for example by specifying an image at a URL that
+Notice how similar this masking technique is to the physical analogy
+with scissors described earlier, with the two layers playing the role
+of two sheets of paper and destination-in compositing playing the role
+of the scissors. This implementation technique for clipping is called
+*masking*, and it is very general; for example, the CSS
+[`mask`][mdn-mask] property lets you specifying an image URL that
 supplies the mask.
 
-While the `mask` CSS property is relatively uncommon used (as is `clip-path`
-actually), there is a special kind of mask that is very common: rounded
-corners. Now that we know how to implement masks, this one is also easy to
-add to our browser (draw a mask image with the `drawRRect` Skia canvas method).
-But because it's so common, Skia provides a special-purpose
-method to clip to rounded corners: `clipRRect`.
-
-Rounded corners are specified in CSS via `border-radius`. Here's an example:
-
-    <div style="width:256px; height:256px;
-        border-radius: 20px;background-color:lightblue">
-    </div>
-
-Which paints like this (notice the curved corners):
-
-<div style="width:256px; height:256px;border-radius:20px;background-color:lightblue">
-</div>
-
-To implement it, a `ClipRRect` display list command will go in
-`paint_visual_effects`:
-
-``` {.python}
-def paint_visual_effects(node, display_list, rect):
-    border_radius = node.style.get("border-radius")
-    if border_radius:
-        radius = int(border_radius[:-2])
-        display_list.append(Save(rect))
-        display_list.append(ClipRRect(rect, radius))
-        restore_count = restore_count + 1
-```
-
-For this, we'll need new `Save` and `Restore` display list
-commands. [^refer-back-save]
-
-[^refer-back-save]: Recall from the [Surfaces and canvases]
-[#surfaces-and-canvases] section the difference between `Save` and `SaveLayer`.
-
-``` {.python replace=%2c%20scroll/}
-class Save:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        canvas.save()
-
-class Restore:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        canvas.restore()
-```
-
-``` {.python replace=%2c%20scroll/,%20-%20scroll/}
-class ClipRRect:
-    def __init__(self, rect, radius):
-        self.rect = rect
-        self.radius = radius
-
-    def execute(self, scroll, canvas):
-        canvas.clipRRect(
-            skia.RRect.MakeRectXY(
-                skia.Rect.MakeLTRB(
-                    self.rect.left(),
-                    self.rect.top() - scroll,
-                    self.rect.right(),
-                    self.rect.bottom() - scroll),
-                self.radius, self.radius))
-```
-
-Now why is it that rounded rect clips are applied in `paint_visual_effects` but
-masks and clip paths happen later on in the `paint` method? What's going on
-here? It is indeed the same, but Skia only optimizes for rounded rects because
-they are so common. What it means is "clip the content drawn after this point
-until restore is called". Skia could easily add a `clipCircle` command if it
-was popular enough.
-
-What Skia does under the covers may be equivalent to the clip path
-case,[^skia-opts] and sometimes that is indeed the case. But in other
-situations, various optimizations can be applied to make the clip more
-efficient. For example, there is another method called `clipRect` that clips to
-a rectangle, which makes it easier for Skia to skip subsequent draw operations
-that don't intersect that rectangle,[^see-chap-1] or dynamically draw only the
-parts of drawings that intersect the rectangle. Likewise, the first
-optimization mentiond above also applies to `clipRRect`. (The second is
-trickier because you have to account for the space cut out in the corners.)
-
-[^skia-opts]: Skia has many internal optimizations, and by design does not
-expose whether they are used to the caller.
-
-[^see-chap-1]: This is basically the same optimization as we added in Chapter
-1 to avoid painting offscreen text.
-
-::: {.further}
-
-Rounded corners have an interesting history in computing. Their
-[inclusion][mac-story] into the original Macintosh is a fun story to read, and
-also demonstrates how computers often end up echoing reality. It also reminds us
-of just how hard it was to implement features that appear simple to us today,
-due to the very limited memory, and lack of hardware floating-point arithmetic,
-of early personal computers (here's some [example source code][quickdraw] used
-on early Macintosh computers to implement this feature).
-
-Later on, floating-point coprocessors, and then over time GPUs, became standard
-equipment on new computers. This made it much easier to implement fast rounded
-corners. Unfortunately, the `border-radius` CSS property didn't appear in
-browsers until around 2010 (but that didn't stop web developers from putting
-rounded corners on their sites before then)! There are a number of clever ways
-to do it even without `border-radius`; [this video][rr-video] walks through
-several.
-
-It's a good thing `border-radius` is now a fully supported browser feature,
-and not just because it saves developers a lot of time and effort.
-More recently, the introduction of complex, mix-and-match, hardware-accelerated
-animations of visual effects, multi-process compositing, and
-[hardware overlays][hardware-overlays] have made the task of rounded corners
-harder---certainly way beyond the ability of web developers to polyfill.
-In today's browsers there is a fast path to clip to rounded corners on the GPU
-without using any more memory, but this fast path can fail to apply for
-cases such as hardware video overlays and nested rounded corner clips. With
-a polyfill, the fast path would never occur, and complex visual effects combined
-with rounded corners would be infeasible.
-:::
-
-[mac-story]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
-[quickdraw]: https://raw.githubusercontent.com/jrk/QuickDraw/master/RRects.a
-[hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
-[rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
+[mdn-mask]: https://developer.mozilla.org/en-US/docs/Web/CSS/mask
 
 Browser compositing
 ===================
@@ -1502,6 +1318,138 @@ are almost endless.
 :::
 
 [overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
+
+Optimizing Surface Use
+======================
+
+While the `mask` CSS property is relatively uncommon used (as is `clip-path`
+actually), there is a special kind of mask that is very common: rounded
+corners. Now that we know how to implement masks, this one is also easy to
+add to our browser (draw a mask image with the `drawRRect` Skia canvas method).
+But because it's so common, Skia provides a special-purpose
+method to clip to rounded corners: `clipRRect`.
+
+Rounded corners are specified in CSS via `border-radius`. Here's an example:
+
+    <div style="width:256px; height:256px;
+        border-radius: 20px;background-color:lightblue">
+    </div>
+
+Which paints like this (notice the curved corners):
+
+<div style="width:256px; height:256px;border-radius:20px;background-color:lightblue">
+</div>
+
+To implement it, a `ClipRRect` display list command will go in
+`paint_visual_effects`:
+
+``` {.python}
+def paint_visual_effects(node, display_list, rect):
+    border_radius = node.style.get("border-radius")
+    if border_radius:
+        radius = int(border_radius[:-2])
+        display_list.append(Save(rect))
+        display_list.append(ClipRRect(rect, radius))
+        restore_count = restore_count + 1
+```
+
+For this, we'll need new `Save` and `Restore` display list
+commands. [^refer-back-save]
+
+[^refer-back-save]: Recall from the [Surfaces and canvases]
+[#surfaces-and-canvases] section the difference between `Save` and `SaveLayer`.
+
+``` {.python replace=%2c%20scroll/}
+class Save:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, canvas):
+        canvas.save()
+
+class Restore:
+    def __init__(self, rect):
+        self.rect = rect
+
+    def execute(self, scroll, canvas):
+        canvas.restore()
+```
+
+``` {.python replace=%2c%20scroll/,%20-%20scroll/}
+class ClipRRect:
+    def __init__(self, rect, radius):
+        self.rect = rect
+        self.radius = radius
+
+    def execute(self, scroll, canvas):
+        canvas.clipRRect(
+            skia.RRect.MakeRectXY(
+                skia.Rect.MakeLTRB(
+                    self.rect.left(),
+                    self.rect.top() - scroll,
+                    self.rect.right(),
+                    self.rect.bottom() - scroll),
+                self.radius, self.radius))
+```
+
+Now why is it that rounded rect clips are applied in `paint_visual_effects` but
+masks and clip paths happen later on in the `paint` method? What's going on
+here? It is indeed the same, but Skia only optimizes for rounded rects because
+they are so common. What it means is "clip the content drawn after this point
+until restore is called". Skia could easily add a `clipCircle` command if it
+was popular enough.
+
+What Skia does under the covers may be equivalent to the clip path
+case,[^skia-opts] and sometimes that is indeed the case. But in other
+situations, various optimizations can be applied to make the clip more
+efficient. For example, there is another method called `clipRect` that clips to
+a rectangle, which makes it easier for Skia to skip subsequent draw operations
+that don't intersect that rectangle,[^see-chap-1] or dynamically draw only the
+parts of drawings that intersect the rectangle. Likewise, the first
+optimization mentiond above also applies to `clipRRect`. (The second is
+trickier because you have to account for the space cut out in the corners.)
+
+[^skia-opts]: Skia has many internal optimizations, and by design does not
+expose whether they are used to the caller.
+
+[^see-chap-1]: This is basically the same optimization as we added in Chapter
+1 to avoid painting offscreen text.
+
+::: {.further}
+
+Rounded corners have an interesting history in computing. Their
+[inclusion][mac-story] into the original Macintosh is a fun story to read, and
+also demonstrates how computers often end up echoing reality. It also reminds us
+of just how hard it was to implement features that appear simple to us today,
+due to the very limited memory, and lack of hardware floating-point arithmetic,
+of early personal computers (here's some [example source code][quickdraw] used
+on early Macintosh computers to implement this feature).
+
+Later on, floating-point coprocessors, and then over time GPUs, became standard
+equipment on new computers. This made it much easier to implement fast rounded
+corners. Unfortunately, the `border-radius` CSS property didn't appear in
+browsers until around 2010 (but that didn't stop web developers from putting
+rounded corners on their sites before then)! There are a number of clever ways
+to do it even without `border-radius`; [this video][rr-video] walks through
+several.
+
+It's a good thing `border-radius` is now a fully supported browser feature,
+and not just because it saves developers a lot of time and effort.
+More recently, the introduction of complex, mix-and-match, hardware-accelerated
+animations of visual effects, multi-process compositing, and
+[hardware overlays][hardware-overlays] have made the task of rounded corners
+harder---certainly way beyond the ability of web developers to polyfill.
+In today's browsers there is a fast path to clip to rounded corners on the GPU
+without using any more memory, but this fast path can fail to apply for
+cases such as hardware video overlays and nested rounded corner clips. With
+a polyfill, the fast path would never occur, and complex visual effects combined
+with rounded corners would be infeasible.
+:::
+
+[mac-story]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
+[quickdraw]: https://raw.githubusercontent.com/jrk/QuickDraw/master/RRects.a
+[hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
+[rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
 
 Summary
 =======
