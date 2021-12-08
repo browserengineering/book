@@ -5,13 +5,14 @@ prev: security
 next: rendering-architecture
 ...
 
-Right now our browser's visual capabilities are pretty boring, just
-colored rectangles and text. Real browsers, one the other hand,
-support all kinds of *visual effects* that affect how elements look.
-Before we add these to our browser, we'll need to learn a bit about
-pixels, colors, and blending on computer screens. We'll then be able
-to implement these effects using the Skia graphics library, and you'll
-see a bit of how Skia is implemented under the hood.
+Right now our browser's visual capabilities are pretty boring, just colored
+rectangles and text. Real browsers, one the other hand, support all kinds
+of *visual effects* that affect how elements look. Before we add these to our
+browser, we'll need to learn a bit about pixels, colors, and blending of
+surfaces onto computer screens. We'll then be able to implement these effects
+using the Skia graphics library, and you'll see a bit of how Skia is
+implemented under the hood. Finally we'll see how surfaces also play a key role
+in *browser compositing* to accelerate animations like scrolling.
 
 Installing Skia and SDL
 =======================
@@ -37,7 +38,7 @@ Start by installing [Skia][skia-python] and
 
     pip3 install skia-python pysdl2 pysdl2-dll
 
-[skia-python]: https://github.com/kyamagu/skia-python
+[skia-python]: https://kyamagu.github.io/skia-python/
 [sdl-python]: https://pypi.org/project/PySDL2/
 
 ::: {.install}
@@ -45,7 +46,7 @@ As elsewhere in this book, you may need to use `pip`, `easy_install`,
 or `python3 -m pip` instead of `pip3` as your installer, or use your
 IDE's package installer. If you're on Linux, you'll need to install
 additional dependencies, like OpenGL and fontconfig. Also, you may not be
-able to install `pysdl2-dll`; you'll need to find SDL in your system
+able to install `pysdl2-dll`; if so, you'll need to find SDL in your system
 package manager instead. Consult the  [`skia-python`][skia-python] and
 [`pysdl2`][sdl-python] web pages for more details.
 :::
@@ -60,7 +61,7 @@ import skia
 
 If any of these imports fail, you probably need to check that Skia and
 SDL were installed correctly. Note that the `ctypes` module comes
-standard in Python; it helps convert between Python and C types.
+standard in Python; it is used to convert between Python and C types.
 
 SDL replaces Tkinter
 ====================
@@ -90,11 +91,11 @@ class Browser:
 ```
 
 To set up Skia to draw to this window, we also need create a
-"surface" for it:[^surface]
+*surface* for it:[^surface]
 
 [^surface]: In Skia and SDL, a *surface* is a representation of a
-graphics buffer into which you can draw "pixels" (bits representing
-colors). A surface may or may not be bound to the actual pixels on the
+graphics buffer into which you can draw *pixels* (bits representing
+colors). A surface may or may not be bound to the physical pixels on the
 screen via a window, and there can be many surfaces. A *canvas* is an
 API interface that allows you to draw into a surface with higher-level
 commands such as for rectangles or text. Our browser uses separate
@@ -117,13 +118,14 @@ place to another:
 ``` {.python replace=draw_to_screen/draw}
 class Browser:
     def draw_to_screen(self):
-        # Copy the results to the SDL surface:
+        # This makes an image interface to the Skia surface, but
+        # doesn't actually copy anything yet.
         skia_image = self.root_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
 
-        depth = 32 # 4 bytes per pixel
-        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen
+        depth = 32 # 4 bytes per pixel.
+        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen.
         # Skia uses an ARGB format - alpha first byte, then
         # through to blue as the last byte.
         alpha_mask = 0xff000000
@@ -135,6 +137,7 @@ class Browser:
             red_mask, green_mask, blue_mask, alpha_mask)
 
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
+        # SDL_BlitSurface is what actually does the copy.
         sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 ```
@@ -199,7 +202,7 @@ which we now need to replace. Skia is a bit more verbose than Tkinter,
 so let's abstract over some details with helper functions.[^skia-docs]
 First, a helper function to convert colors to Skia colors:
 
-[^skia-docs]: Consult the [Skia][skia] and [Skia-Python][skia-python]
+[^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
 documentation for more on the Skia API.
 
 ``` {.python}
@@ -240,7 +243,7 @@ def draw_text(canvas, x, y, text, font, color=None):
         font, paint)
 ```
 
-Finally, for drawing rectangles we use `drawRect`:
+Finally, for drawing rectangles you use `drawRect`:
 
 ``` {.python}
 def draw_rect(canvas, l, t, r, b, fill=None, width=1):
@@ -348,8 +351,10 @@ class Browser:
     def draw(self):
         # ...
         draw_rect(canvas, 10, 50, 35, 90)
-        path = skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
-        paint = skia.Paint(Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
+        path = \
+            skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
+        paint = skia.Paint(
+            Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
         canvas.drawPath(path, paint)
 ```
 
@@ -394,7 +399,7 @@ and
 ```
 
 Note the negative sign when accessing the ascent. In Skia, ascent and
-descent positive if they go downward and negative if they go upward,
+descent are positive if they go downward and negative if they go upward,
 so ascents will normally be negative, the opposite of Tkinter.
 
 You should now be able to run the browser again. It should look and
@@ -409,9 +414,18 @@ typically include raster library experts: Skia for Chromium and [Core
 Graphics][core-graphics] for Webkit, for example. Both of these
 libraries are used outside of the browser, too: Core Graphics in iOS
 and macOS, and Skia in Android.
+
+If you're looking for another book on how these libraries are implemented, check
+out [Real-Time Rendering][rtr-book]. There is also [Computer Graphics:
+Principles and Practice][classic], which incidentally I remember buying back
+the days of my youth (1992 or so). At the time I didn't get much further than
+rastering lines and a few polygons (and in assembly language!). These days you
+can do the same and more with Skia and a few lines of Python.
 :::
 
 [core-graphics]: https://developer.apple.com/documentation/coregraphics
+[rtr-book]: https://www.realtimerendering.com/
+[classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
 
 Pixels, Color, Raster
 =====================
@@ -445,8 +459,9 @@ made.[^other-spaces]
 
 [^other-spaces]: The sRGB color space dates back to [CRT
 displays][CRT]. New technologies like LCD, LED, and OLED can display
-more colors, so CSS now includes [new syntax][color-spec] for
-expressing these new colors. All color spaces have a limited gamut of expressible colors.
+more colors, so CSS now includes [ syntax][color-spec] for
+expressing these new colors. All color spaces have a limited gamut of
+expressible colors.
 
 The job of a rasterization library is to determine the red, green, and
 blue intensity of each pixel on the screen, based on the
@@ -515,7 +530,7 @@ Stacking contexts
 
 Color mixing means we need to think carefully about the order of
 operations. For example, consider black text on an orange background,
-placed semi-transparenly over a white background.[^example-1] The text
+placed semi-transparenly over a white background. The text
 is gray while the background is yellow-orange. That's due to blending:
 the text and the background are both partially transparent and let
 through some of the underlying white:
@@ -535,7 +550,7 @@ shapes but to a tree of [*stacking contexts*][stacking-context]. Each
 stacking context is rastered into a single 2D array of pixels and then
 blended into its parent stacking context. Note that to raster a
 stacking context you first need to raster it *and* its child stacking
-contexts, so they can be blended into the stacking context. In other
+contexts, so they can be blended together into the parent. In other
 words, rastering a web page requires a bottom-up traversal of the tree
 of stacking contexts.
 
@@ -573,15 +588,12 @@ complicated to handle in real browsers.
 Surfaces and canvases
 =====================
 
-The 2D pixel array for a group is called a *surface*.[^or-texture] Conceptually,
-each layout object will now have its own surface,[^more-than-one] and perform a
-blending operation when being drawn into the surface for its parent.
-A *canvas*, on the other hand, is an API interface for drawing into a surface.
-As you've seen, Tkinter has a canvas API, and so does Skia. The "`with surface
-as canvas`" Python code pattern we've been using for Skia makes this extra
-clear---in this case, the canvas is a temporary object created for the duration
-of the `with` construct that, when its API methods are called, affects the
-pixels in the surface.
+The 2D pixel array for a stacking context is called a *surface*.[^or-texture]
+Conceptually, each layout object will now have its own surface,
+[^more-than-one] and perform a blending operation when being drawn into the
+surface for its parent. A *canvas*, on the other hand, is an API interface for
+drawing into a surface. As you've seen, Tkinter has a canvas API, and so does
+Skia.
 
 [^more-than-one]: A layout object can have more than one surface, actually. For
 the cases we'll see in this chapter, it's possible to optimize away most
@@ -610,7 +622,7 @@ doesn't actually promise to create a surface, it just promises not to keep
 drawing directly to the current one. It will in fact optimize away
 surfaces internally if it can. So what you're really doing with `SaveLayer` is
 telling Skia that there is a new conceptual layer ("piece of paper") on the
-stack. How Skia does the rest is an implementation detail (for now!).
+stack. How Skia does the rest is an implementation detail.
 
 [^tree]: A stack and a tree are very similar---the tree is a representation of
 the push/pop sequences when executing commands on the stack in the course of
@@ -1293,12 +1305,12 @@ Browser compositing
 
 Chapter 2 introduced the Tkinter canvas associated with the browser window.
 Chapter 7 added in browser chrome, also drawing to the same canvas. Any time
-anything changed, we had to clear the canvasm and paint & raster everything
-from scratch. This is inefficient---ideally, pixels should be re-rastered only
-if their colors actually change, and pixels that "move around" on the screen,
-such as with scrolling, should not need re-raster either. When context is
-complex or the screen is large, the slowdown becomes visible, the browser takes
-up too much system memory, and laptop and mobile batteries are drained.
+anything changed, we had to clear the canvas and paint & raster everything from
+scratch. This is inefficient---ideally, pixels should be re-rastered only if
+their colors actually change, and pixels that "move around" on the screen, such
+as with scrolling, should not need re-raster either. When context is complex or
+the screen is large, the slowdown becomes visible, and laptop and mobile
+batteries are drained unnecessarily.
 
 Real browsers optimize these situations by using a technique I'll call
 *browser compositing*. The idea is to create a tree of explicitly cached
@@ -1319,7 +1331,7 @@ method on `Browser` (what used to be called `draw_to_screen`.
 [^multiple-tabs]: We could even store a different surface for each `Tab`; this
 would make switching between tabs faster. Real browsers don't do this, however,
 since storing the pixels for a surface uses up a lot of memory, and raster is
-fast enough in today's computers that switching between tabs is already quite
+fast enough on today's computers that switching between tabs is already quite
 fast, compared with a human's typical ability to detect a delay in responding
 to a click.
 
@@ -1350,7 +1362,6 @@ class Browser:
         self.chrome_surface.draw(root_canvas, 0, 0)
         root_canvas.restore()
 
-        # Copy the results to the SDL surface:
         # ...
 ```
 
@@ -1361,9 +1372,9 @@ to contain all of the web page contents.[^really-big-surface]
 
 [^really-big-surface]: For a very big web page, this means `tab_surface` can be
 much larger than the size of the SDL window, and therefore take up a very large
-amount of memory. We'll ignore that, but a real browser would not. Real
-browsers optimize this to only paint and raster up to a certain distance from
-the visible parts of the surface.
+amount of memory. We'll ignore that, but a real browser would not. They
+only paint and raster surface content up to a certain distance from
+the visible region. and re-paint/raster as necessary as surfaces move around.
 
 ``` {.python}
 class Browser:
@@ -1378,8 +1389,8 @@ class Browser:
                 tab_bounds.bottom() != self.tab_surface.height() or \
                 tab_bounds.right() != self.tab_surface.width():
             self.tab_surface = skia.Surface(
-                math.ceil(tab_bounds.right()),
-                math.ceil(tab_bounds.bottom()))
+                tab_bounds.right(),
+                tab_bounds.bottom())
 
         tab_canvas = self.tab_surface.getCanvas()
         tab_canvas.clear(skia.ColorWHITE)
@@ -1439,7 +1450,7 @@ class Tab:
         bounds = skia.Rect()
         for cmd in self.display_list:
             bounds.join(cmd.rect)
-        return bounds
+        return bounds.roundOut()
 ```
 
 As far as correctness goes, we're done! To get the desired performance in
