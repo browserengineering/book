@@ -664,8 +664,8 @@ one; The two colors don't really need to "mix", and in fact it kind of
 looks like two orange rectangles instead of an orange rectangle with a
 white one on top. Now let's make the white child element
 semi-transparent, so the colors have to mix. In CSS, that requires
-adding an `opacity` property with a value somewhere in between 0
-(completely transparent) to 1 (totally opaque). With 50% opacity on
+adding an `opacity` property with a value somewhere between 0
+(completely transparent) and 1 (totally opaque). With 50% opacity on
 the white child element, it looks like this:
 
 <div style="background-color:orange">
@@ -767,7 +767,7 @@ always a single `SaveLayer` command.
 Compositing Pixels
 ==================
 
-Let's pause and explore how opacity actually works under the hood.
+Now let's pause and explore how opacity actually works under the hood.
 Skia, SDL, and many other color libraries account for opacity with a
 fourth *alpha* value for each pixel.[^alpha-vs-opacity] An alpha of 0
 means the pixel is fully transparent (meaning, no matter what the
@@ -816,9 +816,9 @@ class Pixel:
 I want to emphasize that this code is not a part of our browser---I'm
 simply using Python code to illustrate what Skia is doing internally.
 
-That `Alphaf` operation applies to pixel in one surface. But with
+That `Alphaf` operation applies to pixels in one surface. But with
 `SaveLayer` we will end up with two surfaces, with all of their pixels
-aligned, and therefore we will need to combined, or *blend* pairs of
+aligned, and therefore we will need to combine, or *blend* pairs of
 corresponding pixels.
 
 Here the terminology can get confusing: we imagine that the pixels "on
@@ -832,7 +832,7 @@ Python, the code to implement it looks like this:[^simple-alpha]
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
 Note that that page refers to premultiplied alpha colors, but Skia
-does not use premultiplied color representations internally.
+does not use premultiplied color representations internally, and the code below doesn't either.
 
 
 ``` {.python file=examples}
@@ -986,7 +986,7 @@ don't intersect with a given shape. It's called clipping because it's
 like putting a second piece of paper (called a *mask*) over the first
 one, and then using scissors to cut along the mask's edge.
 
-Clipping can be used via the CSS `clip-path` property. The [full
+One way of expressing clipping on the web is via the CSS `clip-path` property. The [full
 definition](https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path)
 is quite complicated, so let's just implement circular clips via the
 `circle(XXpx)`, which is used like this:
