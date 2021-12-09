@@ -708,7 +708,7 @@ def paint_visual_effects(node, cmds, rect):
     border_radius = node.style.get("border-radius")
     if border_radius:
         radius = float(border_radius[:-2])
-        cmds = [Save(rect), ClipRRect(rect, radius)] + cmds + [Restore()]
+        cmds = [Save(rect), ClipRRect(rect, radius)] + cmds + [Restore(rect)]
 
     return cmds
 
