@@ -841,7 +841,7 @@ class Pixel:
         self.r = self.r * (1 - source.a) * self.a + source.r * source.a
         self.g = self.g * (1 - source.a) * self.a + source.g * source.a
         self.b = self.b * (1 - source.a) * self.a + source.b * source.a
-        self.a = 1 - (1 - source.a) * (1 - self.a))
+        self.a = 1 - (1 - source.a) * (1 - self.a)
 ```
 
 Here the destination pixel `self` is modified to blend in the source
@@ -855,7 +855,7 @@ parameter as something like this:
     is 1, the result is just the source pixel color, and if it is 0
     the result is the backdrop pixel color.
 
-``` {.python.example}
+``` {.python file=examples}
 for (x, y) in destination.coordinates():
     source[x, y].alphaf(opacity)
     destination[x, y].source_over(source[x, y])
@@ -868,7 +868,7 @@ produce interesting effects are traditionally called "multiply" and
 "difference" and use simple mathematical operations. "Multiply"
 multiplies the color values:
 
-``` {.python.example}
+``` {.python file=examples}
 class Pixel:
     def multiply(self, source):
         self.r = self.r * source.r
@@ -878,7 +878,7 @@ class Pixel:
 
 And "difference" computes their absolute differences:
 
-``` {.python.example}
+``` {.python file=examples}
 class Pixel:
     def difference(self, source):
         self.r = abs(self.r - source.r)
@@ -920,7 +920,7 @@ green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
 0.65, 1)`, which is pink. On a pixel level, what's happening is
 something like this:
 
-``` {.python.example}
+``` {.python file=examples}
 for (x, y) in destination.coordinates():
     source[x, y].alphaf(opacity)
     destination[x, y].difference(source[x, y])
@@ -1347,13 +1347,12 @@ To implement it, a `ClipRRect` display list command will go in
 `paint_visual_effects`:
 
 ``` {.python}
-def paint_visual_effects(node, display_list, rect):
+def paint_visual_effects(node, cmds, rect):
+    # ...
     border_radius = node.style.get("border-radius")
     if border_radius:
-        radius = int(border_radius[:-2])
-        display_list.append(Save(rect))
-        display_list.append(ClipRRect(rect, radius))
-        restore_count = restore_count + 1
+        radius = float(border_radius[:-2])
+        cmds = [Save(rect), ClipRRect(rect, radius)] + cmds + [Restore()]
 ```
 
 For this, we'll need new `Save` and `Restore` display list

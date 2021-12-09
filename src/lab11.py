@@ -246,201 +246,6 @@ def draw_rect(canvas, l, t, r, b, fill=None, width=1):
     rect = skia.Rect.MakeLTRB(l, t, r, b)
     canvas.drawRect(rect, paint)
 
-INPUT_WIDTH_PX = 200
-
-class LineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-    def layout(self):
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        for word in self.children:
-            word.layout()
-
-        if not self.children:
-            self.height = 0
-            return
-
-        max_ascent = max([-word.font.getMetrics().fAscent 
-                          for word in self.children])
-        baseline = self.y + 1.25 * max_ascent
-        for word in self.children:
-            word.y = baseline + word.font.getMetrics().fAscent
-        max_descent = max([word.font.getMetrics().fDescent
-                           for word in self.children])
-        self.height = 1.25 * (max_ascent + max_descent)
-
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
-
-    def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
-
-def font_style(weight, style):
-    skia_weight = skia.FontStyle.kNormal_Weight
-    if weight == "bold":
-        skia_weight = skia.FontStyle.kBold_Weight
-    skia_style = skia.FontStyle.kUpright_Slant
-    if style == "italic":
-        skia_style = skia.FontStyle.kItalic_Slant
-    return skia.FontStyle(skia_weight, skia.FontStyle.kNormal_Width, skia_style)
-
-class TextLayout:
-    def __init__(self, node, word, parent, previous):
-        self.node = node
-        self.word = word
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
-    def layout(self):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = float(self.node.style["font-size"][:-2])
-        self.font = skia.Font(
-            skia.Typeface('Arial', font_style(weight, style)), size)
-
-        # Do not set self.y!!!
-        self.width = self.font.measureText(self.word)
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-
-        self.height = linespace(self.font)
-
-    def paint(self, display_list):
-        color = self.node.style["color"]
-        display_list.append(
-            DrawText(self.x, self.y, self.word, self.font, color))
-    
-    def __repr__(self):
-        return "TextLayout(x={}, y={}, width={}, height={}".format(
-            self.x, self.y, self.width, self.height)
-
-class InputLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
-    def layout(self):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = int(self.node.style["font-size"][:-2])
-        self.font = skia.Font(
-            skia.Typeface('Arial', font_style(weight, style)), size)
-
-        self.width = style_length(
-            self.node, "width", INPUT_WIDTH_PX)
-        self.height = style_length(
-            self.node, "height", linespace(self.font))
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            cmds.append(DrawRect(rect, bgcolor))
-
-        if self.node.tag == "input":
-            text = self.node.attributes.get("value", "")
-        elif self.node.tag == "button":
-            text = self.node.children[0].text
-
-        color = self.node.style["color"]
-        cmds.append(DrawText(self.x, self.y,
-                             text, self.font, color))
-
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
-
-    def __repr__(self):
-        return "InputLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
-
-def style_length(node, style_name, default_value):
-    style_val = node.style.get(style_name)
-    if style_val:
-        return int(style_val[:-2])
-    else:
-        return default_value
-
-def paint_visual_effects(node, cmds, rect):
-    opacity = float(node.style.get("opacity", "1.0"))
-    paint = skia.Paint(Alphaf=opacity)
-    cmds = [SaveLayer(paint, cmds)]
-
-    blend_mode_str = node.style.get("mix-blend-mode")
-    if blend_mode_str:
-        blend_mode = parse_blend_mode(blend_mode_str)
-        paint = skia.Paint(BlendMode=blend_mode)
-        cmds = [SaveLayer(paint, cmds)]
-
-    clip_path = node.style.get("clip-path", "")
-    circle_radius = parse_clip_path(clip_path)
-    if circle_radius:
-        width = rect.right() - rect.left()
-        height = rect.bottom() - rect.top()
-        center_x = rect.left() + width / 2
-        center_y = rect.top() + height / 2
-
-        mask_cmds = [DrawCircle(center_x, center_y, circle_radius, skia.ColorWHITE)]
-        paint = skia.Paint(BlendMode=skia.kDstIn)
-        cmds.append(SaveLayer(paint, mask_cmds))
-        cmds = [SaveLayer(skia.Paint(), cmds)]
-
-    #border_radius = node.style.get("border-radius")
-    #if border_radius:
-    #    radius = int(border_radius[:-2])
-    #    display_list.append(Save(rect))
-    #    display_list.append(ClipRRect(rect, radius))
-    #    restore_count = restore_count + 1
-
-    return cmds
-
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -714,8 +519,199 @@ class CSSParser:
                     break
         return rules
 
-def parse_style_url(url_str):
-    return url_str[5:][:-2]
+INPUT_WIDTH_PX = 200
+
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def layout(self):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for word in self.children:
+            word.layout()
+
+        if not self.children:
+            self.height = 0
+            return
+
+        max_ascent = max([-word.font.getMetrics().fAscent 
+                          for word in self.children])
+        baseline = self.y + 1.25 * max_ascent
+        for word in self.children:
+            word.y = baseline + word.font.getMetrics().fAscent
+        max_descent = max([word.font.getMetrics().fDescent
+                           for word in self.children])
+        self.height = 1.25 * (max_ascent + max_descent)
+
+    def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
+    def __repr__(self):
+        return "LineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
+def font_style(weight, style):
+    skia_weight = skia.FontStyle.kNormal_Weight
+    if weight == "bold":
+        skia_weight = skia.FontStyle.kBold_Weight
+    skia_style = skia.FontStyle.kUpright_Slant
+    if style == "italic":
+        skia_style = skia.FontStyle.kItalic_Slant
+    return skia.FontStyle(skia_weight, skia.FontStyle.kNormal_Width, skia_style)
+
+class TextLayout:
+    def __init__(self, node, word, parent, previous):
+        self.node = node
+        self.word = word
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = float(self.node.style["font-size"][:-2])
+        self.font = skia.Font(
+            skia.Typeface('Arial', font_style(weight, style)), size)
+
+        # Do not set self.y!!!
+        self.width = self.font.measureText(self.word)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+        self.height = linespace(self.font)
+
+    def paint(self, display_list):
+        color = self.node.style["color"]
+        display_list.append(
+            DrawText(self.x, self.y, self.word, self.font, color))
+    
+    def __repr__(self):
+        return "TextLayout(x={}, y={}, width={}, height={}".format(
+            self.x, self.y, self.width, self.height)
+
+class InputLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(self.node.style["font-size"][:-2])
+        self.font = skia.Font(
+            skia.Typeface('Arial', font_style(weight, style)), size)
+
+        self.width = style_length(
+            self.node, "width", INPUT_WIDTH_PX)
+        self.height = style_length(
+            self.node, "height", linespace(self.font))
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            cmds.append(DrawRect(rect, bgcolor))
+
+        if self.node.tag == "input":
+            text = self.node.attributes.get("value", "")
+        elif self.node.tag == "button":
+            text = self.node.children[0].text
+
+        color = self.node.style["color"]
+        cmds.append(DrawText(self.x, self.y,
+                             text, self.font, color))
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+
+    def __repr__(self):
+        return "InputLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
+def style_length(node, style_name, default_value):
+    style_val = node.style.get(style_name)
+    if style_val:
+        return int(style_val[:-2])
+    else:
+        return default_value
+
+def paint_visual_effects(node, cmds, rect):
+    opacity = float(node.style.get("opacity", "1.0"))
+    paint = skia.Paint(Alphaf=opacity)
+    cmds = [SaveLayer(paint, cmds)]
+
+    blend_mode_str = node.style.get("mix-blend-mode")
+    if blend_mode_str:
+        blend_mode = parse_blend_mode(blend_mode_str)
+        paint = skia.Paint(BlendMode=blend_mode)
+        cmds = [SaveLayer(paint, cmds)]
+
+    clip_path = node.style.get("clip-path", "")
+    circle_radius = parse_clip_path(clip_path)
+    if circle_radius:
+        width = rect.right() - rect.left()
+        height = rect.bottom() - rect.top()
+        center_x = rect.left() + width / 2
+        center_y = rect.top() + height / 2
+
+        mask_cmds = [DrawCircle(center_x, center_y, circle_radius, skia.ColorWHITE)]
+        paint = skia.Paint(BlendMode=skia.kDstIn)
+        cmds.append(SaveLayer(paint, mask_cmds))
+        cmds = [SaveLayer(skia.Paint(), cmds)]
+
+    border_radius = node.style.get("border-radius")
+    if border_radius:
+        radius = float(border_radius[:-2])
+        cmds = [Save(rect), ClipRRect(rect, radius)] + cmds + [Restore()]
+
+    return cmds
+
 
 def style(node, rules, url):
     node.style = {}
