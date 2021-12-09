@@ -851,6 +851,10 @@ and destination colors, weighted by alpha.[^source-over-example] You
 might imagine the overall operation of `SaveLayer` with an `Alphaf`
 parameter as something like this:
 
+[^source-over-example]: For example, if the alpha of the source pixel
+    is 1, the result is just the source pixel color, and if it is 0
+    the result is the backdrop pixel color.
+
 ``` {.python.example}
 for (x, y) in destination.coordinates():
     source[x, y].alphaf(opacity)
@@ -1004,10 +1008,6 @@ That HTML looks like this:
 This test text exists here to ensure that the "div" element is
 large enough that a reasonably large circle is drawn to your screen.
 </div>
-
-Here, the percentage defines the radius of the circle, and is
-calculated so that, if you were clipping a perfect square, a radius of
-100% would inscribe the bounds of the square.
 
 To implement circular clips, we'll again use blending modes, but this
 use will be a little unintuitive. We'll make a new surface (the mask),
@@ -1331,13 +1331,16 @@ method to clip to rounded corners: `clipRRect`.
 
 Rounded corners are specified in CSS via `border-radius`. Here's an example:
 
-    <div style="width:256px; height:256px;
-        border-radius: 20px;background-color:lightblue">
+    <div style="border-radius:5px;background-color:lightblue">
+    This test text exists here to ensure that the "div" element is
+    large enough that you see some rounded corners.
     </div>
 
 Which paints like this (notice the curved corners):
 
-<div style="width:256px; height:256px;border-radius:20px;background-color:lightblue">
+<div style="border-radius:5px;background-color:lightblue">
+This test text exists here to ensure that the "div" element is
+large enough that you see some rounded corners.
 </div>
 
 To implement it, a `ClipRRect` display list command will go in
