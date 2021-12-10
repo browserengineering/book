@@ -39,5 +39,30 @@ function resize_iframes(event) {
     }
 }
 
+const COLORS = [
+    ["#B5DEFF", "#064663"], // blue
+    ["#FAF0AF", "#E1701A"], // yellow
+    ["#FFC4E1", "#9A0680"], // pink
+    ["#F4D19B", "#7D0633"], // brown
+    ["#C1FFD7", "#1E5128"], // green
+    ["#CAB8FF", "#4C0070"], // purple
+    ["#E2C2B9", "#734046"], // brown
+];
+
+function highlight_regions() {
+    var pres = document.querySelectorAll(".highlight-region");
+    for (var pre of pres) {
+        var marks = pre.querySelectorAll("mark");
+        for (var i = 0; i < marks.length; i++) {
+            let [bgcolor, labelcolor] = COLORS[i % COLORS.length];
+            let mark = marks[i];
+            let label = mark.querySelector("label");
+            mark.style["background-color"] = bgcolor;
+            label.style["color"] = labelcolor;
+        }
+    }
+}
+
 window.addEventListener("load", resize_iframes);
 window.addEventListener("resize", resize_iframes);
+window.addEventListener("DOMContentLoaded", highlight_regions);

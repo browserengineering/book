@@ -235,3 +235,16 @@ form.states.s-success #signup-close { display: block; }
     pre { font-size: 0.8333rem; }
     #toc a { text-decoration: none; color: black; }
 }
+
+.highlight-region { font-size: 36px; line-height: 1.5; padding: 1em; }
+.highlight-region mark { position: relative; padding: .1em; }
+.highlight-region label {
+    position: absolute; font: bold 75% sans-serif; 
+}
+.highlight-region label.above { top: -1.2em; }
+.highlight-region label.below { bottom: -1.2em; }
+.highlight-region label.left { left: 0; }
+.highlight-region label.right { right: 0; }
+.highlight-region label.side { top: .4em; }
+.highlight-region label.side.left { right: calc(100% + .2em); left: auto; }
+.highlight-region label.side.right { left: calc(100% + .2em); right: auto; }
