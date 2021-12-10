@@ -65,7 +65,7 @@ Non-rectangular clips via `clip-path:circle` are supported.
     >>> test.socket.respond(size_and_clip_path_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n" +
     ... b"<link rel=stylesheet href='styles.css'>" +
-    ... b"<div style=\"clip-path:circle(40%)\"><div>Clip</div></div>)")
+    ... b"<div style=\"clip-path:circle(4px)\"><div>Clip</div></div>)")
 
 There will be two save layers in this case---one to isolate the
 div and its children so the clip only applies ot it, and one to
@@ -80,7 +80,7 @@ make a canvas in which to draw the circular clip mask.
     drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
     drawString(text=Clip, x=13.0, y=36.10546875, color=ff000000)
     saveLayer(color=ff000000, blend_mode=BlendMode.kDstIn)
-    drawCircle(cx=400.0, cy=29.171875, radius=219.0114596388166, color=ffffffff)
+    drawCircle(cx=400.0, cy=29.171875, radius=4.0, color=ffffffff)
     restore()
     restore()
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
