@@ -288,7 +288,8 @@ class BlockLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            cmds.append(DrawRect(rect, bgcolor))
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         for child in self.children:
             child.paint(cmds)
@@ -683,12 +684,16 @@ def paint_visual_effects(node, cmds, rect):
     blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
 
     border_radius = float(node.style.get("border-radius", "0px")[:-2])
+    if node.style.get("overflow", "visible") == "clip":
+        clip_radius = border_radius
+    else:
+        clip_radius = 0
 
     return [
         SaveLayer(skia.Paint(BlendMode=blend_mode), [
             SaveLayer(skia.Paint(Alphaf=opacity), cmds),
             SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, border_radius, skia.ColorWhite)
+                DrawRRect(rect, clip_radius, skia.ColorWhite)
             ]),
         ]),
     ]

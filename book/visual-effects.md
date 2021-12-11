@@ -466,7 +466,7 @@ Note that Skia supports `RRect`s, or rounded rectangles, natively, so
 we can just draw one right to a canvas. Now we can draw these rounded
 rectangles for the background:
 
-``` {.python}
+``` {.python replace=display_list./cmds.}
 class BlockLayout:
     def paint(self, display_list):
         if bgcolor != "transparent":
@@ -1089,8 +1089,10 @@ large enough that the border radius is obvious.
 </div>
 
 Look at how the letters near the corner are cut off to maintain a
-sharp rounded edge. That's clipping; without the `overflow: clip`
-property these letters would instead be fully drawn.
+sharp rounded edge. (Uhh... actually, at the time of this writing,
+Safari does not support `overflow: clip`, so if you're using Safari
+you won't see this effect.) That's clipping; without the `overflow:
+clip` property these letters would instead be fully drawn.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
