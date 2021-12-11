@@ -459,7 +459,8 @@ class DrawRRect:
         self.color = color_to_sk_color(color)
 
     def execute(self, canvas):
-        canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
+        canvas.drawRRect(self.rrect,
+            paint=skia.Paint(Color=self.color))
 ```
 
 Note that Skia supports `RRect`s, or rounded rectangles, natively, so
@@ -470,7 +471,8 @@ rectangles for the background:
 class BlockLayout:
     def paint(self, display_list):
         if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            radius = \
+                float(self.node.style.get("border-radius", "0px")[:-2])
             display_list.append(DrawRRect(rect, radius, bgcolor))
 ```
 

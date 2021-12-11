@@ -168,7 +168,8 @@ class DrawRRect:
         self.color = color_to_sk_color(color)
 
     def execute(self, canvas):
-        canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
+        canvas.drawRRect(self.rrect,
+            paint=skia.Paint(Color=self.color))
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -294,7 +295,8 @@ class BlockLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            radius = \
+                float(self.node.style.get("border-radius", "0px")[:-2])
             if radius != 0.0:
                 cmds.append(DrawRRect(rect, radius, bgcolor))
             else:
