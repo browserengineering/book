@@ -1138,7 +1138,7 @@ def paint_visual_effects(node, cmds, rect):
         SaveLayer(skia.Paint(BlendMode=blend_mode), [
             SaveLayer(skia.Paint(Alphaf=opacity), cmds),
             SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, clip_radius, skia.ColorWhite)
+                DrawRRect(rect, clip_radius, skia.ColorWHITE)
             ]),
         ]),
     ]
