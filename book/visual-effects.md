@@ -814,7 +814,9 @@ def paint_visual_effects(node, cmds, rect):
 
 Note that `paint_visual_effects` receives a list of commands and
 returns another list of commands. It's just that the output list is
-always a single `SaveLayer` command.
+always a single `SaveLayer` command that wraps the original content---which makes sense, because
+first we need to draw the commands to a surface, and *then* apply transparency to it when blending into
+the parent.
 
 Compositing Pixels
 ==================
