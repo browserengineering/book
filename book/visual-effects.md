@@ -63,8 +63,8 @@ If any of these imports fail, you probably need to check that Skia and
 SDL were installed correctly. Note that the `ctypes` module comes
 standard in Python; it is used to convert between Python and C types.
 
-SDL replaces Tkinter
-====================
+SDL creates the Window
+======================
 
 The main loop of the browser first needs some boilerplate to get SDL
 started:
@@ -193,8 +193,8 @@ constructor; this main loop replaces them. Also note that I've changed
 the signatures of the various `handle_xxx` methods; you'll need to
 make analogous changes in `Browser` where they are defined.
 
-Skia replaces Tkinter
-=====================
+Skia is the canvas
+==================
 
 Now our browser is creating an SDL window can draw to it via Skia. But
 most of the browser codebase is still using Tkinter drawing commands,
@@ -381,6 +381,34 @@ class Tab:
             draw_line(canvas, x, y, x, y + obj.height)
 ```
 
+This takes care of just about all of our graphics commands, with just
+one small thing left: text handling.
+
+::: {.further}
+Implementing high-quality raster libraries is very interesting in its own
+right. These days, it's especially important to leverage GPUs when
+they're available, and browsers often push the envelope. Browser teams
+typically include raster library experts: Skia for Chromium and [Core
+Graphics][core-graphics] for Webkit, for example. Both of these
+libraries are used outside of the browser, too: Core Graphics in iOS
+and macOS, and Skia in Android.
+
+If you're looking for another book on how these libraries are implemented, check
+out [Real-Time Rendering][rtr-book]. There is also [Computer Graphics:
+Principles and Practice][classic], which incidentally I remember buying back
+the days of my youth (1992 or so). At the time I didn't get much further than
+rastering lines and a few polygons (and in assembly language!). These days you
+can do the same and more with Skia and a few lines of Python.
+:::
+
+[core-graphics]: https://developer.apple.com/documentation/coregraphics
+[rtr-book]: https://www.realtimerendering.com/
+[classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
+
+
+Skia is also the font library
+=============================
+
 Note that I've also replaced Tkinter's `measure` call with Skia's
 `measureText` equivalent. We'll also need to create Skia fonts instead
 of Tkinter ones. Update all the other places that `measure` was called
@@ -406,26 +434,49 @@ You should now be able to run the browser again. It should look and
 behave just as it did in previous chapters, and it'll probably feel
 faster, because Skia and SDL are faster than Tkinter.
 
-::: {.further}
-Implementing high-quality raster libraries is very interesting in its own
-right. These days, it's especially important to leverage GPUs when
-they're available, and browsers often push the envelope. Browser teams
-typically include raster library experts: Skia for Chromium and [Core
-Graphics][core-graphics] for Webkit, for example. Both of these
-libraries are used outside of the browser, too: Core Graphics in iOS
-and macOS, and Skia in Android.
+Let's reward ourselves for the big refactor with a simple feature that
+Skia enables: rounded corners via the `border-radius` CSS property,
+like this:
 
-If you're looking for another book on how these libraries are implemented, check
-out [Real-Time Rendering][rtr-book]. There is also [Computer Graphics:
-Principles and Practice][classic], which incidentally I remember buying back
-the days of my youth (1992 or so). At the time I didn't get much further than
-rastering lines and a few polygons (and in assembly language!). These days you
-can do the same and more with Skia and a few lines of Python.
-:::
+    <div style="border-radius: 10px">
+        This is some example text.
+    </div>
 
-[core-graphics]: https://developer.apple.com/documentation/coregraphics
-[rtr-book]: https://www.realtimerendering.com/
-[classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
+Which looks like this:
+
+<div style="border-radius: 10px">
+This is some example text.
+</div>
+
+Implementing requires drawing a rounded rectangle, so let's add a new
+`DrawRRect` command:
+
+``` {.python}
+class DrawRRect:
+    def __init__(self, rect, radius, color):
+        self.rect = rect
+        self.rrect = skia.RRect.MakeRectXY(rect, self.radius, self.radius)
+        self.color = color
+
+    def execute(self, canvas):
+        canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
+```
+
+Note that Skia supports `RRect`s, or rounded rectangles, natively, so
+we can just draw one right to a canvas. Now we can draw these rounded
+rectangles for the background:
+
+``` {.python}
+class BlockLayout:
+    def paint(self, display_list):
+        if bgcolor != "transparent":
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            display_list.append(DrawRRect(rect, radius, bgcolor))
+```
+
+In this way, one advantage of using Skia is that, since it is also
+used in the Chrome browser, we know it has fast, built-in support for
+all of the shapes we might need.
 
 Pixels, Color, Raster
 =====================
@@ -646,7 +697,7 @@ way each time.
 ``` {.html.example}
 <div style="background-color:orange">
     Parent
-    <div style="background-color:white">Child</div>
+    <div style="background-color:white;border-radius:5px">Child</div>
     Parent
 </div>
 ```
@@ -655,7 +706,7 @@ It looks like this:
 
 <div style="background-color:orange">
 Parent
-<div style="background-color:white">Child</div>
+<div style="background-color:white;border-radius:5px">Child</div>
 Parent
 </div>
 
@@ -670,7 +721,7 @@ the white child element, it looks like this:
 
 <div style="background-color:orange">
 Parent
-<div style="background-color:white;opacity:0.5">Child</div>
+<div style="background-color:white;border-radius:5px;opacity:0.5">Child</div>
 Parent
 </div>
 
@@ -1000,19 +1051,31 @@ like putting a second piece of paper (called a *mask*) over the first
 one, and then using scissors to cut along the mask's edge.
 
 There are all sorts of powerful methods[^like-clip-path] for clipping
-content on the web, but the most common form of masking is rounded
-rectangles. Take a look at this example:
+content on the web, but the most common form involves the `overflow`
+property. This property has lots of possible values,[^like-scroll] but
+let's focus here on `overflow: clip`, which cuts off contents of an
+element that are outside the element's bounds.
 
 [^like-clip-path]: The CSS [`clip-path` property][mdn-clip-path] lets
 specify a mask shape using a curve, while the [`mask`
 property][mdn-mask] lets you instead specify a image URL for the mask.
 
+[^like-scroll]: For example, `overflow: scroll` adds scroll bars and
+    makes an element scrollable, while `overflow: hidden` is similar
+    but subtly different from `overflow: clip`.
+
 [mdn-mask]: https://developer.mozilla.org/en-US/docs/Web/CSS/mask
 
 [mdn-clip-path]: https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path
 
+Usually, `overflow: clip` is used with properties like `height` or
+`rotate` which can make an element's children poke outside their
+parent. Our browser doesn't support these, but there is one edge case
+where `overflow: clip` is relevant: with rounded corners. Consider
+this example:
+
 ``` {.html.example}
-<div style="border-radius:20px;background-color:lightblue">
+<div style="border-radius:30px;background-color:lightblue;overflow:clip">
     This test text exists here to ensure that the "div" element is
     large enough that the border radius is obvious.
 </div>
@@ -1020,10 +1083,14 @@ property][mdn-mask] lets you instead specify a image URL for the mask.
 
 That HTML looks like this:
 
-<div style="border-radius:20px;background-color:lightblue">
+<div style="border-radius:30px;background-color:lightblue;overflow:clip">
 This test text exists here to ensure that the "div" element is
 large enough that the border radius is obvious.
 </div>
+
+Look at how the letters near the corner are cut off to maintain a
+sharp rounded edge. That's clipping; without the `overflow: clip`
+property these letters would instead be fully drawn.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1049,19 +1116,6 @@ class Pixel:
         self.a = self.a * source.a
 ```
 
-To implement this, we'll need to be able to draw a rounded rectangle:
-
-``` {.python}
-class DrawRRect:
-    def __init__(self, rect, radius, color):
-        self.rect = rect
-        self.rrect = skia.RRect.MakeRectXY(rect, self.radius, self.radius)
-        self.color = color
-
-    def execute(self, canvas):
-        canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
-```
-
 Now, in `paint_visual_effects`, we need to create a new layer, draw
 the mask image into it, and then blend it with the element contents
 with destination-in blending:
@@ -1070,25 +1124,37 @@ with destination-in blending:
 def paint_visual_effects(node, cmds, rect):
     # ...
     border_radius = float(node.style.get("border-radius", "0px")[:-2])
+    if node.style.get("overflow", "visible") == "clip":
+        clip_radius = border_radius
+    else:
+        clip_radius = 0
+
 
     return [
         SaveLayer(skia.Paint(BlendMode=blend_mode), [
             SaveLayer(skia.Paint(Alphaf=opacity), cmds),
             SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, border_radius, skia.ColorWhite)
+                DrawRRect(rect, clip_radius, skia.ColorWhite)
             ]),
         ]),
     ]
 ```
 
-Here I chose to draw the rounded rectangle in white, but the color
-doesn't matter as long as it's opaque. Notice how similar this masking
-technique is to the physical analogy with scissors described earlier,
-with the two layers playing the role of two sheets of paper and
-destination-in compositing playing the role of the scissors. This
-implementation technique for clipping is called *masking*, and it is
-very general---you can use it with arbitrarily complex mask shapes,
-like text, bitmap images, or anything else you can imagine.
+Note that after drawing all of the element contents with `cmds` (and
+applying opacity), this code then draws a rounded rectangle on another
+layer to serve as the mask, and uses destination-in blending to clip
+the element contents. Here I chose to draw the rounded rectangle in
+white, but the color doesn't matter as long as it's opaque. On the
+other hand, if there's no clipping, I don't round the corners of the
+mask, which means nothing is clipped off.
+
+Notice how similar this masking technique is to the physical analogy
+with scissors described earlier, with the two layers playing the role
+of two sheets of paper and destination-in compositing playing the role
+of the scissors. This implementation technique for clipping is called
+*masking*, and it is very general---you can use it with arbitrarily
+complex mask shapes, like text, bitmap images, or anything else you
+can imagine.
 
 Browser compositing
 ===================
