@@ -755,8 +755,7 @@ construct the appropriate `SaveLayer`:
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    paint = skia.Paint(Alphaf=opacity)
-    cmds = [SaveLayer(paint, cmds)]
+
     return [
          SaveLayer(skia.Paint(Alphaf=opacity), cmds),
     ]
@@ -956,8 +955,8 @@ def paint_visual_effects(node, cmds, rect):
     
     return [
         SaveLayer(skia.Paint(BlendMode=blend_mode), [
-            SaveLayer(skia.Paint(Alphaf=opacity), cmds)
-        ])
+            SaveLayer(skia.Paint(Alphaf=opacity), cmds),
+        ]),
     ]
 ```
 
@@ -1324,7 +1323,6 @@ To implement it, a `ClipRRect` display list command will go in
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    border_radius = node.style.get("border-radius")
     if border_radius:
         radius = float(border_radius[:-2])
         cmds = [Save(rect), ClipRRect(rect, radius)] + cmds + [Restore()]

@@ -679,7 +679,9 @@ def style_length(node, style_name, default_value):
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
+
     blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+
     border_radius = float(node.style.get("border-radius", "0px")[:-2])
 
     return [
@@ -690,7 +692,6 @@ def paint_visual_effects(node, cmds, rect):
             ]),
         ]),
     ]
-
 
 def style(node, rules, url):
     node.style = {}
