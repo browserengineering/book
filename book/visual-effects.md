@@ -1022,7 +1022,7 @@ wouldn't be anything to blend it into!
 [mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
 
 ::: {.further}
-In reality, reading individual pixels into memory and manipulate them
+In reality, reading individual pixels into memory to manipulate them
 like this is slow. Instead, it should be done on the GPU. So libraries
 such as Skia don't make it convenient to do so. (Skia canvases do have
 `peekPixels` and `readPixels` methods that are sometimes used, but not
