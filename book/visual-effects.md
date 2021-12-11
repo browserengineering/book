@@ -455,8 +455,8 @@ Implementing requires drawing a rounded rectangle, so let's add a new
 class DrawRRect:
     def __init__(self, rect, radius, color):
         self.rect = rect
-        self.rrect = skia.RRect.MakeRectXY(rect, self.radius, self.radius)
-        self.color = color
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+        self.color = color_to_sk_color(color)
 
     def execute(self, canvas):
         canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
@@ -752,7 +752,7 @@ no longer just a linear sequence of drawing operations, but a tree.
 The `SaveLayer` drawing operation reflects this by taking a sequence
 of other drawing commands as an argument:
 
-``` {.python replace=scroll%2c%20/}
+``` {.python expected=False}
 class SaveLayer:
     def __init__(self, sk_paint, cmds):
         self.sk_paint = sk_paint
@@ -803,12 +803,12 @@ class BlockLayout:
 Inside `paint_visual_effects`, we'll parse the opacity value and
 construct the appropriate `SaveLayer`:
 
-``` {.python}
+``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
 
     return [
-         SaveLayer(skia.Paint(Alphaf=opacity), cmds),
+        SaveLayer(skia.Paint(Alphaf=opacity), cmds),
     ]
 ```
 
@@ -1001,7 +1001,7 @@ def parse_blend_mode(blend_mode_str):
 This makes adding support for blend modes to our browser as simple as
 passing the `BlendMode` parameter to the `Paint` object:
 
-``` {.python}
+``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
     blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
@@ -1124,7 +1124,7 @@ Now, in `paint_visual_effects`, we need to create a new layer, draw
 the mask image into it, and then blend it with the element contents
 with destination-in blending:
 
-``` {.python}
+``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
     border_radius = float(node.style.get("border-radius", "0px")[:-2])

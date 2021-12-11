@@ -61,31 +61,32 @@ So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
 
 Non-rectangular clips via `clip-path:circle` are supported.
 
-    >>> size_and_clip_path_url = 'http://test.test/size_and_clip_path'
-    >>> test.socket.respond(size_and_clip_path_url, b"HTTP/1.0 200 OK\r\n" +
+    >>> size_and_rounded_clip_url = 'http://test.test/size_and_rounded_clip_url'
+    >>> test.socket.respond(size_and_rounded_clip_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n" +
     ... b"<link rel=stylesheet href='styles.css'>" +
-    ... b"<div style=\"clip-path:circle(4px)\"><div>Clip</div></div>)")
+    ... b"<div style=\"border-radius:5px;overflow:clip\"><div>Clip</div></div>)")
 
 There will be two save layers in this case---one to isolate the
 div and its children so the clip only applies ot it, and one to
 make a canvas in which to draw the circular clip mask.
 
     >>> browser = lab11.Browser()
-    >>> browser.load(size_and_clip_path_url)
+    >>> browser.load(size_and_rounded_clip_url)
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
     saveLayer(color=ff000000)
-    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(5, 5), color=ff0000ff)
     drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
     drawString(text=Clip, x=13.0, y=36.10546875, color=ff000000)
     saveLayer(color=ff000000, blend_mode=BlendMode.kDstIn)
-    drawCircle(cx=400.0, cy=29.171875, radius=4.0, color=ffffffff)
+    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(5, 5), color=ff000000)
     restore()
     restore()
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
 
-`border-radius` clipping is also supported.
+`border-radius` clipping is also supported, but if `overflow:clip` is not
+present, then just the the background is clipped by using `drawRRect`.
 
     >>> size_and_border_radius_url = 'http://test.test/size_and_clip_path'
     >>> test.socket.respond(size_and_border_radius_url, b"HTTP/1.0 200 OK\r\n" +
@@ -101,14 +102,11 @@ radius equal to the `20px` radius specified above.
     >>> browser.load(size_and_border_radius_url)
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
-    save()
-    clipRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(11.1719, 11.1719))
-    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(11.1719, 11.1719), color=ff0000ff)
     drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
     drawString(text=Border-radius, x=13.0, y=36.10546875, color=ff000000)
-    restore()
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
-    
+
 Testing example compositing and blending functions
 ==================================================
 
