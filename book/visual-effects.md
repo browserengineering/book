@@ -782,7 +782,7 @@ class BlockLayout:
 
         for child in self.children:
             child.paint(cmds)
-        
+        # ...        
         display_list.extend(cmds)
 ```
 
@@ -1390,9 +1390,10 @@ large enough that you see some rounded corners.
 To implement it, a `ClipRRect` display list command will go in
 `paint_visual_effects`:
 
-``` {.python}
+``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
+    border_radius_str = node.style.get("border-radius")
     if border_radius:
         radius = float(border_radius[:-2])
         cmds = [Save(rect), ClipRRect(rect, radius)] + cmds + [Restore()]
