@@ -1,56 +1,55 @@
-import skia
+class Pixel:
+    def __init__(self, r, g, b, a):
+        self.r = r
+        self.g = g
+        self.b = b
+        self.a = a
 
-# Note: this is sample code to explain the concept, it is not part
-# of the actual browser.
-def composite(source_color, backdrop_color, compositing_mode):
-    if compositing_mode == "source-over":
-        (source_r, source_g, source_b, source_a) = \
-        tuple(source_color)
-        (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
-            tuple(backdrop_color)
-        return skia.Color4f(
-            backdrop_r * (1-source_a) * backdrop_a + \
-                source_r * source_a,
-            backdrop_g * (1-source_a) * backdrop_a + \
-                source_g * source_a,
-            backdrop_b * (1-source_a) * backdrop_a + \
-                source_b * source_a,
-            1 - (1 - source_a) * (1 - backdrop_a))
-    elif compositing_mode == "destination-in":
-        (source_r, source_g, source_b, source_a) = tuple(source_color)
-        (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
-             tuple(backdrop_color)
-        return skia.Color4f(
-            backdrop_a * source_a * backdrop_r,
-            backdrop_a * source_a * backdrop_g,
-            backdrop_a * source_a * backdrop_b,
-            backdrop_a * source_a)
+    def alphaf(self, opacity):
+        self.a = self.a * opacity
+        return self
 
-# Note: this is sample code to explain the concept, it is not part
-# of the actual browser.
-def apply_blend(source_color_channel,
-                backdrop_color_channel, blend_mode):
-    if blend_mode == "multiply":
-        return source_color_channel * backdrop_color_channel
-    elif blend_mode == "difference":
-        return abs(backdrop_color_channel - source_color_channel)
-    elif blend_mode == "normal":
-        return source_color_channel
+    def source_over(self, source):
+        self.r = self.r * (1 - source.a) * self.a + source.r * source.a
+        self.g = self.g * (1 - source.a) * self.a + source.g * source.a
+        self.b = self.b * (1 - source.a) * self.a + source.b * source.a
+        self.a = 1 - (1 - source.a) * (1 - self.a)
+        return self
 
-# Note: this is sample code to explain the concept, it is not part
-# of the actual browser.
-def blend(source_color, backdrop_color, blend_mode):
-    (source_r, source_g, source_b, source_a) = tuple(source_color)
-    (backdrop_r, backdrop_g, backdrop_b, backdrop_a) = \
-        tuple(backdrop_color)
-    return skia.Color4f(
-        (1 - backdrop_a) * source_r +
-            backdrop_a * apply_blend(
-                source_r, backdrop_r, blend_mode),
-        (1 - backdrop_a) * source_g +
-            backdrop_a * apply_blend(
-                source_g, backdrop_g, blend_mode),
-        (1 - backdrop_a) * source_b +
-            backdrop_a * apply_blend(
-                source_b, backdrop_b, blend_mode),
-        source_a)
+    def destination_in(self, source):
+        self.r = self.r * self.a * source.a
+        self.g = self.g * self.a * source.a
+        self.b = self.b * self.a * source.a
+        self.a = self.a * source.a
+        return self
+
+    def multiply(self, source):
+        self.r = self.r * source.r
+        self.g = self.g * source.g
+        self.b = self.b * source.b
+        return self
+
+    def difference(self, source):
+        self.r = abs(self.r - source.r)
+        self.g = abs(self.g - source.g)
+        self.b = abs(self.b - source.b)
+        return self
+
+    def copy(self):
+        return Pixel(self.r, self.g, self.b, self.a)
+
+    def __eq__(self, other):
+        return self.r == other.r and self.g == other.g and \
+            self.b == other.b and self.a == other.a
+
+    def __repr__(self):
+        return f"Pixel({self.r}, {self.g}, {self.b}, {self.a})"
+    
+def gray(x):
+    return Pixel(x, x, x, 1.0)
+
+def do_thing():
+    for (x, y) in destination.coordinates():
+        source[x, y].alphaf(opacity)
+        destination[x, y].difference(source[x, y])
+        destination[x, y].source_over(source[x, y])

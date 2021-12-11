@@ -65,7 +65,7 @@ Non-rectangular clips via `clip-path:circle` are supported.
     >>> test.socket.respond(size_and_clip_path_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n" +
     ... b"<link rel=stylesheet href='styles.css'>" +
-    ... b"<div style=\"clip-path:circle(40%)\"><div>Clip</div></div>)")
+    ... b"<div style=\"clip-path:circle(4px)\"><div>Clip</div></div>)")
 
 There will be two save layers in this case---one to isolate the
 div and its children so the clip only applies ot it, and one to
@@ -80,7 +80,7 @@ make a canvas in which to draw the circular clip mask.
     drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
     drawString(text=Clip, x=13.0, y=36.10546875, color=ff000000)
     saveLayer(color=ff000000, blend_mode=BlendMode.kDstIn)
-    drawCircle(cx=400.0, cy=29.171875, radius=219.0114596388166, color=ffffffff)
+    drawCircle(cx=400.0, cy=29.171875, radius=4.0, color=ffffffff)
     restore()
     restore()
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
@@ -108,40 +108,41 @@ radius equal to the `20px` radius specified above.
     drawString(text=Border-radius, x=13.0, y=36.10546875, color=ff000000)
     restore()
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
+    
+Testing example compositing and blending functions
+==================================================
 
 Now let's test the example compositing and blend mode functions.
 
     >>> import examples11
-    >>> import skia
-    >>> blue_opaque = skia.Color4f(0.0, 0.0, 1.0, 1.0)
-    >>> red_opaque = skia.Color4f(1.0, 0.0, 0.0, 1.0)
+    >>> blue_opaque = examples11.Pixel(0.0, 0.0, 1.0, 1.0)
+    >>> red_opaque = examples11.Pixel(1.0, 0.0, 0.0, 1.0)
 
 Source-over compositing of blue over red yields blue.
 
-    >>> examples11.composite(blue_opaque, red_opaque, "source-over") == blue_opaque
+    >>> red_opaque.copy().source_over(blue_opaque) == blue_opaque
     True
 
 And the other way around yields red.
 
-    >>> examples11.composite(red_opaque, blue_opaque, "source-over") == red_opaque
+    >>> blue_opaque.copy().source_over(red_opaque) == red_opaque
     True
-
-    >>> blue_semitransparent = skia.Color4f(0.0, 0.0, 1.0, 0.5)
-    >>> red_semitransparent = skia.Color4f(1.0, 0.0, 0.0, 0.5)
 
 Compositing a semitransparent blue on top of an opaque red yields a part-blue,
 part-red color with an opaque alpha channel.
 
-    >>> examples11.composite(blue_semitransparent, red_opaque, "source-over")
-    Color4f(0.5, 0, 0.5, 1)
+    >>> blue_semitransparent = examples11.Pixel(0.0, 0.0, 1.0, 0.5)
+    >>> red_semitransparent = examples11.Pixel(1.0, 0.0, 0.0, 0.5)
+    >>> red_opaque.copy().source_over(blue_semitransparent)
+    Pixel(0.5, 0.0, 0.5, 1.0)
 
 Compositing the blue over red if they are both half-transparent yields a result
 that is less red then blue. This is because the definition of source-over
 compositing applies a bit differently to the background and foreground
 colors. Likewise, the final alpha is a bit different than you might think.
 
-    >>> examples11.composite(blue_semitransparent, red_semitransparent, "source-over")
-    Color4f(0.25, 0, 0.5, 0.75)
+    >>> red_semitransparent.copy().source_over(blue_semitransparent)
+    Pixel(0.25, 0.0, 0.5, 0.75)
 
 Destination-in compositing ignores the source color except for its alpha
 channel, and multiplies the color of the backdrop by that alpha.
@@ -149,55 +150,42 @@ channel, and multiplies the color of the backdrop by that alpha.
 This means that compositing any opaque color on top of a backdrop with
 destination-in compositing yields the backdrop.
 
-    >>> examples11.composite(blue_opaque, red_opaque, "destination-in")
-    Color4f(1, 0, 0, 1)
+    >>> red_opaque.copy().destination_in(blue_opaque)
+    Pixel(1.0, 0.0, 0.0, 1.0)
 
 But transparency multiplies.
 
-    >>> examples11.composite(blue_semitransparent, red_opaque, "destination-in")
-    Color4f(0.5, 0, 0, 0.5)
+    >>> red_opaque.copy().destination_in(blue_semitransparent)
+    Pixel(0.5, 0.0, 0.0, 0.5)
 
 And of course, a fully transparent source color yields a full-zero result.
 
-    >>> green_full_transparent = skia.Color4f(0.0, 1.0, 0.0, 0.0)
-    >>> examples11.composite(green_full_transparent, red_opaque, "destination-in")
-    Color4f(0, 0, 0, 0)
+    >>> green_full_transparent = examples11.Pixel(0.0, 1.0, 0.0, 0.0)
+    >>> red_opaque.copy().destination_in(green_full_transparent)
+    Pixel(0.0, 0.0, 0.0, 0.0)
 
 Now for blending. Let's start by testing the `apply_blend` function, which
 takes as input a source and backdrop color channel, and a blend mode, It applies
 the blend to the color.
 
-    >>> examples11.apply_blend(0.6, 0.0, "normal")
-    0.6
-    >>> examples11.apply_blend(0.6, 0.0, "multiply")
-    0.0
-    >>> examples11.apply_blend(0.6, 0.0, "difference")
-    0.6
-    >>> examples11.apply_blend(0.0, 0.6, "difference")
-    0.6
-
-Now let's test the full `blend` method.
-
-    >>> examples11.blend(blue_opaque, red_opaque, "normal") == blue_opaque
+    >>> gray = examples11.gray(0.6)
+    >>> black = examples11.gray(0.0)
+    >>> gray.copy().multiply(black) == black
     True
-    >>> examples11.blend(red_opaque, blue_opaque, "normal") == red_opaque
+    >>> gray.copy().difference(black) == gray
     True
-    >>> examples11.blend(blue_semitransparent, red_semitransparent, "normal") == blue_semitransparent
-    True
-    >>> examples11.blend(red_semitransparent, blue_semitransparent, "normal") == red_semitransparent
+    >>> gray.copy().difference(gray) == black
     True
 
 'multiply' multiplies each channel, so like colors may remain brighter but
  dislike colors tend to darken each other each other out.
 
-    >>> examples11.blend(blue_opaque, red_opaque, "multiply")
-    Color4f(0, 0, 0, 1)
-    >>> examples11.blend(blue_opaque, blue_semitransparent, "multiply")
-    Color4f(0, 0, 1, 1)
+    >>> red_opaque.copy().multiply(blue_opaque)
+    Pixel(0.0, 0.0, 0.0, 1.0)
+    >>> blue_opaque.copy().multiply(blue_semitransparent)
+    Pixel(0.0, 0.0, 1.0, 1.0)
 
 'difference' only keeps around the differences.
 
-    >>> examples11.blend(blue_opaque, red_opaque, "difference")
-    Color4f(1, 0, 1, 1)
-    >>> examples11.blend(blue_opaque, blue_semitransparent, "difference")
-    Color4f(0, 0, 0.5, 1)
+    >>> red_opaque.copy().difference(blue_opaque)
+    Pixel(1.0, 0.0, 1.0, 1.0)
