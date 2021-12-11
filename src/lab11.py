@@ -159,10 +159,11 @@ class DrawRRect:
     def __init__(self, rect, radius, color):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.color = color
+        self.color = color_to_sk_color(color)
 
     def execute(self, canvas):
-        canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
+        paint = skia.Paint(Color=self.color)
+        canvas.drawRRect(self.rrect, paint=paint)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -394,7 +395,8 @@ class InlineLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            cmds.append(DrawRect(rect, bgcolor))
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         for child in self.children:
             child.paint(cmds)
@@ -653,7 +655,8 @@ class InputLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            cmds.append(DrawRect(rect, bgcolor))
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")

@@ -180,6 +180,16 @@ class MockCanvas:
             "clipRRect(bounds={bounds}, radius={radius})".format(
                 bounds=rrect.getBounds(), radius=rrect.getSimpleRadii()))
 
+    def drawRRect(self, rrect, paint):
+       format_str = "drawRRect(bounds={bounds}, radius={radius}, " + \
+           MockCanvas.format_paint(paint, False)
+       self.commands.append(
+           (format_str + ")").format(
+           bounds=rrect.getBounds(), radius=rrect.getSimpleRadii(),
+           color=paint.getColor(),
+          alpha=paint.getAlpha(), blend_mode=paint.getBlendMode()))
+
+
     def drawImage(self, image, left, top):
         self.commands.append("drawImage(<image>, left={left}, top={top}".format(
             left=left, top=top))
