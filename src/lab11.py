@@ -128,7 +128,10 @@ def linespace(font):
     return metrics.fDescent - metrics.fAscent
 
 class SaveLayer:
-    def __init__(self, sk_paint, cmds):
+    def __init__(self, sk_paint, cmds, should_paint=True,
+        should_paint_cmds=True):
+        self.should_paint = should_paint
+        self.should_paint_cmds = should_paint_cmds
         self.sk_paint = sk_paint
         self.cmds = cmds
         self.rect = skia.Rect.MakeEmpty()
@@ -136,10 +139,13 @@ class SaveLayer:
             self.rect.join(cmd.rect)
 
     def execute(self, canvas):
-        canvas.saveLayer(paint=self.sk_paint)
-        for cmd in self.cmds:
-            cmd.execute(canvas)
-        canvas.restore()
+        if self.should_paint:
+            canvas.saveLayer(paint=self.sk_paint)
+        if self.should_paint_cmds:
+            for cmd in self.cmds:
+                cmd.execute(canvas)
+        if self.should_paint:
+            canvas.restore()
 
 class Save:
     def __init__(self, rect):
@@ -158,8 +164,8 @@ class Restore:
 class DrawRRect:
     def __init__(self, rect, radius, color):
         self.rect = rect
-        self.rrect = skia.RRect.MakeRectXY(rect, self.radius, self.radius)
-        self.color = color
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+        self.color = color_to_sk_color(color)
 
     def execute(self, canvas):
         canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
@@ -289,7 +295,10 @@ class BlockLayout:
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            if radius != 0.0:
+                cmds.append(DrawRRect(rect, radius, bgcolor))
+            else:
+                cmds.append(DrawRect(rect, bgcolor))
 
         for child in self.children:
             child.paint(cmds)
@@ -394,7 +403,11 @@ class InlineLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            cmds.append(DrawRect(rect, bgcolor))
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            if radius != 0.0:
+                cmds.append(DrawRRect(rect, radius, bgcolor))
+            else:
+                cmds.append(DrawRect(rect, bgcolor))
 
         for child in self.children:
             child.paint(cmds)
@@ -653,7 +666,11 @@ class InputLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            cmds.append(DrawRect(rect, bgcolor))
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            if radius != 0.0:
+                cmds.append(DrawRRect(rect, radius, bgcolor))
+            else:
+                cmds.append(DrawRect(rect, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -689,13 +706,21 @@ def paint_visual_effects(node, cmds, rect):
     else:
         clip_radius = 0
 
+    needs_clip = node.style.get("overflow", "visible") == "clip"
+
+    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
+        needs_clip
+
+    needs_opacity = opacity != 1.0
+
     return [
         SaveLayer(skia.Paint(BlendMode=blend_mode), [
-            SaveLayer(skia.Paint(Alphaf=opacity), cmds),
+            SaveLayer(skia.Paint(Alphaf=opacity), cmds,
+                should_paint=needs_opacity),
             SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, clip_radius, skia.ColorWhite)
-            ]),
-        ]),
+                DrawRRect(rect, clip_radius, skia.ColorWHITE)
+            ], should_paint=needs_clip, should_paint_cmds=needs_clip),
+        ], should_paint=needs_blend_isolation),
     ]
 
 def style(node, rules, url):
