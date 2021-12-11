@@ -158,7 +158,7 @@ class Restore:
 class DrawRRect:
     def __init__(self, rect, radius, color):
         self.rect = rect
-        self.rrect = skia.RRect.MakeRectXY(rect, self.radius, self.radius)
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.color = color
 
     def execute(self, canvas):
