@@ -63,7 +63,7 @@ If any of these imports fail, you probably need to check that Skia and
 SDL were installed correctly. Note that the `ctypes` module comes
 standard in Python; it is used to convert between Python and C types.
 
-SDL creates the Window
+SDL creates the window
 ======================
 
 The main loop of the browser first needs some boilerplate to get SDL
