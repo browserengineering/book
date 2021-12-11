@@ -104,6 +104,8 @@ def color_to_sk_color(color):
         return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
     elif color == "blue":
         return skia.ColorBLUE
+    elif color == "gray":
+        return skia.ColorGRAY
     else:
         return skia.ColorBLACK
 
@@ -153,20 +155,14 @@ class Restore:
     def execute(self, canvas):
         canvas.restore()
 
-class DrawCircle:
-    def __init__(self, cx, cy, radius, color):
-        self.cx = cx
-        self.cy = cy
-        self.radius = radius
-        self.rect = skia.Rect.MakeLTRB(
-            cx - radius, cy - radius,
-            cx + radius, cy + radius)
+class DrawRRect:
+    def __init__(self, rect, radius, color):
+        self.rect = rect
+        self.rrect = skia.RRect.MakeRectXY(rect, self.radius, self.radius)
         self.color = color
 
     def execute(self, canvas):
-        canvas.drawCircle(
-            self.cx, self.cy,
-            self.radius, skia.Paint(Color=self.color))
+        canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -683,34 +679,17 @@ def style_length(node, style_name, default_value):
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    paint = skia.Paint(Alphaf=opacity)
-    cmds = [SaveLayer(paint, cmds)]
+    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+    border_radius = float(node.style.get("border-radius", "0px")[:-2])
 
-    blend_mode_str = node.style.get("mix-blend-mode")
-    if blend_mode_str:
-        blend_mode = parse_blend_mode(blend_mode_str)
-        paint = skia.Paint(BlendMode=blend_mode)
-        cmds = [SaveLayer(paint, cmds)]
-
-    clip_path = node.style.get("clip-path", "")
-    circle_radius = parse_clip_path(clip_path)
-    if circle_radius:
-        width = rect.right() - rect.left()
-        height = rect.bottom() - rect.top()
-        center_x = rect.left() + width / 2
-        center_y = rect.top() + height / 2
-
-        mask_cmds = [DrawCircle(center_x, center_y, circle_radius, skia.ColorWHITE)]
-        paint = skia.Paint(BlendMode=skia.kDstIn)
-        cmds.append(SaveLayer(paint, mask_cmds))
-        cmds = [SaveLayer(skia.Paint(), cmds)]
-
-    border_radius = node.style.get("border-radius")
-    if border_radius:
-        radius = float(border_radius[:-2])
-        cmds = [Save(rect), ClipRRect(rect, radius)] + cmds + [Restore(rect)]
-
-    return cmds
+    return [
+        SaveLayer(skia.Paint(BlendMode=blend_mode), [
+            SaveLayer(skia.Paint(Alphaf=opacity), cmds),
+            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
+                DrawRRect(rect, border_radius, skia.ColorWhite)
+            ]),
+        ]),
+    ]
 
 
 def style(node, rules, url):

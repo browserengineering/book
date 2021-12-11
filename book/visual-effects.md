@@ -757,7 +757,9 @@ def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
     paint = skia.Paint(Alphaf=opacity)
     cmds = [SaveLayer(paint, cmds)]
-    return cmds
+    return [
+         SaveLayer(skia.Paint(Alphaf=opacity), cmds),
+    ]
 ```
 
 Note that `paint_visual_effects` receives a list of commands and
@@ -932,8 +934,7 @@ for (x, y) in destination.coordinates():
 [dodge-burn]: https://en.wikipedia.org/wiki/Dodging_and_burning
 
 Skia supports the [multiply][mbm-mult] and [difference][mbm-diff]
-blend modes natively, so adding them to our browser is as simple as
-passing the `BlendMode` parameter to the `Paint` object:
+blend modes natively:
 
 ``` {.python}
 def parse_blend_mode(blend_mode_str):
@@ -943,18 +944,27 @@ def parse_blend_mode(blend_mode_str):
         return skia.BlendMode.kDifference
     else:
         return skia.BlendMode.kSrcOver
+```
 
+This makes adding support for blend modes to our browser as simple as
+passing the `BlendMode` parameter to the `Paint` object:
+
+``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
-
-    blend_mode_str = node.style.get("mix-blend-mode")
-    if blend_mode_str:
-        blend_mode = parse_blend_mode(blend_mode_str)
-        paint = skia.Paint(BlendMode=blend_mode)
-        cmds = [SaveLayer(paint, cmds)]
-
-    # ...
+    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+    
+    return [
+        SaveLayer(skia.Paint(BlendMode=blend_mode), [
+            SaveLayer(skia.Paint(Alphaf=opacity), cmds)
+        ])
+    ]
 ```
+
+Note the order of operations here: we _first_ apply transparency, and
+_then_ blend the result into the rest of the page. If we switched the
+two `SaveLayer` calls, so that we first applied blending, there
+wouldn't be anything to blend it into!
 
 [mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
 [mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
@@ -990,37 +1000,44 @@ don't intersect with a given shape. It's called clipping because it's
 like putting a second piece of paper (called a *mask*) over the first
 one, and then using scissors to cut along the mask's edge.
 
-One way of expressing clipping on the web is via the CSS `clip-path` property. The [full
-definition](https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path)
-is quite complicated, so let's just implement circular clips via the
-`circle(XXpx)`, which is used like this:
+There are all sorts of powerful methods[^like-clip-path] for clipping
+content on the web, but the most common form of masking is rounded
+rectangles. Take a look at this example:
+
+[^like-clip-path]: The CSS [`clip-path` property][mdn-clip-path] lets
+specify a mask shape using a curve, while the [`mask`
+property][mdn-mask] lets you instead specify a image URL for the mask.
+
+[mdn-mask]: https://developer.mozilla.org/en-US/docs/Web/CSS/mask
+
+[mdn-clip-path]: https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path
 
 ``` {.html.example}
-<div style="clip-path:circle(20px);background-color:lightblue">
+<div style="border-radius:20px;background-color:lightblue">
     This test text exists here to ensure that the "div" element is
-    large enough that a reasonably large circle is drawn to your screen.
+    large enough that the border radius is obvious.
 </div>
 ```
 
 That HTML looks like this:
 
-<div style="clip-path:circle(20px);background-color:lightblue">
+<div style="border-radius:20px;background-color:lightblue">
 This test text exists here to ensure that the "div" element is
-large enough that a reasonably large circle is drawn to your screen.
+large enough that the border radius is obvious.
 </div>
 
-To implement circular clips, we'll again use blending modes, but this
-use will be a little unintuitive. We'll make a new surface (the mask),
-draw a circle into it, and then blend it with the element contents.
-But we want to see the element contents, not the mask, so when we do
-this blending we will use *destination-in* compositing.
+Counterintuitively, we'll implement clipping using blending modes.
+We'll make a new surface (the mask), draw a rounded rectangle into it,
+and then blend it with the element contents. But we want to see the
+element contents, not the mask, so when we do this blending we will
+use *destination-in* compositing.
 
 [Destination-in compositing][dst-in] basically means keeping the
-pixels of the backdrop surface that intersect with the source surface.
-The source surface's color is not used---just its alpha. In our case,
-the source surface is the circular mask and the backdrop surface is
-the content we want to clip, so destination-in fits perfectly. In
-code, destination-in looks like this:
+pixels of the destination surface that intersect with the source
+surface. The source surface's color is not used---just its alpha. In
+our case, the source surface is the circular mask and the destination
+surface is the content we want to clip, so destination-in fits
+perfectly. In code, destination-in looks like this:
 
 [dst-in]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstin
 
@@ -1033,88 +1050,46 @@ class Pixel:
         self.a = self.a * source.a
 ```
 
-Let's implement this. First, we'll need to parse the `clip-path` CSS
-property:
+To implement this, we'll need to be able to draw a rounded rectangle:
 
 ``` {.python}
-def parse_clip_path(clip_path_str):
-    if clip_path_str.startswith("circle"):
-        return float(clip_path_str[7:][:-3])
-    else:
-        return None
+class DrawRRect:
+    def __init__(self, rect, radius, color):
+        self.rect = rect
+        self.rrect = skia.RRect.MakeRectXY(rect, self.radius, self.radius)
+        self.color = color
+
+    def execute(self, canvas):
+        canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
 ```
 
-Then, we'll need to do a little math to compute the circle's center
-and radius:
+Now, in `paint_visual_effects`, we need to create a new layer, draw
+the mask image into it, and then blend it with the element contents
+with destination-in blending:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    clip_path = node.style.get("clip-path", "")
-    circle_radius = parse_clip_path(clip_path)
-    if circle_radius:
-        width = rect.right() - rect.left()
-        height = rect.bottom() - rect.top()
-        center_x = rect.left() + width / 2
-        center_y = rect.top() + height / 2
+    border_radius = float(node.style.get("border-radius", "0px")[:-2])
+
+    return [
+        SaveLayer(skia.Paint(BlendMode=blend_mode), [
+            SaveLayer(skia.Paint(Alphaf=opacity), cmds),
+            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
+                DrawRRect(rect, border_radius, skia.ColorWhite)
+            ]),
+        ]),
+    ]
 ```
 
-Next, we'll draw a circle on a new surface:
-
-``` {.python}
-def paint_visual_effects(node, cmds, rect):
-    if circle_radius:
-        # ...
-        mask_cmds = [DrawCircle(center_x, center_y, circle_radius, skia.ColorWHITE)]
-```
-
-Here I chose to draw the circle in white, but the color doesn't matter
-as long as it's opaque. The `DrawCircle` command is straightforward:
-
-``` {.python}
-class DrawCircle:
-    def __init__(self, cx, cy, radius, color):
-        self.cx = cx
-        self.cy = cy
-        self.radius = radius
-        self.rect = skia.Rect.MakeLTRB(
-            cx - radius, cy - radius,
-            cx + radius, cy + radius)
-        self.color = color
-
-    def execute(self, canvas):
-        canvas.drawCircle(
-            self.cx, self.cy,
-            self.radius, skia.Paint(Color=self.color))
-```
-
-Finally, we need to use the mask to clip the element contents. To do
-that, we need to *isolate* the element, in order to apply the clip
-path to only these elements, not to everything we've drawn on the
-page. That's going to require two `SaveLayer`s:[^extra-surface] one
-for the element, and one for the mask:
-
-[^extra-surface]: This is one reason there may be more surfaces than
-    groups.
-
-``` {.python}
-def paint_visual_effects(node, cmds, rect):
-    if circle_radius:
-        # ...
-        paint = skia.Paint(BlendMode=skia.kDstIn)
-        cmds.append(SaveLayer(paint, mask_cmds))
-        cmds = [SaveLayer(skia.Paint(), cmds)]
-```
-
-Notice how similar this masking technique is to the physical analogy
-with scissors described earlier, with the two layers playing the role
-of two sheets of paper and destination-in compositing playing the role
-of the scissors. This implementation technique for clipping is called
-*masking*, and it is very general; for example, the CSS
-[`mask`][mdn-mask] property lets you specifying an image URL that
-supplies the mask.
-
-[mdn-mask]: https://developer.mozilla.org/en-US/docs/Web/CSS/mask
+Here I chose to draw the rounded rectangle in white, but the color
+doesn't matter as long as it's opaque. Notice how similar this masking
+technique is to the physical analogy with scissors described earlier,
+with the two layers playing the role of two sheets of paper and
+destination-in compositing playing the role of the scissors. This
+implementation technique for clipping is called *masking*, and it is
+very general---you can use it with arbitrarily complex mask shapes,
+like text, bitmap images, or anything else you can imagine.
 
 Browser compositing
 ===================
