@@ -128,9 +128,9 @@ def linespace(font):
     return metrics.fDescent - metrics.fAscent
 
 class SaveLayer:
-    def __init__(self, sk_paint, cmds, should_paint=True,
+    def __init__(self, sk_paint, cmds, should_save=True,
         should_paint_cmds=True):
-        self.should_paint = should_paint
+        self.should_save = should_save
         self.should_paint_cmds = should_paint_cmds
         self.sk_paint = sk_paint
         self.cmds = cmds
@@ -139,27 +139,29 @@ class SaveLayer:
             self.rect.join(cmd.rect)
 
     def execute(self, canvas):
-        if self.should_paint:
+        if self.should_save:
             canvas.saveLayer(paint=self.sk_paint)
         if self.should_paint_cmds:
             for cmd in self.cmds:
                 cmd.execute(canvas)
-        if self.should_paint:
+        if self.should_save:
             canvas.restore()
 
 class Save:
-    def __init__(self, rect):
-        self.rect = rect
+    def __init__(self, cmds, should_save=True):
+        self.rect = skia.Rect.MakeEmpty()
+        self.should_save = should_save
+        self.cmds = cmds
+        for cmd in self.cmds:
+            self.rect.join(cmd.rect)
 
     def execute(self, canvas):
-        canvas.save()
-
-class Restore:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, canvas):
-        canvas.restore()
+        if self.should_save:
+            canvas.save()
+        for cmd in self.cmds:
+            cmd.execute(canvas)
+        if self.should_save:
+            canvas.restore()
 
 class DrawRRect:
     def __init__(self, rect, radius, color):
@@ -168,6 +170,7 @@ class DrawRRect:
         self.color = color_to_sk_color(color)
 
     def execute(self, canvas):
+
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=self.color))
 
@@ -209,19 +212,23 @@ class DrawRect:
             self.left, self.top, self.right, self.bottom, self.color)
 
 class ClipRRect:
-    def __init__(self, rect, radius):
+    def __init__(self, rect, radius, should_clip=True):
         self.rect = rect
         self.radius = radius
+        self.should_clip = should_clip
 
     def execute(self, canvas):
-        canvas.clipRRect(
-            skia.RRect.MakeRectXY(
-                skia.Rect.MakeLTRB(
-                    self.rect.left(),
-                    self.rect.top(),
-                    self.rect.right(),
-                    self.rect.bottom()),
-                self.radius, self.radius))
+        if self.should_clip:
+            if self.radius > 0.0:
+                canvas.clipRRect(skia.RRect.MakeRectXY(
+                    skia.Rect.MakeLTRB(
+                        self.rect.left(),
+                        self.rect.top(),
+                        self.rect.right(),
+                        self.rect.bottom()),
+                    self.radius, self.radius))
+            else:
+                canvas.clipRect(self.rect)
 
 def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
@@ -717,12 +724,12 @@ def paint_visual_effects(node, cmds, rect):
 
     return [
         SaveLayer(skia.Paint(BlendMode=blend_mode), [
-            SaveLayer(skia.Paint(Alphaf=opacity), cmds,
-                should_paint=needs_opacity),
-            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, clip_radius, skia.ColorWHITE)
-            ], should_paint=needs_clip, should_paint_cmds=needs_clip),
-        ], should_paint=needs_blend_isolation),
+            Save([
+                ClipRRect(rect, clip_radius, should_clip=needs_clip),
+                SaveLayer(skia.Paint(Alphaf=opacity), cmds,
+                    should_save=needs_opacity)],
+                should_save=needs_clip)],
+            should_save=needs_blend_isolation),
     ]
 
 def style(node, rules, url):

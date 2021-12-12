@@ -473,8 +473,13 @@ class BlockLayout:
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            display_list.append(DrawRRect(rect, radius, bgcolor))
+            if radius != 0.0:
+                cmds.append(DrawRRect(rect, radius, bgcolor))
+            else:
+                cmds.append(DrawRect(rect, bgcolor))
 ```
+
+Similar changes should be made to `InputLayout` and `InlineLayout`
 
 In this way, one advantage of using Skia is that, since it is also
 used in the Chrome browser, we know it has fast, built-in support for
@@ -1382,100 +1387,170 @@ are almost endless.
 Optimizing Surface Use
 ======================
 
-While the `mask` CSS property is relatively uncommon used (as is `clip-path`
-actually), there is a special kind of mask that is very common: rounded
-corners. Now that we know how to implement masks, this one is also easy to
-add to our browser (draw a mask image with the `drawRRect` Skia canvas method).
-But because it's so common, Skia provides a special-purpose
-method to clip to rounded corners: `clipRRect`.
+Our browser now works correctly uses way too many surfaces. For example, for a
+single, no-effects-needed div with some text content, there are currently 18
+surfaces allocated in the display list. For that example, we should need no
+surfaces at all!
 
-Rounded corners are specified in CSS via `border-radius`. Here's an example:
+It's pretty easy to fix this situation. Let's review the full list of surfaces
+that can be needed for an element, and then devise logic to omit them when
+not needed:
 
-    <div style="border-radius:5px;background-color:lightblue">
-    This test text exists here to ensure that the "div" element is
-    large enough that you see some rounded corners.
-    </div>
+* *Blending/isolation*: the top-level surface returned by
+`paint_visual_effects`. It's used to apply any blend mode other than
+source-over, and also to isolate the element from other parts of the page before
+applying an overflow clip.
 
-Which paints like this (notice the curved corners):
+* *Opacity*: the first nested surface within the blending/isolation
+surface, used for applying opacity transparency.
 
-<div style="border-radius:5px;background-color:lightblue">
-This test text exists here to ensure that the "div" element is
-large enough that you see some rounded corners.
-</div>
+* *Clipping*: the second nested surface, used to implement
+overflow clipping.
 
-To implement it, a `ClipRRect` display list command will go in
-`paint_visual_effects`:
+We can skip each of the above surfaces if the conditions mentioned don't hold.
+Implement that logic by changing `SaveLayer` to take two additional optional
+parameters: `should_paint` and `should_paint_cmds`. These control whether
+`saveLayer/restore`, and execution of the `cmds` parameter, actually happen
+during `execute`:
+
+``` {.python}
+class SaveLayer:
+    def __init__(self, sk_paint, cmds, should_save=True,
+        should_paint_cmds=True):
+        self.should_save = should_save
+        self.should_paint_cmds = should_paint_cmds
+        # ...
+
+    def execute(self, canvas):
+        if self.should_save:
+            canvas.saveLayer(paint=self.sk_paint)
+        if self.should_paint_cmds:
+            for cmd in self.cmds:
+                cmd.execute(canvas)
+        if self.should_save:
+            canvas.restore()
+```
+
+Now set those parameters via some simple logic in `paint_visual_effects`:
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    border_radius_str = node.style.get("border-radius")
-    if border_radius:
-        radius = float(border_radius[:-2])
-        cmds = [Save(rect), ClipRRect(rect, radius)] + cmds + [Restore()]
+    needs_clip = node.style.get("overflow", "visible") == "clip"
+
+    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
+        needs_clip
+
+    needs_opacity = opacity != 1.0
+
+   return [
+        SaveLayer(skia.Paint(BlendMode=blend_mode), [
+            SaveLayer(skia.Paint(Alphaf=opacity), cmds,
+                should_save=needs_opacity),
+            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
+                DrawRRect(rect, clip_radius, skia.ColorWHITE)
+            ], should_save=needs_clip, should_paint_cmds=needs_clip),
+        ], should_save=needs_blend_isolation),
+    ]
 ```
 
-For this, we'll need new `Save` and `Restore` display list
-commands. [^refer-back-save]
+With these changes, the example I mentioned above goes from 18 to 0 surfaces.
 
-[^refer-back-save]: Recall from the [Surfaces and canvases]
-[#surfaces-and-canvases] section the difference between `Save` and `SaveLayer`.
+There's one more optimizationm that is important: getting rid of the
+destination-in compositing surface for rounded corners. While this approach
+works just fine, and is a good idea for general masks, rounded corners are
+so common on the web that Skia has a special `clipRRect` command just for this
+use case.
 
-``` {.python replace=%2c%20scroll/}
-class Save:
-    def __init__(self, rect):
-        self.rect = rect
+There are multiple advantages to using `clipRRect` over an explicit
+destination-in surface. First, it allows Skia to internally optimize away even
+more surfaces in common situations, replacing them with an equivalent
+implementation directly on the GPU, via a shader.[^shader-rounded] Second,
+`clipRRect` makes it much easier for Skia to skip subsequent draw operations
+that don't intersect the rounded rectangle,[^see-chap-1] or dynamically draw
+only the parts of commands that intersect it.
 
-    def execute(self, scroll, canvas):
-        canvas.save()
+[^shader-rounded]: GPU programs are out of scope for this book, but if you're
+curious there are many online resources describing ways to to do this. Skia
+of course also has an implementation in its GPU-accelerated code paths.
 
-class Restore:
-    def __init__(self, rect):
-        self.rect = rect
+[^see-chap-1]: This is basically the same optimization we added in Chapter
+1 to avoid painting offscreen text.
 
-    def execute(self, scroll, canvas):
-        canvas.restore()
+Using `clipRRect` is pretty easy. It needs to be preceded by `save`, because
+once the clip has been set, all subsequent canvas are clipped until `restore`
+is called. The general pattern is:
+
+``` {.example}
+    canvas.save()
+    canvas.clipRRect(rounded_rect)
+    # Draw commands that should be clipped...
+    canvas.restore()
 ```
 
-``` {.python replace=%2c%20scroll/,%20-%20scroll/}
+To implement, first add a `ClipRRect` display list command.. It should take a
+`should_clip` parameter indicating whether the clip is necessary (just like the
+optimization we made above for `SaveLayer`).
+
+``` {.python}
 class ClipRRect:
-    def __init__(self, rect, radius):
+    def __init__(self, rect, radius, should_clip=True):
         self.rect = rect
         self.radius = radius
+        self.should_clip = should_clip
 
-    def execute(self, scroll, canvas):
-        canvas.clipRRect(
-            skia.RRect.MakeRectXY(
-                skia.Rect.MakeLTRB(
-                    self.rect.left(),
-                    self.rect.top() - scroll,
-                    self.rect.right(),
-                    self.rect.bottom() - scroll),
-                self.radius, self.radius))
+    def execute(self, canvas):
+        if self.should_clip:
+            if self.radius > 0.0:
+                canvas.clipRRect(skia.RRect.MakeRectXY(
+                    skia.Rect.MakeLTRB(
+                        self.rect.left(),
+                        self.rect.top(),
+                        self.rect.right(),
+                        self.rect.bottom()),
+                    self.radius, self.radius))
+            else:
+                canvas.clipRect(self.rect)
 ```
 
-Now why is it that rounded rect clips are applied in `paint_visual_effects` but
-masks and clip paths happen later on in the `paint` method? What's going on
-here? It is indeed the same, but Skia only optimizes for rounded rects because
-they are so common. What it means is "clip the content drawn after this point
-until restore is called". Skia could easily add a `clipCircle` command if it
-was popular enough.
+Likewise, add a `Save` class with a `should_save` parameter:
 
-What Skia does under the covers may be equivalent to the clip path
-case,[^skia-opts] and sometimes that is indeed the case. But in other
-situations, various optimizations can be applied to make the clip more
-efficient. For example, there is another method called `clipRect` that clips to
-a rectangle, which makes it easier for Skia to skip subsequent draw operations
-that don't intersect that rectangle,[^see-chap-1] or dynamically draw only the
-parts of drawings that intersect the rectangle. Likewise, the first
-optimization mentiond above also applies to `clipRRect`. (The second is
-trickier because you have to account for the space cut out in the corners.)
+``` {.python}
+class Save:
+    def __init__(self, cmds, should_save=True):
+        self.rect = skia.Rect.MakeEmpty()
+        self.should_save = should_save
+        self.cmds = cmds
+        for cmd in self.cmds:
+            self.rect.join(cmd.rect)
 
-[^skia-opts]: Skia has many internal optimizations, and by design does not
-expose whether they are used to the caller.
+    def execute(self, canvas):
+        if self.should_save:
+            canvas.save()
+        for cmd in self.cmds:
+            cmd.execute(canvas)
+        if self.should_save:
+            canvas.restore()
+```
 
-[^see-chap-1]: This is basically the same optimization as we added in Chapter
-1 to avoid painting offscreen text.
+Then use them in `paint_visual_effects`:
+
+``` {.python}
+def paint_visual_effects(node, cmds, rect):
+    # ...
+    return [
+        SaveLayer(skia.Paint(BlendMode=blend_mode), [
+            Save([
+                ClipRRect(rect, clip_radius, should_clip=needs_clip),
+                SaveLayer(skia.Paint(Alphaf=opacity), cmds,
+                    should_save=needs_opacity)],
+                should_save=needs_clip)],
+            should_save=needs_blend_isolation),
+    ]
+```
+
+That's it! Examples should look visually the same, but will be faster and use
+less memory.
 
 ::: {.further}
 
@@ -1521,8 +1596,9 @@ draw simple input boxes plus text. It now supports:
 
 * Opacity
 * Blending
-* Non-rectangluar clips
+* Rounded-corner clips, with destination-in blending
 * Surfaces for scrolling and animations
+* Optimiztions to avoid surfaces
 
 ::: {.further}
 [This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
