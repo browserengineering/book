@@ -471,8 +471,8 @@ rectangles for the background:
 class BlockLayout:
     def paint(self, display_list):
         if bgcolor != "transparent":
-            radius = \
-                float(self.node.style.get("border-radius", "0px")[:-2])
+            radius = float(
+                self.node.style.get("border-radius", "0px")[:-2])
             display_list.append(DrawRRect(rect, radius, bgcolor))
 ```
 
@@ -662,26 +662,26 @@ stack. How Skia does the rest is an implementation detail.
 
 [^tree]: A stack and a tree are very similar---the tree is a representation of
 the push/pop sequences when executing commands on the stack in the course of
-a program's execution. In our implementation, we'll call `SaveLayer` for
-each new layout object that needs it, and `Restore` when the recursion is done.
+a program's execution. In our implementation, we'll call `saveLayer` for
+each new layout object that needs it, and `restore` when the recursion is done.
 
 As we'll see shortly, Skia also has canvas APIs for performing common operations
 like clipping and transform---for example, there is a `rotate` method
 that rotates the content on the screen. Once you call a method like that,
 all subsequent canvas commands are rotated, until you tell Skia to stop. The
-way to do that is with `Save` and `Restore`---you call `Save` before
-calling `rotate`, and `Restore` after. `Save` means "snapshot the current
-rotation, clip, etc. state of the canvas", and `Restore` rolls back to the
+way to do that is with `save` and `restore`---you call `Save` before
+calling `rotate`, and `restore` after. `save` means "snapshot the current
+rotation, clip, etc. state of the canvas", and `restore` rolls back to the
 most recent snapshot.
 
-You've probably noticed that `Restore` is used for both saving state and
+You've probably noticed that `restore` is used for both saving state and
 pushing layers---what gives? That's because there is a combined stack of layers
 and state in the Skia API. Transforms and clips sometimes do actually require
-new surfaces to implement correctly, so in fact when we use `Save` it's
-actually just a shortcut for `SaveLayer` that is often more efficient; if Skia
+new surfaces to implement correctly, so in fact when we use `save` it's
+actually just a shortcut for `saveLayer` that is often more efficient; if Skia
 thinks it needs to, it'll make a surface. The rule
 of thumb is: if you don't need a non-default blend mode, then you can use
-`Save`, and you should always prefer `Save` to `SaveLayer`, all things being
+`save`, and you should always prefer `save` to `saveLayer`, all things being
 equal.
 
 Compositing with SaveLayer
@@ -894,9 +894,12 @@ does not use premultiplied color representations internally, and the code below 
 ``` {.python file=examples}
 class Pixel:
     def source_over(self, source):
-        self.r = self.r * (1 - source.a) * self.a + source.r * source.a
-        self.g = self.g * (1 - source.a) * self.a + source.g * source.a
-        self.b = self.b * (1 - source.a) * self.a + source.b * source.a
+        self.r = \
+            self.r * (1 - source.a) * self.a + source.r * source.a
+        self.g = \
+            self.g * (1 - source.a) * self.a + source.g * source.a
+        self.b = \
+            self.b * (1 - source.a) * self.a + source.b * source.a
         self.a = 1 - (1 - source.a) * (1 - self.a)
 ```
 
@@ -957,7 +960,9 @@ the [`mix-blend-mode` property][mix-blend-mode-def], like this:
 ``` {.html.example}
 <div style="background-color:orange">
     Parent
-    <div style="background-color:blue;mix-blend-mode:difference">Child</div>
+    <div style="background-color:blue;mix-blend-mode:difference">
+        Child
+    </div>
     Parent
 </div>
 ```
@@ -1079,7 +1084,8 @@ where `overflow: clip` is relevant: with rounded corners. Consider
 this example:
 
 ``` {.html.example}
-<div style="border-radius:30px;background-color:lightblue;overflow:clip">
+<div 
+  style="border-radius:30px;background-color:lightblue;overflow:clip">
     This test text exists here to ensure that the "div" element is
     large enough that the border radius is obvious.
 </div>
@@ -1095,8 +1101,18 @@ large enough that the border radius is obvious.
 Look at how the letters near the corner are cut off to maintain a
 sharp rounded edge. (Uhh... actually, at the time of this writing,
 Safari does not support `overflow: clip`, so if you're using Safari
-you won't see this effect.) That's clipping; without the `overflow:
-clip` property these letters would instead be fully drawn.
+you won't see this effect.[^hidden]) That's clipping; without the
+`overflow:clip` property these letters would instead be fully drawn.
+
+[^hidden]: Other values of `overflow`, such as `hidden`, are supported by
+all browsers. However, if you change to this value in a real broser, you'll
+notice that the height of the blue box increases, and the rounded corners
+no longer clip out the text. This is because `overflow:hidden` has different
+rules for sizing boxes, having to do with the possibility of the child content
+being scrolled (`hidden` means "clipped, but might be scrolled by JavaScript).
+If the blue box had not been taller, than it would have been impossible to
+see the text, which is really bad if it's intended that there should be a way
+to scroll it onscreen.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1326,15 +1342,13 @@ different rastered surfaces, and finally draw the tree of surfaces to the
 screen. We only did it for browser chrome vs web content, but browsers allocate
 new surfaces for various different situations, such as implementing accelerated
 overflow scrolling and animations of certain CSS properties such as
-[transform][transform-link] and opacity that can be done without raster, as
-long as the content being transformed or made transparent has its own surface
-in memory.
+[transform][transform-link] and opacity that can be done without raster.
 
 In addition, real browsers use *tiling* to solve the problem of surfaces getting
 too big, or the desire to only re-raster the parts that actually changed
 (instead of the whole surface, like our browser does). As you might guess from
 the name, the surface is broken up into a grid of tiles which have their own
-raster surface. Whenever content that intersects a tile changes its display
+raster surfaces. Whenever content that intersects a tile changes its display
 list, the tile is re-rastered. Tiles are draw into their parent surface with
 an x and y offset according to their position in the grid. Tiles that are not
 on or "near"^[For example, scrolled just offscreen.] the screen are not rastered
@@ -1353,8 +1367,8 @@ represented on the GPU, making the execution of `draw` extremely efficent.
 Scrolling of arbitray DOM elements is possible via the
 [`overflow`][overflow-prop] CSS propery, and in particular `overflow:scroll`.
 This value means, of course, for the browser to allow the user to scroll
-the content in order to see it; the parts that don't overlap the block
-are clipped out.
+the content in order to see it; the parts that don't currently overlap the 
+clipping element are clipped out.
 
 Basic scrolling for DOM elements is very similar to what we've just implemented.
 But implementing it in its full generality, and with excellent performance,

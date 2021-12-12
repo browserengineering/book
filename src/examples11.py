@@ -10,9 +10,12 @@ class Pixel:
         return self
 
     def source_over(self, source):
-        self.r = self.r * (1 - source.a) * self.a + source.r * source.a
-        self.g = self.g * (1 - source.a) * self.a + source.g * source.a
-        self.b = self.b * (1 - source.a) * self.a + source.b * source.a
+        self.r = \
+            self.r * (1 - source.a) * self.a + source.r * source.a
+        self.g = \
+            self.g * (1 - source.a) * self.a + source.g * source.a
+        self.b = \
+            self.b * (1 - source.a) * self.a + source.b * source.a
         self.a = 1 - (1 - source.a) * (1 - self.a)
         return self
 

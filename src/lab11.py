@@ -295,8 +295,8 @@ class BlockLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = \
-                float(self.node.style.get("border-radius", "0px")[:-2])
+            radius = float(
+                self.node.style.get("border-radius", "0px")[:-2])
             if radius != 0.0:
                 cmds.append(DrawRRect(rect, radius, bgcolor))
             else:
