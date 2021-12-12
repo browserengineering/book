@@ -1110,11 +1110,11 @@ you won't see this effect.[^hidden]) That's clipping; without the
 `overflow:clip` property these letters would instead be fully drawn.
 
 [^hidden]: Other values of `overflow`, such as `hidden`, are supported by
-all browsers. However, if you change to this value in a real broser, you'll
+all browsers. However, if you change to this value in a real browser, you'll
 notice that the height of the blue box increases, and the rounded corners
 no longer clip out the text. This is because `overflow:hidden` has different
 rules for sizing boxes, having to do with the possibility of the child content
-being scrolled (`hidden` means "clipped, but might be scrolled by JavaScript).
+being scrolled (`hidden` means "clipped, but might be scrolled by JavaScript").
 If the blue box had not been taller, than it would have been impossible to
 see the text, which is really bad if it's intended that there should be a way
 to scroll it onscreen.
@@ -1437,10 +1437,10 @@ Now set those parameters via some simple logic:
 def paint_visual_effects(node, cmds, rect):
     # ...
 
+    needs_clip = node.style.get("overflow", "visible") == "clip"
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
         needs_clip
     needs_opacity = opacity != 1.0
-    needs_clip = node.style.get("overflow", "visible") == "clip"
 
    return [
         SaveLayer(skia.Paint(BlendMode=blend_mode), [
