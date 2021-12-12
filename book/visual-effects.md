@@ -1387,9 +1387,9 @@ are almost endless.
 Optimizing Surface Use
 ======================
 
-Our browser now works correctly uses way too many surfaces. For example, for a
-single, no-effects-needed div with some text content, there are currently 18
-surfaces allocated in the display list. For that example, we should need no
+Our browser now works correctly, but uses way too many surfaces. For example,
+for a single, no-effects-needed div with some text content, there are currently
+18 surfaces allocated in the display list. For that example, we should need no
 surfaces at all!
 
 It's pretty easy to fix this situation. Let's review the full list of surfaces
@@ -1431,17 +1431,16 @@ class SaveLayer:
             canvas.restore()
 ```
 
-Now set those parameters via some simple logic in `paint_visual_effects`:
+Now set those parameters via some simple logic:
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    needs_clip = node.style.get("overflow", "visible") == "clip"
 
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
         needs_clip
-
     needs_opacity = opacity != 1.0
+    needs_clip = node.style.get("overflow", "visible") == "clip"
 
    return [
         SaveLayer(skia.Paint(BlendMode=blend_mode), [
@@ -1456,7 +1455,7 @@ def paint_visual_effects(node, cmds, rect):
 
 With these changes, the example I mentioned above goes from 18 to 0 surfaces.
 
-There's one more optimizationm that is important: getting rid of the
+There's one more important optimization to make: getting rid of the
 destination-in compositing surface for rounded corners. While this approach
 works just fine, and is a good idea for general masks, rounded corners are
 so common on the web that Skia has a special `clipRRect` command just for this
@@ -1488,7 +1487,7 @@ is called. The general pattern is:
     canvas.restore()
 ```
 
-To implement, first add a `ClipRRect` display list command.. It should take a
+To implement, first add a `ClipRRect` display list command. It should take a
 `should_clip` parameter indicating whether the clip is necessary (just like the
 optimization we made above for `SaveLayer`).
 
@@ -1543,13 +1542,15 @@ def paint_visual_effects(node, cmds, rect):
             Save([
                 ClipRRect(rect, clip_radius, should_clip=needs_clip),
                 SaveLayer(skia.Paint(Alphaf=opacity), cmds,
-                    should_save=needs_opacity)],
-                should_save=needs_clip)],
+                    should_save=needs_opacity)
+                ],
+                should_save=needs_clip)
+            ],
             should_save=needs_blend_isolation),
     ]
 ```
 
-That's it! Examples should look visually the same, but will be faster and use
+That's it! Everything should look visually the same, but will be faster and use
 less memory.
 
 ::: {.further}
@@ -1596,9 +1597,9 @@ draw simple input boxes plus text. It now supports:
 
 * Opacity
 * Blending
-* Rounded-corner clips, with destination-in blending
+* Rounded-corner clips via destination-in blending or direct clipping
 * Surfaces for scrolling and animations
-* Optimiztions to avoid surfaces
+* Optimizations to avoid surfaces
 
 ::: {.further}
 [This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
@@ -1658,17 +1659,6 @@ properties on a `LayoutBlock`.
 [width-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/width
 
 [height-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/height
-
-*Overflow clipping*: (this exercise builds on sizing) Since we've added support
- for setting the size of a layout object to be different than the sum of its
- children's sizes, it's easy for there to be a visual mismatch. What are we
- supposed to do if a `LayoutBlock` is not as tall as the text content within
- it? By default, browsers draw the content anyway, and it might or might not
- paint outside the block's box. This situation is called
- [*overflow*][overflow-doc]. The [`overflow`][overflow-prop] CSS property
- allows control for what to do in this situation. Implement
- the `clip` value of the `overflow` CSS property. When set, this should clip out
- the parts of the content that exceed the box size of the element.
 
 [filter-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
 

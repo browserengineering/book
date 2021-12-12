@@ -715,20 +715,20 @@ def paint_visual_effects(node, cmds, rect):
     else:
         clip_radius = 0
 
-    needs_clip = node.style.get("overflow", "visible") == "clip"
-
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
         needs_clip
-
     needs_opacity = opacity != 1.0
+    needs_clip = node.style.get("overflow", "visible") == "clip"
 
     return [
         SaveLayer(skia.Paint(BlendMode=blend_mode), [
             Save([
                 ClipRRect(rect, clip_radius, should_clip=needs_clip),
                 SaveLayer(skia.Paint(Alphaf=opacity), cmds,
-                    should_save=needs_opacity)],
-                should_save=needs_clip)],
+                    should_save=needs_opacity)
+                ],
+                should_save=needs_clip)
+            ],
             should_save=needs_blend_isolation),
     ]
 
