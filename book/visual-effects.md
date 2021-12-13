@@ -128,13 +128,9 @@ class Browser:
 ```
 
 Next, we need to copy the data to an SDL surface. This requires
-telling SDL what order the pixels are stored in, which in turn
-depends on your computer's [endianness][wiki-endianness]. That makes
-the code below look hairy---but in fact it's just reproduced from the
-[official SDL documentation][sdl-creatergbsurfacefrom]:
+telling SDL what order the pixels are stored in:
 
 [wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
-[sdl-creatergbsurfacefrom]: https://wiki.libsdl.org/SDL_CreateRGBSurfaceFrom
 
 ``` {.python replace=draw_to_screen/draw}
 class Browser:
@@ -142,20 +138,29 @@ class Browser:
         # ...
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
-        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-            red_mask = 0xff000000
-            green_mask = 0x00ff0000
-            blue_mask = 0x0000ff00
-            alpha_mask = 0x000000ff
-        else:
-            red_mask = 0x000000ff
-            green_mask = 0x0000ff00
-            blue_mask = 0x00ff0000
-            alpha_mask = 0xff000000
         sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            red_mask, green_mask, blue_mask, alpha_mask)
+            RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
 ```
+
+Now, this depends on the four `RED_MASK`, `GREEN_MASK`, `BLUE_MASK`,
+and `ALPHA_MASK` constants. These in turn depend on your computer's
+[endianness][wiki-endianness] and the order in which Skia stores the
+different color channels, which can differ between operating systems.
+For example, my machine needs the following values:
+
+``` {.python.example}
+ALPHA_MASK = 0Xff000000
+BLUE_MASK = 0X00ff0000
+GREEN_MASK = 0X0000ff00
+RED_MASK = 0x000000ff
+```
+
+However, your machine may need different values. You can either
+switch around the names until your browser looks right, or use our
+[system probe tool][probe-tool] to generate those masks for you.
+
+[probe-tool]: https://github.com/browserengineering/book/blob/main/infra/generate_masks.py
 
 Finally, we copy all this pixel data to the window itself:
 
