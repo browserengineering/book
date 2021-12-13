@@ -1057,10 +1057,9 @@ class Browser:
         # doesn't actually copy anything yet.
         skia_image = self.root_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
-        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
 
-        depth = 32 # 4 bytes per pixel.
-        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen.
+        depth = 32 # Bits per pixel
+        pitch = 4 * WIDTH # Bytes per row
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             red_mask = 0xff000000
             green_mask = 0x00ff0000
@@ -1075,7 +1074,7 @@ class Browser:
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
             red_mask, green_mask, blue_mask, alpha_mask)
 
-
+        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
         # SDL_BlitSurface is what actually does the copy.
         sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)

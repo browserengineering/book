@@ -112,8 +112,11 @@ class Browser:
 
 Typically, we'll draw to the Skia surface, and then once we're done
 with it we'll copy it to the SDL surface to display on the screen.
-This looks a little hairy but really it's just copying pixels from one
-place to another:
+This will be a little hairy, because we are moving data between two
+low-level libraries, but really it's just copying pixels from one
+place to another.
+
+First, get the sequence of bytes representing the Skia surface:
 
 ``` {.python replace=draw_to_screen/draw}
 class Browser:
@@ -122,20 +125,45 @@ class Browser:
         # doesn't actually copy anything yet.
         skia_image = self.root_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
-        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
+```
 
-        depth = 32 # 4 bytes per pixel.
-        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen.
-        # Skia uses an ARGB format - alpha first byte, then
-        # through to blue as the last byte.
-        alpha_mask = 0xff000000
-        red_mask = 0x00ff0000
-        green_mask = 0x0000ff00
-        blue_mask = 0x000000ff
+Next, we need to copy the data to an SDL surface. This requires
+telling SDL what order the pixels are stored in, which in turn
+depends on your computer's [endianness][wiki-endianness]. That makes
+the code below look hairy---but in fact it's just reproduced from the
+[official SDL documentation][sdl-creatergbsurfacefrom]:
+
+[wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
+[sdl-creatergbsurfacefrom]: https://wiki.libsdl.org/SDL_CreateRGBSurfaceFrom
+
+``` {.python replace=draw_to_screen/draw}
+class Browser:
+    def draw_to_screen(self):
+        # ...
+        depth = 32 # Bits per pixel
+        pitch = 4 * WIDTH # Bytes per row
+        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+            red_mask = 0xff000000
+            green_mask = 0x00ff0000
+            blue_mask = 0x0000ff00
+            alpha_mask = 0x000000ff
+        else:
+            red_mask = 0x000000ff
+            green_mask = 0x0000ff00
+            blue_mask = 0x00ff0000
+            alpha_mask = 0xff000000
         sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
             red_mask, green_mask, blue_mask, alpha_mask)
+```
 
+Finally, we copy all this pixel data to the window itself:
+
+``` {.python replace=draw_to_screen/draw}
+class Browser:
+    def draw_to_screen(self):
+        # ...
+        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
         # SDL_BlitSurface is what actually does the copy.
         sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
