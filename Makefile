@@ -41,9 +41,6 @@ www/onepage.html: $(patsubst %,www/onepage/%.html,$(CHAPTERS))
 www/onepage.html: book/onepage.md infra/template.html infra/filter.lua config.json
 	$(PANDOC) --metadata=mode:onepage --template infra/template.html -c book.css $< -o $@
 
-src/system_specific_constants.py: infra/generate_masks.py
-	python3 $< --silent > $@
-
 wc:
 	@ printf " Words  Code  File\n"; awk -f infra/wc.awk book/*.md | sort -rn
 
@@ -61,7 +58,7 @@ download:
 backup:
 	rsync server:/home/www/browseng/db.pickle infra/db.$(shell date +%Y-%m-%d).pickle
 
-test: src/system_specific_constants.py
+test:
 	set -e; \
 	for i in $$(seq 1 11); do \
 		(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest lab$$i-tests.md); \

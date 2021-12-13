@@ -27,7 +27,6 @@ from lab6 import TagSelector
 from lab6 import DescendantSelector
 from lab10 import url_origin
 from lab10 import JSContext
-from system_specific_constants import *
 
 COOKIE_JAR = {}
 
@@ -919,13 +918,23 @@ class Tab:
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
+RED_MASK = 0xff000000
+GREEN_MASK = 0x00ff0000
+BLUE_MASK = 0x0000ff00
+ALPHA_MASK = 0x000000ff
+
 class Browser:
     def __init__(self):
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-        self.root_surface = skia.Surface(WIDTH, HEIGHT)
-        self.chrome_surface = skia.Surface(WIDTH, HEIGHT)
+        skia_config = skia.ImageInfo.Make(
+            WIDTH, HEIGHT,
+            ct=skia.kRGBA_8888_ColorType,
+            at=skia.kUnpremul_AlphaType,
+        )
+        self.root_surface = skia.Surface.MakeRaster(skia_config)
+        self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
         self.tab_surface = None
 
         self.tabs = []
@@ -1061,9 +1070,14 @@ class Browser:
 
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
-        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-            skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
+        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+                skia_bytes, WIDTH, HEIGHT, depth, pitch,
+                RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
+        else:
+            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+                skia_bytes, WIDTH, HEIGHT, depth, pitch,
+                ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
 
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)

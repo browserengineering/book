@@ -107,7 +107,12 @@ performance.
 ``` {.python}
 class Browser:
     def __init__(self):
-        self.root_surface = skia.Surface(WIDTH, HEIGHT)
+        skia_config = skia.ImageInfo.Make(
+            WIDTH, HEIGHT,
+            ct=skia.kRGBA_8888_ColorType,
+            at=skia.kUnpremul_AlphaType,
+        )
+        self.root_surface = skia.Surface.MakeRaster(skia_config)
 ```
 
 Typically, we'll draw to the Skia surface, and then once we're done
@@ -128,39 +133,31 @@ class Browser:
 ```
 
 Next, we need to copy the data to an SDL surface. This requires
-telling SDL what order the pixels are stored in:
+telling SDL what order the pixels are stored in and on your computer's
+[endianness][wiki-endianness]:
 
 [wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
 
 ``` {.python replace=draw_to_screen/draw}
+RED_MASK = 0xff000000
+GREEN_MASK = 0x00ff0000
+BLUE_MASK = 0x0000ff00
+ALPHA_MASK = 0x000000ff
+
 class Browser:
     def draw_to_screen(self):
         # ...
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
-        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-            skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
+        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+           sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+               skia_bytes, WIDTH, HEIGHT, depth, pitch,
+               RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
+        else:
+           sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+               skia_bytes, WIDTH, HEIGHT, depth, pitch,
+               ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
 ```
-
-Now, this depends on the four `RED_MASK`, `GREEN_MASK`, `BLUE_MASK`,
-and `ALPHA_MASK` constants. These in turn depend on your computer's
-[endianness][wiki-endianness] and the order in which Skia stores the
-different color channels, which can differ between operating systems.
-For example, my machine needs the following values:
-
-``` {.python.example}
-ALPHA_MASK = 0Xff000000
-BLUE_MASK = 0X00ff0000
-GREEN_MASK = 0X0000ff00
-RED_MASK = 0x000000ff
-```
-
-However, your machine may need different values. You can either
-switch around the names until your browser looks right, or use our
-[system probe tool][probe-tool] to generate those masks for you.
-
-[probe-tool]: https://github.com/browserengineering/book/blob/main/infra/generate_masks.py
 
 Finally, we copy all this pixel data to the window itself:
 
