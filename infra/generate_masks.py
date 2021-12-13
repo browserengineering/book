@@ -22,11 +22,14 @@ different order, something has gone wrong; please file a bug here:
 
     https://github.com/browserengineering/book/issues
 
+If you don't want to do the GUI check (say, if this is running in CI),
+pass the `--silent` option.
+
 """
 
-import sdl2
 import skia
 import ctypes
+import sdl2
 import sys
 
 # First, we draw red, green, and blue squares, in that order.
@@ -65,37 +68,38 @@ GREEN_MASK = {make_mask(g_bytes)}
 BLUE_MASK = {make_mask(b_bytes)}
 """)
 
-a_mask = int(make_mask(a_bytes), 16)
-r_mask = int(make_mask(r_bytes), 16)
-g_mask = int(make_mask(g_bytes), 16)
-b_mask = int(make_mask(b_bytes), 16)
-
-# Finally, we display the colors using these masks, so you can verify
-# that they are correct.
-
-sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO)
-sdl_window = sdl2.SDL_CreateWindow(b"Color test",
-    sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-    300, 100, sdl2.SDL_WINDOW_SHOWN)
-
-depth = 32
-pitch = 4 * 300
-sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-    skia_bytes, 300, 100, depth, pitch,
-    r_mask, g_mask, b_mask, a_mask)
-
-sdl_rect = sdl2.SDL_Rect(0, 0, 300, 100)
-
-window_surface = sdl2.SDL_GetWindowSurface(sdl_window)
-# SDL_BlitSurface is what actually does the copy.
-sdl2.SDL_BlitSurface(sdl_surface, sdl_rect, window_surface, sdl_rect)
-sdl2.SDL_UpdateWindowSurface(sdl_window)
-
-# The process will run until you close the window:
-
-event = sdl2.SDL_Event()
-while True:
-    ret = sdl2.SDL_PollEvent(ctypes.byref(event))
-    if ret and event.type == sdl2.SDL_QUIT:
-        sdl2.SDL_Quit()
-        break
+if "--silent" not in sys.argv:
+    a_mask = int(make_mask(a_bytes), 16)
+    r_mask = int(make_mask(r_bytes), 16)
+    g_mask = int(make_mask(g_bytes), 16)
+    b_mask = int(make_mask(b_bytes), 16)
+    
+    # Finally, we display the colors using these masks, so you can verify
+    # that they are correct.
+    
+    sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO)
+    sdl_window = sdl2.SDL_CreateWindow(b"Color test",
+        sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+        300, 100, sdl2.SDL_WINDOW_SHOWN)
+    
+    depth = 32
+    pitch = 4 * 300
+    sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+        skia_bytes, 300, 100, depth, pitch,
+        r_mask, g_mask, b_mask, a_mask)
+    
+    sdl_rect = sdl2.SDL_Rect(0, 0, 300, 100)
+    
+    window_surface = sdl2.SDL_GetWindowSurface(sdl_window)
+    # SDL_BlitSurface is what actually does the copy.
+    sdl2.SDL_BlitSurface(sdl_surface, sdl_rect, window_surface, sdl_rect)
+    sdl2.SDL_UpdateWindowSurface(sdl_window)
+    
+    # The process will run until you close the window:
+    
+    event = sdl2.SDL_Event()
+    while True:
+        ret = sdl2.SDL_PollEvent(ctypes.byref(event))
+        if ret and event.type == sdl2.SDL_QUIT:
+            sdl2.SDL_Quit()
+            break
