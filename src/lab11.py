@@ -27,6 +27,7 @@ from lab6 import TagSelector
 from lab6 import DescendantSelector
 from lab10 import url_origin
 from lab10 import JSContext
+from system_specific_constants import *
 
 COOKIE_JAR = {}
 
@@ -1060,19 +1061,9 @@ class Browser:
 
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
-        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-            red_mask = 0xff000000
-            green_mask = 0x00ff0000
-            blue_mask = 0x0000ff00
-            alpha_mask = 0x000000ff
-        else:
-            red_mask = 0x000000ff
-            green_mask = 0x0000ff00
-            blue_mask = 0x00ff0000
-            alpha_mask = 0xff000000
         sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            red_mask, green_mask, blue_mask, alpha_mask)
+            RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
 
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)

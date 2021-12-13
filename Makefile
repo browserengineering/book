@@ -41,6 +41,9 @@ www/onepage.html: $(patsubst %,www/onepage/%.html,$(CHAPTERS))
 www/onepage.html: book/onepage.md infra/template.html infra/filter.lua config.json
 	$(PANDOC) --metadata=mode:onepage --template infra/template.html -c book.css $< -o $@
 
+www/system_specific_constants.py: infra/generate_masks.py
+	python3 $< > $@
+
 wc:
 	@ printf " Words  Code  File\n"; awk -f infra/wc.awk book/*.md | sort -rn
 

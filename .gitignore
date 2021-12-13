@@ -18,3 +18,4 @@ package-lock.json
 src/__pycache__/
 __pycache__/
 infra/db.*.json
+src/system_specific_constants.py
