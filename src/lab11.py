@@ -102,6 +102,10 @@ def color_to_sk_color(color):
         return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
     elif color == "orange":
         return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
+    elif color == "red":
+        return skia.ColorRED
+    elif color == "green":
+        return skia.ColorGREEN
     elif color == "blue":
         return skia.ColorBLUE
     elif color == "gray":
@@ -1057,12 +1061,16 @@ class Browser:
 
         depth = 32 # 4 bytes per pixel.
         pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen.
-        # Skia uses an ARGB format - alpha first byte, then
-        # through to blue as the last byte.
-        alpha_mask = 0xff000000
-        red_mask = 0x00ff0000
-        green_mask = 0x0000ff00
-        blue_mask = 0x000000ff
+        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+            red_mask = 0xff000000
+            green_mask = 0x00ff0000
+            blue_mask = 0x0000ff00
+            alpha_mask = 0x000000ff
+        else:
+            red_mask = 0x000000ff
+            green_mask = 0x0000ff00
+            blue_mask = 0x00ff0000
+            alpha_mask = 0xff000000
         sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
             red_mask, green_mask, blue_mask, alpha_mask)
