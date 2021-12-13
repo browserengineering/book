@@ -19,14 +19,18 @@ print("R:", skia_bytes[0:4])
 print("G:", skia_bytes[400:404])
 print("B:", skia_bytes[800:804])
 
-depth = 32 # 4 bytes per pixel.
-pitch = 4 * 300 # 4 * WIDTH pixels per line on-screen.
-# Skia uses an ARGB format - alpha first byte, then
-# through to blue as the last byte.
-alpha_mask = 0xff000000
-red_mask = 0x00ff0000
-green_mask = 0x0000ff00
-blue_mask = 0x000000ff
+depth = 32
+pitch = 4 * 300
+if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+    red_mask = 0xff000000
+    green_mask = 0x00ff0000
+    blue_mask = 0x0000ff00
+    alpha_mask = 0x000000ff
+else:
+    red_mask = 0x000000ff
+    green_mask = 0x0000ff00
+    blue_mask = 0x00ff0000
+    alpha_mask = 0xff000000
 sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
     skia_bytes, 300, 100, depth, pitch,
     red_mask, green_mask, blue_mask, alpha_mask)
