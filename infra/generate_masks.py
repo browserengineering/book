@@ -98,4 +98,4 @@ while True:
     ret = sdl2.SDL_PollEvent(ctypes.byref(event))
     if ret and event.type == sdl2.SDL_QUIT:
         sdl2.SDL_Quit()
-        return
+        break
