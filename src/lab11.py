@@ -928,11 +928,7 @@ class Browser:
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
             at=skia.kUnpremul_AlphaType))
-        self.chrome_surface = skia.Surface.MakeRaster(
-            skia.ImageInfo.Make(
-                WIDTH, CHROME_PX,
-                ct=skia.kRGBA_8888_ColorType,
-                at=skia.kUnpremul_AlphaType))
+        self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
         self.tab_surface = None
 
         self.tabs = []
