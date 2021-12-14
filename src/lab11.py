@@ -132,9 +132,9 @@ def linespace(font):
     return metrics.fDescent - metrics.fAscent
 
 class SaveLayer:
-    def __init__(self, sk_paint, cmds, should_paint=True,
+    def __init__(self, sk_paint, cmds, should_save=True,
         should_paint_cmds=True):
-        self.should_paint = should_paint
+        self.should_save = should_save
         self.should_paint_cmds = should_paint_cmds
         self.sk_paint = sk_paint
         self.cmds = cmds
@@ -143,27 +143,13 @@ class SaveLayer:
             self.rect.join(cmd.rect)
 
     def execute(self, canvas):
-        if self.should_paint:
+        if self.should_save:
             canvas.saveLayer(paint=self.sk_paint)
         if self.should_paint_cmds:
             for cmd in self.cmds:
                 cmd.execute(canvas)
-        if self.should_paint:
+        if self.should_save:
             canvas.restore()
-
-class Save:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, canvas):
-        canvas.save()
-
-class Restore:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, canvas):
-        canvas.restore()
 
 class DrawRRect:
     def __init__(self, rect, radius, color):
@@ -172,7 +158,9 @@ class DrawRRect:
         self.color = color_to_sk_color(color)
 
     def execute(self, canvas):
-        canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
+
+        canvas.drawRRect(self.rrect,
+            paint=skia.Paint(Color=self.color))
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -212,19 +200,31 @@ class DrawRect:
             self.left, self.top, self.right, self.bottom, self.color)
 
 class ClipRRect:
-    def __init__(self, rect, radius):
+    def __init__(self, rect, radius, cmds, should_clip=True):
         self.rect = rect
         self.radius = radius
+        self.cmds = cmds
+        self.should_clip = should_clip
 
     def execute(self, canvas):
-        canvas.clipRRect(
-            skia.RRect.MakeRectXY(
-                skia.Rect.MakeLTRB(
-                    self.rect.left(),
-                    self.rect.top(),
-                    self.rect.right(),
-                    self.rect.bottom()),
-                self.radius, self.radius))
+        if self.should_clip:
+            canvas.save()
+            if self.radius > 0.0:
+                rect = canvas.clipRRect(skia.RRect.MakeRectXY(
+                    skia.Rect.MakeLTRB(
+                        self.rect.left(),
+                        self.rect.top(),
+                        self.rect.right(),
+                        self.rect.bottom()),
+                    self.radius, self.radius))
+            else:
+                rect = canvas.clipRect(self.rect)
+
+        for cmd in self.cmds:
+            cmd.execute(canvas)
+
+        if self.should_clip:
+            canvas.restore()
 
 def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
@@ -298,7 +298,8 @@ class BlockLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            radius = float(
+                self.node.style.get("border-radius", "0px")[:-2])
             if radius != 0.0:
                 cmds.append(DrawRRect(rect, radius, bgcolor))
             else:
@@ -711,20 +712,14 @@ def paint_visual_effects(node, cmds, rect):
         clip_radius = 0
 
     needs_clip = node.style.get("overflow", "visible") == "clip"
-
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip
-
-    needs_opacity = opacity != 1.0
+        needs_clip or opacity != 1.0
 
     return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode), [
-            SaveLayer(skia.Paint(Alphaf=opacity), cmds,
-                should_paint=needs_opacity),
-            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, clip_radius, skia.ColorWHITE)
-            ], should_paint=needs_clip, should_paint_cmds=needs_clip),
-        ], should_paint=needs_blend_isolation),
+        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
+            ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)
+            ],
+            should_save=needs_blend_isolation),
     ]
 
 def style(node, rules, url):
@@ -928,12 +923,11 @@ class Browser:
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-        skia_config = skia.ImageInfo.Make(
+        self.root_surface = skia.Surface.MakeRaster(
+            skia.ImageInfo.Make(
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
-            at=skia.kUnpremul_AlphaType,
-        )
-        self.root_surface = skia.Surface.MakeRaster(skia_config)
+            at=skia.kUnpremul_AlphaType))
         self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
         self.tab_surface = None
 

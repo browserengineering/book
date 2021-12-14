@@ -107,12 +107,11 @@ performance.
 ``` {.python}
 class Browser:
     def __init__(self):
-        skia_config = skia.ImageInfo.Make(
-            WIDTH, HEIGHT,
-            ct=skia.kRGBA_8888_ColorType,
-            at=skia.kUnpremul_AlphaType,
-        )
-        self.root_surface = skia.Surface.MakeRaster(skia_config)
+        self.root_surface = skia.Surface.MakeRaster(
+            skia.ImageInfo.Make(
+                WIDTH, HEIGHT,
+                ct=skia.kRGBA_8888_ColorType,
+                at=skia.kUnpremul_AlphaType))
 ```
 
 Typically, we'll draw to the Skia surface, and then once we're done
@@ -490,7 +489,8 @@ class DrawRRect:
         self.color = color_to_sk_color(color)
 
     def execute(self, canvas):
-        canvas.drawRRect(self.rrect, paint=skia.Paint(Color=self.color))
+        canvas.drawRRect(self.rrect,
+            paint=skia.Paint(Color=self.color))
 ```
 
 Note that Skia supports `RRect`s, or rounded rectangles, natively, so
@@ -501,9 +501,15 @@ rectangles for the background:
 class BlockLayout:
     def paint(self, display_list):
         if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            display_list.append(DrawRRect(rect, radius, bgcolor))
+            radius = float(
+                self.node.style.get("border-radius", "0px")[:-2])
+            if radius != 0.0:
+                cmds.append(DrawRRect(rect, radius, bgcolor))
+            else:
+                cmds.append(DrawRect(rect, bgcolor))
 ```
+
+Similar changes should be made to `InputLayout` and `InlineLayout`
 
 In this way, one advantage of using Skia is that, since it is also
 used in the Chrome browser, we know it has fast, built-in support for
@@ -691,26 +697,26 @@ stack. How Skia does the rest is an implementation detail.
 
 [^tree]: A stack and a tree are very similar---the tree is a representation of
 the push/pop sequences when executing commands on the stack in the course of
-a program's execution. In our implementation, we'll call `SaveLayer` for
-each new layout object that needs it, and `Restore` when the recursion is done.
+a program's execution. In our implementation, we'll call `saveLayer` for
+each new layout object that needs it, and `restore` when the recursion is done.
 
 As we'll see shortly, Skia also has canvas APIs for performing common operations
 like clipping and transform---for example, there is a `rotate` method
 that rotates the content on the screen. Once you call a method like that,
 all subsequent canvas commands are rotated, until you tell Skia to stop. The
-way to do that is with `Save` and `Restore`---you call `Save` before
-calling `rotate`, and `Restore` after. `Save` means "snapshot the current
-rotation, clip, etc. state of the canvas", and `Restore` rolls back to the
+way to do that is with `save` and `restore`---you call `Save` before
+calling `rotate`, and `restore` after. `save` means "snapshot the current
+rotation, clip, etc. state of the canvas", and `restore` rolls back to the
 most recent snapshot.
 
-You've probably noticed that `Restore` is used for both saving state and
+You've probably noticed that `restore` is used for both saving state and
 pushing layers---what gives? That's because there is a combined stack of layers
 and state in the Skia API. Transforms and clips sometimes do actually require
-new surfaces to implement correctly, so in fact when we use `Save` it's
-actually just a shortcut for `SaveLayer` that is often more efficient; if Skia
+new surfaces to implement correctly, so in fact when we use `save` it's
+actually just a shortcut for `saveLayer` that is often more efficient; if Skia
 thinks it needs to, it'll make a surface. The rule
 of thumb is: if you don't need a non-default blend mode, then you can use
-`Save`, and you should always prefer `Save` to `SaveLayer`, all things being
+`save`, and you should always prefer `save` to `saveLayer`, all things being
 equal.
 
 Compositing with SaveLayer
@@ -923,9 +929,12 @@ does not use premultiplied color representations internally, and the code below 
 ``` {.python file=examples}
 class Pixel:
     def source_over(self, source):
-        self.r = self.r * (1 - source.a) * self.a + source.r * source.a
-        self.g = self.g * (1 - source.a) * self.a + source.g * source.a
-        self.b = self.b * (1 - source.a) * self.a + source.b * source.a
+        self.r = \
+            self.r * (1 - source.a) * self.a + source.r * source.a
+        self.g = \
+            self.g * (1 - source.a) * self.a + source.g * source.a
+        self.b = \
+            self.b * (1 - source.a) * self.a + source.b * source.a
         self.a = 1 - (1 - source.a) * (1 - self.a)
 ```
 
@@ -986,7 +995,9 @@ the [`mix-blend-mode` property][mix-blend-mode-def], like this:
 ``` {.html.example}
 <div style="background-color:orange">
     Parent
-    <div style="background-color:blue;mix-blend-mode:difference">Child</div>
+    <div style="background-color:blue;mix-blend-mode:difference">
+        Child
+    </div>
     Parent
 </div>
 ```
@@ -1108,7 +1119,8 @@ where `overflow: clip` is relevant: with rounded corners. Consider
 this example:
 
 ``` {.html.example}
-<div style="border-radius:30px;background-color:lightblue;overflow:clip">
+<div 
+  style="border-radius:30px;background-color:lightblue;overflow:clip">
     This test text exists here to ensure that the "div" element is
     large enough that the border radius is obvious.
 </div>
@@ -1124,8 +1136,18 @@ large enough that the border radius is obvious.
 Look at how the letters near the corner are cut off to maintain a
 sharp rounded edge. (Uhh... actually, at the time of this writing,
 Safari does not support `overflow: clip`, so if you're using Safari
-you won't see this effect.) That's clipping; without the `overflow:
-clip` property these letters would instead be fully drawn.
+you won't see this effect.[^hidden]) That's clipping; without the
+`overflow:clip` property these letters would instead be fully drawn.
+
+[^hidden]: Other values of `overflow`, such as `hidden`, are supported by
+all browsers. However, if you change to this value in a real browser, you'll
+notice that the height of the blue box increases, and the rounded corners
+no longer clip out the text. This is because `overflow:hidden` has different
+rules for sizing boxes, having to do with the possibility of the child content
+being scrolled (`hidden` means "clipped, but might be scrolled by JavaScript").
+If the blue box had not been taller, than it would have been impossible to
+see the text, which is really bad if it's intended that there should be a way
+to scroll it onscreen.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1191,8 +1213,229 @@ of the scissors. This implementation technique for clipping is called
 complex mask shapes, like text, bitmap images, or anything else you
 can imagine.
 
+Optimizing Surface Use
+======================
+
+Our browser now works correctly, but uses way too many surfaces. For example,
+for a single, no-effects-needed div with some text content, there are currently
+18 surfaces allocated in the display list. For that example, we should need no
+surfaces at all!
+
+It's pretty easy to fix this situation. Let's review the full list of surfaces
+that can be needed for an element, and then devise logic to omit them when
+not needed:
+
+* *Blending/isolation*: the top-level surface returned by
+`paint_visual_effects`. It's used to apply any blend mode other than
+source-over, and also to isolate the element from other parts of the page before
+applying an overflow clip.
+
+* *Opacity*: the first nested surface within the blending/isolation
+surface, used for applying opacity transparency.
+
+* *Clipping*: the second nested surface, used to implement
+overflow clipping.
+
+We can skip each of the above surfaces if the conditions mentioned don't hold.
+Implement that logic by changing `SaveLayer` to take two additional optional
+parameters: `should_paint` and `should_paint_cmds`. These control whether
+`saveLayer/restore`, and execution of the `cmds` parameter, actually happen
+during `execute`:
+
+``` {.python}
+class SaveLayer:
+    def __init__(self, sk_paint, cmds, should_save=True,
+        should_paint_cmds=True):
+        self.should_save = should_save
+        self.should_paint_cmds = should_paint_cmds
+        # ...
+
+    def execute(self, canvas):
+        if self.should_save:
+            canvas.saveLayer(paint=self.sk_paint)
+        if self.should_paint_cmds:
+            for cmd in self.cmds:
+                cmd.execute(canvas)
+        if self.should_save:
+            canvas.restore()
+```
+
+Now set those parameters via some simple logic:
+
+``` {.python expected=False}
+def paint_visual_effects(node, cmds, rect):
+    # ...
+
+    needs_clip = node.style.get("overflow", "visible") == "clip"
+    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
+        needs_clip
+    needs_opacity = opacity != 1.0
+
+   return [
+        SaveLayer(skia.Paint(BlendMode=blend_mode), [
+            SaveLayer(skia.Paint(Alphaf=opacity), cmds,
+                should_save=needs_opacity),
+            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
+                DrawRRect(rect, clip_radius, skia.ColorWHITE)
+            ], should_save=needs_clip, should_paint_cmds=needs_clip),
+        ], should_save=needs_blend_isolation),
+    ]
+```
+
+With these changes, the example I mentioned above goes from 18 to 0 surfaces.
+
+You might wonder if we can save even more surfaces. For example, what if there
+is a blend mode and opacity at the same time, can we use the same surface?
+Indeed, yes you can! That's also pretty simple:
+
+``` {.python expected=False}
+def paint_visual_effects(node, cmds, rect):
+    # ...
+
+    needs_clip = node.style.get("overflow", "visible") == "clip"
+    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
+        needs_clip
+    needs_opacity = opacity != 1.0
+
+   return [
+        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
+            cmds,
+            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
+                DrawRRect(rect, clip_radius, skia.ColorWHITE)
+            ], should_save=needs_clip, should_paint_cmds=needs_clip),
+        ], should_save=needs_blend_isolation or needs_opacity),
+    ]
+```
+
+There's one more important optimization to make: getting rid of the
+destination-in compositing surface for rounded corners. While this approach
+works just fine, and is a good idea for general masks, rounded corners are
+so common on the web that Skia has a special `clipRRect` command just for this
+use case.
+
+There are multiple advantages to using `clipRRect` over an explicit
+destination-in surface. First, it allows Skia to internally optimize away even
+more surfaces in common situations, replacing them with an equivalent
+implementation directly on the GPU, via a shader.[^shader-rounded] Second,
+`clipRRect` makes it much easier for Skia to skip subsequent draw operations
+that don't intersect the rounded rectangle,[^see-chap-1] or dynamically draw
+only the parts of commands that intersect it.
+
+[^shader-rounded]: GPU programs are out of scope for this book, but if you're
+curious there are many online resources describing ways to to do this. Skia
+of course also has an implementation in its GPU-accelerated code paths.
+
+[^see-chap-1]: This is basically the same optimization we added in Chapter
+1 to avoid painting offscreen text.
+
+Using `clipRRect` is pretty easy. It needs to be preceded by `save`, because
+once the clip has been set, all subsequent canvas are clipped until `restore`
+is called. The general pattern is:
+
+``` {.example}
+    canvas.save()
+    canvas.clipRRect(rounded_rect)
+    # Draw commands that should be clipped...
+    canvas.restore()
+```
+
+To implement, first add a `ClipRRect` display list command. It should take a
+`should_clip` parameter indicating whether the clip is necessary (just like the
+optimization we made above for `SaveLayer`). It also includes a call to `save`
+and `restore`, since you should not clip without a `save`/`restore` pair.
+[^save-clip]
+
+[^save-clip]: Well, unless you're doing two clips at once, or a clip and a
+transform, or some other more complex setup that would benefit from only
+saving once but doing multiple things inside it.
+
+``` {.python}
+class ClipRRect:
+    def __init__(self, rect, radius, cmds, should_clip=True):
+        self.rect = rect
+        self.radius = radius
+        self.cmds = cmds
+        self.should_clip = should_clip
+
+    def execute(self, canvas):
+        if self.should_clip:
+            canvas.save()
+            if self.radius > 0.0:
+                rect = canvas.clipRRect(skia.RRect.MakeRectXY(
+                    skia.Rect.MakeLTRB(
+                        self.rect.left(),
+                        self.rect.top(),
+                        self.rect.right(),
+                        self.rect.bottom()),
+                    self.radius, self.radius))
+            else:
+                rect = canvas.clipRect(self.rect)
+
+        for cmd in self.cmds:
+            cmd.execute(canvas)
+
+        if self.should_clip:
+            canvas.restore()
+```
+
+Then use them in `paint_visual_effects`:
+
+``` {.python}
+def paint_visual_effects(node, cmds, rect):
+    # ...
+    return [
+        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
+            ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)
+            ],
+            should_save=needs_blend_isolation),
+    ]
+```
+
+That's it! Everything should look visually the same, but will be faster and use
+less memory.
+
+::: {.further}
+
+Rounded corners have an interesting history in computing. Their
+[inclusion][mac-story] into the original Macintosh is a fun story to read, and
+also demonstrates how computers often end up echoing reality. It also reminds us
+of just how hard it was to implement features that appear simple to us today,
+due to the very limited memory, and lack of hardware floating-point arithmetic,
+of early personal computers (here's some [example source code][quickdraw] used
+on early Macintosh computers to implement this feature).
+
+Later on, floating-point coprocessors, and then over time GPUs, became standard
+equipment on new computers. This made it much easier to implement fast rounded
+corners. Unfortunately, the `border-radius` CSS property didn't appear in
+browsers until around 2010 (but that didn't stop web developers from putting
+rounded corners on their sites before then)! There are a number of clever ways
+to do it even without `border-radius`; [this video][rr-video] walks through
+several.
+
+It's a good thing `border-radius` is now a fully supported browser feature,
+and not just because it saves developers a lot of time and effort.
+More recently, the introduction of complex, mix-and-match, hardware-accelerated
+animations of visual effects, multi-process compositing, and
+[hardware overlays][hardware-overlays] have made the task of rounded corners
+harder---certainly way beyond the ability of web developers to polyfill.
+In today's browsers there is a fast path to clip to rounded corners on the GPU
+without using any more memory, but this fast path can fail to apply for
+cases such as hardware video overlays and nested rounded corner clips. With
+a polyfill, the fast path would never occur, and complex visual effects combined
+with rounded corners would be infeasible.
+:::
+
+[mac-story]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
+[quickdraw]: https://raw.githubusercontent.com/jrk/QuickDraw/master/RRects.a
+[hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
+[rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
+
 Browser compositing
 ===================
+
+Optimizing away surfaces is great when they're not needed, but they have
+even more uses than blending---they can be used to efficient scroll and animate
+as well.
 
 Chapter 2 introduced the Tkinter canvas associated with the browser window.
 Chapter 7 added in browser chrome, also drawing to the same canvas. Any time
@@ -1344,9 +1587,10 @@ class Tab:
         return bounds.roundOut()
 ```
 
-As far as correctness goes, we're done! To get the desired performance in
-reality, we'd need to avoid `paint` and `raster` when they aren't needed.
-That isn't too hard either, but let's leave that for the next chapter.
+As far as implementing the concept of browser-surface composited scrolling goes,
+we're done. But to get the desired performance in reality, we'd need to avoid
+`paint` and `raster` when they aren't needed, and also run on a second CPUp
+thread. That isn't too hard either, but let's leave that for the next chapter.
 
 ::: {.further}
 In terms of conceptual phases of execution, our browser is now very close to
@@ -1355,15 +1599,13 @@ different rastered surfaces, and finally draw the tree of surfaces to the
 screen. We only did it for browser chrome vs web content, but browsers allocate
 new surfaces for various different situations, such as implementing accelerated
 overflow scrolling and animations of certain CSS properties such as
-[transform][transform-link] and opacity that can be done without raster, as
-long as the content being transformed or made transparent has its own surface
-in memory.
+[transform][transform-link] and opacity that can be done without raster.
 
 In addition, real browsers use *tiling* to solve the problem of surfaces getting
 too big, or the desire to only re-raster the parts that actually changed
 (instead of the whole surface, like our browser does). As you might guess from
 the name, the surface is broken up into a grid of tiles which have their own
-raster surface. Whenever content that intersects a tile changes its display
+raster surfaces. Whenever content that intersects a tile changes its display
 list, the tile is re-rastered. Tiles are draw into their parent surface with
 an x and y offset according to their position in the grid. Tiles that are not
 on or "near"^[For example, scrolled just offscreen.] the screen are not rastered
@@ -1382,8 +1624,8 @@ represented on the GPU, making the execution of `draw` extremely efficent.
 Scrolling of arbitray DOM elements is possible via the
 [`overflow`][overflow-prop] CSS propery, and in particular `overflow:scroll`.
 This value means, of course, for the browser to allow the user to scroll
-the content in order to see it; the parts that don't overlap the block
-are clipped out.
+the content in order to see it; the parts that don't currently overlap the 
+clipping element are clipped out.
 
 Basic scrolling for DOM elements is very similar to what we've just implemented.
 But implementing it in its full generality, and with excellent performance,
@@ -1394,139 +1636,6 @@ are almost endless.
 
 [overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
 
-Optimizing Surface Use
-======================
-
-While the `mask` CSS property is relatively uncommon used (as is `clip-path`
-actually), there is a special kind of mask that is very common: rounded
-corners. Now that we know how to implement masks, this one is also easy to
-add to our browser (draw a mask image with the `drawRRect` Skia canvas method).
-But because it's so common, Skia provides a special-purpose
-method to clip to rounded corners: `clipRRect`.
-
-Rounded corners are specified in CSS via `border-radius`. Here's an example:
-
-    <div style="border-radius:5px;background-color:lightblue">
-    This test text exists here to ensure that the "div" element is
-    large enough that you see some rounded corners.
-    </div>
-
-Which paints like this (notice the curved corners):
-
-<div style="border-radius:5px;background-color:lightblue">
-This test text exists here to ensure that the "div" element is
-large enough that you see some rounded corners.
-</div>
-
-To implement it, a `ClipRRect` display list command will go in
-`paint_visual_effects`:
-
-``` {.python expected=False}
-def paint_visual_effects(node, cmds, rect):
-    # ...
-    border_radius_str = node.style.get("border-radius")
-    if border_radius:
-        radius = float(border_radius[:-2])
-        cmds = [Save(rect), ClipRRect(rect, radius)] + cmds + [Restore()]
-```
-
-For this, we'll need new `Save` and `Restore` display list
-commands. [^refer-back-save]
-
-[^refer-back-save]: Recall from the [Surfaces and canvases]
-[#surfaces-and-canvases] section the difference between `Save` and `SaveLayer`.
-
-``` {.python replace=%2c%20scroll/}
-class Save:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        canvas.save()
-
-class Restore:
-    def __init__(self, rect):
-        self.rect = rect
-
-    def execute(self, scroll, canvas):
-        canvas.restore()
-```
-
-``` {.python replace=%2c%20scroll/,%20-%20scroll/}
-class ClipRRect:
-    def __init__(self, rect, radius):
-        self.rect = rect
-        self.radius = radius
-
-    def execute(self, scroll, canvas):
-        canvas.clipRRect(
-            skia.RRect.MakeRectXY(
-                skia.Rect.MakeLTRB(
-                    self.rect.left(),
-                    self.rect.top() - scroll,
-                    self.rect.right(),
-                    self.rect.bottom() - scroll),
-                self.radius, self.radius))
-```
-
-Now why is it that rounded rect clips are applied in `paint_visual_effects` but
-masks and clip paths happen later on in the `paint` method? What's going on
-here? It is indeed the same, but Skia only optimizes for rounded rects because
-they are so common. What it means is "clip the content drawn after this point
-until restore is called". Skia could easily add a `clipCircle` command if it
-was popular enough.
-
-What Skia does under the covers may be equivalent to the clip path
-case,[^skia-opts] and sometimes that is indeed the case. But in other
-situations, various optimizations can be applied to make the clip more
-efficient. For example, there is another method called `clipRect` that clips to
-a rectangle, which makes it easier for Skia to skip subsequent draw operations
-that don't intersect that rectangle,[^see-chap-1] or dynamically draw only the
-parts of drawings that intersect the rectangle. Likewise, the first
-optimization mentiond above also applies to `clipRRect`. (The second is
-trickier because you have to account for the space cut out in the corners.)
-
-[^skia-opts]: Skia has many internal optimizations, and by design does not
-expose whether they are used to the caller.
-
-[^see-chap-1]: This is basically the same optimization as we added in Chapter
-1 to avoid painting offscreen text.
-
-::: {.further}
-
-Rounded corners have an interesting history in computing. Their
-[inclusion][mac-story] into the original Macintosh is a fun story to read, and
-also demonstrates how computers often end up echoing reality. It also reminds us
-of just how hard it was to implement features that appear simple to us today,
-due to the very limited memory, and lack of hardware floating-point arithmetic,
-of early personal computers (here's some [example source code][quickdraw] used
-on early Macintosh computers to implement this feature).
-
-Later on, floating-point coprocessors, and then over time GPUs, became standard
-equipment on new computers. This made it much easier to implement fast rounded
-corners. Unfortunately, the `border-radius` CSS property didn't appear in
-browsers until around 2010 (but that didn't stop web developers from putting
-rounded corners on their sites before then)! There are a number of clever ways
-to do it even without `border-radius`; [this video][rr-video] walks through
-several.
-
-It's a good thing `border-radius` is now a fully supported browser feature,
-and not just because it saves developers a lot of time and effort.
-More recently, the introduction of complex, mix-and-match, hardware-accelerated
-animations of visual effects, multi-process compositing, and
-[hardware overlays][hardware-overlays] have made the task of rounded corners
-harder---certainly way beyond the ability of web developers to polyfill.
-In today's browsers there is a fast path to clip to rounded corners on the GPU
-without using any more memory, but this fast path can fail to apply for
-cases such as hardware video overlays and nested rounded corner clips. With
-a polyfill, the fast path would never occur, and complex visual effects combined
-with rounded corners would be infeasible.
-:::
-
-[mac-story]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
-[quickdraw]: https://raw.githubusercontent.com/jrk/QuickDraw/master/RRects.a
-[hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
-[rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
 
 Summary
 =======
@@ -1536,8 +1645,9 @@ draw simple input boxes plus text. It now supports:
 
 * Opacity
 * Blending
-* Non-rectangluar clips
+* Rounded-corner clips via destination-in blending or direct clipping
 * Surfaces for scrolling and animations
+* Optimizations to avoid surfaces
 
 ::: {.further}
 [This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
@@ -1597,17 +1707,6 @@ properties on a `LayoutBlock`.
 [width-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/width
 
 [height-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/height
-
-*Overflow clipping*: (this exercise builds on sizing) Since we've added support
- for setting the size of a layout object to be different than the sum of its
- children's sizes, it's easy for there to be a visual mismatch. What are we
- supposed to do if a `LayoutBlock` is not as tall as the text content within
- it? By default, browsers draw the content anyway, and it might or might not
- paint outside the block's box. This situation is called
- [*overflow*][overflow-doc]. The [`overflow`][overflow-prop] CSS property
- allows control for what to do in this situation. Implement
- the `clip` value of the `overflow` CSS property. When set, this should clip out
- the parts of the content that exceed the box size of the element.
 
 [filter-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
 
