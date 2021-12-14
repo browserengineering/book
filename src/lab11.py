@@ -923,13 +923,16 @@ class Browser:
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-        skia_config = skia.ImageInfo.Make(
+        self.root_surface = skia.Surface.MakeRaster(
+            skia.ImageInfo.Make(
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
-            at=skia.kUnpremul_AlphaType,
-        )
-        self.root_surface = skia.Surface.MakeRaster(skia_config)
-        self.chrome_surface = skia.Surface(WIDTH, HEIGHT)
+            at=skia.kUnpremul_AlphaType))
+        self.chrome_surface = skia.Surface.MakeRaster(
+            skia.ImageInfo.Make(
+                WIDTH, CHROME_PX,
+                ct=skia.kRGBA_8888_ColorType,
+                at=skia.kUnpremul_AlphaType))
         self.tab_surface = None
 
         self.tabs = []
