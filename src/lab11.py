@@ -151,22 +151,6 @@ class SaveLayer:
         if self.should_save:
             canvas.restore()
 
-class Save:
-    def __init__(self, cmds, should_save=True):
-        self.rect = skia.Rect.MakeEmpty()
-        self.should_save = should_save
-        self.cmds = cmds
-        for cmd in self.cmds:
-            self.rect.join(cmd.rect)
-
-    def execute(self, canvas):
-        if self.should_save:
-            canvas.save()
-        for cmd in self.cmds:
-            cmd.execute(canvas)
-        if self.should_save:
-            canvas.restore()
-
 class DrawRRect:
     def __init__(self, rect, radius, color):
         self.rect = rect
@@ -216,15 +200,17 @@ class DrawRect:
             self.left, self.top, self.right, self.bottom, self.color)
 
 class ClipRRect:
-    def __init__(self, rect, radius, should_clip=True):
+    def __init__(self, rect, radius, cmds, should_clip=True):
         self.rect = rect
         self.radius = radius
+        self.cmds = cmds
         self.should_clip = should_clip
 
     def execute(self, canvas):
         if self.should_clip:
+            canvas.save()
             if self.radius > 0.0:
-                canvas.clipRRect(skia.RRect.MakeRectXY(
+                rect = canvas.clipRRect(skia.RRect.MakeRectXY(
                     skia.Rect.MakeLTRB(
                         self.rect.left(),
                         self.rect.top(),
@@ -232,7 +218,13 @@ class ClipRRect:
                         self.rect.bottom()),
                     self.radius, self.radius))
             else:
-                canvas.clipRect(self.rect)
+                rect = canvas.clipRect(self.rect)
+
+        for cmd in self.cmds:
+            cmd.execute(canvas)
+
+        if self.should_clip:
+            canvas.restore()
 
 def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
@@ -721,17 +713,11 @@ def paint_visual_effects(node, cmds, rect):
 
     needs_clip = node.style.get("overflow", "visible") == "clip"
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip
-    needs_opacity = opacity != 1.0
+        needs_clip or opacity != 1.0
 
     return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode), [
-            Save([
-                ClipRRect(rect, clip_radius, should_clip=needs_clip),
-                SaveLayer(skia.Paint(Alphaf=opacity), cmds,
-                    should_save=needs_opacity)
-                ],
-                should_save=needs_clip)
+        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
+            ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)
             ],
             should_save=needs_blend_isolation),
     ]
@@ -934,16 +920,16 @@ ALPHA_MASK = 0x000000ff
 
 class Browser:
     def __init__(self):
+        skia_config = skia.ImageInfo.Make(
+             WIDTH, HEIGHT,
+             ct=skia.kRGBA_8888_ColorType,
+             at=skia.kUnpremul_AlphaType,
+        )
+        self.root_surface = skia.Surface.MakeRaster(skia_config)
+        self.chrome_surface = skia.Surface(WIDTH, HEIGHT)
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-        skia_config = skia.ImageInfo.Make(
-            WIDTH, HEIGHT,
-            ct=skia.kRGBA_8888_ColorType,
-            at=skia.kUnpremul_AlphaType,
-        )
-        self.root_surface = skia.Surface.MakeRaster(skia_config)
-        self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
         self.tab_surface = None
 
         self.tabs = []
@@ -1076,19 +1062,19 @@ class Browser:
         # doesn't actually copy anything yet.
         skia_image = self.root_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
+        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
 
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-                skia_bytes, WIDTH, HEIGHT, depth, pitch,
-                RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
+           sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+               skia_bytes, WIDTH, HEIGHT, depth, pitch,
+               RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
         else:
-            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-                skia_bytes, WIDTH, HEIGHT, depth, pitch,
-                ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
+           sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+               skia_bytes, WIDTH, HEIGHT, depth, pitch,
+               ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
 
-        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
         # SDL_BlitSurface is what actually does the copy.
         sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)

@@ -1285,6 +1285,29 @@ def paint_visual_effects(node, cmds, rect):
 
 With these changes, the example I mentioned above goes from 18 to 0 surfaces.
 
+You might wonder if we can save even more surfaces. For example, what if there
+is a blend mode and opacity at the same time, can we use the same surface?
+Indeed, yes you can! That's also pretty simple:
+
+``` {.python expected=False}
+def paint_visual_effects(node, cmds, rect):
+    # ...
+
+    needs_clip = node.style.get("overflow", "visible") == "clip"
+    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
+        needs_clip
+    needs_opacity = opacity != 1.0
+
+   return [
+        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
+            cmds,
+            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
+                DrawRRect(rect, clip_radius, skia.ColorWHITE)
+            ], should_save=needs_clip, should_paint_cmds=needs_clip),
+        ], should_save=needs_blend_isolation or needs_opacity),
+    ]
+```
+
 There's one more important optimization to make: getting rid of the
 destination-in compositing surface for rounded corners. While this approach
 works just fine, and is a good idea for general masks, rounded corners are
@@ -1319,19 +1342,27 @@ is called. The general pattern is:
 
 To implement, first add a `ClipRRect` display list command. It should take a
 `should_clip` parameter indicating whether the clip is necessary (just like the
-optimization we made above for `SaveLayer`).
+optimization we made above for `SaveLayer`). It also includes a call to `save`
+and `restore`, since you should not clip without a `save`/`restore` pair.
+[^save-clip]
+
+[^save-clip]: Well, unless you're doing two clips at once, or a clip and a
+transform, or some other more complex setup that would benefit from only
+saving once but doing multiple things inside it.
 
 ``` {.python}
 class ClipRRect:
-    def __init__(self, rect, radius, should_clip=True):
+    def __init__(self, rect, radius, cmds, should_clip=True):
         self.rect = rect
         self.radius = radius
+        self.cmds = cmds
         self.should_clip = should_clip
 
     def execute(self, canvas):
         if self.should_clip:
+            canvas.save()
             if self.radius > 0.0:
-                canvas.clipRRect(skia.RRect.MakeRectXY(
+                rect = canvas.clipRRect(skia.RRect.MakeRectXY(
                     skia.Rect.MakeLTRB(
                         self.rect.left(),
                         self.rect.top(),
@@ -1339,26 +1370,12 @@ class ClipRRect:
                         self.rect.bottom()),
                     self.radius, self.radius))
             else:
-                canvas.clipRect(self.rect)
-```
+                rect = canvas.clipRect(self.rect)
 
-Likewise, add a `Save` class with a `should_save` parameter:
-
-``` {.python}
-class Save:
-    def __init__(self, cmds, should_save=True):
-        self.rect = skia.Rect.MakeEmpty()
-        self.should_save = should_save
-        self.cmds = cmds
-        for cmd in self.cmds:
-            self.rect.join(cmd.rect)
-
-    def execute(self, canvas):
-        if self.should_save:
-            canvas.save()
         for cmd in self.cmds:
             cmd.execute(canvas)
-        if self.should_save:
+
+        if self.should_clip:
             canvas.restore()
 ```
 
@@ -1368,13 +1385,8 @@ Then use them in `paint_visual_effects`:
 def paint_visual_effects(node, cmds, rect):
     # ...
     return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode), [
-            Save([
-                ClipRRect(rect, clip_radius, should_clip=needs_clip),
-                SaveLayer(skia.Paint(Alphaf=opacity), cmds,
-                    should_save=needs_opacity)
-                ],
-                should_save=needs_clip)
+        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
+            ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)
             ],
             should_save=needs_blend_isolation),
     ]
