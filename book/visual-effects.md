@@ -107,12 +107,10 @@ performance.
 ``` {.python}
 class Browser:
     def __init__(self):
-        skia_config = skia.ImageInfo.Make(
+        self.root_surface = skia.Surface.MakeRaster(skia.ImageInfo.Make(
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
-            at=skia.kUnpremul_AlphaType,
-        )
-        self.root_surface = skia.Surface.MakeRaster(skia_config)
+            at=skia.kUnpremul_AlphaType))
 ```
 
 Typically, we'll draw to the Skia surface, and then once we're done
