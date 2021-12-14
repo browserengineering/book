@@ -215,6 +215,10 @@ class MockSkiaSurface:
         self.canvas = MockCanvas()
         pass
 
+    @classmethod
+    def MakeRaster(cls, info):
+        return cls(info.width, info.height)
+
     def getCanvas(self):
         return self.canvas
 

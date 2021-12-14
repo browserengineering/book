@@ -102,6 +102,10 @@ def color_to_sk_color(color):
         return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
     elif color == "orange":
         return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
+    elif color == "red":
+        return skia.ColorRED
+    elif color == "green":
+        return skia.ColorGREEN
     elif color == "blue":
         return skia.ColorBLUE
     elif color == "gray":
@@ -914,13 +918,23 @@ class Tab:
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
+RED_MASK = 0xff000000
+GREEN_MASK = 0x00ff0000
+BLUE_MASK = 0x0000ff00
+ALPHA_MASK = 0x000000ff
+
 class Browser:
     def __init__(self):
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-        self.root_surface = skia.Surface(WIDTH, HEIGHT)
-        self.chrome_surface = skia.Surface(WIDTH, HEIGHT)
+        skia_config = skia.ImageInfo.Make(
+            WIDTH, HEIGHT,
+            ct=skia.kRGBA_8888_ColorType,
+            at=skia.kUnpremul_AlphaType,
+        )
+        self.root_surface = skia.Surface.MakeRaster(skia_config)
+        self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
         self.tab_surface = None
 
         self.tabs = []
@@ -1053,21 +1067,19 @@ class Browser:
         # doesn't actually copy anything yet.
         skia_image = self.root_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
+
+        depth = 32 # Bits per pixel
+        pitch = 4 * WIDTH # Bytes per row
+        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+                skia_bytes, WIDTH, HEIGHT, depth, pitch,
+                RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
+        else:
+            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+                skia_bytes, WIDTH, HEIGHT, depth, pitch,
+                ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
+
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
-
-        depth = 32 # 4 bytes per pixel.
-        pitch = 4 * WIDTH # 4 * WIDTH pixels per line on-screen.
-        # Skia uses an ARGB format - alpha first byte, then
-        # through to blue as the last byte.
-        alpha_mask = 0xff000000
-        red_mask = 0x00ff0000
-        green_mask = 0x0000ff00
-        blue_mask = 0x000000ff
-        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-            skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            red_mask, green_mask, blue_mask, alpha_mask)
-
-
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
         # SDL_BlitSurface is what actually does the copy.
         sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
