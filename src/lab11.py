@@ -95,6 +95,19 @@ def request(url, top_level_url, payload=None):
 
     return headers, body
 
+def get_font(size, weight, style):
+    if weight == "bold":
+        skia_weight = skia.FontStyle.kBold_Weight
+    else:
+        skia_weight = skia.FontStyle.kNormal_Weight
+    if style == "italic":
+        skia_style = skia.FontStyle.kItalic_Slant
+    else:
+        skia_style = skia.FontStyle.kUpright_Slant
+    skia_width = skia.FontStyle.kNormal_Width
+    style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
+    return skia.Font(skia.Typeface('Arial', style_info), size)
+
 def color_to_sk_color(color):
     if color == "white":
         return skia.ColorWHITE
@@ -362,15 +375,11 @@ class InlineLayout:
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def get_font(self, node):
+    def text(self, node):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = float(node.style["font-size"][:-2])
-        return skia.Font(
-            skia.Typeface('Arial', font_style(weight, style)), size)
-
-    def text(self, node):
-        font = self.get_font(node)
+        font = get_font(size, weight, size)
         for word in node.text.split():
             w = font.measureText(word)
             if self.cursor_x + w > self.x + self.width:
@@ -389,8 +398,10 @@ class InlineLayout:
         input = InputLayout(node, line, self.previous_word)
         line.children.append(input)
         self.previous_word = input
-        size = int(float(node.style["font-size"][:-2]) * .75)
-        font = self.get_font(node)
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = float(node.style["font-size"][:-2])
+        font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
@@ -575,15 +586,6 @@ class LineLayout:
         return "LineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
-def font_style(weight, style):
-    skia_weight = skia.FontStyle.kNormal_Weight
-    if weight == "bold":
-        skia_weight = skia.FontStyle.kBold_Weight
-    skia_style = skia.FontStyle.kUpright_Slant
-    if style == "italic":
-        skia_style = skia.FontStyle.kItalic_Slant
-    return skia.FontStyle(skia_weight, skia.FontStyle.kNormal_Width, skia_style)
-
 class TextLayout:
     def __init__(self, node, word, parent, previous):
         self.node = node
@@ -602,8 +604,7 @@ class TextLayout:
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = float(self.node.style["font-size"][:-2])
-        self.font = skia.Font(
-            skia.Typeface('Arial', font_style(weight, style)), size)
+        self.font = get_font(size, weight, style)
 
         # Do not set self.y!!!
         self.width = self.font.measureText(self.word)
@@ -641,9 +642,8 @@ class InputLayout:
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = int(self.node.style["font-size"][:-2])
-        self.font = skia.Font(
-            skia.Typeface('Arial', font_style(weight, style)), size)
+        size = float(self.node.style["font-size"][:-2])
+        self.font = get_font(size, weight, style)
 
         self.width = style_length(
             self.node, "width", INPUT_WIDTH_PX)

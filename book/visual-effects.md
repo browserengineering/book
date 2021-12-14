@@ -367,8 +367,7 @@ class Browser:
         self.draw_to_screen()
 ```
 
-We've only got a few minor changes left elsewhere in the browser.
-`Tab` also has a `draw` method and draws a cursor; it needs to use
+`Tab` also has a `draw` method, which draws a cursor; it needs to use
 `draw_line` for that:
 
 ``` {.python replace=draw%28/raster%28,%20-%20self.scroll%20+%20CHROME_PX/}
@@ -376,13 +375,11 @@ class Tab:
     def draw(self, canvas):
         if self.focus:
             # ...
-            x = obj.x + obj.font.measureText(text)
-            y = obj.y - self.scroll + CHROME_PX
             draw_line(canvas, x, y, x, y + obj.height)
 ```
 
-This takes care of just about all of our graphics commands, with just
-one small thing left: text handling.
+That's most of it. The last few changes we need to upgrade from
+Tkinter to SDL and Skia relate to fonts and text.
 
 ::: {.further}
 Implementing high-quality raster libraries is very interesting in its own
@@ -409,12 +406,46 @@ can do the same and more with Skia and a few lines of Python.
 Skia is also the font library
 =============================
 
-Note that I've also replaced Tkinter's `measure` call with Skia's
-`measureText` equivalent. We'll also need to create Skia fonts instead
-of Tkinter ones. Update all the other places that `measure` was called
-to use `measureText`. We also need to change everywhere `metrics` is
-called to instead use Skia's `getMetrics`, which works a little
-differently. In Skia, ascent and descent are accessible via:
+Since we're replacing `tkinter`, we are also replacing `tkinter.font`.
+Luckily, Skia has an internal font cache, so we no longer need to
+maintain our own, and `get_font` can just directly create a Skia font:
+
+``` {.python}
+def get_font(size, weight, style):
+    if weight == "bold":
+        skia_weight = skia.FontStyle.kBold_Weight
+    else:
+        skia_weight = skia.FontStyle.kNormal_Weight
+    if style == "italic":
+        skia_style = skia.FontStyle.kItalic_Slant
+    else:
+        skia_style = skia.FontStyle.kUpright_Slant
+    skia_width = skia.FontStyle.kNormal_Width
+    style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
+    return skia.Font(skia.Typeface('Arial', style_info), size)
+```
+
+Our browser also needs font metrics and measurements. In Skia, these
+are provided by the `measureText` and `getMetrics` measurements. Let's
+start with `measureText`---it needs to replace all calls to `measure`.
+For example, in the `draw` method on `Tab`s`, we must do:
+
+``` {.python replace=draw/raster}
+class Tab:
+    def draw(self, canvas):
+        if self.focus:
+            # ...
+            x = obj.x + obj.font.measureText(text)
+            # ...
+```
+
+There are also `measure` calls in `DrawText`, in the `draw` method on
+`Browser`, in the `text` method in `InlineLayout`, and in the `layout`
+method in `TextLayout`. Update all of them to use `measureText`.
+
+Also, in the `layout` method of `LineLayout` and in `DrawText` we make
+calls to the `metrics` method on fonts. In Skia, this method is called
+`getMetrics`, and to get the ascent and descent we use
 
 ``` {.python expected=False}
     -font.getMetrics().fAscent
@@ -474,9 +505,9 @@ class BlockLayout:
             display_list.append(DrawRRect(rect, radius, bgcolor))
 ```
 
-In this way, one advantage of using Skia is that, since it is also
-used in the Chrome browser, we know it has fast, built-in support for
-all of the shapes we might need.
+After all, one advantage of using Skia is that, since it is also used
+in the Chrome browser, we know it has fast, built-in support for all
+of the shapes we might need.
 
 Pixels, Color, Raster
 =====================
