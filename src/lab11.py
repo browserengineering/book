@@ -920,16 +920,16 @@ ALPHA_MASK = 0x000000ff
 
 class Browser:
     def __init__(self):
-        skia_config = skia.ImageInfo.Make(
-             WIDTH, HEIGHT,
-             ct=skia.kRGBA_8888_ColorType,
-             at=skia.kUnpremul_AlphaType,
-        )
-        self.root_surface = skia.Surface.MakeRaster(skia_config)
-        self.chrome_surface = skia.Surface(WIDTH, HEIGHT)
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
+        skia_config = skia.ImageInfo.Make(
+            WIDTH, HEIGHT,
+            ct=skia.kRGBA_8888_ColorType,
+            at=skia.kUnpremul_AlphaType,
+        )
+        self.root_surface = skia.Surface.MakeRaster(skia_config)
+        self.chrome_surface = skia.Surface(WIDTH, HEIGHT)
         self.tab_surface = None
 
         self.tabs = []
@@ -1062,19 +1062,19 @@ class Browser:
         # doesn't actually copy anything yet.
         skia_image = self.root_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
-        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
 
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-           sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-               skia_bytes, WIDTH, HEIGHT, depth, pitch,
-               RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
+            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+                skia_bytes, WIDTH, HEIGHT, depth, pitch,
+                RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
         else:
-           sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-               skia_bytes, WIDTH, HEIGHT, depth, pitch,
-               ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
+            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+                skia_bytes, WIDTH, HEIGHT, depth, pitch,
+                ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
 
+        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
         # SDL_BlitSurface is what actually does the copy.
         sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
