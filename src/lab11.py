@@ -913,10 +913,16 @@ class Tab:
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
-RED_MASK = 0xff000000
-GREEN_MASK = 0x00ff0000
-BLUE_MASK = 0x0000ff00
-ALPHA_MASK = 0x000000ff
+if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+    RED_MASK = 0xff000000
+    GREEN_MASK = 0x00ff0000
+    BLUE_MASK = 0x0000ff00
+    ALPHA_MASK = 0x000000ff
+else:
+    RED_MASK = 0x000000ff
+    GREEN_MASK = 0x0000ff00
+    BLUE_MASK = 0x00ff0000
+    ALPHA_MASK = 0xff000000
 
 class Browser:
     def __init__(self):
@@ -1064,14 +1070,9 @@ class Browser:
 
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
-        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-                skia_bytes, WIDTH, HEIGHT, depth, pitch,
-                RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
-        else:
-            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-                skia_bytes, WIDTH, HEIGHT, depth, pitch,
-                ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
+        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+            skia_bytes, WIDTH, HEIGHT, depth, pitch,
+            RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
 
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)

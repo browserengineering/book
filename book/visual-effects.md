@@ -138,28 +138,33 @@ be `RGBA_8888` when constructing the surface) and on your computer's
 
 [wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
 
-``` {.python replace=draw_to_screen/draw}
-RED_MASK = 0xff000000
-GREEN_MASK = 0x00ff0000
-BLUE_MASK = 0x0000ff00
-ALPHA_MASK = 0x000000ff
+``` {.python}
+if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+    RED_MASK = 0xff000000
+    GREEN_MASK = 0x00ff0000
+    BLUE_MASK = 0x0000ff00
+    ALPHA_MASK = 0x000000ff
+else:
+    RED_MASK = 0x000000ff
+    GREEN_MASK = 0x0000ff00
+    BLUE_MASK = 0x00ff0000
+    ALPHA_MASK = 0xff000000
+```
 
+The `CreateRGBSurfaceFrom` method then copies the data:
+
+``` {.python replace=draw_to_screen/draw}
 class Browser:
     def draw_to_screen(self):
         # ...
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
-        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-           sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-               skia_bytes, WIDTH, HEIGHT, depth, pitch,
-               RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
-        else:
-           sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-               skia_bytes, WIDTH, HEIGHT, depth, pitch,
-               ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
+        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+            skia_bytes, WIDTH, HEIGHT, depth, pitch,
+            RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
 ```
 
-Finally, we copy all this pixel data to the window itself:
+Finally, we draw all this pixel data on the window itself:
 
 ``` {.python replace=draw_to_screen/draw}
 class Browser:
@@ -172,8 +177,8 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 ```
 
-SDL doesn't have a `mainloop` or `bind` method; we have to implement
-it ourselves:
+Next, SDL doesn't have a `mainloop` or `bind` method; we have to
+implement it ourselves:
 
 ``` {.python}
 if __name__ == "__main__":
