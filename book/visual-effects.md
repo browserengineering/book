@@ -562,7 +562,8 @@ The job of a rasterization library is to determine the red, green, and
 blue intensity of each pixel on the screen, based on the
 shapes---lines, rectangles, text---that the application wants to
 display. The interface for drawing shapes onto a surface is called a
-*canvas*; in Skia, each surface has an associated canvas.
+*canvas*; both Tkinter and Skia had canvas APIs. In Skia, each surface
+has an associated canvas that draws to that surface.
 
 ::: {.further}
 Screens use red, green, and blue color channels to match the three
@@ -593,8 +594,8 @@ when two shapes overlap? So far, our browser has only handled opaque
 shapes,[^nor-subpixel] and the answer has been simple: take the color
 of the top shape. But now we need more nuance.
 
-[^nor-subpixel]: Nor has our browser yet thought about subpixel
-    geometry or anti-aliasing, which also rely on color mixing.
+[^nor-subpixel]: It also hasn't considered subpixel geometry or
+    anti-aliasing, which also rely on color mixing.
 
 Many objects in nature are partially transparent: frosted glass,
 clouds, or colored paper, for example. Looking through one, you see
