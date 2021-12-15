@@ -1676,14 +1676,18 @@ are almost endless.
 Summary
 =======
 
-So there you have it. Now we don't have just a boring browser that can only
-draw simple input boxes plus text. It now supports:
+So there you have it: our browser can draw not only boring
+black-on-white text but also:
 
-* Opacity
-* Blending
-* Rounded-corner clips via destination-in blending or direct clipping
-* Surfaces for scrolling and animations
-* Optimizations to avoid surfaces
+- Partial transparency via an alpha channel
+- User-configurable blending modes via `mix-blend-mode`
+- Rounded rectangle clipping via destination-in blending or direct clipping
+- Optimizations to avoid surfaces when possible
+- Surfaces for scrolling and animations
+
+Besides the new features, we've upgraded from Tkinter to SDL and Skia,
+which makes our browser faster and more responsive and sets a
+foundation for more work on browser performance to come.
 
 ::: {.further}
 [This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
@@ -1692,6 +1696,17 @@ plus way more content about how a library such as Skia might implement features
 like raster sampling of vector graphics for lines and text, and interpolation
 of surfaces when their pixel arrays don't match resolution or orientation. I
 highly recommend it.
+:::
+
+
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab11.py
 :::
 
 
