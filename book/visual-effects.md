@@ -177,7 +177,7 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 ```
 
-Next,, SDL doesn't have a `mainloop` or `bind` method; we have to
+Next, SDL doesn't have a `mainloop` or `bind` method; we have to
 implement it ourselves:
 
 ``` {.python}
