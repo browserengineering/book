@@ -228,6 +228,11 @@ constructor; this main loop replaces them. Also note that I've changed
 the signatures of the various `handle_xxx` methods; you'll need to
 make analogous changes in `Browser` where they are defined.
 
+::: {.further}
+SDL is most popular for making games. A selection of books about
+game programming and SDL are listed [here](https://wiki.libsdl.org/Books).
+:::
+
 Skia is the canvas
 ==================
 
@@ -463,7 +468,7 @@ def get_font(size, weight, style):
 Our browser also needs font metrics and measurements. In Skia, these
 are provided by the `measureText` and `getMetrics` measurements. Let's
 start with `measureText`---it needs to replace all calls to `measure`.
-For example, in the `draw` method on `Tab`s`, we must do:
+For example, in the `draw` method on `Tab`s, we must do:
 
 ``` {.python replace=draw/raster}
 class Tab:
@@ -550,6 +555,19 @@ Similar changes should be made to `InputLayout` and `InlineLayout`
 After all, one advantage of using Skia is that, since it is also used
 in the Chrome browser, we know it has fast, built-in support for all
 of the shapes we might need.
+
+::: {.further}
+[Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization) is yet
+another interesting subject. There are, for example,
+techniques such as
+[subpixel rendering](https://en.wikipedia.org/wiki/Subpixel_rendering) to
+make fonts look better on lower-resolution screens, often using all three
+color channels to fool the eye into seeing more detail. These techniques
+are much less necessary on
+[high-pixel-density](https://en.wikipedia.org/wiki/Pixel_density) screens.
+It's likely that eventually, all screens will be high-density enough to retire
+these techniques.
+:::
 
 Pixels, Color, Raster
 =====================
@@ -754,6 +772,18 @@ thinks it needs to, it'll make a surface. The rule
 of thumb is: if you don't need a non-default blend mode, then you can use
 `save`, and you should always prefer `save` to `saveLayer`, all things being
 equal.
+
+::: {.further}
+The [`<canvas>`][canvas] HTML element provides a similar API to JavaScript. Combined
+with [WebGL][webgl], it's possible to implement basically all of SDL and Skia
+in JavaScript. Alternatively, it's possible to [compile Skia][canvaskit] to
+[WebAssembly][webassembly] to do the same.
+:::
+
+[canvas]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
+[webgl]: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
+[webassembly]: https://developer.mozilla.org/en-US/docs/WebAssembly
+[canvaskit]: https://skia.org/docs/user/modules/canvaskit/
 
 Compositing with SaveLayer
 ==========================
