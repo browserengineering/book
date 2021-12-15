@@ -442,22 +442,28 @@ Skia is also the font library
 =============================
 
 Since we're replacing `tkinter`, we are also replacing `tkinter.font`.
-Luckily, Skia has an internal font cache, so we no longer need to
-maintain our own, and `get_font` can just directly create a Skia font:
+In Skia, a font object has two pieces: a `Typeface`, which is a type
+family with a certain weight, style, and width; and a `Font`, which is
+a `Typeface` at a particular size. It's the `Typeface` that contains
+data and caches, so that's what we need to cache:
 
 ``` {.python}
 def get_font(size, weight, style):
-    if weight == "bold":
-        skia_weight = skia.FontStyle.kBold_Weight
-    else:
-        skia_weight = skia.FontStyle.kNormal_Weight
-    if style == "italic":
-        skia_style = skia.FontStyle.kItalic_Slant
-    else:
-        skia_style = skia.FontStyle.kUpright_Slant
-    skia_width = skia.FontStyle.kNormal_Width
-    style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
-    return skia.Font(skia.Typeface('Arial', style_info), size)
+    key = (weight, style)
+    if key not in FONTS:
+        if weight == "bold":
+            skia_weight = skia.FontStyle.kBold_Weight
+        else:
+            skia_weight = skia.FontStyle.kNormal_Weight
+        if style == "italic":
+            skia_style = skia.FontStyle.kItalic_Slant
+        else:
+            skia_style = skia.FontStyle.kUpright_Slant
+        skia_width = skia.FontStyle.kNormal_Width
+        style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
+        font = skia.Typeface('Arial', style_info)
+        FONTS[key] = font
+    return skia.Font(FONTS[key], size)
 ```
 
 Our browser also needs font metrics and measurements. In Skia, these
