@@ -296,8 +296,9 @@ Firefox, Safari and Chrome. Chrome split off its rendering engine subsystem into
 its own code base called
 [Blink](https://en.wikipedia.org/wiki/Blink_(browser_engine)) in 2013. The
 second browser war saw the development of many features of the modern web,
-including AJAX requests, HTML5 features like `<canvas>`, and a huge explosion in
-third-party JavaScript libraries and frameworks.
+including widespread use of AJAX requests, HTML5 features like
+`<canvas>`, and a huge explosion in third-party JavaScript libraries
+and frameworks.
 
 [^commercial-browser]: By commercial I mean built by a for-profit entity.
 Netscape's early versions were also not free software---you had to buy them from
