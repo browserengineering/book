@@ -1107,19 +1107,6 @@ such as Skia don't make it convenient to do so. (Skia canvases do have
 for this use case).
 :::
 
-::: {.todo}
-<!-- There's nothing for this comment to describe anymore, but it's -->
-<!-- useful information so I'm keeping it in a todo block for now-->
-Here I had to explicitly set a background color of white on the
-`<html>` element, even though web pages have a default white background. This
-is because `mix-blend-mode` is defined in terms of stacking contexts. In a real
-browser, if a stacking context doesn't paint anything, then its blending
-surface is empty; in our browser, blending happens whith whatever surface
-happened to be there before `saveLayer` was called. This is a bug in our
-browser, which can be fixed by calling `saveLayer` on the parent layout
-object.
-:::
-
 Clipping and masking
 ====================
 
