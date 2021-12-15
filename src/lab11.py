@@ -625,8 +625,7 @@ class Tab:
         self.render()
 
     def render(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority),
-            self.url)
+        style(self.nodes, sorted(self.rules, key=cascade_priority))
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
