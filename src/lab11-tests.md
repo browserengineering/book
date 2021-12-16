@@ -27,8 +27,8 @@ Opacity can be applied.
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
     saveLayer(color=80000000, alpha=128)
-    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
-    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
     drawString(text=Text, x=13.0, y=36.10546875, color=ff000000)
     restore()
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
@@ -47,14 +47,14 @@ So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
     saveLayer(color=ff000000, blend_mode=BlendMode.kMultiply)
-    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
-    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
     drawString(text=Mult, x=13.0, y=36.10546875, color=ff000000)
     restore()
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
     saveLayer(color=ff000000, blend_mode=BlendMode.kDifference)
-    drawRect(rect=Rect(13, 62.6875, 787, 85.0312), color=ff0000ff)
-    drawRect(rect=Rect(13, 62.6875, 787, 85.0312), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 62.6875, 787, 85.0312), radius=Point(0, 0), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 62.6875, 787, 85.0312), radius=Point(0, 0), color=ff0000ff)
     drawString(text=Diff, x=13.0, y=80.79296875, color=ff000000)
     restore()
     drawString(text=), x=13.0, y=103.13671875, color=ff000000)
@@ -79,7 +79,7 @@ make a canvas in which to draw the circular clip mask.
     save()
     clipRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(5, 5))
     drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(5, 5), color=ff0000ff)
-    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
     drawString(text=Clip, x=13.0, y=36.10546875, color=ff000000)
     restore()
     restore()
@@ -103,7 +103,7 @@ radius equal to the `20px` radius specified above.
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
     drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(11.1719, 11.1719), color=ff0000ff)
-    drawRect(rect=Rect(13, 18, 787, 40.3438), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
     drawString(text=Border-radius, x=13.0, y=36.10546875, color=ff000000)
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
 
@@ -140,7 +140,7 @@ compositing applies a bit differently to the background and foreground
 colors. Likewise, the final alpha is a bit different than you might think.
 
     >>> red_semitransparent.copy().source_over(blue_semitransparent)
-    Pixel(0.25, 0.0, 0.5, 0.75)
+    Pixel(0.5, 0.0, 0.6666666666666666, 0.75)
 
 Destination-in compositing ignores the source color except for its alpha
 channel, and multiplies the color of the backdrop by that alpha.

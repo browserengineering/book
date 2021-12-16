@@ -228,6 +228,11 @@ constructor; this main loop replaces them. Also note that I've changed
 the signatures of the various `handle_xxx` methods; you'll need to
 make analogous changes in `Browser` where they are defined.
 
+::: {.further}
+SDL is most popular for making games. A selection of books about
+game programming and SDL are listed [here](https://wiki.libsdl.org/Books).
+:::
+
 Skia is the canvas
 ==================
 
@@ -442,28 +447,34 @@ Skia is also the font library
 =============================
 
 Since we're replacing `tkinter`, we are also replacing `tkinter.font`.
-Luckily, Skia has an internal font cache, so we no longer need to
-maintain our own, and `get_font` can just directly create a Skia font:
+In Skia, a font object has two pieces: a `Typeface`, which is a type
+family with a certain weight, style, and width; and a `Font`, which is
+a `Typeface` at a particular size. It's the `Typeface` that contains
+data and caches, so that's what we need to cache:
 
 ``` {.python}
 def get_font(size, weight, style):
-    if weight == "bold":
-        skia_weight = skia.FontStyle.kBold_Weight
-    else:
-        skia_weight = skia.FontStyle.kNormal_Weight
-    if style == "italic":
-        skia_style = skia.FontStyle.kItalic_Slant
-    else:
-        skia_style = skia.FontStyle.kUpright_Slant
-    skia_width = skia.FontStyle.kNormal_Width
-    style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
-    return skia.Font(skia.Typeface('Arial', style_info), size)
+    key = (weight, style)
+    if key not in FONTS:
+        if weight == "bold":
+            skia_weight = skia.FontStyle.kBold_Weight
+        else:
+            skia_weight = skia.FontStyle.kNormal_Weight
+        if style == "italic":
+            skia_style = skia.FontStyle.kItalic_Slant
+        else:
+            skia_style = skia.FontStyle.kUpright_Slant
+        skia_width = skia.FontStyle.kNormal_Width
+        style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
+        font = skia.Typeface('Arial', style_info)
+        FONTS[key] = font
+    return skia.Font(FONTS[key], size)
 ```
 
 Our browser also needs font metrics and measurements. In Skia, these
 are provided by the `measureText` and `getMetrics` measurements. Let's
 start with `measureText`---it needs to replace all calls to `measure`.
-For example, in the `draw` method on `Tab`s`, we must do:
+For example, in the `draw` method on `Tab`s, we must do:
 
 ``` {.python replace=draw/raster}
 class Tab:
@@ -539,10 +550,7 @@ class BlockLayout:
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 ```
 
 Similar changes should be made to `InputLayout` and `InlineLayout`
@@ -551,20 +559,40 @@ After all, one advantage of using Skia is that, since it is also used
 in the Chrome browser, we know it has fast, built-in support for all
 of the shapes we might need.
 
-Pixels, Color, Raster
-=====================
+::: {.further}
+[Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization) is yet
+another interesting subject. There are, for example,
+techniques such as
+[subpixel rendering](https://en.wikipedia.org/wiki/Subpixel_rendering) to
+make fonts look better on lower-resolution screens, often using all three
+color channels to fool the eye into seeing more detail. These techniques
+are much less necessary on
+[high-pixel-density](https://en.wikipedia.org/wiki/Pixel_density) screens.
+It's likely that eventually, all screens will be high-density enough to retire
+these techniques.
+:::
+
+Pixels, Color, and Raster
+=========================
 
 Skia, like the Tkinter canvas we've been using until now, is a
 _rasterization_ library: it converts shapes like rectangles and text
-into pixels. Before we move on to Skia's advanced features, let's look
-at how rasterization works at a deeper level.
+into pixels. Before we move on to Skia's advanced features, let's talk
+about how rasterization works at a deeper level.
 
 You probably already know that computer screens are a 2D array of
 pixels. Each pixel contains red, green and blue lights,[^lcd-design]
 or _color channels_, that can shine with an intensity between 0 (off)
 and 1 (fully on). By mixing red, green, and blue, which is formally
 known as the [sRGB color space][srgb], any color in that space's
-_gamut_ can be made.[^other-spaces]
+_gamut_ can be made.[^other-spaces] In a rasterization library, a 2D
+array of pixels like this is called a *surface*.[^or-texture] Since
+modern devices have lots of pixels, surfaces require a lot of memory,
+and we'll typically want to create as few as possible.
+
+[^or-texture]: Sometimes they are called *bitmaps* or *textures* as
+well, but these words connote specific CPU or GPU technologies for
+implementing surfaces.
 
 [^lcd-design]: Actually, some screens contain [pixels besides red,
     green, and blue][lcd-design], including white, cyan, or yellow.
@@ -590,27 +618,9 @@ colors.
 The job of a rasterization library is to determine the red, green, and
 blue intensity of each pixel on the screen, based on the
 shapes---lines, rectangles, text---that the application wants to
-display. This is already a challenge for a single shape, but with
-multiple shapes there's an additional question: what color should the
-pixel be when two shapes overlap? So far, our browser has only handled
-opaque shapes,[^nor-subpixel] and the answer has been simple: take the
-color of the top shape. But now we need more nuance.
-
-[^nor-subpixel]: Nor has our browser yet thought about subpixel
-    geometry or anti-aliasing, which also rely on color mixing.
-
-Many objects in nature are partially transparent: frosted glass,
-clouds, or colored paper, for example. Looking through one, you see
-multiple colors *blended* together. That's also why computer screens work:
-the red, green, and blue lights [blend together][mixing] and appear to
-our eyes as another color. Designers use this effect[^mostly-models]
-in overlays, shadows, and tooltips, so our browser needs to support
-color mixing.
-
-[mixing]: https://en.wikipedia.org/wiki/Color_mixing
-
-[^mostly-models]: Mostly. Some more advanced blending modes are
-difficult, or perhaps impossible, in real-world physics.
+display. The interface for drawing shapes onto a surface is called a
+*canvas*; both Tkinter and Skia had canvas APIs. In Skia, each surface
+has an associated canvas that draws to that surface.
 
 ::: {.further}
 Screens use red, green, and blue color channels to match the three
@@ -632,8 +642,37 @@ hardware, chemistry, biology, and psychology.
 [colorblind]: https://en.wikipedia.org/wiki/Color_blindness
 [tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
 
-Stacking contexts
-=================
+::: {.further}
+The [`<canvas>`][canvas] HTML element provides a similar API to JavaScript. Combined
+with [WebGL][webgl], it's possible to implement basically all of SDL and Skia
+in JavaScript. Alternatively, it's possible to [compile Skia][canvaskit] to
+[WebAssembly][webassembly] to do the same.
+:::
+
+Blending and Stacking Contexts
+==============================
+
+Drawing shapes quickly is already a challenge, but with multiple
+shapes there's an additional question: what color should the pixel be
+when two shapes overlap? So far, our browser has only handled opaque
+shapes,[^nor-subpixel] and the answer has been simple: take the color
+of the top shape. But now we need more nuance.
+
+[^nor-subpixel]: It also hasn't considered subpixel geometry or
+    anti-aliasing, which also rely on color mixing.
+
+Many objects in nature are partially transparent: frosted glass,
+clouds, or colored paper, for example. Looking through one, you see
+multiple colors *blended* together. That's also why computer screens work:
+the red, green, and blue lights [blend together][mixing] and appear to
+our eyes as another color. Designers use this effect[^mostly-models]
+in overlays, shadows, and tooltips, so our browser needs to support
+color mixing.
+
+[mixing]: https://en.wikipedia.org/wiki/Color_mixing
+
+[^mostly-models]: Mostly. Some more advanced blending modes are
+difficult, or perhaps impossible, in real-world physics.
 
 Color mixing means we need to think carefully about the order of
 operations. For example, consider black text on an orange background,
@@ -653,13 +692,20 @@ blended with the white background. Doing the operations in a different
 order would lead to dark-orange or black text.
 
 To handle this properly, browsers apply blending not to individual
-shapes but to a tree of [*stacking contexts*][stacking-context]. Each
-stacking context is rastered into a single 2D array of pixels and then
-blended into its parent stacking context. Note that to raster a
-stacking context you first need to raster it *and* its child stacking
-contexts, so they can be blended together into the parent. In other
-words, rastering a web page requires a bottom-up traversal of the tree
-of stacking contexts.
+shapes but to a tree of [*stacking contexts*][stacking-context].
+Conceptually, each stacking context is drawn onto its own surface, and
+then blended into its parent stacking context. Rastering a web page
+requires a bottom-up traversal of the tree of stacking contexts: to
+raster a stacking context you first need to raster its contents,
+including its child stacking contexts, and then the whole contents
+need to be blended together into the parent.
+
+To match this use pattern, in Skia, surfaces form a stack. You can
+push a new surface on the stack, raster things to it, and then pop it
+off by blending it with surface below. When traversing the tree of
+stacking contexts, you push a new surface onto the stack every time
+you recurse into a new stacking context, and pop-and-blend every time
+you return from a child stacking context to its parent.
 
 [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
@@ -692,71 +738,13 @@ complicated to handle in real browsers.
 
 [containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-Surfaces and canvases
+Compositing and Alpha
 =====================
 
-The 2D pixel array for a stacking context is called a *surface*.[^or-texture]
-Conceptually, each layout object will now have its own surface,
-[^more-than-one] and perform a blending operation when being drawn into the
-surface for its parent. A *canvas*, on the other hand, is an API interface for
-drawing into a surface. As you've seen, Tkinter has a canvas API, and so does
-Skia.
-
-[^more-than-one]: A layout object can have more than one surface, actually. For
-the cases we'll see in this chapter, it's possible to optimize away most
-of these extra surfaces, but we won't do that in cases where it gets in the way
-of understanding blending.
-
-In practice, however, new surfaces are only created when needed to perform
-non-standard blending. For example, up to this point in the book, we could draw
-the entire browser with only one surface. It's important to avoid creating
-surfaces unless necessary, because it'll use up a ton of memory on complex
-pages. 
-
-[^or-texture]: Sometimes they are called *bitmaps* or *textures* as well, but
-these words connote specific CPU or GPU technologies for implementing surfaces.
-
-In Skia, surfaces are recursive and form a stack.[^tree] You can push a new
-surface on the stack, and pop one off. To push a surface, you call
-`SaveLayer` on a canvas.[^layer-surface] Parameters passed to this method
-indicate the kind of blending that is desird when popped. To pop, call
-`Restore`. Skia will keep track of the stack of surfaces for you, and perform
-blending when you call `Restore`. (In fact, the only surface we'll create
-explicitly is `Browser.root_surface`).
-
-[^layer-surface]: It's called `SaveLayer` instead of `BeginSurface` because Skia
-doesn't actually promise to create a surface, it just promises not to keep
-drawing directly to the current one. It will in fact optimize away
-surfaces internally if it can. So what you're really doing with `SaveLayer` is
-telling Skia that there is a new conceptual layer ("piece of paper") on the
-stack. How Skia does the rest is an implementation detail.
-
-[^tree]: A stack and a tree are very similar---the tree is a representation of
-the push/pop sequences when executing commands on the stack in the course of
-a program's execution. In our implementation, we'll call `saveLayer` for
-each new layout object that needs it, and `restore` when the recursion is done.
-
-As we'll see shortly, Skia also has canvas APIs for performing common operations
-like clipping and transform---for example, there is a `rotate` method
-that rotates the content on the screen. Once you call a method like that,
-all subsequent canvas commands are rotated, until you tell Skia to stop. The
-way to do that is with `save` and `restore`---you call `Save` before
-calling `rotate`, and `restore` after. `save` means "snapshot the current
-rotation, clip, etc. state of the canvas", and `restore` rolls back to the
-most recent snapshot.
-
-You've probably noticed that `restore` is used for both saving state and
-pushing layers---what gives? That's because there is a combined stack of layers
-and state in the Skia API. Transforms and clips sometimes do actually require
-new surfaces to implement correctly, so in fact when we use `save` it's
-actually just a shortcut for `saveLayer` that is often more efficient; if Skia
-thinks it needs to, it'll make a surface. The rule
-of thumb is: if you don't need a non-default blend mode, then you can use
-`save`, and you should always prefer `save` to `saveLayer`, all things being
-equal.
-
-Compositing with SaveLayer
-==========================
+[canvas]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
+[webgl]: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
+[webassembly]: https://developer.mozilla.org/en-US/docs/WebAssembly
+[canvaskit]: https://skia.org/docs/user/modules/canvaskit/
 
 Color mixing happens when multiple page elements overlap. The easiest
 way that happens in our browser is child elements overlapping their
@@ -804,7 +792,14 @@ Let's implement this in our browser.
 
 The way to mix colors in Skia is to first create two surfaces, and
 then draw one into the other. The most convenient way to do that is
-with `saveLayer` and `restore`:
+with `saveLayer`[^layer-surface] and `restore`:
+
+[^layer-surface]: It's called `saveLayer` instead of `createSurface`
+because Skia doesn't actually promise to create a new surface, if it
+can optimize that away. So what you're really doing with `saveLayer`
+is telling Skia that there is a new conceptual layer ("piece of
+paper") on the stack. How Skia does the rest is an implementation
+detail.
 
 ``` {.python.example}
 # draw parent
@@ -844,7 +839,7 @@ recurses into its children, adding each drawing command straight to
 the global display list. Let's instead add those drawing commands to a
 temporary list first:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def paint(self, display_list):
         cmds = []
@@ -958,20 +953,21 @@ Python, the code to implement it looks like this:[^simple-alpha]
 
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
-Note that that page refers to premultiplied alpha colors, but Skia
-does not use premultiplied color representations internally, and the code below doesn't either.
+Note that that page refers to premultiplied alpha colors, but Skia's API
+does not use premultiplied representations, and the code below doesn't either.
+Skia does use premultiplied representations internally though.
 
 
 ``` {.python file=examples}
 class Pixel:
     def source_over(self, source):
-        self.r = \
-            self.r * (1 - source.a) * self.a + source.r * source.a
-        self.g = \
-            self.g * (1 - source.a) * self.a + source.g * source.a
-        self.b = \
-            self.b * (1 - source.a) * self.a + source.b * source.a
         self.a = 1 - (1 - source.a) * (1 - self.a)
+        self.r = \
+            (self.r * (1 - source.a) * self.a + source.r * source.a) / self.a
+        self.g = \
+            (self.g * (1 - source.a) * self.a + source.g * source.a) / self.a
+        self.b = \
+            (self.b * (1 - source.a) * self.a + source.b * source.a) / self.a
 ```
 
 Here the destination pixel `self` is modified to blend in the source
@@ -1107,18 +1103,17 @@ such as Skia don't make it convenient to do so. (Skia canvases do have
 for this use case).
 :::
 
-::: {.todo}
-<!-- There's nothing for this comment to describe anymore, but it's -->
-<!-- useful information so I'm keeping it in a todo block for now-->
-Here I had to explicitly set a background color of white on the
-`<html>` element, even though web pages have a default white background. This
-is because `mix-blend-mode` is defined in terms of stacking contexts. In a real
-browser, if a stacking context doesn't paint anything, then its blending
-surface is empty; in our browser, blending happens whith whatever surface
-happened to be there before `saveLayer` was called. This is a bug in our
-browser, which can be fixed by calling `saveLayer` on the parent layout
-object.
+::: {.further}
+Premultiplied pixel representations of colors are generally more efficient.
+For example, observe that `source_over` has to divide by `self.a` at the
+end, because otherwise the result would be premultiplied. If we stuck with
+premultiplied throughout, this would not be necessary.
+
+There are also in fact a few Skia APIs that expose premultiplied colors:
+You can create images from blocks of them and read them back from surfaces,
+for example.
 :::
+
 
 Clipping and masking
 ====================
@@ -1251,6 +1246,31 @@ can imagine.
 
 Optimizing Surface Use
 ======================
+
+Ideally, new surfaces are only created when needed to perform
+non-standard blending. For example, up to this point in the book, we
+could draw the entire browser with only one surface. It's important to
+avoid creating surfaces unless necessary, because it'll use up a ton
+of memory on complex pages.
+
+As we'll see shortly, Skia also has canvas APIs for performing common operations
+like clipping and transform---for example, there is a `rotate` method
+that rotates the content on the screen. Once you call a method like that,
+all subsequent canvas commands are rotated, until you tell Skia to stop. The
+way to do that is with `save` and `restore`---you call `Save` before
+calling `rotate`, and `restore` after. `save` means "snapshot the current
+rotation, clip, etc. state of the canvas", and `restore` rolls back to the
+most recent snapshot.
+
+You've probably noticed that `restore` is used for both saving state and
+pushing layers---what gives? That's because there is a combined stack of layers
+and state in the Skia API. Transforms and clips sometimes do actually require
+new surfaces to implement correctly, so in fact when we use `save` it's
+actually just a shortcut for `saveLayer` that is often more efficient; if Skia
+thinks it needs to, it'll make a surface. The rule
+of thumb is: if you don't need a non-default blend mode, then you can use
+`save`, and you should always prefer `save` to `saveLayer`, all things being
+equal.
 
 Our browser now works correctly, but uses way too many surfaces. For example,
 for a single, no-effects-needed div with some text content, there are currently

@@ -24,22 +24,26 @@ from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
 from lab6 import CSSParser, compute_style, style
 from lab6 import TagSelector, DescendantSelector
-from lab10 import request, url_origin, JSContext
+from lab10 import COOKIE_JAR, request, url_origin, JSContext
 
-COOKIE_JAR = {}
+FONTS = {}
 
 def get_font(size, weight, style):
-    if weight == "bold":
-        skia_weight = skia.FontStyle.kBold_Weight
-    else:
-        skia_weight = skia.FontStyle.kNormal_Weight
-    if style == "italic":
-        skia_style = skia.FontStyle.kItalic_Slant
-    else:
-        skia_style = skia.FontStyle.kUpright_Slant
-    skia_width = skia.FontStyle.kNormal_Width
-    style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
-    return skia.Font(skia.Typeface('Arial', style_info), size)
+    key = (weight, style)
+    if key not in FONTS:
+        if weight == "bold":
+            skia_weight = skia.FontStyle.kBold_Weight
+        else:
+            skia_weight = skia.FontStyle.kNormal_Weight
+        if style == "italic":
+            skia_style = skia.FontStyle.kItalic_Slant
+        else:
+            skia_style = skia.FontStyle.kUpright_Slant
+        skia_width = skia.FontStyle.kNormal_Width
+        style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
+        font = skia.Typeface('Arial', style_info)
+        FONTS[key] = font
+    return skia.Font(FONTS[key], size)
 
 def color_to_sk_color(color):
     if color == "white":
@@ -237,10 +241,7 @@ class BlockLayout:
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         for child in self.children:
             child.paint(cmds)
@@ -341,11 +342,8 @@ class InlineLayout:
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
-
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+ 
         for child in self.children:
             child.paint(cmds)
 
@@ -504,10 +502,7 @@ class InputLayout:
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
