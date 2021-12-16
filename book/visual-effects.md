@@ -1677,7 +1677,7 @@ Summary
 =======
 
 So there you have it: our browser can draw not only boring
-black-on-white text but also:
+text and boxes but also:
 
 - Partial transparency via an alpha channel
 - User-configurable blending modes via `mix-blend-mode`
@@ -1686,7 +1686,7 @@ black-on-white text but also:
 - Surfaces for scrolling and animations
 
 Besides the new features, we've upgraded from Tkinter to SDL and Skia,
-which makes our browser faster and more responsive and sets a
+which makes our browser faster and more responsive, and also sets a
 foundation for more work on browser performance to come.
 
 ::: {.further}
@@ -1747,6 +1747,23 @@ The (limited) region of the page drawn to this surface is called the
 interest region; you'll need to track what part of the interest region
 is being shown on the screen, and reraster the interest region when
 the user attempts to scroll outside of it.
+
+*Z-index*: Right now, elements later in the HTML document are drawn
+"on top" of earlier ones. The `z-index` CSS property changes that
+order: an element with the larger `z-index` draws on top (with ties
+broken by the current order, and with the default `z-index` being 0).
+For `z-index` to have any effect, the element's `position` property
+must be set to something other than `static` (the default). Add
+support for `z-index`. One thing you'll run into is that with our
+browser's minimal layout features, you might not be able to *create*
+any overlapping elements to test this feature! However, lots of
+exercises throughout the book allow you to create overlapping
+elements, including `transform` and `width`/`height`. For an extra
+challenge, add support for [nested elements][stacking-context] with
+`z-index` properties.
+
+[stacking-context]:  https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+
 
 *Overflow scrolling*: An element with the `overflow` property set to
 `scroll` and a fixed pixel `height` is scrollable. (You'll want to
