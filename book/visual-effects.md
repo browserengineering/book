@@ -550,10 +550,7 @@ class BlockLayout:
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 ```
 
 Similar changes should be made to `InputLayout` and `InlineLayout`
@@ -752,8 +749,10 @@ explicitly is `Browser.root_surface`).
 doesn't actually promise to create a surface, it just promises not to keep
 drawing directly to the current one. It will in fact optimize away
 surfaces internally if it can. So what you're really doing with `SaveLayer` is
-telling Skia that there is a new conceptual layer ("piece of paper") on the
-stack. How Skia does the rest is an implementation detail.
+telling Skia that there is a new conceptual *layer* ("piece of paper") on the
+stack. Skia's terminology distinguishes between a layer and a surface for this
+reason as well, but for our purposes it makes sense to assume that each new
+layer comes with a surface.
 
 [^tree]: A stack and a tree are very similar---the tree is a representation of
 the push/pop sequences when executing commands on the stack in the course of
@@ -771,13 +770,8 @@ most recent snapshot.
 
 You've probably noticed that `restore` is used for both saving state and
 pushing layers---what gives? That's because there is a combined stack of layers
-and state in the Skia API. Transforms and clips sometimes do actually require
-new surfaces to implement correctly, so in fact when we use `save` it's
-actually just a shortcut for `saveLayer` that is often more efficient; if Skia
-thinks it needs to, it'll make a surface. The rule
-of thumb is: if you don't need a non-default blend mode, then you can use
-`save`, and you should always prefer `save` to `saveLayer`, all things being
-equal.
+and state in the Skia API. However, `save` never creates a new surface, so 
+you should use it whnever possible over `saveLayer`.
 
 ::: {.further}
 The [`<canvas>`][canvas] HTML element provides a similar API to JavaScript. Combined
@@ -880,7 +874,7 @@ recurses into its children, adding each drawing command straight to
 the global display list. Let's instead add those drawing commands to a
 temporary list first:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def paint(self, display_list):
         cmds = []
@@ -994,20 +988,21 @@ Python, the code to implement it looks like this:[^simple-alpha]
 
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
-Note that that page refers to premultiplied alpha colors, but Skia
-does not use premultiplied color representations internally, and the code below doesn't either.
+Note that that page refers to premultiplied alpha colors, but Skia's API
+does not use premultiplied representations, and the code below doesn't either.
+Skia does use premultiplied representations internally though.
 
 
 ``` {.python file=examples}
 class Pixel:
     def source_over(self, source):
-        self.r = \
-            self.r * (1 - source.a) * self.a + source.r * source.a
-        self.g = \
-            self.g * (1 - source.a) * self.a + source.g * source.a
-        self.b = \
-            self.b * (1 - source.a) * self.a + source.b * source.a
         self.a = 1 - (1 - source.a) * (1 - self.a)
+        self.r = \
+            (self.r * (1 - source.a) * self.a + source.r * source.a) / self.a
+        self.g = \
+            (self.g * (1 - source.a) * self.a + source.g * source.a) / self.a
+        self.b = \
+            (self.b * (1 - source.a) * self.a + source.b * source.a) / self.a
 ```
 
 Here the destination pixel `self` is modified to blend in the source
@@ -1142,6 +1137,18 @@ such as Skia don't make it convenient to do so. (Skia canvases do have
 `peekPixels` and `readPixels` methods that are sometimes used, but not
 for this use case).
 :::
+
+::: {.further}
+Premultiplied pixel representations of colors are generally more efficient.
+For example, observe that `source_over` has to divide by `self.a` at the
+end, because otherwise the result would be premultiplied. If we stuck with
+premultiplied throughout, this would not be necessary.
+
+There are also in fact a few Skia APIs that expose premultiplied colors:
+You can create images from blocks of them and read them back from surfaces,
+for example.
+:::
+
 
 Clipping and masking
 ====================

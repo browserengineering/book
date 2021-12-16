@@ -319,10 +319,7 @@ class BlockLayout:
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         for child in self.children:
             child.paint(cmds)
@@ -426,11 +423,8 @@ class InlineLayout:
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
-
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+ 
         for child in self.children:
             child.paint(cmds)
 
@@ -678,10 +672,7 @@ class InputLayout:
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
