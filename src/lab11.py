@@ -95,6 +95,25 @@ def request(url, top_level_url, payload=None):
 
     return headers, body
 
+FONTS = {}
+
+def get_font(size, weight, style):
+    key = (weight, style)
+    if key not in FONTS:
+        if weight == "bold":
+            skia_weight = skia.FontStyle.kBold_Weight
+        else:
+            skia_weight = skia.FontStyle.kNormal_Weight
+        if style == "italic":
+            skia_style = skia.FontStyle.kItalic_Slant
+        else:
+            skia_style = skia.FontStyle.kUpright_Slant
+        skia_width = skia.FontStyle.kNormal_Width
+        style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
+        font = skia.Typeface('Arial', style_info)
+        FONTS[key] = font
+    return skia.Font(FONTS[key], size)
+
 def color_to_sk_color(color):
     if color == "white":
         return skia.ColorWHITE
@@ -300,10 +319,7 @@ class BlockLayout:
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         for child in self.children:
             child.paint(cmds)
@@ -367,15 +383,11 @@ class InlineLayout:
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def get_font(self, node):
+    def text(self, node):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = float(node.style["font-size"][:-2])
-        return skia.Font(
-            skia.Typeface('Arial', font_style(weight, style)), size)
-
-    def text(self, node):
-        font = self.get_font(node)
+        font = get_font(size, weight, size)
         for word in node.text.split():
             w = font.measureText(word)
             if self.cursor_x + w > self.x + self.width:
@@ -394,8 +406,10 @@ class InlineLayout:
         input = InputLayout(node, line, self.previous_word)
         line.children.append(input)
         self.previous_word = input
-        size = int(float(node.style["font-size"][:-2]) * .75)
-        font = self.get_font(node)
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = float(node.style["font-size"][:-2])
+        font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
@@ -409,11 +423,8 @@ class InlineLayout:
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
-
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+ 
         for child in self.children:
             child.paint(cmds)
 
@@ -580,15 +591,6 @@ class LineLayout:
         return "LineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
-def font_style(weight, style):
-    skia_weight = skia.FontStyle.kNormal_Weight
-    if weight == "bold":
-        skia_weight = skia.FontStyle.kBold_Weight
-    skia_style = skia.FontStyle.kUpright_Slant
-    if style == "italic":
-        skia_style = skia.FontStyle.kItalic_Slant
-    return skia.FontStyle(skia_weight, skia.FontStyle.kNormal_Width, skia_style)
-
 class TextLayout:
     def __init__(self, node, word, parent, previous):
         self.node = node
@@ -607,8 +609,7 @@ class TextLayout:
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = float(self.node.style["font-size"][:-2])
-        self.font = skia.Font(
-            skia.Typeface('Arial', font_style(weight, style)), size)
+        self.font = get_font(size, weight, style)
 
         # Do not set self.y!!!
         self.width = self.font.measureText(self.word)
@@ -646,9 +647,8 @@ class InputLayout:
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = int(self.node.style["font-size"][:-2])
-        self.font = skia.Font(
-            skia.Typeface('Arial', font_style(weight, style)), size)
+        size = float(self.node.style["font-size"][:-2])
+        self.font = get_font(size, weight, style)
 
         self.width = style_length(
             self.node, "width", INPUT_WIDTH_PX)
@@ -672,10 +672,7 @@ class InputLayout:
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -913,10 +910,16 @@ class Tab:
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
-RED_MASK = 0xff000000
-GREEN_MASK = 0x00ff0000
-BLUE_MASK = 0x0000ff00
-ALPHA_MASK = 0x000000ff
+if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+    RED_MASK = 0xff000000
+    GREEN_MASK = 0x00ff0000
+    BLUE_MASK = 0x0000ff00
+    ALPHA_MASK = 0x000000ff
+else:
+    RED_MASK = 0x000000ff
+    GREEN_MASK = 0x0000ff00
+    BLUE_MASK = 0x00ff0000
+    ALPHA_MASK = 0xff000000
 
 class Browser:
     def __init__(self):
@@ -1064,14 +1067,9 @@ class Browser:
 
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
-        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-                skia_bytes, WIDTH, HEIGHT, depth, pitch,
-                RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
-        else:
-            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-                skia_bytes, WIDTH, HEIGHT, depth, pitch,
-                ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
+        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+            skia_bytes, WIDTH, HEIGHT, depth, pitch,
+            RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
 
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)

@@ -138,28 +138,33 @@ be `RGBA_8888` when constructing the surface) and on your computer's
 
 [wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
 
-``` {.python replace=draw_to_screen/draw}
-RED_MASK = 0xff000000
-GREEN_MASK = 0x00ff0000
-BLUE_MASK = 0x0000ff00
-ALPHA_MASK = 0x000000ff
+``` {.python}
+if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+    RED_MASK = 0xff000000
+    GREEN_MASK = 0x00ff0000
+    BLUE_MASK = 0x0000ff00
+    ALPHA_MASK = 0x000000ff
+else:
+    RED_MASK = 0x000000ff
+    GREEN_MASK = 0x0000ff00
+    BLUE_MASK = 0x00ff0000
+    ALPHA_MASK = 0xff000000
+```
 
+The `CreateRGBSurfaceFrom` method then copies the data:
+
+``` {.python replace=draw_to_screen/draw}
 class Browser:
     def draw_to_screen(self):
         # ...
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
-        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-           sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-               skia_bytes, WIDTH, HEIGHT, depth, pitch,
-               RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
-        else:
-           sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-               skia_bytes, WIDTH, HEIGHT, depth, pitch,
-               ALPHA_MASK, BLUE_MASK, GREEN_MASK, RED_MASK)
+        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+            skia_bytes, WIDTH, HEIGHT, depth, pitch,
+            RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
 ```
 
-Finally, we copy all this pixel data to the window itself:
+Finally, we draw all this pixel data on the window itself:
 
 ``` {.python replace=draw_to_screen/draw}
 class Browser:
@@ -172,8 +177,8 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 ```
 
-SDL doesn't have a `mainloop` or `bind` method; we have to implement
-it ourselves:
+Next, SDL doesn't have a `mainloop` or `bind` method; we have to
+implement it ourselves:
 
 ``` {.python}
 if __name__ == "__main__":
@@ -222,6 +227,11 @@ You can now remove all of the `bind` calls in the `Browser`
 constructor; this main loop replaces them. Also note that I've changed
 the signatures of the various `handle_xxx` methods; you'll need to
 make analogous changes in `Browser` where they are defined.
+
+::: {.further}
+SDL is most popular for making games. A selection of books about
+game programming and SDL are listed [here](https://wiki.libsdl.org/Books).
+:::
 
 Skia is the canvas
 ==================
@@ -397,8 +407,7 @@ class Browser:
         self.draw_to_screen()
 ```
 
-We've only got a few minor changes left elsewhere in the browser.
-`Tab` also has a `draw` method and draws a cursor; it needs to use
+`Tab` also has a `draw` method, which draws a cursor; it needs to use
 `draw_line` for that:
 
 ``` {.python replace=draw%28/raster%28,%20-%20self.scroll%20+%20CHROME_PX/}
@@ -406,13 +415,11 @@ class Tab:
     def draw(self, canvas):
         if self.focus:
             # ...
-            x = obj.x + obj.font.measureText(text)
-            y = obj.y - self.scroll + CHROME_PX
             draw_line(canvas, x, y, x, y + obj.height)
 ```
 
-This takes care of just about all of our graphics commands, with just
-one small thing left: text handling.
+That's most of it. The last few changes we need to upgrade from
+Tkinter to SDL and Skia relate to fonts and text.
 
 ::: {.further}
 Implementing high-quality raster libraries is very interesting in its own
@@ -439,12 +446,52 @@ can do the same and more with Skia and a few lines of Python.
 Skia is also the font library
 =============================
 
-Note that I've also replaced Tkinter's `measure` call with Skia's
-`measureText` equivalent. We'll also need to create Skia fonts instead
-of Tkinter ones. Update all the other places that `measure` was called
-to use `measureText`. We also need to change everywhere `metrics` is
-called to instead use Skia's `getMetrics`, which works a little
-differently. In Skia, ascent and descent are accessible via:
+Since we're replacing `tkinter`, we are also replacing `tkinter.font`.
+In Skia, a font object has two pieces: a `Typeface`, which is a type
+family with a certain weight, style, and width; and a `Font`, which is
+a `Typeface` at a particular size. It's the `Typeface` that contains
+data and caches, so that's what we need to cache:
+
+``` {.python}
+def get_font(size, weight, style):
+    key = (weight, style)
+    if key not in FONTS:
+        if weight == "bold":
+            skia_weight = skia.FontStyle.kBold_Weight
+        else:
+            skia_weight = skia.FontStyle.kNormal_Weight
+        if style == "italic":
+            skia_style = skia.FontStyle.kItalic_Slant
+        else:
+            skia_style = skia.FontStyle.kUpright_Slant
+        skia_width = skia.FontStyle.kNormal_Width
+        style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
+        font = skia.Typeface('Arial', style_info)
+        FONTS[key] = font
+    return skia.Font(FONTS[key], size)
+```
+
+Our browser also needs font metrics and measurements. In Skia, these
+are provided by the `measureText` and `getMetrics` measurements. Let's
+start with `measureText`---it needs to replace all calls to `measure`.
+For example, in the `draw` method on `Tab`s, we must do:
+
+``` {.python replace=draw/raster}
+class Tab:
+    def draw(self, canvas):
+        if self.focus:
+            # ...
+            x = obj.x + obj.font.measureText(text)
+            # ...
+```
+
+There are also `measure` calls in `DrawText`, in the `draw` method on
+`Browser`, in the `text` method in `InlineLayout`, and in the `layout`
+method in `TextLayout`. Update all of them to use `measureText`.
+
+Also, in the `layout` method of `LineLayout` and in `DrawText` we make
+calls to the `metrics` method on fonts. In Skia, this method is called
+`getMetrics`, and to get the ascent and descent we use
 
 ``` {.python expected=False}
     -font.getMetrics().fAscent
@@ -503,17 +550,27 @@ class BlockLayout:
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            if radius != 0.0:
-                cmds.append(DrawRRect(rect, radius, bgcolor))
-            else:
-                cmds.append(DrawRect(rect, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 ```
 
 Similar changes should be made to `InputLayout` and `InlineLayout`
 
-In this way, one advantage of using Skia is that, since it is also
-used in the Chrome browser, we know it has fast, built-in support for
-all of the shapes we might need.
+After all, one advantage of using Skia is that, since it is also used
+in the Chrome browser, we know it has fast, built-in support for all
+of the shapes we might need.
+
+::: {.further}
+[Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization) is yet
+another interesting subject. There are, for example,
+techniques such as
+[subpixel rendering](https://en.wikipedia.org/wiki/Subpixel_rendering) to
+make fonts look better on lower-resolution screens, often using all three
+color channels to fool the eye into seeing more detail. These techniques
+are much less necessary on
+[high-pixel-density](https://en.wikipedia.org/wiki/Pixel_density) screens.
+It's likely that eventually, all screens will be high-density enough to retire
+these techniques.
+:::
 
 Pixels, Color, and Raster
 =========================
@@ -584,6 +641,13 @@ hardware, chemistry, biology, and psychology.
 [opponent-process]: https://en.wikipedia.org/wiki/Opponent_process
 [colorblind]: https://en.wikipedia.org/wiki/Color_blindness
 [tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
+
+::: {.further}
+The [`<canvas>`][canvas] HTML element provides a similar API to JavaScript. Combined
+with [WebGL][webgl], it's possible to implement basically all of SDL and Skia
+in JavaScript. Alternatively, it's possible to [compile Skia][canvaskit] to
+[WebAssembly][webassembly] to do the same.
+:::
 
 Blending and Stacking Contexts
 ==============================
@@ -676,6 +740,11 @@ complicated to handle in real browsers.
 
 Compositing and Alpha
 =====================
+
+[canvas]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
+[webgl]: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
+[webassembly]: https://developer.mozilla.org/en-US/docs/WebAssembly
+[canvaskit]: https://skia.org/docs/user/modules/canvaskit/
 
 Color mixing happens when multiple page elements overlap. The easiest
 way that happens in our browser is child elements overlapping their
@@ -770,7 +839,7 @@ recurses into its children, adding each drawing command straight to
 the global display list. Let's instead add those drawing commands to a
 temporary list first:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def paint(self, display_list):
         cmds = []
@@ -884,20 +953,21 @@ Python, the code to implement it looks like this:[^simple-alpha]
 
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
-Note that that page refers to premultiplied alpha colors, but Skia
-does not use premultiplied color representations internally, and the code below doesn't either.
+Note that that page refers to premultiplied alpha colors, but Skia's API
+does not use premultiplied representations, and the code below doesn't either.
+Skia does use premultiplied representations internally though.
 
 
 ``` {.python file=examples}
 class Pixel:
     def source_over(self, source):
-        self.r = \
-            self.r * (1 - source.a) * self.a + source.r * source.a
-        self.g = \
-            self.g * (1 - source.a) * self.a + source.g * source.a
-        self.b = \
-            self.b * (1 - source.a) * self.a + source.b * source.a
         self.a = 1 - (1 - source.a) * (1 - self.a)
+        self.r = \
+            (self.r * (1 - source.a) * self.a + source.r * source.a) / self.a
+        self.g = \
+            (self.g * (1 - source.a) * self.a + source.g * source.a) / self.a
+        self.b = \
+            (self.b * (1 - source.a) * self.a + source.b * source.a) / self.a
 ```
 
 Here the destination pixel `self` is modified to blend in the source
@@ -1033,18 +1103,17 @@ such as Skia don't make it convenient to do so. (Skia canvases do have
 for this use case).
 :::
 
-::: {.todo}
-<!-- There's nothing for this comment to describe anymore, but it's -->
-<!-- useful information so I'm keeping it in a todo block for now-->
-Here I had to explicitly set a background color of white on the
-`<html>` element, even though web pages have a default white background. This
-is because `mix-blend-mode` is defined in terms of stacking contexts. In a real
-browser, if a stacking context doesn't paint anything, then its blending
-surface is empty; in our browser, blending happens whith whatever surface
-happened to be there before `saveLayer` was called. This is a bug in our
-browser, which can be fixed by calling `saveLayer` on the parent layout
-object.
+::: {.further}
+Premultiplied pixel representations of colors are generally more efficient.
+For example, observe that `source_over` has to divide by `self.a` at the
+end, because otherwise the result would be premultiplied. If we stuck with
+premultiplied throughout, this would not be necessary.
+
+There are also in fact a few Skia APIs that expose premultiplied colors:
+You can create images from blocks of them and read them back from surfaces,
+for example.
 :::
+
 
 Clipping and masking
 ====================
