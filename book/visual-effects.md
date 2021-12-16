@@ -990,7 +990,7 @@ Python, the code to implement it looks like this:[^simple-alpha]
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
 Note that that page refers to premultiplied alpha colors, but Skia's API
 does not use premultiplied representations, and the code below doesn't either.
-Skia does use premultipliedrepresentations internally though.
+Skia does use premultiplied representations internally though.
 
 
 ``` {.python file=examples}
@@ -1140,7 +1140,7 @@ for this use case).
 
 ::: {.further}
 Premultiplied pixel representations of colors are generally more efficient.
-For example, observe that the `source_over` has to divide by `self.a` at the
+For example, observe that `source_over` has to divide by `self.a` at the
 end, because otherwise the result would be premultiplied. If we stuck with
 premultiplied throughout, this would not be necessary.
 
