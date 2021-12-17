@@ -1199,9 +1199,9 @@ class Pixel:
     def destination_in(self, source):
         self.a = self.a * source.a
         if self.a == 0: return self
-        self.r = self.r * self.a * source.a / self.a
-        self.g = self.g * self.a * source.a / self.a
-        self.b = self.b * self.a * source.a / self.a
+        self.r = (self.r * self.a * source.a) / self.a
+        self.g = (self.g * self.a * source.a) / self.a
+        self.b = (self.b * self.a * source.a) / self.a
 ```
 
 Now, in `paint_visual_effects`, we need to create a new layer, draw
