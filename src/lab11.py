@@ -740,6 +740,7 @@ class Browser:
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
+        self.raster()
         self.draw()
 
     def handle_click(self, e):
@@ -757,21 +758,25 @@ class Browser:
         else:
             self.focus = "content"
             self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
+        self.raster()
         self.draw()
 
     def handle_key(self, char):
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += char
+            self.raster()
             self.draw()
         elif self.focus == "content":
             self.tabs[self.active_tab].keypress(char)
+            self.raster()
             self.draw()
 
     def handle_enter(self):
         if self.focus == "address bar":
             self.tabs[self.active_tab].load(self.address_bar)
             self.focus = None
+            self.raster()
             self.draw()
 
     def load(self, url):
