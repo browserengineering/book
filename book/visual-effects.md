@@ -139,16 +139,18 @@ be `RGBA_8888` when constructing the surface) and on your computer's
 [wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
 
 ``` {.python}
-if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-    RED_MASK = 0xff000000
-    GREEN_MASK = 0x00ff0000
-    BLUE_MASK = 0x0000ff00
-    ALPHA_MASK = 0x000000ff
-else:
-    RED_MASK = 0x000000ff
-    GREEN_MASK = 0x0000ff00
-    BLUE_MASK = 0x00ff0000
-    ALPHA_MASK = 0xff000000
+class Browser:
+    def __init__(self):
+        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+            self.RED_MASK = 0xff000000
+            self.GREEN_MASK = 0x00ff0000
+            self.BLUE_MASK = 0x0000ff00
+            self.ALPHA_MASK = 0x000000ff
+        else:
+            self.RED_MASK = 0x000000ff
+            self.GREEN_MASK = 0x0000ff00
+            self.BLUE_MASK = 0x00ff0000
+            self.ALPHA_MASK = 0xff000000
 ```
 
 The `CreateRGBSurfaceFrom` method then copies the data:
@@ -161,7 +163,7 @@ class Browser:
         pitch = 4 * WIDTH # Bytes per row
         sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
+            self.RED_MASK, self.GREEN_MASK, self.BLUE_MASK, self.ALPHA_MASK)
 ```
 
 Finally, we draw all this pixel data on the window itself:
