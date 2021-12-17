@@ -1567,7 +1567,7 @@ the visible region. and re-paint/raster as necessary as surfaces move around.
 
 ``` {.python}
 class Browser:
-        def raster(self):
+    def raster(self):
         active_tab = self.tabs[self.active_tab]
 
         # Re-allocate the tab surface if its size changes.
@@ -1593,6 +1593,17 @@ class Browser:
     
         # Draw the tabs UI:
         # ...
+```
+
+Don't forget to update all the places that currently call `draw` to also call
+`raster`, for example `handle_down`:
+
+``` {.python}
+class Browser:
+    def handle_down(self):
+        self.tabs[self.active_tab].scrolldown()
+        self.raster()
+        self.draw()
 ```
 
 On `Tab`, there are two changes other than renaming `draw` to `raster`: first,
