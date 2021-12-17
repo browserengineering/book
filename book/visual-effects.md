@@ -7,8 +7,8 @@ next: rendering-architecture
 
 Right now our browser's visual capabilities are pretty boring, just colored
 rectangles and text. Real browsers, one the other hand, support all kinds
-of *visual effects* that affect how elements look. Before we add these to our
-browser, we'll need to learn a bit about pixels, colors, and blending of
+of *visual effects* that affect how elements look. But before we add these to
+our browser, we'll need to learn a bit about pixels, colors, and blending of
 surfaces onto computer screens. We'll then be able to implement these effects
 using the Skia graphics library, and you'll see a bit of how Skia is
 implemented under the hood. Finally we'll see how surfaces also play a key role
@@ -232,8 +232,8 @@ the signatures of the various `handle_xxx` methods; you'll need to
 make analogous changes in `Browser` where they are defined.
 
 ::: {.further}
-SDL is most popular for making games. A selection of books about
-game programming and SDL are listed [here](https://wiki.libsdl.org/Books).
+SDL is most popular for making games. [Here](https://wiki.libsdl.org/Books) is
+a selection of books about game programming and SDL.
 :::
 
 Skia is the canvas
@@ -428,9 +428,9 @@ Tkinter to SDL and Skia relate to fonts and text.
 Implementing high-quality raster libraries is very interesting in its own
 right. These days, it's especially important to leverage GPUs when
 they're available, and browsers often push the envelope. Browser teams
-typically include raster library experts: Skia for Chromium and [Core
-Graphics][core-graphics] for WebKit, for example. Both of these
-libraries are used outside of the browser, too: Core Graphics in iOS
+typically include or work closely with raster library experts: Skia for
+Chromium and [Core Graphics][core-graphics] for WebKit, for example. Both of
+these libraries are used outside of the browser, too: Core Graphics in iOS
 and macOS, and Skia in Android.
 
 If you're looking for another book on how these libraries are implemented, check
@@ -511,9 +511,11 @@ Note the negative sign when accessing the ascent. In Skia, ascent and
 descent are positive if they go downward and negative if they go upward,
 so ascents will normally be negative, the opposite of Tkinter.
 
-You should now be able to run the browser again. It should look and
-behave just as it did in previous chapters, and it'll probably feel
-faster, because Skia and SDL are faster than Tkinter.
+You should now be able to run the browser again. It should look and behave just
+as it did in previous chapters, and it'll probably feel faster, because Skia
+and SDL are faster than Tkinter. After all, one advantage of using Skia is
+that, since it is also used in the Chrome browser, we know it has fast,
+built-in support for all of the shapes we might need.
 
 Let's reward ourselves for the big refactor with a simple feature that Skia
 enables: rounded corners of a rectangle via the `border-radius` CSS property,
@@ -557,11 +559,7 @@ class BlockLayout:
             cmds.append(DrawRRect(rect, radius, bgcolor))
 ```
 
-Similar changes should be made to `InputLayout` and `InlineLayout`
-
-After all, one advantage of using Skia is that, since it is also used
-in the Chrome browser, we know it has fast, built-in support for all
-of the shapes we might need.
+Similar changes should be made to `InputLayout` and `InlineLayout`.
 
 ::: {.further}
 [Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization) is yet
@@ -576,13 +574,14 @@ It's likely that eventually, all screens will be high-density enough to retire
 these techniques.
 :::
 
-Pixels, Color, and Raster
+Pixels, color, and raster
 =========================
 
 Skia, like the Tkinter canvas we've been using until now, is a
-_rasterization_ library: it converts shapes like rectangles and text
-into pixels. Before we move on to Skia's advanced features, let's talk
-about how rasterization works at a deeper level.
+_rasterization_ library: it converts shapes like rectangles and text into
+ pixels. Before we move on to Skia's advanced features, let's talk about how
+ rasterization works at a deeper level. This will help to understand how
+ exactly those features work.
 
 You probably already know that computer screens are a 2D array of
 pixels. Each pixel contains red, green and blue lights,[^lcd-design]
@@ -647,14 +646,15 @@ hardware, chemistry, biology, and psychology.
 [tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
 
 ::: {.further}
-The [`<canvas>`][canvas] HTML element provides a similar API to JavaScript. Combined
-with [WebGL][webgl], it's possible to implement basically all of SDL and Skia
-in JavaScript. Alternatively, it's possible to [compile Skia][canvaskit] to
-[WebAssembly][webassembly] to do the same.
+The [`<canvas>`][canvas] HTML element provides an API to JavaScript that is
+similar to Skia or Tkinter. Combined with [WebGL][webgl], it's possible to
+implement basically all of SDL and Skia in JavaScript. Alternatively, one can
+[compile Skia][canvaskit] to [WebAssembly][webassembly] to do the
+same.
 :::
 
-Blending and Stacking Contexts
-==============================
+Blending and stacking
+=====================
 
 Drawing shapes quickly is already a challenge, but with multiple
 shapes there's an additional question: what color should the pixel be
@@ -685,7 +685,7 @@ is gray while the background is yellow-orange. That's due to blending:
 the text and the background are both partially transparent and let
 through some of the underlying white:
 
-<div style="opacity: 0.5; background: orange; color: black; font-size: 50px; padding: 15px; text-align: center;flex:1;">Test</div>
+<div style="opacity: 0.5; background: orange; color: black; font-size: 50px; padding: 15px; text-align: center;flex:1;">Text</div>
 
 But importantly, the text isn't orange-gray: even though the text is
 partially transparent, none of the orange shines through. That's
@@ -742,7 +742,7 @@ complicated to handle in real browsers.
 
 [containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-Compositing and Alpha
+Compositing and alpha
 =====================
 
 [canvas]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
@@ -754,7 +754,7 @@ Color mixing happens when multiple page elements overlap. The easiest
 way that happens in our browser is child elements overlapping their
 parents, like this:[^transforms-etc]
 
-[^transforms-etc]: There are way more ways elements can overlap in a
+[^transforms-etc]: There are many more ways elements can overlap in a
 real browser: the `transform` property, `position`ed elements,
 negative margins, and so many more. But color mixing works the same
 way each time.
@@ -891,7 +891,7 @@ always a single `SaveLayer` command that wraps the original content---which make
 first we need to draw the commands to a surface, and *then* apply transparency to it when blending into
 the parent.
 
-Compositing Pixels
+Compositing pixels
 ==================
 
 Now let's pause and explore how opacity actually works under the hood.
@@ -1100,14 +1100,14 @@ such as Skia don't make it convenient to do so. (Skia canvases do have
 for this use case).
 
 Many graphics libraries, Skia included, don't usually represent a separate alpha
-channel internally , and instead multiply the color channels by the opacity,
+channel internally, and instead multiply the color channels by the opacity,
 which is called a *premultiplied* representation of the color. Premultiplied
 pixel representations of colors are generally more efficient. For example,
 observe that `source_over` has to divide by `self.a` at the end, because
 otherwise the result would be premultiplied. If we stuck with premultiplied
 throughout, this would not be necessary.
 
-There are also in fact a few Skia APIs that expose premultiplied colors:
+There are also in fact a few Skia APIs that expose premultiplied colors.
 You can create images from blocks of them and read them back from surfaces,
 for example.
 :::
@@ -1142,7 +1142,7 @@ specify a mask shape using a curve, while the [`mask`
 property][mdn-mask] lets you instead specify a image URL for the mask.
 
 [^like-scroll]: For example, `overflow: scroll` adds scroll bars and
-    makes an element scrollable, while `overflow: hidden` is similar
+    makes an element scrollable, while `overflow: hidden` is similar to
     but subtly different from `overflow: clip`.
 
 [mdn-mask]: https://developer.mozilla.org/en-US/docs/Web/CSS/mask
@@ -1170,7 +1170,7 @@ This test text exists here to ensure that the "div" element is
 large enough that the border radius is obvious.
 </div>
 
-Look at how the letters near the corner are cut off to maintain a
+Observe how the letters near the corner are cut off to maintain a
 sharp rounded edge. (Uhh... actually, at the time of this writing,
 Safari does not support `overflow: clip`, so if you're using Safari
 you won't see this effect.[^hidden]) That's clipping; without the
@@ -1204,10 +1204,9 @@ perfectly. In code, destination-in looks like this:
 ``` {.python file=examples}
 class Pixel:
     def destination_in(self, source):
-        self.r = self.r * self.a * source.a
-        self.g = self.g * self.a * source.a
-        self.b = self.b * self.a * source.a
-        self.a = self.a * source.a
+        self.r = (self.r * self.a * source.a) / self.a
+        self.g = (self.g * self.a * source.a) / self.a
+        self.b = (self.b * self.a * source.a) / self.a
 ```
 
 Now, in `paint_visual_effects`, we need to create a new layer, draw
@@ -1240,7 +1239,7 @@ layer to serve as the mask, and uses destination-in blending to clip
 the element contents. Here I chose to draw the rounded rectangle in
 white, but the color doesn't matter as long as it's opaque. On the
 other hand, if there's no clipping, I don't round the corners of the
-mask, which means nothing is clipped off.
+mask, which means nothing is clipped out.
 
 Notice how similar this masking technique is to the physical analogy
 with scissors described earlier, with the two layers playing the role
@@ -1250,7 +1249,7 @@ of the scissors. This implementation technique for clipping is called
 complex mask shapes, like text, bitmap images, or anything else you
 can imagine.
 
-Optimizing Surface Use
+Optimizing surface use
 ======================
 
 Our browser now works correctly, but uses way too many surfaces. For example,
@@ -1323,7 +1322,7 @@ With these changes, the example I mentioned above goes from 18 to 1 surface.
 
 You might wonder if we can save even more surfaces. For example, what if there
 is a blend mode and opacity at the same time, can we use the same surface?
-Indeed, yes you can! That's also pretty simple:
+Indeed, yes you can! That's also pretty simple:[^except-filters]
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
@@ -1344,11 +1343,18 @@ def paint_visual_effects(node, cmds, rect):
     ]
 ```
 
+[^except-filters]: This works for opacity, but not for filters that
+"move pixels" such as [blur]. Such a filter needs to be applied before clipping,
+not when blending into the parent surface. Otherwise, the edge of the blur will
+not be sharp.
+
+[blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur()
+
 There's one more important optimization to make: getting rid of the
-destination-in compositing surface for rounded corners. While this approach
-works just fine, and is a good idea for general masks, rounded corners are
-so common on the web that Skia has a special `clipRRect` command just for this
-use case.
+destination-in compositing surface for rounded corners. While our current
+approach works just fine, and is a good idea for general masks, rounded corners
+are so common on the web that Skia has a special `clipRRect` command just for
+this use case.
 
 There are multiple advantages to using `clipRRect` over an explicit
 destination-in surface. First, it allows Skia to internally optimize away even
@@ -1363,30 +1369,30 @@ curious there are many online resources describing ways to to do this. Skia
 of course also has an implementation in its GPU-accelerated code paths.
 
 [^see-chap-1]: This is basically the same optimization we added in Chapter
-1 to avoid painting off-screen text.
+2 to avoid painting off-screen text.
 
 To use `clipRect`, we'll also need another method: `save`. Once you call a
 method like `clipRect`, all subsequent canvas commands are clipped, until you
 tell Skia to stop. The way to make it stop is with `save` and `restore`---you
 call `save` before calling `clipRect`, and `restore` after finishing drawing
-the commands that should be clipped. `save` means "snapshot the current clip
+the commands that should be clipped. `save` means "snapshot the current
 state of the canvas", and `restore` rolls back to the most recent snapshot.
+Here's an example:
+
+``` {.example}
+    # Draw commands that should not be clipped.
+    canvas.save()
+    canvas.clipRRect(rounded_rect)
+    # Draw commands that should be clipped.
+    canvas.restore()
+    # Draw commands that should not be clipped.
+```
 
 You've probably noticed that `restore` is used for both saving state and pushing
 surfaces---what gives? That's because there is a combined stack of surfaces and
-state in the Skia API. However, `save` never creates a new surface, so 
-you should use it whenever possible over `saveLayer`.
-
-Using `clipRRect` is pretty easy. It needs to be preceded by `save`, because
-once the clip has been set, all subsequent canvas are clipped until `restore`
-is called. The general pattern is:
-
-``` {.example}
-    canvas.save()
-    canvas.clipRRect(rounded_rect)
-    # Draw commands that should be clipped...
-    canvas.restore()
-```
+state in the Skia API. This makes it easy to mix-and-match `save` and
+`saveLayer`. However, `save` never creates a new surface, so you should use it
+whenever possible over `saveLayer`.
 
 To implement, first add a `ClipRRect` display list command. It should take a
 `should_clip` parameter indicating whether the clip is necessary (just like the
@@ -1427,7 +1433,7 @@ class ClipRRect:
             canvas.restore()
 ```
 
-Then use them in `paint_visual_effects`:
+Then use it in `paint_visual_effects`:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
@@ -1509,7 +1515,7 @@ Let's see how to implement this with Skia. We'll store two new surfaces on
 `Browser`: `chrome_surface` and `tab_surface`.[^multiple-tabs] These will
 raster independently, in a new `raster` method on `Browser` and `Tab`, and draw
 into `root_surface` with the `skia.Surface.draw` method, via a renamed `draw`
-method on `Browser` (what used to be called `draw_to_screen`.
+method on `Browser` (what used to be called `draw_to_screen`).
 
 [^multiple-tabs]: We could even store a different surface for each `Tab`; this
 would make switching between tabs faster. Real browsers don't do this, however,
