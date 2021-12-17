@@ -386,7 +386,7 @@ class Browser:
 
 Next, the plus button for adding a new tab:[^move-plus]
 
-[^move-plus]: I also changed the *y* position of the plus sign. The
+[^move-plus]: I also changed the *y* position of the plus sign.
     Skia draws fonts a bit differently from Tkinter, and the new *y*
     position keeps the plus centered in the box. Feel free to adjust
     the positions of the UI elements to make everything look good on
@@ -458,7 +458,7 @@ Core Graphics in iOS and macOS, and Skia in Android.
 
 [^cgpp]: There is also [Computer Graphics: Principles and
 Practice][classic], which incidentally I remember buying---this is
-Chris speaking---back the days of my youth (1992 or so). At the time I
+Chris speaking---back in the days of my youth (1992 or so). At the time I
 didn't get much further than rastering lines and polygons (in assembly
 language!). These days you can do the same and more with Skia and a
 few lines of Python.
@@ -471,7 +471,7 @@ few lines of Python.
 Skia is also the font library
 =============================
 
-Since we're replacing `tkinter` with Skia, we are also replacing
+Since we're replacing Tkinter with Skia, we are also replacing
 `tkinter.font`. In Skia, a font object has two pieces: a `Typeface`,
 which is a type family with a certain weight, style, and width; and a
 `Font`, which is a `Typeface` at a particular size. It's the
@@ -847,7 +847,7 @@ Note that `saveLayer` and `restore` are like a pair of parentheses
 enclosing the child drawing operations. This means our display list is
 no longer just a linear sequence of drawing operations, but a tree. So
 in our display list, let's represent `saveLayer` with a `SaveLayer`
-operation that takes a sequence of other drawing commands as an
+command that takes a sequence of other drawing commands as an
 argument:
 
 ``` {.python expected=False}
@@ -1200,7 +1200,7 @@ sharp rounded edge. (Uhh... actually, at the time of this writing,
 Safari does not support `overflow: clip`, so if you're using Safari
 you won't see this effect.[^hidden]) That's clipping; without the
 `overflow: clip` property these letters would instead be fully drawn,
-like earlier in this chapter.
+like we saw earlier in this chapter.
 
 [^hidden]: The similar `overflow: hidden` is supported by all
 browsers. However, in this case, `overflow: hidden` will also increase
@@ -1311,12 +1311,12 @@ Let's review all the surfaces that our code can create an element:
 
 - The top-level surface is used to apply *blend modes*. Since it's the
 top-level surface, it also *isolates* the element from other parts of
-the page, so that clipping only applies to that elemnt.
+the page, so that clipping only applies to that element.
 - The first nested surface is used for applying *opacity*.
 - The second nested surface is used to implement *clipping*.
 
 But not every element has opacity, blend modes, or clipping applied,
-and we could skip creating those surfaces. To implement this without
+and we could skip creating those surfaces most of the time. To implement this without
 making the code hard to read, let's change `SaveLayer` to take two
 additional optional parameters: `should_save` and `should_paint_cmds`.
 These control whether `saveLayer` is called and whether subcommands
@@ -1403,7 +1403,7 @@ commands skip drawing any pixels outside it.
 
 [^not-really-here]: Given our browser's limited layout capabilities,
     it's kind of hard to come up with an example of this, but complex
-    diacritics could have this effect. In a real browser, where
+    diacritics  or large amounts of overflow could have this effect. In a real browser, where
     clipping applies in more cases, this optimization is even more
     important.
 
@@ -1525,7 +1525,7 @@ changes, we'll re-raster only the surface where that content appears.
 Then these surfaces are blended (or "composited") together to form the
 final image that the user sees.
 
-Let's implement this, wth a surface for browser chrome and a surface
+Let's implement this, with a surface for browser chrome and a surface
 for the current `Tab`'s contents. This way, we'll only need to
 re-raster the `Tab` surface if page contents change, but not when
 (say) the user types into the address bar. This technique also allows
@@ -1535,7 +1535,7 @@ translate the page contents surface when drawing it.
 To start with, we'll need two new surfaces on `Browser`,
 `chrome_surface` and `tab_surface`:[^multiple-tabs]
 
-[^multiple-tabs]: We could even a different surface for each `Tab`,
+[^multiple-tabs]: We could even use a different surface for each `Tab`,
 but real browsers don't do this, since each surface uses up a lot of
 memory, and typically users don't notice the small raster delay when
 switching tabs.
