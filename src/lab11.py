@@ -727,15 +727,15 @@ class Browser:
         self.address_bar = ""
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-            RED_MASK = 0xff000000
-            GREEN_MASK = 0x00ff0000
-            BLUE_MASK = 0x0000ff00
-            ALPHA_MASK = 0x000000ff
+            self.RED_MASK = 0xff000000
+            self.GREEN_MASK = 0x00ff0000
+            self.BLUE_MASK = 0x0000ff00
+            self.ALPHA_MASK = 0x000000ff
         else:
-            RED_MASK = 0x000000ff
-            GREEN_MASK = 0x0000ff00
-            BLUE_MASK = 0x00ff0000
-            ALPHA_MASK = 0xff000000
+            self.RED_MASK = 0x000000ff
+            self.GREEN_MASK = 0x0000ff00
+            self.BLUE_MASK = 0x00ff0000
+            self.ALPHA_MASK = 0xff000000
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
