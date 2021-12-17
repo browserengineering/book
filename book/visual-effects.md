@@ -1696,14 +1696,18 @@ are almost endless.
 Summary
 =======
 
-So there you have it. Now we don't have just a boring browser that can only
-draw simple input boxes plus text. It now supports:
+So there you have it: our browser can draw not only boring
+text and boxes but also:
 
-* Opacity
-* Blending
-* Rounded-corner clips via destination-in blending or direct clipping
-* Surfaces for scrolling and animations
-* Optimizations to avoid surfaces
+- Partial transparency via an alpha channel
+- User-configurable blending modes via `mix-blend-mode`
+- Rounded rectangle clipping via destination-in blending or direct clipping
+- Optimizations to avoid surfaces when possible
+- Surfaces for scrolling and animations
+
+Besides the new features, we've upgraded from Tkinter to SDL and Skia,
+which makes our browser faster and more responsive, and also sets a
+foundation for more work on browser performance to come.
 
 ::: {.further}
 [This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
@@ -1715,73 +1719,81 @@ highly recommend it.
 :::
 
 
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab11.py
+:::
+
 Exercises
 =========
 
-*z-index*: Right now, the order of paint is a depth-first traversal of the
- layout tree. By using the `z-index` CSS property, pages can change that order.
- An element with lower `z-index` than another one paints before it. Elements
- with the same z-index paint in depth-first order. Elements with no `z-index`
- specified paint at the same time as z-index 0. And lastly, `z-index` only
- applies to elements that have a `position` value other than the default
- (meaning `relative`, for our browser's partial implementation). Implement this
- CSS property. You don't need to add support for nested z-index (an element
-with z-index that has an ancestor also witih z-index), unless you do the next
-exercise also.
-
-*Z-order stacking contexts*: (this exercise builds on z-index) A
-stacking context is a painting feature allowing^[Or
-forcing, depending on your perspective...] web pages to specify groups of
-elements that paint contiguously. Because they paint continguously, it won't
-be possible for `z-index` specified on other elements not in the group to
-paint somewhere within the group---only before the entire group or after it.
-An element induces a stacking context if one or more of the conditions listed
-[here][stacking-context] apply to it. Any descendants (up to stacking
-context-inducing descendants) with `z-index` have paint order relative to each 
-other, but not elements not in the stacking context. The stacking
-context-inducing element itself may have a `z-index`, but that only changes
-the paint order of the whole stacking context relative to other contributors to
-its parent stacking context.
-
-(Note: in addition, the true paint order for stacking contexts is quite
-[elaborate][elaborate]. You don't need to implement all those details.)
-
- [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
-
- [elaborate]: https://www.w3.org/TR/CSS2/zindex.html
-
-*Filters*: The `filter` CSS property allows specifying various kinds of more
- [complex effects][filter-css], such as grayscale or blur. Try to implement as
- many of these as you can. A number of them (including blur and drop shadow)
- have built-in support in Skia.
-
-*Width and height*: Add support for setting the [width][width-css] and
-[height][height-css] of block elements. This should be a straightforward
-modification of the `layout` method to override the `width` and `height`
-properties on a `LayoutBlock`.
-
-[width-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/width
-
-[height-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/height
-
-[filter-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
-
-*Overflow scrolling*: (this exercise builds on overflow clipping) Implement a
- very basic version of the `scroll` value of the `overflow` CSS property.
- You'll need to have a way to actually process input to cause scrolling, and
- also keep track of the total height (and width, for horizontal scrolling) of
- the [*layout overflow*][overflow-doc]. (Hint: one way to allow the user to
- scroll is to use built-in arrow key handlers that apply when the
- `overflow:scroll` element has focus.)
-
- [overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow
-
-*CSS transforms*: Add support for the 2D transforms of content, via the
- [transform][transform-css] CSS property.[^3d] Scrolling can be seen as a
- special case of transform, and adding support is relatively straightforward.
+*CSS transforms*: Add support for the [transform][transform-css] CSS
+property, specifically the `translate` and `rotate` transforms.[^3d]
+Skia has built-in support for these via canvas state.
 
 [transform-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
 [^3d]: There is a lot more complexity to 3D transforms
 having to do with the definition of 3D spaces, flatting, backfaces, and plane
 intersections.
+
+*Filters*: The `filter` CSS property allows specifying various kinds
+of more [complex effects][filter-css], such as grayscale or blur.
+These are fun to implement, and a number of them have built-in support
+in Skia. Implement, for example, the `blur` filter. Think carefully
+about when filters occur, relative to other effects like transparency,
+clipping, and blending.
+
+[filter-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
+
+*Hit testing*: If you have an element with a `border-radius`, it's
+possible to click outside the element but inside its containing
+rectangle, by clicking in the part of the corner that is "rounded
+off". This shouldn't result in clicking on the element, but in our
+browser it currently does. Modify the `click` method to take border
+radii into account.
+
+*Interest region*: Our browser now draws the whole web page to a
+single surface, and then shows parts of that surface as the user
+scrolls. That means a very long web page (like this one!) can create a
+large surface, thereby using a lot of memory. Modify the browser so
+that the size of that surface is limited, say to `4 * HEIGHT` rows.
+The (limited) region of the page drawn to this surface is called the
+interest region; you'll need to track what part of the interest region
+is being shown on the screen, and reraster the interest region when
+the user attempts to scroll outside of it.
+
+*Z-index*: Right now, elements later in the HTML document are drawn
+"on top" of earlier ones. The `z-index` CSS property changes that
+order: an element with the larger `z-index` draws on top (with ties
+broken by the current order, and with the default `z-index` being 0).
+For `z-index` to have any effect, the element's `position` property
+must be set to something other than `static` (the default). Add
+support for `z-index`. One thing you'll run into is that with our
+browser's minimal layout features, you might not be able to *create*
+any overlapping elements to test this feature! However, lots of
+exercises throughout the book allow you to create overlapping
+elements, including `transform` and `width`/`height`. For an extra
+challenge, add support for [nested elements][stacking-context] with
+`z-index` properties.
+
+[stacking-context]:  https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+
+
+*Overflow scrolling*: An element with the `overflow` property set to
+`scroll` and a fixed pixel `height` is scrollable. (You'll want to
+implement the width/height exercise from [Chapter
+6](styles.md#exercises) so that `height` is supported.) Implement some
+version of `overflow: scroll`. I recommend the following user
+interaction: the user clicks within a scrollable element to focus it,
+and then can press the arrow keys to scroll up and down. You'll need
+to keep track of the *[layout overflow][overflow-doc]*. For an extra
+challenge, make sure you support scrollable elements nested within
+other scrollable elements.
+
+ [overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow

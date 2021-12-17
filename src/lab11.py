@@ -22,78 +22,9 @@ from lab6 import layout_mode
 from lab6 import resolve_url
 from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
-from lab6 import compute_style
-from lab6 import TagSelector
-from lab6 import DescendantSelector
-from lab10 import url_origin
-from lab10 import JSContext
-
-COOKIE_JAR = {}
-
-def request(url, top_level_url, payload=None):
-    scheme, url = url.split("://", 1)
-    assert scheme in ["http", "https"], \
-        "Unknown scheme {}".format(scheme)
-
-    host, path = url.split("/", 1)
-    path = "/" + path
-    port = 80 if scheme == "http" else 443
-
-    if ":" in host:
-        host, port = host.split(":", 1)
-        port = int(port)
-
-    s = socket.socket(
-        family=socket.AF_INET,
-        type=socket.SOCK_STREAM,
-        proto=socket.IPPROTO_TCP,
-    )
-    s.connect((host, port))
-
-    if scheme == "https":
-        ctx = ssl.create_default_context()
-        s = ctx.wrap_socket(s, server_hostname=host)
-
-    method = "POST" if payload else "GET"
-    body = "{} {} HTTP/1.0\r\n".format(method, path)
-    body += "Host: {}\r\n".format(host)
-    if host in COOKIE_JAR:
-        cookie, params = COOKIE_JAR[host]
-        allow_cookie = True
-        if top_level_url and params.get("samesite", "none") == "lax":
-            _, _, top_level_host, _ = top_level_url.split("/", 3)
-            allow_cookie = (host == top_level_host or method == "GET")
-        if allow_cookie:
-            body += "Cookie: {}\r\n".format(cookie)
-    if payload:
-        content_length = len(payload.encode("utf8"))
-        body += "Content-Length: {}\r\n".format(content_length)
-    body += "\r\n" + (payload or "")
-    s.send(body.encode("utf8"))
-
-    response = s.makefile("b")
-
-    statusline = response.readline().decode("utf8")
-    version, status, explanation = statusline.split(" ", 2)
-    assert status == "200", "{}: {}".format(status, explanation)
-
-    headers = {}
-    while True:
-        line = response.readline().decode("utf8")
-        if line == "\r\n": break
-        header, value = line.split(":", 1)
-        headers[header.lower()] = value.strip()
-
-    if headers.get(
-        'content-type',
-        'application/octet-stream').startswith("text"):
-        body = response.read().decode("utf8")
-    else:
-        body = response.read()
-
-    s.close()
-
-    return headers, body
+from lab6 import CSSParser, compute_style, style
+from lab6 import TagSelector, DescendantSelector
+from lab10 import COOKIE_JAR, request, url_origin, JSContext
 
 FONTS = {}
 
@@ -139,12 +70,6 @@ def parse_blend_mode(blend_mode_str):
         return skia.BlendMode.kDifference
     else:
         return skia.BlendMode.kSrcOver
-
-def parse_clip_path(clip_path_str):
-    if clip_path_str.startswith("circle"):
-        return float(clip_path_str[7:][:-3])
-    else:
-        return None
 
 def linespace(font):
     metrics = font.getMetrics()
@@ -292,8 +217,7 @@ class BlockLayout:
             self.children.append(next)
             previous = next
 
-        self.width = style_length(
-            self.node, "width", self.parent.width)
+        self.width = self.parent.width
         self.x = self.parent.x
 
         if self.previous:
@@ -304,9 +228,7 @@ class BlockLayout:
         for child in self.children:
             child.layout()
 
-        self.height = style_length(
-            self.node, "height",
-            sum([child.height for child in self.children]))
+        self.height = sum([child.height for child in self.children])
 
     def paint(self, display_list):
         cmds = []
@@ -344,8 +266,7 @@ class InlineLayout:
         self.display_list = None
 
     def layout(self):
-        self.width = style_length(
-            self.node, "width", self.parent.width)
+        self.width = self.parent.width
 
         self.x = self.parent.x
 
@@ -360,9 +281,7 @@ class InlineLayout:
         for line in self.children:
             line.layout()
 
-        self.height = style_length(
-            self.node, "height",
-            sum([line.height for line in self.children]))
+        self.height = sum([line.height for line in self.children])
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -457,93 +376,6 @@ class DocumentLayout:
 
     def __repr__(self):
         return "DocumentLayout()"
-
-class CSSParser:
-    def __init__(self, s):
-        self.s = s
-        self.i = 0
-
-    def whitespace(self):
-        while self.i < len(self.s) and self.s[self.i].isspace():
-            self.i += 1
-
-    def literal(self, literal):
-        assert self.i < len(self.s) and self.s[self.i] == literal
-        self.i += 1
-
-    def word(self):
-        start = self.i
-        while self.i < len(self.s):
-            cur = self.s[self.i]
-            if cur.isalnum() or cur in "/#-.%()\"'":
-                self.i += 1
-            else:
-                break
-        assert self.i > start
-        return self.s[start:self.i]
-
-    def pair(self):
-        prop = self.word()
-        self.whitespace()
-        self.literal(":")
-        self.whitespace()
-        val = self.word()
-        return prop.lower(), val
-
-    def ignore_until(self, chars):
-        while self.i < len(self.s):
-            if self.s[self.i] in chars:
-                return self.s[self.i]
-            else:
-                self.i += 1
-
-    def body(self):
-        pairs = {}
-        while self.i < len(self.s) and self.s[self.i] != "}":
-            try:
-                prop, val = self.pair()
-                pairs[prop.lower()] = val
-                self.whitespace()
-                self.literal(";")
-                self.whitespace()
-            except AssertionError:
-                why = self.ignore_until([";", "}"])
-                if why == ";":
-                    self.literal(";")
-                    self.whitespace()
-                else:
-                    break
-        return pairs
-
-    def selector(self):
-        out = TagSelector(self.word().lower())
-        self.whitespace()
-        while self.i < len(self.s) and self.s[self.i] != "{":
-            tag = self.word()
-            descendant = TagSelector(tag.lower())
-            out = DescendantSelector(out, descendant)
-            self.whitespace()
-        return out
-
-    def parse(self):
-        rules = []
-        while self.i < len(self.s):
-            try:
-                self.whitespace()
-                selector = self.selector()
-                self.literal("{")
-                self.whitespace()
-                body = self.body()
-                self.literal("}")
-                rules.append((selector, body))
-            except AssertionError:
-                why = self.ignore_until(["}"])
-                if why == "}":
-                    self.literal("}")
-                    self.whitespace()
-                else:
-                    break
-        return rules
 
 INPUT_WIDTH_PX = 200
 
@@ -650,10 +482,8 @@ class InputLayout:
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
-        self.width = style_length(
-            self.node, "width", INPUT_WIDTH_PX)
-        self.height = style_length(
-            self.node, "height", linespace(self.font))
+        self.width = INPUT_WIDTH_PX
+        self.height = linespace(self.font)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -690,13 +520,6 @@ class InputLayout:
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
-def style_length(node, style_name, default_value):
-    style_val = node.style.get(style_name)
-    if style_val:
-        return int(style_val[:-2])
-    else:
-        return default_value
-
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
 
@@ -718,30 +541,6 @@ def paint_visual_effects(node, cmds, rect):
             ],
             should_save=needs_blend_isolation),
     ]
-
-def style(node, rules, url):
-    node.style = {}
-    for property, default_value in INHERITED_PROPERTIES.items():
-        if node.parent:
-            node.style[property] = node.parent.style[property]
-        else:
-            node.style[property] = default_value
-    
-    for selector, body in rules:
-        if not selector.matches(node): continue
-        for property, value in body.items():
-            computed_value = compute_style(node, property, value)
-            if not computed_value: continue
-            node.style[property] = computed_value
-
-    if isinstance(node, Element) and "style" in node.attributes:
-        pairs = CSSParser(node.attributes["style"]).body()
-        for property, value in pairs.items():
-            computed_value = compute_style(node, property, value)
-            node.style[property] = computed_value
-    
-    for child in node.children:
-        style(child, rules, url)
 
 SCROLL_STEP = 100
 CHROME_PX = 100
@@ -821,8 +620,7 @@ class Tab:
         self.render()
 
     def render(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority),
-            self.url)
+        style(self.nodes, sorted(self.rules, key=cascade_priority))
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []

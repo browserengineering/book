@@ -22,6 +22,7 @@ from lab6 import resolve_url
 from lab6 import style
 from lab6 import tree_to_list
 from lab6 import CSSParser
+from lab6 import TagSelector, DescendantSelector
 from lab6 import DrawText
 from lab7 import LineLayout
 from lab7 import TextLayout
