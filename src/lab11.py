@@ -46,7 +46,7 @@ def get_font(size, weight, style):
         FONTS[key] = font
     return skia.Font(FONTS[key], size)
 
-def color_to_sk_color(color):
+def parse_color(color):
     if color == "white":
         return skia.ColorWHITE
     elif color == "lightblue":
@@ -103,7 +103,7 @@ class DrawRRect:
         self.color = color
 
     def execute(self, canvas):
-        sk_color = color_to_sk_color(self.color)
+        sk_color = parse_color(self.color)
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=sk_color))
 
@@ -170,7 +170,7 @@ def draw_line(canvas, x1, y1, x2, y2):
     canvas.drawPath(path, paint)
 
 def draw_text(canvas, x, y, text, font, color=None):
-    sk_color = color_to_sk_color(color)
+    sk_color = parse_color(color)
     paint = skia.Paint(AntiAlias=True, Color=sk_color)
     canvas.drawString(
         text, float(x), y - font.getMetrics().fAscent,
@@ -180,7 +180,7 @@ def draw_rect(canvas, l, t, r, b, fill=None, width=1):
     paint = skia.Paint()
     if fill:
         paint.setStrokeWidth(width);
-        paint.setColor(color_to_sk_color(fill))
+        paint.setColor(parse_color(fill))
     else:
         paint.setStyle(skia.Paint.kStroke_Style)
         paint.setStrokeWidth(1);
