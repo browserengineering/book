@@ -534,9 +534,7 @@ are not accessible from JavaScript.
 [bad-req-headers]: https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_header_name
 [bad-resp-headers]: https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_response_header_name
 
-
-
-Same-origin Policy
+Same-origin policy
 ==================
 
 However, new capabilities lead to new responsibilities. HTTP requests
@@ -750,7 +748,7 @@ header][x-frame-options].
 [csp-frame-ancestors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors
 
 
-SameSite Cookies
+SameSite cookies
 ================
 
 For form submissions, that fail-safe solution is `SameSite` cookies.
