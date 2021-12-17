@@ -583,9 +583,10 @@ Pixels, color, and raster
 =========================
 
 Skia, like the Tkinter canvas we've been using until now, is a
-_rasterization_ library: it converts shapes like rectangles and text
-into pixels. Before we move on to Skia's advanced features, let's talk
-about how rasterization works at a deeper level.
+_rasterization_ library: it converts shapes like rectangles and text into
+ pixels. Before we move on to Skia's advanced features, let's talk about how
+ rasterization works at a deeper level. This will help to understand how
+ exactly those features work.
 
 You probably already know that computer screens are a 2D array of
 pixels. Each pixel contains red, green and blue lights,[^lcd-design]
@@ -1317,7 +1318,6 @@ before clipping, not when blending into the parent surface. Otherwise,
 the edge of the blur will not be sharp.
 
 [mdn-blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur()
-
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):

@@ -453,7 +453,7 @@ def draw(self):
 Scrolling should now work!
 
 
-Faster fendering
+Faster rendering
 ================
 
 But this scrolling is pretty slow.[^slow-scroll] Why? It turns out
