@@ -59,5 +59,5 @@ def gray(x):
 def do_thing():
     for (x, y) in destination.coordinates():
         source[x, y].alphaf(opacity)
-        destination[x, y].difference(source[x, y])
+        source[x, y].difference(destination[x, y])
         destination[x, y].source_over(source[x, y])

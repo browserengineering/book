@@ -1410,35 +1410,33 @@ def paint_visual_effects(node, cmds, rect):
     ]
 ```
 
-There's one more optimization that can make clipping less expensive.
-Right now, we might draw a very large and complex shape, and then clip
-all of it out.[^not-really-here] That means Skia wastes time drawing
-pixels it doesn't need. To avoid this, Skia has a special `clipRRect`
-command just for this use case. This `clipRRect` command takes in a
-rounded rectangle, changes the *canvas state* so that all future
-commands skip drawing any pixels outside it.
+There's one more optimization to make: using Skia's `clipRRect`
+operation to get rid of the destination-in blended surface. This
+operation takes in a rounded rectangle and changes the *canvas state*
+so that all future commands skip drawing any pixels outside that
+rounded rectangle.
 
-[^not-really-here]: Given our browser's limited layout capabilities,
-    it's kind of hard to come up with an example of this, but complex
-    diacritics  or large amounts of overflow could have this effect. In a real browser, where
-    clipping applies in more cases, this optimization is even more
-    important.
+There are multiple advantages to using `clipRRect` over an explicit
+destination-in surface. First, most of the time, it allows Skia to
+avoid making a surface for the mask.[^shader-rounded] It also allows
+Skia to skip draw operations that don't intersect the mask, or
+dynamically draw only the parts of operations that intersect it. It's
+basically the optimization we implemented for scrolling [in Chapter
+2][graphics.md#faster-rendering].[^no-other-shapes]
 
-When you use `clipRRect`, Skia dynamically draws only the parts of a
-shape that intersection the given rounded rectangle, via specialized
-code in its shape implementations.[^shader-rounded] Skia can also to
-skip subsequent draw operations that don't intersect the rounded
-rectangle, similar to the optimization we implemented for scrolling
-[in Chapter 2][graphics.md#faster-rendering]. Since `clipRRect`
-changes the canvas state, we'll need to restore it once we're done
-with clipping. That uses the `save` and `restore` methods---you call
-`save` before calling `clipRRect`, and `restore` after finishing
-drawing the commands that should be clipped:
+[^shader-rounded]: Typically in a browser this means code in GPU
+shaders. GPU programs are out of scope for this book, but if you're
+curious there are many online resources describing ways to do this.
 
-[^shader-rounded]: Typically in a browser this means code in Skia's
-GPU shaders. GPU programs are out of scope for this book, but if
-you're curious there are many online resources describing ways to
-do this.
+[^no-other-shapes] This kind of code is complex for Skia to implement,
+so it only makes sense to do it for common patterns, like rounded
+rectangles. This is why Skia only supports optimized clips for a few
+common shapes.
+
+Since `clipRRect` changes the canvas state, we'll need to restore it
+once we're done with clipping. That uses the `save` and `restore`
+methods---you call `save` before calling `clipRRect`, and `restore`
+after finishing drawing the commands that should be clipped:
 
 ``` {.example}
 # Draw commands that should not be clipped.
