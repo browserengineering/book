@@ -1714,7 +1714,7 @@ text and boxes but also:
 - User-configurable blending modes via `mix-blend-mode`
 - Rounded rectangle clipping via destination-in blending or direct clipping
 - Optimizations to avoid surfaces when possible
-- Surfaces for scrolling and animations
+- Surfaces for scrolling
 
 Besides the new features, we've upgraded from Tkinter to SDL and Skia,
 which makes our browser faster and more responsive, and also sets a
@@ -1773,7 +1773,7 @@ radii into account.
 single surface, and then shows parts of that surface as the user
 scrolls. That means a very long web page (like this one!) can create a
 large surface, thereby using a lot of memory. Modify the browser so
-that the size of that surface is limited, say to `4 * HEIGHT` rows.
+that the height of that surface is limited, say to `4 * HEIGHT` pixels.
 The (limited) region of the page drawn to this surface is called the
 interest region; you'll need to track what part of the interest region
 is being shown on the screen, and re-raster the interest region when
