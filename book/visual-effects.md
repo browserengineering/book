@@ -324,6 +324,21 @@ class DrawRect:
             fill=self.color, width=0)
 ```
 
+Let's also add a `rect` field to each drawing command, replacing its
+`top`, `left`, `bottom`, and `right` fields with a Skia `Rect` object:
+
+``` {.python}
+class DrawText:
+    def __init__(self, x1, y1, text, font, color):
+        # ...
+        self.rect = skia.Rect.MakeLTRB(x1, y1, right, bottom)
+
+class DrawRect:
+    def __init__(self, x1, y1, x2, y2, color):
+        # ...
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+```
+
 Finally, the `Browser` class also uses Tkinter commands in its `draw`
 method to draw the browser UI. We'll need to change them all to use
 Skia. It's a long method, so we'll need to go step by step.
@@ -836,6 +851,9 @@ class SaveLayer:
     def __init__(self, sk_paint, cmds):
         self.sk_paint = sk_paint
         self.cmds = cmds
+        self.rect = skia.Rect.MakeEmpty()
+        for cmd in self.cmds:
+            self.rect.join(cmd.rect)
 
     def execute(self, scroll, canvas):
         canvas.saveLayer(paint=self.sk_paint)

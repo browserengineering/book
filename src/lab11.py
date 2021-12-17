@@ -109,11 +109,9 @@ class DrawRRect:
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
-        self.top = y1
-        self.left = x1
-        self.right = x1 + font.measureText(text)
-        self.bottom = self.top - font.getMetrics().fAscent + font.getMetrics().fDescent
-        self.rect = skia.Rect.MakeLTRB(self.top, self.right, self.right, self.bottom)
+        right = x1 + font.measureText(text)
+        bottom = self.top - font.getMetrics().fAscent + font.getMetrics().fDescent
+        self.rect = skia.Rect.MakeLTRB(x1, y1, right, bottom)
         self.font = font
         self.text = text
         self.color = color
@@ -126,12 +124,12 @@ class DrawText:
         return "DrawText(text={})".format(self.text)
 
 class DrawRect:
-    def __init__(self, rect, color):
-        self.rect = rect
-        self.top = rect.top()
-        self.left = rect.left()
-        self.bottom = rect.bottom()
-        self.right = rect.right()
+    def __init__(self, x1, y1, x2, y2, color):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
         self.color = color
 
     def execute(self, canvas):
