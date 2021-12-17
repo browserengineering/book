@@ -1497,7 +1497,7 @@ surfaces getting too big. Real browsers use *tiling* for this,
 breaking up the surface into a grid of tiles which have their own
 raster surfaces and their own *x* and *y* offset to the page. Whenever
 content that intersects a tile changes its display list, the tile is
-re-rastered. Tiles that are not on or "near"^[near] the screen are not
+re-rastered. Tiles that are not on or "near"[^near] the screen are not
 rastered at all. This all happens on the GPU, since surfaces (Skia
 ones [in particular][gpu-surface]) can be stored on the GPU.
 :::
