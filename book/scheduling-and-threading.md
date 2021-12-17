@@ -1,6 +1,6 @@
 ---
 title: Scheduling and Threading
-chapter: 13
+chapter: 12
 prev: visual-effects
 next: skipped
 ...
