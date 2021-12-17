@@ -534,8 +534,6 @@ are not accessible from JavaScript.
 [bad-req-headers]: https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_header_name
 [bad-resp-headers]: https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_response_header_name
 
-
-
 Same-origin policy
 ==================
 
