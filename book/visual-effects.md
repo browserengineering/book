@@ -1,6 +1,6 @@
 ---
 title: Adding Visual Effects
-chapter: 12
+chapter: 11
 prev: security
 next: rendering-architecture
 ...
@@ -72,7 +72,7 @@ started:
 ``` {.python}
 if __name__ == "__main__":
     import sys
-    sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO)
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.load(sys.argv[1])
     # ...
@@ -163,7 +163,8 @@ class Browser:
         pitch = 4 * WIDTH # Bytes per row
         sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            self.RED_MASK, self.GREEN_MASK, self.BLUE_MASK, self.ALPHA_MASK)
+            self.RED_MASK, self.GREEN_MASK,
+            self.BLUE_MASK, self.ALPHA_MASK)
 ```
 
 Finally, we draw all this pixel data on the window itself:
@@ -514,17 +515,17 @@ You should now be able to run the browser again. It should look and
 behave just as it did in previous chapters, and it'll probably feel
 faster, because Skia and SDL are faster than Tkinter.
 
-Let's reward ourselves for the big refactor with a simple feature that
-Skia enables: rounded corners via the `border-radius` CSS property,
+Let's reward ourselves for the big refactor with a simple feature that Skia
+enables: rounded corners of a rectangle via the `border-radius` CSS property,
 like this:
 
-    <div style="border-radius: 10px">
+    <div style="border-radius: 10px; background: lightblue">
         This is some example text.
     </div>
 
-Which looks like this:
+Which looks like this (note that the text is *not* cut out):
 
-<div style="border-radius: 10px">
+<div style="border-radius:10px;background:lightblue">
 This is some example text.
 </div>
 
@@ -674,7 +675,7 @@ color mixing.
 
 [mixing]: https://en.wikipedia.org/wiki/Color_mixing
 
-[^mostly-models]: Mostly. Some more advanced blending modes are
+[^mostly-models]: Mostly. Some more advanced blending modes on the web are
 difficult, or perhaps impossible, in real-world physics.
 
 Color mixing means we need to think carefully about the order of
@@ -797,12 +798,13 @@ The way to mix colors in Skia is to first create two surfaces, and
 then draw one into the other. The most convenient way to do that is
 with `saveLayer`[^layer-surface] and `restore`:
 
-[^layer-surface]: It's called `saveLayer` instead of `createSurface`
-because Skia doesn't actually promise to create a new surface, if it
-can optimize that away. So what you're really doing with `saveLayer`
-is telling Skia that there is a new conceptual layer ("piece of
-paper") on the stack. How Skia does the rest is an implementation
-detail.
+[^layer-surface]: It's called `saveLayer` instead of `createSurface` because
+Skia doesn't actually promise to create a new surface, if it can optimize that
+away. So what you're really doing with `saveLayer` is telling Skia that there
+is a new conceptual layer ("piece of paper") on the stack. Skia's terminology
+distinguishes between a layer and a surface for this reason as well, but for
+our purposes it makes sense to assume that each new layer comes with a
+surface.
 
 ``` {.python.example}
 # draw parent
@@ -902,17 +904,7 @@ fully opaque.
 [^alpha-vs-opacity]: The difference between opacity and alpha can be
 confusing. Think of opacity as a visual effect *applied to* content,
 but alpha as a *part of* content. Think of alpha as implementation
-technique[^alpha-history] for representing opacity. In fact, some
-graphics libraries don't have a separate alpha channel, and instead
-multiply the color channels by the opacity, which is called a
-*premultiplied* representation of the color.
-
-[^alpha-history]: Check out this [history of alpha][alpha-history],
-written by its co-inventor (and co-founder of Pixar), or read this
-[derivation of alpha][alpha-deriv] for how it is computed.
-
-[alpha-history]: http://alvyray.com/Memos/CG/Microsoft/7_alpha.pdf
-[alpha-deriv]: https://jcgt.org/published/0004/02/03/paper.pdf
+technique for representing opacity.
 
 When a pixel with alpha overlaps another pixel, the final color is a
 mix of their two colors. How exactly the colors are mixed is defined
@@ -956,9 +948,8 @@ Python, the code to implement it looks like this:[^simple-alpha]
 
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
-Note that that page refers to premultiplied alpha colors, but Skia's API
+Note that that page refers to *premultiplied* alpha colors, but Skia's API
 does not use premultiplied representations, and the code below doesn't either.
-Skia does use premultiplied representations internally though.
 
 
 ``` {.python file=examples}
@@ -1107,19 +1098,28 @@ like this is slow. Instead, it should be done on the GPU. So libraries
 such as Skia don't make it convenient to do so. (Skia canvases do have
 `peekPixels` and `readPixels` methods that are sometimes used, but not
 for this use case).
-:::
 
-::: {.further}
-Premultiplied pixel representations of colors are generally more efficient.
-For example, observe that `source_over` has to divide by `self.a` at the
-end, because otherwise the result would be premultiplied. If we stuck with
-premultiplied throughout, this would not be necessary.
+Many graphics libraries, Skia included, don't usually represent a separate alpha
+channel internally , and instead multiply the color channels by the opacity,
+which is called a *premultiplied* representation of the color. Premultiplied
+pixel representations of colors are generally more efficient. For example,
+observe that `source_over` has to divide by `self.a` at the end, because
+otherwise the result would be premultiplied. If we stuck with premultiplied
+throughout, this would not be necessary.
 
 There are also in fact a few Skia APIs that expose premultiplied colors:
 You can create images from blocks of them and read them back from surfaces,
 for example.
 :::
 
+::: {.further}
+Check out this [history of alpha][alpha-history],
+written by its co-inventor (and co-founder of Pixar), or read this
+[derivation of alpha][alpha-deriv] for how it is computed.
+:::
+
+[alpha-history]: http://alvyray.com/Memos/CG/Microsoft/7_alpha.pdf
+[alpha-deriv]: https://jcgt.org/published/0004/02/03/paper.pdf
 
 Clipping and masking
 ====================
@@ -1253,35 +1253,10 @@ can imagine.
 Optimizing Surface Use
 ======================
 
-Ideally, new surfaces are only created when needed to perform
-non-standard blending. For example, up to this point in the book, we
-could draw the entire browser with only one surface. It's important to
-avoid creating surfaces unless necessary, because it'll use up a ton
-of memory on complex pages.
-
-As we'll see shortly, Skia also has canvas APIs for performing common operations
-like clipping and transform---for example, there is a `rotate` method
-that rotates the content on the screen. Once you call a method like that,
-all subsequent canvas commands are rotated, until you tell Skia to stop. The
-way to do that is with `save` and `restore`---you call `Save` before
-calling `rotate`, and `restore` after. `save` means "snapshot the current
-rotation, clip, etc. state of the canvas", and `restore` rolls back to the
-most recent snapshot.
-
-You've probably noticed that `restore` is used for both saving state and
-pushing layers---what gives? That's because there is a combined stack of layers
-and state in the Skia API. Transforms and clips sometimes do actually require
-new surfaces to implement correctly, so in fact when we use `save` it's
-actually just a shortcut for `saveLayer` that is often more efficient; if Skia
-thinks it needs to, it'll make a surface. The rule
-of thumb is: if you don't need a non-default blend mode, then you can use
-`save`, and you should always prefer `save` to `saveLayer`, all things being
-equal.
-
 Our browser now works correctly, but uses way too many surfaces. For example,
 for a single, no-effects-needed div with some text content, there are currently
-18 surfaces allocated in the display list. For that example, we should need no
-surfaces at all!
+18 surfaces allocated in the display list. For that example, we should need
+only one!
 
 It's pretty easy to fix this situation. Let's review the full list of surfaces
 that can be needed for an element, and then devise logic to omit them when
@@ -1344,7 +1319,7 @@ def paint_visual_effects(node, cmds, rect):
     ]
 ```
 
-With these changes, the example I mentioned above goes from 18 to 0 surfaces.
+With these changes, the example I mentioned above goes from 18 to 1 surface.
 
 You might wonder if we can save even more surfaces. For example, what if there
 is a blend mode and opacity at the same time, can we use the same surface?
@@ -1389,6 +1364,18 @@ of course also has an implementation in its GPU-accelerated code paths.
 
 [^see-chap-1]: This is basically the same optimization we added in Chapter
 1 to avoid painting offscreen text.
+
+To use `clipRect`, we'll also need another method: `save`. Once you call a
+method like `clipRect`, all subsequent canvas commands are clipped, until you
+tell Skia to stop. The way to make it stop is with `save` and `restore`---you
+call `save` before calling `clipRect`, and `restore` after finishing drawing
+the commands that should be clipped. `save` means "snapshot the current clip
+state of the canvas", and `restore` rolls back to the most recent snapshot.
+
+You've probably noticed that `restore` is used for both saving state and pushing
+surfaces---what gives? That's because there is a combined stack of surfaces and
+state in the Skia API. However, `save` never creates a new surface, so 
+you should use it whenever possible over `saveLayer`.
 
 Using `clipRRect` is pretty easy. It needs to be preceded by `save`, because
 once the clip has been set, all subsequent canvas are clipped until `restore`
@@ -1470,7 +1457,7 @@ Later on, floating-point coprocessors, and then over time GPUs, became standard
 equipment on new computers. This made it much easier to implement fast rounded
 corners. Unfortunately, the `border-radius` CSS property didn't appear in
 browsers until around 2010 (but that didn't stop web developers from putting
-rounded corners on their sites before then)! There are a number of clever ways
+rounded corners on their sites before then!). There are a number of clever ways
 to do it even without `border-radius`; [this video][rr-video] walks through
 several.
 
@@ -1496,7 +1483,7 @@ Browser compositing
 ===================
 
 Optimizing away surfaces is great when they're not needed, but they have
-even more uses than blending---they can be used to efficient scroll and animate
+even more uses than blending---they can be used to efficiently scroll and animate
 as well.
 
 Chapter 2 introduced the Tkinter canvas associated with the browser window.
@@ -1651,8 +1638,9 @@ class Tab:
 
 As far as implementing the concept of browser-surface composited scrolling goes,
 we're done. But to get the desired performance in reality, we'd need to avoid
-`paint` and `raster` when they aren't needed, and also run on a second CPUp
-thread. That isn't too hard either, but let's leave that for the next chapter.
+`paint` and `raster` when they aren't needed, and also run on a second CPU
+thread. That isn't too hard either, but let's leave that for exercises and the
+next chapter.
 
 ::: {.further}
 In terms of conceptual phases of execution, our browser is now very close to
@@ -1771,7 +1759,7 @@ large surface, thereby using a lot of memory. Modify the browser so
 that the size of that surface is limited, say to `4 * HEIGHT` rows.
 The (limited) region of the page drawn to this surface is called the
 interest region; you'll need to track what part of the interest region
-is being shown on the screen, and reraster the interest region when
+is being shown on the screen, and re-raster the interest region when
 the user attempts to scroll outside of it.
 
 *Z-index*: Right now, elements later in the HTML document are drawn

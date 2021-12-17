@@ -868,7 +868,8 @@ class Browser:
         pitch = 4 * WIDTH # Bytes per row
         sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            self.RED_MASK, self.GREEN_MASK, self.BLUE_MASK, self.ALPHA_MASK)
+            self.RED_MASK, self.GREEN_MASK,
+            self.BLUE_MASK, self.ALPHA_MASK)
 
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
@@ -882,7 +883,7 @@ class Browser:
 if __name__ == "__main__":
     import sys
 
-    sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO)
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.load(sys.argv[1])
 
