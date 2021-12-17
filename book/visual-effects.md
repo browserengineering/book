@@ -429,7 +429,7 @@ Implementing high-quality raster libraries is very interesting in its own
 right. These days, it's especially important to leverage GPUs when
 they're available, and browsers often push the envelope. Browser teams
 typically include raster library experts: Skia for Chromium and [Core
-Graphics][core-graphics] for Webkit, for example. Both of these
+Graphics][core-graphics] for WebKit, for example. Both of these
 libraries are used outside of the browser, too: Core Graphics in iOS
 and macOS, and Skia in Android.
 
@@ -680,7 +680,7 @@ difficult, or perhaps impossible, in real-world physics.
 
 Color mixing means we need to think carefully about the order of
 operations. For example, consider black text on an orange background,
-placed semi-transparenly over a white background. The text
+placed semi-transparently over a white background. The text
 is gray while the background is yellow-orange. That's due to blending:
 the text and the background are both partially transparent and let
 through some of the underlying white:
@@ -1184,7 +1184,7 @@ rules for sizing boxes, having to do with the possibility of the child content
 being scrolled (`hidden` means "clipped, but might be scrolled by JavaScript").
 If the blue box had not been taller, than it would have been impossible to
 see the text, which is really bad if it's intended that there should be a way
-to scroll it onscreen.
+to scroll it on-screen.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1363,7 +1363,7 @@ curious there are many online resources describing ways to to do this. Skia
 of course also has an implementation in its GPU-accelerated code paths.
 
 [^see-chap-1]: This is basically the same optimization we added in Chapter
-1 to avoid painting offscreen text.
+1 to avoid painting off-screen text.
 
 To use `clipRect`, we'll also need another method: `save`. Once you call a
 method like `clipRect`, all subsequent canvas commands are clipped, until you
@@ -1658,12 +1658,12 @@ the name, the surface is broken up into a grid of tiles which have their own
 raster surfaces. Whenever content that intersects a tile changes its display
 list, the tile is re-rastered. Tiles are draw into their parent surface with
 an x and y offset according to their position in the grid. Tiles that are not
-on or "near"^[For example, scrolled just offscreen.] the screen are not rastered
+on or "near"^[For example, scrolled just off-screen.] the screen are not rastered
 at all.
 
 Finally, all of this lends itself naturally to hardware acceleration with a GPU,
 since surfaces (Skia ones [in particular][gpu-surface]) can be easily
-represented on the GPU, making the execution of `draw` extremely efficent.
+represented on the GPU, making the execution of `draw` extremely efficient.
 :::
 
 [gpu-surface]: https://kyamagu.github.io/skia-python/reference/skia.Surface.html
@@ -1671,8 +1671,8 @@ represented on the GPU, making the execution of `draw` extremely efficent.
 [transform-link]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
 ::: {.further}
-Scrolling of arbitray DOM elements is possible via the
-[`overflow`][overflow-prop] CSS propery, and in particular `overflow:scroll`.
+Scrolling of arbitrary DOM elements is possible via the
+[`overflow`][overflow-prop] CSS property, and in particular `overflow:scroll`.
 This value means, of course, for the browser to allow the user to scroll
 the content in order to see it; the parts that don't currently overlap the 
 clipping element are clipped out.
