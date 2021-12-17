@@ -61,6 +61,16 @@ If any of these imports fail, you probably need to check that Skia and
 SDL were installed correctly. Note that the `ctypes` module comes
 standard in Python; it is used to convert between Python and C types.
 
+::: {.further}
+The [`<canvas>`][canvas] HTML element provides a similar JavaScript
+API that is similar to Skia and Tkinter. Combined with [WebGL][webgl],
+it's possible to implement basically all of SDL and Skia in
+JavaScript. Alternatively, it's possible to [compile Skia][canvaskit]
+to [WebAssembly][webassembly] to do the same.
+:::
+
+
+
 SDL creates the window
 ======================
 
@@ -235,6 +245,8 @@ constructor, which you can now remove.
 SDL is most popular for making games. Their site lists [a selection of
 books](https://wiki.libsdl.org/Books) about game programming in SDL.
 :::
+
+
 
 Skia provides the canvas
 ========================
@@ -582,17 +594,17 @@ class BlockLayout:
 Similar changes should be made to `InputLayout` and `InlineLayout`.
 
 ::: {.further}
-[Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization) is yet
-another interesting subject. There are, for example,
-techniques such as
-[subpixel rendering](https://en.wikipedia.org/wiki/Subpixel_rendering) to
-make fonts look better on lower-resolution screens, often using all three
-color channels to fool the eye into seeing more detail. These techniques
-are much less necessary on
-[high-pixel-density](https://en.wikipedia.org/wiki/Pixel_density) screens.
-It's likely that eventually, all screens will be high-density enough to retire
-these techniques.
+[Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization)
+is surprisingly deep, with techniques such as
+[subpixel rendering](https://en.wikipedia.org/wiki/Subpixel_rendering)
+and [hinting][font-hinting] used to make fonts look better on
+lower-resolution screens. These techniques are much less necessary on
+[high-pixel-density](https://en.wikipedia.org/wiki/Pixel_density)
+screens, though. It's likely that eventually, all screens will be
+high-density enough to retire these techniques.
 :::
+
+[font-hinting]: https://en.wikipedia.org/wiki/Font_hinting
 
 Pixels, color, and raster
 =========================
@@ -664,14 +676,6 @@ biology, and psychology.
 [opponent-process]: https://en.wikipedia.org/wiki/Opponent_process
 [colorblind]: https://en.wikipedia.org/wiki/Color_blindness
 [tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
-
-::: {.further}
-The [`<canvas>`][canvas] HTML element provides a similar JavaScript
-API that is similar to Skia and Tkinter. Combined with [WebGL][webgl],
-it's possible to implement basically all of SDL and Skia in
-JavaScript. Alternatively, it's possible to [compile Skia][canvaskit]
-to [WebAssembly][webassembly] to do the same.
-:::
 
 Blending and stacking
 =====================
@@ -762,8 +766,8 @@ complicated to handle in real browsers.
 
 [containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-Compositing and alpha
-=====================
+Opacity and alpha
+=================
 
 [canvas]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
 [webgl]: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
@@ -915,6 +919,15 @@ always a single `SaveLayer` command that wraps the original
 content---which makes sense, because first we need to draw the
 commands to a surface, and *then* apply transparency to it when
 blending into the parent.
+
+::: {.further}
+[This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
+visual overview of many of the same concepts explored in this chapter,
+plus way more content about how a library such as Skia might implement features
+like raster sampling of vector graphics for lines and text, and interpolation
+of surfaces when their pixel arrays don't match resolution or orientation. I
+highly recommend it.
+:::
 
 Compositing pixels
 ==================
@@ -1262,6 +1275,30 @@ of the scissors. This implementation technique for clipping is called
 complex mask shapes, like text, bitmap images, or anything else you
 can imagine.
 
+::: {.further}
+Rounded corners have an [interesting history][mac-story] in computing.
+Features that are simple today were [very complex][quickdraw] to
+implement on early personal computers with limited memory and no
+hardware floating-point arithmetic. Even when floating-point hardware
+and eventually GPUs became standard, the `border-radius` CSS property
+didn't appear in browsers until around 2010.[^didnt-stop] More
+recently, the introduction of animations, visual effects, multi-process
+compositing, and [hardware overlays][hardware-overlays] have again
+rounded corners pretty complex. The `clipRRect` fast path, for example,
+can fail to apply for cases such as hardware video overlays and nested
+rounded corner clips.
+:::
+
+[^didnt-stop]: The lack of support didn't stop web developers from
+putting rounded corners on their sites before `border-radius` was
+supported. There are a number of clever ways to do it; [this
+video][rr-video] walks through several.
+
+[mac-story]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
+[quickdraw]: https://raw.githubusercontent.com/jrk/QuickDraw/master/RRects.a
+[hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
+[rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
+
 Optimizing surface use
 ======================
 
@@ -1455,40 +1492,18 @@ it has opacity or a non-default blend mode. Everything else should
 look visually the same, but will be faster and use less memory.
 
 ::: {.further}
-
-Rounded corners have an interesting history in computing. Their
-[inclusion][mac-story] into the original Macintosh is a fun story to read, and
-also demonstrates how computers often end up echoing reality. It also reminds us
-of just how hard it was to implement features that appear simple to us today,
-due to the very limited memory, and lack of hardware floating-point arithmetic,
-of early personal computers (here's some [example source code][quickdraw] used
-on early Macintosh computers to implement this feature).
-
-Later on, floating-point coprocessors, and then over time GPUs, became standard
-equipment on new computers. This made it much easier to implement fast rounded
-corners. Unfortunately, the `border-radius` CSS property didn't appear in
-browsers until around 2010 (but that didn't stop web developers from putting
-rounded corners on their sites before then!). There are a number of clever ways
-to do it even without `border-radius`; [this video][rr-video] walks through
-several.
-
-It's a good thing `border-radius` is now a fully supported browser feature,
-and not just because it saves developers a lot of time and effort.
-More recently, the introduction of complex, mix-and-match, hardware-accelerated
-animations of visual effects, multi-process compositing, and
-[hardware overlays][hardware-overlays] have made the task of rounded corners
-harder---certainly way beyond the ability of web developers to polyfill.
-In today's browsers there is a fast path to clip to rounded corners on the GPU
-without using any more memory, but this fast path can fail to apply for
-cases such as hardware video overlays and nested rounded corner clips. With
-a polyfill, the fast path would never occur, and complex visual effects combined
-with rounded corners would be infeasible.
+Besides using fewer surfaces, real browsers also need to avoid
+surfaces getting too big. Real browsers use *tiling* for this,
+breaking up the surface into a grid of tiles which have their own
+raster surfaces and their own *x* and *y* offset to the page. Whenever
+content that intersects a tile changes its display list, the tile is
+re-rastered. Tiles that are not on or "near"^[near] the screen are not
+rastered at all. This all happens on the GPU, since surfaces (Skia
+ones [in particular][gpu-surface]) can be stored on the GPU.
 :::
 
-[mac-story]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
-[quickdraw]: https://raw.githubusercontent.com/jrk/QuickDraw/master/RRects.a
-[hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
-[rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
+[^near]: For example, tiles that just scrolled off-screen.
+[gpu-surface]: https://kyamagu.github.io/skia-python/reference/skia.Surface.html
 
 Browser compositing
 ===================
@@ -1658,52 +1673,27 @@ Likewise, we can remove the `scroll` parameter from each drawing
 command's `execute` method.
 
 Our browser now uses composited scrolling, making scrolling faster and
-smoother. There's more we can do for performance---ideally we'd avoid
-all duplicate or unnecessary operations---but let's leave that for the
-next few chapters.
+smoother. In fact, in terms of conceptual phases of execution, our
+browser is now very close to real browsers: real browsers paint
+display lists, break content up into different rastered surfaces, and
+finally draw the tree of surfaces to the screen. There's more we can
+do for performance---ideally we'd avoid all duplicate or unnecessary
+operations---but let's leave that for the next few chapters.
 
 ::: {.further}
-In terms of conceptual phases of execution, our browser is now very close to
-real browsers: real browsers paint display lists, break content up into
-different rastered surfaces, and finally draw the tree of surfaces to the
-screen. We only did it for browser chrome vs web content, but browsers allocate
-new surfaces for various different situations, such as implementing accelerated
-overflow scrolling and animations of certain CSS properties such as
-[transform][transform-link] and opacity that can be done without raster.
-
-In addition, real browsers use *tiling* to solve the problem of surfaces getting
-too big, or the desire to only re-raster the parts that actually changed
-(instead of the whole surface, like our browser does). As you might guess from
-the name, the surface is broken up into a grid of tiles which have their own
-raster surfaces. Whenever content that intersects a tile changes its display
-list, the tile is re-rastered. Tiles are draw into their parent surface with
-an x and y offset according to their position in the grid. Tiles that are not
-on or "near"^[For example, scrolled just off-screen.] the screen are not rastered
-at all.
-
-Finally, all of this lends itself naturally to hardware acceleration with a GPU,
-since surfaces (Skia ones [in particular][gpu-surface]) can be easily
-represented on the GPU, making the execution of `draw` extremely efficient.
+Real browsers allocate new surfaces for various different situations,
+such as implementing accelerated overflow scrolling and animations of
+certain CSS properties such as [transform][transform-link] and opacity
+that can be done without raster. They also allow scrolling arbitrary
+HTML elements via [`overflow: scroll`][overflow-prop] in CSS. Basic
+scrolling for DOM elements is very similar to what we've just
+implemented. But implementing it in its full generality, and with
+excellent performance, is *extremely* challenging. Scrolling is
+probably the single most complicated feature in a browser rendering
+engine. The corner cases and subtleties involved are almost endless.
 :::
-
-[gpu-surface]: https://kyamagu.github.io/skia-python/reference/skia.Surface.html
 
 [transform-link]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
-
-::: {.further}
-Scrolling of arbitrary DOM elements is possible via the
-[`overflow`][overflow-prop] CSS property, and in particular `overflow:scroll`.
-This value means, of course, for the browser to allow the user to scroll
-the content in order to see it; the parts that don't currently overlap the 
-clipping element are clipped out.
-
-Basic scrolling for DOM elements is very similar to what we've just implemented.
-But implementing it in its full generality, and with excellent performance,
-is *extremely* challenging. Scrolling is probably the single most complicated
-feature in a browser rendering engine. The corner cases and subtleties involved
-are almost endless.
-:::
-
 [overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
 
 
@@ -1722,15 +1712,6 @@ text and boxes but also:
 Besides the new features, we've upgraded from Tkinter to SDL and Skia,
 which makes our browser faster and more responsive, and also sets a
 foundation for more work on browser performance to come.
-
-::: {.further}
-[This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
-visual overview of many of the same concepts explored in this chapter,
-plus way more content about how a library such as Skia might implement features
-like raster sampling of vector graphics for lines and text, and interpolation
-of surfaces when their pixel arrays don't match resolution or orientation. I
-highly recommend it.
-:::
 
 
 Outline
