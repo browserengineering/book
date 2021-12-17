@@ -5,26 +5,24 @@ prev: security
 next: rendering-architecture
 ...
 
-Right now our browser's visual capabilities are pretty boring, just colored
-rectangles and text. Real browsers, one the other hand, support all kinds
-of *visual effects* that affect how elements look. Before we add these to our
-browser, we'll need to learn a bit about pixels, colors, and blending of
-surfaces onto computer screens. We'll then be able to implement these effects
-using the Skia graphics library, and you'll see a bit of how Skia is
-implemented under the hood. Finally we'll see how surfaces also play a key role
-in *browser compositing* to accelerate animations like scrolling.
+Right now our browser can only draw colored rectangles and
+text---pretty boring! Real browsers support all kinds of *visual
+effects* that changes how pixels and colors blend together. Let's
+implement these effects using the Skia graphics library, and also see
+a bit of how Skia is implemented under the hood. That'll also allow us
+to use surfaces for *browser compositing* to accelerate scrolling.
 
 Installing Skia and SDL
 =======================
 
 Before we get any further, we'll need to upgrade our graphics system.
 While Tkinter is great for basic shapes and handling input, it lacks
-built-in visual effects routines.[^tkinter-before-gpu] Implementing
-fast visual effects routines is fun, but it's outside the scope of
-this book, so we need a new graphics library. Let's use [Skia][skia],
-the library that Chromium uses. Unlike Tkinter, Skia doesn't handle
-inputs or create graphical windows, so we'll pair it with the
-[SDL][sdl] GUI library.
+built-in support for many visual effects.[^tkinter-before-gpu]
+Implementing fast visual effects routines is fun, but it's outside the
+scope of this book, so we need a new graphics library. Let's use
+[Skia][skia], the library that Chromium uses. Unlike Tkinter, Skia
+doesn't handle inputs or create graphical windows, so we'll pair it
+with the [SDL][sdl] GUI library.
 
 [skia]: https://skia.org
 [sdl]: https://www.libsdl.org/
@@ -33,8 +31,7 @@ inputs or create graphical windows, so we'll pair it with the
 Tkinter uses, dates from the early 90s, before high-performance
 graphics cards and GPUs became widespread.
 
-Start by installing [Skia][skia-python] and
-[SDL][sdl-python]:
+Start by installing [Skia][skia-python] and [SDL][sdl-python]:
 
     pip3 install skia-python pysdl2 pysdl2-dll
 
@@ -51,7 +48,8 @@ package manager instead. Consult the  [`skia-python`][skia-python] and
 [`pysdl2`][sdl-python] web pages for more details.
 :::
 
-Once installed, remove `tkinter` from your Python imports and replace them with:
+Once installed, remove the `tkinter` imports from browser and replace
+them with these:
 
 ``` {.python}
 import ctypes
@@ -122,9 +120,11 @@ place to another.
 
 First, get the sequence of bytes representing the Skia surface:
 
-``` {.python replace=draw_to_screen/draw}
+``` {.python}
 class Browser:
-    def draw_to_screen(self):
+    def draw(self):
+        # ...
+
         # This makes an image interface to the Skia surface, but
         # doesn't actually copy anything yet.
         skia_image = self.root_surface.makeImageSnapshot()
@@ -155,9 +155,9 @@ class Browser:
 
 The `CreateRGBSurfaceFrom` method then copies the data:
 
-``` {.python replace=draw_to_screen/draw}
+``` {.python}
 class Browser:
-    def draw_to_screen(self):
+    def draw(self):
         # ...
         depth = 32 # Bits per pixel
         pitch = 4 * WIDTH # Bytes per row
@@ -169,9 +169,9 @@ class Browser:
 
 Finally, we draw all this pixel data on the window itself:
 
-``` {.python replace=draw_to_screen/draw}
+``` {.python}
 class Browser:
-    def draw_to_screen(self):
+    def draw(self):
         # ...
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
@@ -208,7 +208,7 @@ class Browser:
 ```
 
 We'll also need to handle all of the other events in this
-loop---clicks, typing, and so on:
+loop---clicks, typing, and so on. The SDL syntax looks like this:
 
 ``` {.python}
 if __name__ == "__main__":
@@ -226,24 +226,25 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
 ```
 
-You can now remove all of the `bind` calls in the `Browser`
-constructor; this main loop replaces them. Also note that I've changed
-the signatures of the various `handle_xxx` methods; you'll need to
-make analogous changes in `Browser` where they are defined.
+I've changed the signatures of the various event handler methods;
+you'll need to make analogous changes in `Browser` where they are
+defined. This loop replaces all of the `bind` calls in the `Browser`
+constructor, which you can now remove.
 
 ::: {.further}
 SDL is most popular for making games. A selection of books about
 game programming and SDL are listed [here](https://wiki.libsdl.org/Books).
 :::
 
-Skia is the canvas
-==================
+Skia provides the canvas
+========================
 
-Now our browser is creating an SDL window can draw to it via Skia. But
-most of the browser codebase is still using Tkinter drawing commands,
-which we now need to replace. Skia is a bit more verbose than Tkinter,
-so let's abstract over some details with helper functions.[^skia-docs]
-First, a helper function to convert colors to Skia colors:
+Now our browser is creating an SDL window and can draw to it via Skia.
+But most of the browser codebase is still using Tkinter drawing
+commands, which we now need to replace. Skia is a bit more verbose
+than Tkinter, so let's abstract over some details with helper
+functions.[^skia-docs] First, a helper function to convert colors to
+Skia colors:
 
 [^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
 documentation for more on the Skia API.
@@ -259,8 +260,8 @@ def color_to_sk_color(color):
         return skia.ColorBLACK
 ```
 
-You can add more "elif" blocks to support your favorite color names;
-modern browsers support [quite a lot][css-colors].
+You can add more "elif" blocks to support any other color names you
+use; modern browsers support [quite a lot][css-colors].
 
 [css-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
 
@@ -324,8 +325,8 @@ class DrawRect:
 ```
 
 Finally, the `Browser` class also uses Tkinter commands in its `draw`
-method, which we'll also need to change to use Skia. It's a long
-method, so we'll need to go step by step.
+method to draw the browser UI. We'll need to change them all to use
+Skia. It's a long method, so we'll need to go step by step.
 
 First, clear the canvas and and draw the current `Tab` into it:
 
@@ -340,7 +341,7 @@ class Browser:
 
 Then draw the browser UI elements. First, the tabs:
 
-``` {.python replace=draw%28/raster%28}
+``` {.python replace=draw%28/raster_chrome%28}
 class Browser:
     def draw(self):
         # ...
@@ -359,10 +360,12 @@ class Browser:
 Next, the plus button for adding a new tab:[^move-plus]
 
 [^move-plus]: I also changed the *y* position of the plus sign. The
-    change from Tkinter to Skia changes how fonts are drawn, and the
-    new *y* position keeps the plus centered in the box.
+    Skia draws fonts a bit differently from Tkinter, and the new *y*
+    position keeps the plus centered in the box. Feel free to adjust
+    the positions of the UI elements to make everything look good on
+    your system.
 
-``` {.python replace=draw%28/raster%28}
+``` {.python replace=draw%28/raster_chrome%28}
 class Browser:
     def draw(self):
         # ...
@@ -373,7 +376,7 @@ class Browser:
 
 Then the address bar, including text and cursor:
 
-``` {.python replace=draw%28/raster%28}
+``` {.python replace=draw%28/raster_chrome%28}
 class Browser:
     def draw(self):
         # ...
@@ -389,7 +392,7 @@ class Browser:
 
 And finally the "back" button:
 
-``` {.python replace=draw%28/raster%28}
+``` {.python replace=draw%28/raster_chrome%28}
 class Browser:
     def draw(self):
         # ...
@@ -399,15 +402,6 @@ class Browser:
         paint = skia.Paint(
             Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
         canvas.drawPath(path, paint)
-```
-
-Once this is done, we need to copy from the Skia surface to the SDL window:
-
-``` {.python expected=False}
-class Browser:
-    def draw(self):
-        # ...
-        self.draw_to_screen()
 ```
 
 `Tab` also has a `draw` method, which draws a cursor; it needs to use
@@ -433,14 +427,16 @@ Graphics][core-graphics] for WebKit, for example. Both of these
 libraries are used outside of the browser, too: Core Graphics in iOS
 and macOS, and Skia in Android.
 
-If you're looking for another book on how these libraries are implemented, check
-out [Real-Time Rendering][rtr-book]. There is also [Computer Graphics:
-Principles and Practice][classic], which incidentally I remember buying back
-the days of my youth (1992 or so). At the time I didn't get much further than
-rastering lines and a few polygons (and in assembly language!). These days you
-can do the same and more with Skia and a few lines of Python.
+If you're looking for another book on how these libraries are
+implemented, check out [Real-Time Rendering][rtr-book]. There is also
+[Computer Graphics: Principles and Practice][classic], which
+incidentally I remember buying[^chris-here] back the days of my youth
+(1992 or so). At the time I didn't get much further than rastering
+lines and polygons (in assembly language!). These days you can do the
+same and more with Skia and a few lines of Python.
 :::
 
+[^chris-here]: This is Chris speaking.
 [core-graphics]: https://developer.apple.com/documentation/coregraphics
 [rtr-book]: https://www.realtimerendering.com/
 [classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
@@ -449,11 +445,12 @@ can do the same and more with Skia and a few lines of Python.
 Skia is also the font library
 =============================
 
-Since we're replacing `tkinter`, we are also replacing `tkinter.font`.
-In Skia, a font object has two pieces: a `Typeface`, which is a type
-family with a certain weight, style, and width; and a `Font`, which is
-a `Typeface` at a particular size. It's the `Typeface` that contains
-data and caches, so that's what we need to cache:
+Since we're replacing `tkinter` with Skia, we are also replacing
+`tkinter.font`. In Skia, a font object has two pieces: a `Typeface`,
+which is a type family with a certain weight, style, and width; and a
+`Font`, which is a `Typeface` at a particular size. It's the
+`Typeface` that contains data and caches, so that's what we need to
+cache:
 
 ``` {.python}
 def get_font(size, weight, style):
@@ -476,9 +473,9 @@ def get_font(size, weight, style):
 ```
 
 Our browser also needs font metrics and measurements. In Skia, these
-are provided by the `measureText` and `getMetrics` measurements. Let's
+are provided by the `measureText` and `getMetrics` methods. Let's
 start with `measureText`---it needs to replace all calls to `measure`.
-For example, in the `draw` method on `Tab`s, we must do:
+For example, in the `draw` method for a `Tab`, we must do:
 
 ``` {.python replace=draw/raster}
 class Tab:
@@ -508,8 +505,10 @@ and
 ```
 
 Note the negative sign when accessing the ascent. In Skia, ascent and
-descent are positive if they go downward and negative if they go upward,
-so ascents will normally be negative, the opposite of Tkinter.
+descent are positive if they go downward and negative if they go
+upward, so ascents will normally be negative, the opposite of Tkinter.
+There's no analog for the `lineheight` field that Tkinter provides,
+but you can use descent minus ascent instead.
 
 You should now be able to run the browser again. It should look and
 behave just as it did in previous chapters, and it'll probably feel
@@ -523,25 +522,31 @@ like this:
         This is some example text.
     </div>
 
-Which looks like this (note that the text is *not* cut out):
+Which looks like this:[^not-clipped]
+
+[^not-clipped]: If you're very observant, you may notice that the text
+    here protrudes past the background by just a handful of pixels.
+    This is the correct default behavior, and can be modified by the
+    `overflow` CSS property, which we'll see later this chapter.
 
 <div style="border-radius:10px;background:lightblue">
 This is some example text.
 </div>
 
-Implementing requires drawing a rounded rectangle, so let's add a new
-`DrawRRect` command:
+Implementing `border-radius` requires drawing a rounded rectangle, so
+let's add a new `DrawRRect` command:
 
 ``` {.python}
 class DrawRRect:
     def __init__(self, rect, radius, color):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.color = color_to_sk_color(color)
+        self.color = color
 
     def execute(self, canvas):
+        sk_color = color_to_sk_color(self.color)
         canvas.drawRRect(self.rrect,
-            paint=skia.Paint(Color=self.color))
+            paint=skia.Paint(Color=sk_color))
 ```
 
 Note that Skia supports `RRect`s, or rounded rectangles, natively, so
@@ -557,11 +562,10 @@ class BlockLayout:
             cmds.append(DrawRRect(rect, radius, bgcolor))
 ```
 
-Similar changes should be made to `InputLayout` and `InlineLayout`
-
-After all, one advantage of using Skia is that, since it is also used
-in the Chrome browser, we know it has fast, built-in support for all
-of the shapes we might need.
+Similar changes should be made to `InputLayout` and `InlineLayout`.
+This is one advantage of Skia: since it is also used by the Chromium
+browser, we know it has fast, built-in support for all of the shapes
+we might need.
 
 ::: {.further}
 [Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization) is yet
@@ -636,8 +640,8 @@ vary between people: some have [more][tetrachromats] or
 chromosome). Moreover, different people have different ratios of cone
 types and those cone types use different protein structures that vary
 in the exact frequency of green, red, and blue that they respond to.
-The human perception of color is a topic that combines software,
-hardware, chemistry, biology, and psychology.
+The study of color thus combines software, hardware, chemistry,
+biology, and psychology.
 :::
 
 [cones]: https://en.wikipedia.org/wiki/Cone_cell
@@ -689,11 +693,11 @@ through some of the underlying white:
 
 But importantly, the text isn't orange-gray: even though the text is
 partially transparent, none of the orange shines through. That's
-because the order matters. First, the text is blended with the
+because the order matters: the text is *first* blended with the
 background; since the text is opaque, its blended pixels are black and
-overwrite the orange background. Then, this black-and-orange is
-blended with the white background. Doing the operations in a different
-order would lead to dark-orange or black text.
+overwrite the orange background. Only *then* is this black-and-orange
+image blended with the white background. Doing the operations in a
+different order would lead to dark-orange or black text.
 
 To handle this properly, browsers apply blending not to individual
 shapes but to a tree of [*stacking contexts*][stacking-context].
@@ -730,7 +734,7 @@ browser, scrolling is done on the GPU by offsetting two surfaces.
 Without a stacking context the browser might (depending on the web
 page structure) have to move around multiple independent surfaces with
 complex paint orders, in lockstep, to achieve scrolling. Fixed- and
-sticky-positioned elements also form a stacking context because of
+sticky-positioned elements also form stacking contexts because of
 their interaction with scrolling.
 :::
 
@@ -776,7 +780,7 @@ Parent
 </div>
 
 Right now, the white rectangle completely obscures part of the orange
-one; The two colors don't really need to "mix", and in fact it kind of
+one; the two colors don't really need to "mix", and in fact it kind of
 looks like two orange rectangles instead of an orange rectangle with a
 white one on top. Now let's make the white child element
 semi-transparent, so the colors have to mix. In CSS, that requires
@@ -806,7 +810,7 @@ distinguishes between a layer and a surface for this reason as well, but for
 our purposes it makes sense to assume that each new layer comes with a
 surface.
 
-``` {.python.example}
+``` {.python .example}
 # draw parent
 canvas.saveLayer(paint=skia.Paint(Alphaf=0.5))
 # draw child
@@ -817,13 +821,14 @@ We first draw the parent, then create a new surface with `saveLayer`
 to draw the child into, and then when the `restore` call is made the
 `paint` parameters passed into `saveLayer` are used to mix the colors
 in the two surfaces together. Here we're using the `Alphaf` parameter,
-which describes the alpha as a floating-point number.
+which describes the opacity as a floating-point number from 0 to 1.
 
 Note that `saveLayer` and `restore` are like a pair of parentheses
 enclosing the child drawing operations. This means our display list is
-no longer just a linear sequence of drawing operations, but a tree.
-The `SaveLayer` drawing operation reflects this by taking a sequence
-of other drawing commands as an argument:
+no longer just a linear sequence of drawing operations, but a tree. So
+in our display list, let's represent `saveLayer` with a `SaveLayer`
+operation that takes a sequence of other drawing commands as an
+argument:
 
 ``` {.python expected=False}
 class SaveLayer:
@@ -844,14 +849,14 @@ recurses into its children, adding each drawing command straight to
 the global display list. Let's instead add those drawing commands to a
 temporary list first:
 
-``` {.python expected=False}
+``` {.python}
 class BlockLayout:
     def paint(self, display_list):
         cmds = []
-
         # ...
         if bgcolor != "transparent":
-            cmds.append(DrawRect(rect, bgcolor))
+            # ...
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         for child in self.children:
             child.paint(cmds)
@@ -887,9 +892,10 @@ def paint_visual_effects(node, cmds, rect):
 
 Note that `paint_visual_effects` receives a list of commands and
 returns another list of commands. It's just that the output list is
-always a single `SaveLayer` command that wraps the original content---which makes sense, because
-first we need to draw the commands to a surface, and *then* apply transparency to it when blending into
-the parent.
+always a single `SaveLayer` command that wraps the original
+content---which makes sense, because first we need to draw the
+commands to a surface, and *then* apply transparency to it when
+blending into the parent.
 
 Compositing Pixels
 ==================
@@ -935,8 +941,8 @@ simply using Python code to illustrate what Skia is doing internally.
 
 That `Alphaf` operation applies to pixels in one surface. But with
 `SaveLayer` we will end up with two surfaces, with all of their pixels
-aligned, and therefore we will need to combine, or *blend* pairs of
-corresponding pixels.
+aligned, and therefore we will need to combine, or *blend*,
+corresponding pairs of pixels.
 
 Here the terminology can get confusing: we imagine that the pixels "on
 top" are blending into the pixels "below", so we call the top surface
@@ -972,11 +978,16 @@ pixel `source`. The mathematical expressions for the red, green, and
 blue color channels are identical, and basically average the source
 and destination colors, weighted by alpha.[^source-over-example] You
 might imagine the overall operation of `SaveLayer` with an `Alphaf`
-parameter as something like this:
+parameter as something like this:[^no-pixel-loop]
 
 [^source-over-example]: For example, if the alpha of the source pixel
     is 1, the result is just the source pixel color, and if it is 0
     the result is the backdrop pixel color.
+    
+[^no-pixel-loop]: In reality, reading individual pixels into memory to
+manipulate them like this is slow. So libraries such as Skia don't
+make it convenient to do so. (Skia canvases do have `peekPixels` and
+`readPixels` methods that are sometimes used, but not for this.)
 
 ``` {.python file=examples}
 for (x, y) in destination.coordinates():
@@ -1021,6 +1032,10 @@ the [`mix-blend-mode` property][mix-blend-mode-def], like this:
 
 [mix-blend-mode-def]: https://drafts.fxtf.org/compositing-1/#propdef-mix-blend-mode
 
+[dodge-burn]: https://en.wikipedia.org/wiki/Dodging_and_burning
+
+[wiki-blend-mode]: https://en.wikipedia.org/wiki/Blend_modes
+
 ``` {.html.example}
 <div style="background-color:orange">
     Parent
@@ -1042,22 +1057,13 @@ Parent
 Here, when blue overlaps with orange, we see pink: blue has (red,
 green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
 0)`, so with "difference" blending the resulting pixel will be `(1,
-0.65, 1)`, which is pink. On a pixel level, what's happening is
-something like this:
-
-``` {.python file=examples}
-for (x, y) in destination.coordinates():
-    source[x, y].alphaf(opacity)
-    destination[x, y].difference(source[x, y])
-    destination[x, y].source_over(source[x, y])
-```
-
-[wiki-blend-mode]: https://en.wikipedia.org/wiki/Blend_modes
-
-[dodge-burn]: https://en.wikipedia.org/wiki/Dodging_and_burning
+0.65, 1)`, which is pink.
 
 Skia supports the [multiply][mbm-mult] and [difference][mbm-diff]
 blend modes natively:
+
+[mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
+[mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
 
 ``` {.python}
 def parse_blend_mode(blend_mode_str):
@@ -1089,47 +1095,33 @@ _then_ blend the result into the rest of the page. If we switched the
 two `SaveLayer` calls, so that we first applied blending, there
 wouldn't be anything to blend it into!
 
-[mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
-[mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
-
 ::: {.further}
-In reality, reading individual pixels into memory to manipulate them
-like this is slow. Instead, it should be done on the GPU. So libraries
-such as Skia don't make it convenient to do so. (Skia canvases do have
-`peekPixels` and `readPixels` methods that are sometimes used, but not
-for this use case).
-
-Many graphics libraries, Skia included, don't usually represent a separate alpha
-channel internally , and instead multiply the color channels by the opacity,
-which is called a *premultiplied* representation of the color. Premultiplied
-pixel representations of colors are generally more efficient. For example,
-observe that `source_over` has to divide by `self.a` at the end, because
-otherwise the result would be premultiplied. If we stuck with premultiplied
-throughout, this would not be necessary.
-
-There are also in fact a few Skia APIs that expose premultiplied colors:
-You can create images from blocks of them and read them back from surfaces,
-for example.
-:::
-
-::: {.further}
-Check out this [history of alpha][alpha-history],
-written by its co-inventor (and co-founder of Pixar), or read this
-[derivation of alpha][alpha-deriv] for how it is computed.
+Alpha might seem intuitive, but it's less obvious than you think: see,
+for example, this [history of alpha][alpha-history] written by its
+co-inventor (and co-founder of Pixar). And there are several different
+implementation options. For example, many graphics libraries, Skia
+included, multiply the color channels by the opacity instead of
+allocating a whole color channel. This [premultiplied][premultiplied]
+representation is generally more efficient; for example, `source_over`
+above had to divide by `self.a` at the end, because otherwise the
+result would be premultiplied. Using a premultiplied representation
+throughout would save a division. Nor is it obvious how alpha [behaves
+when resized][alpha-deriv].
 :::
 
 [alpha-history]: http://alvyray.com/Memos/CG/Microsoft/7_alpha.pdf
 [alpha-deriv]: https://jcgt.org/published/0004/02/03/paper.pdf
+[premultiplied]: https://limnu.com/premultiplied-alpha-primer-artists/
 
 Clipping and masking
 ====================
 
 The "multiply" and "difference" blend modes can seem kind of obscure,
 but blend modes are a flexible way to implement per-pixel operations.
-One common use case is clipping---erasing the pixels in a surface that
-don't intersect with a given shape. It's called clipping because it's
-like putting a second piece of paper (called a *mask*) over the first
-one, and then using scissors to cut along the mask's edge.
+One common use case is clipping---intersecting a surface with a given
+shape. It's called clipping because it's like putting a second piece
+of paper (called a *mask*) over the first one, and then using scissors
+to cut along the mask's edge.
 
 There are all sorts of powerful methods[^like-clip-path] for clipping
 content on the web, but the most common form involves the `overflow`
@@ -1143,7 +1135,7 @@ property][mdn-mask] lets you instead specify a image URL for the mask.
 
 [^like-scroll]: For example, `overflow: scroll` adds scroll bars and
     makes an element scrollable, while `overflow: hidden` is similar
-    but subtly different from `overflow: clip`.
+    to but subtly different from `overflow: clip`.
 
 [mdn-mask]: https://developer.mozilla.org/en-US/docs/Web/CSS/mask
 
@@ -1152,8 +1144,8 @@ property][mdn-mask] lets you instead specify a image URL for the mask.
 Usually, `overflow: clip` is used with properties like `height` or
 `rotate` which can make an element's children poke outside their
 parent. Our browser doesn't support these, but there is one edge case
-where `overflow: clip` is relevant: with rounded corners. Consider
-this example:
+where `overflow: clip` is relevant: rounded corners. Consider this
+example:
 
 ``` {.html.example}
 <div 
@@ -1174,17 +1166,16 @@ Look at how the letters near the corner are cut off to maintain a
 sharp rounded edge. (Uhh... actually, at the time of this writing,
 Safari does not support `overflow: clip`, so if you're using Safari
 you won't see this effect.[^hidden]) That's clipping; without the
-`overflow:clip` property these letters would instead be fully drawn.
+`overflow: clip` property these letters would instead be fully drawn,
+like earlier in this chapter.
 
-[^hidden]: Other values of `overflow`, such as `hidden`, are supported by
-all browsers. However, if you change to this value in a real browser, you'll
-notice that the height of the blue box increases, and the rounded corners
-no longer clip out the text. This is because `overflow:hidden` has different
-rules for sizing boxes, having to do with the possibility of the child content
-being scrolled (`hidden` means "clipped, but might be scrolled by JavaScript").
-If the blue box had not been taller, than it would have been impossible to
-see the text, which is really bad if it's intended that there should be a way
-to scroll it on-screen.
+[^hidden]: The similar `overflow: hidden` is supported by all
+browsers. However, in this case, `overflow: hidden` will also increase
+the height of `div` until the rounded corners no longer clip out the
+text. This is because `overflow:hidden` has different rules for sizing
+boxes, having to do with the possibility of the child content being
+scrolled---`hidden` means "clipped, but might be scrolled by
+JavaScript".
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1195,18 +1186,18 @@ use *destination-in* compositing.
 [Destination-in compositing][dst-in] basically means keeping the
 pixels of the destination surface that intersect with the source
 surface. The source surface's color is not used---just its alpha. In
-our case, the source surface is the circular mask and the destination
-surface is the content we want to clip, so destination-in fits
-perfectly. In code, destination-in looks like this:
+our case, the source surface is the rounded rectangle mask and the
+destination surface is the content we want to clip, so destination-in
+fits perfectly. In code, destination-in looks like this:
 
 [dst-in]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstin
 
 ``` {.python file=examples}
 class Pixel:
     def destination_in(self, source):
-        self.r = self.r * self.a * source.a
-        self.g = self.g * self.a * source.a
-        self.b = self.b * self.a * source.a
+        self.r = self.r * self.a * source.a / self.a
+        self.g = self.g * self.a * source.a / self.a
+        self.b = self.b * self.a * source.a / self.a
         self.a = self.a * source.a
 ```
 
@@ -1228,19 +1219,19 @@ def paint_visual_effects(node, cmds, rect):
         SaveLayer(skia.Paint(BlendMode=blend_mode), [
             SaveLayer(skia.Paint(Alphaf=opacity), cmds),
             SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, clip_radius, skia.ColorWHITE)
+                DrawRRect(rect, clip_radius, "white")
             ]),
         ]),
     ]
 ```
 
-Note that after drawing all of the element contents with `cmds` (and
-applying opacity), this code then draws a rounded rectangle on another
-layer to serve as the mask, and uses destination-in blending to clip
-the element contents. Here I chose to draw the rounded rectangle in
-white, but the color doesn't matter as long as it's opaque. On the
-other hand, if there's no clipping, I don't round the corners of the
-mask, which means nothing is clipped off.
+After drawing all of the element contents with `cmds` (and applying
+opacity), this code draws a rounded rectangle on another layer to
+serve as the mask, and uses destination-in blending to clip the
+element contents. Here I chose to draw the rounded rectangle in white,
+but the color doesn't matter as long as it's opaque. On the other
+hand, if there's no clipping, I don't round the corners of the mask,
+which means nothing is clipped off.
 
 Notice how similar this masking technique is to the physical analogy
 with scissors described earlier, with the two layers playing the role
@@ -1253,36 +1244,30 @@ can imagine.
 Optimizing Surface Use
 ======================
 
-Our browser now works correctly, but uses way too many surfaces. For example,
-for a single, no-effects-needed div with some text content, there are currently
-18 surfaces allocated in the display list. For that example, we should need
-only one!
+Our browser now works correctly, but uses way too many surfaces. For
+example, for a single, no-effects-needed div with some text content,
+there are currently 18 surfaces allocated in the display list. If
+there's no blending going on, we should only need one!
 
-It's pretty easy to fix this situation. Let's review the full list of surfaces
-that can be needed for an element, and then devise logic to omit them when
-not needed:
+Let's review all the surfaces that our code can create an element:
 
-* *Blending/isolation*: the top-level surface returned by
-`paint_visual_effects`. It's used to apply any blend mode other than
-source-over, and also to isolate the element from other parts of the page before
-applying an overflow clip.
+- The top-level surface is used to apply *blend modes*. Since it's the
+top-level surface, it also *isolates* the element from other parts of
+the page, so that clipping only applies to that elemnt.
+- The first nested surface is used for applying *opacity*.
+- The second nested surface is used to implement *clipping*.
 
-* *Opacity*: the first nested surface within the blending/isolation
-surface, used for applying opacity transparency.
-
-* *Clipping*: the second nested surface, used to implement
-overflow clipping.
-
-We can skip each of the above surfaces if the conditions mentioned don't hold.
-Implement that logic by changing `SaveLayer` to take two additional optional
-parameters: `should_paint` and `should_paint_cmds`. These control whether
-`saveLayer/restore`, and execution of the `cmds` parameter, actually happen
-during `execute`:
+But not every element has opacity, blend modes, or clipping applied,
+and we could skip creating those surfaces. To implement this without
+making the code hard to read, let's change `SaveLayer` to take two
+additional optional parameters: `should_save` and `should_paint_cmds`.
+These control whether `saveLayer` is called and whether subcommands
+are actually painted:
 
 ``` {.python}
 class SaveLayer:
-    def __init__(self, sk_paint, cmds, should_save=True,
-        should_paint_cmds=True):
+    def __init__(self, sk_paint, cmds,
+            should_save=True, should_paint_cmds=True):
         self.should_save = should_save
         self.should_paint_cmds = should_paint_cmds
         # ...
@@ -1297,7 +1282,7 @@ class SaveLayer:
             canvas.restore()
 ```
 
-Now set those parameters via some simple logic:
+Now turn off those parameters if an effect isn't applied:
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
@@ -1313,17 +1298,16 @@ def paint_visual_effects(node, cmds, rect):
             SaveLayer(skia.Paint(Alphaf=opacity), cmds,
                 should_save=needs_opacity),
             SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, clip_radius, skia.ColorWHITE)
+                DrawRRect(rect, clip_radius, "white")
             ], should_save=needs_clip, should_paint_cmds=needs_clip),
         ], should_save=needs_blend_isolation),
     ]
 ```
 
-With these changes, the example I mentioned above goes from 18 to 1 surface.
-
-You might wonder if we can save even more surfaces. For example, what if there
-is a blend mode and opacity at the same time, can we use the same surface?
-Indeed, yes you can! That's also pretty simple:
+Now simple web pages always use a single surface---a huge saving in
+memory. But we can save even more surfaces. For example, what if there
+is a blend mode and opacity at the same time: can we use the same
+surface? Indeed, yes you can! That's also pretty simple:
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
@@ -1335,51 +1319,44 @@ def paint_visual_effects(node, cmds, rect):
     needs_opacity = opacity != 1.0
 
    return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
-            cmds,
+        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity),
+            cmds + [
             SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, clip_radius, skia.ColorWHITE)
+                DrawRRect(rect, clip_radius, "white")
             ], should_save=needs_clip, should_paint_cmds=needs_clip),
         ], should_save=needs_blend_isolation or needs_opacity),
     ]
 ```
 
-There's one more important optimization to make: getting rid of the
-destination-in compositing surface for rounded corners. While this approach
-works just fine, and is a good idea for general masks, rounded corners are
-so common on the web that Skia has a special `clipRRect` command just for this
-use case.
+There's one more optimization that can make clipping less expensive.
+Right now, we might draw a very large and complex shape, and then clip
+all of it out.[^not-really-here] That means Skia wastes time drawing
+pixels it doesn't need. To avoid this, Skia has a special `clipRRect`
+command just for this use case. This `clipRRect` command takes in a
+rounded rectangle, changes the *canvas state* so that all future
+commands skip drawing any pixels outside it.
 
-There are multiple advantages to using `clipRRect` over an explicit
-destination-in surface. First, it allows Skia to internally optimize away even
-more surfaces in common situations, replacing them with an equivalent
-implementation directly on the GPU, via a shader.[^shader-rounded] Second,
-`clipRRect` makes it much easier for Skia to skip subsequent draw operations
-that don't intersect the rounded rectangle,[^see-chap-1] or dynamically draw
-only the parts of commands that intersect it.
+[^not-really-here]: Given our browser's limited layout capabilities,
+    it's kind of hard to come up with an example of this, but complex
+    diacritics could have this effect. In a real browser, where
+    clipping applies in more cases, this optimization is even more
+    important.
 
-[^shader-rounded]: GPU programs are out of scope for this book, but if you're
-curious there are many online resources describing ways to to do this. Skia
-of course also has an implementation in its GPU-accelerated code paths.
+When you use `clipRRect`, Skia dynamically draws only the parts of a
+shape that intersection the given rounded rectangle, via specialized
+code in its shape implementations.[^shader-rounded] Skia can also to
+skip subsequent draw operations that don't intersect the rounded
+rectangle, similar to the optimization we implemented for scrolling
+[in Chapter 2][graphics.md#faster-rendering]. Since `clipRRect`
+changes the canvas state, we'll need to restore it once we're done
+with clipping. That uses the `save` and `restore` methods---you call
+`save` before calling `clipRRect`, and `restore` after finishing
+drawing the commands that should be clipped:
 
-[^see-chap-1]: This is basically the same optimization we added in Chapter
-1 to avoid painting off-screen text.
-
-To use `clipRect`, we'll also need another method: `save`. Once you call a
-method like `clipRect`, all subsequent canvas commands are clipped, until you
-tell Skia to stop. The way to make it stop is with `save` and `restore`---you
-call `save` before calling `clipRect`, and `restore` after finishing drawing
-the commands that should be clipped. `save` means "snapshot the current clip
-state of the canvas", and `restore` rolls back to the most recent snapshot.
-
-You've probably noticed that `restore` is used for both saving state and pushing
-surfaces---what gives? That's because there is a combined stack of surfaces and
-state in the Skia API. However, `save` never creates a new surface, so 
-you should use it whenever possible over `saveLayer`.
-
-Using `clipRRect` is pretty easy. It needs to be preceded by `save`, because
-once the clip has been set, all subsequent canvas are clipped until `restore`
-is called. The general pattern is:
+[^shader-rounded]: Typically in a browser this means code in Skia's
+GPU shaders. GPU programs are out of scope for this book, but if
+you're curious there are many online resources describing ways to
+do this.
 
 ``` {.example}
     canvas.save()
@@ -1388,37 +1365,31 @@ is called. The general pattern is:
     canvas.restore()
 ```
 
-To implement, first add a `ClipRRect` display list command. It should take a
-`should_clip` parameter indicating whether the clip is necessary (just like the
-optimization we made above for `SaveLayer`). It also includes a call to `save`
-and `restore`, since you should not clip without a `save`/`restore` pair.
-[^save-clip]
+If you've noticed that `restore` is used for both saving state and
+pushing surfaces, that's because Skia has a combined stack of surfaces
+and canvas. But unlike `saveLayer`, `save` never creates a new
+surface. Let's wrap this pattern into a `ClipRRect` drawing command,
+which like `SaveLayer` takes a list of subcommands and a `should_clip`
+parameter indicating whether the clip is necessary:[^save-clip]
 
-[^save-clip]: Well, unless you're doing two clips at once, or a clip and a
-transform, or some other more complex setup that would benefit from only
-saving once but doing multiple things inside it.
+[^save-clip]: If you're doing two clips at once, or a clip and a
+transform, or some other more complex setup that would benefit from
+only saving once but doing multiple things inside it, this pattern of
+always saving canvas parameters might be wasteful, but since it
+doesn't create a surface it's still a big optimization here.
 
 ``` {.python}
 class ClipRRect:
     def __init__(self, rect, radius, cmds, should_clip=True):
         self.rect = rect
-        self.radius = radius
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.cmds = cmds
         self.should_clip = should_clip
 
     def execute(self, canvas):
         if self.should_clip:
             canvas.save()
-            if self.radius > 0.0:
-                rect = canvas.clipRRect(skia.RRect.MakeRectXY(
-                    skia.Rect.MakeLTRB(
-                        self.rect.left(),
-                        self.rect.top(),
-                        self.rect.right(),
-                        self.rect.bottom()),
-                    self.radius, self.radius))
-            else:
-                rect = canvas.clipRect(self.rect)
+            canvas.clipRRect(self.rrect)
 
         for cmd in self.cmds:
             cmd.execute(canvas)
@@ -1427,21 +1398,24 @@ class ClipRRect:
             canvas.restore()
 ```
 
-Then use them in `paint_visual_effects`:
+Now, in `paint_visual_effects`, we can use `ClipRRect` instead of
+destination-in blending with `DrawRRect`:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
     return [
         SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
-            ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)
-            ],
-            should_save=needs_blend_isolation),
+            ClipRRect(rect, clip_radius,
+                cmds,
+            should_clip=needs_clip),
+        ], should_save=needs_blend_isolation),
     ]
 ```
 
-That's it! Everything should look visually the same, but will be faster and use
-less memory.
+So now, each element uses at most one surface, and even then only if
+it has opacity or a non-default blend mode. Everything else should
+look visually the same, but will be faster and use less memory.
 
 ::: {.further}
 
@@ -1482,131 +1456,151 @@ with rounded corners would be infeasible.
 Browser compositing
 ===================
 
-Optimizing away surfaces is great when they're not needed, but they have
-even more uses than blending---they can be used to efficiently scroll and animate
-as well.
+Optimizing away surfaces is great when they're not needed, but
+sometimes having more surfaces allows faster scrolling and
+animatations.
 
-Chapter 2 introduced the Tkinter canvas associated with the browser window.
-Chapter 7 added in browser chrome, also drawing to the same canvas. Any time
-anything changed, we had to clear the canvas and paint & raster everything from
-scratch. This is inefficient---ideally, pixels should be re-rastered only if
-their colors actually change, and pixels that "move around" on the screen, such
-as with scrolling, should not need re-raster either. When context is complex or
-the screen is large, the slowdown becomes visible, and laptop and mobile
-batteries are drained unnecessarily.
-
+So far, any time anything changed in the browser chrome or the web
+page itself, we had to clear the canvas and re-raster everything on it
+from scratch. This is inefficient---ideally, things should be
+re-rastered only if they actually change. When the context is complex
+or the screen is large, rastering too often produces a visible
+slowdown, and laptop and mobile batteries are drained unnecessarily.
 Real browsers optimize these situations by using a technique I'll call
-*browser compositing*. The idea is to create a tree of explicitly cached
- surfaces for different pieces of content. Whenever content needs to re-raster,
- we'll re-raster only the surface for that content, and then draw the entire
- tree to the screen. For example, if we had a surface for browser chrome and a
- surface for the `Tab`'s contents, we'd only need to re-raster the `Tab`
- surface if page contents needed update, and vice-versa. This technique
- also allows us to scroll the `Tab` without any raster at all---we can just
- apply an adjusted transform on the surface when drawing it.
+*browser compositing*. The idea is to create a tree of explicitly
+cached surfaces for different pieces of content. Whenever something
+changes, we'll re-raster only the surface where that content appears.
+Then these surfaces are blended (or "composited") together to form the
+final image that the user sees.
 
-Let's see how to implement this with Skia. We'll store two new surfaces on
-`Browser`: `chrome_surface` and `tab_surface`.[^multiple-tabs] These will
-raster independently, in a new `raster` method on `Browser` and `Tab`, and draw
-into `root_surface` with the `skia.Surface.draw` method, via a renamed `draw`
-method on `Browser` (what used to be called `draw_to_screen`.
+Let's implement this, wth a surface for browser chrome and a surface
+for the current `Tab`'s contents. This way, we'll only need to
+re-raster the `Tab` surface if page contents change, but not when
+(say) the user types into the address bar. This technique also allows
+us to scroll the `Tab` without any raster at all---we can just
+translate the page contents surface when drawing it.
 
-[^multiple-tabs]: We could even store a different surface for each `Tab`; this
-would make switching between tabs faster. Real browsers don't do this, however,
-since storing the pixels for a surface uses up a lot of memory, and raster is
-fast enough on today's computers that switching between tabs is already quite
-fast, compared with a human's typical ability to detect a delay in responding
-to a click.
+To start with, we'll need two new surfaces on `Browser`,
+`chrome_surface` and `tab_surface`:[^multiple-tabs]
 
-Implement modifications to `draw` first.  A call to the `translate` and
-`clipRect` methods on the canvas for `root_surface` first shifts the
-`tab_surface` down by `CHROME_PX` and up by `-scroll`, then clips it to only
-the area of the window that doesn't overlap the browser chrome. Then
-`chrome_surface` is drawn, with a clip to also ensure it doesn't exceed its
-bounds.
+[^multiple-tabs]: We could even a different surface for each `Tab`,
+but real browsers don't do this, since each surface uses up a lot of
+memory, and typically users don't notice the small raster delay when
+switching tabs.
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
+        self.tab_surface = None
+```
+
+I'm not explicitly creating `tab_surface` right away, because we need
+to lay out the page contents to know how tall the surface needs to be.
+
+We'll also need to split the browser's `draw` method into three parts:
+
+- `draw` will composite the chrome and tab surfaces and copy the
+  result from Skia to SDL;
+- `raster_tab` will draw the page to the `tab_surface`; and
+- `raster_chrome` will draw the browser chrome to the `chrome_surface`.
+
+Let's start by doing the split:
+
+``` {.python}
+class Browser:
+    def raster_tab(self):
+        canvas = self.tab_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+        # ...
+
+    def raster_chrome(self):
+        canvas = self.chrome_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+        # ...
+
+    def draw(self):
+        canvas = self.root_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+        # ...
+```
+
+Since we didn't create the `tab_surface` on startup, we need to create
+it at the top of `raster_tab`:[^really-big-surface]
+
+[^really-big-surface]: For a very big web page, the `tab_surface` can
+be much larger than the size of the SDL window, and therefore take up
+a very large amount of memory. We'll ignore that, but a real browser
+would only paint and raster surface content up to a certain distance
+from the visible region, and re-paint/raster as the user scrolls.
+
+``` {.python}
+class Browser:
+    def raster_tab(self):
+        active_tab = self.tabs[self.active_tab]
+        tab_height = active_tab.document.height
+
+        if not self.tab_surface or \
+                tab_height != self.tab_surface.height():
+            self.tab_surface = skia.Surface(WIDTH, tab_height)
+
+        # ...
+```
+
+Note that we need to recreate the tab surface if the page's height
+changes.
+
+Next, we need new code in `draw` to copy from the chrome and tab
+surfaces to the root surface. Moreover, we need to translate the
+`tab_surface` down by `CHROME_PX` and up by `scroll`, and clips it to
+only the area of the window that doesn't overlap the browser chrome:
 
 ``` {.python}
 class Browser:
     def draw(self):
-        root_canvas = self.root_surface.getCanvas()
-        root_canvas.clear(skia.ColorWHITE)
+        # ...
         
-        root_canvas.save()
-        root_canvas.clipRect(skia.Rect.MakeLTRB(
-            0, CHROME_PX, WIDTH, HEIGHT))
-        root_canvas.translate(
-            0, CHROME_PX- self.tabs[self.active_tab].scroll)
-        self.tab_surface.draw(root_canvas, 0, 0)
-        root_canvas.restore()
+        tab_rect = skia.Rect.MakeLTRB(0, CHROME_PX, WIDTH, HEIGHT)
+        tab_offset = CHROME_PX - self.tabs[self.active_tab].scroll
+        canvas.save()
+        canvas.clipRect(tab_rect)
+        canvas.translate(0, tab_offset)
+        self.tab_surface.draw(canvas, 0, 0)
+        canvas.restore()
 
-        root_canvas.save()
-        root_canvas.clipRect(skia.Rect.MakeLTRB(
-            0, 0, WIDTH, CHROME_PX))
-        self.chrome_surface.draw(root_canvas, 0, 0)
-        root_canvas.restore()
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
+        canvas.save()
+        canvas.clipRect(chrome_rect)
+        self.chrome_surface.draw(canvas, 0, 0)
+        canvas.restore()
 
         # ...
 ```
 
-Next up are the changes to introduce `raster`; this is mainly a refactoring
-and rename of the method previously called `draw`. The only
-new tricky part is the need to make sure that `tab_surface` is large enough
-to contain all of the web page contents.[^really-big-surface]
-
-[^really-big-surface]: For a very big web page, this means `tab_surface` can be
-much larger than the size of the SDL window, and therefore take up a very large
-amount of memory. We'll ignore that, but a real browser would not. They
-only paint and raster surface content up to a certain distance from
-the visible region. and re-paint/raster as necessary as surfaces move around.
+Finally, everywhere in `Browser` that we call `draw`, we now need to
+call either `raster_page` or `raster_chrome` first. For example, in
+`handle_click`, we do this:
 
 ``` {.python}
 class Browser:
-    def raster(self):
-        active_tab = self.tabs[self.active_tab]
-
-        # Re-allocate the tab surface if its size changes.
-        tab_bounds = active_tab.display_list_bounds()
-        assert tab_bounds.top() >= 0
-        assert tab_bounds.left() >= 0
-        if not self.tab_surface or \
-                tab_bounds.bottom() != self.tab_surface.height() or \
-                tab_bounds.right() != self.tab_surface.width():
-            self.tab_surface = skia.Surface(
-                tab_bounds.right(),
-                tab_bounds.bottom())
-
-        tab_canvas = self.tab_surface.getCanvas()
-        tab_canvas.clear(skia.ColorWHITE)
-        active_tab.raster(tab_canvas)
-
-        self.raster_browser_chrome()
-
-    def raster_browser_chrome(self):
-        canvas = self.chrome_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-    
-        # Draw the tabs UI:
-        # ...
-```
-
-Don't forget to update all the places that currently call `draw` to also call
-`raster`, for example `handle_down`:
-
-``` {.python}
-class Browser:
-    def handle_down(self):
-        self.tabs[self.active_tab].scrolldown()
-        self.raster()
+    def handle_click(self, e):
+        if e.y < CHROME_PX:
+            # ...
+            self.raster_chrome()
+        else:
+            # ...
+            self.raster_tab()
         self.draw()
 ```
 
-On `Tab`, there are two changes other than renaming `draw` to `raster`: first,
-we no longer need to pass around the scroll offset to the `execute`
-methods, or account for `CHROME_PX`:[^why-no-scroll]
+Notice how we don't redraw the chrome when the only the tab changes,
+and vice versa.
 
-[^why-no-scroll]: Previously, we had baked the scroll offset into the display
-list, which is why it had to be re-painted on every scroll. Now we only need
-to re-run draw, and the code here is simpler than before!
+We also have some related changes in `Tab`. First, we no longer need
+to pass around the scroll offset to the `execute` methods, or account
+for `CHROME_PX`, because we always draw the whole tab to the tab
+surface:
 
 ``` {.python}
 class Tab:
@@ -1623,35 +1617,13 @@ class Tab:
             draw_line(canvas, x, y, x, y + obj.height)
 ```
 
-Likewise, each of the display list commands should have the `scroll` parameter
-removed from their `execute` methods. Here's `DrawRect`, for example:
+Likewise, we can remove the `scroll` parameter from each drawing
+command's `execute` method.
 
-``` {.python}
-class DrawRect:
-    def execute(self, canvas):
-        draw_rect(canvas,
-            self.left, self.top,
-            self.right, self.bottom,
-            fill=self.color, width=0)
-```
-
-The second is the new `display_list_bounds` method,
-which is used to determine the size of `tab_surface`:
-
-``` {.python}
-class Tab:
-    def display_list_bounds(self):
-        bounds = skia.Rect()
-        for cmd in self.display_list:
-            bounds.join(cmd.rect)
-        return bounds.roundOut()
-```
-
-As far as implementing the concept of browser-surface composited scrolling goes,
-we're done. But to get the desired performance in reality, we'd need to avoid
-`paint` and `raster` when they aren't needed, and also run on a second CPU
-thread. That isn't too hard either, but let's leave that for exercises and the
-next chapter.
+Our browser now uses composited scrolling, making scrolling faster and
+smoother. There's more we can do for performance---ideally we'd avoid
+all duplicate or unnecessary operations---but let's leave that for the
+next few chapters.
 
 ::: {.further}
 In terms of conceptual phases of execution, our browser is now very close to

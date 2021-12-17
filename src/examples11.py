@@ -23,9 +23,9 @@ class Pixel:
         return self
 
     def destination_in(self, source):
-        self.r = self.r * self.a * source.a
-        self.g = self.g * self.a * source.a
-        self.b = self.b * self.a * source.a
+        self.r = self.r * self.a * source.a / self.a
+        self.g = self.g * self.a * source.a / self.a
+        self.b = self.b * self.a * source.a / self.a
         self.a = self.a * source.a
         return self
 

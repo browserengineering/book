@@ -77,8 +77,8 @@ def linespace(font):
     return metrics.fDescent - metrics.fAscent
 
 class SaveLayer:
-    def __init__(self, sk_paint, cmds, should_save=True,
-        should_paint_cmds=True):
+    def __init__(self, sk_paint, cmds,
+            should_save=True, should_paint_cmds=True):
         self.should_save = should_save
         self.should_paint_cmds = should_paint_cmds
         self.sk_paint = sk_paint
@@ -100,12 +100,12 @@ class DrawRRect:
     def __init__(self, rect, radius, color):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.color = color_to_sk_color(color)
+        self.color = color
 
     def execute(self, canvas):
-
+        sk_color = color_to_sk_color(self.color)
         canvas.drawRRect(self.rrect,
-            paint=skia.Paint(Color=self.color))
+            paint=skia.Paint(Color=sk_color))
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -147,23 +147,14 @@ class DrawRect:
 class ClipRRect:
     def __init__(self, rect, radius, cmds, should_clip=True):
         self.rect = rect
-        self.radius = radius
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.cmds = cmds
         self.should_clip = should_clip
 
     def execute(self, canvas):
         if self.should_clip:
             canvas.save()
-            if self.radius > 0.0:
-                rect = canvas.clipRRect(skia.RRect.MakeRectXY(
-                    skia.Rect.MakeLTRB(
-                        self.rect.left(),
-                        self.rect.top(),
-                        self.rect.right(),
-                        self.rect.bottom()),
-                    self.radius, self.radius))
-            else:
-                rect = canvas.clipRect(self.rect)
+            canvas.clipRRect(self.rrect)
 
         for cmd in self.cmds:
             cmd.execute(canvas)
@@ -538,9 +529,10 @@ def paint_visual_effects(node, cmds, rect):
 
     return [
         SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
-            ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)
-            ],
-            should_save=needs_blend_isolation),
+            ClipRRect(rect, clip_radius,
+                cmds,
+            should_clip=needs_clip),
+        ], should_save=needs_blend_isolation),
     ]
 
 SCROLL_STEP = 100
@@ -740,7 +732,7 @@ class Browser:
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
-        self.raster()
+        self.raster_tab()
         self.draw()
 
     def handle_click(self, e):
@@ -755,28 +747,29 @@ class Browser:
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
+            self.raster_chrome()
         else:
             self.focus = "content"
             self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
-        self.raster()
+            self.raster_tab()
         self.draw()
 
     def handle_key(self, char):
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += char
-            self.raster()
+            self.raster_chrome()
             self.draw()
         elif self.focus == "content":
             self.tabs[self.active_tab].keypress(char)
-            self.raster()
+            self.raster_tab()
             self.draw()
 
     def handle_enter(self):
         if self.focus == "address bar":
             self.tabs[self.active_tab].load(self.address_bar)
             self.focus = None
-            self.raster()
+            self.raster_tab()
             self.draw()
 
     def load(self, url):
@@ -784,30 +777,23 @@ class Browser:
         new_tab.load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)
-        self.raster()
+        self.raster_chrome()
+        self.raster_tab()
         self.draw()
 
-    def raster(self):
+    def raster_tab(self):
         active_tab = self.tabs[self.active_tab]
+        tab_height = active_tab.document.height
 
-        # Re-allocate the tab surface if its size changes.
-        tab_bounds = active_tab.display_list_bounds()
-        assert tab_bounds.top() >= 0
-        assert tab_bounds.left() >= 0
         if not self.tab_surface or \
-                tab_bounds.bottom() != self.tab_surface.height() or \
-                tab_bounds.right() != self.tab_surface.width():
-            self.tab_surface = skia.Surface(
-                tab_bounds.right(),
-                tab_bounds.bottom())
+                tab_height != self.tab_surface.height():
+            self.tab_surface = skia.Surface(WIDTH, tab_height)
 
-        tab_canvas = self.tab_surface.getCanvas()
-        tab_canvas.clear(skia.ColorWHITE)
-        active_tab.raster(tab_canvas)
+        canvas = self.tab_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+        active_tab.raster(canvas)
 
-        self.raster_browser_chrome()
-
-    def raster_browser_chrome(self):
+    def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
     
@@ -847,22 +833,22 @@ class Browser:
         canvas.drawPath(path, paint)
 
     def draw(self):
-        root_canvas = self.root_surface.getCanvas()
-        root_canvas.clear(skia.ColorWHITE)
+        canvas = self.root_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
         
-        root_canvas.save()
-        root_canvas.clipRect(skia.Rect.MakeLTRB(
-            0, CHROME_PX, WIDTH, HEIGHT))
-        root_canvas.translate(
-            0, CHROME_PX- self.tabs[self.active_tab].scroll)
-        self.tab_surface.draw(root_canvas, 0, 0)
-        root_canvas.restore()
+        tab_rect = skia.Rect.MakeLTRB(0, CHROME_PX, WIDTH, HEIGHT)
+        tab_offset = CHROME_PX - self.tabs[self.active_tab].scroll
+        canvas.save()
+        canvas.clipRect(tab_rect)
+        canvas.translate(0, tab_offset)
+        self.tab_surface.draw(canvas, 0, 0)
+        canvas.restore()
 
-        root_canvas.save()
-        root_canvas.clipRect(skia.Rect.MakeLTRB(
-            0, 0, WIDTH, CHROME_PX))
-        self.chrome_surface.draw(root_canvas, 0, 0)
-        root_canvas.restore()
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
+        canvas.save()
+        canvas.clipRect(chrome_rect)
+        self.chrome_surface.draw(canvas, 0, 0)
+        canvas.restore()
 
         # This makes an image interface to the Skia surface, but
         # doesn't actually copy anything yet.
