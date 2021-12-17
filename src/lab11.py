@@ -708,17 +708,6 @@ class Tab:
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
-if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-    RED_MASK = 0xff000000
-    GREEN_MASK = 0x00ff0000
-    BLUE_MASK = 0x0000ff00
-    ALPHA_MASK = 0x000000ff
-else:
-    RED_MASK = 0x000000ff
-    GREEN_MASK = 0x0000ff00
-    BLUE_MASK = 0x00ff0000
-    ALPHA_MASK = 0xff000000
-
 class Browser:
     def __init__(self):
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -736,6 +725,17 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
+
+        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+            RED_MASK = 0xff000000
+            GREEN_MASK = 0x00ff0000
+            BLUE_MASK = 0x0000ff00
+            ALPHA_MASK = 0x000000ff
+        else:
+            RED_MASK = 0x000000ff
+            GREEN_MASK = 0x0000ff00
+            BLUE_MASK = 0x00ff0000
+            ALPHA_MASK = 0xff000000
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
@@ -867,7 +867,7 @@ class Browser:
         pitch = 4 * WIDTH # Bytes per row
         sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
             skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK)
+            self.RED_MASK, self.GREEN_MASK, self.BLUE_MASK, self.ALPHA_MASK)
 
         rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
         window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
