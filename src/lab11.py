@@ -631,12 +631,6 @@ class Tab:
             y = obj.y
             draw_line(canvas, x, y, x, y + obj.height)
 
-    def display_list_bounds(self):
-        bounds = skia.Rect()
-        for cmd in self.display_list:
-            bounds.join(cmd.rect)
-        return bounds.roundOut()
-
     def scrolldown(self):
         max_y = self.document.height - HEIGHT
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
@@ -783,7 +777,7 @@ class Browser:
 
     def raster_tab(self):
         active_tab = self.tabs[self.active_tab]
-        tab_height = active_tab.document.height
+        tab_height = math.ceil(active_tab.document.height)
 
         if not self.tab_surface or \
                 tab_height != self.tab_surface.height():

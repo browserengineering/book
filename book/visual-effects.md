@@ -1588,10 +1588,12 @@ would only paint and raster surface content up to a certain distance
 from the visible region, and re-paint/raster as the user scrolls.
 
 ``` {.python}
+import math
+
 class Browser:
     def raster_tab(self):
         active_tab = self.tabs[self.active_tab]
-        tab_height = active_tab.document.height
+        tab_height = math.ceil(active_tab.document.height)
 
         if not self.tab_surface or \
                 tab_height != self.tab_surface.height():
@@ -1600,8 +1602,11 @@ class Browser:
         # ...
 ```
 
-Note that we need to recreate the tab surface if the page's height
-changes.
+The way we compute the page bounds here, based on the layout tree's
+height, would be incorrect if page elements could stick out below (or
+to the right) of their parents---but our browser doesn't support any
+features like that. Note that we need to recreate the tab surface if
+the page's height changes.
 
 Next, we need new code in `draw` to copy from the chrome and tab
 surfaces to the root surface. Moreover, we need to translate the
