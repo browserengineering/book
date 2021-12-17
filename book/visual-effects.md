@@ -331,7 +331,7 @@ Let's also add a `rect` field to each drawing command, replacing its
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
         # ...
-        self.rect = skia.Rect.MakeLTRB(x1, y1, right, bottom)
+        self.rect = skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom)
 
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
