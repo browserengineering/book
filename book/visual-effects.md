@@ -1223,7 +1223,9 @@ the height of `div` until the rounded corners no longer clip out the
 text. This is because `overflow:hidden` has different rules for sizing
 boxes, having to do with the possibility of the child content being
 scrolled---`hidden` means "clipped, but might be scrolled by
-JavaScript".
+JavaScript". If the blue box had not been taller, than it would have
+been impossible to see the text, which is really bad if it's intended
+that there should be a way to scroll it on-screen.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
