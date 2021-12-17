@@ -159,8 +159,8 @@ But transparency multiplies.
 And of course, a fully transparent source color yields a full-zero result.
 
     >>> green_full_transparent = examples11.Pixel(0.0, 1.0, 0.0, 0.0)
-    >>> red_opaque.copy().destination_in(green_full_transparent)
-    Pixel(0.0, 0.0, 0.0, 0.0)
+    >>> red_opaque.copy().destination_in(green_full_transparent).a
+    0.0
 
 Now for blending. Let's start by testing the `apply_blend` function, which
 takes as input a source and backdrop color channel, and a blend mode, It applies

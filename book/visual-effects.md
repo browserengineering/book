@@ -7,7 +7,7 @@ next: rendering-architecture
 
 Right now our browser can only draw colored rectangles and
 text---pretty boring! Real browsers support all kinds of *visual
-effects* that changes how pixels and colors blend together. Let's
+effects* that change how pixels and colors blend together. Let's
 implement these effects using the Skia graphics library, and also see
 a bit of how Skia is implemented under the hood. That'll also allow us
 to use surfaces for *browser compositing* to accelerate scrolling.
@@ -232,8 +232,8 @@ defined. This loop replaces all of the `bind` calls in the `Browser`
 constructor, which you can now remove.
 
 ::: {.further}
-SDL is most popular for making games. A selection of books about
-game programming and SDL are listed [here](https://wiki.libsdl.org/Books).
+SDL is most popular for making games. Their site lists [a selection of
+books](https://wiki.libsdl.org/Books) about game programming in SDL.
 :::
 
 Skia provides the canvas
@@ -420,23 +420,22 @@ Tkinter to SDL and Skia relate to fonts and text.
 
 ::: {.further}
 Implementing high-quality raster libraries is very interesting in its own
-right. These days, it's especially important to leverage GPUs when
-they're available, and browsers often push the envelope. Browser teams
-typically include raster library experts: Skia for Chromium and [Core
-Graphics][core-graphics] for WebKit, for example. Both of these
-libraries are used outside of the browser, too: Core Graphics in iOS
-and macOS, and Skia in Android.
-
-If you're looking for another book on how these libraries are
-implemented, check out [Real-Time Rendering][rtr-book]. There is also
-[Computer Graphics: Principles and Practice][classic], which
-incidentally I remember buying[^chris-here] back the days of my youth
-(1992 or so). At the time I didn't get much further than rastering
-lines and polygons (in assembly language!). These days you can do the
-same and more with Skia and a few lines of Python.
+right---check out [Real-Time Rendering][rtr-book] for more.[^cgpp]
+These days, it's especially important to leverage GPUs when they're
+available, and browsers often push the envelope. Browser teams
+typically include or work closely with raster library experts: Skia
+for Chromium and [Core Graphics][core-graphics] for WebKit, for
+example. Both of these libraries are used outside of the browser, too:
+Core Graphics in iOS and macOS, and Skia in Android.
 :::
 
-[^chris-here]: This is Chris speaking.
+[^cgpp]: There is also [Computer Graphics: Principles and
+Practice][classic], which incidentally I remember buying---this is
+Chris speaking---back the days of my youth (1992 or so). At the time I
+didn't get much further than rastering lines and polygons (in assembly
+language!). These days you can do the same and more with Skia and a
+few lines of Python.
+
 [core-graphics]: https://developer.apple.com/documentation/coregraphics
 [rtr-book]: https://www.realtimerendering.com/
 [classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
@@ -512,11 +511,14 @@ but you can use descent minus ascent instead.
 
 You should now be able to run the browser again. It should look and
 behave just as it did in previous chapters, and it'll probably feel
-faster, because Skia and SDL are faster than Tkinter.
+faster, because Skia and SDL are faster than Tkinter. This is one
+advantage of Skia: since it is also used by the Chromium browser, we
+know it has fast, built-in support for all of the shapes we might
+need.
 
-Let's reward ourselves for the big refactor with a simple feature that Skia
-enables: rounded corners of a rectangle via the `border-radius` CSS property,
-like this:
+Let's reward ourselves for the big refactor with a simple feature that
+Skia enables: rounded corners of a rectangle via the `border-radius`
+CSS property, like this:
 
     <div style="border-radius: 10px; background: lightblue">
         This is some example text.
@@ -563,9 +565,6 @@ class BlockLayout:
 ```
 
 Similar changes should be made to `InputLayout` and `InlineLayout`.
-This is one advantage of Skia: since it is also used by the Chromium
-browser, we know it has fast, built-in support for all of the shapes
-we might need.
 
 ::: {.further}
 [Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization) is yet
@@ -580,7 +579,7 @@ It's likely that eventually, all screens will be high-density enough to retire
 these techniques.
 :::
 
-Pixels, Color, and Raster
+Pixels, color, and raster
 =========================
 
 Skia, like the Tkinter canvas we've been using until now, is a
@@ -651,14 +650,15 @@ biology, and psychology.
 [tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
 
 ::: {.further}
-The [`<canvas>`][canvas] HTML element provides a similar API to JavaScript. Combined
-with [WebGL][webgl], it's possible to implement basically all of SDL and Skia
-in JavaScript. Alternatively, it's possible to [compile Skia][canvaskit] to
-[WebAssembly][webassembly] to do the same.
+The [`<canvas>`][canvas] HTML element provides a similar JavaScript
+API that is similar to Skia and Tkinter. Combined with [WebGL][webgl],
+it's possible to implement basically all of SDL and Skia in
+JavaScript. Alternatively, it's possible to [compile Skia][canvaskit]
+to [WebAssembly][webassembly] to do the same.
 :::
 
-Blending and Stacking Contexts
-==============================
+Blending and stacking
+=====================
 
 Drawing shapes quickly is already a challenge, but with multiple
 shapes there's an additional question: what color should the pixel be
@@ -689,7 +689,7 @@ is gray while the background is yellow-orange. That's due to blending:
 the text and the background are both partially transparent and let
 through some of the underlying white:
 
-<div style="opacity: 0.5; background: orange; color: black; font-size: 50px; padding: 15px; text-align: center;flex:1;">Test</div>
+<div style="opacity: 0.5; background: orange; color: black; font-size: 50px; padding: 15px; text-align: center;flex:1;">Text</div>
 
 But importantly, the text isn't orange-gray: even though the text is
 partially transparent, none of the orange shines through. That's
@@ -746,7 +746,7 @@ complicated to handle in real browsers.
 
 [containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-Compositing and Alpha
+Compositing and alpha
 =====================
 
 [canvas]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
@@ -758,7 +758,7 @@ Color mixing happens when multiple page elements overlap. The easiest
 way that happens in our browser is child elements overlapping their
 parents, like this:[^transforms-etc]
 
-[^transforms-etc]: There are way more ways elements can overlap in a
+[^transforms-etc]: There are many more ways elements can overlap in a
 real browser: the `transform` property, `position`ed elements,
 negative margins, and so many more. But color mixing works the same
 way each time.
@@ -897,7 +897,7 @@ content---which makes sense, because first we need to draw the
 commands to a surface, and *then* apply transparency to it when
 blending into the parent.
 
-Compositing Pixels
+Compositing pixels
 ==================
 
 Now let's pause and explore how opacity actually works under the hood.
@@ -962,6 +962,7 @@ does not use premultiplied representations, and the code below doesn't either.
 class Pixel:
     def source_over(self, source):
         self.a = 1 - (1 - source.a) * (1 - self.a)
+        if self.a == 0: return self
         self.r = \
             (self.r * (1 - source.a) * self.a + \
                 source.r * source.a) / self.a
@@ -1162,7 +1163,7 @@ This test text exists here to ensure that the "div" element is
 large enough that the border radius is obvious.
 </div>
 
-Look at how the letters near the corner are cut off to maintain a
+Observe that the letters near the corner are cut off to maintain a
 sharp rounded edge. (Uhh... actually, at the time of this writing,
 Safari does not support `overflow: clip`, so if you're using Safari
 you won't see this effect.[^hidden]) That's clipping; without the
@@ -1195,10 +1196,11 @@ fits perfectly. In code, destination-in looks like this:
 ``` {.python file=examples}
 class Pixel:
     def destination_in(self, source):
+        self.a = self.a * source.a
+        if self.a == 0: return self
         self.r = self.r * self.a * source.a / self.a
         self.g = self.g * self.a * source.a / self.a
         self.b = self.b * self.a * source.a / self.a
-        self.a = self.a * source.a
 ```
 
 Now, in `paint_visual_effects`, we need to create a new layer, draw
@@ -1231,7 +1233,7 @@ serve as the mask, and uses destination-in blending to clip the
 element contents. Here I chose to draw the rounded rectangle in white,
 but the color doesn't matter as long as it's opaque. On the other
 hand, if there's no clipping, I don't round the corners of the mask,
-which means nothing is clipped off.
+which means nothing is clipped out.
 
 Notice how similar this masking technique is to the physical analogy
 with scissors described earlier, with the two layers playing the role
@@ -1241,7 +1243,7 @@ of the scissors. This implementation technique for clipping is called
 complex mask shapes, like text, bitmap images, or anything else you
 can imagine.
 
-Optimizing Surface Use
+Optimizing surface use
 ======================
 
 Our browser now works correctly, but uses way too many surfaces. For
@@ -1307,7 +1309,15 @@ def paint_visual_effects(node, cmds, rect):
 Now simple web pages always use a single surface---a huge saving in
 memory. But we can save even more surfaces. For example, what if there
 is a blend mode and opacity at the same time: can we use the same
-surface? Indeed, yes you can! That's also pretty simple:
+surface? Indeed, yes you can! That's also pretty simple:[^filters]
+
+[^filters]: This works for opacity, but not for filters that "move
+pixels" such as [blur][mdn-blur]. Such a filter needs to be applied
+before clipping, not when blending into the parent surface. Otherwise,
+the edge of the blur will not be sharp.
+
+[mdn-blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur()
+
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
@@ -1359,18 +1369,22 @@ you're curious there are many online resources describing ways to
 do this.
 
 ``` {.example}
-    canvas.save()
-    canvas.clipRRect(rounded_rect)
-    # Draw commands that should be clipped...
-    canvas.restore()
+# Draw commands that should not be clipped.
+canvas.save()
+canvas.clipRRect(rounded_rect)
+# Draw commands that should be clipped.
+canvas.restore()
+# Draw commands that should not be clipped.
 ```
 
 If you've noticed that `restore` is used for both saving state and
 pushing surfaces, that's because Skia has a combined stack of surfaces
-and canvas. But unlike `saveLayer`, `save` never creates a new
-surface. Let's wrap this pattern into a `ClipRRect` drawing command,
-which like `SaveLayer` takes a list of subcommands and a `should_clip`
-parameter indicating whether the clip is necessary:[^save-clip]
+and canvas states. Unlike `saveLayer`, however, `save` never creates a
+new surface.
+
+Let's wrap this pattern into a `ClipRRect` drawing command, which like
+`SaveLayer` takes a list of subcommands and a `should_clip` parameter
+indicating whether the clip is necessary:[^save-clip]
 
 [^save-clip]: If you're doing two clips at once, or a clip and a
 transform, or some other more complex setup that would benefit from
@@ -1412,6 +1426,11 @@ def paint_visual_effects(node, cmds, rect):
         ], should_save=needs_blend_isolation),
     ]
 ```
+
+Of course, `clipRRect` only applies for rounded rectangles, while
+masking is a general technique that can be used to implement all
+sorts of clips and masks (like CSS's `clip-path` and `mask`), so a
+real browser will typically have both code paths.
 
 So now, each element uses at most one surface, and even then only if
 it has opacity or a non-default blend mode. Everything else should
@@ -1680,7 +1699,7 @@ text and boxes but also:
 - User-configurable blending modes via `mix-blend-mode`
 - Rounded rectangle clipping via destination-in blending or direct clipping
 - Optimizations to avoid surfaces when possible
-- Surfaces for scrolling and animations
+- Browser compositing with extra surfaces for faster scrolling
 
 Besides the new features, we've upgraded from Tkinter to SDL and Skia,
 which makes our browser faster and more responsive, and also sets a
@@ -1739,7 +1758,7 @@ radii into account.
 single surface, and then shows parts of that surface as the user
 scrolls. That means a very long web page (like this one!) can create a
 large surface, thereby using a lot of memory. Modify the browser so
-that the size of that surface is limited, say to `4 * HEIGHT` rows.
+that the height of that surface is limited, say to `4 * HEIGHT` pixels.
 The (limited) region of the page drawn to this surface is called the
 interest region; you'll need to track what part of the interest region
 is being shown on the screen, and re-raster the interest region when

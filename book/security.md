@@ -536,7 +536,7 @@ are not accessible from JavaScript.
 
 
 
-Same-origin Policy
+Same-origin policy
 ==================
 
 However, new capabilities lead to new responsibilities. HTTP requests
@@ -750,7 +750,7 @@ header][x-frame-options].
 [csp-frame-ancestors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors
 
 
-SameSite Cookies
+SameSite cookies
 ================
 
 For form submissions, that fail-safe solution is `SameSite` cookies.
