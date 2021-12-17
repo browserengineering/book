@@ -1090,10 +1090,25 @@ Parent
 Here, when blue overlaps with orange, we see pink: blue has (red,
 green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
 0)`, so with "difference" blending the resulting pixel will be `(1,
-0.65, 1)`, which is pink.
+0.65, 1)`, which is pink. On a pixel level, what's happening is
+something like this:
 
-Skia supports the [multiply][mbm-mult] and [difference][mbm-diff]
-blend modes natively:
+``` {.python file=examples}
+for (x, y) in destination.coordinates():
+    source[x, y].alphaf(opacity)
+    source[x, y].difference(destination[x, y])
+    destination[x, y].source_over(source[x, y])
+```
+
+This looks weird, but conceptually it blends the destination into the
+source (which ignores alpha) and then draws the source over the
+destination (with alpha considered). In some sense, blending thus
+[happens twice][blending-def].
+
+[blending-def]: https://drafts.fxtf.org/compositing-1/#blending
+
+Skia supports the [multiply][mbm-mult]
+and [difference][mbm-diff] blend modes natively:
 
 [mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
 [mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
