@@ -726,7 +726,6 @@ class Browser:
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
-        self.raster_tab()
         self.draw()
 
     def handle_click(self, e):

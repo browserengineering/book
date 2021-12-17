@@ -1652,7 +1652,9 @@ class Browser:
 ```
 
 Notice how we don't redraw the chrome when the only the tab changes,
-and vice versa.
+and vice versa. In `handle_down`, which scrolls the page, we don't
+need to call `raster_tab` at all, since scrolling doesn't change the
+page.
 
 We also have some related changes in `Tab`. First, we no longer need
 to pass around the scroll offset to the `execute` methods, or account
