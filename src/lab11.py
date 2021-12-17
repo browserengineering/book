@@ -40,7 +40,8 @@ def get_font(size, weight, style):
         else:
             skia_style = skia.FontStyle.kUpright_Slant
         skia_width = skia.FontStyle.kNormal_Width
-        style_info = skia.FontStyle(skia_weight, skia_width, skia_style)
+        style_info = \
+            skia.FontStyle(skia_weight, skia_width, skia_style)
         font = skia.Typeface('Arial', style_info)
         FONTS[key] = font
     return skia.Font(FONTS[key], size)
