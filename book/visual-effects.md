@@ -62,7 +62,7 @@ SDL were installed correctly. Note that the `ctypes` module comes
 standard in Python; it is used to convert between Python and C types.
 
 ::: {.further}
-The [`<canvas>`][canvas] HTML element provides a similar JavaScript
+The [`<canvas>`][canvas] HTML element provides a JavaScript
 API that is similar to Skia and Tkinter. Combined with [WebGL][webgl],
 it's possible to implement basically all of SDL and Skia in
 JavaScript. Alternatively, it's possible to [compile Skia][canvaskit]
@@ -1692,7 +1692,16 @@ class Tab:
 ```
 
 Likewise, we can remove the `scroll` parameter from each drawing
-command's `execute` method.
+command's `execute` method:
+
+``` {.python}
+ class DrawRect:
+     def execute(self, canvas):
+         draw_rect(canvas,
+             self.left, self.top,
+             self.right, self.bottom,
+             fill=self.color, width=0)
+ ```
 
 Our browser now uses composited scrolling, making scrolling faster and
 smoother. In fact, in terms of conceptual phases of execution, our
