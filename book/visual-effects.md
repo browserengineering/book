@@ -1520,7 +1520,6 @@ can be stored on the GPU.
 :::
 
 [^near]: For example, tiles that just scrolled off-screen.
-[gpu-surface]: 
 
 Browser compositing
 ===================
