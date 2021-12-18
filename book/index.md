@@ -70,7 +70,7 @@ Part 4: Modern Browsers
 =======================
 
 (@) [Adding Visual Effects](visual-effects.md)\
-    Filters and transformations 
+    Blending, Clipping and Compositing
 (@) [Scheduling and Threading](scheduling-and-threading.md)\
     The Rendering Event Loop and Pipeline
 (@) [Saving Partial Layouts](reflow.md)\
