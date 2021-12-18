@@ -65,7 +65,7 @@ standard in Python; it is used to convert between Python and C types.
 The [`<canvas>`][canvas] HTML element provides a JavaScript
 API that is similar to Skia and Tkinter. Combined with [WebGL][webgl],
 it's possible to implement basically all of SDL and Skia in
-JavaScript. Alternatively, it's possible to [compile Skia][canvaskit]
+JavaScript. Alternatively, one can [compile Skia][canvaskit]
 to [WebAssembly][webassembly] to do the same.
 :::
 
