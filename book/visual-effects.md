@@ -1695,13 +1695,13 @@ Likewise, we can remove the `scroll` parameter from each drawing
 command's `execute` method:
 
 ``` {.python}
- class DrawRect:
-     def execute(self, canvas):
-         draw_rect(canvas,
-             self.left, self.top,
-             self.right, self.bottom,
-             fill=self.color, width=0)
- ```
+class DrawRect:
+    def execute(self, canvas):
+        draw_rect(canvas,
+            self.left, self.top,
+            self.right, self.bottom,
+            fill=self.color, width=0)
+```
 
 Our browser now uses composited scrolling, making scrolling faster and
 smoother. In fact, in terms of conceptual phases of execution, our
