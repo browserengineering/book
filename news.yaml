@@ -4,6 +4,14 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Adding Visual Effects
+    link: https://browser.engineering/visual-effects.html
+    pubDate: Fri, 17 Dec 2021, 17:45:00 -0700
+    description:
+      Today we’re releasing a chapter on Adding Visual Effects. This
+      first chapter on Modern Browsers swaps in modern libraries and
+      implements some recent web features like blending, stacking
+      contexts, surfaces, and clipping.
   - title: Keeping Data Private
     link: https://browser.engineering/security.html
     pubDate: Fri, 15 Oct 2021, 16:15:00 -0600
