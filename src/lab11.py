@@ -113,7 +113,8 @@ class DrawText:
         self.top = y1
         self.right = x1 + font.measureText(text)
         self.bottom = y1 - font.getMetrics().fAscent + font.getMetrics().fDescent
-        self.rect = skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom)
+        self.rect = \
+            skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom)
         self.font = font
         self.text = text
         self.color = color

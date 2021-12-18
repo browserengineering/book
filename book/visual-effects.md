@@ -343,7 +343,8 @@ Let's also add a `rect` field to each drawing command, replacing its
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
         # ...
-        self.rect = skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom)
+        self.rect = \
+            skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom)
 
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
@@ -1324,7 +1325,7 @@ example, for a single, no-effects-needed div with some text content,
 there are currently 18 surfaces allocated in the display list. If
 there's no blending going on, we should only need one!
 
-Let's review all the surfaces that our code can create an element:
+Let's review all the surfaces that our code can create for an element:
 
 - The top-level surface is used to apply *blend modes*. Since it's the
 top-level surface, it also *isolates* the element from other parts of
@@ -1357,7 +1358,7 @@ class SaveLayer:
             canvas.restore()
 ```
 
-Now turn off those parameters if an effect isn't applied:
+Turn off those parameters if an effect isn't applied:
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
@@ -1421,14 +1422,14 @@ destination-in surface. First, most of the time, it allows Skia to
 avoid making a surface for the mask.[^shader-rounded] It also allows
 Skia to skip draw operations that don't intersect the mask, or
 dynamically draw only the parts of operations that intersect it. It's
-basically the optimization we implemented for scrolling [in Chapter
-2][graphics.md#faster-rendering].[^no-other-shapes]
+basically the optimization we implemented for scrolling
+[in Chapter 2](graphics.md#faster-rendering).[^no-other-shapes]
 
 [^shader-rounded]: Typically in a browser this means code in GPU
 shaders. GPU programs are out of scope for this book, but if you're
 curious there are many online resources describing ways to do this.
 
-[^no-other-shapes] This kind of code is complex for Skia to implement,
+[^no-other-shapes]: This kind of code is complex for Skia to implement,
 so it only makes sense to do it for common patterns, like rounded
 rectangles. This is why Skia only supports optimized clips for a few
 common shapes.
@@ -1514,11 +1515,11 @@ raster surfaces and their own *x* and *y* offset to the page. Whenever
 content that intersects a tile changes its display list, the tile is
 re-rastered. Tiles that are not on or "near"[^near] the screen are not
 rastered at all. This all happens on the GPU, since surfaces (Skia
-ones [in particular][gpu-surface]) can be stored on the GPU.
+ones [in particular](https://kyamagu.github.io/skia-python/reference/skia.Surface.html))
+can be stored on the GPU.
 :::
 
 [^near]: For example, tiles that just scrolled off-screen.
-[gpu-surface]: https://kyamagu.github.io/skia-python/reference/skia.Surface.html
 
 Browser compositing
 ===================
