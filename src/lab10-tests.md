@@ -50,6 +50,14 @@ Cookie values can be updated:
     >>> lab10.COOKIE_JAR["test.test"]
     ('foo=baz', {})
 
+The trailing slash is also optional:
+
+    >>> url_no_slash = 'http://test.test'
+    >>> test.socket.respond(url_no_slash + '/', b"HTTP/1.0 200 OK\r\n\r\n\r\n")
+    >>> browser.load(url_no_slash)
+    >>> test.socket.last_request(url_no_slash + '/')
+    b'GET / HTTP/1.0\r\nHost: test.test\r\nCookie: foo=baz\r\n\r\n'
+
 Testing XMLHttpRequest
 ======================
 
