@@ -592,7 +592,7 @@ class JSContext:
         return elt.attributes.get(attr, None)
 
     def innerHTML_set(self, handle, s):
-        print('innerhtml_set')
+#        print('innerhtml_set')
         doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
@@ -622,6 +622,8 @@ CHROME_PX = 100
 def set_timeout(func, sec):     
     t = None
     def func_wrapper():
+        print(threading.current_thread())
+        print(threading.main_thread())
         func()
         t.cancel()
     t = threading.Timer(sec, func_wrapper)
@@ -705,7 +707,7 @@ class Tab:
         self.set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
-        print('set_needs_animation_frame')
+#        print('set_needs_animation_frame')
         def callback():
             self.display_scheduled = False
             self.run_animation_frame()
@@ -720,7 +722,7 @@ class Tab:
         self.set_needs_animation_frame()
 
     def run_animation_frame(self):
-        print("run_animation_frame")
+#        print("run_animation_frame")
         self.needs_animation_frame = False
 
         if (self.needs_raf_callbacks):
@@ -941,16 +943,11 @@ class Browser:
         self.needs_quit = False
 
     def commit(self):
+        print("commit")
         self.needs_draw = True
         self.raster_chrome()
         self.raster_tab()
         self.draw()
-
-    def start(self):
-        pass
-#        self.main_thread_runner = MainThreadRunner(self)
-#        self.main_thread_runner.start()
-#        sdl2.SDL_AddTimer(1, self.maybe_draw)
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
@@ -1095,7 +1092,6 @@ if __name__ == "__main__":
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.load(sys.argv[1])
-    browser.start()
 
     event = sdl2.SDL_Event()
     while True:
