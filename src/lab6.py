@@ -23,7 +23,7 @@ def resolve_url(url, current):
         return scheme + "://" + host + url
     else:
         scheme, hostpath = current.split("://", 1)
-        if hostpath.find("/") < 0:
+        if "/" not in hostpath:
             current = current + "/"
         dir, _ = current.rsplit("/", 1)
         while url.startswith("../"):
