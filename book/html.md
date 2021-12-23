@@ -18,7 +18,11 @@ A tree of nodes
 The HTML tree[^dom] has one node for each open and close tag pair and for
 each span of text.[^1] So for our browser to be a tree, tokens need to
 evolve into nodes. That means adding a list of children and a parent
-pointer to each one. Here's the new `Text` class:
+pointer to each one. Here's the new `Text` class:[^children]
+
+[^children]: The `children` field of a `Text` node will always be
+    empty; I'm defining it here to make it easier to write code that
+    handles `Text` and `Element` nodes simultaneously.
 
 [^dom]: This is the tree that is usually called the DOM tree, for [Document
 Object Model](https://en.wikipedia.org/wiki/Document_Object_Model). We'll
@@ -388,8 +392,9 @@ tags (the spec calls them "void" tags):[^void-elements]
 
 [html5-void-elements]: https://html.spec.whatwg.org/multipage/syntax.html#void-elements
 
-[^void-elements]: A lot of these tags are obscure. There are additional
-tags not listed here that are obsolete.
+[^void-elements]: A lot of these tags are obscure. Browsers also
+support some additional, obsolete self-closing tags not listed here,
+like `keygen`.
 
 ``` {.python}
 SELF_CLOSING_TAGS = [

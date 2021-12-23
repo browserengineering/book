@@ -21,7 +21,7 @@ comments.
 
 The code is quite simple: when you select "Typo", that paragraph is
 marked `contenteditable`, an [HTML feature][contenteditable] that
-turns on rich text editing on the client side. When, when focus leaves
+turns on rich text editing on the client side. Then, when focus leaves
 the paragraph you are editing, I bundle up the old and new text
 content[^1] and ship it to a server, which saves the results.
 

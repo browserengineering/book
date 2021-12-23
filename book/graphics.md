@@ -234,7 +234,7 @@ inscrutable[^10], let's test it on the [first chapter of <span
 lang="zh">西游记</span> or "Journey to the
 West"](https://www.zggdwx.com/xiyou/1.html), a classic Chinese novel
 about a monkey. Run this URL[^11] through `request`, `lex`, and
-`layout`.[^12] You should see a window with a big blob of black pixels
+`load`.[^12] You should see a window with a big blob of black pixels
 inset a bit from the top left corner of the window.
 
 Why a blob instead of letters? Well, of course, because we are drawing
