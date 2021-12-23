@@ -820,7 +820,7 @@ class Tab:
         url = resolve_url(elt.attributes["action"], self.url)
         self.load(url, body)
 
-    def schedule_keypress(char):
+    def schedule_keypress(self, char):
         self.main_thread_runner.schedule_browser_task(
             Task(self.keypress, char))
 
