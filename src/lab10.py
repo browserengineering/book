@@ -39,7 +39,10 @@ def request(url, top_level_url, payload=None):
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
 
+    if "/" not in url:
+        url = url + "/"
     host, path = url.split("/", 1)
+
     path = "/" + path
     port = 80 if scheme == "http" else 443
 
