@@ -820,11 +820,19 @@ class Tab:
         url = resolve_url(elt.attributes["action"], self.url)
         self.load(url, body)
 
+    def schedule_keypress(char):
+        self.main_thread_runner.schedule_browser_task(
+            Task(self.keypress, char))
+
     def keypress(self, char):
         if self.focus:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
         self.document.paint(self.display_list) # TODO: is this necessary?
+
+    def schedule_go_back(self):
+        self.main_thread_runner.schedule_browser_task(
+            Task(self.go_back))
 
     def go_back(self):
         if len(self.history) > 1:
@@ -1009,7 +1017,7 @@ class Browser:
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
-                self.tabs[self.active_tab].go_back()
+                self.tabs[self.active_tab].schedule_go_back()
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
@@ -1024,16 +1032,13 @@ class Browser:
             self.address_bar += char
             self.set_needs_chrome_raster()
         elif self.focus == "content":
-            self.tabs[self.active_tab].keypress(char)
-            self.raster_tab()
-#            self.draw()
+            self.tabs[self.active_tab].schedule_keypress(char)
 
     def handle_enter(self):
         if self.focus == "address bar":
             self.tabs[self.active_tab].load(self.address_bar)
             self.focus = None
-            self.raster_tab()
-#            self.draw()
+            self.set_needs_chrome_raster()
 
     def load(self, url):
         new_tab = Tab(self)
