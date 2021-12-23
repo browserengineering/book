@@ -658,8 +658,6 @@ class Tab:
         self.needs_raf_callbacks = False
         self.display_scheduled = False
         self.browser = browser
-        self.main_thread_runner = MainThreadRunner(self)
-        self.main_thread_runner.start()
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -733,7 +731,6 @@ class Tab:
         self.browser.set_needs_chrome_raster()
 
     def set_needs_animation_frame(self):
-#        print('set_needs_animation_frame')
         def callback():
             self.display_scheduled = False
             self.main_thread_runner.schedule_animation_frame()
@@ -772,11 +769,6 @@ class Tab:
             y = obj.y
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height))
-
-    def schedule_click(self, x, y):
-#        print('schedule_click')
-        self.main_thread_runner.schedule_browser_task(
-            Task(self.click, x, y))
 
     def click(self, x, y):
         self.run_rendering_pipeline()
@@ -824,19 +816,12 @@ class Tab:
         url = resolve_url(elt.attributes["action"], self.url)
         self.load(url, body)
 
-    def schedule_keypress(self, char):
-        self.main_thread_runner.schedule_browser_task(
-            Task(self.keypress, char))
 
     def keypress(self, char):
         if self.focus:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
         self.document.paint(self.display_list) # TODO: is this necessary?
-
-    def schedule_go_back(self):
-        self.main_thread_runner.schedule_browser_task(
-            Task(self.go_back))
 
     def go_back(self):
         if len(self.history) > 1:
@@ -942,6 +927,24 @@ class MainThreadRunner:
                 script()
 
             time.sleep(0.001) # 1ms
+
+class TabWrapper:
+    def __init__(self, browser):
+        self.tab = Tab(browser)
+        self.browser = browser
+
+    def schedule_click(self, x, y):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.click, x, y))
+
+    def schedule_keypress(self, char):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.keypress, char))
+
+    def schedule_go_back(self):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.go_back))
+
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
