@@ -516,7 +516,7 @@ class InputLayout:
             text = self.node.attributes.get("value", "")
         elif self.node.tag == "button":
             text = self.node.children[0].text
-
+ 
         color = self.node.style["color"]
         cmds.append(DrawText(self.x, self.y,
                              text, self.font, color))
@@ -607,7 +607,6 @@ class JSContext:
         return elt.attributes.get(attr, None)
 
     def innerHTML_set(self, handle, s):
-#        print('innerhtml_set')
         doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
@@ -637,8 +636,6 @@ CHROME_PX = 100
 def set_timeout(func, sec):     
     t = None
     def func_wrapper():
-#        print(threading.current_thread())
-#        print(threading.main_thread())
         func()
         t.cancel()
     t = threading.Timer(sec, func_wrapper)
@@ -650,14 +647,16 @@ def raster(display_list, canvas):
         cmd.execute(canvas)
 
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, commit_func):
         self.history = []
         self.focus = None
         self.url = None
         self.scroll = 0
         self.needs_raf_callbacks = False
         self.display_scheduled = False
-        self.browser = browser
+        self.commit_func = commit_func
+        self.main_thread_runner = MainThreadRunner(self)
+        self.main_thread_runner.start()
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -677,9 +676,6 @@ class Tab:
 
     def script_run_wrapper(self, script, script_text):
         return Task(self.js.run, script, script_text)
-
-    def handle_quit(self):
-        self.main_thread_runner.set_needs_quit()
 
     def load(self, url, body=None):
         headers, body = request(url, self.url, payload=body)
@@ -728,7 +724,9 @@ class Tab:
                 continue
             self.rules.extend(CSSParser(body).parse())
         self.set_needs_animation_frame()
-        self.browser.set_needs_chrome_raster()
+
+    def apply_scroll(self, scroll):
+        self.scroll = scroll
 
     def set_needs_animation_frame(self):
         def callback():
@@ -743,18 +741,14 @@ class Tab:
         self.set_needs_animation_frame()
 
     def run_animation_frame(self):
-#        print("run_animation_frame")
-        self.needs_animation_frame = False
-
         if (self.needs_raf_callbacks):
             self.needs_raf_callbacks = False
             self.js.interp.evaljs("__runRAFHandlers()")
 
         self.run_rendering_pipeline()
-        self.browser.commit()
+        self.commit_func(self.url, self.scroll)
 
     def run_rendering_pipeline(self):
-#        print("run_rendering_pipeline")
         style(self.nodes, sorted(self.rules, key=cascade_priority))
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
@@ -912,6 +906,7 @@ class MainThreadRunner:
             self.lock.release()
             if needs_animation_frame:
                 self.tab.run_animation_frame()
+            self.needs_animation_frame = False
 
             browser_method = None
             if self.browser_tasks.has_tasks():
@@ -930,8 +925,24 @@ class MainThreadRunner:
 
 class TabWrapper:
     def __init__(self, browser):
-        self.tab = Tab(browser)
+        self.tab = Tab(self.commit)
         self.browser = browser
+        self.url = None
+        self.scroll = 0
+
+    def schedule_load(self, url, body=None):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.load, url, body))
+        self.browser.set_needs_chrome_raster()
+
+    def commit(self, url, scroll):
+        if url != self.url or scroll != self.scroll:
+            self.browser.set_needs_chrome_raster()
+        self.url = url
+        self.scroll = scroll
+        self.browser.active_tab_height = math.ceil(self.tab.document.height)
+        self.browser.active_tab_display_list = self.tab.display_list.copy()
+        self.browser.set_needs_tab_raster()
 
     def schedule_click(self, x, y):
         self.tab.main_thread_runner.schedule_browser_task(
@@ -945,6 +956,13 @@ class TabWrapper:
         self.tab.main_thread_runner.schedule_browser_task(
             Task(self.tab.go_back))
 
+    def schedule_scroll(self, scroll):
+        self.scroll = scroll
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.apply_scroll, scroll))
+
+    def handle_quit(self):
+        self.tab.main_thread_runner.set_needs_quit()
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
@@ -995,12 +1013,6 @@ class Browser:
     def set_needs_draw(self):
         self.needs_draw = True
 
-    def commit(self):
-        active_tab = self.tabs[self.active_tab]
-        self.active_tab_height = math.ceil(active_tab.document.height)
-        self.active_tab_display_list = active_tab.display_list.copy()
-        self.set_needs_tab_raster()
-
     def raster_and_draw(self):
         if self.needs_chrome_raster:
             self.raster_chrome()
@@ -1013,13 +1025,14 @@ class Browser:
         self.needs_draw = False
 
     def handle_down(self):
+        if not self.active_tab_height:
+            return
         max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
-        active_tab.scroll = min(active_tab.scroll + SCROLL_STEP, max_y)
+        active_tab.schedule_scroll(min(active_tab.scroll + SCROLL_STEP, max_y))
         self.set_needs_draw()
 
     def handle_click(self, e):
-#        print("handle click")
         if e.y < CHROME_PX:
             self.focus = None
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
@@ -1051,13 +1064,12 @@ class Browser:
             self.set_needs_chrome_raster()
 
     def load(self, url):
-        new_tab = Tab(self)
-        new_tab.load(url)
+        new_tab = TabWrapper(self)
+        new_tab.schedule_load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)
 
     def raster_tab(self):
-#        print("raster tab")
         if not self.tab_surface or \
                 self.active_tab_height != self.tab_surface.height():
             self.tab_surface = skia.Surface(WIDTH, self.active_tab_height)
@@ -1095,7 +1107,8 @@ class Browser:
             draw_line(canvas, 55 + w, 55, 55 + w, 85)
         else:
             url = self.tabs[self.active_tab].url
-            draw_text(canvas, 55, 55, url, buttonfont)
+            if url:
+                draw_text(canvas, 55, 55, url, buttonfont)
 
         # Draw the back button:
         draw_rect(canvas, 10, 50, 35, 90)
