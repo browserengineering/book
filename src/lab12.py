@@ -730,6 +730,7 @@ class Tab:
                 continue
             self.rules.extend(CSSParser(body).parse())
         self.set_needs_animation_frame()
+        self.browser.set_needs_chrome_raster()
 
     def set_needs_animation_frame(self):
 #        print('set_needs_animation_frame')
@@ -772,18 +773,10 @@ class Tab:
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height))
 
-    def schedule_scroll(self):
-        self.main_thread_runner.schedule_browser_task(
-            Task(self.scrolldown))
-
     def schedule_click(self, x, y):
+#        print('schedule_click')
         self.main_thread_runner.schedule_browser_task(
             Task(self.click, x, y))
-
-    def scrolldown(self):
-        max_y = self.document.height - HEIGHT
-        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
-        self.set_needs_animation_frame()
 
     def click(self, x, y):
         self.run_rendering_pipeline()
@@ -985,8 +978,8 @@ class Browser:
         self.needs_chrome_raster = True
         self.needs_draw = True
 
-        self.tab_height = None
-        self.tab_display_list = None
+        self.active_tab_height = None
+        self.active_tab_display_list = None
 
     def set_needs_tab_raster(self):
         self.needs_tab_raster = True
@@ -1001,8 +994,8 @@ class Browser:
 
     def commit(self):
         active_tab = self.tabs[self.active_tab]
-        self.tab_height = math.ceil(active_tab.document.height)
-        self.tab_display_list = active_tab.display_list.copy()
+        self.active_tab_height = math.ceil(active_tab.document.height)
+        self.active_tab_display_list = active_tab.display_list.copy()
         self.set_needs_tab_raster()
 
     def raster_and_draw(self):
@@ -1017,10 +1010,13 @@ class Browser:
         self.needs_draw = False
 
     def handle_down(self):
-        self.tabs[self.active_tab].schedule_scroll()
+        max_y = self.active_tab_height - HEIGHT
+        active_tab = self.tabs[self.active_tab]
+        active_tab.scroll = min(active_tab.scroll + SCROLL_STEP, max_y)
         self.set_needs_draw()
 
     def handle_click(self, e):
+#        print("handle click")
         if e.y < CHROME_PX:
             self.focus = None
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
@@ -1060,12 +1056,12 @@ class Browser:
     def raster_tab(self):
 #        print("raster tab")
         if not self.tab_surface or \
-                self.tab_height != self.tab_surface.height():
-            self.tab_surface = skia.Surface(WIDTH, self.tab_height)
+                self.active_tab_height != self.tab_surface.height():
+            self.tab_surface = skia.Surface(WIDTH, self.active_tab_height)
 
         canvas = self.tab_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
-        raster(self.tab_display_list, canvas)
+        raster(self.active_tab_display_list, canvas)
 
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
@@ -1172,4 +1168,4 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
         browser.raster_and_draw()
-        time.sleep(0.001) # 1ms
+#        time.sleep(0.001) # 1ms
