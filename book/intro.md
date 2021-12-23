@@ -352,7 +352,7 @@ performance or add features. Many of these exercises are features implemented in
 real browsers, and I encourage you to try them---adding features is one of the
 best parts of browser development!
 
-The book then moves on details and advanced features that flesh out the
+The book then moves on to details and advanced features that flesh out the
 architecture of a real browser’s rendering engine, based on my experiences with
 Chrome. After finishing the book, you should be able to dig into the source code
 of Chrome or another browser, and understand it without too much trouble.

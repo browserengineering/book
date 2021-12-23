@@ -185,6 +185,7 @@ class Tab:
         self.js = JSContext()
         for script in scripts:
             # ...
+            self.js.run(body)
 ```
 
 As a side benefit of using one `JSContext` for all scripts, it is now
@@ -660,7 +661,7 @@ class Tab:
     def keypress(self, char):
         if self.focus:
             self.js.dispatch_event("keydown", self.focus)
-            self.focus.attributes["value"] += char
+            # ...
 ```
 
 And finally, when submitting forms but before actually sending the
@@ -675,7 +676,7 @@ def submit_form(self, elt):
 So far so good---but what should the `dispatch_event` method do? Well,
 it needs to run listeners passed to `addEventListener`, so those need
 to be stored somewhere. Since those listeners are JavaScript
-functions, we need to keep that data on the JavaScript side, in an
+functions, we need to keep that data on the JavaScript side, in a
 variable in the runtime. I'll call that variable `LISTENERS`; we'll
 use it to look up handles and event types, so let's make it map
 handles to a dictionary that maps event types to a list of listeners:
@@ -747,7 +748,7 @@ function lengthCheck() {
 
 var inputs = document.querySelectorAll("input");
 for (var i = 0; i < inputs.length; i++) {
-    inputs[i].addEventListener("change", lengthCheck);
+    inputs[i].addEventListener("keydown", lengthCheck);
 }
 ```
 

@@ -101,7 +101,7 @@ block runs after `do_request` returns, when the server is assembling
 the HTTP response.
 
 With these two code changes, each visitor to the guest book now has a
-unique identity. We can now use that identities to store information
+unique identity. We can now use that identity to store information
 about each user. Let's do that in a server side `SESSIONS`
 variable:[^cookies-limited]
 
@@ -753,7 +753,7 @@ SameSite cookies
 
 For form submissions, that fail-safe solution is `SameSite` cookies.
 The idea is that if a server marks its cookies `SameSite`, the browser
-will them not send them in cross-site form submissions.[^in-progress]
+will not send them in cross-site form submissions.[^in-progress]
 
 [^in-progress]: At the time of this writing, the `SameSite` cookie
     standard is still in a draft stage, and not all browsers implement
@@ -769,7 +769,7 @@ A cookie is marked `SameSite` in the `Set-Cookie` header like this:
     Set-Cookie: foo=bar; SameSite=Lax
 
 The `SameSite` attribute can take the value `Lax`, `Strict`, or
-`None`, and as I write browsers have and plan different defaults. Our
+`None`, and as I write, browsers have and plan different defaults. Our
 browser will implement only `Lax` and `None`, and default to `None`.
 When `SameSite` is set to `Lax`, the cookie is not sent on cross-site
 `POST` requests, but is sent on same-site `POST` or cross-site `GET`
@@ -1180,7 +1180,7 @@ Exercises
 
 *New inputs*: Add support for hidden and password input elements.
 Hidden inputs shouldn't show up or take up space, while password input
-elements should show ther contents as stars instead of characters.
+elements should show their contents as stars instead of characters.
 
 *Certificate errors*: When accessing an HTTPS page, the web server can
 send an invalid certificate ([badssl.com](https://badssl.com) hosts

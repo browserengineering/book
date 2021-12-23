@@ -30,6 +30,10 @@ Testing resolve_url
     >>> lab6.resolve_url("url2", "http://bar.com/url1/")
     'http://bar.com/url1/url2'
 
+A trailing slash is automatically added if omitted:
+    >>> lab6.resolve_url("url2", "http://bar.com")
+    'http://bar.com/url2'
+
 Testing tree_to_list
 ====================
 

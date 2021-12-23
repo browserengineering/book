@@ -12,7 +12,7 @@ Why use Python for [Web Browser Engineering](../)?
 
 All existing browsers are written in C++, with maybe a little bit of
 Rust sneaking in these days. Browsers need to be as fast as possible,
-and using Python makes is slower for minimal benefit.
+and using Python is slower for minimal benefit.
 
 That's true, but the browser of *Web Browser Engineering* is not going
 to be fast. Its Javascript engine is bytecode interpreted, its
@@ -27,7 +27,7 @@ in Python against Tk, that optimization wouldn't make a noticable
 impact until the browser became much more graphically complex. That
 may be good for usability, but it's bad for pedagogy.
 
-Writing good C, C++, and Rust also means being very careful to handle
+Writing good C, C++, and Rust also means carefully handling all
 errors, because errors cause compiler errors or mysterious runtime
 behaviors. But while error handling is essential on the web, it's not
 a focus of *Web Browser Engineering* because exhaustive error handling
@@ -80,7 +80,7 @@ the proxy as magic. Introducing magic is exactly what this book
 Finally, the book purposely sticks to a restricted subset of Python
 both for readability and for ease of translation to other languages.
 When I teach from *Web Browser Engineering* I do require students to
-use Python[^why-teach-python], but I try to avoid using anything too
+use Python,[^why-teach-python] but I try to avoid using anything too
 Python-specific, or I do so only when the readability benefits are
 large and translation to another langauge is reasonably clear. (List
 comprehensions fall into this bucket.)

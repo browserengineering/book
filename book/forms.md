@@ -367,7 +367,9 @@ class Tab:
             self.render()
 ```
 
-Note that we call `render` because we've modified the web page.
+Note that here we call `render` instead of `draw`, because we've
+modified the web page and thus need to regenerate the display list
+instead of just redrawing it to the screen.
 
 Hierarchical focus handling is an important pattern for combining
 graphical widgets; in a real browser, where web pages can be embedded
@@ -539,6 +541,7 @@ def request(url, payload=None):
     method = "POST" if payload else "GET"
     # ...
     body = "{} {} HTTP/1.0\r\n".format(method, path)
+    # ...
 ```
 
 If there it's a `POST` request, the `Content-Length` header is mandatory:
@@ -611,16 +614,16 @@ a GET request to the server to load the current message board. The
 user interacts with the browser to type a new post, and submits it to
 the server (say, via a form). That causes the browser to make a POST
 request to the server, which instructs the server to update the
-message board state. The server then needs to browser to update what
+message board state. The server then needs the browser to update what
 the user sees; with forms, the server sends a new HTML page in its
-response to the POST requst.
+response to the POST request.
 
 Forms are a simple, minimal introduction to this cycle of request and
 response and make a good introduction to how browser applications
 work. They're also implemented in every browser and have been around
 for decades. These days many web applications use the form elements,
 but replace synchronous POST requests with asynchronous ones driven by
-Javascript,[^ajax] which makes application snappier by hiding the time
+Javascript,[^ajax] which makes applications snappier by hiding the time
 to make the HTTP request. In return for that snappiness, that
 JavaScript code must now handle errors, validate inputs, and indicate
 loading time. In any case, both synchronous and asynchronous uses of
