@@ -1010,7 +1010,7 @@ class Browser:
         self.needs_draw = False
 
     def handle_down(self):
-        max_y = self.active_tab_height - HEIGHT
+        max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
         active_tab.scroll = min(active_tab.scroll + SCROLL_STEP, max_y)
         self.set_needs_draw()
