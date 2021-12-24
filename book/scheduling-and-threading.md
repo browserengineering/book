@@ -327,7 +327,7 @@ like so:
     for script in find_scripts(self.nodes, []):
         # ...
         header, body = request(script_url, url)
-        set_timeout((0, new Task(self.js.run, script, body)
+        set_timeout((0, Task(self.js.run, script, body)
 ```
 
 Of course, scripts are not just for running straight through in one task, or

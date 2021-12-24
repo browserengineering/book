@@ -652,7 +652,7 @@ class Tab:
         self.url = None
         self.scroll = 0
         self.needs_raf_callbacks = False
-        self.set_needs_pipeline_update = False
+        self.needs_pipeline_update = False
         self.display_scheduled = False
         self.commit_func = commit_func
         self.main_thread_runner = MainThreadRunner(self)
@@ -704,7 +704,7 @@ class Tab:
                 continue
             header, body = request(script_url, url)
             self.main_thread_runner.schedule_script_task(
-                new Task(self.js.run, script, body))
+                Task(self.js.run, script, body))
 
         self.rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
@@ -729,8 +729,8 @@ class Tab:
         self.scroll = scroll
 
     def set_needs_pipeline_update(self):
-        self.set_needs_pipeline_update = True
-        set_needs_animation_frame()
+        self.needs_pipeline_update = True
+        self.set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
         def callback():
@@ -753,13 +753,13 @@ class Tab:
         self.commit_func(self.url, self.scroll)
 
     def run_rendering_pipeline(self):
-        if self.set_needs_pipeline_update:
+        if self.needs_pipeline_update:
             style(self.nodes, sorted(self.rules, key=cascade_priority))
             self.document = DocumentLayout(self.nodes)
             self.document.layout()
             self.display_list = []
             self.document.paint(self.display_list)
-        self.set_needs_pipeline_update = False
+        self.needs_pipeline_update = False
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
