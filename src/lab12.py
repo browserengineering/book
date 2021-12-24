@@ -641,7 +641,6 @@ def set_timeout(func, sec):
     t = threading.Timer(sec, func_wrapper)
     t.start()
 
-
 def raster(display_list, canvas):
     for cmd in display_list:
         cmd.execute(canvas)
@@ -653,6 +652,7 @@ class Tab:
         self.url = None
         self.scroll = 0
         self.needs_raf_callbacks = False
+        self.set_needs_pipeline_update = False
         self.display_scheduled = False
         self.commit_func = commit_func
         self.main_thread_runner = MainThreadRunner(self)
@@ -704,7 +704,7 @@ class Tab:
                 continue
             header, body = request(script_url, url)
             self.main_thread_runner.schedule_script_task(
-                self.script_run_wrapper(script, body))
+                new Task(self.js.run, script, body))
 
         self.rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
@@ -723,10 +723,14 @@ class Tab:
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
-        self.set_needs_animation_frame()
+        self.set_needs_pipeline_update()
 
     def apply_scroll(self, scroll):
         self.scroll = scroll
+
+    def set_needs_pipeline_update(self):
+        self.set_needs_pipeline_update = True
+        set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
         def callback():
@@ -741,7 +745,7 @@ class Tab:
         self.set_needs_animation_frame()
 
     def run_animation_frame(self):
-        if (self.needs_raf_callbacks):
+        if self.needs_raf_callbacks:
             self.needs_raf_callbacks = False
             self.js.interp.evaljs("__runRAFHandlers()")
 
@@ -749,11 +753,13 @@ class Tab:
         self.commit_func(self.url, self.scroll)
 
     def run_rendering_pipeline(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
-        self.document.layout()
-        self.display_list = []
-        self.document.paint(self.display_list)
+        if self.set_needs_pipeline_update:
+            style(self.nodes, sorted(self.rules, key=cascade_priority))
+            self.document = DocumentLayout(self.nodes)
+            self.document.layout()
+            self.display_list = []
+            self.document.paint(self.display_list)
+        self.set_needs_pipeline_update = False
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
@@ -784,7 +790,7 @@ class Tab:
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
                 if elt != self.focus:
-                    self.set_needs_animation_frame()
+                    self.set_needs_pipeline_update()
                 self.focus = elt
                 return
             elif elt.tag == "button":
@@ -818,7 +824,7 @@ class Tab:
         if self.focus:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
-            self.set_needs_animation_frame()
+            self.set_needs_pipeline_update()
 
     def go_back(self):
         if len(self.history) > 1:
@@ -908,10 +914,10 @@ class MainThreadRunner:
                 return;
             self.lock.acquire(blocking=True)
             needs_animation_frame = self.needs_animation_frame
+            self.needs_animation_frame = False
             self.lock.release()
             if needs_animation_frame:
                 self.tab.run_animation_frame()
-            self.needs_animation_frame = False
 
             browser_method = None
             if self.browser_tasks.has_tasks():

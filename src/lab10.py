@@ -94,7 +94,6 @@ def request(url, top_level_url, payload=None):
         params = {}
         if ";" in headers["set-cookie"]:
             cookie, rest = headers["set-cookie"].split(";", 1)
-            print(rest)
             for param_pair in rest.split(";"):
                 if '=' in param_pair:
                     name, value = param_pair.strip().split("=", 1)
