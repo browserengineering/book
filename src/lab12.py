@@ -779,9 +779,12 @@ class Tab:
                 pass
             elif elt.tag == "a" and "href" in elt.attributes:
                 url = resolve_url(elt.attributes["href"], self.url)
-                return self.load(url)
+                self.load(url)
+                return
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
+                if elt != self.focus:
+                    self.set_needs_animation_frame()
                 self.focus = elt
                 return
             elif elt.tag == "button":
@@ -815,7 +818,7 @@ class Tab:
         if self.focus:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
-        self.document.paint(self.display_list) # TODO: is this necessary?
+            self.set_needs_animation_frame()
 
     def go_back(self):
         if len(self.history) > 1:
@@ -892,7 +895,9 @@ class MainThreadRunner:
         pass
 
     def set_needs_quit(self):
+        self.lock.acquire(blocking=True)
         self.needs_quit = True
+        self.lock.release()
 
     def start(self):
         self.main_thread.start()
@@ -917,7 +922,6 @@ class MainThreadRunner:
             script = None
             if self.script_tasks.has_tasks():
                 script = self.script_tasks.get_next_task()
-
             if script:
                 script()
 
@@ -936,6 +940,7 @@ class TabWrapper:
         self.browser.set_needs_chrome_raster()
 
     def commit(self, url, scroll):
+        self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
         self.url = url
@@ -943,6 +948,7 @@ class TabWrapper:
         self.browser.active_tab_height = math.ceil(self.tab.document.height)
         self.browser.active_tab_display_list = self.tab.display_list.copy()
         self.browser.set_needs_tab_raster()
+        self.browser.compositor_lock.release()
 
     def schedule_click(self, x, y):
         self.tab.main_thread_runner.schedule_browser_task(
@@ -983,6 +989,7 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
+        self.compositor_lock = threading.Lock()
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -1008,12 +1015,13 @@ class Browser:
 
     def set_needs_chrome_raster(self):
         self.needs_chrome_raster = True
-        self.need_draw = True
+        self.needs_draw = True
 
     def set_needs_draw(self):
         self.needs_draw = True
 
     def raster_and_draw(self):
+        self.compositor_lock.acquire(blocking=True)
         if self.needs_chrome_raster:
             self.raster_chrome()
         if self.needs_tab_raster:
@@ -1023,16 +1031,20 @@ class Browser:
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
+        self.compositor_lock.release()
 
     def handle_down(self):
+        self.compositor_lock.acquire(blocking=True)
         if not self.active_tab_height:
             return
         max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
         active_tab.schedule_scroll(min(active_tab.scroll + SCROLL_STEP, max_y))
         self.set_needs_draw()
+        self.compositor_lock.release()
 
     def handle_click(self, e):
+        self.compositor_lock.acquire(blocking=True)
         if e.y < CHROME_PX:
             self.focus = None
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
@@ -1048,20 +1060,26 @@ class Browser:
         else:
             self.focus = "content"
             self.tabs[self.active_tab].schedule_click(e.x, e.y - CHROME_PX)
+        self.compositor_lock.release()
 
     def handle_key(self, char):
+        self.compositor_lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += char
             self.set_needs_chrome_raster()
         elif self.focus == "content":
             self.tabs[self.active_tab].schedule_keypress(char)
+        self.compositor_lock.release()
 
     def handle_enter(self):
-        if self.focus == "address bar":
-            self.tabs[self.active_tab].load(self.address_bar)
+        self.compositor_lock.acquire(blocking=True)
+        if self.focus == "address bar`":
+            self.tabs[self.active_tab].schedule_load(self.address_bar)
+            self.tabs[self.active_tab].url = self.address_bar
             self.focus = None
             self.set_needs_chrome_raster()
+        self.compositor_lock.release()
 
     def load(self, url):
         new_tab = TabWrapper(self)
@@ -1184,4 +1202,3 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
         browser.raster_and_draw()
-#        time.sleep(0.001) # 1ms
