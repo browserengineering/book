@@ -380,7 +380,10 @@ class Tab:
             self.js.interp.evaljs("__runRAFHandlers()")
 
         self.run_rendering_pipeline()
-        self.commit_func(self.url, self.scroll)
+        self.commit_func(
+            self.url, self.scroll, 
+            math.ceil(self.document.height),
+            self.display_list)
 ```
 
 And in the JavaScript runtime we'll need:
@@ -709,14 +712,14 @@ later:[^fast-commit]
 
 ``` {.python}
 class TabWrapper:
-    def commit(self, url, scroll):
+    def commit(self, url, scroll, tab_height, display_list):
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
         self.url = url
         self.scroll = scroll
-        self.browser.active_tab_height = math.ceil(self.tab.document.height)
-        self.browser.active_tab_display_list = self.tab.display_list.copy()
+        self.browser.active_tab_height = tab_height
+        self.browser.active_tab_display_list = display_list.copy()
         self.browser.set_needs_tab_raster()
         self.browser.compositor_lock.release()
 ```

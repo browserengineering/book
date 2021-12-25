@@ -634,7 +634,7 @@ class JSContext:
 SCROLL_STEP = 100
 CHROME_PX = 100
 
-def set_timeout(func, sec):     
+def set_timeout(func, sec):
     t = None
     def func_wrapper():
         func()
@@ -751,7 +751,10 @@ class Tab:
             self.js.interp.evaljs("__runRAFHandlers()")
 
         self.run_rendering_pipeline()
-        self.commit_func(self.url, self.scroll)
+        self.commit_func(
+            self.url, self.scroll, 
+            math.ceil(self.document.height),
+            self.display_list)
 
     def run_rendering_pipeline(self):
         if self.needs_pipeline_update:
@@ -898,9 +901,6 @@ class MainThreadRunner:
     def schedule_browser_task(self, callback):
         self.browser_tasks.add_task(callback)
 
-    def schedule_event_handler():
-        pass
-
     def set_needs_quit(self):
         self.lock.acquire(blocking=True)
         self.needs_quit = True
@@ -946,14 +946,14 @@ class TabWrapper:
             Task(self.tab.load, url, body))
         self.browser.set_needs_chrome_raster()
 
-    def commit(self, url, scroll):
+    def commit(self, url, scroll, tab_height, display_list):
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
         self.url = url
         self.scroll = scroll
-        self.browser.active_tab_height = math.ceil(self.tab.document.height)
-        self.browser.active_tab_display_list = self.tab.display_list.copy()
+        self.browser.active_tab_height = tab_height
+        self.browser.active_tab_display_list = display_list.copy()
         self.browser.set_needs_tab_raster()
         self.browser.compositor_lock.release()
 
