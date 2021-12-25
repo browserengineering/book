@@ -166,7 +166,7 @@ the next iteration.
 
 Therefore, let's use 16ms as the definition of "enough time":
 
-```
+``` {.python}
 REFRESH_RATE_SEC = 0.016 # 16ms
 ```
 
@@ -206,7 +206,7 @@ Also, rename `render` to `run_rendering_pipeline`, and
 call the other rendering pipeline stages on `Browser` via a new
 `raster_and_draw` method (which we'll implement shortly).
 
-``` {.python}
+``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
         self.browser = browser
@@ -214,7 +214,7 @@ class Tab:
         self.needs_pipeline_update = False
 
     def set_needs_pipeline_update(self):
-        self.set_needs_pipeline_update = True
+        self.needs_pipeline_update = True
         set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
@@ -245,7 +245,7 @@ Now replace all cases where parts of the rendering pipeline were called with
 
 Or `load`:
 
-```
+``` {.python}
 class Tab:
     def load(self, url, body=None):
         # ...
@@ -288,6 +288,16 @@ class Browser:
         self.needs_draw = False
 ```
 
+Oh, andd we'll need to schedule an animation frame whenever any of those dirty
+bits are set. This is easiest to add in `set_needs_draw`:
+
+``` {.python expected=False}
+class Browser:
+    def set_needs_draw(self):
+        # ...
+        self.tabs[self.active_tab].set_needs_animation_frame()
+```
+
 And in each case where raster or draw were called previously, now set the
 dirty bits, such as in `handle_click`, and also schedule an animation frame.
 Note that scheduling an animation frame does *not* mean that
@@ -309,7 +319,6 @@ class Browser:
     def handle_down(self):
         # ...
         self.set_needs_draw()
-        self.tabs[self.active_tab].set_needs_animation_frame()
 ```
 
 Scripts in the event loop
@@ -336,7 +345,7 @@ rendering event loop and run later. There are multiple JavaScript APIs in
 browsers to do this, but for now let's focus on the one most related to
 rendering: `requestAnimationFrame`. It's used like this:
 
-``` {.javascript}
+``` {.javascript expected=False}
 /* This is JavaScript */
 function callback() {
     console.log("I was called!");
@@ -351,8 +360,8 @@ to run just before `run_rendering_pipeline`. The implementation of this
 JavaScript API is straightforward: add a new dirty bit to `Tab` and code to
 call the JavaScript callbacks when it's set, during the next animation frame.
 
-``` {.python}
-clas JSContext:
+``` {.python replace=browser/commit_func}
+class JSContext:
     def __init__(self, tab):
         # ...
         self.interp.export_function("requestAnimationFrame",
@@ -417,7 +426,7 @@ This situation may seem like a corner case, but it's actually very important, as
 this is how JavaScript can run a 60Hz animation. Let's
 try it out with a script that counts from 1 to 100, one frame at a time:
 
-``` {.javascript}
+``` {.javascript expected=False}
 var count = 0;
 var start_time = Date.now();
 var cur_frame_time = start_time
@@ -447,13 +456,14 @@ Date.now = function() {
 ```
 and Python bindings:
 ``` {.python}
-def setup_js(self):
-    # ...
-    self.js.export_function("now", self.js_now)
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.interp.export_function("now",
+            self.now)
 
-def js_now(self):
-    return int(time.time() * 1000)
-
+    def now(self):
+        return int(time.time() * 1000)
 ```
 
 This script will cause 100 animation frame tasks to run on the rendering event
@@ -501,7 +511,7 @@ example---I was truly unsure of which part was slow, until I profiled it.
 Of course, it could also be that `runRAFHandlers` is the slowest part. For example,
 suppose we inserted the following busyloop into the callback, like so:
 
-``` {.javascript}
+``` {.javascript expected=False}
 function callback() {
     var now = Date.now();
     while (Date.now() - date < 100) {}
@@ -558,182 +568,6 @@ Do less work & Cache
 
 TODO: update/rewrite
 
-What could we do to make Paint, for example, faster? There are a few
-micro-optimizations we could try, such as pre-allocating `self.display_list`
-rather than appending to it each time. I tried this on my machine, and it
-showed no benefit.[^interpreted]
-
-[^interpreted]: That may or may not be due to the interpred nature of Python
-vs compiled languages such as C++.
-
-Ok that didn't work. What now? It can be hard to guess the right
-micro-optimizations, especially for interpreted languages which have speed
-characteristics that are hard to predict without a lot of experience. Instead,
-let's take the next step beyond using per-rendering pipeline stage timing---a
-CPU profile. We can do that by using the `cPython` profiler that comes with
-python, via a command like like:
-
-    python -m cPython <my-program.py>
-
-The output looks like this for me (only listing the top methods by cumulative
-time spent:
-
-    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-      65/1    0.000    0.000    6.633    6.633 {built-in method builtins.exec}
-         1    0.000    0.000    6.633    6.633 lab13.py:1(<module>)
-         1    0.000    0.000    6.512    6.512 __init__.py:601(mainloop)
-         1    0.028    0.028    6.512    6.512 {method 'mainloop' of '_tkinter.tkapp' objects}
-        51    0.000    0.000    6.484    0.127 __init__.py:1887(__call__)
-        51    0.000    0.000    6.484    0.127 __init__.py:812(callit)
-        51    0.001    0.000    6.482    0.127 lab13.py:1016(run_animation_frame)
-      6290    6.344    0.001    6.344    0.001 {method 'call' of '_tkinter.tkapp' objects}
-       102    0.000    0.000    6.311    0.062 lab13.py:1041(run_rendering_pipeline)
-        52    0.001    0.000    6.311    0.121 lab13.py:1051(reflow)
-    159/52    0.002    0.000    4.221    0.081 lab13.py:577(size)
-        53    0.001    0.000    4.216    0.080 lab13.py:487(size)
-      2472    0.006    0.000    3.307    0.001 font.py:152(measure)
-    208/53    0.001    0.000    2.856    0.054 lab13.py:507(recurse)
-       104    0.003    0.000    2.583    0.025 lab13.py:520(text)
-       618    0.004    0.000    1.759    0.003 lab13.py:425(size)
-      1236    0.008    0.000    1.678    0.001 font.py:159(metrics)
-       104    0.001    0.000    1.632    0.016 lab13.py:535(flush)
-       104    0.000    0.000    1.631    0.016 lab13.py:373(size)
-       104    0.002    0.000    1.631    0.016 lab13.py:377(compute_height)
-        52    0.004    0.000    1.271    0.024 lab13.py:1074(draw)
-
-As you can see, there is a bunch of time spent, seemingly about equally spread
-between layout and painting. The next thing to do is to examine each method
-mentioned above and see if you can find anything that might be optimized out.
-As it turns out, there is one that is pretty easy to fix, which is the lines
-that perform font measure-ment.[^how-found] Apparently, tkinter fonts don't
-have a good internal cache (or perhaps they have a cache keyed off the font
-object), and loading fonts is expensive.[^why-fonts-slow] But on our test page,
-there is only one font! There's got to be a way to not repeat this cost for
-every single layout object. Let's optimize for that situation with a font
-cache:
-
-[^how-found]: How did I figure this out? Process of elimination---comment out
-some code and re-profile to see if it got faster; repeat until I found an
-improvement.
-
-[^why-fonts-slow]: Fonts are surprisingly large, sometimes on the order of
-multiple megabytes. This is especially so for scripts like Chinese that have a
-lot of different, complex characters. For this reason they are generally stored
-on disk and only loaded into memory on-demand, and it is therefore slow to load
-them. Optimizing font loading (and the cost to shape them and lay them out,
-since many web pages have a *lot* of text) turns out to be one of the most
-important parts of speeding up text rendering.
-
-``` {.python}
-FONT_CACHE = {}
-
-def GetFont(size, weight, style):
-    key = (size, weight, style)
-    value = FONT_CACHE.get(key)
-    if value: return value
-    value = tkinter.font.Font(size=size, weight=weight, slant=style)
-    FONT_CACHE[key] = value
-    return value
-
-class TextLayout:
-    # ...
-
-    def size(self):
-        # ...
-        self.font = GetFont(size, weight, style) 
-```
-
-This turns out to make a dramatic difference, not just in text measurement, but
-in layout *and* paint. How simple and convenient!
-
-    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-      65/1    0.000    0.000    1.143    1.143 {built-in method builtins.exec}
-         1    0.000    0.000    1.143    1.143 lab13.py:1(<module>)
-         1    0.000    0.000    1.007    1.007 __init__.py:601(mainloop)
-         1    0.435    0.435    1.007    1.007 {method 'mainloop' of '_tkinter.tkapp' objects}
-        51    0.000    0.000    0.572    0.011 __init__.py:1887(__call__)
-        51    0.001    0.000    0.572    0.011 __init__.py:812(callit)
-        51    0.002    0.000    0.570    0.011 lab13.py:1016(run_animation_frame)
-      5108    0.449    0.000    0.450    0.000 {method 'call' of '_tkinter.tkapp' objects}
-       102    0.000    0.000    0.441    0.004 lab13.py:1041(run_rendering_pipeline)
-        52    0.001    0.000    0.441    0.008 lab13.py:1051(reflow)
-        52    0.003    0.000    0.290    0.006 lab13.py:1074(draw)
-      1133    0.005    0.000    0.270    0.000 __init__.py:2768(_create)
-       925    0.001    0.000    0.258    0.000 __init__.py:2808(create_text)
-       873    0.002    0.000    0.152    0.000 lab13.py:676(draw)
-        56    0.001    0.000    0.150    0.003 evaljs.py:39(evaljs)
-        56    0.018    0.000    0.145    0.003 {built-in method dukpy._dukpy.eval_string}
-    159/52    0.003    0.000    0.127    0.002 lab13.py:577(size)
-       308    0.003    0.000    0.127    0.000 evaljs.py:72(_call_python)
-        53    0.000    0.000    0.121    0.002 lab13.py:487(size)
-        51    0.001    0.000    0.112    0.002 lab13.py:962(js_innerHTML)
-    208/53    0.000    0.000    0.091    0.002 lab13.py:507(recurse)
-         1    0.000    0.000    0.086    0.086 lab13.py:641(size)
-       104    0.002    0.000    0.086    0.001 lab13.py:520(text)
-      2472    0.003    0.000    0.085    0.000 font.py:152(measure)
-
-As you can see, everything became a lot faster. This is because font measurement
-overhead was making both layout and paint slower for every single object. The
-new timings show that we're easily meeting the 16ms animation frame budget:
-
-    [  0.000753] runRAFHandlers
-    [  0.000091] Style
-    [  0.000925] Layout (phase 1A)
-    [  0.000012] Layout (phase 1B)
-    [  0.000055] Layout (phase 2)
-    [  0.000194] Paint
-    [  0.004903] Draw
-    [  0.003691] Draw Chrome
-    [  0.001578] IdleTasks
-    Total: 0.012s = 12ms
-
-Great! Technically speaking though, this font optimization is not a pure
-micro-optimization, but a caching strategy, so let's now discuss that.
-
-Various kinds of caches are the single most effective class of optimizations for
-browsers. Real browsers have caches all over the place---network resource
-caches and font caches are two. (Well, we haven't actually implemented a
-network cache yet---maybe in a future chapter?) The rendering pipeline is no
-different: there are caches of various kinds throughout style, layout, and
-paint. In fact, we already saw an example of this in
-[chapter 10](reflow.md). Notice that the layout tree itself is a cache, as is
-the display list.)
-
-Let's keep optimizing. The top item in the CPU profile below
-`run_rendering_pipeline` is `reflow`. However, this is a little unclear, since
-reflow currently includes style, layout, paint and draw. Let's at least separate
-paint and draw:
-
-``` {.python}
-    def run_rendering_pipeline(self):
-        for reflow_root in self.reflow_roots:
-            self.reflow(reflow_root)
-        self.reflow_roots = []
-        self.paint()
-        # ...
-```
-
-With these changes, the profile now shows that `draw` is actually a big
-component of the remaining cost, with the following breakdown (this data
-is the time spent, aggregated over 50 animation frames):
-
-    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-        52    0.005    0.000    0.391    0.008 lab13.py:1075(draw)
-        873   0.003    0.000    0.201    0.000 lab13.py:676(draw)
-
-Line 676 is `DrawText.draw`. Half the time drawing is in drawing text. (I
-told you that fonts and text rendering are big time hogs and sources of 
-optimization!)  Also note that the total
-time spent drawing text is only 0.201s in this case, and therefore about 2ms per
-animation frame. If the amount of text was much larger, this would become a big
-problem, and we'd start missing the 16ms animation frame budget again.
-
-Unfortunately, in this case it appears there is nothing further we can do,
-without finding out where to optimize tkinter further...or is there? Let's go
-back to the list of ways to make the event loop faster. We alreedy talked about
-the techniques of do-less-work less work and cache. How about *parallelize*?
-Can't we run these draw commands on a different thread? Yes, we can!
-
 The Compositor thread
 =====================
 
@@ -787,9 +621,9 @@ bytecodes.
 
 ``` {.python}
 class MainThreadRunner:
-    def __init__(self, browser):
+    def __init__(self, tab):
         self.lock = threading.Lock()
-        self.browser = browser
+        self.tab = tab
         self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
         self.script_tasks = TaskQueue(self.lock)
@@ -849,8 +683,7 @@ method and one script task, if there are any on those queues. It then sleeps for
             needs_animation_frame = self.needs_animation_frame
             self.lock.release()
             if needs_animation_frame:
-                browser.run_animation_frame()
-                self.browser.commit()
+                self.tab.run_animation_frame()
 
             browser_method = None
             if self.browser_tasks.has_tasks():
@@ -875,48 +708,23 @@ display list to the compositor thread, so that it can be drawn
 later:[^fast-commit]
 
 ``` {.python}
-    def commit(self):
-        self.compositor_lock.acquire(blocking=True)
-        self.needs_draw = True
-        self.draw_display_list = self.display_list.copy()
-        self.compositor_lock.release()
+class TabWrapper:
+    def commit(self, url, scroll):
+        self.browser.compositor_lock.acquire(blocking=True)
+        if url != self.url or scroll != self.scroll:
+            self.browser.set_needs_chrome_raster()
+        self.url = url
+        self.scroll = scroll
+        self.browser.active_tab_height = math.ceil(self.tab.document.height)
+        self.browser.active_tab_display_list = self.tab.display_list.copy()
+        self.browser.set_needs_tab_raster()
+        self.browser.compositor_lock.release()
 ```
 
 [^fast-commit]: `commit` is the one time when both threads are both "stopped"
 simultaneously---in the sense that neither is running a different task at the
 same time. For this reason commit needs to be as fast as possible, so as to
 lose the minimum possible amount of parallelism.
-
-Over on the compositor thread, we need a loop that keeps looking for
-opportunities to draw (when `self.needs_draw` is true), and then doing so:
-
-``` {.python}
-    def maybe_draw(self):
-        self.compositor_lock.acquire(blocking=True)
-        if self.needs_quit:
-            sys.exit()
-        if self.needs_animation_frame and not self.display_scheduled:
-            self.canvas.after(
-                REFRESH_RATE_MS,
-                self.main_thread_runner.schedule_animation_frame)
-            self.display_scheduled = True
-
-        if self.needs_draw:
-            self.draw()
-        self.needs_draw = False
-        self.compositor_lock.release()
-        self.canvas.after(1, self.maybe_draw)
-```
-
-And of course, draw itself draws `self.draw_display_list`, not
-`self.display_list`:
-
-``` {.python}
-    def draw(self):
-        # ...
-        for cmd in self.draw_display_list:
-            # ...
-```
 
 Other tasks
 ===========
@@ -927,15 +735,11 @@ needs to schedule a task on the main thread event loop, we just call
 `schedule_browser_task`:
 
 ``` {.python}
-    # Runs on the compositor thread
+class TabWrapper:
     def schedule_load(self, url, body=None):
-        self.main_thread_runner.schedule_browser_task(
-            Task(self.load, url, body))
-
-    # Runs on the main thread
-    def load(self, url, body=None):
-        # ...
-
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.load, url, body))
+        self.browser.set_needs_chrome_raster()
 ```
 
 We can do the same for input event handlers, but there are a few additional
@@ -949,84 +753,57 @@ within the web page window, we can handle it right there in the compositor
 thread, and leave the main thread none the wiser:
 
 ``` {.python}
-    def __init__(self):
-        # ...
-        self.window.bind("<Button-1>", self.compositor_handle_click)
-
-    # Runs on the compositor thread
-    def compositor_handle_click(self, e):
-        self.focus = None
-        if e.y < 60:
-            # Browser chrome clicks can be handled without the main thread...
-            if 10 <= e.x < 35 and 10 <= e.y < 50:
-                self.go_back()
-            elif 50 <= e.x < 790 and 10 <= e.y < 50:
+class Browser:
+    def handle_click(self, e):
+        self.compositor_lock.acquire(blocking=True)
+        if e.y < CHROME_PX:
+            self.focus = None
+            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
+                self.active_tab = int((e.x - 40) / 80)
+            elif 10 <= e.x < 30 and 10 <= e.y < 30:
+                self.load("https://browser.engineering/")
+            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+                self.tabs[self.active_tab].schedule_go_back()
+            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.set_needs_animation_frame()
+            self.set_needs_chrome_raster()
         else:
-            # ...but not clicks within the web page contents area
-            self.main_thread_runner.schedule_browser_task(
-                Task(self.handle_click, e))
+            self.focus = "content"
+            self.tabs[self.active_tab].schedule_click(e.x, e.y - CHROME_PX)
+        self.compositor_lock.release()
 
-    # Runs on the main thread
-    def handle_click(self, e):
-        # ...
 ```
 
 The same logic holds for `keypress`:
 
 ``` {.python}
-    def __init__(self):
-        # ...
-        self.window.bind("<Key>", self.compositor_keypress)
-
-    # Runs on the compositor thread
-    def compositor_keypress(self, e):
-        if len(e.char) == 0: return
-        if not (0x20 <= ord(e.char) < 0x7f): return
-
-        if not self.focus:
-            return
-        elif self.focus == "address bar":
-            self.address_bar += e.char
-            self.set_needs_animation_frame()
-        else:
-            self.main_thread_runner.schedule_browser_task(
-                Task(self.keypress, e))
-
-    # Runs on the main thread
-    def keypress(self, e):
-        self.focus.node.attributes["value"] += e.char
-        self.dispatch_event("change", self.focus.node)
-        self.set_needs_reflow(self.focus)
-
+class Browser:
+    def handle_key(self, char):
+        self.compositor_lock.acquire(blocking=True)
+        if not (0x20 <= ord(char) < 0x7f): return
+        if self.focus == "address bar":
+            self.address_bar += char
+            self.set_needs_chrome_raster()
+        elif self.focus == "content":
+            self.tabs[self.active_tab].schedule_keypress(char)
+        self.compositor_lock.release()
 ```
 
 As it turns out, the return key and scrolling have no use at all for the main
 thread:
 
 ``` {.python}
-    def __init__(self):
-        # ...
-        self.window.bind("<Down>", self.scrolldown)
-        self.window.bind("<Return>", self.press_enter)
-
-    # Runs on the compositor thread
-    def press_enter(self, e):
-        if self.focus == "address bar":
-            self.focus = None
-            self.schedule_load(self.address_bar)
-
-    # Runs on the compositor thread
-    def scrolldown(self, e):
+class Browser:
+    def handle_down(self):
         self.compositor_lock.acquire(blocking=True)
-        self.scroll = self.scroll + SCROLL_STEP
-        self.scroll = min(self.scroll, self.max_y)
-        self.scroll = max(0, self.scroll)
+        if not self.active_tab_height:
+            return
+        max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
+        active_tab = self.tabs[self.active_tab]
+        active_tab.schedule_scroll(min(active_tab.scroll + SCROLL_STEP, max_y))
+        self.set_needs_draw()
         self.compositor_lock.release()
-        self.set_needs_animation_frame()
-
 ```
 
 And we're done! Now we can reap the benefits of two threads working in parallel.
@@ -1161,25 +938,16 @@ style and layout. One example is our current implementation of `innerHTML`. Look
 closely at the code, can you see the forced layout?
 
 ``` {.python}
-    def js_innerHTML(self, handle, s):
-        try:
-            self.run_rendering_pipeline()
-            doc = parse(lex("<!doctype><html><body>" +
-                            s + "</body></html>"))
-            new_nodes = doc.children[0].children
-            elt = self.handle_to_node[handle]
-            elt.children = new_nodes
-            for child in elt.children:
-                child.parent = elt
-            if self.document:
-                self.set_needs_reflow(
-                    layout_for_node(self.document, elt))
-            else:
-                self.set_needs_layout_tree_rebuild()
-        except:
-            import traceback
-            traceback.print_exc()
-            raise
+class JSContext:
+    def innerHTML_set(self, handle, s):
+        self.tab.run_rendering_pipeline()
+        doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
+        new_nodes = doc.children[0].children
+        elt = self.handle_to_node[handle]
+        elt.children = new_nodes
+        for child in elt.children:
+            child.parent = elt
+        self.tab.run_rendering_pipeline()
 ```
 
 The call to `run_rendering_pipeline` is a forced layout. It's needed because
@@ -1203,11 +971,9 @@ example. For completeness, let's implement it by adding a call to
 `update_rendering_pipeline` before `find_layout`:
 
 ``` {.python}
-    # Runs on the main thread
-    def handle_click(self, e):
-        # ...
+class Tab:
+    def click(self, x, y):
         self.run_rendering_pipeline()
-        obj = find_layout(x, y, self.document)
         # ...
 ```
 

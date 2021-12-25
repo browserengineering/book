@@ -607,6 +607,7 @@ class JSContext:
         return elt.attributes.get(attr, None)
 
     def innerHTML_set(self, handle, s):
+        self.tab.run_rendering_pipeline()
         doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
@@ -652,8 +653,8 @@ class Tab:
         self.url = None
         self.scroll = 0
         self.needs_raf_callbacks = False
-        self.needs_pipeline_update = False
         self.display_scheduled = False
+        self.needs_pipeline_update = False
         self.commit_func = commit_func
         self.main_thread_runner = MainThreadRunner(self)
         self.main_thread_runner.start()
