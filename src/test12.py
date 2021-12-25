@@ -33,3 +33,22 @@ class MockMainThreadRunner:
 
 	def run(self):
 		pass
+
+class MockNoOpMainThreadRunner:
+	def __init__(self, tab):
+		self.tab = tab
+
+	def schedule_animation_frame(self):
+		pass
+
+	def schedule_script_task(self, script):
+		pass
+
+	def schedule_browser_task(self, callback):
+		pass
+
+	def start(self):
+		pass
+
+	def run(self):
+		pass
