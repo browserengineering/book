@@ -26,7 +26,7 @@ the MainThreadRunner and run all the tests on the same thread as the Browser.
 
     >>> browser = lab12.Browser()
 
-Before load, there is no tab height or display list
+Before load, there is no tab height or display list.
 
 	>>> browser.active_tab_height == None
 	True
@@ -43,7 +43,7 @@ Once the Tab has loaded, the browser should need raster and draw.
     >>> browser.needs_draw
     True
 
-But the Tab has already committed:
+The Tab has already committed:
 
 	>>> browser.active_tab_height
 	81
@@ -71,7 +71,13 @@ After performing raster and draw, the display list should be present.
     >>> browser.needs_draw
     False
 
+ Scrolling down causes a draw but nothing else.
+
     >>> browser.handle_down()
+    >>> browser.needs_chrome_raster
+    False
+    >>> browser.needs_tab_raster
+    False
     >>> browser.needs_draw
     True
 
