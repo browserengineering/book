@@ -44,3 +44,14 @@ After performing raster and draw, the display list should be present.
     clear(color=ffffffff)
     drawString(text=Text, x=13.0, y=36.10546875, color=ff000000)
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
+
+    >>> browser.needs_chrome_raster
+    False
+    >>> browser.needs_tab_raster
+    False
+    >>> browser.needs_draw
+    False
+
+    >>> browser.handle_down()
+    >>> browser.needs_draw
+    True
