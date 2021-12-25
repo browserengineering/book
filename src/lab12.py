@@ -1,734 +1,840 @@
 """
 This file compiles the code in Web Browser Engineering,
-up to and including Chapter 12 (Scheduling and Threading),
+up to and including Chapter 11 (Adding Visual Effects),
 without exercises.
 """
 
-import argparse
+import ctypes
 import dukpy
-import functools
+import io
+import math
+import sdl2
+import sdl2.ext as sdl2ext
+import skia
 import socket
 import ssl
-import time
 import threading
-import tkinter
-import tkinter.font
-from lab10 import request
+import time
+import urllib.parse
+from lab4 import print_tree
+from lab4 import Element
+from lab4 import Text
+from lab4 import HTMLParser
+from lab6 import cascade_priority
+from lab6 import layout_mode
+from lab6 import resolve_url
+from lab6 import tree_to_list
+from lab6 import INHERITED_PROPERTIES
+from lab6 import CSSParser, compute_style, style
+from lab6 import TagSelector, DescendantSelector
+from lab9 import EVENT_DISPATCH_CODE
+from lab10 import COOKIE_JAR, request, url_origin, JSContext
 
-class Timer:
-    def __init__(self):
-        self.phase = None
-        self.time = None
-        self.accumulated = 0
+FONTS = {}
 
-    def reset(self):
-        self.accumulated = 0
-
-    def start(self, name):
-        if self.phase: self.stop()
-        self.phase = name
-        self.time = time.time()
-
-    def stop(self):
-        dt = time.time() - self.time
-        print("[{:>10.6f}] {}".format(dt, self.phase))
-        self.phase = None
-        self.accumulated += dt
-
-    def print_accumulated(self):
-        print("[{:>10.6f}] {}\n".format(self.accumulated, "Total"))
-
-def url_origin(url):
-    return "/".join(url.split("/")[:3])
-
-class Text:
-    def __init__(self, text):
-        self.text = text
-
-    def __repr__(self):
-        return "\"" + self.text.replace("\n", "\\n") + "\""
-
-SELF_CLOSING_TAGS = [
-    "area", "base", "br", "col", "embed", "hr", "img", "input",
-    "link", "meta", "param", "source", "track", "wbr",
-]
-
-class Tag:
-    def __init__(self, text):
-        parts = text.split()
-        self.tag = parts[0].lower()
-        self.attributes = {}
-        for attrpair in parts[1:]:
-            if "=" in attrpair:
-                key, value = attrpair.split("=", 1)
-                if len(value) > 2 and value[0] in ["'", "\""]:
-                    value = value[1:-1]
-                self.attributes[key.lower()] = value
-            else:
-                self.attributes[attrpair.lower()] = ""
-
-    def __repr__(self):
-        return "<" + self.tag + ">"
-
-def lex(body):
-    out = []
-    text = ""
-    in_tag = False
-    for c in body:
-        if c == "<":
-            in_tag = True
-            if text: out.append(Text(text))
-            text = ""
-        elif c == ">":
-            in_tag = False
-            out.append(Tag(text))
-            text = ""
+def get_font(size, weight, style):
+    key = (weight, style)
+    if key not in FONTS:
+        if weight == "bold":
+            skia_weight = skia.FontStyle.kBold_Weight
         else:
-            text += c
-    if not in_tag and text:
-        out.append(Text(text))
-    return out
-
-class ElementNode:
-    def __init__(self, tag, attributes):
-        self.tag = tag
-        self.attributes = attributes
-        self.children = [] 
-        self.style = {}
-        for pair in self.attributes.get("style", "").split(";"):
-            if ":" not in pair: continue
-            prop, val = pair.split(":")
-            self.style[prop.strip().lower()] = val.strip()
-
-    def __repr__(self):
-        return "<" + self.tag + ">"
-
-class TextNode:
-    def __init__(self, text):
-        self.text = text
-        self.tag = None
-        self.children = []
-
-    def __repr__(self):
-        return self.text.replace("\n", "\\n")
-        
-def parse(tokens):
-    currently_open = []
-    for tok in tokens:
-        implicit_tags(tok, currently_open)
-        if isinstance(tok, Text):
-            node = TextNode(tok.text)
-            if not currently_open: continue
-            node.parent = currently_open[-1]
-            currently_open[-1].children.append(node)
-        elif tok.tag.startswith("/"):
-            node = currently_open.pop()
-            if not currently_open: return node
-            currently_open[-1].children.append(node)
-        elif tok.tag in SELF_CLOSING_TAGS:
-            node = ElementNode(tok.tag, tok.attributes)
-            node.parent = currently_open[-1]
-            currently_open[-1].children.append(node)
-        elif tok.tag.startswith("!"):
-            continue
+            skia_weight = skia.FontStyle.kNormal_Weight
+        if style == "italic":
+            skia_style = skia.FontStyle.kItalic_Slant
         else:
-            node = ElementNode(tok.tag, tok.attributes)
-            node.parent = currently_open[-1]
-            currently_open.append(node)
-    while currently_open:
-        node = currently_open.pop()
-        if not currently_open: return node
-        currently_open[-1].children.append(node)
+            skia_style = skia.FontStyle.kUpright_Slant
+        skia_width = skia.FontStyle.kNormal_Width
+        style_info = \
+            skia.FontStyle(skia_weight, skia_width, skia_style)
+        font = skia.Typeface('Arial', style_info)
+        FONTS[key] = font
+    return skia.Font(FONTS[key], size)
 
-HEAD_TAGS = [
-    "base", "basefont", "bgsound", "noscript",
-    "link", "meta", "title", "style", "script",
-]
-            
-def implicit_tags(tok, currently_open):
-    tag = tok.tag if isinstance(tok, Tag) else None
-    while True:
-        open_tags = [node.tag for node in currently_open]
-        if open_tags == [] and tag != "html":
-            node = ElementNode("html", {})
-            node.parent = None
-            currently_open.append(node)
-        elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
-            if tag in HEAD_TAGS:
-                implicit = "head"
-            else:
-                implicit = "body"
-            node = ElementNode(implicit, {})
-            node.parent = currently_open[-1]
-            currently_open.append(node)
-        elif open_tags == ["html", "head"] and tag not in ["/head"] + HEAD_TAGS:
-            node = currently_open.pop()
-            currently_open[-1].children.append(node)
-        else:
-            break
-
-class CSSParser:
-    def __init__(self, s):
-        self.s = s
-
-    def whitespace(self, i):
-        while i < len(self.s) and self.s[i].isspace():
-            i += 1
-        return None, i
-
-    def literal(self, i, literal):
-        l = len(literal)
-        assert self.s[i:i+l] == literal
-        return None, i + l
-
-    def word(self, i):
-        j = i
-        while j < len(self.s) and self.s[j].isalnum() or self.s[j] in "-.":
-            j += 1
-        assert j > i
-        return self.s[i:j], j
-
-    def pair(self, i):
-        prop, i = self.word(i)
-        _, i = self.whitespace(i)
-        _, i = self.literal(i, ":")
-        _, i = self.whitespace(i)
-        val, i = self.word(i)
-        return (prop.lower(), val), i
-
-    def ignore_until(self, i, chars):
-        while i < len(self.s) and self.s[i] not in chars:
-            i += 1
-        return None, i
-
-    def body(self, i):
-        pairs = {}
-        _, i = self.literal(i, "{")
-        _, i = self.whitespace(i)
-        while i < len(self.s) and self.s[i] != "}":
-            try:
-                (prop, val), i = self.pair(i)
-                pairs[prop] = val
-                _, i = self.whitespace(i)
-                _, i = self.literal(i, ";")
-            except AssertionError:
-                _, i = self.ignore_until(i, [";", "}"])
-                if i < len(self.s) and self.s[i] == ";":
-                    _, i = self.literal(i, ";")
-            _, i = self.whitespace(i)
-        _, i = self.literal(i, "}")
-        return pairs, i
-
-    def selector(self, i):
-        if self.s[i] == "#":
-            _, i = self.literal(i, "#")
-            name, i = self.word(i)
-            return IdSelector(name), i
-        elif self.s[i] == ".":
-            _, i = self.literal(i, ".")
-            name, i = self.word(i)
-            return ClassSelector(name), i
-        else:
-            name, i = self.word(i)
-            return TagSelector(name.lower()), i
-
-    def rule(self, i):
-        selector, i = self.selector(i)
-        _, i = self.whitespace(i)
-        body, i = self.body(i)
-        return (selector, body), i
-
-    def file(self, i):
-        rules = []
-        _, i = self.whitespace(i)
-        while i < len(self.s):
-            try:
-                rule, i = self.rule(i)
-                rules.append(rule)
-            except AssertionError:
-                _, i = self.ignore_until(i, "}")
-                _, i = self.literal(i, "}")
-            _, i = self.whitespace(i)
-        return rules, i
-
-    def parse(self):
-        rules, _ = self.file(0)
-        return rules
-
-class TagSelector:
-    def __init__(self, tag):
-        self.tag = tag
-
-    def matches(self, node):
-        return self.tag == node.tag
-
-    def priority(self):
-        return 1
-
-class ClassSelector:
-    def __init__(self, cls):
-        self.cls = cls
-
-    def matches(self, node):
-        return self.cls in node.attributes.get("class", "").split()
-
-    def priority(self):
-        return 16
-
-class IdSelector:
-    def __init__(self, id):
-        self.id = id
-
-    def matches(self, node):
-        return self.id == node.attributes.get("id", "")
-
-    def priority(self):
-        return 256
-
-INHERITED_PROPERTIES = {
-    "font-style": "normal",
-    "font-weight": "normal",
-    "font-size": "16px",
-    "color": "black",
-}
-
-def style(node, parent, rules):
-    if isinstance(node, TextNode):
-        node.style = parent.style
+def parse_color(color):
+    if color == "white":
+        return skia.ColorWHITE
+    elif color == "lightblue":
+        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
+    elif color == "orange":
+        return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
+    elif color == "red":
+        return skia.ColorRED
+    elif color == "green":
+        return skia.ColorGREEN
+    elif color == "blue":
+        return skia.ColorBLUE
+    elif color == "gray":
+        return skia.ColorGRAY
     else:
-        for selector, pairs in rules:
-            if selector.matches(node):
-                for property in pairs:
-                    if property not in node.style:
-                        node.style[property] = pairs[property]
-        for property, default in INHERITED_PROPERTIES.items():
-            if property not in node.style:
-                if parent:
-                    node.style[property] = parent.style[property]
-                else:
-                    node.style[property] = default
-    for child in node.children:
-        style(child, node, rules)
+        return skia.ColorBLACK
 
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
-
-SCROLL_STEP = 100
-
-class LineLayout:
-    def __init__(self, node, parent):
-        self.node = node
-        self.parent = parent
-        self.cx = 0
-        self.laid_out = False
-        self.children = []
-
-    def append(self, child):
-        self.children.append(child)
-        child.parent = self
-        self.cx += child.w + child.font.measure(" ")
-
-    def size(self):
-        self.w = self.parent.w
-        self.compute_height()
-
-    def compute_height(self):
-        if not self.children:
-            self.h = 0
-            self.max_ascent = 0
-            self.max_descent = 0
-            self.metrics = None
-            self.cxs = []
-            return
-        self.metrics = [child.font.metrics() for child in self.children]
-        self.max_ascent = max([metric["ascent"] for metric in self.metrics])
-        self.max_descent = max([metric["descent"] for metric in self.metrics])
-        self.h = 1.25 * (self.max_descent + self.max_ascent)
-
-        cx = 0
-        self.cxs = []
-        for child in self.children:
-            self.cxs.append(cx)
-            cx += child.w + child.font.measure(" ")
-
-    def position(self):
-        baseline = self.y + 1.25 * self.max_ascent
-        if self.children:
-            for cx, child, metrics in \
-              zip(self.cxs, self.children, self.metrics):
-                child.x = self.x + cx
-                child.y = baseline - metrics["ascent"]
-
-    def paint(self, to):
-        for child in self.children:
-            child.paint(to)
-
-FONT_CACHE = {}
-
-def GetFont(size, weight, style):
-    key = (size, weight, style)
-    value = FONT_CACHE.get(key)
-    if value: return value
-    value = tkinter.font.Font(size=size, weight=weight, slant=style)
-    FONT_CACHE[key] = value
-    return value
-
-class TextLayout:
-    def __init__(self, node, word):
-        self.node = node
-        self.children = []
-        self.word = word
-        self.display_item = None
-
-    def size(self):
-        self.display_item = None
-
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = int(px(self.node.style["font-size"]) * .75)
-        self.font = GetFont(size, weight, style) 
-
-        self.w = self.font.measure(self.word)
-        self.compute_height()
-
-    def compute_height(self):
-        self.h = self.font.metrics('linespace')
-
-    def position(self):
-        pass
-
-    def paint(self, to):
-        if not self.display_item:
-            color = self.node.style["color"]
-            self.display_item = DrawText(self.x, self.y, self.word, self.font, color)
-        to.append(self.display_item)
-
-class InputLayout:
-    def __init__(self, node):
-        self.node = node
-        self.children = []
-
-    def size(self):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = int(px(self.node.style["font-size"]) * .75)
-        self.font = tkinter.font.Font(size=size, weight=weight, slant=style)
-        self.w = 200
-        self.compute_height()
-
-    def compute_height(self):
-        self.h = 20
-
-    def position(self):
-        pass
-
-    def paint(self, to):
-        x1, x2 = self.x, self.x + self.w
-        y1, y2 = self.y, self.y + self.h
-        bgcolor = "light gray" if self.node.tag == "input" else "yellow"
-        to.append(DrawRect(x1, y1, x2, y2, bgcolor))
-
-        if self.node.tag == "input":
-            text = self.node.attributes.get("value", "")
-        else:
-            text = self.node.children[0].text
-        color = self.node.style["color"]
-        to.append(DrawText(self.x, self.y, text, self.font, color))
-
-class InlineLayout:
-    def __init__(self, node, parent):
-        self.node = node
-        self.parent = parent
-
-    def size(self):
-        self.children = [LineLayout(self.node, self)]
-        self.mt = self.bt = self.pt = 0
-        self.mr = self.br = self.pr = 0
-        self.mb = self.bb = self.pb = 0
-        self.ml = self.bl = self.pl = 0
-
-        self.w = self.parent.w - self.parent.pl - self.parent.pr \
-            - self.parent.bl - self.parent.br
-
-        self.recurse(self.node)
-        self.flush()
-        self.children.pop()
-        self.compute_height()
-
-    def compute_height(self):
-        self.h = 0
-        for child in self.children:
-            self.h += child.h
-
-    def recurse(self, node):
-        if isinstance(node, TextNode):
-            self.text(node)
-        elif node.tag == "br":
-            self.flush()
-        elif node.tag == "input":
-            self.input(node)
-        elif node.tag == "button":
-            self.input(node)
-        else:
-            for child in node.children:
-                self.recurse(child)
-
-    def text(self, node):
-        for word in node.text.split():
-            child = TextLayout(node, word)
-            child.size()
-            if self.children[-1].cx + child.w > self.w:
-                self.flush()
-            self.children[-1].append(child)
-
-    def input(self, node):
-        child = InputLayout(node)
-        child.size()
-        if self.children[-1].cx + child.w > self.w:
-            self.flush()
-        self.children[-1].append(child)
-
-    def flush(self):
-        child = self.children[-1]
-        child.size()
-        self.children.append(LineLayout(self.node, self))
-
-    def position(self):
-        cy = self.y
-        for child in self.children:
-            child.x = self.x
-            child.y = cy
-            child.position()
-            cy += child.h
-
-    def paint(self, to):
-        for child in self.children:
-            child.paint(to)
-
-def px(s):
-    if s.endswith("px"):
-        return int(s[:-2])
+def parse_blend_mode(blend_mode_str):
+    if blend_mode_str == "multiply":
+        return skia.BlendMode.kMultiply
+    elif blend_mode_str == "difference":
+        return skia.BlendMode.kDifference
     else:
-        return 0
+        return skia.BlendMode.kSrcOver
+
+def linespace(font):
+    metrics = font.getMetrics()
+    return metrics.fDescent - metrics.fAscent
+
+class SaveLayer:
+    def __init__(self, sk_paint, cmds,
+            should_save=True, should_paint_cmds=True):
+        self.should_save = should_save
+        self.should_paint_cmds = should_paint_cmds
+        self.sk_paint = sk_paint
+        self.cmds = cmds
+        self.rect = skia.Rect.MakeEmpty()
+        for cmd in self.cmds:
+            self.rect.join(cmd.rect)
+
+    def execute(self, canvas):
+        if self.should_save:
+            canvas.saveLayer(paint=self.sk_paint)
+        if self.should_paint_cmds:
+            for cmd in self.cmds:
+                cmd.execute(canvas)
+        if self.should_save:
+            canvas.restore()
+
+class DrawRRect:
+    def __init__(self, rect, radius, color):
+        self.rect = rect
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+        self.color = color
+
+    def execute(self, canvas):
+        sk_color = parse_color(self.color)
+        canvas.drawRRect(self.rrect,
+            paint=skia.Paint(Color=sk_color))
+
+class DrawText:
+    def __init__(self, x1, y1, text, font, color):
+        self.left = x1
+        self.top = y1
+        self.right = x1 + font.measureText(text)
+        self.bottom = y1 - font.getMetrics().fAscent + font.getMetrics().fDescent
+        self.rect = \
+            skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom)
+        self.font = font
+        self.text = text
+        self.color = color
+
+    def execute(self, canvas):
+        draw_text(canvas, self.left, self.top,
+            self.text, self.font, self.color)
+
+    def __repr__(self):
+        return "DrawText(text={})".format(self.text)
+
+class DrawRect:
+    def __init__(self, x1, y1, x2, y2, color):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+        self.color = color
+
+    def execute(self, canvas):
+        draw_rect(canvas,
+            self.left, self.top,
+            self.right, self.bottom,
+            fill=self.color, width=0)
+
+    def __repr__(self):
+        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
+            self.left, self.top, self.right, self.bottom, self.color)
+
+class DrawLine:
+    def __init__(self, x1, y1, x2, y2):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+    def execute(self, canvas):
+        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
+
+class ClipRRect:
+    def __init__(self, rect, radius, cmds, should_clip=True):
+        self.rect = rect
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+        self.cmds = cmds
+        self.should_clip = should_clip
+
+    def execute(self, canvas):
+        if self.should_clip:
+            canvas.save()
+            canvas.clipRRect(self.rrect)
+
+        for cmd in self.cmds:
+            cmd.execute(canvas)
+
+        if self.should_clip:
+            canvas.restore()
+
+def draw_line(canvas, x1, y1, x2, y2):
+    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
+    paint = skia.Paint(Color=skia.ColorBLACK)
+    paint.setStyle(skia.Paint.kStroke_Style)
+    paint.setStrokeWidth(1);
+    canvas.drawPath(path, paint)
+
+def draw_text(canvas, x, y, text, font, color=None):
+    sk_color = parse_color(color)
+    paint = skia.Paint(AntiAlias=True, Color=sk_color)
+    canvas.drawString(
+        text, float(x), y - font.getMetrics().fAscent,
+        font, paint)
+
+def draw_rect(canvas, l, t, r, b, fill=None, width=1):
+    paint = skia.Paint()
+    if fill:
+        paint.setStrokeWidth(width);
+        paint.setColor(parse_color(fill))
+    else:
+        paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(1);
+        paint.setColor(skia.ColorBLACK)
+    rect = skia.Rect.MakeLTRB(l, t, r, b)
+    canvas.drawRect(rect, paint)
 
 class BlockLayout:
-    def __init__(self, node, parent):
+    def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
-
-        self.x = -1
-        self.y = -1
-        self.w = -1
-        self.h = -1
-
-    def has_block_children(self):
-        for child in self.node.children:
-            if isinstance(child, TextNode):
-                if not child.text.isspace():
-                    return False
-            elif child.style.get("display", "block") == "inline":
-                return False
-        return True
-
-    def size(self):
+        self.previous = previous
         self.children = []
-        # block layout here
-        if self.has_block_children():
-            for child in self.node.children:
-                if isinstance(child, TextNode): continue
-                self.children.append(BlockLayout(child, self))
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def layout(self):
+        previous = None
+        for child in self.node.children:
+            if layout_mode(child) == "inline":
+                next = InlineLayout(child, self, previous)
+            else:
+                next = BlockLayout(child, self, previous)
+            self.children.append(next)
+            previous = next
+
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
         else:
-            self.children.append(InlineLayout(self.node, self))
+            self.y = self.parent.y
 
-        self.mt = px(self.node.style.get("margin-top", "0px"))
-        self.bt = px(self.node.style.get("border-top-width", "0px"))
-        self.pt = px(self.node.style.get("padding-top", "0px"))
-        self.mr = px(self.node.style.get("margin-right", "0px"))
-        self.br = px(self.node.style.get("border-right-width", "0px"))
-        self.pr = px(self.node.style.get("padding-right", "0px"))
-        self.mb = px(self.node.style.get("margin-bottom", "0px"))
-        self.bb = px(self.node.style.get("border-bottom-width", "0px"))
-        self.pb = px(self.node.style.get("padding-bottom", "0px"))
-        self.ml = px(self.node.style.get("margin-left", "0px"))
-        self.bl = px(self.node.style.get("border-left-width", "0px"))
-        self.pl = px(self.node.style.get("padding-left", "0px"))
-
-        self.w = self.parent.w - self.parent.pl - self.parent.pr \
-            - self.parent.bl - self.parent.br \
-            - self.ml - self.mr
         for child in self.children:
-            child.size()
-        self.compute_height()
+            child.layout()
 
-    def compute_height(self):
-        self.h = 0
+        self.height = sum([child.height for child in self.children])
+
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(
+                self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
         for child in self.children:
-            self.h += child.mt + child.h + child.mb
+            child.paint(cmds)
 
-    def position(self):
-        self.y += self.mt
-        self.x += self.ml
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
 
-        y = self.y
+    def __repr__(self):
+        return "BlockLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.x, self.width, self.height)
+
+class InlineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.display_list = None
+
+    def layout(self):
+        self.width = self.parent.width
+
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        self.new_line()
+        self.recurse(self.node)
+        
+        for line in self.children:
+            line.layout()
+
+        self.height = sum([line.height for line in self.children])
+
+    def recurse(self, node):
+        if isinstance(node, Text):
+            self.text(node)
+        else:
+            if node.tag == "br":
+                self.new_line()
+            elif node.tag == "input" or node.tag == "button":
+                self.input(node)
+            else:
+                for child in node.children:
+                    self.recurse(child)
+
+    def new_line(self):
+        self.previous_word = None
+        self.cursor_x = self.x
+        last_line = self.children[-1] if self.children else None
+        new_line = LineLayout(self.node, self, last_line)
+        self.children.append(new_line)
+
+    def text(self, node):
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = float(node.style["font-size"][:-2])
+        font = get_font(size, weight, size)
+        for word in node.text.split():
+            w = font.measureText(word)
+            if self.cursor_x + w > self.x + self.width:
+                self.new_line()
+            line = self.children[-1]
+            text = TextLayout(node, word, line, self.previous_word)
+            line.children.append(text)
+            self.previous_word = text
+            self.cursor_x += w + font.measureText(" ")
+
+    def input(self, node):
+        w = INPUT_WIDTH_PX
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = InputLayout(node, line, self.previous_word)
+        line.children.append(input)
+        self.previous_word = input
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = float(node.style["font-size"][:-2])
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
+
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+ 
         for child in self.children:
-            child.x = self.x + self.pl + self.bl
-            child.y = y
-            child.position()
-            y += child.mt + child.h + child.mb
+            child.paint(cmds)
 
-    def paint(self, to):
-        if self.node.tag == "pre":
-            x2, y2 = self.x + self.w, self.y + self.h
-            to.append(DrawRect(self.x, self.y, x2, y2, "gray"))
-        for child in self.children:
-            child.paint(to)
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+
+    def __repr__(self):
+        return "InlineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
 
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
         self.parent = None
+        self.previous = None
         self.children = []
 
-        self.x = -1
-        self.y = -1
-        self.w = -1
-        self.h = -1
-
-    def size(self):
-        child = BlockLayout(self.node, self)
+    def layout(self):
+        child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
-        self.w = WIDTH
-        self.mt = self.bt = self.pt = 0
-        self.mr = self.br = self.pr = 0
-        self.mb = self.bb = self.pb = 0
-        self.ml = self.bl = self.pl = 0
+        self.width = WIDTH - 2*HSTEP
+        self.x = HSTEP
+        self.y = VSTEP
+        child.layout()
+        self.height = child.height + 2*VSTEP
 
-        child.size()
-        self.compute_height()
+    def paint(self, display_list):
+        self.children[0].paint(display_list)
 
-    def compute_height(self):
-        self.h = self.children[0].h
+    def __repr__(self):
+        return "DocumentLayout()"
 
-    def position(self):
-        child = self.children[0]
-        child.x = self.x = 0
-        child.y = self.y = 0
-        child.position()
+INPUT_WIDTH_PX = 200
 
-    def paint(self, to):
-        self.children[0].paint(to)
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
 
-class DrawText:
-    def __init__(self, x1, y1, text, font, color):
-        self.x1 = x1
-        self.y1 = y1
-        self.text = text
-        self.font = font
-        self.color = color
+    def layout(self):
+        self.width = self.parent.width
+        self.x = self.parent.x
 
-        self.y2 = y1 + font.measure("linespace")
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
 
-    def draw(self, scroll, canvas):
-        canvas.create_text(
-            self.x1, self.y1 - scroll,
-            text=self.text,
-            font=self.font,
-            fill=self.color,
-            anchor='nw',
-        )
+        for word in self.children:
+            word.layout()
 
-class DrawRect:
-    def __init__(self, x1, y1, x2, y2, color):
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
-        self.color = color
+        if not self.children:
+            self.height = 0
+            return
 
-    def draw(self, scroll, canvas):
-        canvas.create_rectangle(
-            self.x1, self.y1 - scroll,
-            self.x2, self.y2 - scroll,
-            width=0,
-            fill=self.color,
-        )
+        max_ascent = max([-word.font.getMetrics().fAscent 
+                          for word in self.children])
+        baseline = self.y + 1.25 * max_ascent
+        for word in self.children:
+            word.y = baseline + word.font.getMetrics().fAscent
+        max_descent = max([word.font.getMetrics().fDescent
+                           for word in self.children])
+        self.height = 1.25 * (max_ascent + max_descent)
 
-def find_links(node, lst):
-    if not isinstance(node, ElementNode): return
-    if node.tag == "link" and \
-       node.attributes.get("rel", "") == "stylesheet" and \
-       "href" in node.attributes:
-        lst.append(node.attributes["href"])
-    for child in node.children:
-        find_links(child, lst)
-    return lst
+    def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
 
-def resolve_url(url, current):
-    if "://" in url:
-        return url
-    elif url.startswith("/"):
-        return "/".join(current.split("/")[:3]) + url
+    def __repr__(self):
+        return "LineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
+class TextLayout:
+    def __init__(self, node, word, parent, previous):
+        self.node = node
+        self.word = word
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = float(self.node.style["font-size"][:-2])
+        self.font = get_font(size, weight, style)
+
+        # Do not set self.y!!!
+        self.width = self.font.measureText(self.word)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+        self.height = linespace(self.font)
+
+    def paint(self, display_list):
+        color = self.node.style["color"]
+        display_list.append(
+            DrawText(self.x, self.y, self.word, self.font, color))
+    
+    def __repr__(self):
+        return "TextLayout(x={}, y={}, width={}, height={}".format(
+            self.x, self.y, self.width, self.height)
+
+class InputLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = float(self.node.style["font-size"][:-2])
+        self.font = get_font(size, weight, style)
+
+        self.width = INPUT_WIDTH_PX
+        self.height = linespace(self.font)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        if self.node.tag == "input":
+            text = self.node.attributes.get("value", "")
+        elif self.node.tag == "button":
+            text = self.node.children[0].text
+ 
+        color = self.node.style["color"]
+        cmds.append(DrawText(self.x, self.y,
+                             text, self.font, color))
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+
+    def __repr__(self):
+        return "InputLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
+def paint_visual_effects(node, cmds, rect):
+    opacity = float(node.style.get("opacity", "1.0"))
+
+    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+
+    border_radius = float(node.style.get("border-radius", "0px")[:-2])
+    if node.style.get("overflow", "visible") == "clip":
+        clip_radius = border_radius
     else:
-        return current.rsplit("/", 1)[0] + "/" + url
+        clip_radius = 0
 
-def find_layout(x, y, tree):
-    for child in reversed(tree.children):
-        result = find_layout(x, y, child)
-        if result: return result
-    if tree.x <= x < tree.x + tree.w and \
-       tree.y <= y < tree.y + tree.h:
-        return tree
+    needs_clip = node.style.get("overflow", "visible") == "clip"
+    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
+        needs_clip or opacity != 1.0
 
-def find_inputs(elt, out):
-    if not isinstance(elt, ElementNode): return
-    if elt.tag == "input" and "name" in elt.attributes:
-        out.append(elt)
-    for child in elt.children:
-        find_inputs(child, out)
-    return out
+    return [
+        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
+            ClipRRect(rect, clip_radius,
+                cmds,
+            should_clip=needs_clip),
+        ], should_save=needs_blend_isolation),
+    ]
 
-def find_scripts(node, out):
-    if not isinstance(node, ElementNode): return
-    if node.tag == "script" and \
-       "src" in node.attributes:
-        out.append(node.attributes["src"])
-    for child in node.children:
-        find_scripts(child, out)
-    return out
+class JSContext:
+    def __init__(self, tab):
+        self.tab = tab
 
-def find_selected(node, sel, out):
-    if not isinstance(node, ElementNode): return
-    if sel.matches(node):
-        out.append(node)
-    for child in node.children:
-        find_selected(child, sel, out)
-    return out
+        self.interp = dukpy.JSInterpreter()
+        self.interp.export_function("log", print)
+        self.interp.export_function("querySelectorAll",
+            self.querySelectorAll)
+        self.interp.export_function("getAttribute",
+            self.getAttribute)
+        self.interp.export_function("innerHTML_set", self.innerHTML_set)
+        self.interp.export_function("XMLHttpRequest_send",
+            self.XMLHttpRequest_send)
+        self.interp.export_function("now",
+            self.now)
+        self.interp.export_function("requestAnimationFrame",
+            self.requestAnimationFrame)
+        with open("runtime12.js") as f:
+            self.interp.evaljs(f.read())
 
-def layout_for_node(tree, node):
-    if tree.node == node:
-        return tree
-    for child in tree.children:
-        out = layout_for_node(child, node)
-        if out: return out
+        self.node_to_handle = {}
+        self.handle_to_node = {}
 
-def is_link(node):
-    return isinstance(node, ElementNode) \
-        and node.tag == "a" and "href" in node.attributes
+    def run(self, script, code):
+        try:
+            print("Script returned: ", self.interp.evaljs(code))
+        except dukpy.JSRuntimeError as e:
+            print("Script", script, "crashed", e)
 
-def drawHTMLTree(node, indent=0):
-    print(" "*indent, type(node).__name__, " ", node, sep="")
-    for child in node.children:
-        drawHTMLTree(child, indent + 2)
+    def dispatch_event(self, type, elt):
+        handle = self.node_to_handle.get(elt, -1)
+        do_default = self.interp.evaljs(
+            EVENT_DISPATCH_CODE, type=type, handle=handle)
+        return not do_default
 
-def drawLayoutTree(node, indent=0):
-    print(" "*indent, type(node).__name__, " ", node.node, sep="")
-    for child in node.children:
-        drawLayoutTree(child, indent + 2)
+    def get_handle(self, elt):
+        if elt not in self.node_to_handle:
+            handle = len(self.node_to_handle)
+            self.node_to_handle[elt] = handle
+            self.handle_to_node[handle] = elt
+        else:
+            handle = self.node_to_handle[elt]
+        return handle
 
-REFRESH_RATE_MS = 16 # 16ms
+    def querySelectorAll(self, selector_text):
+        selector = CSSParser(selector_text).selector()
+        nodes = [node for node
+                 in tree_to_list(self.tab.nodes, [])
+                 if selector.matches(node)]
+        return [self.get_handle(node) for node in nodes]
+
+    def getAttribute(self, handle, attr):
+        elt = self.handle_to_node[handle]
+        return elt.attributes.get(attr, None)
+
+    def innerHTML_set(self, handle, s):
+        self.tab.run_rendering_pipeline()
+        doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
+        new_nodes = doc.children[0].children
+        elt = self.handle_to_node[handle]
+        elt.children = new_nodes
+        for child in elt.children:
+            child.parent = elt
+        self.tab.run_rendering_pipeline()
+
+    def XMLHttpRequest_send(self, method, url, body):
+        full_url = resolve_url(url, self.tab.url)
+        if not self.tab.allowed_request(full_url):
+            raise Exception("Cross-origin XHR blocked by CSP")
+        headers, out = request(full_url, self.tab.url, payload=body)
+        if url_origin(full_url) != url_origin(self.tab.url):
+            raise Exception("Cross-origin XHR request not allowed")
+        return out
+
+    def now(self):
+        return int(time.time() * 1000)
+
+    def requestAnimationFrame(self):
+        self.tab.request_animation_frame_callback()
+
+SCROLL_STEP = 100
+CHROME_PX = 100
+
+def set_timeout(func, sec):     
+    t = None
+    def func_wrapper():
+        func()
+        t.cancel()
+    t = threading.Timer(sec, func_wrapper)
+    t.start()
+
+def raster(display_list, canvas):
+    for cmd in display_list:
+        cmd.execute(canvas)
+
+class Tab:
+    def __init__(self, commit_func):
+        self.history = []
+        self.focus = None
+        self.url = None
+        self.scroll = 0
+        self.needs_raf_callbacks = False
+        self.display_scheduled = False
+        self.needs_pipeline_update = False
+        self.commit_func = commit_func
+        self.main_thread_runner = MainThreadRunner(self)
+        self.main_thread_runner.start()
+
+        with open("browser8.css") as f:
+            self.default_style_sheet = CSSParser(f.read()).parse()
+
+    def allowed_request(self, url):
+        return self.allowed_origins == None or \
+            url_origin(url) in self.allowed_origins
+
+    def cookie_string(self):
+        origin = url_origin(self.history[-1])
+        cookie_string = ""
+        if not origin in self.cookies:
+            return cookie_string
+        for key, value in self.cookies[origin].items():
+            cookie_string += "&" + key + "=" + value
+        return cookie_string[1:]
+
+    def script_run_wrapper(self, script, script_text):
+        return Task(self.js.run, script, script_text)
+
+    def load(self, url, body=None):
+        headers, body = request(url, self.url, payload=body)
+        self.scroll = 0
+        self.url = url
+        self.history.append(url)
+
+        self.allowed_origins = None
+        if "content-security-policy" in headers:
+           csp = headers["content-security-policy"].split()
+           if len(csp) > 0 and csp[0] == "default-src":
+               self.allowed_origins = csp[1:]
+
+        self.nodes = HTMLParser(body).parse()
+
+        self.js = JSContext(self)
+        scripts = [node.attributes["src"] for node
+                   in tree_to_list(self.nodes, [])
+                   if isinstance(node, Element)
+                   and node.tag == "script"
+                   and "src" in node.attributes]
+        for script in scripts:
+            script_url = resolve_url(script, url)
+            if not self.allowed_request(script_url):
+                print("Blocked script", script, "due to CSP")
+                continue
+            header, body = request(script_url, url)
+            self.main_thread_runner.schedule_script_task(
+                Task(self.js.run, script, body))
+
+        self.rules = self.default_style_sheet.copy()
+        links = [node.attributes["href"]
+                 for node in tree_to_list(self.nodes, [])
+                 if isinstance(node, Element)
+                 and node.tag == "link"
+                 and "href" in node.attributes
+                 and node.attributes.get("rel") == "stylesheet"]
+        for link in links:
+            style_url = resolve_url(link, url)
+            if not self.allowed_request(style_url):
+                print("Blocked style", link, "due to CSP")
+                continue
+            try:
+                header, body = request(style_url, url)
+            except:
+                continue
+            self.rules.extend(CSSParser(body).parse())
+        self.set_needs_pipeline_update()
+
+    def apply_scroll(self, scroll):
+        self.scroll = scroll
+
+    def set_needs_pipeline_update(self):
+        self.needs_pipeline_update = True
+        self.set_needs_animation_frame()
+
+    def set_needs_animation_frame(self):
+        def callback():
+            self.display_scheduled = False
+            self.main_thread_runner.schedule_animation_frame()
+        if not self.display_scheduled:
+            set_timeout(callback, REFRESH_RATE_SEC)
+            self.display_scheduled = True
+
+    def request_animation_frame_callback(self):
+        self.needs_raf_callbacks = True
+        self.set_needs_animation_frame()
+
+    def run_animation_frame(self):
+        if self.needs_raf_callbacks:
+            self.needs_raf_callbacks = False
+            self.js.interp.evaljs("__runRAFHandlers()")
+
+        self.run_rendering_pipeline()
+        self.commit_func(self.url, self.scroll)
+
+    def run_rendering_pipeline(self):
+        if self.needs_pipeline_update:
+            style(self.nodes, sorted(self.rules, key=cascade_priority))
+            self.document = DocumentLayout(self.nodes)
+            self.document.layout()
+            self.display_list = []
+            self.document.paint(self.display_list)
+        self.needs_pipeline_update = False
+
+        if self.focus:
+            obj = [obj for obj in tree_to_list(self.document, [])
+                   if obj.node == self.focus][0]
+            text = self.focus.attributes.get("value", "")
+            x = obj.x + obj.font.measureText(text)
+            y = obj.y
+            self.display_list.append(
+                DrawLine(x, y, x, y + obj.height))
+
+    def click(self, x, y):
+        self.run_rendering_pipeline()
+        self.focus = None
+        y += self.scroll
+        objs = [obj for obj in tree_to_list(self.document, [])
+                if obj.x <= x < obj.x + obj.width
+                and obj.y <= y < obj.y + obj.height]
+        if not objs: return
+        elt = objs[-1].node
+        if elt and self.js.dispatch_event("click", elt): return
+        while elt:
+            if isinstance(elt, Text):
+                pass
+            elif elt.tag == "a" and "href" in elt.attributes:
+                url = resolve_url(elt.attributes["href"], self.url)
+                self.load(url)
+                return
+            elif elt.tag == "input":
+                elt.attributes["value"] = ""
+                if elt != self.focus:
+                    self.set_needs_pipeline_update()
+                self.focus = elt
+                return
+            elif elt.tag == "button":
+                while elt:
+                    if elt.tag == "form" and "action" in elt.attributes:
+                        return self.submit_form(elt)
+                    elt = elt.parent
+            elt = elt.parent
+
+    def submit_form(self, elt):
+        if self.js.dispatch_event("submit", elt): return
+        inputs = [node for node in tree_to_list(elt, [])
+                  if isinstance(node, Element)
+                  and node.tag == "input"
+                  and "name" in node.attributes]
+
+        body = ""
+        for input in inputs:
+            name = input.attributes["name"]
+            value = input.attributes.get("value", "")
+            name = urllib.parse.quote(name)
+            value = urllib.parse.quote(value)
+            body += "&" + name + "=" + value
+        body = body [1:]
+
+        url = resolve_url(elt.attributes["action"], self.url)
+        self.load(url, body)
+
+
+    def keypress(self, char):
+        if self.focus:
+            if self.js.dispatch_event("keydown", self.focus): return
+            self.focus.attributes["value"] += char
+            self.set_needs_pipeline_update()
+
+    def go_back(self):
+        if len(self.history) > 1:
+            self.history.pop()
+            back = self.history.pop()
+            self.load(back)
+
+WIDTH, HEIGHT = 800, 600
+HSTEP, VSTEP = 13, 18
 
 class Task:
     def __init__(self, task_code, arg1=None, arg2=None):
@@ -772,13 +878,14 @@ class TaskQueue:
         return retval
 
 class MainThreadRunner:
-    def __init__(self, browser):
+    def __init__(self, tab):
         self.lock = threading.Lock()
-        self.browser = browser
+        self.tab = tab
         self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
         self.script_tasks = TaskQueue(self.lock)
         self.browser_tasks = TaskQueue(self.lock)
+        self.needs_quit = False
 
     def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)
@@ -794,17 +901,24 @@ class MainThreadRunner:
     def schedule_event_handler():
         pass
 
+    def set_needs_quit(self):
+        self.lock.acquire(blocking=True)
+        self.needs_quit = True
+        self.lock.release()
+
     def start(self):
         self.main_thread.start()
 
     def run(self):
         while True:
+            if self.needs_quit:
+                return;
             self.lock.acquire(blocking=True)
             needs_animation_frame = self.needs_animation_frame
+            self.needs_animation_frame = False
             self.lock.release()
             if needs_animation_frame:
-                browser.run_animation_frame()
-                self.browser.commit()
+                self.tab.run_animation_frame()
 
             browser_method = None
             if self.browser_tasks.has_tasks():
@@ -815,441 +929,283 @@ class MainThreadRunner:
             script = None
             if self.script_tasks.has_tasks():
                 script = self.script_tasks.get_next_task()
-
             if script:
                 script()
 
             time.sleep(0.001) # 1ms
 
+class TabWrapper:
+    def __init__(self, browser):
+        self.tab = Tab(self.commit)
+        self.browser = browser
+        self.url = None
+        self.scroll = 0
+
+    def schedule_load(self, url, body=None):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.load, url, body))
+        self.browser.set_needs_chrome_raster()
+
+    def commit(self, url, scroll):
+        self.browser.compositor_lock.acquire(blocking=True)
+        if url != self.url or scroll != self.scroll:
+            self.browser.set_needs_chrome_raster()
+        self.url = url
+        self.scroll = scroll
+        self.browser.active_tab_height = math.ceil(self.tab.document.height)
+        self.browser.active_tab_display_list = self.tab.display_list.copy()
+        self.browser.set_needs_tab_raster()
+        self.browser.compositor_lock.release()
+
+    def schedule_click(self, x, y):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.click, x, y))
+
+    def schedule_keypress(self, char):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.keypress, char))
+
+    def schedule_go_back(self):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.go_back))
+
+    def schedule_scroll(self, scroll):
+        self.scroll = scroll
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.apply_scroll, scroll))
+
+    def handle_quit(self):
+        self.tab.main_thread_runner.set_needs_quit()
+
+REFRESH_RATE_SEC = 0.016 # 16ms
+
 class Browser:
     def __init__(self):
-        self.window = tkinter.Tk()
-        self.canvas = tkinter.Canvas(
-            self.window,
-            width=WIDTH,
-            height=HEIGHT
-        )
-        self.canvas.pack()
-        self.cookies = {}
+        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
+        self.root_surface = skia.Surface.MakeRaster(
+            skia.ImageInfo.Make(
+            WIDTH, HEIGHT,
+            ct=skia.kRGBA_8888_ColorType,
+            at=skia.kUnpremul_AlphaType))
+        self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
+        self.tab_surface = None
 
-        self.history = []
+        self.tabs = []
+        self.active_tab = None
         self.focus = None
         self.address_bar = ""
-        self.scroll = 0
-        self.display_list = []
-
-        self.draw_display_list = []
-        self.needs_draw = False
-
-        self.document = None
-
-        self.main_thread_timer = Timer()
-        self.compositor_thread_timer = Timer()
-        self.window.bind("<Down>", self.scrolldown)
-        self.window.bind("<Button-1>", self.compositor_handle_click)
-        self.window.bind("<Key>", self.compositor_keypress)
-        self.window.bind("<Return>", self.press_enter)
-
-        self.reflow_roots = []
-        self.needs_layout_tree_rebuild = False
-        self.needs_animation_frame = False
-        self.display_scheduled = False
-        self.needs_raf_callbacks = False
-
-        self.frame_count = 0
         self.compositor_lock = threading.Lock()
 
-        self.needs_quit = False
+        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+            self.RED_MASK = 0xff000000
+            self.GREEN_MASK = 0x00ff0000
+            self.BLUE_MASK = 0x0000ff00
+            self.ALPHA_MASK = 0x000000ff
+        else:
+            self.RED_MASK = 0x000000ff
+            self.GREEN_MASK = 0x0000ff00
+            self.BLUE_MASK = 0x00ff0000
+            self.ALPHA_MASK = 0xff000000
 
-
-    def commit(self):
-        self.compositor_lock.acquire(blocking=True)
+        self.needs_tab_raster = False
+        self.needs_chrome_raster = True
         self.needs_draw = True
-        self.draw_display_list = self.display_list.copy()
-        self.compositor_lock.release()
 
-    def start(self):
-        self.main_thread_runner = MainThreadRunner(self)
-        self.main_thread_runner.start()
-        self.canvas.after(1, self.maybe_draw)
+        self.active_tab_height = None
+        self.active_tab_display_list = None
 
-    def maybe_draw(self):
+    def set_needs_tab_raster(self):
+        self.needs_tab_raster = True
+        self.needs_draw = True
+
+    def set_needs_chrome_raster(self):
+        self.needs_chrome_raster = True
+        self.needs_draw = True
+
+    def set_needs_draw(self):
+        self.needs_draw = True
+
+    def raster_and_draw(self):
         self.compositor_lock.acquire(blocking=True)
-        if self.needs_quit:
-            sys.exit()
-        if self.needs_animation_frame and not self.display_scheduled:
-            self.canvas.after(
-                REFRESH_RATE_MS,
-                self.main_thread_runner.schedule_animation_frame)
-            self.display_scheduled = True
-
+        if self.needs_chrome_raster:
+            self.raster_chrome()
+        if self.needs_tab_raster:
+            self.raster_tab()
         if self.needs_draw:
             self.draw()
+        self.needs_tab_raster = False
+        self.needs_chrome_raster = False
         self.needs_draw = False
         self.compositor_lock.release()
-        self.canvas.after(1, self.maybe_draw)
 
-    # Runs on the compositor thread
-    def compositor_handle_click(self, e):
-        self.focus = None
-        if e.y < 60:
-            # Browser chrome clicks can be handled without the main thread...
-            if 10 <= e.x < 35 and 10 <= e.y < 50:
-                self.go_back()
-            elif 50 <= e.x < 790 and 10 <= e.y < 50:
+    def handle_down(self):
+        self.compositor_lock.acquire(blocking=True)
+        if not self.active_tab_height:
+            return
+        max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
+        active_tab = self.tabs[self.active_tab]
+        active_tab.schedule_scroll(min(active_tab.scroll + SCROLL_STEP, max_y))
+        self.set_needs_draw()
+        self.compositor_lock.release()
+
+    def handle_click(self, e):
+        self.compositor_lock.acquire(blocking=True)
+        if e.y < CHROME_PX:
+            self.focus = None
+            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
+                self.active_tab = int((e.x - 40) / 80)
+            elif 10 <= e.x < 30 and 10 <= e.y < 30:
+                self.load("https://browser.engineering/")
+            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+                self.tabs[self.active_tab].schedule_go_back()
+            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
-                self.set_needs_animation_frame()
+            self.set_needs_chrome_raster()
         else:
-            # ...but not clicks within the web page contents area
-            self.main_thread_runner.schedule_browser_task(
-                Task(self.handle_click, e))
-
-    # Runs on the main thread
-    def handle_click(self, e):
-        # Lock to check scroll, which is updated on the compositor thread.
-        self.compositor_lock.acquire(blocking=True)
-        x, y = e.x, e.y + self.scroll - 60
+            self.focus = "content"
+            self.tabs[self.active_tab].schedule_click(e.x, e.y - CHROME_PX)
         self.compositor_lock.release()
-        self.run_rendering_pipeline()
-        obj = find_layout(x, y, self.document)
-        if not obj: return
-        elt = obj.node
-        if elt and self.dispatch_event("click", elt): return
-        while elt:
-            if isinstance(elt, TextNode):
-                pass
-            elif is_link(elt):
-                url = resolve_url(elt.attributes["href"], self.url)
-                return self.schedule_load(url)
-            elif elt.tag == "input":
-                elt.attributes["value"] = ""
-                self.focus = obj
-                self.set_needs_reflow(self.focus)
-            elif elt.tag == "button":
-                self.submit_form(elt)
-            elt = elt.parent
 
-    # Runs on the compositor thread
-    def compositor_keypress(self, e):
-        if len(e.char) == 0: return
-        if not (0x20 <= ord(e.char) < 0x7f): return
-
-        if not self.focus:
-            return
-        elif self.focus == "address bar":
-            self.address_bar += e.char
-            self.set_needs_animation_frame()
-        else:
-            self.main_thread_runner.schedule_browser_task(
-                Task(self.keypress, e))
-
-    # Runs on the main thread
-    def keypress(self, e):
-        self.focus.node.attributes["value"] += e.char
-        self.dispatch_event("change", self.focus.node)
-        self.set_needs_reflow(self.focus)
-
-    def submit_form(self, elt):
-        while elt and elt.tag != "form":
-            elt = elt.parent
-        if not elt: return
-        if self.dispatch_event("submit", elt): return
-        inputs = find_inputs(elt, [])
-        body = ""
-        for input in inputs:
-            name = input.attributes["name"]
-            value = input.attributes.get("value", "")
-            body += "&" + name + "=" + value.replace(" ", "%20")
-        body = body[1:]
-        url = resolve_url(elt.attributes["action"], self.url)
-        self.schedule_load(url, body)
-
-    # Runs on the compositor thread
-    def press_enter(self, e):
+    def handle_key(self, char):
+        self.compositor_lock.acquire(blocking=True)
+        if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
-            self.focus = None
-            self.schedule_load(self.address_bar)
-
-    def go_back(self):
-        if len(self.history) > 1:
-            self.history.pop()
-            back = self.history.pop()
-            self.schedule_load(back)
-
-    def cookie_string(self):
-        cookie_string = ""
-        for key, value in self.cookies.items():
-            cookie_string += "&" + key + "=" + value
-        return cookie_string[1:]
-
-    # Runs on the compositor thread
-    def schedule_load(self, url, body=None):
-        self.main_thread_runner.schedule_browser_task(
-            Task(self.load, url, body))
-
-    # Runs on the main thread
-    def load(self, url, body=None):
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.start("Downloading")
-        self.address_bar = url
-        self.url = url
-        self.history.append(url)
-        req_headers = { "Cookie": self.cookie_string() }
-        headers, body = request(url, headers=req_headers, payload=body)
-        if "set-cookie" in headers:
-            kv, params = headers["set-cookie"].split(";", 1)
-            key, value = kv.split("=", 1)
-            origin = url_origin(self.history[-1])
-            self.cookies.setdefault(origin, {})[key] = value
-
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.start("Parsing HTML")
-        self.nodes = parse(lex(body))
-#        drawHTMLTree(self.nodes)
-        
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.start("Parsing CSS")
-        with open("browser8.css") as f:
-            self.rules = CSSParser(f.read()).parse()
-
-        for link in find_links(self.nodes, []):
-            header, body = request(resolve_url(link, url), headers=req_headers)
-            self.rules.extend(CSSParser(body).parse())
-
-        self.rules.sort(key=lambda x: x[0].priority())
-        self.rules.reverse()
-
-        self.run_scripts()
-        self.set_needs_layout_tree_rebuild()
-
-    def load_scripts(self, scripts):
-        req_headers = { "Cookie": self.cookie_string() }
-        for script in find_scripts(self.nodes, []):
-            header, body = request(
-                resolve_url(script, self.history[-1]), headers=req_headers)
-            scripts.append([header, body])
-
-    def script_run_wrapper(self, script_text):
-        return Task(self.js.evaljs, script_text)
-
-    def run_scripts(self):
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.start("Running JS")
-        self.setup_js()
-
-        scripts=[]
-        self.load_scripts(scripts)
-        for [header, body] in scripts:
-            self.main_thread_runner.schedule_script_task(
-                self.script_run_wrapper(body))
-
-    def setup_js(self):
-        self.js = dukpy.JSInterpreter()
-        self.node_to_handle = {}
-        self.handle_to_node = {}
-        self.js.export_function("log", print)
-        self.js.export_function("querySelectorAll", self.js_querySelectorAll)
-        self.js.export_function("getAttribute", self.js_getAttribute)
-        self.js.export_function("innerHTML", self.js_innerHTML)
-        self.js.export_function("cookie", self.cookie_string)
-        self.js.export_function(
-            "requestAnimationFrame",
-            self.js_requestAnimationFrame)
-        self.js.export_function("now", self.js_now)
-        with open("runtime13.js") as f:
-            self.main_thread_runner.schedule_script_task(
-                self.script_run_wrapper(f.read()))
-
-
-    def js_querySelectorAll(self, sel):
-        selector, _ = CSSParser(sel + "{").selector(0)
-        elts = find_selected(self.nodes, selector, [])
-        return [self.make_handle(elt) for elt in elts]
-    
-    def js_getAttribute(self, handle, attr):
-        elt = self.handle_to_node[handle]
-        return elt.attributes.get(attr, None)
-
-    def js_innerHTML(self, handle, s):
-        try:
-            self.run_rendering_pipeline()
-            doc = parse(lex("<!doctype><html><body>" +
-                            s + "</body></html>"))
-            new_nodes = doc.children[0].children
-            elt = self.handle_to_node[handle]
-            elt.children = new_nodes
-            for child in elt.children:
-                child.parent = elt
-            if self.document:
-                self.set_needs_reflow(
-                    layout_for_node(self.document, elt))
-            else:
-                self.set_needs_layout_tree_rebuild()
-        except:
-            import traceback
-            traceback.print_exc()
-            raise
-
-    def js_requestAnimationFrame(self):
-        self.needs_raf_callbacks = True
-        self.set_needs_animation_frame()
-
-    def js_now(self):
-        return int(time.time() * 1000)
-
-    def dispatch_event(self, type, elt):
-       handle = self.node_to_handle.get(elt, -1)
-
-       do_default = self.js.evaljs("__runHandlers({}, \"{}\")".format(handle, type))
-       return not do_default
-
-    def make_handle(self, elt):
-        if elt not in self.node_to_handle:
-            handle = len(self.node_to_handle)
-            self.node_to_handle[elt] = handle
-            self.handle_to_node[handle] = elt
-        else:
-            handle = self.node_to_handle[elt]
-        return handle
-
-    def set_needs_reflow(self, layout_object):
-        self.reflow_roots.append(layout_object)
-        self.set_needs_animation_frame()
-
-    def set_needs_layout_tree_rebuild(self):
-        self.needs_layout_tree_rebuild = True
-        self.set_needs_animation_frame()
-
-    def set_needs_animation_frame(self):
-        self.compositor_lock.acquire(blocking=True)
-        if not self.display_scheduled:
-            self.needs_animation_frame = True
+            self.address_bar += char
+            self.set_needs_chrome_raster()
+        elif self.focus == "content":
+            self.tabs[self.active_tab].schedule_keypress(char)
         self.compositor_lock.release()
 
-    def quit(self):
+    def handle_enter(self):
         self.compositor_lock.acquire(blocking=True)
-        self.needs_quit = True
-        self.compositor_lock.release();        
+        if self.focus == "address bar`":
+            self.tabs[self.active_tab].schedule_load(self.address_bar)
+            self.tabs[self.active_tab].url = self.address_bar
+            self.focus = None
+            self.set_needs_chrome_raster()
+        self.compositor_lock.release()
 
-    def run_animation_frame(self):
-        self.needs_animation_frame = False
+    def load(self, url):
+        new_tab = TabWrapper(self)
+        new_tab.schedule_load(url)
+        self.active_tab = len(self.tabs)
+        self.tabs.append(new_tab)
 
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.reset()
+    def raster_tab(self):
+        if not self.tab_surface or \
+                self.active_tab_height != self.tab_surface.height():
+            self.tab_surface = skia.Surface(WIDTH, self.active_tab_height)
 
-        if (self.needs_raf_callbacks):
-            self.needs_raf_callbacks = False
-            if args.compute_main_thread_timings:
-                self.main_thread_timer.start("runRAFHandlers")
-            self.js.evaljs("__runRAFHandlers()")
+        canvas = self.tab_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+        raster(self.active_tab_display_list, canvas)
 
-        self.run_rendering_pipeline()
-        # This will cause a draw to the screen, even if there are pending
-        # requestAnimationFrame callbacks for the *next* frame (which may have
-        # been registered during a call to __runRAFHandlers). By default,
-        # tkinter doesn't run these until there are no more event queue
-        # tasks.
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.start("IdleTasks")
-        self.canvas.update_idletasks()
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.stop()
-            self.main_thread_timer.print_accumulated()
+    def raster_chrome(self):
+        canvas = self.chrome_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+    
+        # Draw the tabs UI:
+        tabfont = skia.Font(skia.Typeface('Arial'), 20)
+        for i, tab in enumerate(self.tabs):
+            name = "Tab {}".format(i)
+            x1, x2 = 40 + 80 * i, 120 + 80 * i
+            draw_line(canvas, x1, 0, x1, 40)
+            draw_line(canvas, x2, 0, x2, 40)
+            draw_text(canvas, x1 + 10, 10, name, tabfont)
+            if i == self.active_tab:
+                draw_line(canvas, 0, 40, x1, 40)
+                draw_line(canvas, x2, 40, WIDTH, 40)
 
-        self.frame_count = self.frame_count + 1
-        if args.stop_after > 0  and self.frame_count > args.stop_after:
-            self.quit()
-            sys.exit()
+        # Draw the plus button to add a tab:
+        buttonfont = skia.Font(skia.Typeface('Arial'), 30)
+        draw_rect(canvas, 10, 10, 30, 30)
+        draw_text(canvas, 11, 4, "+", buttonfont)
 
-    def run_rendering_pipeline(self):
-        if self.needs_layout_tree_rebuild:
-            self.document = DocumentLayout(self.nodes)
-            self.reflow_roots = [self.document]
-        self.needs_layout_tree_rebuild = False
+        # Draw the URL address bar:
+        draw_rect(canvas, 40, 50, WIDTH - 10, 90)
+        if self.focus == "address bar":
+            draw_text(canvas, 55, 55, self.address_bar, buttonfont)
+            w = buttonfont.measureText(self.address_bar)
+            draw_line(canvas, 55 + w, 55, 55 + w, 85)
+        else:
+            url = self.tabs[self.active_tab].url
+            if url:
+                draw_text(canvas, 55, 55, url, buttonfont)
 
-        for reflow_root in self.reflow_roots:
-            self.reflow(reflow_root)
-        self.reflow_roots = []
-        self.paint()
-        self.max_y = self.document.h - HEIGHT
-        # drawLayoutTree(self.document)
-
-    def paint(self):
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.start("Paint")
-        self.display_list = []
-        self.document.paint(self.display_list)
-
-    def reflow(self, obj):
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.start("Style")
-        style(obj.node, None, self.rules)
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.start("Layout (phase 1A)")
-        obj.size()
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.start("Layout (phase 1B)")
-        while obj.parent:
-            obj.parent.compute_height()
-            obj = obj.parent
-        if args.compute_main_thread_timings:
-            self.main_thread_timer.start("Layout (phase 2)")
-        self.document.position()
+        # Draw the back button:
+        draw_rect(canvas, 10, 50, 35, 90)
+        path = \
+            skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
+        paint = skia.Paint(
+            Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
+        canvas.drawPath(path, paint)
 
     def draw(self):
-        if args.compute_compositor_thread_timings:
-            self.compositor_thread_timer.reset()
-            self.compositor_thread_timer.start("Draw")
-        self.canvas.delete("all")
-        for cmd in self.draw_display_list:
-            if cmd.y1 > self.scroll + HEIGHT - 60: continue
-            if cmd.y2 < self.scroll: continue
-            cmd.draw(self.scroll - 60, self.canvas)
-        if args.compute_compositor_thread_timings:
-            self.main_thread_timer.start("Draw Chrome")
-        self.canvas.create_rectangle(0, 0, 800, 60, width=0, fill='light gray')
-        self.canvas.create_rectangle(50, 10, 790, 50)
-        font = tkinter.font.Font(family="Courier", size=30)
-        self.canvas.create_text(55, 15, anchor='nw', text=self.address_bar, font=font)
-        self.canvas.create_rectangle(10, 10, 35, 50)
-        self.canvas.create_polygon(15, 30, 30, 15, 30, 45, fill='black')
-        if self.focus == "address bar":
-            w = font.measure(self.address_bar)
-            self.canvas.create_line(55 + w, 15, 55 + w, 45)
-        elif isinstance(self.focus, InputLayout):
-            text = self.focus.node.attributes.get("value", "")
-            x = self.focus.x + self.focus.font.measure(text)
-            y = self.focus.y - self.scroll + 60
-            self.canvas.create_line(x, y, x, y + self.focus.h)
-        if args.compute_compositor_thread_timings:
-            self.compositor_thread_timer.stop()
-            self.compositor_thread_timer.print_accumulated()
+        canvas = self.root_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+        
+        if self.tab_surface:
+            tab_rect = skia.Rect.MakeLTRB(0, CHROME_PX, WIDTH, HEIGHT)
+            tab_offset = CHROME_PX - self.tabs[self.active_tab].scroll
+            canvas.save()
+            canvas.clipRect(tab_rect)
+            canvas.translate(0, tab_offset)
+            self.tab_surface.draw(canvas, 0, 0)
+            canvas.restore()
 
-    # Runs on the compositor thread
-    def scrolldown(self, e):
-        self.compositor_lock.acquire(blocking=True)
-        self.scroll = self.scroll + SCROLL_STEP
-        self.scroll = min(self.scroll, self.max_y)
-        self.scroll = max(0, self.scroll)
-        self.compositor_lock.release()
-        self.set_needs_animation_frame()
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
+        canvas.save()
+        canvas.clipRect(chrome_rect)
+        self.chrome_surface.draw(canvas, 0, 0)
+        canvas.restore()
+
+        # This makes an image interface to the Skia surface, but
+        # doesn't actually copy anything yet.
+        skia_image = self.root_surface.makeImageSnapshot()
+        skia_bytes = skia_image.tobytes()
+
+        depth = 32 # Bits per pixel
+        pitch = 4 * WIDTH # Bytes per row
+        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+            skia_bytes, WIDTH, HEIGHT, depth, pitch,
+            self.RED_MASK, self.GREEN_MASK,
+            self.BLUE_MASK, self.ALPHA_MASK)
+
+        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
+        window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
+        # SDL_BlitSurface is what actually does the copy.
+        sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
+        sdl2.SDL_UpdateWindowSurface(self.sdl_window)
+
+    def handle_quit(self):
+        self.tabs[self.active_tab].handle_quit()
+        sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
     import sys
 
-    parser = argparse.ArgumentParser(description="Chapter 13 source code")
-    parser.add_argument("--url", default=2, type=str, required=True,
-        help="URL to load")
-    parser.add_argument("--stop_after", default=0, type=int,
-        help="If set, exits the browser after this many generates frames")
-    parser.add_argument("--compute_main_thread_timings", type=bool,
-        help="Compute main thread timings")
-    parser.add_argument("--compute_compositor_thread_timings", type=bool,
-        help="Compute compositor thread timings")
-    args = parser.parse_args()
-
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.start()
-    browser.schedule_load(args.url)
-    tkinter.mainloop()
+    browser.load(sys.argv[1])
+
+    event = sdl2.SDL_Event()
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            if event.type == sdl2.SDL_QUIT:
+                browser.handle_quit()
+                sdl2.SDL_Quit()
+                sys.exit()
+                break
+            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
+                browser.handle_click(event.button)
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if event.key.keysym.sym == sdl2.SDLK_RETURN:
+                    browser.handle_enter()
+                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
+                    browser.handle_down()
+            elif event.type == sdl2.SDL_TEXTINPUT:
+                browser.handle_key(event.text.text.decode('utf8'))
+        browser.raster_and_draw()

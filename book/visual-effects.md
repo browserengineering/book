@@ -69,8 +69,6 @@ JavaScript. Alternatively, one can [compile Skia][canvaskit]
 to [WebAssembly][webassembly] to do the same.
 :::
 
-
-
 SDL creates the window
 ======================
 
