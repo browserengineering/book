@@ -634,7 +634,7 @@ class JSContext:
 SCROLL_STEP = 100
 CHROME_PX = 100
 
-def set_timeout(func, sec):     
+def set_timeout(func, sec):
     t = None
     def func_wrapper():
         func()
@@ -897,9 +897,6 @@ class MainThreadRunner:
 
     def schedule_browser_task(self, callback):
         self.browser_tasks.add_task(callback)
-
-    def schedule_event_handler():
-        pass
 
     def set_needs_quit(self):
         self.lock.acquire(blocking=True)
