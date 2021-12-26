@@ -614,7 +614,7 @@ class JSContext:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
-        self.tab.run_rendering_pipeline()
+        self.tab.set_needs_pipeline_update()
 
     def XMLHttpRequest_send(self, method, url, body):
         full_url = resolve_url(url, self.tab.url)
