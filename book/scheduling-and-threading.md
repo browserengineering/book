@@ -506,106 +506,30 @@ def show_count():
     return out
 ```
 
-Event loop speedup
+Parallel rendering
 ==================
 
-TODO: update/rewrte
+What happens if rendering take more than 16ms (somtimes much more) to finish? If
+it's a rendering task that's slow, such as font loading (see [chapter 3]
+[faster-text-loading]), if we're lucky we can make it faster. But sometimes
+it's not possible to make the code a lot faster, it just has a lot to do. In
+rendering, this could be because the web page is very large or complex.
 
-To meet the desired rendering cadence of 60Hz, each of the 100 animation frames
-is ideally separated by about a 16ms gap. Unfortunately, when I ran the script
-script in out browser, I found that there were about *140ms* between
-each frame. Looks like we have some work to do to get to 16ms!
+[faster-text-loading]: text.md#faster-text-layout
 
-Analyzing timings shows that, in this case, the slowdown is almost entirely in
-the rendering pipeline:
+What if we ran raster and draw *in parallel* with the main thread, by using
+CPU parallelism? That sounds fun, but before adding such complexity, let's
+instrument the browser and measure how much time is really being spent
+in raster and draw (always measure before optimizing!).
 
-    [  0.000810] runRAFHandlers
-    [  0.000057] Style
-    [  0.094592] Layout (phase 1A)
-    [  0.000010] Layout (phase 1B)
-    [  0.000050] Layout (phase 2)
-    [  0.019368] Paint
-    [  0.029137] Draw
-    [  0.002585] Draw Chrome
-    [  0.004198] IdleTasks
-    Total: 0.150807s (~150ms)
+The browser thread
+==================
 
-And the long pole in the rendering pipeline in this case is Layout phase 1A,
-followed by Paint and Drawing. These costs are due to changes to the element
-tree resulting from setting ``innerHTML`` on the `#output` element. The
-runRAFHandlers timing shows less than 1ms spent running actual JavaScript.
-[^another-scenario]
+Let's implement the browser thread[^also-compositor] with [Python threads]
+[python-thread]. The way it'll work is that all code in `Browser` will run in
+the browser thread, and all code in `Tab` will run in what we'll now call
+the *main thread*.
 
-[^another-scenario]: In other scenarios, it could easily occur that the slowest
-part ends up being Style, Paint, or IdleTasks.  For example, Style could be
-slow if the style sheet had a huge number of complex rules in it. If we're not
-very careful in the implementation (or even if we are!) it could still be slow.
-The only way to be sure is to profile the code; the true source of the slowdown
-is sometimes not what you thought it was. The case in this chapter was a real
-example---I was truly unsure of which part was slow, until I profiled it.
-
-Of course, it could also be that `runRAFHandlers` is the slowest part. For example,
-suppose we inserted the following busyloop into the callback, like so:
-
-``` {.javascript expected=False}
-function callback() {
-    var now = Date.now();
-    while (Date.now() - date < 100) {}
-    # ...
-}
-```
-
-The performance timings now look like this:
-
-    [  0.100409] runRAFHandlers
-    [  0.000095] Style
-    [  0.157739] Layout (phase 1A)
-    [  0.000012] Layout (phase 1B)
-    [  0.000052] Layout (phase 2)
-    [  0.024089] Paint
-    [  0.033669] Draw
-    [  0.002961] Draw Chrome
-    [  0.010219] IdleTasks
-
-As you can see, runRAFHandlers now takes 100ms to finish, so it's the slowest
-part of the loop. This demonstrates, of course, that no matter how
-cleverly we optimize the browser, it's always possible for JavaScript to
-make it slow. Browser engineers can't rewrite
-a site's JavaScript to be magically faster!
-
-There are a few general techniques for optimizing the browser when encountering
-situations like we've discussed so far:
-
-1. *Do less work*: use a faster algorithm, perform fewer memory allocations
-or function calls and branches, or skip work that is not necessary. The
-optimization we worked out in [chapter 2](graphics.md#faster-rendering) to skip
-painting for off-screen elements is a good example.
-
-2. *Cache*: carefully remember what the browser already knows from the previous
-animation frame, and re-compute only what is absolutely necessary for the next
-one. An example is the partial layout optimizations in [chapter 10](reflow.md).
-
-3. *Parallelize*: run tasks on more than one CPU thread or process. We haven't
-seen an example of this yet, but will see one later in this chapter.
-
-4. *Schedule*: when possible, delay tasks that can be done later in batches, or
-break up work into smaller chunks and do them in separate animation frames. The
-every-16ms animation frame task is a form of scheduling---it waits that long on
-purpose to gather up rendering work queued in the meantime.[^not-much-queueing]
-
-[^not-much-queueing]: There aren't a lot of great examples of scheduling yet in
-this book's browser, and this chapter is already long. I've left some examples
-to explore in the exercises.
-
-Let's consider each class of optimization in turn.
-
-Do less work & Cache
-====================
-
-TODO: update/rewrite
-
-The Compositor thread
-=====================
 
 The second thread that runs drawing is often called the *compositor* thread.
 It's so named because in a real browser it'll end up doing a lot more than
@@ -762,8 +686,8 @@ simultaneously---in the sense that neither is running a different task at the
 same time. For this reason commit needs to be as fast as possible, so as to
 lose the minimum possible amount of parallelism.
 
-Other tasks
-===========
+Other async tasks
+=================
 
 Next up we'll move browser tasks such as loading to the main thread. Now that
 we have `MainThreadRunner`, this is super easy! Whenever the compositor thread

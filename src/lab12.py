@@ -32,6 +32,21 @@ from lab10 import COOKIE_JAR, request, url_origin, JSContext
 
 FONTS = {}
 
+class Timer:
+    def __init__(self):
+        self.phase = None
+        self.time = None
+
+    def start(self, name):
+        if self.phase: self.stop()
+        self.phase = name
+        self.time = time.time()
+
+    def stop(self):
+        dt = time.time() - self.time
+        print("[{:>10.6f}] {}".format(dt, self.phase))
+        self.phase = None
+
 def get_font(size, weight, style):
     key = (weight, style)
     if key not in FONTS:
@@ -614,7 +629,7 @@ class JSContext:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
-        self.tab.run_rendering_pipeline()
+        self.tab.set_needs_pipeline_update()
 
     def XMLHttpRequest_send(self, method, url, body):
         full_url = resolve_url(url, self.tab.url)
