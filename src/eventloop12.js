@@ -1,6 +1,7 @@
 var count = 0;
 var start_time = Date.now();
-var cur_frame_time = start_time
+var cur_frame_time = start_time;
+
 function callback() {
 	var output = document.querySelectorAll("div")[1];
   var since_last_frame = Date.now() - cur_frame_time;
