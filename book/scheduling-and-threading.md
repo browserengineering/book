@@ -560,7 +560,7 @@ class Tab:
                 time_in_style_layout_and_paint + timer.stop()
 
     def handle_quit(self):
-        print("Time in style, lahyout and paint: {:>.6f}".format(
+        print("Time in style, lahyout and paint: {:>.6f}s".format(
             self.tab.time_in_style_layout_and_paint))
 ```
 
@@ -568,6 +568,7 @@ class Tab:
 class Browser:
     def __init__(self):
         self.time_in_raster_and_draw = 0
+        self.time_in_draw = 0
 
     def raster_and_draw(self):
         timer = None
@@ -579,7 +580,10 @@ class Browser:
         if self.needs_tab_raster:
             self.raster_tab()
         if self.needs_draw:
+            draw_timer = Timer()
+            draw_timer.start()
             self.draw()
+            self.time_in_draw = self.time_in_draw + draw_timer.stop()
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
@@ -588,8 +592,10 @@ class Browser:
                 self.time_in_raster_and_draw + timer.stop()
 
     def handle_quit(self):
-        print("Time in raster and draw: {:>.6f}".format(
+        print("Time in raster and draw: {:>.6f}s".format(
             self.time_in_raster_and_draw))
+        print("Time in draw: {:>.6f}s".format(
+            self.time_in_draw))
         # ...
 ```
 
@@ -597,8 +603,44 @@ Now fire up the server and navigate to `http://localhost:8000/count`. When it's
 done counting, click the close button on the window. The browser will print out
 the total time spent in each category. When I ran it on my computer, it said:
 
-    Time in raster and draw: 1.909118
-    Time in style, lahyout and paint: 0.099133
+    Time in raster and draw: 1.855505s
+    Time in draw: 1.753160s
+    Time in style, layout and paint: 0.097325s
+
+Over a total of 100 frames of animation, the browser spent about 1.9s (or 19ms
+per animation frame on average) rastering and drawing[^raster-draw], and most
+of the time is in draw, not raster. On the other hand, the browser spent about
+100ms (1ms per animation frame) in the other phases.[^timing-overhead]
+
+If I were optimizing the browser, the first thing I'd do would be to optimize
+draw.[^profile-draw] I profiled, it, and found that each of the steps of the
+surface-drawing-into-surface steps (of which there are three) take a
+significant amount of time. (I told you that[optimizing surfaces]
+[visual-effects.md#optimizing-surface-use] was important!) 
+
+But even if those surfaces were optimized, raster is still as slow as
+style, layout and paint put together. So we should see a win by running
+raster and draw on a parallel thread.
+
+[^profile-draw]: I encourage you to do this profiling, to see for yourself.
+
+[^raster-draw]: When I first wrote this section of the chapter, I was surpised
+at how high the raster and draw time was, so I went back and added the separate
+draw timer that you see in the code above. Profiing your code often yields
+interesting insights!
+
+[^timing-overhead]: It's always good to remember that, unless you're careful,
+sometimes the overhead to measure timings can bias the timings themselves. In
+our case, since the style, layout and paint timer only showed 1ms per frame, it
+can't be all that high.
+
+::: {.further}
+It's possible to optimize those surfaces further, but the best way to do that
+is to put them on the GPU (and modern browsers do it!), so that the draws can
+happen in parallel in GPU hardware. But for real web pages, raster and draw
+sometimes really do take a lot of time on complex pages, even with the GPU. So
+rendering pipeline parallelism is a win regardless.
+:::
 
 The browser thread
 ==================

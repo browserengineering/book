@@ -994,7 +994,7 @@ class TabWrapper:
             Task(self.tab.apply_scroll, scroll))
 
     def handle_quit(self):
-        print("Time in style, lahyout and paint: {:>.6f}".format(
+        print("Time in style, layout and paint: {:>.6f}s".format(
             self.tab.time_in_style_layout_and_paint))
         self.tab.main_thread_runner.set_needs_quit()
 
@@ -1020,6 +1020,7 @@ class Browser:
         self.compositor_lock = threading.Lock()
 
         self.time_in_raster_and_draw = 0
+        self.time_in_draw = 0
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -1053,6 +1054,7 @@ class Browser:
     def raster_and_draw(self):
         self.compositor_lock.acquire(blocking=True)
         timer = None
+        draw_timer = None
         if self.needs_draw:
             timer = Timer()
             timer.start()
@@ -1061,7 +1063,10 @@ class Browser:
         if self.needs_tab_raster:
             self.raster_tab()
         if self.needs_draw:
+            draw_timer = Timer()
+            draw_timer.start()
             self.draw()
+            self.time_in_draw = self.time_in_draw + draw_timer.stop()
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
@@ -1211,8 +1216,10 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        print("Time in raster and draw: {:>.6f}".format(
+        print("Time in raster and draw: {:>.6f}s".format(
             self.time_in_raster_and_draw))
+        print("Time in draw: {:>.6f}s".format(
+            self.time_in_draw))
 
         self.tabs[self.active_tab].handle_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
