@@ -985,7 +985,7 @@ class JSContext:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
-        self.tab.run_rendering_pipeline()
+        self.tab.set_needs_pipeline_update()
 ```
 
 The call to `run_rendering_pipeline` is a forced layout. It's needed because
