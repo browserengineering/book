@@ -522,6 +522,84 @@ CPU parallelism? That sounds fun, but before adding such complexity, let's
 instrument the browser and measure how much time is really being spent
 in raster and draw (always measure before optimizing!).
 
+Add a simple class measuring time spent:
+
+``` {.python}
+class Timer:
+    def __init__(self):
+        self.time = None
+
+    def start(self):
+        self.time = time.time()
+
+    def stop(self):
+        return time.time() - self.time
+        self.time = None
+```
+
+Now count total time spent in the two categories:
+
+TODO: explain handle_quit. Maybe add to chapter 11?
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.time_in_style_layout_and_paint = 0.0
+
+    def run_rendering_pipeline(self):
+        if self.needs_pipeline_update:
+            timer = Timer()
+            timer.start()
+            style(self.nodes, sorted(self.rules, key=cascade_priority))
+            self.document = DocumentLayout(self.nodes)
+            self.document.layout()
+            self.display_list = []
+            self.document.paint(self.display_list)
+            self.time_in_style_layout_and_paint = \
+                time_in_style_layout_and_paint + timer.stop()
+
+    def handle_quit(self):
+        print("Time in style, lahyout and paint: {:>.6f}".format(
+            self.tab.time_in_style_layout_and_paint))
+```
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        self.time_in_raster_and_draw = 0
+
+    def raster_and_draw(self):
+        timer = None
+        if self.needs_draw:
+            timer = Timer()
+            timer.start()
+        if self.needs_chrome_raster:
+            self.raster_chrome()
+        if self.needs_tab_raster:
+            self.raster_tab()
+        if self.needs_draw:
+            self.draw()
+        self.needs_tab_raster = False
+        self.needs_chrome_raster = False
+        self.needs_draw = False
+        if timer:
+            self.time_in_raster_and_draw = \
+                self.time_in_raster_and_draw + timer.stop()
+
+    def handle_quit(self):
+        print("Time in raster and draw: {:>.6f}".format(
+            self.time_in_raster_and_draw))
+        # ...
+```
+
+Now fire up the server and navigate to `http://localhost:8000/count`. When it's
+done counting, click the close button on the window. The browser will print out
+the total time spent in each category. When I ran it on my computer, it said:
+
+    Time in raster and draw: 1.909118
+    Time in style, lahyout and paint: 0.099133
+
 The browser thread
 ==================
 

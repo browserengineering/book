@@ -30,22 +30,18 @@ from lab6 import TagSelector, DescendantSelector
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin, JSContext
 
-FONTS = {}
-
 class Timer:
     def __init__(self):
-        self.phase = None
         self.time = None
 
-    def start(self, name):
-        if self.phase: self.stop()
-        self.phase = name
+    def start(self):
         self.time = time.time()
 
     def stop(self):
-        dt = time.time() - self.time
-        print("[{:>10.6f}] {}".format(dt, self.phase))
-        self.phase = None
+        return time.time() - self.time
+        self.time = None
+
+FONTS = {}
 
 def get_font(size, weight, style):
     key = (weight, style)
@@ -674,6 +670,8 @@ class Tab:
         self.main_thread_runner = MainThreadRunner(self)
         self.main_thread_runner.start()
 
+        self.time_in_style_layout_and_paint = 0.0
+
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
@@ -772,7 +770,10 @@ class Tab:
             self.display_list)
 
     def run_rendering_pipeline(self):
+        timer = None
         if self.needs_pipeline_update:
+            timer = Timer()
+            timer.start()
             style(self.nodes, sorted(self.rules, key=cascade_priority))
             self.document = DocumentLayout(self.nodes)
             self.document.layout()
@@ -788,6 +789,9 @@ class Tab:
             y = obj.y
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height))
+        if timer:
+            self.time_in_style_layout_and_paint = \
+                self.time_in_style_layout_and_paint + timer.stop()
 
     def click(self, x, y):
         self.run_rendering_pipeline()
@@ -990,6 +994,8 @@ class TabWrapper:
             Task(self.tab.apply_scroll, scroll))
 
     def handle_quit(self):
+        print("Time in style, lahyout and paint: {:>.6f}".format(
+            self.tab.time_in_style_layout_and_paint))
         self.tab.main_thread_runner.set_needs_quit()
 
 REFRESH_RATE_SEC = 0.016 # 16ms
@@ -1012,6 +1018,8 @@ class Browser:
         self.focus = None
         self.address_bar = ""
         self.compositor_lock = threading.Lock()
+
+        self.time_in_raster_and_draw = 0
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -1044,6 +1052,10 @@ class Browser:
 
     def raster_and_draw(self):
         self.compositor_lock.acquire(blocking=True)
+        timer = None
+        if self.needs_draw:
+            timer = Timer()
+            timer.start()
         if self.needs_chrome_raster:
             self.raster_chrome()
         if self.needs_tab_raster:
@@ -1054,6 +1066,9 @@ class Browser:
         self.needs_chrome_raster = False
         self.needs_draw = False
         self.compositor_lock.release()
+        if timer:
+            self.time_in_raster_and_draw = \
+                self.time_in_raster_and_draw + timer.stop()
 
     def handle_down(self):
         self.compositor_lock.acquire(blocking=True)
@@ -1196,6 +1211,9 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
+        print("Time in raster and draw: {:>.6f}".format(
+            self.time_in_raster_and_draw))
+
         self.tabs[self.active_tab].handle_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
