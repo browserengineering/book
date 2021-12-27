@@ -730,11 +730,12 @@ bit.
 class MainThreadRunner:
     def __init__(self, tab):
         self.lock = threading.Lock()
+        self.condition = threading.Condition(self.lock)
         self.tab = tab
         self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
-        self.script_tasks = TaskQueue(self.lock)
-        self.browser_tasks = TaskQueue(self.lock)
+        self.script_tasks = TaskQueue()
+        self.browser_tasks = TaskQueue()
         self.needs_quit = False
 
     def start(self):
@@ -743,61 +744,54 @@ class MainThreadRunner:
     def run(self):
         while True:
             # ...
-            time.sleep(0.001) # 1ms
 ```
 
-Add some methods to set the dirty bit and schedule tasks:
+Add some methods to set the dirty bit and schedule tasks. These need to 
+acquire the lock before setting these thread-safe variables. (Ignore the
+`condition` line, we'll get to that in a moment).
 
 
 ``` {.python}
     def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)
         self.needs_animation_frame = True
+        self.condition.notify_all()
         self.lock.release()
 
     def schedule_script_task(self, script):
+        self.lock.acquire(blocking=True)
         self.script_tasks.add_task(script)
+        self.condition.notify_all()
+        self.lock.release()
 
     def schedule_browser_task(self, callback):
+        self.lock.acquire(blocking=True)
         self.browser_tasks.add_task(callback)
+        self.condition.notify_all()
 
     def set_needs_quit(self):
         self.lock.acquire(blocking=True)
         self.needs_quit = True
+        self.condition.notify_all()
         self.lock.release()
-```
-
-We'll also need to make small edits to `TaskQueue` to make use of the thread
-lock object, since the methods on `MainThreadRunner` might be called from
-a different thread and have to be thread-safe.
-
-``` {.python}
-class TaskQueue:
-    def __init__(self, lock):
-        self.tasks = []
-        self.lock = lock
-
-    def add_task(self, task_code):
-        self.lock.acquire(blocking=True)
-        self.tasks.append(task_code)
-        self.lock.release()
-
-    def has_tasks(self):
-        self.lock.acquire(blocking=True)
-        retval = len(self.tasks) > 0
-        self.lock.release()
-        return retval
-
-    def get_next_task(self):
-        self.lock.acquire(blocking=True)
-        retval = self.tasks.pop(0)
-        self.lock.release()
-        return retval
 ```
 
 In `run`, implement a simple event loop scheduling strategy that runs the
 rendering pipeline if needed, and also one browser method and one script task,
-if there are any on those queues. Then sleep for 1ms and check again.
+if there are any on those queues.
+
+The part at thet end is the trickiest. First, we check if there are more tasks
+to excecute; if so, loop again and run those tasks. If not, sleep until there
+is a task to run. The way we "sleep until there is a task" is via a *condition
+variable*, which is a way for one thread to block until it has been notified by
+another thread that the the desired condition has become true.[^threading-hard]
+
+[^threading-hard]: Threading and locks are hard, and it's easy to get into a
+deadlock situation. Read the [documentation][python-thread] for the classes
+you're using very carefully, and make sure to release the lock in all the right
+places. For example, `condition.wait()` will re-acquire the lock once it has
+been notified, so you'll need to release the lock immediately after, or else
+the thread will deadlock in the next while loop iteration.
 
 ``` {.python}
      def run(self):
@@ -821,7 +815,13 @@ if there are any on those queues. Then sleep for 1ms and check again.
             if script:
                 script()
 
-            time.sleep(0.001) # 1ms
+            self.lock.acquire(blocking=True)
+            if not self.script_tasks.has_tasks() and \
+                not self.browser_tasks.has_tasks() and not \
+                self.needs_animation_frame and not \
+                self.needs_quit:
+                self.condition.wait()
+            self.lock.release()
 ```
 
 Each `Tab` will own a `MainThreadRunner`, control its runtime, and
