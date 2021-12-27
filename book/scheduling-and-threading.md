@@ -541,7 +541,7 @@ Now count total time spent in the two categories:
 
 TODO: explain handle_quit. Maybe add to chapter 11?
 
-``` {.python}
+``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
         # ...
@@ -556,11 +556,10 @@ class Tab:
             self.document.layout()
             self.display_list = []
             self.document.paint(self.display_list)
-            self.time_in_style_layout_and_paint = \
-                time_in_style_layout_and_paint + timer.stop()
+            self.time_in_style_layout_and_paint += timer.stop()
 
     def handle_quit(self):
-        print("Time in style, lahyout and paint: {:>.6f}s".format(
+        print("Time in style, layout and paint: {:>.6f}s".format(
             self.tab.time_in_style_layout_and_paint))
 ```
 
@@ -583,13 +582,12 @@ class Browser:
             draw_timer = Timer()
             draw_timer.start()
             self.draw()
-            self.time_in_draw = self.time_in_draw + draw_timer.stop()
+            self.time_in_draw += draw_timer.stop()
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
         if timer:
-            self.time_in_raster_and_draw = \
-                self.time_in_raster_and_draw + timer.stop()
+            self.time_in_raster_and_draw += timer.stop()
 
     def handle_quit(self):
         print("Time in raster and draw: {:>.6f}s".format(
@@ -654,7 +652,7 @@ yourself.
 Add the slowdown to our counter page as follows, with a 200ms synchronous delay
 running JavaScript:
 
-``` {.javascript}
+``` {.javascript file=eventloop}
 var count = 0;
 var start_time = Date.now();
 var cur_frame_time = start_time;
@@ -686,6 +684,9 @@ The browser thread
 This new thread will be called the *browser thread*.[^also-compositor] The
 browser thread will be for:
 
+[^also-compositor]: This thread is similar to what modern browsers call the 
+*compositor thread*.
+
 * Raster and draw
 * Interacting with browser chrome
 * Scrolling
@@ -705,40 +706,16 @@ thread, since JavaScript can sometimes run on [other threads][webworker]).
 
 [webworker]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 
-Let's implement the browser thread with [Python threads][python-thread].
-The way it'll work is that all code in `Browser` will run in
-the browser thread, and all code in `Tab` and `JSContext` will run in what
-we'll now call the *main thread*. As a result, 
+Let's implement the browser thread with [Python threads][python-thread]. All
+code in `Browser` will run on the browser thread, and all code in `Tab` and
+`JSContext` will run on the main thread.
 
-[^also-compositor]: This thread is similar to what modern browsers call the 
-*compositor thread*.
-
-The approach we'll take is to call the thread we already have the browser thread
-thread, and add a new thread; this thread is usually called the *main* thread.
-The main thread will run these kinds of tasks in our browser:
-
-* JavaScript
-
-* Browser-internal tasks like executing a page load
-
-* Animation frames - `rAF` callbacks plus the rendering pipeline
-
- The compositor thread (the one with tkinter in it) will be in charge of:
-
-* Scheduling an animation frame every 16ms
-
-* Drawing to the screen after the rendering pipeline is done
-
-* Listening to mouse and keyboard events
-
-To do this we'll have to expand greatly on the implementation of an event loop,
-because now we'll need to manage this event loop ourselves rather than using
-tkinter for most of it.
-
-Let's start the implementation by introducing a class `MainThreadRunner` that
-encapsulates the main thread and its rendering event loop. The two threads will
+The thread that already exists (the one started by the Python interpreter
+by default) will be the browser thread, and we'll make a new one for
+the main thread. Let's add a new `MainThreadRunner` class that will
+encapsulate the main thread and its event loop. The two threads will
 communicate by writing to and reading from some shared data structures, and use
-a `threading.Lock` object to prevent race conditions.[^python-gil]
+`threading.Lock` objects to prevent race conditions.[^python-gil]
 
 [^python-gil]: Our browser code uses locks, because real multi-threaded programs
 will need them. However, Python has a [global interpreter lock][gil], which
@@ -746,9 +723,19 @@ means that you can't really run two Python threads in parallel, so technically
 these locks don't do anything useful in our browser. And this also means, of
 course, that the real performance of our browser will not actually be faster
 with two threads, unless work is offloaded to code that is not using Python
-bytecodes.
+bytecodes. If you're really interested, there is a way to turn off the
+global compositor lock when running foreign code in C/C++ (such as Skia or 
+SDL).
 
 [gil]: https://wiki.python.org/moin/GlobalInterpreterLock
+
+`MainThreadRunner` will have a lock and a thread object. Calling `start` will
+begin the thread. This will excute the `run` method on that thread. This method
+will run forever (until the program quits, which is indicated by the
+`needs_quit` dirty bit) and is where we'll put the main thread event loop.
+There will also be two task queues (one for browser-generated tasks such as
+clicks, and one for tasks to evaluate scripts), and a rendering pipeline dirty
+bit.
 
 ``` {.python}
 class MainThreadRunner:
@@ -759,12 +746,19 @@ class MainThreadRunner:
         self.main_thread = threading.Thread(target=self.run, args=())
         self.script_tasks = TaskQueue(self.lock)
         self.browser_tasks = TaskQueue(self.lock)
+        self.needs_quit = False
 
     def start(self):
-        self.main_thread.start()        
+        self.main_thread.start()    
+
+    def run(self):
+        while True:
+            # ...
+            time.sleep(0.001) # 1ms
 ```
 
-It will have some methods to set the variables, such as:
+Add some methods to set the dirty bit and schedule tasks:
+
 
 ``` {.python}
     def schedule_animation_frame(self):
@@ -774,9 +768,18 @@ It will have some methods to set the variables, such as:
 
     def schedule_script_task(self, script):
         self.script_tasks.add_task(script)
+
+    def schedule_browser_task(self, callback):
+        self.browser_tasks.add_task(callback)
+
+    def set_needs_quit(self):
+        self.lock.acquire(blocking=True)
+        self.needs_quit = True
+        self.lock.release()
 ```
 
-With accompanying edits to `TaskQueue` to add a lock:
+We'll also need to make small edits to `TaskQueue` to make use of the thread
+lock object;
 
 ``` {.python}
 class TaskQueue:
@@ -803,9 +806,9 @@ class TaskQueue:
 ```
 
 Its main functionality is in the `run` method, which implements a simple event
-loop strategy that runs the rendering pipeline if needed, and also one browser
-method and one script task, if there are any on those queues. It then sleeps for
-1ms and checks again.
+loop scheduling strategy that runs the rendering pipeline if needed, and also
+one browser method and one script task, if there are any on those queues. It
+then sleeps for 1ms and checks again.
 
 ``` {.python}
      def run(self):
