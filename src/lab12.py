@@ -886,25 +886,18 @@ class Task:
         self.arg2 = None
 
 class TaskQueue:
-    def __init__(self, lock):
+    def __init__(self):
         self.tasks = []
-        self.lock = lock
 
     def add_task(self, task_code):
-        self.lock.acquire(blocking=True)
         self.tasks.append(task_code)
-        self.lock.release()
 
     def has_tasks(self):
-        self.lock.acquire(blocking=True)
         retval = len(self.tasks) > 0
-        self.lock.release()
         return retval
 
     def get_next_task(self):
-        self.lock.acquire(blocking=True)
         retval = self.tasks.pop(0)
-        self.lock.release()
         return retval
 
 class SingleThreadedTaskRunner:
@@ -935,34 +928,44 @@ class SingleThreadedTaskRunner:
 class MainThreadRunner:
     def __init__(self, tab):
         self.lock = threading.Lock()
+        self.condition = threading.Condition(self.lock)
         self.tab = tab
         self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
-        self.script_tasks = TaskQueue(self.lock)
-        self.browser_tasks = TaskQueue(self.lock)
+        self.script_tasks = TaskQueue()
+        self.browser_tasks = TaskQueue()
         self.needs_quit = False
         self.pending_scroll = None
 
     def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)
         self.needs_animation_frame = True
+        self.condition.notify_all()
         self.lock.release()
 
     def schedule_script_task(self, script):
+        self.lock.acquire(blocking=True)
         self.script_tasks.add_task(script)
+        self.condition.notify_all()
+        self.lock.release()
 
     def schedule_browser_task(self, callback):
+        self.lock.acquire(blocking=True)
         self.browser_tasks.add_task(callback)
+        self.condition.notify_all()
+        self.lock.release()
 
     def set_needs_quit(self):
         self.lock.acquire(blocking=True)
         self.needs_quit = True
+        self.condition.notify_all()
         self.lock.release()
 
     def schedule_scroll(self, scroll):
         self.lock.acquire(blocking=True)
         self.pending_scroll = scroll
-        self.lock.release()        
+        self.condition.notify_all()
+        self.lock.release()
 
     def start(self):
         self.main_thread.start()
@@ -971,6 +974,7 @@ class MainThreadRunner:
         while True:
             if self.needs_quit:
                 return;
+
             self.lock.acquire(blocking=True)
             needs_animation_frame = self.needs_animation_frame
             self.needs_animation_frame = False
@@ -983,18 +987,28 @@ class MainThreadRunner:
                 self.tab.run_animation_frame()
 
             browser_method = None
+            self.lock.acquire(blocking=True)
             if self.browser_tasks.has_tasks():
                 browser_method = self.browser_tasks.get_next_task()
+            self.lock.release()
             if browser_method:
                 browser_method()
 
             script = None
+            self.lock.acquire(blocking=True)
             if self.script_tasks.has_tasks():
                 script = self.script_tasks.get_next_task()
+            self.lock.release()
             if script:
                 script()
 
-            time.sleep(0.001) # 1ms
+            self.lock.acquire(blocking=True)
+            if not self.script_tasks.has_tasks() and \
+                not self.browser_tasks.has_tasks() and not \
+                self.needs_animation_frame and not \
+                self.needs_quit:
+                self.condition.wait()
+            self.lock.release()
 
 class TabWrapper:
     def __init__(self, browser):
