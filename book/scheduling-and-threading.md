@@ -715,23 +715,12 @@ by default) will be the browser thread, and we'll make a new one for
 the main thread. Let's add a new `MainThreadRunner` class that will
 encapsulate the main thread and its event loop. The two threads will
 communicate by writing to and reading from some shared data structures, and use
-`threading.Lock` objects to prevent race conditions.[^python-gil]
-
-[^python-gil]: Our browser code uses locks, because real multi-threaded programs
-will need them. However, Python has a [global interpreter lock][gil], which
-means that you can't really run two Python threads in parallel, so technically
-these locks don't do anything useful in our browser. And this also means, of
-course, that the real performance of our browser will not actually be faster
-with two threads, unless work is offloaded to code that is not using Python
-bytecodes. If you're really interested, there is a way to turn off the
-global compositor lock when running foreign code in C/C++ (such as Skia or 
-SDL).
-
-[gil]: https://wiki.python.org/moin/GlobalInterpreterLock
+`threading.Lock` objects to prevent race conditions. `MainThreadRunner` will
+be the only class allowed to call methods on `Tab` or `JSContext`.
 
 `MainThreadRunner` will have a lock and a thread object. Calling `start` will
-begin the thread. This will excute the `run` method on that thread. This method
-will run forever (until the program quits, which is indicated by the
+begin the thread. This will excute the `run` method on that thread; `run` will
+execute forever (until the program quits, which is indicated by the
 `needs_quit` dirty bit) and is where we'll put the main thread event loop.
 There will also be two task queues (one for browser-generated tasks such as
 clicks, and one for tasks to evaluate scripts), and a rendering pipeline dirty
@@ -779,7 +768,8 @@ Add some methods to set the dirty bit and schedule tasks:
 ```
 
 We'll also need to make small edits to `TaskQueue` to make use of the thread
-lock object;
+lock object, since the methods on `MainThreadRunner` might be called from
+a different thread and have to be thread-safe.
 
 ``` {.python}
 class TaskQueue:
@@ -805,10 +795,9 @@ class TaskQueue:
         return retval
 ```
 
-Its main functionality is in the `run` method, which implements a simple event
-loop scheduling strategy that runs the rendering pipeline if needed, and also
-one browser method and one script task, if there are any on those queues. It
-then sleeps for 1ms and checks again.
+In `run`, implement a simple event loop scheduling strategy that runs the
+rendering pipeline if needed, and also one browser method and one script task,
+if there are any on those queues. Then sleep for 1ms and check again.
 
 ``` {.python}
      def run(self):
@@ -1022,6 +1011,25 @@ class Browser:
         self.set_needs_draw()
         self.compositor_lock.release()
 ```
+
+::: {.further}
+Our browser code uses locks, because real multi-threaded programs
+will need them. However, Python has a [global interpreter lock][gil], which
+means that you can't really run two Python threads in parallel, so technically
+these locks don't do anything useful in our browser. (The interpreter lock is
+present because the Python bytecode interpreter is not thread-safe.)
+
+This also means that the *throughput* (animation frames delivered per second) of
+our browser will not actually be greater with two threads. However, it's
+possible to turn off the global interpreter lock while running foreign C/C++
+code linked into a Python library. Skia is thread-safe, but SDL may not be.
+
+However, even though the throughput is not higher, the *responsiveness* of the
+browser thread is still massively improved, since it isn't running JavaScript
+or the front half of the rendering pipeline.
+:::
+
+[gil]: https://wiki.python.org/moin/GlobalInterpreterLock
 
 Threaded interactions
 =====================
