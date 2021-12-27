@@ -715,23 +715,12 @@ by default) will be the browser thread, and we'll make a new one for
 the main thread. Let's add a new `MainThreadRunner` class that will
 encapsulate the main thread and its event loop. The two threads will
 communicate by writing to and reading from some shared data structures, and use
-`threading.Lock` objects to prevent race conditions.[^python-gil]
-
-[^python-gil]: Our browser code uses locks, because real multi-threaded programs
-will need them. However, Python has a [global interpreter lock][gil], which
-means that you can't really run two Python threads in parallel, so technically
-these locks don't do anything useful in our browser. And this also means, of
-course, that the real performance of our browser will not actually be faster
-with two threads, unless work is offloaded to code that is not using Python
-bytecodes. If you're really interested, there is a way to turn off the
-global compositor lock when running foreign code in C/C++ (such as Skia or 
-SDL).
-
-[gil]: https://wiki.python.org/moin/GlobalInterpreterLock
+`threading.Lock` objects to prevent race conditions. `MainThreadRunner` will
+be the only class allowed to call methods on `Tab` or `JSContext`.
 
 `MainThreadRunner` will have a lock and a thread object. Calling `start` will
-begin the thread. This will excute the `run` method on that thread. This method
-will run forever (until the program quits, which is indicated by the
+begin the thread. This will excute the `run` method on that thread; `run` will
+execute forever (until the program quits, which is indicated by the
 `needs_quit` dirty bit) and is where we'll put the main thread event loop.
 There will also be two task queues (one for browser-generated tasks such as
 clicks, and one for tasks to evaluate scripts), and a rendering pipeline dirty
@@ -741,11 +730,12 @@ bit.
 class MainThreadRunner:
     def __init__(self, tab):
         self.lock = threading.Lock()
+        self.condition = threading.Condition(self.lock)
         self.tab = tab
         self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
-        self.script_tasks = TaskQueue(self.lock)
-        self.browser_tasks = TaskQueue(self.lock)
+        self.script_tasks = TaskQueue()
+        self.browser_tasks = TaskQueue()
         self.needs_quit = False
 
     def start(self):
@@ -754,61 +744,54 @@ class MainThreadRunner:
     def run(self):
         while True:
             # ...
-            time.sleep(0.001) # 1ms
 ```
-
-Add some methods to set the dirty bit and schedule tasks:
+\
+Add some methods to set the dirty bit and schedule tasks. These need to 
+acquire the lock before setting these thread-safe variables. (Ignore the
+`condition` line, we'll get to that in a moment).
 
 
 ``` {.python}
     def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)
         self.needs_animation_frame = True
+        self.condition.notify_all()
         self.lock.release()
 
     def schedule_script_task(self, script):
+        self.lock.acquire(blocking=True)
         self.script_tasks.add_task(script)
+        self.condition.notify_all()
+        self.lock.release()
 
     def schedule_browser_task(self, callback):
+        self.lock.acquire(blocking=True)
         self.browser_tasks.add_task(callback)
+        self.condition.notify_all()
 
     def set_needs_quit(self):
         self.lock.acquire(blocking=True)
         self.needs_quit = True
+        self.condition.notify_all()
         self.lock.release()
 ```
 
-We'll also need to make small edits to `TaskQueue` to make use of the thread
-lock object;
+In `run`, implement a simple event loop scheduling strategy that runs the
+rendering pipeline if needed, and also one browser method and one script task,
+if there are any on those queues.
 
-``` {.python}
-class TaskQueue:
-    def __init__(self, lock):
-        self.tasks = []
-        self.lock = lock
+The part at thet end is the trickiest. First, we check if there are more tasks
+to excecute; if so, loop again and run those tasks. If not, sleep until there
+is a task to run. The way we "sleep until there is a task" is via a *condition
+variable*, which is a way for one thread to block until it has been notified by
+another thread that the the desired condition has become true.[^threading-hard]
 
-    def add_task(self, task_code):
-        self.lock.acquire(blocking=True)
-        self.tasks.append(task_code)
-        self.lock.release()
-
-    def has_tasks(self):
-        self.lock.acquire(blocking=True)
-        retval = len(self.tasks) > 0
-        self.lock.release()
-        return retval
-
-    def get_next_task(self):
-        self.lock.acquire(blocking=True)
-        retval = self.tasks.pop(0)
-        self.lock.release()
-        return retval
-```
-
-Its main functionality is in the `run` method, which implements a simple event
-loop scheduling strategy that runs the rendering pipeline if needed, and also
-one browser method and one script task, if there are any on those queues. It
-then sleeps for 1ms and checks again.
+[^threading-hard]: Threading and locks are hard, and it's easy to get into a
+deadlock situation. Read the [documentation][python-thread] for the classes
+you're using very carefully, and make sure to release the lock in all the right
+places. For example, `condition.wait()` will re-acquire the lock once it has
+been notified, so you'll need to release the lock immediately after, or else
+the thread will deadlock in the next while loop iteration.
 
 ``` {.python}
      def run(self):
@@ -832,7 +815,13 @@ then sleeps for 1ms and checks again.
             if script:
                 script()
 
-            time.sleep(0.001) # 1ms
+            self.lock.acquire(blocking=True)
+            if not self.script_tasks.has_tasks() and \
+                not self.browser_tasks.has_tasks() and not \
+                self.needs_animation_frame and not \
+                self.needs_quit:
+                self.condition.wait()
+            self.lock.release()
 ```
 
 Each `Tab` will own a `MainThreadRunner`, control its runtime, and
@@ -872,7 +861,7 @@ to a `commit` method on `TabWrapper`, and pass this method to `Tab`'s
 constructor. When `commit` is called, all state of the `Tab` that's relevant
 to the `Browser` is sent across.
 
-``` {.python}
+``` {.python expected=False}
 class Tab:
     def __init__(self, commit_func):
         # ...
@@ -880,9 +869,10 @@ class Tab:
 
     def run_animation_frame(self):
         self.run_rendering_pipeline()
+        # ...
         self.commit_func(
-            self.url, self.scroll if self.scroll_changed_in_tab else None, 
-            math.ceil(self.document.height),
+            self.url, self.scroll,
+            document_height,
             self.display_list)
 
 ```
@@ -915,10 +905,11 @@ data structures.[^fast-commit]
 [^fast-commit]: `commit` is the one time when both threads are both "stopped"
 simultaneously---in the sense that neither is running a different task at the
 same time. For this reason commit needs to be as fast as possible, so as to
-lose the minimum possible amount of parallelism.
+lose the minimum possible amount of parallelism and responsiveness.
 
 Finally, let's add some methods on `TabWrapper` to schedule various kinds
-of main thread tasks scheduled by the `Browser`.
+of main thread tasks scheduled by the `Browser` (`schedule_scroll` will be
+implementd on `MainThreadRunner` in a bit).
 
 ``` {.python}
 class TabWrapper:
@@ -947,7 +938,7 @@ class TabWrapper:
         self.tab.main_thread_runner.set_needs_quit()
 ```
 
-Next up we'll call all these: methods from the browser thread, for example
+Next up we'll call all these methods from the browser thread, for example
 loading:
 
 ``` {.python}
@@ -961,13 +952,13 @@ class Browser:
 
 We can do the same for input event handlers, but there are a few additional
 subtleties. Let's look closely at each of them in turn, starting with
-`handle_click`. In most cases, we will need to [hit test]
-(chrome.md#hit-testing) for which DOM element receives the click event, and
-also fire an event that JavaScript can listen to. Since DOM computations and
-JavaScript can only be run on the main thread, it seems we should just send the
-click event to the main thread for processing. But if the click was *not*
-within the web page window, we can handle it right there in the compositor
-thread, and leave the main thread none the wiser:
+`handle_click`. In most cases, we will need to
+[hit test](chrome.md#hit-testing) for which DOM element receives the click
+event, and also fire an event that JavaScript can listen to. Since DOM
+computations and JavaScript can only be run on the main thread, it seems we
+should just send the click event to the main thread for processing. But if the
+click was *not* within the web page window, we can handle it right there in the
+compositor thread, and leave the main thread none the wiser:
 
 ``` {.python}
 class Browser:
@@ -987,7 +978,8 @@ class Browser:
             self.set_needs_chrome_raster()
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].schedule_click(e.x, e.y - CHROME_PX)
+            self.tabs[self.active_tab].schedule_click(
+                e.x, e.y - CHROME_PX)
         self.compositor_lock.release()
 
 ```
@@ -1010,7 +1002,7 @@ class Browser:
 As it turns out, the return key and scrolling have no use at all for the main
 thread:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def handle_down(self):
         self.compositor_lock.acquire(blocking=True)
@@ -1018,42 +1010,170 @@ class Browser:
             return
         max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
-        active_tab.schedule_scroll(min(active_tab.scroll + SCROLL_STEP, max_y))
+        active_tab.schedule_scroll(
+            min(active_tab.scroll + SCROLL_STEP, max_y))
         self.set_needs_draw()
         self.compositor_lock.release()
 ```
 
-Threaded interactions
-=====================
+::: {.further}
+Our browser code uses locks, because real multi-threaded programs
+will need them. However, Python has a [global interpreter lock][gil], which
+means that you can't really run two Python threads in parallel, so technically
+these locks don't do anything useful in our browser. (The interpreter lock is
+present because the Python bytecode interpreter is not thread-safe.)
 
-All this work to create a compositor thread is not just to offload some of the
-rendering pipeline. There is another, even more important, performance
-advantage: any operation that does not require the main thread *cannot be slowed
-down by it*. Look closely at the code we've written in the previous section to
-handle input events---you'll see that in the following cases the main thread is
-not involved at all:
+This also means that the *throughput* (animation frames delivered per second) of
+our browser will not actually be greater with two threads. However, it's
+possible to turn off the global interpreter lock while running foreign C/C++
+code linked into a Python library. Skia is thread-safe, but SDL may not be.
 
-* Interactions with browser chrome (if the click or keyboard event is not
-targeted at the web page)
+However, even though the throughput is not higher, the *responsiveness* of the
+browser thread is still massively improved, since it isn't running JavaScript
+or the front half of the rendering pipeline.
+:::
 
-* Scrolling
+[gil]: https://wiki.python.org/moin/GlobalInterpreterLock
 
-These are *threaded interactions*---ones that don't need to run any code at all
-on the main thread. No matter how slow the main thread rendering pipeline is, or
-how slow JavaScript is (even if it's stuck in an infinite loop!), we can still
-smoothly scroll the parts of it that are already in `draw_display_list`, and
-type in the browser URL box.
+Threaded scrolling
+==================
 
-In real browsers, the two examples listed above are *extremely* important
-optimizations. Think how annoying it would be to type in the name of a new
-website if the old one was getting in the way of your keystrokes because it was
-dslow. Likewise, scrolling a web page with a lot of slow JavaScript is
-sometimes painful unless the scrolling is threaded, even for relatively good
-sites.
+Recall how we've added some scroll-related code, but we didn't really get into
+how it works (I also omitted some of the code). Let's now carefully examine
+how to implement threaded scrolling. But before getting to that, go and load
+the counting demo with artificial delay, and check out how much more responsive
+scrolling is now!
 
-Unfortunately, threaded scrolling is not always possible or feasible. In the
-best browsers today, there are two primary reasons why threaded scrolling may
-fail to occur:
+The reason that scrolling so responsive is that it happens on the browser
+thread, without waiting around to synchronoize with the main thread. But the
+main thread can and does affect scroll. For example, when loading a new page,
+scroll is set to 0; when running `innerHTML`, the height of the document could
+change, leading to a potential change of scroll offset. What should
+we do if the two threads disagree about the scroll offset?
+
+The best policy is to respect the scroll offset the user last observed, unless
+it's incompatible with the web page. In other words, use the browser thread
+scroll, unless a new web page has loaded or the scroll exceeds the current
+document height. Let's implement that.
+
+The trickiest part is how to communicate a browser thread scroll offset to the
+main thread, and integrate it with the rendering pipeline. It'll work like
+this:
+
+* When the browser thread changes scroll offset, notify the `MainThreadRunner`
+and store the result in a `pending_scroll` variable.
+* When `MainThreadRunner` decides to run an animation frame, first apply
+the `pending_scroll` to the `Tab`. Then, after running the rendering pipeline,
+*adjust* it if the document height requires it.
+* When loading a new page in a `Tab`, override the scroll.
+* If an animation frame or load caused a scroll adjustment, note it in a
+new `scroll_changed_in_tab` variable on `Tab`
+* When calling `commit`, only pass the scroll if it was changed in the `Tab`,
+and otherwise pass `None`. Commit will ignore the scroll if it is `None`.
+
+Implement each of these in turn. In `MainThreadRunner`:
+
+``` {.python}
+class MainThreadRunner:
+    def __init__(self, tab):
+        # ...
+        self.pending_scroll = None
+
+    def schedule_scroll(self, scroll):
+        self.lock.acquire(blocking=True)
+        self.pending_scroll = scroll
+        self.condition.notify_all()
+        self.lock.release()
+
+    def run(self):
+        # ...
+        self.lock.acquire(blocking=True)
+        needs_animation_frame = self.needs_animation_frame
+        self.needs_animation_frame = False
+        pending_scroll = self.pending_scroll
+        self.pending_scroll = None
+        self.lock.release()
+        if pending_scroll:
+            self.tab.apply_scroll(pending_scroll)
+        if needs_animation_frame:
+            self.tab.run_animation_frame()
+        # ...
+        self.lock.acquire(blocking=True)
+        if not self.script_tasks.has_tasks() and \
+            not self.browser_tasks.has_tasks() and not \
+            self.needs_animation_frame and not \
+            self.pending_scroll and not \
+            self.needs_quit:
+            self.condition.wait()
+        self.lock.release()
+```
+
+in `Tab`:
+
+``` {.python expected=False}
+def clamp_scroll(scroll, tab_height):
+    return min(scroll, tab_height - (HEIGHT - CHROME_PX))
+
+class Tab:
+    def __init__(self, commit_func):
+        # ...
+        self.scroll_changed_in_tab = False
+    # ...
+    def apply_scroll(self, scroll):
+        self.scroll = scroll
+
+    def load(self, url, body=None):
+        headers, body = request(url, self.url, payload=body)
+        self.scroll = 0
+        self.scroll_changed_in_tab = True
+        # ...
+
+    def run_animation_frame(self):
+        # ....
+        self.run_rendering_pipeline()
+
+        document_height = math.ceil(self.document.height)
+        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        self.scroll = clamped_scroll
+
+        self.commit_func(
+            self.url, clamped_scroll if self.scroll_changed_in_tab \
+                else None, 
+            document_height,
+            self.display_list)
+        self.scroll_changed_in_tab = False
+```
+
+In `TabWrapper`:
+
+``` {.python}
+class TabWrapper:
+    def commit(self, url, scroll, tab_height, display_list):
+        # ...
+        if scroll != None:
+            self.scroll = scroll
+```
+
+In `Browser`:
+
+``` {.python}
+class Browser:
+    def handle_down(self):
+        # ...
+        active_tab.schedule_scroll(
+            clamp_scroll(
+                active_tab.scroll + SCROLL_STEP, self.active_tab_height))
+        # ...
+```
+
+That's it! Pretty complicated, but we got it done.
+
+Now let's step back from the code for a bit and consider the full scope of
+scrolling. Unfortunately, threaded scrolling is not always possible or feasible
+in real browsers. In the best browsers today, there are two primary reasons why
+threaded scrolling may fail to occur:
 
 * Javascript events listening to a scroll. If the event handler
 for the [`scroll`][scroll-event] event calls `preventDefault` on the first such
@@ -1081,6 +1201,12 @@ disallow these features.[^not-supported]
 
 [^not-supported]: Until 2020, Chromium-based browsers on Android did just this,
 and did not support `background-attachment: fixed`.
+
+Threaded loading
+================
+
+The last piece of code that can be threaded is loading resources from the
+network, i.e calls to `request` and `XMLHTTPRequest`.
 
 Threaded style and layout
 =========================

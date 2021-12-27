@@ -317,7 +317,8 @@ class InlineLayout:
     def new_line(self):
         self.previous_word = None
         self.cursor_x = self.x
-        last_line = self.children[-1] if self.children else None
+        last_line = self.children[-1] if self.children \
+            else None
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
@@ -672,6 +673,9 @@ def raster(display_list, canvas):
     for cmd in display_list:
         cmd.execute(canvas)
 
+def clamp_scroll(scroll, tab_height):
+    return min(scroll, tab_height - (HEIGHT - CHROME_PX))
+
 class Tab:
     def __init__(self, commit_func):
         self.history = []
@@ -791,9 +795,17 @@ class Tab:
             self.js.interp.evaljs("__runRAFHandlers()")
 
         self.run_rendering_pipeline()
+
+        document_height = math.ceil(self.document.height)
+        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        self.scroll = clamped_scroll
+
         self.commit_func(
-            self.url, self.scroll if self.scroll_changed_in_tab else None, 
-            math.ceil(self.document.height),
+            self.url, clamped_scroll if self.scroll_changed_in_tab \
+                else None, 
+            document_height,
             self.display_list)
         self.scroll_changed_in_tab = False
 
@@ -905,25 +917,18 @@ class Task:
         self.arg2 = None
 
 class TaskQueue:
-    def __init__(self, lock):
+    def __init__(self):
         self.tasks = []
-        self.lock = lock
 
     def add_task(self, task_code):
-        self.lock.acquire(blocking=True)
         self.tasks.append(task_code)
-        self.lock.release()
 
     def has_tasks(self):
-        self.lock.acquire(blocking=True)
         retval = len(self.tasks) > 0
-        self.lock.release()
         return retval
 
     def get_next_task(self):
-        self.lock.acquire(blocking=True)
         retval = self.tasks.pop(0)
-        self.lock.release()
         return retval
 
 class SingleThreadedTaskRunner:
@@ -954,34 +959,44 @@ class SingleThreadedTaskRunner:
 class MainThreadRunner:
     def __init__(self, tab):
         self.lock = threading.Lock()
+        self.condition = threading.Condition(self.lock)
         self.tab = tab
         self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
-        self.script_tasks = TaskQueue(self.lock)
-        self.browser_tasks = TaskQueue(self.lock)
+        self.script_tasks = TaskQueue()
+        self.browser_tasks = TaskQueue()
         self.needs_quit = False
         self.pending_scroll = None
 
     def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)
         self.needs_animation_frame = True
+        self.condition.notify_all()
         self.lock.release()
 
     def schedule_script_task(self, script):
+        self.lock.acquire(blocking=True)
         self.script_tasks.add_task(script)
+        self.condition.notify_all()
+        self.lock.release()
 
     def schedule_browser_task(self, callback):
+        self.lock.acquire(blocking=True)
         self.browser_tasks.add_task(callback)
+        self.condition.notify_all()
+        self.lock.release()
 
     def set_needs_quit(self):
         self.lock.acquire(blocking=True)
         self.needs_quit = True
+        self.condition.notify_all()
         self.lock.release()
 
     def schedule_scroll(self, scroll):
         self.lock.acquire(blocking=True)
         self.pending_scroll = scroll
-        self.lock.release()        
+        self.condition.notify_all()
+        self.lock.release()
 
     def start(self):
         self.main_thread.start()
@@ -990,6 +1005,7 @@ class MainThreadRunner:
         while True:
             if self.needs_quit:
                 return;
+
             self.lock.acquire(blocking=True)
             needs_animation_frame = self.needs_animation_frame
             self.needs_animation_frame = False
@@ -1002,18 +1018,29 @@ class MainThreadRunner:
                 self.tab.run_animation_frame()
 
             browser_method = None
+            self.lock.acquire(blocking=True)
             if self.browser_tasks.has_tasks():
                 browser_method = self.browser_tasks.get_next_task()
+            self.lock.release()
             if browser_method:
                 browser_method()
 
             script = None
+            self.lock.acquire(blocking=True)
             if self.script_tasks.has_tasks():
                 script = self.script_tasks.get_next_task()
+            self.lock.release()
             if script:
                 script()
 
-            time.sleep(0.001) # 1ms
+            self.lock.acquire(blocking=True)
+            if not self.script_tasks.has_tasks() and \
+                not self.browser_tasks.has_tasks() and not \
+                self.needs_animation_frame and not \
+                self.pending_scroll and not \
+                self.needs_quit:
+                self.condition.wait()
+            self.lock.release()
 
 class TabWrapper:
     def __init__(self, browser):
@@ -1145,9 +1172,10 @@ class Browser:
         self.compositor_lock.acquire(blocking=True)
         if not self.active_tab_height:
             return
-        max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
-        active_tab.schedule_scroll(min(active_tab.scroll + SCROLL_STEP, max_y))
+        active_tab.schedule_scroll(
+            clamp_scroll(
+                active_tab.scroll + SCROLL_STEP, self.active_tab_height))
         self.set_needs_draw()
         self.compositor_lock.release()
 
@@ -1167,7 +1195,8 @@ class Browser:
             self.set_needs_chrome_raster()
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].schedule_click(e.x, e.y - CHROME_PX)
+            self.tabs[self.active_tab].schedule_click(
+                e.x, e.y - CHROME_PX)
         self.compositor_lock.release()
 
     def handle_key(self, char):

@@ -131,7 +131,7 @@ than url behavior, which should usually be synchronized for security reasons.)
 Testing TaskQueue
 =================
 
-	>>> task_queue = lab12.TaskQueue(threading.Lock())
+	>>> task_queue = lab12.TaskQueue()
 	>>> def callback1():
 	...		print('callback1')
 	>>> def callback2():
