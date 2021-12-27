@@ -698,6 +698,12 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
+        headers = None
+        load_thread = threading.Thread(target=request, args=(url, self.url),
+            kwargs={'payload': body})
+        load_thread.start()
+        load_thread.join()
+
         headers, body = request(url, self.url, payload=body)
         self.scroll = 0
         self.scroll_changed_in_tab = True
