@@ -49,14 +49,18 @@ Node.prototype.dispatchEvent = function(evt) {
 function XMLHttpRequest() {}
 
 XMLHttpRequest.prototype.open = function(method, url, is_async) {
-    if (is_async) throw Error("Asynchronous XHR is not supported");
+    this.is_async = is_async
     this.method = method;
     this.url = url;
 }
 
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
-        this.method, this.url, this.body);
+        this.method, this.url, this.body, this.is_async);
+}
+
+function __runXHROnload(body) {
+    console.log('load:'  + body);    
 }
 
 function Date() {}

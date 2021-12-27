@@ -627,14 +627,27 @@ class JSContext:
             child.parent = elt
         self.tab.set_needs_pipeline_update()
 
-    def XMLHttpRequest_send(self, method, url, body):
+    def XMLHttpRequest_send(self, method, url, body, is_async):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
-        headers, out = request(full_url, self.tab.url, payload=body)
-        if url_origin(full_url) != url_origin(self.tab.url):
-            raise Exception("Cross-origin XHR request not allowed")
-        return out
+        headers = None
+        if not is_async:
+            headers, out = request(full_url, self.tab.url, payload=body)
+            if url_origin(full_url) != url_origin(self.tab.url):
+                raise Exception("Cross-origin XHR request not allowed")
+            return out
+
+        def async_load():
+            headers, out = request(full_url, self.tab.url, payload=body)
+            if url_origin(full_url) != url_origin(self.tab.url):
+                raise Exception("Cross-origin XHR request not allowed")
+            self.tab.main_thread_runner.schedule_script_task(
+                Task(self.run, "__runXHROnload()", body))
+
+        load_thread = threading.Thread(target=request, args=(url, self.url),
+            kwargs={'payload': body})
+        load_thread.start()
 
     def now(self):
         return int(time.time() * 1000)
