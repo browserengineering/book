@@ -835,38 +835,90 @@ then sleeps for 1ms and checks again.
             time.sleep(0.001) # 1ms
 ```
 
-The `run_animation_frame` method on `Browser` will run on the main thread. Since
-`draw` is supposed to happen on the compositor thread, we can't run it as part
-of the main thread rendering pipeline. Instead, we need to `commit` (copy) the
-display list to the compositor thread, so that it can be drawn
-later:[^fast-commit]
+Each `Tab` will own a `MainThreadRunner`, control its runtime, and
+schedule script eval tasks and animation frames on it:
+
+``` {.python replace=browser,commit_func}
+class tab:
+    def __init__(self, browser):
+        self.main_thread_runner = MainThreadRunner(self)
+        self.main_thread_runner.start()
+
+    def load(self, url, body=None):
+        # ...
+        for script in scripts:
+            # ...
+            self.main_thread_runner.schedule_script_task(
+                Task(self.js.run, script, body))
+
+    def set_needs_animation_frame(self):
+        def callback():
+            self.display_scheduled = False
+            self.main_thread_runner.schedule_animation_frame()
+        if not self.display_scheduled:
+            set_timeout(callback, REFRESH_RATE_SEC)
+```
+
+The `Browser` will also schedule tasks on the main thread. But now it's not
+safe for any methods on `Tab` to be directly called by `Browser`, because
+`Tab` runs on a different thread. All request must be queued as tasks on the
+`MainThreadRunner`. To make this easier, let's wrap `Tab` in a new `TabWrapper`
+class that only exposes what's needed. `TabWrapper` will run on the browser
+thread.
+
+Likewise, `Tab` can't have direct acccess to the `Browser`. But the only
+method it needs to call on `Browser` is `raster_and_draw`. We'll rename that
+to a `commit` method on `TabWrapper`, and pass this method to `Tab`'s
+constructor. When `commit` is called, all state of the `Tab` that's relevant
+to the `Browser` is sent across.
+
+``` {.python}
+class Tab:
+    def __init__(self, commit_func):
+        # ...
+        self.commit_func = commit_func
+
+    def run_animation_frame(self):
+        self.run_rendering_pipeline()
+        self.commit_func(
+            self.url, self.scroll if self.scroll_changed_in_tab else None, 
+            math.ceil(self.document.height),
+            self.display_list)
+
+```
 
 ``` {.python}
 class TabWrapper:
+    def __init__(self, browser):
+        self.tab = Tab(self.commit)
+        self.browser = browser
+        self.url = None
+        self.scroll = 0
+
     def commit(self, url, scroll, tab_height, display_list):
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
         self.url = url
-        self.scroll = scroll
+        if scroll != None:
+            self.scroll = scroll
         self.browser.active_tab_height = tab_height
         self.browser.active_tab_display_list = display_list.copy()
         self.browser.set_needs_tab_raster()
         self.browser.compositor_lock.release()
 ```
 
+Note that `commit` will acquire a lock on the browser thread before doing
+any of its work, because all of the inputs and outputs to it are cross-thread
+data structures.[^fast-commit]
+
 [^fast-commit]: `commit` is the one time when both threads are both "stopped"
 simultaneously---in the sense that neither is running a different task at the
 same time. For this reason commit needs to be as fast as possible, so as to
 lose the minimum possible amount of parallelism.
 
-Other async tasks
-=================
-
-Next up we'll move browser tasks such as loading to the main thread. Now that
-we have `MainThreadRunner`, this is super easy! Whenever the compositor thread
-needs to schedule a task on the main thread event loop, we just call
-`schedule_browser_task`:
+Finally, let's add some methods on `TabWrapper` to schedule various kinds
+of main thread tasks scheduled by the `Browser`.
 
 ``` {.python}
 class TabWrapper:
@@ -874,6 +926,37 @@ class TabWrapper:
         self.tab.main_thread_runner.schedule_browser_task(
             Task(self.tab.load, url, body))
         self.browser.set_needs_chrome_raster()
+
+    def schedule_click(self, x, y):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.click, x, y))
+
+    def schedule_keypress(self, char):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.keypress, char))
+
+    def schedule_go_back(self):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.go_back))
+
+    def schedule_scroll(self, scroll):
+        self.scroll = scroll
+        self.tab.main_thread_runner.schedule_scroll(scroll)
+
+    def handle_quit(self):
+        self.tab.main_thread_runner.set_needs_quit()
+```
+
+Next up we'll call all these: methods from the browser thread, for example
+loading:
+
+``` {.python}
+class Browser:
+    def load(self, url):
+        new_tab = TabWrapper(self)
+        new_tab.schedule_load(url)
+        self.active_tab = len(self.tabs)
+        self.tabs.append(new_tab)
 ```
 
 We can do the same for input event handlers, but there are a few additional
@@ -939,17 +1022,6 @@ class Browser:
         self.set_needs_draw()
         self.compositor_lock.release()
 ```
-
-And we're done! Now we can reap the benefits of two threads working in parallel.
-Here are the results:
-
-    Average total compositor thread time (Draw and Draw Chrome): 4.8ms
-    Average total main thread time: 4.4ms
-
-This means that we've been able to save about half of the of main thread time.
-With that time we can do other work, such as more JavaScript tasks, while in
-parallel the draw operations happen. This kind of optimization is called 
-*pipeline parallelization*.
 
 Threaded interactions
 =====================
