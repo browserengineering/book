@@ -28,6 +28,9 @@ class MockMainThreadRunner:
 	def schedule_browser_task(self, callback):
 		callback()
 
+	def schedule_scroll(self, scroll):
+		pass
+
 	def start(self):
 		pass
 
@@ -45,6 +48,9 @@ class MockNoOpMainThreadRunner:
 		pass
 
 	def schedule_browser_task(self, callback):
+		pass
+
+	def schedule_scroll(self, scroll):
 		pass
 
 	def start(self):
