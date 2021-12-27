@@ -632,23 +632,20 @@ class JSContext:
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
-        headers = None
-        if not is_async:
-            headers, out = request(full_url, self.tab.url, payload=body)
-            if url_origin(full_url) != url_origin(self.tab.url):
-                raise Exception("Cross-origin XHR request not allowed")
-            return out
 
-        def async_load():
+        def run_load(is_async):
             headers, out = request(full_url, self.tab.url, payload=body)
             if url_origin(full_url) != url_origin(self.tab.url):
                 raise Exception("Cross-origin XHR request not allowed")
             self.tab.main_thread_runner.schedule_script_task(
                 Task(self.run, "__runXHROnload()", body))
+            return out
 
-        load_thread = threading.Thread(target=request, args=(url, self.url),
-            kwargs={'payload': body})
-        load_thread.start()
+        if not is_async:
+            run_load(is_async)
+        else:
+            load_thread = threading.Thread(target=run_load, args=(is_async))
+            load_thread.start()
 
     def now(self):
         return int(time.time() * 1000)
