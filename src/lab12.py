@@ -563,7 +563,7 @@ def paint_visual_effects(node, cmds, rect):
         ], should_save=needs_blend_isolation),
     ]
 
-XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out)"
+XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
 
 class JSContext:
     def __init__(self, tab):
@@ -630,21 +630,22 @@ class JSContext:
             child.parent = elt
         self.tab.set_needs_pipeline_update()
 
-    def xhr_onload(self, out):
+    def xhr_onload(self, out, handle):
         do_default = self.interp.evaljs(
-            XHR_ONLOAD_CODE, out=out)
+            XHR_ONLOAD_CODE, out=out, handle=handle)
 
-    def XMLHttpRequest_send(self, method, url, body, is_async):
+    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
 
         def run_load():
             headers, out = request(full_url, self.tab.url, payload=body)
+            handle_local = handle
             if url_origin(full_url) != url_origin(self.tab.url):
                 raise Exception("Cross-origin XHR request not allowed")
             self.tab.main_thread_runner.schedule_script_task(
-                Task(self.xhr_onload, out))
+                Task(self.xhr_onload, out, handle_local))
             return out
 
         if not is_async:
@@ -909,9 +910,9 @@ class Task:
         self.__name__ = "task"
 
     def __call__(self):
-        if self.arg2:
+        if self.arg2 != None:
             self.task_code(self.arg1, self.arg2)
-        elif self.arg1:
+        elif self.arg1 != None:
             self.task_code(self.arg1)
         else:
             self.task_code()

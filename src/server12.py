@@ -2,6 +2,7 @@ import socket
 import urllib.parse
 import random
 import html
+import time
 
 SESSIONS = {}
 
@@ -66,6 +67,8 @@ def do_request(session, method, url, headers, body):
         return "200 OK", login_form(session)
     elif method == "GET" and url == "/count":
         return "200 OK", show_count()
+    elif method == "GET" and url == "/xhr":
+        return "200 OK", show_xhr()
     elif url == "/eventloop12.js":
         with open("eventloop12.js") as f:
             return "200 OK", f.read()
@@ -91,12 +94,17 @@ def show_count():
     out += "<div>";
     out += "  Let's count up to 50!"
     out += "</div>";
-    out += "<div>hi</div>"
+    out += "<div></div>"
+    out += "<div></div>"
     out += "<script src=/eventloop12.js></script>"
     for i in range(1, 200):
         out += "Text {}<br>".format(i)
     out += "End of page"
     return out
+
+def show_xhr():
+    time.sleep(5)
+    return "Slow XMLHttpRequest response!"
 
 def show_comments(session):
     out = "<!doctype html>"
