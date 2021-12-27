@@ -1048,9 +1048,14 @@ The reason that scrolling so responsive is that it happens on the browser
 thread, without waiting around to synchronoize with the main thread. But the
 main thread can and does affect scroll. For example, when loading a new page,
 scroll is set to 0; when running `innerHTML`, the height of the document could
-change, leading to a potential change of scroll offset.
+change, leading to a potential change of scroll offset. What should
+we do if the two threads disagree about the scroll offset?
 
-All of these
+The best policy is to respect the scroll offset the user last observed, unless
+it's incompatible with the web page. In other words, use the browser thread
+scroll, unless a new web page has loaded or the scroll exceeds the current
+document height.
+
 
 
 In real browsers, the two examples listed above are *extremely* important
