@@ -1202,6 +1202,12 @@ disallow these features.[^not-supported]
 [^not-supported]: Until 2020, Chromium-based browsers on Android did just this,
 and did not support `background-attachment: fixed`.
 
+Threaded loading
+================
+
+The last piece of code that can be threaded is loading resources from the
+network, i.e calls to `request` and `XMLHTTPRequest`.
+
 Threaded style and layout
 =========================
 
