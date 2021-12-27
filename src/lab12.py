@@ -774,7 +774,8 @@ class Tab:
 
         self.run_rendering_pipeline()
         self.commit_func(
-            self.url, self.scroll if self.scroll_changed_in_tab else None, 
+            self.url, self.scroll if self.scroll_changed_in_tab \
+                else None, 
             math.ceil(self.document.height),
             self.display_list)
         self.scroll_changed_in_tab = False
@@ -1143,7 +1144,8 @@ class Browser:
             return
         max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
-        active_tab.schedule_scroll(min(active_tab.scroll + SCROLL_STEP, max_y))
+        active_tab.schedule_scroll(
+            min(active_tab.scroll + SCROLL_STEP, max_y))
         self.set_needs_draw()
         self.compositor_lock.release()
 
@@ -1163,7 +1165,8 @@ class Browser:
             self.set_needs_chrome_raster()
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].schedule_click(e.x, e.y - CHROME_PX)
+            self.tabs[self.active_tab].schedule_click(
+                e.x, e.y - CHROME_PX)
         self.compositor_lock.release()
 
     def handle_key(self, char):

@@ -859,7 +859,8 @@ Likewise, `Tab` can't have direct acccess to the `Browser`. But the only
 method it needs to call on `Browser` is `raster_and_draw`. We'll rename that
 to a `commit` method on `TabWrapper`, and pass this method to `Tab`'s
 constructor. When `commit` is called, all state of the `Tab` that's relevant
-to the `Browser` is sent across.
+to the `Browser` is sent across. There is some special code regarding scrolling
+that I'll cover soon; scrolling is tricky because it can happen on both threads.
 
 ``` {.python}
 class Tab:
@@ -905,7 +906,7 @@ data structures.[^fast-commit]
 [^fast-commit]: `commit` is the one time when both threads are both "stopped"
 simultaneously---in the sense that neither is running a different task at the
 same time. For this reason commit needs to be as fast as possible, so as to
-lose the minimum possible amount of parallelism.
+lose the minimum possible amount of parallelism and responsiveness.
 
 Finally, let's add some methods on `TabWrapper` to schedule various kinds
 of main thread tasks scheduled by the `Browser`.
@@ -937,7 +938,7 @@ class TabWrapper:
         self.tab.main_thread_runner.set_needs_quit()
 ```
 
-Next up we'll call all these: methods from the browser thread, for example
+Next up we'll call all these methods from the browser thread, for example
 loading:
 
 ``` {.python}
@@ -951,13 +952,13 @@ class Browser:
 
 We can do the same for input event handlers, but there are a few additional
 subtleties. Let's look closely at each of them in turn, starting with
-`handle_click`. In most cases, we will need to [hit test]
-(chrome.md#hit-testing) for which DOM element receives the click event, and
-also fire an event that JavaScript can listen to. Since DOM computations and
-JavaScript can only be run on the main thread, it seems we should just send the
-click event to the main thread for processing. But if the click was *not*
-within the web page window, we can handle it right there in the compositor
-thread, and leave the main thread none the wiser:
+`handle_click`. In most cases, we will need to
+[hit test](chrome.md#hit-testing) for which DOM element receives the click
+event, and also fire an event that JavaScript can listen to. Since DOM
+computations and JavaScript can only be run on the main thread, it seems we
+should just send the click event to the main thread for processing. But if the
+click was *not* within the web page window, we can handle it right there in the
+compositor thread, and leave the main thread none the wiser:
 
 ``` {.python}
 class Browser:
@@ -977,7 +978,8 @@ class Browser:
             self.set_needs_chrome_raster()
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].schedule_click(e.x, e.y - CHROME_PX)
+            self.tabs[self.active_tab].schedule_click(
+                e.x, e.y - CHROME_PX)
         self.compositor_lock.release()
 
 ```
@@ -1008,7 +1010,8 @@ class Browser:
             return
         max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
-        active_tab.schedule_scroll(min(active_tab.scroll + SCROLL_STEP, max_y))
+        active_tab.schedule_scroll(
+            min(active_tab.scroll + SCROLL_STEP, max_y))
         self.set_needs_draw()
         self.compositor_lock.release()
 ```
@@ -1032,26 +1035,11 @@ or the front half of the rendering pipeline.
 
 [gil]: https://wiki.python.org/moin/GlobalInterpreterLock
 
-Threaded interactions
-=====================
+Threaded scrolling
+==================
 
-All this work to create a compositor thread is not just to offload some of the
-rendering pipeline. There is another, even more important, performance
-advantage: any operation that does not require the main thread *cannot be slowed
-down by it*. Look closely at the code we've written in the previous section to
-handle input events---you'll see that in the following cases the main thread is
-not involved at all:
-
-* Interactions with browser chrome (if the click or keyboard event is not
-targeted at the web page)
-
-* Scrolling
-
-These are *threaded interactions*---ones that don't need to run any code at all
-on the main thread. No matter how slow the main thread rendering pipeline is, or
-how slow JavaScript is (even if it's stuck in an infinite loop!), we can still
-smoothly scroll the parts of it that are already in `draw_display_list`, and
-type in the browser URL box.
+Recall how we've added some scroll-related code, but we didn't really get into
+how it works (I also omitted some of the code). 
 
 In real browsers, the two examples listed above are *extremely* important
 optimizations. Think how annoying it would be to type in the name of a new
