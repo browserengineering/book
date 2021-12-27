@@ -1168,11 +1168,12 @@ class Browser:
         # ...
 ```
 
-That's it! Pretty compliated, but we got it done.
+That's it! Pretty complicated, but we got it done.
 
-Unfortunately, threaded scrolling is not always possible or feasible. In the
-best browsers today, there are two primary reasons why threaded scrolling may
-fail to occur:
+Now let's step back from the code for a bit and consider the full scope of
+scrolling. Unfortunately, threaded scrolling is not always possible or feasible
+in real browsers. In the best browsers today, there are two primary reasons why
+threaded scrolling may fail to occur:
 
 * Javascript events listening to a scroll. If the event handler
 for the [`scroll`][scroll-event] event calls `preventDefault` on the first such
