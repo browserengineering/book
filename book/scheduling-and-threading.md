@@ -838,8 +838,8 @@ then sleeps for 1ms and checks again.
 Each `Tab` will own a `MainThreadRunner`, control its runtime, and
 schedule script eval tasks and animation frames on it:
 
-``` {.python replace=browser,commit_func}
-class tab:
+``` {.python replace=browser/commit_func}
+class Tab:
     def __init__(self, browser):
         self.main_thread_runner = MainThreadRunner(self)
         self.main_thread_runner.start()
