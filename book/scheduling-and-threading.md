@@ -859,10 +859,9 @@ Likewise, `Tab` can't have direct acccess to the `Browser`. But the only
 method it needs to call on `Browser` is `raster_and_draw`. We'll rename that
 to a `commit` method on `TabWrapper`, and pass this method to `Tab`'s
 constructor. When `commit` is called, all state of the `Tab` that's relevant
-to the `Browser` is sent across. There is some special code regarding scrolling
-that I'll cover soon; scrolling is tricky because it can happen on both threads.
+to the `Browser` is sent across.
 
-``` {.python}
+``` {.python expected=False}
 class Tab:
     def __init__(self, commit_func):
         # ...
@@ -870,10 +869,10 @@ class Tab:
 
     def run_animation_frame(self):
         self.run_rendering_pipeline()
+        # ...
         self.commit_func(
-            self.url, self.scroll if self.scroll_changed_in_tab \
-                else None, 
-            math.ceil(self.document.height),
+            self.url, self.scroll,
+            document_height,
             self.display_list)
 
 ```
@@ -1002,7 +1001,7 @@ class Browser:
 As it turns out, the return key and scrolling have no use at all for the main
 thread:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def handle_down(self):
         self.compositor_lock.acquire(blocking=True)
