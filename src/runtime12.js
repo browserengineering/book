@@ -60,7 +60,7 @@ XMLHttpRequest.prototype.send = function(body) {
 }
 
 function __runXHROnload(body) {
-    console.log('load:'  + body);    
+    console.log('load:' + body);    
 }
 
 function Date() {}

@@ -563,6 +563,8 @@ def paint_visual_effects(node, cmds, rect):
         ], should_save=needs_blend_isolation),
     ]
 
+XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out)"
+
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
@@ -628,23 +630,28 @@ class JSContext:
             child.parent = elt
         self.tab.set_needs_pipeline_update()
 
+    def xhr_onload(self, out):
+        do_default = self.interp.evaljs(
+            XHR_ONLOAD_CODE, out=out)
+
     def XMLHttpRequest_send(self, method, url, body, is_async):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
 
-        def run_load(is_async):
+        def run_load():
             headers, out = request(full_url, self.tab.url, payload=body)
             if url_origin(full_url) != url_origin(self.tab.url):
                 raise Exception("Cross-origin XHR request not allowed")
             self.tab.main_thread_runner.schedule_script_task(
-                Task(self.run, "__runXHROnload()", body))
+                Task(self.xhr_onload, out))
             return out
 
         if not is_async:
             run_load(is_async)
         else:
-            load_thread = threading.Thread(target=run_load, args=(is_async))
+            print('starting async load')
+            load_thread = threading.Thread(target=run_load, args=())
             load_thread.start()
 
     def now(self):

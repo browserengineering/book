@@ -20,3 +20,7 @@ function callback() {
     cur_frame_time = Date.now()
 }
 requestAnimationFrame(callback);
+
+request = new XMLHttpRequest()
+request.open('GET', '/', true);
+request.send()
