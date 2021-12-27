@@ -1056,14 +1056,119 @@ it's incompatible with the web page. In other words, use the browser thread
 scroll, unless a new web page has loaded or the scroll exceeds the current
 document height. Let's implement that.
 
+The trickiest part is how to communicate a browser thread scroll offset to the
+main thread, and integrate it with the rendering pipeline. It'll work like
+this:
 
+* When the browser thread changes scroll offset, notify the `MainThreadRunner`
+and store the result in a `pending_scroll` variable.
+* When `MainThreadRunner` decides to run an animation frame, first apply
+the `pending_scroll` to the `Tab`. Then, after running the rendering pipeline,
+*adjust* it if the document height requires it.
+* When loading a new page in a `Tab`, override the scroll.
+* If an animation frame or load caused a scroll adjustment, note it in a
+new `scroll_changed_in_tab` variable on `Tab`
+* When calling `commit`, only pass the scroll if it was changed in the `Tab`,
+and otherwise pass `None`. Commit will ignore the scroll if it is `None`.
 
-In real browsers, the two examples listed above are *extremely* important
-optimizations. Think how annoying it would be to type in the name of a new
-website if the old one was getting in the way of your keystrokes because it was
-dslow. Likewise, scrolling a web page with a lot of slow JavaScript is
-sometimes painful unless the scrolling is threaded, even for relatively good
-sites.
+Implement each of these in turn. In `MainThreadRunner`:
+
+``` {.python}
+class MainThreadRunner:
+    def __init__(self, tab):
+        # ...
+        self.pending_scroll = None
+
+    def schedule_scroll(self, scroll):
+        self.lock.acquire(blocking=True)
+        self.pending_scroll = scroll
+        self.condition.notify_all()
+        self.lock.release()
+
+    def run(self):
+        # ...
+        self.lock.acquire(blocking=True)
+        needs_animation_frame = self.needs_animation_frame
+        self.needs_animation_frame = False
+        pending_scroll = self.pending_scroll
+        self.pending_scroll = None
+        self.lock.release()
+        if pending_scroll:
+            self.tab.apply_scroll(pending_scroll)
+        if needs_animation_frame:
+            self.tab.run_animation_frame()
+        # ...
+        self.lock.acquire(blocking=True)
+        if not self.script_tasks.has_tasks() and \
+            not self.browser_tasks.has_tasks() and not \
+            self.needs_animation_frame and not \
+            self.pending_scroll and not \
+            self.needs_quit:
+            self.condition.wait()
+        self.lock.release()
+```
+
+in `Tab`:
+
+``` {.python expected=False}
+def clamp_scroll(scroll, tab_height):
+    return min(scroll, tab_height - (HEIGHT - CHROME_PX))
+
+class Tab:
+    def __init__(self, commit_func):
+        # ...
+        self.scroll_changed_in_tab = False
+    # ...
+    def apply_scroll(self, scroll):
+        self.scroll = scroll
+
+    def load(self, url, body=None):
+        headers, body = request(url, self.url, payload=body)
+        self.scroll = 0
+        self.scroll_changed_in_tab = True
+        # ...
+
+    def run_animation_frame(self):
+        # ....
+        self.run_rendering_pipeline()
+
+        document_height = math.ceil(self.document.height)
+        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        self.scroll = clamped_scroll
+
+        self.commit_func(
+            self.url, clamped_scroll if self.scroll_changed_in_tab \
+                else None, 
+            document_height,
+            self.display_list)
+        self.scroll_changed_in_tab = False
+```
+
+In `TabWrapper`:
+
+``` {.python}
+class TabWrapper:
+    def commit(self, url, scroll, tab_height, display_list):
+        # ...
+        if scroll != None:
+            self.scroll = scroll
+```
+
+In `Browser`:
+
+``` {.python}
+class Browser:
+    def handle_down(self):
+        # ...
+        active_tab.schedule_scroll(
+            clamp_scroll(
+                active_tab.scroll + SCROLL_STEP, self.active_tab_height))
+        # ...
+```
+
+That's it! Pretty compliated, but we got it done.
 
 Unfortunately, threaded scrolling is not always possible or feasible. In the
 best browsers today, there are two primary reasons why threaded scrolling may
