@@ -1018,6 +1018,7 @@ class MainThreadRunner:
             if not self.script_tasks.has_tasks() and \
                 not self.browser_tasks.has_tasks() and not \
                 self.needs_animation_frame and not \
+                self.pending_scroll and not \
                 self.needs_quit:
                 self.condition.wait()
             self.lock.release()

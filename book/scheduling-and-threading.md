@@ -908,7 +908,8 @@ same time. For this reason commit needs to be as fast as possible, so as to
 lose the minimum possible amount of parallelism and responsiveness.
 
 Finally, let's add some methods on `TabWrapper` to schedule various kinds
-of main thread tasks scheduled by the `Browser`.
+of main thread tasks scheduled by the `Browser` (`schedule_scroll` will be
+implementd on `MainThreadRunner` in a bit).
 
 ``` {.python}
 class TabWrapper:
@@ -1053,7 +1054,7 @@ we do if the two threads disagree about the scroll offset?
 The best policy is to respect the scroll offset the user last observed, unless
 it's incompatible with the web page. In other words, use the browser thread
 scroll, unless a new web page has loaded or the scroll exceeds the current
-document height.
+document height. Let's implement that.
 
 
 
