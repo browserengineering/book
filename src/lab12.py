@@ -317,7 +317,8 @@ class InlineLayout:
     def new_line(self):
         self.previous_word = None
         self.cursor_x = self.x
-        last_line = self.children[-1] if self.children else None
+        last_line = self.children[-1] if self.children \
+            else None
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 

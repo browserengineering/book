@@ -745,7 +745,7 @@ class MainThreadRunner:
         while True:
             # ...
 ```
-
+\
 Add some methods to set the dirty bit and schedule tasks. These need to 
 acquire the lock before setting these thread-safe variables. (Ignore the
 `condition` line, we'll get to that in a moment).
@@ -870,7 +870,8 @@ class Tab:
     def run_animation_frame(self):
         self.run_rendering_pipeline()
         self.commit_func(
-            self.url, self.scroll if self.scroll_changed_in_tab else None, 
+            self.url, self.scroll if self.scroll_changed_in_tab \
+                else None, 
             math.ceil(self.document.height),
             self.display_list)
 
