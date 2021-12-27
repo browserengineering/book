@@ -1039,7 +1039,19 @@ Threaded scrolling
 ==================
 
 Recall how we've added some scroll-related code, but we didn't really get into
-how it works (I also omitted some of the code). 
+how it works (I also omitted some of the code). Let's now carefully examine
+how to implement threaded scrolling. But before getting to that, go and load
+the counting demo with artificial delay, and check out how much more responsive
+scrolling is now!
+
+The reason that scrolling so responsive is that it happens on the browser
+thread, without waiting around to synchronoize with the main thread. But the
+main thread can and does affect scroll. For example, when loading a new page,
+scroll is set to 0; when running `innerHTML`, the height of the document could
+change, leading to a potential change of scroll offset.
+
+All of these
+
 
 In real browsers, the two examples listed above are *extremely* important
 optimizations. Think how annoying it would be to type in the name of a new

@@ -660,6 +660,9 @@ def raster(display_list, canvas):
     for cmd in display_list:
         cmd.execute(canvas)
 
+def clamp_scroll(scroll, tab_height):
+    return min(scroll, tab_height - (HEIGHT - CHROME_PX))
+
 class Tab:
     def __init__(self, commit_func):
         self.history = []
@@ -773,10 +776,17 @@ class Tab:
             self.js.interp.evaljs("__runRAFHandlers()")
 
         self.run_rendering_pipeline()
+
+        document_height = math.ceil(self.document.height)
+        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        self.scroll = clamped_scroll
+
         self.commit_func(
-            self.url, self.scroll if self.scroll_changed_in_tab \
+            self.url, clamped_scroll if self.scroll_changed_in_tab \
                 else None, 
-            math.ceil(self.document.height),
+            document_height,
             self.display_list)
         self.scroll_changed_in_tab = False
 
@@ -1142,10 +1152,10 @@ class Browser:
         self.compositor_lock.acquire(blocking=True)
         if not self.active_tab_height:
             return
-        max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
         active_tab.schedule_scroll(
-            min(active_tab.scroll + SCROLL_STEP, max_y))
+            clamp_scroll(
+                active_tab.scroll + SCROLL_STEP, self.active_tab_height))
         self.set_needs_draw()
         self.compositor_lock.release()
 
