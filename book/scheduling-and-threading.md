@@ -642,27 +642,78 @@ sometimes really do take a lot of time on complex pages, even with the GPU. So
 rendering pipeline parallelism is a win regardless.
 :::
 
+Slow scripts
+============
+
+JavaScript can also be arbitrarily slow to run, of course. This is a problem,
+because these scripts can make the browser very janky and annoying to use---so
+annoying that you will quickly not want to use that browser. But don't take my
+word for it---let's implement an artificial slowdown and you can see for
+yourself.
+
+Add the slowdown to our counter page as follows, with a 200ms synchronous delay
+running JavaScript:
+
+``` {.javascript}
+var count = 0;
+var start_time = Date.now();
+var cur_frame_time = start_time;
+
+artificial_delay_ms = 200;
+
+function callback() {
+    var since_last_frame = Date.now() - cur_frame_time;
+    while (since_last_frame < artificial_delay_ms) {
+        var since_last_frame = Date.now() - cur_frame_time;
+    }
+    # ...
+}
+```
+
+Now load the page and hold down the down arrow button. Observe how inconsistent
+and janky the scrolling is. Compare with no artificial delay, which is pleasant
+to scroll.
+
+Browsers can and do optimize their JavaScript engines to be as fast as possible,
+but ultimately scripts can and are sometimes very slow. So the only way to keep
+the browser responsive is to run key interactions in parallel with JavaScript.
+Luckily, it's pretty easy to use the raster and draw thread we're planning
+to *also* scroll and interact with browser chrome.
+
 The browser thread
 ==================
 
-Let's implement the browser thread[^also-compositor] with [Python threads]
-[python-thread]. The way it'll work is that all code in `Browser` will run in
-the browser thread, and all code in `Tab` will run in what we'll now call
-the *main thread*.
+This new thread will be called the *browser thread*.[^also-compositor] The
+browser thread will be for:
 
+* Raster and draw
+* Interacting with browser chrome
+* Scrolling
 
-The second thread that runs drawing is often called the *compositor* thread.
-It's so named because in a real browser it'll end up doing a lot more than
-drawing to a canvas, but let's skip that part for now and focus on drawing.
+The other thread, which we'll call the *main thread,*[^main-thread-name] will
+be for:
 
-To get the compositor thread working, we'll have to find a way to run tkinter
-on a second thread, and communicate between the threads in a way that allows
-them to do things in parallel. The first thing you should know is that tkinter
-is *not* thread-safe, so it cannot magically parallelize for free. Instead we'll
-have to carefully avoid using tkinter at all on the main thread, and move all
-use of it to the compositor thread.
+* Evaluating scripts
+* Loading resources
+* The front half of the rendering pipeline: animation frame callbacks, style,
+  layout, and paint
+* Event handlers for clicking on and typing into web pages
 
-The approach we'll take is to call the thread we already have the compositor
+[^main-thread-name]: Here I'm going with the name real browsers often use. A
+better name might be the "JavaScript" thread (or even bertter, the "DOM"
+thread, since JavaScript can sometimes run on [other threads][webworker]).
+
+[webworker]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
+
+Let's implement the browser thread with [Python threads][python-thread].
+The way it'll work is that all code in `Browser` will run in
+the browser thread, and all code in `Tab` and `JSContext` will run in what
+we'll now call the *main thread*. As a result, 
+
+[^also-compositor]: This thread is similar to what modern browsers call the 
+*compositor thread*.
+
+The approach we'll take is to call the thread we already have the browser thread
 thread, and add a new thread; this thread is usually called the *main* thread.
 The main thread will run these kinds of tasks in our browser:
 

@@ -54,7 +54,6 @@ LOGINS = {
 }
 
 def do_request(session, method, url, headers, body):
-    print(url)
     if method == "GET" and url == "/":
         return "200 OK", show_comments(session)
     elif method == "GET" and url == "/comment.js":
@@ -94,6 +93,9 @@ def show_count():
     out += "</div>";
     out += "<div>hi</div>"
     out += "<script src=/eventloop12.js></script>"
+    for i in range(1, 200):
+        out += "Text {}<br>".format(i)
+    out += "End of page"
     return out
 
 def show_comments(session):
