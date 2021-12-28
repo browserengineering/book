@@ -46,17 +46,30 @@ Node.prototype.dispatchEvent = function(evt) {
     return evt.do_default;
 }
 
-function XMLHttpRequest() {}
+XHR_REQUESTS = {}
+
+function XMLHttpRequest() {
+    this.handle = Object.keys(XHR_REQUESTS).length;
+    XHR_REQUESTS[this.handle] = this;
+}
 
 XMLHttpRequest.prototype.open = function(method, url, is_async) {
-    if (is_async) throw Error("Asynchronous XHR is not supported");
+    this.is_async = is_async
     this.method = method;
     this.url = url;
 }
 
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
-        this.method, this.url, this.body);
+        this.method, this.url, this.body, this.is_async, this.handle);
+}
+
+function __runXHROnload(body, handle) {
+    var obj = XHR_REQUESTS[handle];
+    var evt = new Event('load');
+    obj.responseText = body;
+    if (obj.onload)
+        obj.onload(evt);
 }
 
 function Date() {}

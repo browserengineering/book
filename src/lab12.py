@@ -43,6 +43,16 @@ class Timer:
 
 FONTS = {}
 
+def async_request(url, top_level_url, results):
+    headers = None
+    body = None
+    def runner():
+        headers, body = request(url, top_level_url)
+        results[url] = {'headers': headers, 'body': body}
+    thread = threading.Thread(target=runner)
+    thread.start()
+    return thread
+
 def get_font(size, weight, style):
     key = (weight, style)
     if key not in FONTS:
@@ -563,6 +573,8 @@ def paint_visual_effects(node, cmds, rect):
         ], should_save=needs_blend_isolation),
     ]
 
+XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
@@ -628,14 +640,30 @@ class JSContext:
             child.parent = elt
         self.tab.set_needs_pipeline_update()
 
-    def XMLHttpRequest_send(self, method, url, body):
+    def xhr_onload(self, out, handle):
+        do_default = self.interp.evaljs(
+            XHR_ONLOAD_CODE, out=out, handle=handle)
+
+    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
-        headers, out = request(full_url, self.tab.url, payload=body)
-        if url_origin(full_url) != url_origin(self.tab.url):
-            raise Exception("Cross-origin XHR request not allowed")
-        return out
+
+        def run_load():
+            headers, out = request(full_url, self.tab.url, payload=body)
+            handle_local = handle
+            if url_origin(full_url) != url_origin(self.tab.url):
+                raise Exception("Cross-origin XHR request not allowed")
+            self.tab.main_thread_runner.schedule_script_task(
+                Task(self.xhr_onload, out, handle_local))
+            return out
+
+        if not is_async:
+            run_load(is_async)
+        else:
+            print('starting async load')
+            load_thread = threading.Thread(target=run_load, args=())
+            load_thread.start()
 
     def now(self):
         return int(time.time() * 1000)
@@ -702,6 +730,7 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
+        self.main_thread_runner.clear_pending_tasks()
         headers, body = request(url, self.url, payload=body)
         self.scroll = 0
         self.scroll_changed_in_tab = True
@@ -722,15 +751,20 @@ class Tab:
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
+
+        async_requests = []
+        script_results = {}
         for script in scripts:
             script_url = resolve_url(script, url)
             if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
-            header, body = request(script_url, url)
-            self.main_thread_runner.schedule_script_task(
-                Task(self.js.run, script, body))
-
+            async_requests.append({
+                "url": script_url,
+                "type": "script",
+                "thread": async_request(script_url, url, script_results)
+            })
+ 
         self.rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
@@ -738,16 +772,33 @@ class Tab:
                  and node.tag == "link"
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
+
+        style_results = {}
         for link in links:
             style_url = resolve_url(link, url)
             if not self.allowed_request(style_url):
                 print("Blocked style", link, "due to CSP")
                 continue
+            async_requests.append({
+                "url": style_url,
+                "type": "style sheet",
+                "thread": async_request(style_url, url, style_results)
+            })
             try:
                 header, body = request(style_url, url)
             except:
                 continue
-            self.rules.extend(CSSParser(body).parse())
+
+        for async_req in async_requests:
+            async_req["thread"].join()
+            if async_req["type"] == "script":
+                script_url = async_req["url"]
+                self.main_thread_runner.schedule_script_task(
+                    Task(self.js.run, script_url,
+                        script_results[script_url]['body']))
+            else:
+                self.rules.extend(CSSParser(results['body']).parse())
+
         self.set_needs_pipeline_update()
 
     def apply_scroll(self, scroll):
@@ -886,9 +937,9 @@ class Task:
         self.__name__ = "task"
 
     def __call__(self):
-        if self.arg2:
+        if self.arg2 != None:
             self.task_code(self.arg1, self.arg2)
-        elif self.arg1:
+        elif self.arg1 != None:
             self.task_code(self.arg1)
         else:
             self.task_code()
@@ -912,6 +963,9 @@ class TaskQueue:
         retval = self.tasks.pop(0)
         return retval
 
+    def clear(self):
+        self.tasks = []
+
 class SingleThreadedTaskRunner:
     def __init__(self, tab):
         self.tab = tab
@@ -928,7 +982,13 @@ class SingleThreadedTaskRunner:
     def schedule_browser_task(self, callback):
         callback()
 
-    def start(self):
+    def schedule_scroll(self, scroll):
+        self.tab.scroll = scroll
+
+    def clear_pending_tasks(self):
+        pass
+
+    def start(self):    
         pass
 
     def set_needs_quit(self):
@@ -978,6 +1038,12 @@ class MainThreadRunner:
         self.pending_scroll = scroll
         self.condition.notify_all()
         self.lock.release()
+
+    def clear_pending_tasks(self):
+        self.needs_animation_frame = False
+        self.script_tasks.clear()
+        self.browser_tasks.clear()
+        self.pending_scroll = None
 
     def start(self):
         self.main_thread.start()

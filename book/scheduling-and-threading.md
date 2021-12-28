@@ -70,9 +70,9 @@ class Task:
         self.__name__ = "task"
 
     def __call__(self):
-        if self.arg2:
+        if self.arg2 != None:
             self.task_code(self.arg1, self.arg2)
-        elif self.arg1:
+        elif self.arg1 != None:
             self.task_code(self.arg1)
         else:
             self.task_code()
@@ -501,7 +501,7 @@ def show_count():
     out += "<div>";
     out += "  Let's count up to 50!"
     out += "</div>";
-    out += "<div>hi</div>"
+    out += "<div>Output</div>"
     out += "<script src=/eventloop12.js></script>"
     return out
 ```
@@ -827,7 +827,7 @@ the thread will deadlock in the next while loop iteration.
 Each `Tab` will own a `MainThreadRunner`, control its runtime, and
 schedule script eval tasks and animation frames on it:
 
-``` {.python replace=browser/commit_func}
+``` {.python replace=browser/commit_func,%20body))/}
 class Tab:
     def __init__(self, browser):
         self.main_thread_runner = MainThreadRunner(self)
@@ -838,7 +838,7 @@ class Tab:
         for script in scripts:
             # ...
             self.main_thread_runner.schedule_script_task(
-                Task(self.js.run, script, body))
+                Task(self.js.run, script_url, body))
 
     def set_needs_animation_frame(self):
         def callback():
@@ -1207,6 +1207,225 @@ Threaded loading
 
 The last piece of code that can be threaded is loading resources from the
 network, i.e calls to `request` and `XMLHTTPRequest`.
+
+In the `load` method on `Tab`, currently the first thing it does is
+synchronously wait for a network response to loading the main HTML resource.
+It then does the same thing for each subsequent *sub-resource request*, to load
+style sheets and scripts. Arguably, there isn't a whole lot of point to making
+the initial request asynchronous, because there isn't anything else for the
+main thread to do in the meantime. But there is a pretty clear performance
+problem with the script and style sheet requests: they pile up sequentially,
+which means that there is a loading delay equal to the round-trip time to the
+server, multiplied by the number of scripts and style sheets.
+
+We should be able to send off all of the requests in parallel. Let's use an
+async, threaded version of `request` to do that. For simplicity, let's make new
+thread for each resource. When a resource loads, the thread will complete and
+we can parse the script or load the style sheet, as appropriate.
+[^ignore-order]
+
+Define a new `async_request` function. This will start a thread. The thread will
+requests the resource, store the results in `results`, and then return. The
+thread refrence will be returned by `async_request`. It's expected that the
+caller of this function will call `join` on the thread (`join` means
+"block until the thread has completed").
+
+``` {.python}
+def async_request(url, top_level_url, results):
+    headers = None
+    body = None
+    def runner():
+        headers, body = request(url, top_level_url)
+        results[url] = {'headers': headers, 'body': body}
+    thread = threading.Thread(target=runner)
+    thread.start()
+    return thread
+```
+
+Then we can use it in `load`. Note how we send off all of the requests first,
+and only at the end `join` all of the threaqds created.
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        async_requests = []
+        script_results = {}
+        for script in scripts:
+            script_url = resolve_url(script, url)
+            if not self.allowed_request(script_url):
+                print("Blocked script", script, "due to CSP")
+                continue
+            async_requests.append({
+                "url": script_url,
+                "type": "script",
+                "thread": async_request(script_url, url, script_results)
+            })
+ 
+        self.rules = self.default_style_sheet.copy()
+        links = [node.attributes["href"]
+                 for node in tree_to_list(self.nodes, [])
+                 if isinstance(node, Element)
+                 and node.tag == "link"
+                 and "href" in node.attributes
+                 and node.attributes.get("rel") == "stylesheet"]
+
+        style_results = {}
+        for link in links:
+            style_url = resolve_url(link, url)
+            if not self.allowed_request(style_url):
+                print("Blocked style", link, "due to CSP")
+                continue
+            async_requests.append({
+                "url": style_url,
+                "type": "style sheet",
+                "thread": async_request(style_url, url, style_results)
+            })
+            try:
+                header, body = request(style_url, url)
+            except:
+                continue
+
+        for async_req in async_requests:
+            async_req["thread"].join()
+            if async_req["type"] == "script":
+                script_url = async_req["url"]
+                self.main_thread_runner.schedule_script_task(
+                    Task(self.js.run, script_url,
+                        script_results[script_url]['body']))
+            else:
+                self.rules.extend(CSSParser(results['body']).parse())
+```
+
+Now our browser will parallleize loading sub-resources!
+
+Next up is `XHMLHttpRequest`. We introduced this API in chapter 10, and
+implemented it only as a synchronous API. But in fact, the synchronous
+version of that API is almost useless for real websites,^[and also a huge
+performance footgun, for the same reason we've been optiming work to use
+threads in this chapter!], because the whole point of using thia API on a
+website is to keep it resposive to the user while network requests are going
+on.
+
+Let's fix that. We'll make these changes. There are a bunch of them, but they
+are mostly about communicating back and forth with JavaScript.
+* Allow `is_async` to be `true` in the constructor of `XMLHttpRequest` in the
+runtime
+* Store a uniquehandle for each `XMLHttpRequest` object, analogous to how we
+  used handles for `Node`s
+* Store a map from handle to object
+* Add a new `__runXHROnload` method that will call the `onload` function
+specified on a `XMLHttpRequest`, if any
+* Store the response on the `responseText` field, as required by the API
+* Augment `XMLHttpRequest_send` to support async requests that use a thread
+and a subsequent script task on `main_thread_runner`.
+
+Here's the runtime JavaScript code:
+
+``` {.javascript}
+XHR_REQUESTS = {}
+
+function XMLHttpRequest() {
+    this.handle = Object.keys(XHR_REQUESTS).length;
+    XHR_REQUESTS[this.handle] = this;
+}
+
+XMLHttpRequest.prototype.open = function(method, url, is_async) {
+    this.is_async = is_async
+    this.method = method;
+    this.url = url;
+}
+
+XMLHttpRequest.prototype.send = function(body) {
+    this.responseText = call_python("XMLHttpRequest_send",
+        this.method, this.url, this.body, this.is_async, this.handle);
+}
+
+function __runXHROnload(body, handle) {
+    var obj = XHR_REQUESTS[handle];
+    var evt = new Event('load');
+    obj.responseText = body;
+    if (obj.onload)
+        obj.onload(evt);
+}
+```
+
+On the Python side, here's `XMLHttpRequest_send`:
+
+``` {.python}
+class JSContext:
+    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+        full_url = resolve_url(url, self.tab.url)
+        if not self.tab.allowed_request(full_url):
+            raise Exception("Cross-origin XHR blocked by CSP")
+
+        def run_load():
+            headers, out = request(full_url, self.tab.url, payload=body)
+            handle_local = handle
+            if url_origin(full_url) != url_origin(self.tab.url):
+                raise Exception("Cross-origin XHR request not allowed")
+            self.tab.main_thread_runner.schedule_script_task(
+                Task(self.xhr_onload, out, handle_local))
+            return out
+
+        if not is_async:
+            run_load(is_async)
+        else:
+            print('starting async load')
+            load_thread = threading.Thread(target=run_load, args=())
+            load_thread.start()
+```
+
+As you can see, the threading and task machinery we've built is quite
+general and multi-purpose!
+
+Now let's try out this new async API by augmenting our counter javscript like
+this:
+
+``` {.javascript file=eventloop}
+function callback() {
+    if (count == 0)
+        requestXHR();
+    # ...
+}
+
+var request;
+function requestXHR() {
+    request = new XMLHttpRequest();
+    request.open('GET', '/xhr', true);
+    request.onload = function(evt) {
+        document.querySelectorAll("div")[2].innerHTML = 
+            "XHR result: " + this.responseText;
+    };
+    request.send();
+}
+```
+
+And the HTTP server:
+
+``` {.python file=server}
+def show_count():
+    out = "<!doctype html>"
+    out += "<div>";
+    out += "  Let's count up to 50!"
+    out += "</div>";
+    out += "<div>Output</div>"
+    out += "<div>XHR</div>"
+    # ...
+
+def show_xhr():
+    time.sleep(5)
+    return "Slow XMLHttpRequest response!"
+```
+
+Load the counter page. You should see the counter going up, and then after
+5 seconds, "Slow XMLHttpRequest response!" should appear onscreen.
+
+[^ignore-order]: This ignores the parse order of the scripts and style sheets,
+which is technically incorrect and a real browser would be much more
+careful. But as mentioned in an earlier chapter, our browser is already
+incorrect in terms of orders of operations, as scripts and style sheets are
+supposed to block the HTML parser as well.
 
 Threaded style and layout
 =========================
