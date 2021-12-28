@@ -982,7 +982,13 @@ class SingleThreadedTaskRunner:
     def schedule_browser_task(self, callback):
         callback()
 
-    def start(self):
+    def schedule_scroll(self, scroll):
+        self.tab.scroll = scroll
+
+    def clear_pending_tasks(self):
+        pass
+
+    def start(self):    
         pass
 
     def set_needs_quit(self):

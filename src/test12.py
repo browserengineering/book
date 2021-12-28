@@ -31,6 +31,9 @@ class MockMainThreadRunner:
 	def schedule_scroll(self, scroll):
 		pass
 
+	def clear_pending_tasks(self):
+		pass
+
 	def start(self):
 		pass
 
