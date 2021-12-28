@@ -661,7 +661,6 @@ class JSContext:
         if not is_async:
             run_load(is_async)
         else:
-            print('starting async load')
             load_thread = threading.Thread(target=run_load, args=())
             load_thread.start()
 
@@ -930,23 +929,16 @@ WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
 class Task:
-    def __init__(self, task_code, arg1=None, arg2=None):
+    def __init__(self, task_code, *args):
         self.task_code = task_code
-        self.arg1 = arg1
-        self.arg2 = arg2
+        self.args = args
         self.__name__ = "task"
 
     def __call__(self):
-        if self.arg2 != None:
-            self.task_code(self.arg1, self.arg2)
-        elif self.arg1 != None:
-            self.task_code(self.arg1)
-        else:
-            self.task_code()
+        self.task_code(*self.args)
         # Prevent it accidentally running twice.
         self.task_code = None
-        self.arg1 = None
-        self.arg2 = None
+        self.args = None
 
 class TaskQueue:
     def __init__(self):
