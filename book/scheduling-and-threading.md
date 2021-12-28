@@ -36,16 +36,16 @@ feature of modern browsers.
 Task queues
 ===========
 
-When the browser is free to do work, it moves on to the next *task* and runs it,
-and so on. A sequence of related tasks is a *task queue*, and browsers have
-multiple tasks queues.
+When the browser is free to do work, it finds the next pending *task* and runs
+it, and repeats. A sequence of related tasks is a *task queue*, and browsers
+have multiple tasks queues.
 
 One or more task queues can be grouped together into a single, sequential
-*thread* of execution. Each thread has an *event loop* associated with it.
- [^event-loop] The job of the event loop is to schedule events to happen
+*thread* of execution. Each thread has an *event loop* associated with
+it.[^event-loop] The job of the event loop is to schedule tasks
  according to the priorities of the browser---to make sure it's responsive to
- the user, uses hardware efficiently, and so on. You've already seen many
- examples of tasks---handling clicks, loading, and scrolling, for example.
+ the user, uses hardware efficiently, loads pages fast, and so on. You've
+ already seen many examples of tasks---handling clicks, loading, and scrolling.
 
 [cores]: https://en.wikipedia.org/wiki/Multi-core_processor
 
