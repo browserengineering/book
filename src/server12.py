@@ -94,8 +94,8 @@ def show_count():
     out += "<div>";
     out += "  Let's count up to 50!"
     out += "</div>";
-    out += "<div></div>"
-    out += "<div></div>"
+    out += "<div>Output</div>"
+    out += "<div>XHR</div>"
     out += "<script src=/eventloop12.js></script>"
     for i in range(1, 200):
         out += "Text {}<br>".format(i)

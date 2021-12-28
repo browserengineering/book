@@ -70,9 +70,9 @@ class Task:
         self.__name__ = "task"
 
     def __call__(self):
-        if self.arg2:
+        if self.arg2 != None:
             self.task_code(self.arg1, self.arg2)
-        elif self.arg1:
+        elif self.arg1 != None:
             self.task_code(self.arg1)
         else:
             self.task_code()
@@ -501,7 +501,7 @@ def show_count():
     out += "<div>";
     out += "  Let's count up to 50!"
     out += "</div>";
-    out += "<div>hi</div>"
+    out += "<div>Output/div>"
     out += "<script src=/eventloop12.js></script>"
     return out
 ```
@@ -838,7 +838,7 @@ class Tab:
         for script in scripts:
             # ...
             self.main_thread_runner.schedule_script_task(
-                Task(self.js.run, script, body))
+                Task(self.js.run, script_url, body))
 
     def set_needs_animation_frame(self):
         def callback():
@@ -1409,8 +1409,8 @@ def show_count():
     out += "<div>";
     out += "  Let's count up to 50!"
     out += "</div>";
-    out += "<div></div>"
-    out += "<div></div>"
+    out += "<div>Output</div>"
+    out += "<div>XHR</div>"
     # ...
 
 def show_xhr():
