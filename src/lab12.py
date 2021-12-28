@@ -631,8 +631,8 @@ class JSContext:
         return elt.attributes.get(attr, None)
 
     def innerHTML_set(self, handle, s):
-        self.tab.run_rendering_pipeline()
-        doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
+        doc = HTMLParser(
+            "<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
         elt.children = new_nodes
@@ -644,16 +644,19 @@ class JSContext:
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, is_async, handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
 
         def run_load():
-            headers, out = request(full_url, self.tab.url, payload=body)
+            headers, out = request(
+                full_url, self.tab.url, payload=body)
             handle_local = handle
             if url_origin(full_url) != url_origin(self.tab.url):
-                raise Exception("Cross-origin XHR request not allowed")
+                raise Exception(
+                    "Cross-origin XHR request not allowed")
             self.tab.main_thread_runner.schedule_script_task(
                 Task(self.xhr_onload, out, handle_local))
             return out
@@ -661,7 +664,6 @@ class JSContext:
         if not is_async:
             run_load(is_async)
         else:
-            print('starting async load')
             load_thread = threading.Thread(target=run_load, args=())
             load_thread.start()
 
@@ -677,11 +679,7 @@ CHROME_PX = 100
 USE_BROWSER_THREAD = True
 
 def set_timeout(func, sec):
-    t = None
-    def func_wrapper():
-        func()
-        t.cancel()
-    t = threading.Timer(sec, func_wrapper)
+    t = threading.Timer(sec, func)
     t.start()
 
 def raster(display_list, canvas):
@@ -762,7 +760,8 @@ class Tab:
             async_requests.append({
                 "url": script_url,
                 "type": "script",
-                "thread": async_request(script_url, url, script_results)
+                "thread": async_request(
+                    script_url, url, script_results)
             })
  
         self.rules = self.default_style_sheet.copy()
@@ -846,7 +845,8 @@ class Tab:
         if self.needs_pipeline_update:
             timer = Timer()
             timer.start()
-            style(self.nodes, sorted(self.rules, key=cascade_priority))
+            style(self.nodes, sorted(self.rules,
+                key=cascade_priority))
             self.document = DocumentLayout(self.nodes)
             self.document.layout()
             self.display_list = []
@@ -930,23 +930,16 @@ WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
 class Task:
-    def __init__(self, task_code, arg1=None, arg2=None):
+    def __init__(self, task_code, *args):
         self.task_code = task_code
-        self.arg1 = arg1
-        self.arg2 = arg2
+        self.args = args
         self.__name__ = "task"
 
     def __call__(self):
-        if self.arg2 != None:
-            self.task_code(self.arg1, self.arg2)
-        elif self.arg1 != None:
-            self.task_code(self.arg1)
-        else:
-            self.task_code()
+        self.task_code(*self.args)
         # Prevent it accidentally running twice.
         self.task_code = None
-        self.arg1 = None
-        self.arg2 = None
+        self.args = None
 
 class TaskQueue:
     def __init__(self):
@@ -1222,7 +1215,8 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         active_tab.schedule_scroll(
             clamp_scroll(
-                active_tab.scroll + SCROLL_STEP, self.active_tab_height))
+                active_tab.scroll + SCROLL_STEP,
+                self.active_tab_height))
         self.set_needs_draw()
         self.compositor_lock.release()
 
