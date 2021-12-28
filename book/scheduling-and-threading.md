@@ -58,8 +58,14 @@ Let's implement a `Task` and a `TaskQueue` class. Then we can move all of the
 event loop tasks into task queues later in the chapter.
 
 A `Task` encapsulates some code to run in the form of a function, plus arguments
-to that function. A `TaskQueue` is simply a first-in-first-out list of
-`Task`s.
+to that function.[^task-notes] A `TaskQueue` is simply a
+first-in-first-out list of `Task`s.
+
+[^task-notes]: In `Task`, we're using the varargs syntax for Python, allowing
+any number of arguments to be passed to the task. We're also using Python's
+`__call__` builtin method. It is called when an object is called as if it's a
+function. The Python code `Task()()` will constructs a `Task` and then "call"
+(run) it
 
 ``` {.python}
 class Task:
@@ -89,17 +95,16 @@ class TaskQueue:
 
     def get_next_task(self):
         return self.tasks.pop(0)
+
+    def clear(self):
+        self.tasks = []
 ```
 
-(Note: in Python, `__call__` is a method that is called when an object is called
-as if it's a function. The python code `Task()()` will constructs
-a `Task` and then "call" (run) it.
-
 ::: {.further}
-Event loops often mapping 1:1 to CPU threads within a single CPU process, but
+Event loops often map 1:1 to CPU threads within a single CPU process, but
 this is not required. For example, multiple event loops could be placed together
 on a single CPU thread with yet another scheduler on top of them that
-round-robins between them. It's really useful to distinguish between conceptual
+round-robins between them. It's useful to distinguish between conceptual
 events, event queues and dependencies between them, and their implementation in
 a computer architecture. This way, the browser implementer (you!) has maximum
 ability to use more or less hardware parallelism as appropriate to the
@@ -112,14 +117,14 @@ Rendering pipeline tasks
 
 The most important task in a browser is the rendering pipeline---but not just
 for the obvious reason that it's impossible to see web pages that aren't
-rendered. Most of the time spent doing work in a browser is in rendering,
-and *interactions* with the browser, such as scrolling, clicking and typing,
-have a close relationship with rendering. If you want to make those
+rendered. Most of the time spent doing work in a browser is in *rendering
+interactions* with the browser, such as loading, scrolling, clicking and typing.
+. All of these interactions require rendering. If you want to make those
 interactions faster and smoother, the very first think you have to do is
 carefully optimize the rendering pieline.
 
 The main event loop of a web page in a browser is called the *rendering event
-loop*. The ideal rendering event loop looks like this:
+loop*. An idealized rendering event loop looks like this:
 
 
 ``` {.python expected=False}
@@ -137,24 +142,22 @@ authors, so we'll be able to optimize them later on into a second event loop
 on another thread.]
 
 This loop implies that the rendering pipeline is its own task. But right now,
-the rendering pipeline in our browser is not a task at all---it's spread across
-several subroutines of various event handlers in the event loop. 
+the rendering pipeline in our browser is not a task at all---it's hidden in
+various subroutines of other tasks in the event loop. 
 
 ``` {.python expected=False}
 # This is what our browser currently does.
 while True:
-    while there_is_enough_time():
-        run_a_task_from_a_task_queue() # Might do some rendering
+    run_a_task_from_a_task_queue() # Might do some rendering
 ```
 
 We'll need to fix that, but first let's figure out how long "enough time" in the
-above loop should be. This was discussed in Chapter 2, which introduced
-the [animation frame budget](graphics.md#framebudget), The animation frame
-budget is the amount of time allocated to re-draw the screen after an something
-has changed. The animation frame budget is typically about 16ms, in order to
-draw at 60Hz (60 * 16.66ms ~ 1s), and matches the refresh rate of most
-displays. This means that each iteration through the `while` loop should
-ideally complete in at most 16ms.
+above loop should be. This was discussed in Chapter 2, which introduced the
+[animation frame budget](graphics.md#framebudget), The animation frame budget
+is the amount of time allocated to re-draw the screen after an something has
+changed. It's typically about 16ms, in order to draw at 60Hz (60 * 16.66ms ~
+1s), and matches the refresh rate of most displays. This means that each
+iteration through the `while` loop should ideally complete in at most 16ms.
 
 It also means that the browser should not run the while loop faster than that
 speed, even if the CPU is up to it, because there is no point---the screen
@@ -172,40 +175,36 @@ REFRESH_RATE_SEC = 0.016 # 16ms
 Asynchronous rendering
 ======================
 
-In order to separate rendering from event handler tasks and make it into a
-proper pipeline, we'll need to make it asynchronous. Instead of updating
-rendering right away, we'll set *dirty bits* indicating that a
-particular part of the pipeline needs updating. Then when the pipeline is run,
-we'll run the parts indicated by the dirty bits. We'll also need some way of
+In order to separate rendering from other tasks and make it into a proper
+pipeline, we'll need to make it asynchronous. Instead of updating rendering
+right away, we'll set *dirty bits* indicating that a particular part of the
+pipeline needs updating. Then when the pipeline is run, we'll run the parts
+indicated by the dirty bits. We'll also need some way of
 *scheduling* the rendering pipeline to be updated at a given time in the
 future.
 
 Let's start with how to schedule the update, via a new `set_timeout` function.
 This function will run a callback at a specified time in the future.
-You can do that by starting a new[Python thread][python-thread] via the
+You can do that by starting a new [Python thread][python-thread] via the
 `threading.Timer` class, which takes two parameters: a time delta from now, and
-a function to call when that time expires:
+a function to call when that time expires.
 
 [python-thread]: https://docs.python.org/3/library/threading.html
 
 ``` {.python}
 def set_timeout(func, sec):     
-    t = None
-    def func_wrapper():
-        func()
-        t.cancel()
-    t = threading.Timer(sec, func_wrapper)
+    t = threading.Timer(sec, func)
     t.start()
 ```
 
 Next, add a dirty bit `needs_pipeline_update` (plus `display_scheduled` to
 avoid double-running `set_timeout` unnecessarily) to `Tab`, which means
 "rendering needs to happen, and has been scheduled, but hasn't happened yet".
- Combined with `set_timeout`, we can now implement async rendering in a `Tab`.
- Also, rename `render` to `run_rendering_pipeline`, and add a new
- `run_animation_frame` method that runs the pipeline and calls the other
- rendering pipeline stages on `Browser` via a new `raster_and_draw` method
- (which we'll implement shortly).
+ 
+Also, rename `render` to `run_rendering_pipeline`, and add a new
+`run_animation_frame` method that runs the pipeline and calls the other
+rendering pipeline stages on `Browser` via a new `raster_and_draw` method
+(which we'll implement shortly).
 
 ``` {.python expected=False}
 class Tab:
@@ -243,21 +242,18 @@ class Tab:
 ```
 
 Now replace all cases where parts of the rendering pipeline were called with
-`set_needs_animation_frame`, for example `load`:
-
-Or `load`:
+`set_needs_pipeline_update`, for example `load`:
 
 ``` {.python}
 class Tab:
     def load(self, url, body=None):
         # ...
-        self.set_needs_animation_frame()
+        self.set_needs_pipeline_update()
 ```
 
-The `raster_and_draw` method will be where we add new dirty bits for whether the
-active tab, browser chrome, or draw needs to happen. This will get us back the
-same performance we had at the end of chapter 11, where the browser only
-ran raster and draw when needed.
+Now add dirty bits to `Browser` to control what happens in  `raster_and_draw`.
+This will get us back the same performance we had at the end of chapter 11,
+where the browser only ran raster and draw when needed.
 
 ``` {.python} 
 class Browser:
@@ -291,7 +287,11 @@ class Browser:
 ```
 
 Oh, and we'll need to schedule an animation frame whenever any of those dirty
-bits are set. This is easiest to add in `set_needs_draw`.
+bits are set. This is easiest to add in `set_needs_draw`. Note that scheduling
+an animation frame does *not* mean that `run_rendering_pipeline` does all its
+expensive work, just that the animation frame task is scheduled 16ms in the
+future. Only `set_needs_pipeline_update` will cause that expensive work.
+
 
 ``` {.python expected=False}
 class Browser:
@@ -301,11 +301,7 @@ class Browser:
 ```
 
 And in each case where raster or draw was called previously, set the dirty
-bits. (Note that scheduling an animation frame does *not* mean that
-`run_rendering_pipeline` does all its expensive work, just that the animation
-frame task is scheduled 16ms in the future.)
-
-Here's the change to `handle_click`:
+bits. Here's the change to `handle_click`:
 
 ``` {.python expected=False}
 class Browser:
@@ -329,10 +325,9 @@ Scripts in the event loop
 =========================
 
 In addition to event handlers and rendering, JavaScript also runs on the
-rendering event loop. As we saw in [chapter 9](scripts.md), the first way in
-which scripts can be run is that when a `<script>` tag is inserted into the
-DOM, the script subsequently loads and then runs. We can easily wrap all this
-in a `Task`, with a zero-second timeout, like so:
+rendering event loop. As we saw in [chapter 9](scripts.md), when the parser
+encounters a `<script` tag, , the script subsequently loads and then runs. We
+can easily wrap all this in a `Task`, with a zero-second timeout, like so:
 
 ``` {.python expected=False}
 class Tab:
@@ -349,7 +344,7 @@ APIs in browsers to do this, but for now let's focus on the one most related to
 rendering: `requestAnimationFrame`.[^set-timeout] It's used like this:
 
 [^set-timeout]: the `setTimeout` JavaScript API is very easy to add also, but
-I'll leave that to an exercise.
+I'll leave that as an exercise.
 
 ``` {.javascript expected=False}
 /* This is JavaScript */
@@ -359,7 +354,7 @@ function callback() {
 requestAnimationFrame(callback);
 ```
 
-This code will do two things: request an "animation frame" task to be run on the
+This code will do two things: request an animation frame task to be run on the
 event loop,[^animation-frame] and call `callback` at the beginning of that
 rendering task. This is super useful to web page authors, as it allows them to
 do any setup work related to rendering just before it occurs. The
@@ -383,6 +378,10 @@ class JSContext:
 class Tab:
     def __init__(self, browser):
         self.needs_raf_callbacks = False
+
+    def request_animation_frame_callback(self):
+        self.needs_raf_callbacks = True
+        self.set_needs_animation_frame()
 
     def run_animation_frame(self):
         if self.needs_raf_callbacks:
@@ -417,15 +416,14 @@ function __runRAFHandlers() {
 
 Let's walk through what `run_animation_frame` does:
 
-1. Reset the variables `needs_animation_frame` and `needs_raf_callbacks` to false.
-
-2. Call the JavaScript callbacks.
-
-3. Run the rendering pipeline.
+1. Reset `needs_animation_frame` and `needs_raf_callbacks` to
+`False`
+2. Call the JavaScript callbacks
+3. Run the rendering pipeline
 
 Look a bit more closely at steps 1 and 2. Would it work to run step 1 *after*
 step 2? The answer is no, but the reason is subtle: it's because the JavaScript
-callback code could *once again* call `requestAnimationFrame`. If this happens
+callback code could call `requestAnimationFrame`. If this happens
 during such a callback, the spec says that a *second*  animation frame should
 be scheduled (and 16ms further in the future, naturally). Likewise, the runtime
 JavaScript needs to be careful to copy the `RAF_LISTENERS` array to a temporary
@@ -457,7 +455,10 @@ requestAnimationFrame(callback);
 ```
 
 To make the above code work, you'll need this small addition to the runtime 
-code:
+code to implement a subset of the [Date API][date-api]:
+
+[date-api]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
+
 ``` {.javascript}
 function Date() {}
 Date.now = function() {
@@ -480,10 +481,10 @@ This script will cause 100 animation frame tasks to run on the rendering event
 loop. During that time, our browser will display an animated count from 0 to
 99.
 
-And while we're at it, let's add an HTML web page to our HTTP server that
+And while we're at it, let's add an web page to our HTTP server that
 serves this example:
 
-``` {.python file=server}
+``` {.python file=server replace=eventloop12/eventloop}
 def do_request(session, method, url, headers, body):
     elif method == "GET" and url == "/count":
         return "200 OK", show_count()
@@ -491,27 +492,28 @@ def do_request(session, method, url, headers, body):
 def show_count():
     out = "<!doctype html>"
     out += "<div>";
-    out += "  Let's count up to 50!"
+    out += "  Let's count up to 100!"
     out += "</div>";
     out += "<div>Output</div>"
-    out += "<script src=/eventloop12.js></script>"
+    out += "<script src=/eventloop.js></script>"
     return out
 ```
 
 Parallel rendering
 ==================
 
-What happens if rendering take more than 16ms (somtimes much more) to finish? If
-it's a rendering task that's slow, such as font loading (see [chapter 3]
-[faster-text-loading]), if we're lucky we can make it faster. But sometimes
-it's not possible to make the code a lot faster, it just has a lot to do. In
-rendering, this could be because the web page is very large or complex.
+What happens if rendering takes much more than 16ms to finish? If
+it's a rendering task that's slow, such as font loading (see
+[chapter 3][faster-text-loading]), if we're lucky we can make it faster.
+But sometimes it's not possible to make the code a lot faster, it just has a
+lot to do. In rendering, this could be because the web page is very large or
+complex.
 
 [faster-text-loading]: text.md#faster-text-layout
 
 What if we ran raster and draw *in parallel* with the main thread, by using
-CPU parallelism? That sounds fun, but before adding such complexity, let's
-instrument the browser and measure how much time is really being spent
+CPU parallelism? That sounds fun to try, but before adding such complexity,
+let's instrument the browser and measure how much time is really being spent
 in raster and draw (always measure before optimizing!).
 
 Add a simple class measuring time spent:
@@ -543,7 +545,8 @@ class Tab:
         if self.needs_pipeline_update:
             timer = Timer()
             timer.start()
-            style(self.nodes, sorted(self.rules, key=cascade_priority))
+            style(self.nodes, sorted(self.rules,
+                key=cascade_priority))
             self.document = DocumentLayout(self.nodes)
             self.document.layout()
             self.display_list = []

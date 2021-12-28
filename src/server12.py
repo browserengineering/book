@@ -92,7 +92,7 @@ def form_decode(body):
 def show_count():
     out = "<!doctype html>"
     out += "<div>";
-    out += "  Let's count up to 50!"
+    out += "  Let's count up to 100!"
     out += "</div>";
     out += "<div>Output</div>"
     out += "<div>XHR</div>"

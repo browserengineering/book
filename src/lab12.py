@@ -676,11 +676,7 @@ CHROME_PX = 100
 USE_BROWSER_THREAD = True
 
 def set_timeout(func, sec):
-    t = None
-    def func_wrapper():
-        func()
-        t.cancel()
-    t = threading.Timer(sec, func_wrapper)
+    t = threading.Timer(sec, func)
     t.start()
 
 def raster(display_list, canvas):
@@ -845,7 +841,8 @@ class Tab:
         if self.needs_pipeline_update:
             timer = Timer()
             timer.start()
-            style(self.nodes, sorted(self.rules, key=cascade_priority))
+            style(self.nodes, sorted(self.rules,
+                key=cascade_priority))
             self.document = DocumentLayout(self.nodes)
             self.document.layout()
             self.display_list = []
