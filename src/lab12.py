@@ -631,8 +631,8 @@ class JSContext:
         return elt.attributes.get(attr, None)
 
     def innerHTML_set(self, handle, s):
-        self.tab.run_rendering_pipeline()
-        doc = HTMLParser("<html><body>" + s + "</body></html>").parse()
+        doc = HTMLParser(
+            "<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
         elt.children = new_nodes
@@ -644,16 +644,19 @@ class JSContext:
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, is_async, handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
 
         def run_load():
-            headers, out = request(full_url, self.tab.url, payload=body)
+            headers, out = request(
+                full_url, self.tab.url, payload=body)
             handle_local = handle
             if url_origin(full_url) != url_origin(self.tab.url):
-                raise Exception("Cross-origin XHR request not allowed")
+                raise Exception(
+                    "Cross-origin XHR request not allowed")
             self.tab.main_thread_runner.schedule_script_task(
                 Task(self.xhr_onload, out, handle_local))
             return out
@@ -757,7 +760,8 @@ class Tab:
             async_requests.append({
                 "url": script_url,
                 "type": "script",
-                "thread": async_request(script_url, url, script_results)
+                "thread": async_request(
+                    script_url, url, script_results)
             })
  
         self.rules = self.default_style_sheet.copy()
@@ -1211,7 +1215,8 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         active_tab.schedule_scroll(
             clamp_scroll(
-                active_tab.scroll + SCROLL_STEP, self.active_tab_height))
+                active_tab.scroll + SCROLL_STEP,
+                self.active_tab_height))
         self.set_needs_draw()
         self.compositor_lock.release()
 
