@@ -501,7 +501,7 @@ def show_count():
     out += "<div>";
     out += "  Let's count up to 50!"
     out += "</div>";
-    out += "<div>Output/div>"
+    out += "<div>Output</div>"
     out += "<script src=/eventloop12.js></script>"
     return out
 ```
@@ -827,7 +827,7 @@ the thread will deadlock in the next while loop iteration.
 Each `Tab` will own a `MainThreadRunner`, control its runtime, and
 schedule script eval tasks and animation frames on it:
 
-``` {.python replace=browser/commit_func}
+``` {.python replace=browser/commit_func,%20body))/}
 class Tab:
     def __init__(self, browser):
         self.main_thread_runner = MainThreadRunner(self)
@@ -1247,7 +1247,7 @@ and only at the end `join` all of the threaqds created.
 
 ``` {.python}
 class Tab:
-    def load():
+    def load(self, url, body=None):
         # ...
         async_requests = []
         script_results = {}
