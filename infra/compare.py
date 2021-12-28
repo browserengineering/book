@@ -164,11 +164,20 @@ if __name__ == "__main__":
 
             chapters = data["chapters"]
             for chapter, metadata in data["chapters"].items():
-                failure += test_entry(chapter, metadata, "lab", "python", None)
-                failure += test_entry(chapter, metadata, "server", "python", "server")
-                failure += test_entry(chapter, metadata, "examples", "python", "examples")
-                failure += test_entry(chapter, metadata, "stylesheet", "css", None)
-                failure += test_entry(chapter, metadata, "runtime", "javascript", None)
+                for key in metadata:
+                    value = metadata[key]
+                    if key == "disabled":
+                        continue
+                    elif key == "lab":
+                        failure += test_entry(chapter, metadata, "lab", "python", None)
+                    elif key == "stylesheet":
+                        failure += test_entry(chapter, metadata, "stylesheet", "css", None)
+                    elif key == "runtime":
+                        failure += test_entry(chapter, metadata, "runtime", "javascript", None)
+                    elif ".py" in value:
+                        failure += test_entry(chapter, metadata, key, "python", key)
+                    elif ".js" in value:
+                        failure += test_entry(chapter, metadata, key, "javascript", key)
     else:
         failure = compare_files(args.book, args.code, None, args.file)
     sys.exit(failure)
