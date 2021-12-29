@@ -5,11 +5,10 @@ prev: visual-effects
 next: skipped
 ...
 
-Our browser now knows how to load a web page with HTTP and parse it into an
-HTML tree & style sheets. It can also *render* the page, by constructing the
-layout tree, computing styles on it, laying out its contents, painting it into
-a dispaly list, rastering the result into surfaces, and drawing those surfaces
-to the screen. These rendering steps make up a basic
+Our browser now knows how to load a web page and *render* it, by constructing
+the layout tree, computing styles on it, laying out its contents, painting it
+into a dispaly list, rastering the result into surfaces, and drawing those
+surfaces to the screen. These rendering steps make up a basic
 [*rendering pipeline*](https://en.wikipedia.org/wiki/Graphics_pipeline) for the
 browser.[^rendering-pipeline]
 
@@ -827,7 +826,9 @@ the thread will deadlock in the next while loop iteration.
 ```
 
 Each `Tab` will own a `MainThreadRunner`, control its runtime, and
-schedule script eval tasks and animation frames on it:
+schedule script eval tasks and animation frames on it. And since we'll be
+copying the display list across threads and not a canvas, the focus
+painting behavior needs to become a new `DrawLine` canvas command.
 
 ``` {.python replace=browser/commit_func,%20body))/}
 class Tab:
@@ -848,6 +849,36 @@ class Tab:
             self.main_thread_runner.schedule_animation_frame()
         if not self.display_scheduled:
             set_timeout(callback, REFRESH_RATE_SEC)
+
+    def run_rendering_pipeline(self):
+        # ...
+        if self.needs_pipeline_update:
+            # ...
+            self.document.paint(self.display_list)
+            if self.focus:
+                obj = [obj for obj in tree_to_list(self.document, [])
+                       if obj.node == self.focus][0]
+                text = self.focus.attributes.get("value", "")
+                x = obj.x + obj.font.measureText(text)
+                y = obj.y
+                self.display_list.append(
+                    DrawLine(x, y, x, y + obj.height))
+        # ...
+```
+
+Here's `DrawLine`:
+
+``` {.python}
+class DrawLine:
+    def __init__(self, x1, y1, x2, y2):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+    def execute(self, canvas):
+        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 ```
 
 The `Browser` will also schedule tasks on the main thread. But now it's not

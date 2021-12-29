@@ -850,17 +850,19 @@ class Tab:
             self.document = DocumentLayout(self.nodes)
             self.document.layout()
             self.display_list = []
+
             self.document.paint(self.display_list)
+            if self.focus:
+                obj = [obj for obj in tree_to_list(self.document, [])
+                       if obj.node == self.focus][0]
+                text = self.focus.attributes.get("value", "")
+                x = obj.x + obj.font.measureText(text)
+                y = obj.y
+                self.display_list.append(
+                    DrawLine(x, y, x, y + obj.height))
+
         self.needs_pipeline_update = False
 
-        if self.focus:
-            obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
-            text = self.focus.attributes.get("value", "")
-            x = obj.x + obj.font.measureText(text)
-            y = obj.y
-            self.display_list.append(
-                DrawLine(x, y, x, y + obj.height))
         if timer:
             self.time_in_style_layout_and_paint += timer.stop()
 
