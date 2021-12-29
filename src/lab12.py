@@ -1364,12 +1364,10 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Chapter 12 code')
-    parser.add_argument("--url", default=2, type=str, required=True,
-        help="URL to load")
-    parser.add_argument('--single_threaded', type=bool, default=False,
+    parser.add_argument("url", type=str, help="URL to load")
+    parser.add_argument('single_threaded', action="store_true", default=False,
         help='Whether to run the browser without a browser thread')
     args = parser.parse_args()
-    
 
     USE_BROWSER_THREAD = not args.single_threaded
 
