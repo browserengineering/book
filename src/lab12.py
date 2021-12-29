@@ -783,20 +783,18 @@ class Tab:
                 "type": "style sheet",
                 "thread": async_request(style_url, url, style_results)
             })
-            try:
-                header, body = request(style_url, url)
-            except:
-                continue
 
         for async_req in async_requests:
             async_req["thread"].join()
+            req_url = async_req["url"]
             if async_req["type"] == "script":
-                script_url = async_req["url"]
                 self.main_thread_runner.schedule_script_task(
-                    Task(self.js.run, script_url,
-                        script_results[script_url]['body']))
+                    Task(self.js.run, req_url,
+                        script_results[req_url]['body']))
             else:
-                self.rules.extend(CSSParser(results['body']).parse())
+                self.rules.extend(
+                    CSSParser(
+                        style_results[req_url]['body']).parse())
 
         self.set_needs_pipeline_update()
 
@@ -939,7 +937,6 @@ class Task:
 
     def __call__(self):
         self.task_code(*self.args)
-        # Prevent it accidentally running twice.
         self.task_code = None
         self.args = None
 
