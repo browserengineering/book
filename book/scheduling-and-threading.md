@@ -720,7 +720,7 @@ be the only class allowed to call methods on `Tab` or `JSContext`.
 begin the thread. This will excute the `run` method on that thread; `run` will
 execute forever (or until the program quits, which is indicated by the
 `needs_quit` dirty bit) and is where we'll put the main thread event loop.
-There will also be a task queue browser-generated tasks and scripts, and a
+There will also be a task queue for browser-generated tasks and scripts, and a
 rendering pipeline dirty bit.
 
 ``` {.python}
