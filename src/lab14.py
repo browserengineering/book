@@ -398,6 +398,8 @@ class InlineLayout:
                 self.input(node)
             elif node.tag == "img":
                 self.image(node)
+            elif node.tag == "iframe":
+                self.iframe(node)
             else:
                 for child in node.children:
                     self.recurse(child)
@@ -453,6 +455,19 @@ class InlineLayout:
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
+    def iframe(self, node):
+        w = 0
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = IframeLayout(node, line, self.previous_word)
+        line.children.append(input)
+        self.previous_word = input
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = float(node.style["font-size"][:-2])
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
         cmds = []
@@ -696,6 +711,53 @@ class ImageLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
         cmds.append(DrawImage(self.node.image, rect))
+
+        display_list.extend(cmds)
+
+    def __repr__(self):
+        return "ImageLayout(src={}, x={}, y={}, width={}, height={})".format(
+            self.node.attributes["src"], self.x, self.y, self.width, self.height)
+
+IFRAME_WIDTH_PX = 300
+IFRAME_HEIGHT_PX = 150
+
+class IframeLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = IFRAME_WIDTH_PX
+        self.height = IFRAME_HEIGHT_PX
+
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
+
+    def get_descent(self, font_multiplier=1.0):
+        return 0
+
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = float(self.node.style["font-size"][:-2])
+        self.font = get_font(size, weight, style)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+        cmds.append(DrawText(self.x, self.y, "iframe", self.font, "black"))
 
         display_list.extend(cmds)
 
