@@ -842,7 +842,7 @@ class Tab:
         for script in scripts:
             # ...
             self.main_thread_runner.schedule_script_task(
-                Task(self.js.run, script_url, body))
+                Task(self.js.run, req_url, body))
 
     def set_needs_animation_frame(self):
         def callback():
@@ -1344,9 +1344,9 @@ Now our browser will parallleize loading sub-resources!
 
 Next up is `XHMLHttpRequest`. We introduced this API in chapter 10, and
 implemented it only as a synchronous API. But in fact, the synchronous
-version of that API is almost useless for real websites,^[and also a huge
-performance footgun, for the same reason we've been optiming work to use
-threads in this chapter!] because the whole point of using thia API on a
+version of that API is almost useless for real websites,^[It's also a huge
+performance footgun, for the same reason we've been adding async tasks
+in this chapter!] because the whole point of using thia API on a
 website is to keep it resposive to the user while network requests are going
 on.
 
@@ -1358,13 +1358,6 @@ runtime.
 * Store a unique handle for each `XMLHttpRequest` object, analogous to how we
   used handles for `Node`s.
 * Store a map from request handle to object.
-* Add a new `__runXHROnload` method that will call the `onload` function
-specified on a `XMLHttpRequest`, if any.
-* Store the response on the `responseText` field, as required by the API.
-* Augment `XMLHttpRequest_send` to support async requests that use a thread
-and a script task on `main_thread_runner`.
-
-Here's the runtime JavaScript code:
 
 ``` {.javascript}
 XHR_REQUESTS = {}
@@ -1379,7 +1372,13 @@ XMLHttpRequest.prototype.open = function(method, url, is_async) {
     this.method = method;
     this.url = url;
 }
+```
 
+* Add a new `__runXHROnload` method that will call the `onload` function
+specified on a `XMLHttpRequest`, if any.
+* Store the response on the `responseText` field, as required by the API.
+
+``` {.javascript}
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
         this.method, this.url, this.body, this.is_async, this.handle);
@@ -1394,7 +1393,8 @@ function __runXHROnload(body, handle) {
 }
 ```
 
-On the Python side, here's `XMLHttpRequest_send`:
+* Augment `XMLHttpRequest_send` to support async requests that use a thread
+and a script task on `main_thread_runner`.
 
 ``` {.python}
 class JSContext:
@@ -1573,6 +1573,16 @@ browser chrome.
 
 * Forced style and layout makes it hard to fully isolate the rendering pipeline
 from JavaScript.
+
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab12.py
+:::
 
 Exercises
 =========
