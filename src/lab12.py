@@ -1361,10 +1361,21 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Chapter 12 code')
+    parser.add_argument("--url", default=2, type=str, required=True,
+        help="URL to load")
+    parser.add_argument('--single_threaded', type=bool, default=False,
+        help='Whether to run the browser in single threaded mode')
+    args = parser.parse_args()
+    
+
+    USE_BROWSER_THREAD = not args.single_threaded
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(sys.argv[1])
+    browser.load(args.url)
 
     event = sdl2.SDL_Event()
     while True:
