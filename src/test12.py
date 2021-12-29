@@ -22,10 +22,7 @@ class MockMainThreadRunner:
 	def schedule_animation_frame(self):
 		self.tab.run_animation_frame()
 
-	def schedule_script_task(self, script):
-		script()
-
-	def schedule_browser_task(self, callback):
+	def schedule_task(self, callback):
 		callback()
 
 	def schedule_scroll(self, scroll):
@@ -47,10 +44,7 @@ class MockNoOpMainThreadRunner:
 	def schedule_animation_frame(self):
 		pass
 
-	def schedule_script_task(self, script):
-		pass
-
-	def schedule_browser_task(self, callback):
+	def schedule_task(self, callback):
 		pass
 
 	def schedule_scroll(self, scroll):

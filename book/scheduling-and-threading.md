@@ -720,9 +720,8 @@ be the only class allowed to call methods on `Tab` or `JSContext`.
 begin the thread. This will excute the `run` method on that thread; `run` will
 execute forever (or until the program quits, which is indicated by the
 `needs_quit` dirty bit) and is where we'll put the main thread event loop.
-There will also be two task queues (one for browser-generated tasks such as
-clicks, and one for tasks to evaluate scripts), and a rendering pipeline dirty
-bit.
+There will also be a task queue browser-generated tasks and scripts, and a
+rendering pipeline dirty bit.
 
 ``` {.python}
 class MainThreadRunner:
@@ -732,8 +731,7 @@ class MainThreadRunner:
         self.tab = tab
         self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
-        self.script_tasks = TaskQueue()
-        self.browser_tasks = TaskQueue()
+        self.tasks = TaskQueue()
         self.needs_quit = False
 
     def start(self):
@@ -756,15 +754,9 @@ acquire the lock before setting these thread-safe variables. (Ignore the
         self.condition.notify_all()
         self.lock.release()
 
-    def schedule_script_task(self, script):
+    def schedule_task(self, callback):
         self.lock.acquire(blocking=True)
-        self.script_tasks.add_task(script)
-        self.condition.notify_all()
-        self.lock.release()
-
-    def schedule_browser_task(self, callback):
-        self.lock.acquire(blocking=True)
-        self.browser_tasks.add_task(callback)
+        self.tasks.add_task(callback)
         self.condition.notify_all()
 
     def set_needs_quit(self):
@@ -800,24 +792,16 @@ the thread will deadlock in the next while loop iteration.
             if needs_animation_frame:
                 self.tab.run_animation_frame()
 
-            browser_method = None
-            if self.browser_tasks.has_tasks():
-                browser_method = self.browser_tasks.get_next_task()
-            if browser_method:
-                browser_method()
-
-            script = None
-            if self.script_tasks.has_tasks():
-                script = self.script_tasks.get_next_task()
-
-            if script:
-                script()
+            task = None
+            if self.tasks.has_tasks():
+                task = self.tasks.get_next_task()
+            if task:
+                task()
 
             self.lock.acquire(blocking=True)
-            if not self.script_tasks.has_tasks() and \
-                not self.browser_tasks.has_tasks() and not \
-                self.needs_animation_frame and not \
-                self.needs_quit:
+            if not self.tasks.has_tasks() and \
+                not self.needs_animation_frame and \
+                not self.needs_quit:
                 self.condition.wait()
             self.lock.release()
 ```
@@ -841,7 +825,7 @@ class Tab:
         # ...
         for script in scripts:
             # ...
-            self.main_thread_runner.schedule_script_task(
+            self.main_thread_runner.schedule_task(
                 Task(self.js.run, req_url, body))
 
     def set_needs_animation_frame(self):
@@ -948,20 +932,20 @@ implementd on `MainThreadRunner` in a bit).
 ``` {.python}
 class TabWrapper:
     def schedule_load(self, url, body=None):
-        self.tab.main_thread_runner.schedule_browser_task(
+        self.tab.main_thread_runner.schedule_task(
             Task(self.tab.load, url, body))
         self.browser.set_needs_chrome_raster()
 
     def schedule_click(self, x, y):
-        self.tab.main_thread_runner.schedule_browser_task(
+        self.tab.main_thread_runner.schedule_task(
             Task(self.tab.click, x, y))
 
     def schedule_keypress(self, char):
-        self.tab.main_thread_runner.schedule_browser_task(
+        self.tab.main_thread_runner.schedule_task(
             Task(self.tab.keypress, char))
 
     def schedule_go_back(self):
-        self.tab.main_thread_runner.schedule_browser_task(
+        self.tab.main_thread_runner.schedule_task(
             Task(self.tab.go_back))
 
     def schedule_scroll(self, scroll):
@@ -1136,11 +1120,10 @@ class MainThreadRunner:
             self.tab.run_animation_frame()
         # ...
         self.lock.acquire(blocking=True)
-        if not self.script_tasks.has_tasks() and \
-            not self.browser_tasks.has_tasks() and not \
-            self.needs_animation_frame and not \
-            self.pending_scroll and not \
-            self.needs_quit:
+        if not self.tasks.has_tasks() and \
+            not self.needs_animation_frame and \
+            not self.pending_scroll and \
+            not self.needs_quit:
             self.condition.wait()
         self.lock.release()
 ```
@@ -1331,7 +1314,7 @@ class Tab:
             async_req["thread"].join()
             req_url = async_req["url"]
             if async_req["type"] == "script":
-                self.main_thread_runner.schedule_script_task(
+                self.main_thread_runner.schedule_task(
                     Task(self.js.run, req_url,
                         script_results[req_url]['body']))
             else:
@@ -1411,7 +1394,7 @@ class JSContext:
             if url_origin(full_url) != url_origin(self.tab.url):
                 raise Exception(
                     "Cross-origin XHR request not allowed")
-            self.tab.main_thread_runner.schedule_script_task(
+            self.tab.main_thread_runner.schedule_task(
                 Task(self.xhr_onload, out, handle_local))
             return out
 
