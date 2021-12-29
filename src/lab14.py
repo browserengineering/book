@@ -271,11 +271,9 @@ class DrawImage:
         self.rect = rect
 
     def execute(self, canvas):
-        print('left: ' + str(self.rect.left()))
-        print('top: ' + str(self.rect.top()))
         canvas.drawImage(
             self.image, self.rect.left(),
-            self.rect.top() - 100)
+            self.rect.top())
 
 def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
@@ -531,14 +529,14 @@ class LineLayout:
             self.height = 0
             return
 
-        max_ascent = max([-word.font.getMetrics().fAscent 
-                          for word in self.children])
-        baseline = self.y + 1.25 * max_ascent
-        for word in self.children:
-            word.y = baseline + word.font.getMetrics().fAscent
-        max_descent = max([word.font.getMetrics().fDescent
-                           for word in self.children])
-        self.height = 1.25 * (max_ascent + max_descent)
+        max_ascent = max([-child.get_ascent(1.25) 
+                          for child in self.children])
+        baseline = self.y + max_ascent
+        for child in self.children:
+            child.y = baseline + child.get_ascent()
+        max_descent = max([child.get_descent(1.25)
+                           for child in self.children])
+        self.height = max_ascent + max_descent
 
     def paint(self, display_list):
         for child in self.children:
@@ -560,6 +558,12 @@ class TextLayout:
         self.width = None
         self.height = None
         self.font = None
+
+    def get_ascent(self, font_multiplier=1.0):
+        return self.font.getMetrics().fAscent * font_multiplier
+
+    def get_descent(self, font_multiplier=1.0):
+        return self.font.getMetrics().fDescent * font_multiplier
 
     def layout(self):
         weight = self.node.style["font-weight"]
@@ -599,6 +603,12 @@ class InputLayout:
         self.width = None
         self.height = None
         self.font = None
+
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
+
+    def get_descent(self, font_multiplier=1.0):
+        return 0
 
     def layout(self):
         weight = self.node.style["font-weight"]
@@ -656,6 +666,12 @@ class ImageLayout:
         self.width = None
         self.height = None
 
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
+
+    def get_descent(self, font_multiplier=1.0):
+        return 0
+
     def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
@@ -674,21 +690,18 @@ class ImageLayout:
             self.x = self.parent.x
 
     def paint(self, display_list):
-        print('paint image')
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
-
-        print(rect)
         cmds.append(DrawImage(self.node.image, rect))
 
         display_list.extend(cmds)
 
     def __repr__(self):
-        return "InputLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        return "ImageLayout(src={}, x={}, y={}, width={}, height={})".format(
+            self.node.attributes["src"], self.x, self.y, self.width, self.height)
 
 
 def paint_visual_effects(node, cmds, rect):
@@ -828,7 +841,7 @@ def raster(display_list, canvas):
         cmd.execute(canvas)
 
 def clamp_scroll(scroll, tab_height):
-    return min(scroll, tab_height - (HEIGHT - CHROME_PX))
+    return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
 
 def decode_image(image_bytes):
     picture_stream = io.BytesIO(image_bytes)
@@ -970,7 +983,6 @@ class Tab:
                     CSSParser(
                         style_results[req_url]['body']).parse())
             elif async_req["type"] == "image":
-                print(req_url)
                 async_req["node"].image = \
                     decode_image(image_results[req_url]['body'])
 
