@@ -1367,7 +1367,7 @@ if __name__ == "__main__":
     parser.add_argument("--url", default=2, type=str, required=True,
         help="URL to load")
     parser.add_argument('--single_threaded', type=bool, default=False,
-        help='Whether to run the browser in single threaded mode')
+        help='Whether to run the browser without a browser thread')
     args = parser.parse_args()
     
 
