@@ -8,6 +8,7 @@ import ctypes
 import dukpy
 import io
 import math
+import PIL.Image
 import sdl2
 import sdl2.ext as sdl2ext
 import skia
@@ -263,6 +264,18 @@ class ClipRRect:
 
         if self.should_clip:
             canvas.restore()
+
+class DrawImage:
+    def __init__(self, image, rect):
+        self.image = image
+        self.rect = rect
+
+    def execute(self, canvas):
+        print('left: ' + str(self.rect.left()))
+        print('top: ' + str(self.rect.top()))
+        canvas.drawImage(
+            self.image, self.rect.left(),
+            self.rect.top() - 100)
 
 def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
@@ -650,9 +663,9 @@ class ImageLayout:
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
-        self.width = self.font.measureText(" ")
+        self.width = self.node.image.width()
 
-        self.height = linespace(self.font)
+        self.height = max(self.node.image.height(), linespace(self.font))
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -668,11 +681,8 @@ class ImageLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+        print(rect)
+        cmds.append(DrawImage(self.node.image, rect))
 
         display_list.extend(cmds)
 
@@ -820,6 +830,20 @@ def raster(display_list, canvas):
 def clamp_scroll(scroll, tab_height):
     return min(scroll, tab_height - (HEIGHT - CHROME_PX))
 
+def decode_image(image_bytes):
+    picture_stream = io.BytesIO(image_bytes)
+
+    pil_image = PIL.Image.open(picture_stream)
+    if pil_image.mode == "RGBA":
+        pil_image_bytes = pil_image.tobytes()
+    else:
+        pil_image_bytes = pil_image.convert("RGBA").tobytes()
+    return skia.Image.frombytes(
+        array=pil_image_bytes,
+        dimensions=pil_image.size,
+        colorType=skia.kRGBA_8888_ColorType)
+
+
 class Tab:
     def __init__(self, commit_func):
         self.history = []
@@ -915,14 +939,14 @@ class Tab:
                 "thread": async_request(style_url, url, style_results)
             })
 
-        image_urls = [node.attributes["src"]
+        image_urls = [(node.attributes["src"], node)
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
                  and node.tag == "img"
                  and "src" in node.attributes]
 
-        img_results = {}
-        for src_url in image_urls:
+        image_results = {}
+        for (src_url, node) in image_urls:
             image_url = resolve_url(src_url, url)
             if not self.allowed_request(image_url):
                 print("Blocked style", src_url, "due to CSP")
@@ -930,10 +954,9 @@ class Tab:
             async_requests.append({
                 "url": image_url,
                 "type": "image",
-                "thread": async_request(image_url, url, img_results)
+                "thread": async_request(image_url, url, image_results),
+                "node": node
             })
-
-        print(image_urls)
 
         for async_req in async_requests:
             async_req["thread"].join()
@@ -947,7 +970,9 @@ class Tab:
                     CSSParser(
                         style_results[req_url]['body']).parse())
             elif async_req["type"] == "image":
-                pass
+                print(req_url)
+                async_req["node"].image = \
+                    decode_image(image_results[req_url]['body'])
 
         self.set_needs_pipeline_update()
 
