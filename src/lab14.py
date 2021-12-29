@@ -28,7 +28,7 @@ from lab6 import INHERITED_PROPERTIES
 from lab6 import CSSParser, compute_style, style
 from lab6 import TagSelector, DescendantSelector
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, request, url_origin
+from lab10 import COOKIE_JAR, url_origin
 
 class Timer:
     def __init__(self):
@@ -42,6 +42,71 @@ class Timer:
         self.time = None
 
 FONTS = {}
+
+def request(url, top_level_url, payload=None):
+    scheme, url = url.split("://", 1)
+    assert scheme in ["http", "https"], \
+        "Unknown scheme {}".format(scheme)
+
+    host, path = url.split("/", 1)
+    path = "/" + path
+    port = 80 if scheme == "http" else 443
+
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    s.connect((host, port))
+
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
+
+    method = "POST" if payload else "GET"
+    body = "{} {} HTTP/1.0\r\n".format(method, path)
+    body += "Host: {}\r\n".format(host)
+    if host in COOKIE_JAR:
+        cookie, params = COOKIE_JAR[host]
+        allow_cookie = True
+        if top_level_url and params.get("samesite", "none") == "lax":
+            _, _, top_level_host, _ = top_level_url.split("/", 3)
+            allow_cookie = (host == top_level_host or method == "GET")
+        if allow_cookie:
+            body += "Cookie: {}\r\n".format(cookie)
+    if payload:
+        content_length = len(payload.encode("utf8"))
+        body += "Content-Length: {}\r\n".format(content_length)
+    body += "\r\n" + (payload or "")
+    s.send(body.encode("utf8"))
+
+    response = s.makefile("b")
+
+    statusline = response.readline().decode("utf8")
+    version, status, explanation = statusline.split(" ", 2)
+    assert status == "200", "{}: {}".format(status, explanation)
+
+    headers = {}
+    while True:
+        line = response.readline().decode("utf8")
+        if line == "\r\n": break
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+
+    if headers.get(
+        'content-type',
+        'application/octet-stream').startswith("text"):
+        body = response.read().decode("utf8")
+    else:
+        body = response.read()
+
+    s.close()
+
+    return headers, body
 
 def async_request(url, top_level_url, results):
     headers = None
@@ -320,6 +385,8 @@ class InlineLayout:
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node)
+            elif node.tag == "img":
+                self.image(node)
             else:
                 for child in node.children:
                     self.recurse(child)
@@ -360,6 +427,21 @@ class InlineLayout:
         size = float(node.style["font-size"][:-2])
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
+
+    def image(self, node):
+        w = 0
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = ImageLayout(node, line, self.previous_word)
+        line.children.append(input)
+        self.previous_word = input
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = float(node.style["font-size"][:-2])
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
+
 
     def paint(self, display_list):
         cmds = []
@@ -549,6 +631,55 @@ class InputLayout:
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
+
+class ImageLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def layout(self):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = float(self.node.style["font-size"][:-2])
+        self.font = get_font(size, weight, style)
+
+        self.width = self.font.measureText(" ")
+
+        self.height = linespace(self.font)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+    def paint(self, display_list):
+        print('paint image')
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        display_list.extend(cmds)
+
+    def __repr__(self):
+        return "InputLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
@@ -784,6 +915,26 @@ class Tab:
                 "thread": async_request(style_url, url, style_results)
             })
 
+        image_urls = [node.attributes["src"]
+                 for node in tree_to_list(self.nodes, [])
+                 if isinstance(node, Element)
+                 and node.tag == "img"
+                 and "src" in node.attributes]
+
+        img_results = {}
+        for src_url in image_urls:
+            image_url = resolve_url(src_url, url)
+            if not self.allowed_request(image_url):
+                print("Blocked style", src_url, "due to CSP")
+                continue
+            async_requests.append({
+                "url": image_url,
+                "type": "image",
+                "thread": async_request(image_url, url, img_results)
+            })
+
+        print(image_urls)
+
         for async_req in async_requests:
             async_req["thread"].join()
             req_url = async_req["url"]
@@ -791,10 +942,12 @@ class Tab:
                 self.main_thread_runner.schedule_script_task(
                     Task(self.js.run, req_url,
                         script_results[req_url]['body']))
-            else:
+            elif async_req["type"] == "style sheet":
                 self.rules.extend(
                     CSSParser(
                         style_results[req_url]['body']).parse())
+            elif async_req["type"] == "image":
+                pass
 
         self.set_needs_pipeline_update()
 
