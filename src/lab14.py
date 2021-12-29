@@ -918,6 +918,98 @@ def decode_image(image_bytes):
         dimensions=pil_image.size,
         colorType=skia.kRGBA_8888_ColorType)
 
+class Document:
+    def __init__(self, nodes, tab):
+        self.document_layout = None
+        self.nodes = nodes
+        self.tab = tab
+        with open("browser8.css") as f:
+            self.default_style_sheet = CSSParser(f.read()).parse()
+
+    def load(self, url):
+        scripts = [node.attributes["src"] for node
+                   in tree_to_list(self.nodes, [])
+                   if isinstance(node, Element)
+                   and node.tag == "script"
+                   and "src" in node.attributes]
+
+        async_requests = []
+        script_results = {}
+        for script in scripts:
+            script_url = resolve_url(script, url)
+            if not self.tab.allowed_request(script_url):
+                print("Blocked script", script, "due to CSP")
+                continue
+            async_requests.append({
+                "url": script_url,
+                "type": "script",
+                "thread": async_request(
+                    script_url, url, script_results)
+            })
+ 
+        self.rules = self.default_style_sheet.copy()
+        links = [node.attributes["href"]
+                 for node in tree_to_list(self.nodes, [])
+                 if isinstance(node, Element)
+                 and node.tag == "link"
+                 and "href" in node.attributes
+                 and node.attributes.get("rel") == "stylesheet"]
+
+        style_results = {}
+        for link in links:
+            style_url = resolve_url(link, url)
+            if not self.tab.allowed_request(style_url):
+                print("Blocked style", link, "due to CSP")
+                continue
+            async_requests.append({
+                "url": style_url,
+                "type": "style sheet",
+                "thread": async_request(style_url, url, style_results)
+            })
+
+        image_urls = [(node.attributes["src"], node)
+                 for node in tree_to_list(self.nodes, [])
+                 if isinstance(node, Element)
+                 and node.tag == "img"
+                 and "src" in node.attributes]
+
+        image_results = {}
+        for (src_url, node) in image_urls:
+            image_url = resolve_url(src_url, url)
+            if not self.tab.allowed_request(image_url):
+                print("Blocked style", src_url, "due to CSP")
+                continue
+            async_requests.append({
+                "url": image_url,
+                "type": "image",
+                "thread": async_request(image_url, url, image_results),
+                "node": node
+            })
+
+        for async_req in async_requests:
+            async_req["thread"].join()
+            req_url = async_req["url"]
+            if async_req["type"] == "script":
+                self.main_thread_runner.schedule_script_task(
+                    Task(self.js.run, req_url,
+                        script_results[req_url]['body']))
+            elif async_req["type"] == "style sheet":
+                self.rules.extend(
+                    CSSParser(
+                        style_results[req_url]['body']).parse())
+            elif async_req["type"] == "image":
+                async_req["node"].image = \
+                    decode_image(image_results[req_url]['body'])
+
+    def run_rendering_pipeline(self, display_list):
+        style(self.nodes, sorted(self.rules,
+                key=cascade_priority))
+        self.document = DocumentLayout(self.nodes)
+        self.document.layout()
+        self.document.paint(display_list)
+
+    def height(self):
+        return self.document.height
 
 class Tab:
     def __init__(self, commit_func):
@@ -938,8 +1030,7 @@ class Tab:
 
         self.time_in_style_layout_and_paint = 0.0
 
-        with open("browser8.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
+        self.document = None
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
@@ -971,82 +1062,8 @@ class Tab:
            if len(csp) > 0 and csp[0] == "default-src":
                self.allowed_origins = csp[1:]
 
-        self.nodes = HTMLParser(body).parse()
-
-        self.js = JSContext(self)
-        scripts = [node.attributes["src"] for node
-                   in tree_to_list(self.nodes, [])
-                   if isinstance(node, Element)
-                   and node.tag == "script"
-                   and "src" in node.attributes]
-
-        async_requests = []
-        script_results = {}
-        for script in scripts:
-            script_url = resolve_url(script, url)
-            if not self.allowed_request(script_url):
-                print("Blocked script", script, "due to CSP")
-                continue
-            async_requests.append({
-                "url": script_url,
-                "type": "script",
-                "thread": async_request(
-                    script_url, url, script_results)
-            })
- 
-        self.rules = self.default_style_sheet.copy()
-        links = [node.attributes["href"]
-                 for node in tree_to_list(self.nodes, [])
-                 if isinstance(node, Element)
-                 and node.tag == "link"
-                 and "href" in node.attributes
-                 and node.attributes.get("rel") == "stylesheet"]
-
-        style_results = {}
-        for link in links:
-            style_url = resolve_url(link, url)
-            if not self.allowed_request(style_url):
-                print("Blocked style", link, "due to CSP")
-                continue
-            async_requests.append({
-                "url": style_url,
-                "type": "style sheet",
-                "thread": async_request(style_url, url, style_results)
-            })
-
-        image_urls = [(node.attributes["src"], node)
-                 for node in tree_to_list(self.nodes, [])
-                 if isinstance(node, Element)
-                 and node.tag == "img"
-                 and "src" in node.attributes]
-
-        image_results = {}
-        for (src_url, node) in image_urls:
-            image_url = resolve_url(src_url, url)
-            if not self.allowed_request(image_url):
-                print("Blocked style", src_url, "due to CSP")
-                continue
-            async_requests.append({
-                "url": image_url,
-                "type": "image",
-                "thread": async_request(image_url, url, image_results),
-                "node": node
-            })
-
-        for async_req in async_requests:
-            async_req["thread"].join()
-            req_url = async_req["url"]
-            if async_req["type"] == "script":
-                self.main_thread_runner.schedule_script_task(
-                    Task(self.js.run, req_url,
-                        script_results[req_url]['body']))
-            elif async_req["type"] == "style sheet":
-                self.rules.extend(
-                    CSSParser(
-                        style_results[req_url]['body']).parse())
-            elif async_req["type"] == "image":
-                async_req["node"].image = \
-                    decode_image(image_results[req_url]['body'])
+        self.document = Document( HTMLParser(body).parse(), self)
+        self.document.load(url)
 
         self.set_needs_pipeline_update()
 
@@ -1077,7 +1094,7 @@ class Tab:
 
         self.run_rendering_pipeline()
 
-        document_height = math.ceil(self.document.height)
+        document_height = math.ceil(self.document.height())
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
@@ -1095,13 +1112,9 @@ class Tab:
         if self.needs_pipeline_update:
             timer = Timer()
             timer.start()
-            style(self.nodes, sorted(self.rules,
-                key=cascade_priority))
-            self.document = DocumentLayout(self.nodes)
-            self.document.layout()
             self.display_list = []
+            self.document.run_rendering_pipeline(self.display_list)
 
-            self.document.paint(self.display_list)
             if self.focus:
                 obj = [obj for obj in tree_to_list(self.document, [])
                        if obj.node == self.focus][0]
