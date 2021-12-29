@@ -9,9 +9,12 @@ import dukpy
 import io
 import math
 import sdl2
+import sdl2.ext as sdl2ext
 import skia
 import socket
 import ssl
+import threading
+import time
 import urllib.parse
 from lab4 import print_tree
 from lab4 import Element
@@ -24,9 +27,31 @@ from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
 from lab6 import CSSParser, compute_style, style
 from lab6 import TagSelector, DescendantSelector
-from lab10 import COOKIE_JAR, request, url_origin, JSContext
+from lab9 import EVENT_DISPATCH_CODE
+from lab10 import COOKIE_JAR, request, url_origin
+
+class Timer:
+    def __init__(self):
+        self.time = None
+
+    def start(self):
+        self.time = time.time()
+
+    def stop(self):
+        return time.time() - self.time
+        self.time = None
 
 FONTS = {}
+
+def async_request(url, top_level_url, results):
+    headers = None
+    body = None
+    def runner():
+        headers, body = request(url, top_level_url)
+        results[url] = {'headers': headers, 'body': body}
+    thread = threading.Thread(target=runner)
+    thread.start()
+    return thread
 
 def get_font(size, weight, style):
     key = (weight, style)
@@ -144,6 +169,17 @@ class DrawRect:
     def __repr__(self):
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
             self.left, self.top, self.right, self.bottom, self.color)
+
+class DrawLine:
+    def __init__(self, x1, y1, x2, y2):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+    def execute(self, canvas):
+        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 class ClipRRect:
     def __init__(self, rect, radius, cmds, should_clip=True):
@@ -291,7 +327,8 @@ class InlineLayout:
     def new_line(self):
         self.previous_word = None
         self.cursor_x = self.x
-        last_line = self.children[-1] if self.children else None
+        last_line = self.children[-1] if self.children \
+            else None
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
@@ -501,7 +538,7 @@ class InputLayout:
             text = self.node.attributes.get("value", "")
         elif self.node.tag == "button":
             text = self.node.children[0].text
-
+ 
         color = self.node.style["color"]
         cmds.append(DrawText(self.x, self.y,
                              text, self.font, color))
@@ -536,15 +573,140 @@ def paint_visual_effects(node, cmds, rect):
         ], should_save=needs_blend_isolation),
     ]
 
+XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+
+class JSContext:
+    def __init__(self, tab):
+        self.tab = tab
+
+        self.interp = dukpy.JSInterpreter()
+        self.interp.export_function("log", print)
+        self.interp.export_function("querySelectorAll",
+            self.querySelectorAll)
+        self.interp.export_function("getAttribute",
+            self.getAttribute)
+        self.interp.export_function("innerHTML_set", self.innerHTML_set)
+        self.interp.export_function("XMLHttpRequest_send",
+            self.XMLHttpRequest_send)
+        self.interp.export_function("now",
+            self.now)
+        self.interp.export_function("requestAnimationFrame",
+            self.requestAnimationFrame)
+        with open("runtime12.js") as f:
+            self.interp.evaljs(f.read())
+
+        self.node_to_handle = {}
+        self.handle_to_node = {}
+
+    def run(self, script, code):
+        try:
+            print("Script returned: ", self.interp.evaljs(code))
+        except dukpy.JSRuntimeError as e:
+            print("Script", script, "crashed", e)
+
+    def dispatch_event(self, type, elt):
+        handle = self.node_to_handle.get(elt, -1)
+        do_default = self.interp.evaljs(
+            EVENT_DISPATCH_CODE, type=type, handle=handle)
+        return not do_default
+
+    def get_handle(self, elt):
+        if elt not in self.node_to_handle:
+            handle = len(self.node_to_handle)
+            self.node_to_handle[elt] = handle
+            self.handle_to_node[handle] = elt
+        else:
+            handle = self.node_to_handle[elt]
+        return handle
+
+    def querySelectorAll(self, selector_text):
+        selector = CSSParser(selector_text).selector()
+        nodes = [node for node
+                 in tree_to_list(self.tab.nodes, [])
+                 if selector.matches(node)]
+        return [self.get_handle(node) for node in nodes]
+
+    def getAttribute(self, handle, attr):
+        elt = self.handle_to_node[handle]
+        return elt.attributes.get(attr, None)
+
+    def innerHTML_set(self, handle, s):
+        doc = HTMLParser(
+            "<html><body>" + s + "</body></html>").parse()
+        new_nodes = doc.children[0].children
+        elt = self.handle_to_node[handle]
+        elt.children = new_nodes
+        for child in elt.children:
+            child.parent = elt
+        self.tab.set_needs_pipeline_update()
+
+    def xhr_onload(self, out, handle):
+        do_default = self.interp.evaljs(
+            XHR_ONLOAD_CODE, out=out, handle=handle)
+
+    def XMLHttpRequest_send(
+        self, method, url, body, is_async, handle):
+        full_url = resolve_url(url, self.tab.url)
+        if not self.tab.allowed_request(full_url):
+            raise Exception("Cross-origin XHR blocked by CSP")
+
+        def run_load():
+            headers, out = request(
+                full_url, self.tab.url, payload=body)
+            handle_local = handle
+            if url_origin(full_url) != url_origin(self.tab.url):
+                raise Exception(
+                    "Cross-origin XHR request not allowed")
+            self.tab.main_thread_runner.schedule_script_task(
+                Task(self.xhr_onload, out, handle_local))
+            return out
+
+        if not is_async:
+            run_load(is_async)
+        else:
+            load_thread = threading.Thread(target=run_load, args=())
+            load_thread.start()
+
+    def now(self):
+        return int(time.time() * 1000)
+
+    def requestAnimationFrame(self):
+        self.tab.request_animation_frame_callback()
+
 SCROLL_STEP = 100
 CHROME_PX = 100
 
+USE_BROWSER_THREAD = True
+
+def set_timeout(func, sec):
+    t = threading.Timer(sec, func)
+    t.start()
+
+def raster(display_list, canvas):
+    for cmd in display_list:
+        cmd.execute(canvas)
+
+def clamp_scroll(scroll, tab_height):
+    return min(scroll, tab_height - (HEIGHT - CHROME_PX))
+
 class Tab:
-    def __init__(self):
+    def __init__(self, commit_func):
         self.history = []
         self.focus = None
         self.url = None
         self.scroll = 0
+        self.scroll_changed_in_tab = False
+        self.needs_raf_callbacks = False
+        self.display_scheduled = False
+        self.needs_pipeline_update = False
+        self.commit_func = commit_func
+        if USE_BROWSER_THREAD:
+            self.main_thread_runner = MainThreadRunner(self)
+        else:
+            self.main_thread_runner = SingleThreadedTaskRunner(self)
+        self.main_thread_runner.start()
+
+        self.time_in_style_layout_and_paint = 0.0
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -562,9 +724,14 @@ class Tab:
             cookie_string += "&" + key + "=" + value
         return cookie_string[1:]
 
+    def script_run_wrapper(self, script, script_text):
+        return Task(self.js.run, script, script_text)
+
     def load(self, url, body=None):
+        self.main_thread_runner.clear_pending_tasks()
         headers, body = request(url, self.url, payload=body)
         self.scroll = 0
+        self.scroll_changed_in_tab = True
         self.url = url
         self.history.append(url)
 
@@ -582,17 +749,21 @@ class Tab:
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
+
+        async_requests = []
+        script_results = {}
         for script in scripts:
             script_url = resolve_url(script, url)
             if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
-            header, body = request(script_url, url)
-            try:
-                print("Script returned: ", self.js.run(body))
-            except dukpy.JSRuntimeError as e:
-                print("Script", script, "crashed", e)
-
+            async_requests.append({
+                "url": script_url,
+                "type": "script",
+                "thread": async_request(
+                    script_url, url, script_results)
+            })
+ 
         self.rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
@@ -600,43 +771,101 @@ class Tab:
                  and node.tag == "link"
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
+
+        style_results = {}
         for link in links:
             style_url = resolve_url(link, url)
             if not self.allowed_request(style_url):
                 print("Blocked style", link, "due to CSP")
                 continue
-            try:
-                header, body = request(style_url, url)
-            except:
-                continue
-            self.rules.extend(CSSParser(body).parse())
+            async_requests.append({
+                "url": style_url,
+                "type": "style sheet",
+                "thread": async_request(style_url, url, style_results)
+            })
 
-        self.render()
+        for async_req in async_requests:
+            async_req["thread"].join()
+            req_url = async_req["url"]
+            if async_req["type"] == "script":
+                self.main_thread_runner.schedule_script_task(
+                    Task(self.js.run, req_url,
+                        script_results[req_url]['body']))
+            else:
+                self.rules.extend(
+                    CSSParser(
+                        style_results[req_url]['body']).parse())
 
-    def render(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
-        self.document.layout()
-        self.display_list = []
-        self.document.paint(self.display_list)
+        self.set_needs_pipeline_update()
 
-    def raster(self, canvas):
-        for cmd in self.display_list:
-            cmd.execute(canvas)
+    def apply_scroll(self, scroll):
+        self.scroll = scroll
 
-        if self.focus:
-            obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
-            text = self.focus.attributes.get("value", "")
-            x = obj.x + obj.font.measureText(text)
-            y = obj.y
-            draw_line(canvas, x, y, x, y + obj.height)
+    def set_needs_pipeline_update(self):
+        self.needs_pipeline_update = True
+        self.set_needs_animation_frame()
 
-    def scrolldown(self):
-        max_y = self.document.height - (HEIGHT - CHROME_PX)
-        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
+    def set_needs_animation_frame(self):
+        def callback():
+            self.display_scheduled = False
+            self.main_thread_runner.schedule_animation_frame()
+        if not self.display_scheduled:
+            if USE_BROWSER_THREAD:
+                set_timeout(callback, REFRESH_RATE_SEC)
+            self.display_scheduled = True
+
+    def request_animation_frame_callback(self):
+        self.needs_raf_callbacks = True
+        self.set_needs_animation_frame()
+
+    def run_animation_frame(self):
+        if self.needs_raf_callbacks:
+            self.needs_raf_callbacks = False
+            self.js.interp.evaljs("__runRAFHandlers()")
+
+        self.run_rendering_pipeline()
+
+        document_height = math.ceil(self.document.height)
+        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        self.scroll = clamped_scroll
+
+        self.commit_func(
+            self.url, clamped_scroll if self.scroll_changed_in_tab \
+                else None, 
+            document_height,
+            self.display_list)
+        self.scroll_changed_in_tab = False
+
+    def run_rendering_pipeline(self):
+        timer = None
+        if self.needs_pipeline_update:
+            timer = Timer()
+            timer.start()
+            style(self.nodes, sorted(self.rules,
+                key=cascade_priority))
+            self.document = DocumentLayout(self.nodes)
+            self.document.layout()
+            self.display_list = []
+
+            self.document.paint(self.display_list)
+            if self.focus:
+                obj = [obj for obj in tree_to_list(self.document, [])
+                       if obj.node == self.focus][0]
+                text = self.focus.attributes.get("value", "")
+                x = obj.x + obj.font.measureText(text)
+                y = obj.y
+                self.display_list.append(
+                    DrawLine(x, y, x, y + obj.height))
+
+        self.needs_pipeline_update = False
+
+        if timer:
+            self.time_in_style_layout_and_paint += timer.stop()
 
     def click(self, x, y):
+        self.run_rendering_pipeline()
         self.focus = None
         y += self.scroll
         objs = [obj for obj in tree_to_list(self.document, [])
@@ -650,9 +879,12 @@ class Tab:
                 pass
             elif elt.tag == "a" and "href" in elt.attributes:
                 url = resolve_url(elt.attributes["href"], self.url)
-                return self.load(url)
+                self.load(url)
+                return
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
+                if elt != self.focus:
+                    self.set_needs_pipeline_update()
                 self.focus = elt
                 return
             elif elt.tag == "button":
@@ -681,11 +913,12 @@ class Tab:
         url = resolve_url(elt.attributes["action"], self.url)
         self.load(url, body)
 
+
     def keypress(self, char):
         if self.focus:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
-        self.document.paint(self.display_list) # TODO: is this necessary?
+            self.set_needs_pipeline_update()
 
     def go_back(self):
         if len(self.history) > 1:
@@ -695,6 +928,205 @@ class Tab:
 
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
+
+class Task:
+    def __init__(self, task_code, *args):
+        self.task_code = task_code
+        self.args = args
+        self.__name__ = "task"
+
+    def __call__(self):
+        self.task_code(*self.args)
+        self.task_code = None
+        self.args = None
+
+class TaskQueue:
+    def __init__(self):
+        self.tasks = []
+
+    def add_task(self, task_code):
+        self.tasks.append(task_code)
+
+    def has_tasks(self):
+        retval = len(self.tasks) > 0
+        return retval
+
+    def get_next_task(self):
+        retval = self.tasks.pop(0)
+        return retval
+
+    def clear(self):
+        self.tasks = []
+
+class SingleThreadedTaskRunner:
+    def __init__(self, tab):
+        self.tab = tab
+
+    def schedule_scroll(self, scroll):
+        self.tab.apply_scroll(scroll)
+
+    def schedule_animation_frame(self):
+        self.tab.run_animation_frame()
+
+    def schedule_script_task(self, script):
+        script()
+
+    def schedule_browser_task(self, callback):
+        callback()
+
+    def schedule_scroll(self, scroll):
+        self.tab.scroll = scroll
+
+    def clear_pending_tasks(self):
+        pass
+
+    def start(self):    
+        pass
+
+    def set_needs_quit(self):
+        pass
+
+    def run(self):
+        pass
+
+class MainThreadRunner:
+    def __init__(self, tab):
+        self.lock = threading.Lock()
+        self.condition = threading.Condition(self.lock)
+        self.tab = tab
+        self.needs_animation_frame = False
+        self.main_thread = threading.Thread(target=self.run, args=())
+        self.script_tasks = TaskQueue()
+        self.browser_tasks = TaskQueue()
+        self.needs_quit = False
+        self.pending_scroll = None
+
+    def schedule_animation_frame(self):
+        self.lock.acquire(blocking=True)
+        self.needs_animation_frame = True
+        self.condition.notify_all()
+        self.lock.release()
+
+    def schedule_script_task(self, script):
+        self.lock.acquire(blocking=True)
+        self.script_tasks.add_task(script)
+        self.condition.notify_all()
+        self.lock.release()
+
+    def schedule_browser_task(self, callback):
+        self.lock.acquire(blocking=True)
+        self.browser_tasks.add_task(callback)
+        self.condition.notify_all()
+        self.lock.release()
+
+    def set_needs_quit(self):
+        self.lock.acquire(blocking=True)
+        self.needs_quit = True
+        self.condition.notify_all()
+        self.lock.release()
+
+    def schedule_scroll(self, scroll):
+        self.lock.acquire(blocking=True)
+        self.pending_scroll = scroll
+        self.condition.notify_all()
+        self.lock.release()
+
+    def clear_pending_tasks(self):
+        self.needs_animation_frame = False
+        self.script_tasks.clear()
+        self.browser_tasks.clear()
+        self.pending_scroll = None
+
+    def start(self):
+        self.main_thread.start()
+
+    def run(self):
+        while True:
+            if self.needs_quit:
+                return;
+
+            self.lock.acquire(blocking=True)
+            needs_animation_frame = self.needs_animation_frame
+            self.needs_animation_frame = False
+            pending_scroll = self.pending_scroll
+            self.pending_scroll = None
+            self.lock.release()
+            if pending_scroll:
+                self.tab.apply_scroll(pending_scroll)
+            if needs_animation_frame:
+                self.tab.run_animation_frame()
+
+            browser_method = None
+            self.lock.acquire(blocking=True)
+            if self.browser_tasks.has_tasks():
+                browser_method = self.browser_tasks.get_next_task()
+            self.lock.release()
+            if browser_method:
+                browser_method()
+
+            script = None
+            self.lock.acquire(blocking=True)
+            if self.script_tasks.has_tasks():
+                script = self.script_tasks.get_next_task()
+            self.lock.release()
+            if script:
+                script()
+
+            self.lock.acquire(blocking=True)
+            if not self.script_tasks.has_tasks() and \
+                not self.browser_tasks.has_tasks() and not \
+                self.needs_animation_frame and not \
+                self.pending_scroll and not \
+                self.needs_quit:
+                self.condition.wait()
+            self.lock.release()
+
+class TabWrapper:
+    def __init__(self, browser):
+        self.tab = Tab(self.commit)
+        self.browser = browser
+        self.url = None
+        self.scroll = 0
+
+    def schedule_load(self, url, body=None):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.load, url, body))
+        self.browser.set_needs_chrome_raster()
+
+    def commit(self, url, scroll, tab_height, display_list):
+        self.browser.compositor_lock.acquire(blocking=True)
+        if url != self.url or scroll != self.scroll:
+            self.browser.set_needs_chrome_raster()
+        self.url = url
+        if scroll != None:
+            self.scroll = scroll
+        self.browser.active_tab_height = tab_height
+        self.browser.active_tab_display_list = display_list.copy()
+        self.browser.set_needs_tab_raster()
+        self.browser.compositor_lock.release()
+
+    def schedule_click(self, x, y):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.click, x, y))
+
+    def schedule_keypress(self, char):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.keypress, char))
+
+    def schedule_go_back(self):
+        self.tab.main_thread_runner.schedule_browser_task(
+            Task(self.tab.go_back))
+
+    def schedule_scroll(self, scroll):
+        self.scroll = scroll
+        self.tab.main_thread_runner.schedule_scroll(scroll)
+
+    def handle_quit(self):
+        print("Time in style, layout and paint: {:>.6f}s".format(
+            self.tab.time_in_style_layout_and_paint))
+        self.tab.main_thread_runner.set_needs_quit()
+
+REFRESH_RATE_SEC = 0.016 # 16ms
 
 class Browser:
     def __init__(self):
@@ -713,6 +1145,10 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
+        self.compositor_lock = threading.Lock()
+
+        self.time_in_raster_and_draw = 0
+        self.time_in_draw = 0
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -725,11 +1161,66 @@ class Browser:
             self.BLUE_MASK = 0x00ff0000
             self.ALPHA_MASK = 0xff000000
 
+        self.needs_tab_raster = False
+        self.needs_chrome_raster = True
+        self.needs_draw = True
+
+        self.active_tab_height = None
+        self.active_tab_display_list = None
+
+    def render(self):
+        assert not USE_BROWSER_THREAD
+        tab = self.tabs[self.active_tab].tab
+        tab.run_animation_frame()
+
+    def set_needs_tab_raster(self):
+        self.needs_tab_raster = True
+        self.needs_draw = True
+
+    def set_needs_chrome_raster(self):
+        self.needs_chrome_raster = True
+        self.needs_draw = True
+
+    def set_needs_draw(self):
+        self.needs_draw = True
+
+    def raster_and_draw(self):
+        self.compositor_lock.acquire(blocking=True)
+        timer = None
+        draw_timer = None
+        if self.needs_draw:
+            timer = Timer()
+            timer.start()
+        if self.needs_chrome_raster:
+            self.raster_chrome()
+        if self.needs_tab_raster:
+            self.raster_tab()
+        if self.needs_draw:
+            draw_timer = Timer()
+            draw_timer.start()
+            self.draw()
+            self.time_in_draw += draw_timer.stop()
+        self.needs_tab_raster = False
+        self.needs_chrome_raster = False
+        self.needs_draw = False
+        self.compositor_lock.release()
+        if timer:
+            self.time_in_raster_and_draw += timer.stop()
+
     def handle_down(self):
-        self.tabs[self.active_tab].scrolldown()
-        self.draw()
+        self.compositor_lock.acquire(blocking=True)
+        if not self.active_tab_height:
+            return
+        active_tab = self.tabs[self.active_tab]
+        active_tab.schedule_scroll(
+            clamp_scroll(
+                active_tab.scroll + SCROLL_STEP,
+                self.active_tab_height))
+        self.set_needs_draw()
+        self.compositor_lock.release()
 
     def handle_click(self, e):
+        self.compositor_lock.acquire(blocking=True)
         if e.y < CHROME_PX:
             self.focus = None
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
@@ -737,55 +1228,50 @@ class Browser:
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
-                self.tabs[self.active_tab].go_back()
+                self.tabs[self.active_tab].schedule_go_back()
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
-            self.raster_chrome()
+            self.set_needs_chrome_raster()
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
-            self.raster_tab()
-        self.draw()
+            self.tabs[self.active_tab].schedule_click(
+                e.x, e.y - CHROME_PX)
+        self.compositor_lock.release()
 
     def handle_key(self, char):
+        self.compositor_lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += char
-            self.raster_chrome()
-            self.draw()
+            self.set_needs_chrome_raster()
         elif self.focus == "content":
-            self.tabs[self.active_tab].keypress(char)
-            self.raster_tab()
-            self.draw()
+            self.tabs[self.active_tab].schedule_keypress(char)
+        self.compositor_lock.release()
 
     def handle_enter(self):
-        if self.focus == "address bar":
-            self.tabs[self.active_tab].load(self.address_bar)
+        self.compositor_lock.acquire(blocking=True)
+        if self.focus == "address bar`":
+            self.tabs[self.active_tab].schedule_load(self.address_bar)
+            self.tabs[self.active_tab].url = self.address_bar
             self.focus = None
-            self.raster_tab()
-            self.draw()
+            self.set_needs_chrome_raster()
+        self.compositor_lock.release()
 
     def load(self, url):
-        new_tab = Tab()
-        new_tab.load(url)
+        new_tab = TabWrapper(self)
+        new_tab.schedule_load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)
-        self.raster_chrome()
-        self.raster_tab()
-        self.draw()
 
     def raster_tab(self):
-        active_tab = self.tabs[self.active_tab]
-        tab_height = math.ceil(active_tab.document.height)
-
         if not self.tab_surface or \
-                tab_height != self.tab_surface.height():
-            self.tab_surface = skia.Surface(WIDTH, tab_height)
+                self.active_tab_height != self.tab_surface.height():
+            self.tab_surface = skia.Surface(WIDTH, self.active_tab_height)
 
         canvas = self.tab_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
-        active_tab.raster(canvas)
+        raster(self.active_tab_display_list, canvas)
 
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
@@ -816,7 +1302,8 @@ class Browser:
             draw_line(canvas, 55 + w, 55, 55 + w, 85)
         else:
             url = self.tabs[self.active_tab].url
-            draw_text(canvas, 55, 55, url, buttonfont)
+            if url:
+                draw_text(canvas, 55, 55, url, buttonfont)
 
         # Draw the back button:
         draw_rect(canvas, 10, 50, 35, 90)
@@ -830,13 +1317,14 @@ class Browser:
         canvas = self.root_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         
-        tab_rect = skia.Rect.MakeLTRB(0, CHROME_PX, WIDTH, HEIGHT)
-        tab_offset = CHROME_PX - self.tabs[self.active_tab].scroll
-        canvas.save()
-        canvas.clipRect(tab_rect)
-        canvas.translate(0, tab_offset)
-        self.tab_surface.draw(canvas, 0, 0)
-        canvas.restore()
+        if self.tab_surface:
+            tab_rect = skia.Rect.MakeLTRB(0, CHROME_PX, WIDTH, HEIGHT)
+            tab_offset = CHROME_PX - self.tabs[self.active_tab].scroll
+            canvas.save()
+            canvas.clipRect(tab_rect)
+            canvas.translate(0, tab_offset)
+            self.tab_surface.draw(canvas, 0, 0)
+            canvas.restore()
 
         chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
         canvas.save()
@@ -863,6 +1351,12 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
+        print("Time in raster and draw: {:>.6f}s".format(
+            self.time_in_raster_and_draw))
+        print("Time in draw: {:>.6f}s".format(
+            self.time_in_draw))
+
+        self.tabs[self.active_tab].handle_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
@@ -874,11 +1368,12 @@ if __name__ == "__main__":
 
     event = sdl2.SDL_Event()
     while True:
-        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             if event.type == sdl2.SDL_QUIT:
                 browser.handle_quit()
                 sdl2.SDL_Quit()
                 sys.exit()
+                break
             elif event.type == sdl2.SDL_MOUSEBUTTONUP:
                 browser.handle_click(event.button)
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -888,4 +1383,7 @@ if __name__ == "__main__":
                     browser.handle_down()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
-
+        if not USE_BROWSER_THREAD and \
+            browser.tabs[browser.active_tab].tab.display_scheduled:
+            browser.render()
+        browser.raster_and_draw()
