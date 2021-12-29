@@ -792,8 +792,9 @@ def paint_visual_effects(node, cmds, rect):
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
 
 class JSContext:
-    def __init__(self, tab):
-        self.tab = tab
+    def __init__(self, document):
+        self.tab = document.tab
+        self.document = document
 
         self.interp = dukpy.JSInterpreter()
         self.interp.export_function("log", print)
@@ -838,7 +839,7 @@ class JSContext:
     def querySelectorAll(self, selector_text):
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
-                 in tree_to_list(self.tab.nodes, [])
+                 in tree_to_list(self.document.nodes, [])
                  if selector.matches(node)]
         return [self.get_handle(node) for node in nodes]
 
@@ -923,6 +924,7 @@ class Document:
         self.document_layout = None
         self.nodes = nodes
         self.tab = tab
+        self.js = JSContext(self)
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
@@ -990,7 +992,7 @@ class Document:
             async_req["thread"].join()
             req_url = async_req["url"]
             if async_req["type"] == "script":
-                self.main_thread_runner.schedule_script_task(
+                self.tab.main_thread_runner.schedule_script_task(
                     Task(self.js.run, req_url,
                         script_results[req_url]['body']))
             elif async_req["type"] == "style sheet":
@@ -1090,7 +1092,7 @@ class Tab:
     def run_animation_frame(self):
         if self.needs_raf_callbacks:
             self.needs_raf_callbacks = False
-            self.js.interp.evaljs("__runRAFHandlers()")
+            self.document.js.interp.evaljs("__runRAFHandlers()")
 
         self.run_rendering_pipeline()
 
