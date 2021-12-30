@@ -71,7 +71,12 @@ After performing raster and draw, the display list should be present.
     >>> browser.needs_draw
     False
 
- Scrolling down causes a draw but nothing else.
+The initial sroll offset is 0.
+
+    >>> browser.tabs[browser.active_tab].scroll
+    0
+
+Scrolling down causes a draw but nothing else.
 
     >>> browser.handle_down()
     >>> browser.needs_chrome_raster

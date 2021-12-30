@@ -1149,7 +1149,7 @@ in `Tab`:
 
 ``` {.python expected=False}
 def clamp_scroll(scroll, tab_height):
-    return min(scroll, tab_height - (HEIGHT - CHROME_PX))
+    return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
 
 class Tab:
     def __init__(self, commit_func):
