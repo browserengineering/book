@@ -760,7 +760,7 @@ class IframeLayout:
         else:
             self.x = self.parent.x
 
-#        self.document.layout()
+#        self.document.document_layout.layout()
 
     def paint(self, display_list):
         pass
@@ -1029,16 +1029,16 @@ class Document:
     def run_rendering_pipeline(self, display_list):
         style(self.nodes, sorted(self.rules,
                 key=cascade_priority))
-        self.document = DocumentLayout(self.nodes, self.tab)
-        self.document.layout()
-        self.document.paint(display_list)
+        self.document_layout = DocumentLayout(self.nodes, self.tab)
+        self.document_layout.layout()
+        self.document_layout.paint(display_list)
 
     def height(self):
-        return self.document.height
+        return self.document_layout.height
 
     def hit_test(self, x, y):
         y += self.document.scroll
-        objs = [obj for obj in tree_to_list(self.document, [])
+        objs = [obj for obj in tree_to_list(self.document_layout, [])
                 if obj.x <= x < obj.x + obj.width
                 and obj.y <= y < obj.y + obj.height]
         if not objs:
@@ -1125,7 +1125,7 @@ class Tab:
             self.document.run_rendering_pipeline(self.display_list)
 
             if self.focus:
-                obj = [obj for obj in tree_to_list(self.document, [])
+                obj = [obj for obj in tree_to_list(self.document.document_layout, [])
                        if obj.node == self.focus][0]
                 text = self.focus.attributes.get("value", "")
                 x = obj.x + obj.font.measureText(text)
