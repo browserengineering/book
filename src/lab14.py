@@ -302,7 +302,7 @@ def draw_rect(canvas, l, t, r, b, fill=None, width=1):
     canvas.drawRect(rect, paint)
 
 class BlockLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, tab):
         self.node = node
         self.parent = parent
         self.previous = previous
@@ -311,14 +311,15 @@ class BlockLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.tab = tab
 
     def layout(self):
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous)
+                next = InlineLayout(child, self, previous, self.tab)
             else:
-                next = BlockLayout(child, self, previous)
+                next = BlockLayout(child, self, previous, self.tab)
             self.children.append(next)
             previous = next
 
@@ -359,7 +360,7 @@ class BlockLayout:
             self.x, self.x, self.width, self.height)
 
 class InlineLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, tab):
         self.node = node
         self.parent = parent
         self.previous = previous
@@ -369,6 +370,7 @@ class InlineLayout:
         self.width = None
         self.height = None
         self.display_list = None
+        self.tab = tab
 
     def layout(self):
         self.width = self.parent.width
@@ -460,7 +462,8 @@ class InlineLayout:
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
-        input = IframeLayout(node, line, self.previous_word)
+        input = IframeLayout(
+            node, line, self.previous_word, self.tab)
         line.children.append(input)
         self.previous_word = input
         weight = node.style["font-weight"]
@@ -493,14 +496,15 @@ class InlineLayout:
             self.x, self.y, self.width, self.height)
 
 class DocumentLayout:
-    def __init__(self, node):
+    def __init__(self, node, tab):
         self.node = node
         self.parent = None
         self.previous = None
         self.children = []
+        self.tab = tab
 
     def layout(self):
-        child = BlockLayout(self.node, self, None)
+        child = BlockLayout(self.node, self, None, self.tab)
         self.children.append(child)
 
         self.width = WIDTH - 2*HSTEP
@@ -722,7 +726,7 @@ IFRAME_WIDTH_PX = 300
 IFRAME_HEIGHT_PX = 150
 
 class IframeLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, tab):
         self.node = node
         self.children = []
         self.parent = parent
@@ -730,7 +734,12 @@ class IframeLayout:
         self.x = None
         self.y = None
         self.width = IFRAME_WIDTH_PX
-        self.height = IFRAME_HEIGHT_PX
+        self.height = IFRAME_HEIGHT_PX        
+
+        self.document = Document(tab)
+        src = self.node.attributes["src"]
+        print("iframe: " + src)
+        self.document.load(src)
 
     def get_ascent(self, font_multiplier=1.0):
         return -self.height
@@ -863,18 +872,18 @@ class JSContext:
 
     def XMLHttpRequest_send(
         self, method, url, body, is_async, handle):
-        full_url = resolve_url(url, self.tab.url)
-        if not self.tab.allowed_request(full_url):
+        full_url = resolve_url(url, self.document.url)
+        if not self.document.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
 
         def run_load():
             headers, out = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.document.url, payload=body)
             handle_local = handle
-            if url_origin(full_url) != url_origin(self.tab.url):
+            if url_origin(full_url) != url_origin(self.document.url):
                 raise Exception(
                     "Cross-origin XHR request not allowed")
-            self.tab.main_thread_runner.schedule_script_task(
+            self.document.tab.main_thread_runner.schedule_script_task(
                 Task(self.xhr_onload, out, handle_local))
             return out
 
@@ -920,27 +929,33 @@ def decode_image(image_bytes):
         colorType=skia.kRGBA_8888_ColorType)
 
 class Document:
-    def __init__(self, nodes, tab):
+    def __init__(self, tab):
         self.document_layout = None
-        self.nodes = nodes
         self.tab = tab
         self.js = JSContext(self)
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
         self.url = None
         self.scroll = 0
+        self.allowed_origins = None
 
-    def load(self, url):
-        self.url = url
-        self.history.append(url)
-        self.scroll = 0
+    def allowed_request(self, url):
+        return self.allowed_origins == None or \
+            url_origin(url) in self.allowed_origins
+
+    def load(self, url, body):
+        print(url)
         headers, body = request(url, self.url, payload=body)
+        self.url = url
+        self.scroll = 0
 
         self.allowed_origins = None
         if "content-security-policy" in headers:
            csp = headers["content-security-policy"].split()
            if len(csp) > 0 and csp[0] == "default-src":
                self.allowed_origins = csp[1:]
+
+        self.nodes = HTMLParser(body).parse()
 
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
@@ -952,7 +967,7 @@ class Document:
         script_results = {}
         for script in scripts:
             script_url = resolve_url(script, url)
-            if not self.tab.allowed_request(script_url):
+            if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
             async_requests.append({
@@ -973,7 +988,7 @@ class Document:
         style_results = {}
         for link in links:
             style_url = resolve_url(link, url)
-            if not self.tab.allowed_request(style_url):
+            if not self.allowed_request(style_url):
                 print("Blocked style", link, "due to CSP")
                 continue
             async_requests.append({
@@ -991,7 +1006,7 @@ class Document:
         image_results = {}
         for (src_url, node) in image_urls:
             image_url = resolve_url(src_url, url)
-            if not self.tab.allowed_request(image_url):
+            if not self.allowed_request(image_url):
                 print("Blocked style", src_url, "due to CSP")
                 continue
             async_requests.append({
@@ -1019,7 +1034,7 @@ class Document:
     def run_rendering_pipeline(self, display_list):
         style(self.nodes, sorted(self.rules,
                 key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
+        self.document = DocumentLayout(self.nodes, self.tab)
         self.document.layout()
         self.document.paint(display_list)
 
@@ -1054,18 +1069,15 @@ class Tab:
 
         self.document = None
 
-    def allowed_request(self, url):
-        return self.allowed_origins == None or \
-            url_origin(url) in self.allowed_origins
-
     def script_run_wrapper(self, script, script_text):
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
+        self.history.append(url)
         self.main_thread_runner.clear_pending_tasks()
         self.scroll_changed_in_tab = True
-        self.document = Document( HTMLParser(body).parse(), self)
-        self.document.load(url)
+        self.document = Document(self)
+        self.document.load(url, body)
 
         self.set_needs_pipeline_update()
 
@@ -1098,7 +1110,7 @@ class Tab:
 
         document_height = math.ceil(self.document.height())
         clamped_scroll = clamp_scroll(self.document.scroll, document_height)
-        if clamped_scroll != self.scroll:
+        if clamped_scroll != self.document.scroll:
             self.scroll_changed_in_tab = True
         self.document.scroll = clamped_scroll
 
