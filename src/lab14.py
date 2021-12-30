@@ -1026,6 +1026,15 @@ class Document:
     def height(self):
         return self.document.height
 
+    def hit_test(self, x, y):
+        y += self.document.scroll
+        objs = [obj for obj in tree_to_list(self.document, [])
+                if obj.x <= x < obj.x + obj.width
+                and obj.y <= y < obj.y + obj.height]
+        if not objs:
+            return None
+        return objs[-1].node
+
 class Tab:
     def __init__(self, commit_func):
         self.history = []
@@ -1125,12 +1134,7 @@ class Tab:
     def click(self, x, y):
         self.run_rendering_pipeline()
         self.focus = None
-        y += self.docuemnt.scroll
-        objs = [obj for obj in tree_to_list(self.document, [])
-                if obj.x <= x < obj.x + obj.width
-                and obj.y <= y < obj.y + obj.height]
-        if not objs: return
-        elt = objs[-1].node
+        elt = self.document.hit_test(x, y)
         if elt and self.js.dispatch_event("click", elt): return
         while elt:
             if isinstance(elt, Text):
