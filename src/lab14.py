@@ -503,13 +503,13 @@ class DocumentLayout:
         self.children = []
         self.tab = tab
 
-    def layout(self):
+    def layout(self, x, y):
         child = BlockLayout(self.node, self, None, self.tab)
         self.children.append(child)
 
         self.width = WIDTH - 2*HSTEP
-        self.x = HSTEP
-        self.y = VSTEP
+        self.x = x
+        self.y = y
         child.layout()
         self.height = child.height + 2*VSTEP
 
@@ -760,14 +760,11 @@ class IframeLayout:
         else:
             self.x = self.parent.x
 
-#        self.document.document_layout.layout()
-
     def paint(self, display_list):
-        pass
-#        self.document.paint(display_list)
+        self.document.paint(display_list)
 
     def __repr__(self):
-        return "ImageLayout(src={}, x={}, y={}, width={}, height={})".format(
+        return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
             self.node.attributes["src"], self.x, self.y, self.width, self.height)
 
 
@@ -1026,11 +1023,22 @@ class Document:
                 async_req["node"].image = \
                     decode_image(image_results[req_url]['body'])
 
-    def run_rendering_pipeline(self, display_list):
+    def run_style_and_layout(self, x, y):
         style(self.nodes, sorted(self.rules,
                 key=cascade_priority))
         self.document_layout = DocumentLayout(self.nodes, self.tab)
-        self.document_layout.layout()
+        self.document_layout.layout(x, y)
+
+        iframes = [obj for obj in tree_to_list(self.document_layout, [])
+            if isinstance(obj, IframeLayout)]
+        for iframe in iframes:
+            iframe.document.run_style_and_layout(iframe.x, iframe.y)
+
+    def paint(self, display_list):
+        self.document_layout.paint(display_list)
+
+    def run_rendering_pipeline(self, display_list):
+        self.run_style_and_layout(HSTEP, VSTEP)
         self.document_layout.paint(display_list)
 
     def height(self):
