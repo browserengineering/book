@@ -553,15 +553,6 @@ class Tab:
         return self.allowed_origins == None or \
             url_origin(url) in self.allowed_origins
 
-    def cookie_string(self):
-        origin = url_origin(self.history[-1])
-        cookie_string = ""
-        if not origin in self.cookies:
-            return cookie_string
-        for key, value in self.cookies[origin].items():
-            cookie_string += "&" + key + "=" + value
-        return cookie_string[1:]
-
     def load(self, url, body=None):
         headers, body = request(url, self.url, payload=body)
         self.scroll = 0
