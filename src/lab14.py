@@ -737,9 +737,9 @@ class IframeLayout:
         self.height = IFRAME_HEIGHT_PX        
 
         self.document = Document(tab)
-        src = self.node.attributes["src"]
-        print("iframe: " + src)
-        self.document.load(src)
+        document_url = resolve_url(self.node.attributes["src"], tab.document.url)
+        print("iframe: " + document_url)
+        self.document.load(document_url)
 
     def get_ascent(self, font_multiplier=1.0):
         return -self.height
@@ -760,15 +760,11 @@ class IframeLayout:
         else:
             self.x = self.parent.x
 
+#        self.document.layout()
+
     def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-        cmds.append(DrawText(self.x, self.y, "iframe", self.font, "black"))
-
-        display_list.extend(cmds)
+        pass
+#        self.document.paint(display_list)
 
     def __repr__(self):
         return "ImageLayout(src={}, x={}, y={}, width={}, height={})".format(
@@ -943,8 +939,7 @@ class Document:
         return self.allowed_origins == None or \
             url_origin(url) in self.allowed_origins
 
-    def load(self, url, body):
-        print(url)
+    def load(self, url, body=None):
         headers, body = request(url, self.url, payload=body)
         self.url = url
         self.scroll = 0
