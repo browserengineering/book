@@ -927,8 +927,21 @@ class Document:
         self.js = JSContext(self)
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
+        self.url = None
+        self.scroll = 0
 
     def load(self, url):
+        self.url = url
+        self.history.append(url)
+        self.scroll = 0
+        headers, body = request(url, self.url, payload=body)
+
+        self.allowed_origins = None
+        if "content-security-policy" in headers:
+           csp = headers["content-security-policy"].split()
+           if len(csp) > 0 and csp[0] == "default-src":
+               self.allowed_origins = csp[1:]
+
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
                    if isinstance(node, Element)
@@ -1017,8 +1030,6 @@ class Tab:
     def __init__(self, commit_func):
         self.history = []
         self.focus = None
-        self.url = None
-        self.scroll = 0
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
         self.display_scheduled = False
@@ -1052,25 +1063,14 @@ class Tab:
 
     def load(self, url, body=None):
         self.main_thread_runner.clear_pending_tasks()
-        headers, body = request(url, self.url, payload=body)
-        self.scroll = 0
         self.scroll_changed_in_tab = True
-        self.url = url
-        self.history.append(url)
-
-        self.allowed_origins = None
-        if "content-security-policy" in headers:
-           csp = headers["content-security-policy"].split()
-           if len(csp) > 0 and csp[0] == "default-src":
-               self.allowed_origins = csp[1:]
-
         self.document = Document( HTMLParser(body).parse(), self)
         self.document.load(url)
 
         self.set_needs_pipeline_update()
 
     def apply_scroll(self, scroll):
-        self.scroll = scroll
+        self.document.scroll = scroll
 
     def set_needs_pipeline_update(self):
         self.needs_pipeline_update = True
@@ -1097,13 +1097,13 @@ class Tab:
         self.run_rendering_pipeline()
 
         document_height = math.ceil(self.document.height())
-        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        clamped_scroll = clamp_scroll(self.document.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
-        self.scroll = clamped_scroll
+        self.document.scroll = clamped_scroll
 
         self.commit_func(
-            self.url, clamped_scroll if self.scroll_changed_in_tab \
+            self.document.url, clamped_scroll if self.scroll_changed_in_tab \
                 else None, 
             document_height,
             self.display_list)
@@ -1134,7 +1134,7 @@ class Tab:
     def click(self, x, y):
         self.run_rendering_pipeline()
         self.focus = None
-        y += self.scroll
+        y += self.docuemnt.scroll
         objs = [obj for obj in tree_to_list(self.document, [])
                 if obj.x <= x < obj.x + obj.width
                 and obj.y <= y < obj.y + obj.height]
@@ -1145,7 +1145,7 @@ class Tab:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "a" and "href" in elt.attributes:
-                url = resolve_url(elt.attributes["href"], self.url)
+                url = resolve_url(elt.attributes["href"], self.document.url)
                 self.load(url)
                 return
             elif elt.tag == "input":
@@ -1177,7 +1177,7 @@ class Tab:
             body += "&" + name + "=" + value
         body = body [1:]
 
-        url = resolve_url(elt.attributes["action"], self.url)
+        url = resolve_url(elt.attributes["action"], self.document.url)
         self.load(url, body)
 
 
