@@ -284,21 +284,7 @@ class Browser:
         self.needs_draw = False
 ```
 
-Oh, and we'll need to schedule an animation frame whenever any of those dirty
-bits are set. This is easiest to add in `set_needs_draw`. Note that scheduling
-an animation frame does *not* mean that `run_rendering_pipeline` does all its
-expensive work, just that the animation frame task is scheduled 16ms in the
-future. Only `set_needs_pipeline_update` will cause that expensive work.
-
-
-``` {.python expected=False}
-class Browser:
-    def set_needs_draw(self):
-        # ...
-        self.tabs[self.active_tab].set_needs_animation_frame()
-```
-
-And in each case where raster or draw was called previously, set the dirty
+In each case where raster or draw was called previously, set the dirty
 bits. Here's the change to `handle_click`:
 
 ``` {.python expected=False}

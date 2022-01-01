@@ -333,6 +333,7 @@ class Tab:
             self.needs_raf_callbacks = False
             self.js.interp.evaljs("__runRAFHandlers()")
 
+        needs_commit = self.needs_pipeline_update
         self.run_rendering_pipeline()
 
         document_height = math.ceil(self.document.height)
@@ -341,11 +342,14 @@ class Tab:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
 
-        self.commit_func(
-            self.url, clamped_scroll if self.scroll_changed_in_tab \
-                else None, 
-            document_height,
-            self.display_list)
+        if self.scroll_changed_in_tab:
+            need_commit = True
+
+        if needs_commit:
+            self.commit_func(
+                self.url, clamped_scroll if self.scroll_changed_in_tab \
+                    else None, 
+                document_height, self.display_list)
         self.scroll_changed_in_tab = False
 
     def run_rendering_pipeline(self):
@@ -603,7 +607,8 @@ class TabWrapper:
             Task(self.tab.load, url, body))
         self.browser.set_needs_chrome_raster()
 
-    def commit(self, url, scroll, tab_height, display_list):
+    def commit(
+        self, url, scroll, tab_height, display_list):
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
@@ -701,6 +706,9 @@ class Browser:
         if self.needs_draw:
             timer = Timer()
             timer.start()
+        else:
+            self.compositor_lock.release()
+            return
         if self.needs_chrome_raster:
             self.raster_chrome()
         if self.needs_tab_raster:
