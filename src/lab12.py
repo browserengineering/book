@@ -318,12 +318,16 @@ class Tab:
 
     def set_needs_animation_frame(self):
         def callback():
+            self.main_thread_runner.lock.acquire(blocking=True)
             self.display_scheduled = False
+            self.main_thread_runner.lock.release()
             self.main_thread_runner.schedule_animation_frame()
         if not self.display_scheduled:
+            self.main_thread_runner.lock.acquire(blocking=True)
+            self.display_scheduled = True
+            self.main_thread_runner.lock.release()
             if USE_BROWSER_THREAD:
                 set_timeout(callback, REFRESH_RATE_SEC)
-            self.display_scheduled = True
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
@@ -714,6 +718,8 @@ class Browser:
             timer = Timer()
             timer.start()
         else:
+            assert not self.needs_chrome_raster
+            assert not self.needs_tab_raster
             self.compositor_lock.release()
             return
         if self.needs_chrome_raster:
@@ -727,12 +733,11 @@ class Browser:
             self.draw()
             self.time_in_draw += draw_timer.stop()
             self.num_draws += 1
+            self.time_in_raster_and_draw += timer.stop()
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
         self.compositor_lock.release()
-        if timer:
-            self.time_in_raster_and_draw += timer.stop()
 
     def handle_down(self):
         self.compositor_lock.acquire(blocking=True)
