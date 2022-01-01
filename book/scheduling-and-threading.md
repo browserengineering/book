@@ -571,11 +571,10 @@ class Browser:
             draw_timer.start()
             self.draw()
             self.time_in_draw += draw_timer.stop()
+            self.time_in_raster_and_draw += timer.stop()
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
-        if timer:
-            self.time_in_raster_and_draw += timer.stop()
 
     def handle_quit(self):
         print("""Time in raster-and-draw: {:>.6f}s

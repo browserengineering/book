@@ -216,7 +216,6 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
-        self.display_scheduled = False
         self.needs_pipeline_update = False
         self.commit_func = commit_func
         if USE_BROWSER_THREAD:
@@ -317,17 +316,7 @@ class Tab:
         self.set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
-        def callback():
-            self.main_thread_runner.lock.acquire(blocking=True)
-            self.display_scheduled = False
-            self.main_thread_runner.lock.release()
-            self.main_thread_runner.schedule_animation_frame()
-        if not self.display_scheduled:
-            self.main_thread_runner.lock.acquire(blocking=True)
-            self.display_scheduled = True
-            self.main_thread_runner.lock.release()
-            if USE_BROWSER_THREAD:
-                set_timeout(callback, REFRESH_RATE_SEC)
+        self.main_thread_runner.schedule_display()
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
@@ -518,6 +507,23 @@ class MainThreadRunner:
         self.browser_tasks = TaskQueue()
         self.needs_quit = False
         self.pending_scroll = None
+        self.display_scheduled = False
+
+    def schedule_display(self):
+        def callback():
+            self.lock.acquire(blocking=True)
+            self.display_scheduled = False
+            self.lock.release()
+            self.schedule_animation_frame()
+
+        self.lock.acquire(blocking=True)
+        display_scheduled = self.display_scheduled
+        if not self.display_scheduled:
+            self.display_scheduled = True
+            if USE_BROWSER_THREAD:
+                set_timeout(callback, REFRESH_RATE_SEC)
+        self.lock.release()
+
 
     def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)

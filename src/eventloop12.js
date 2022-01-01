@@ -9,9 +9,9 @@ function callback() {
         requestXHR();
 
     var since_last_frame = Date.now() - cur_frame_time;
-    while (since_last_frame < artificial_delay_ms) {
-        var since_last_frame = Date.now() - cur_frame_time;
-    }
+    // while (since_last_frame < artificial_delay_ms) {
+    //     var since_last_frame = Date.now() - cur_frame_time;
+    // }
     var total_elapsed = Date.now() - start_time;
     var output = document.querySelectorAll("div")[1];
     output.innerHTML = "count: " + (count++) + "<br>" +
