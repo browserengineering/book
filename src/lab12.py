@@ -524,7 +524,6 @@ class MainThreadRunner:
                 set_timeout(callback, REFRESH_RATE_SEC)
         self.lock.release()
 
-
     def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)
         self.needs_animation_frame = True

@@ -754,6 +754,20 @@ acquire the lock before setting these thread-safe variables. (Ignore the
 
 
 ``` {.python}
+    def schedule_display(self):
+        def callback():
+            self.lock.acquire(blocking=True)
+            self.display_scheduled = False
+            self.lock.release()
+            self.schedule_animation_frame()
+
+        self.lock.acquire(blocking=True)
+        display_scheduled = self.display_scheduled
+        if not self.display_scheduled:
+            self.display_scheduled = True
+            set_timeout(callback, REFRESH_RATE_SEC)
+        self.lock.release()
+
     def schedule_animation_frame(self):
         self.lock.acquire(blocking=True)
         self.needs_animation_frame = True
@@ -849,11 +863,7 @@ class Tab:
                 Task(self.js.run, req_url, body))
 
     def set_needs_animation_frame(self):
-        def callback():
-            self.display_scheduled = False
-            self.main_thread_runner.schedule_animation_frame()
-        if not self.display_scheduled:
-            set_timeout(callback, REFRESH_RATE_SEC)
+        self.main_thread_runner.schedule_display()
 
     def run_rendering_pipeline(self):
         # ...
