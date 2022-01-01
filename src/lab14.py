@@ -394,7 +394,7 @@ class Tab:
     def apply_scroll(self, scroll):
         self.scroll = scroll
 
-    `(self):
+    def set_needs_paint(self):
         self.needs_paint = True
 
     def set_needs_pipeline_update(self):
