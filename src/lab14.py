@@ -105,13 +105,14 @@ class JSContext:
         self.interp.export_function("getAttribute",
             self.getAttribute)
         self.interp.export_function("innerHTML_set", self.innerHTML_set)
+        self.interp.export_function("style_set", self.style_set)
         self.interp.export_function("XMLHttpRequest_send",
             self.XMLHttpRequest_send)
         self.interp.export_function("now",
             self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
-        with open("runtime12.js") as f:
+        with open("runtime14.js") as f:
             self.interp.evaljs(f.read())
 
         self.node_to_handle = {}
@@ -157,6 +158,11 @@ class JSContext:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
+        self.tab.set_needs_pipeline_update()
+
+    def style_set(self, handle, s):
+        elt = self.handle_to_node[handle]
+        elt.attributes["style"] = s;
         self.tab.set_needs_pipeline_update()
 
     def xhr_onload(self, out, handle):
@@ -208,21 +214,25 @@ def raster(display_list, canvas):
 def clamp_scroll(scroll, tab_height):
     return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
 
-def animate_style(old_style, new_style):
-    print('animate_style')
-    print(new_style)
+def animate_style(node, old_style, new_style, tab):
     if not old_style:
         return
     if not "transition" in old_style or not "transition" in new_style:
         return
-
     if not old_style["transition"] == "opacity" or not new_style["transition"] == "opacity":
         return
+    if old_style["opacity"] == new_style["opacity"]:
+        return
+    tab.animations[node] = start_opacity_animation(float(old_style["opacity"]), new_style, tab)
 
-    print("here!")
+ANIMATION_FRAME_COUNT = 300
 
-def style(node, rules):
-    print("style")
+def start_opacity_animation(old_opacity, new_style, tab):
+    new_opacity = float(new_style["opacity"])
+    change_per_frame = (new_opacity - old_opacity) / ANIMATION_FRAME_COUNT
+    return Animation("opacity", old_opacity, change_per_frame, new_style, tab)
+
+def style(node, rules, tab):
     old_style = None
     if hasattr(node, 'style'):
         old_style = node.style
@@ -245,9 +255,30 @@ def style(node, rules):
             computed_value = compute_style(node, property, value)
             node.style[property] = computed_value
     for child in node.children:
-        style(child, rules)
+        style(child, rules, tab)
 
-    animate_style(old_style, node.style)
+    animate_style(node, old_style, node.style, tab)
+
+class Animation:
+    def __init__(
+        self, property_name, old_value, change_per_frame, computed_style, tab):
+        self.property_name = property_name
+        self.old_value = old_value
+        self.change_per_frame = change_per_frame
+        self.computed_style = computed_style
+        self.tab = tab
+        self.frame_count = 0
+        tab.set_needs_animation_frame()
+
+    def animate(self):
+        self.frame_count += 1
+        self.computed_style[self.property_name] = \
+            self.old_value + self.change_per_frame * self.frame_count
+        needs_another_frame = self.frame_count < ANIMATION_FRAME_COUNT
+        if needs_another_frame:
+            self.tab.set_needs_paint()
+            self.tab.set_needs_animation_frame()
+        return needs_another_frame
 
 class Tab:
     def __init__(self, commit_func):
@@ -259,6 +290,7 @@ class Tab:
         self.needs_raf_callbacks = False
         self.display_scheduled = False
         self.needs_pipeline_update = False
+        self.needs_paint = False
         self.commit_func = commit_func
         if USE_BROWSER_THREAD:
             self.main_thread_runner = MainThreadRunner(self)
@@ -267,6 +299,7 @@ class Tab:
         self.main_thread_runner.start()
 
         self.time_in_style_layout_and_paint = 0.0
+        self.animations = {}
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -361,8 +394,12 @@ class Tab:
     def apply_scroll(self, scroll):
         self.scroll = scroll
 
+    `(self):
+        self.needs_paint = True
+
     def set_needs_pipeline_update(self):
         self.needs_pipeline_update = True
+        self.needs_paint = True
         self.set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
@@ -400,15 +437,26 @@ class Tab:
 
     def run_rendering_pipeline(self):
         timer = None
+
+        to_delete = []
+        for animation_key in self.animations:
+            if not self.animations[animation_key].animate():
+                to_delete.append(animation_key)
+
+        for key in to_delete:
+            del self.animations[key]
+
         if self.needs_pipeline_update:
             timer = Timer()
             timer.start()
+
             style(self.nodes, sorted(self.rules,
-                key=cascade_priority))
+                key=cascade_priority), self)
             self.document = DocumentLayout(self.nodes)
             self.document.layout()
-            self.display_list = []
 
+        if self.needs_paint:
+            self.display_list = []
             self.document.paint(self.display_list)
             if self.focus:
                 obj = [obj for obj in tree_to_list(self.document, [])
@@ -418,6 +466,7 @@ class Tab:
                 y = obj.y
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
+            self.needs_paint = False
 
         self.needs_pipeline_update = False
 
@@ -828,7 +877,6 @@ class Browser:
         if not self.tab_surface or \
                 self.active_tab_height != self.tab_surface.height():
             self.tab_surface = skia.Surface(WIDTH, self.active_tab_height)
-
         canvas = self.tab_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         raster(self.active_tab_display_list, canvas)

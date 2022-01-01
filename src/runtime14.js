@@ -11,6 +11,7 @@ Node.prototype.getAttribute = function(attr) {
     return call_python("getAttribute", this.handle, attr);
 }
 
+
 LISTENERS = {}
 
 function Event(type) {
@@ -35,6 +36,13 @@ Object.defineProperty(Node.prototype, 'innerHTML', {
         call_python("innerHTML_set", this.handle, s.toString());
     }
 });
+
+Object.defineProperty(Node.prototype, 'style', {
+    set: function(s) {
+        call_python("style_set", this.handle, s.toString());
+    }
+});
+
 
 Node.prototype.dispatchEvent = function(evt) {
     var type = evt.type;
