@@ -225,7 +225,7 @@ def animate_style(node, old_style, new_style, tab):
         return
     tab.animations[node] = start_opacity_animation(float(old_style["opacity"]), new_style, tab)
 
-ANIMATION_FRAME_COUNT = 300
+ANIMATION_FRAME_COUNT = 60
 
 def start_opacity_animation(old_opacity, new_style, tab):
     new_opacity = float(new_style["opacity"])
