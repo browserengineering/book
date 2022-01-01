@@ -327,7 +327,7 @@ class Tab:
             self.needs_raf_callbacks = False
             self.js.interp.evaljs("__runRAFHandlers()")
 
-        needs_commit = True # self.needs_pipeline_update
+        needs_commit = self.needs_pipeline_update
         self.run_rendering_pipeline()
 
         document_height = math.ceil(self.document.height)
