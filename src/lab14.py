@@ -254,10 +254,9 @@ def style(node, rules, tab):
         for property, value in pairs.items():
             computed_value = compute_style(node, property, value)
             node.style[property] = computed_value
+    animate_style(node, old_style, node.style, tab)
     for child in node.children:
         style(child, rules, tab)
-
-    animate_style(node, old_style, node.style, tab)
 
 class Animation:
     def __init__(
