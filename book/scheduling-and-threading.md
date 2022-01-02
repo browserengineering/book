@@ -758,20 +758,15 @@ acquire the lock before setting these thread-safe variables. (Ignore the
         def callback():
             self.lock.acquire(blocking=True)
             self.display_scheduled = False
+            self.needs_animation_frame = True
+            self.condition.notify_all()
             self.lock.release()
-            self.schedule_animation_frame()
 
         self.lock.acquire(blocking=True)
         display_scheduled = self.display_scheduled
         if not self.display_scheduled:
             self.display_scheduled = True
             set_timeout(callback, REFRESH_RATE_SEC)
-        self.lock.release()
-
-    def schedule_animation_frame(self):
-        self.lock.acquire(blocking=True)
-        self.needs_animation_frame = True
-        self.condition.notify_all()
         self.lock.release()
 
     def schedule_script_task(self, script):

@@ -472,8 +472,8 @@ class SingleThreadedTaskRunner:
     def schedule_scroll(self, scroll):
         self.tab.apply_scroll(scroll)
 
-    def schedule_animation_frame(self):
-        self.tab.run_animation_frame()
+    def schedule_display(self):
+        self.display_scheduled = True
 
     def schedule_script_task(self, script):
         script()
@@ -513,8 +513,9 @@ class MainThreadRunner:
         def callback():
             self.lock.acquire(blocking=True)
             self.display_scheduled = False
+            self.needs_animation_frame = True
+            self.condition.notify_all()
             self.lock.release()
-            self.schedule_animation_frame()
 
         self.lock.acquire(blocking=True)
         display_scheduled = self.display_scheduled
@@ -522,12 +523,6 @@ class MainThreadRunner:
             self.display_scheduled = True
             if USE_BROWSER_THREAD:
                 set_timeout(callback, REFRESH_RATE_SEC)
-        self.lock.release()
-
-    def schedule_animation_frame(self):
-        self.lock.acquire(blocking=True)
-        self.needs_animation_frame = True
-        self.condition.notify_all()
         self.lock.release()
 
     def schedule_script_task(self, script):
@@ -938,7 +933,10 @@ if __name__ == "__main__":
                     browser.handle_down()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
-        if not USE_BROWSER_THREAD and \
-            browser.tabs[browser.active_tab].tab.display_scheduled:
-            browser.render()
+        if not USE_BROWSER_THREAD:
+            active_runner = \
+                browser.tabs[browser.active_tab].tab.main_thread_runner
+            if active_runner.display_scheduled:
+                active_runner.display_scheduled = False
+                browser.render()
         browser.raster_and_draw()
