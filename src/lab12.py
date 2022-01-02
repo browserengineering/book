@@ -234,15 +234,6 @@ class Tab:
         return self.allowed_origins == None or \
             url_origin(url) in self.allowed_origins
 
-    def cookie_string(self):
-        origin = url_origin(self.history[-1])
-        cookie_string = ""
-        if not origin in self.cookies:
-            return cookie_string
-        for key, value in self.cookies[origin].items():
-            cookie_string += "&" + key + "=" + value
-        return cookie_string[1:]
-
     def script_run_wrapper(self, script, script_text):
         return Task(self.js.run, script, script_text)
 
@@ -880,10 +871,19 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Chapter 12 code')
+    parser.add_argument("url", type=str, help="URL to load")
+    parser.add_argument('--single_threaded', action="store_true", default=False,
+        help='Whether to run the browser without a browser thread')
+    args = parser.parse_args()
+
+    USE_BROWSER_THREAD = not args.single_threaded
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(sys.argv[1])
+    browser.load(args.url)
 
     event = sdl2.SDL_Event()
     while True:
