@@ -29,9 +29,7 @@ from lab6 import compute_style
 from lab6 import TagSelector, DescendantSelector
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
-from lab11 import get_font, linespace, parse_blend_mode, parse_color, \
-    SaveLayer, ClipRRect, DrawRRect, DrawText
-
+from lab11 import get_font, linespace, parse_blend_mode, parse_color
 class Timer:
     def __init__(self):
         self.time = None
@@ -59,17 +57,30 @@ def center_point(rect):
     return (rect.left() + (rect.right() - rect.left()) / 2,
         rect.top() + (rect.bottom() - rect.top()) / 2)
 
-class Transform:
+class DisplayItem:
+    def __init__(self, rect, needs_compositing=False):
+        self.rect = skia.Rect.MakeEmpty()
+        self.needs_compositing
+
+    def bounds(self):
+        return self.rect
+
+    def needs_compositing(self):
+        return self.needs_compositing
+
+class Transform(DisplayItem):
     def __init__(self, translation, rotation_degrees, rect, cmds,
         should_transform):
         self.rotation_degrees = rotation_degrees
         self.translation = translation
-        self.rect = rect
+        (self.center_x, self.center_y) = center_point(rect)
         self.cmds = cmds
         self.should_transform = should_transform
         assert translation == None or rotation_degrees == None
 
-    def execute(self,canvas):
+        super().__init__(self.compute_bounds(rect), should_transform)
+
+    def execute(self, canvas):
         if not self.should_transform:
             for cmd in self.cmds:
                 cmd.execute(canvas)            
@@ -81,28 +92,131 @@ class Transform:
                 cmd.execute(canvas)
             canvas.restore()
         else:
-            (center_x, center_y) = center_point(self.rect)
             canvas.save()
-            canvas.translate(center_x, center_y)
+            canvas.translate(self.center_x, self.center_y)
             canvas.rotate(self.rotation_degrees)
-            canvas.translate(-center_x, -center_y)
+            canvas.translate(-self.center_x, -self.center_y)
             
             for cmd in self.cmds:
                 cmd.execute(canvas)
 
             canvas.restore()
 
+    def should_composite(self):
+        return self.should_transform
 
-class DrawLine:
+    def compute_bounds(self, rect):
+        for cmd in self.cmds:
+            rect.join(cmd.bounds())
+        if not self.should_transform:
+            return rect
+        matrix = skia.Matrix()
+        if self.translation:
+            (x, y) = self.translation
+            matrix.setTranslate(x, y)
+        else:
+            matrix.setRotate(
+                self.rotation_degrees, self.center_x, self.center_y)
+        return matrix.mapRect(rect)
+
+class DrawRRect(DisplayItem):
+    def __init__(self, rect, radius, color):
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+        self.color = color
+        super().__init__(rect)
+
+    def execute(self, canvas):
+        sk_color = parse_color(self.color)
+        canvas.drawRRect(self.rrect,
+            paint=skia.Paint(Color=sk_color))
+
+class DrawText(DisplayItem):
+    def __init__(self, x1, y1, text, font, color):
+        self.left = x1
+        self.top = y1
+        self.right = x1 + font.measureText(text)
+        self.bottom = y1 - font.getMetrics().fAscent + font.getMetrics().fDescent
+        self.rect = \
+        self.font = font
+        self.text = text
+        self.color = color
+        super().__init__(skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
+
+    def execute(self, canvas):
+        draw_text(canvas, self.left, self.top,
+            self.text, self.font, self.color)
+
+    def __repr__(self):
+        return "DrawText(text={})".format(self.text)
+
+class DrawRect(DisplayItem):
+    def __init__(self, x1, y1, x2, y2, color):
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+        self.color = color
+        super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
+
+    def execute(self, canvas):
+        draw_rect(canvas,
+            self.left, self.top,
+            self.right, self.bottom,
+            fill=self.color, width=0)
+
+    def __repr__(self):
+        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
+            self.left, self.top, self.right, self.bottom, self.color)
+
+class ClipRRect(DisplayItem):
+    def __init__(self, rect, radius, cmds, should_clip=True):
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+        self.cmds = cmds
+        self.should_clip = should_clip
+        super().__init__(rect)
+
+    def execute(self, canvas):
+        if self.should_clip:
+            canvas.save()
+            canvas.clipRRect(self.rrect)
+
+        for cmd in self.cmds:
+            cmd.execute(canvas)
+
+        if self.should_clip:
+            canvas.restore()
+
+class DrawLine(DisplayItem):
     def __init__(self, x1, y1, x2, y2):
-        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
         self.x1 = x1
         self.y1 = y1
         self.x2 = x2
         self.y2 = y2
+        super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
 
     def execute(self, canvas):
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
+
+class SaveLayer(DisplayItem):
+    def __init__(self, sk_paint, cmds,
+            should_save=True, should_paint_cmds=True, needs_animation=False):
+        self.should_save = should_save
+        self.should_paint_cmds = should_paint_cmds
+        self.sk_paint = sk_paint
+        self.cmds = cmds
+        rect = skia.Rect.MakeEmpty()
+        for cmd in self.cmds:
+            rect.join(cmd.rect)
+        super().__init__(rect, needs_animation)
+
+    def execute(self, canvas):
+        if self.should_save:
+            canvas.saveLayer(paint=self.sk_paint)
+        if self.should_paint_cmds:
+            for cmd in self.cmds:
+                cmd.execute(canvas)
+        if self.should_save:
+            canvas.restore()
 
 def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
@@ -794,6 +908,20 @@ class Animation:
             self.tab.set_needs_animation_frame()
         return needs_another_frame
 
+class CompositedLayer:
+    def __init__(self):
+        self.display_list = []
+        self.bounds = skia.Rect.MakeEmpty()
+
+    def overlaps(rect):
+        return skia.Rect.Intersects(self.bounds, rect)
+
+def composite(display_list):
+    composited_layers = []
+    for display_item in display_list:
+        if needs_compositing(display_item):
+            pass
+
 class Tab:
     def __init__(self, commit_func):
         self.history = []
@@ -814,6 +942,8 @@ class Tab:
 
         self.time_in_style_layout_and_paint = 0.0
         self.animations = {}
+        self.display_list = []
+        self.surfaces = []
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -981,6 +1111,8 @@ class Tab:
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
             self.needs_paint = False
+
+#            self.surfaces = composite(self.display_list)
 
         self.needs_pipeline_update = False
 
