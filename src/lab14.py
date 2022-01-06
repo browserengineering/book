@@ -30,6 +30,8 @@ from lab6 import TagSelector, DescendantSelector
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import get_font, linespace, parse_blend_mode, parse_color
+from lab12 import raster
+
 class Timer:
     def __init__(self):
         self.time = None
@@ -78,7 +80,7 @@ class Transform(DisplayItem):
         self.should_transform = should_transform
         assert translation == None or rotation_degrees == None
 
-        super().__init__(self.compute_bounds(rect), should_transform)
+        super().__init__(self.compute_bounds(rect))
 
     def execute(self, canvas):
         if not self.should_transform:
@@ -101,9 +103,6 @@ class Transform(DisplayItem):
                 cmd.execute(canvas)
 
             canvas.restore()
-
-    def should_composite(self):
-        return self.should_transform
 
     def compute_bounds(self, rect):
         for cmd in self.cmds:
@@ -354,7 +353,6 @@ class CSSParser:
                 else:
                     break
         return rules
-
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -909,18 +907,31 @@ class Animation:
         return needs_another_frame
 
 class CompositedLayer:
-    def __init__(self):
-        self.display_list = []
-        self.bounds = skia.Rect.MakeEmpty()
+    def __init__(self, display_item=None, can_extend=True):
+        if display_item:
+            self.display_list = [display_item]
+            self.bounds = display_item.bounds()
+        else:
+            self.display_list = []
+            self.bounds = skia.Rect.MakeEmpty()
+        self.can_extend = can_extend
+        self.surface = None
+
+    def append(self, display_item):
+        assert self.can_extend
+        self.bounds.join(display_item.bounds())
+        self.display_list.append(display_item)
 
     def overlaps(rect):
         return skia.Rect.Intersects(self.bounds, rect)
 
-def composite(display_list):
-    composited_layers = []
-    for display_item in display_list:
-        if needs_compositing(display_item):
-            pass
+    def raster(self):
+        irect = self.bounds.roundOut()
+        print(irect)
+        self.surface = skia.Surface(irect.width(), irect.height())
+        canvas = self.surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+        raster(self.display_list, canvas)
 
 class Tab:
     def __init__(self, commit_func):
@@ -943,7 +954,6 @@ class Tab:
         self.time_in_style_layout_and_paint = 0.0
         self.animations = {}
         self.display_list = []
-        self.surfaces = []
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -1111,8 +1121,6 @@ class Tab:
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
             self.needs_paint = False
-
-#            self.surfaces = composite(self.display_list)
 
         self.needs_pipeline_update = False
 
@@ -1394,7 +1402,7 @@ class Browser:
             ct=skia.kRGBA_8888_ColorType,
             at=skia.kUnpremul_AlphaType))
         self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
-        self.tab_surface = None
+        self.composited_layers = None
 
         self.tabs = []
         self.active_tab = None
@@ -1422,6 +1430,7 @@ class Browser:
 
         self.active_tab_height = None
         self.active_tab_display_list = None
+        self.composited_layers
 
     def render(self):
         assert not USE_BROWSER_THREAD
@@ -1439,7 +1448,23 @@ class Browser:
     def set_needs_draw(self):
         self.needs_draw = True
 
-    def raster_and_draw(self):
+    def composite(self):
+        self.composited_layers = [CompositedLayer(can_extend=True)]
+        for display_item in self.active_tab_display_list:
+            if display_item.needs_compositing():
+                self.composited_layers.append(CompositedLayer(
+                    display_item, can_extend=False))
+            else:
+                for composited_layer in reversed(self.composited_layers):
+                    if composited_layer.can_extend:
+                        composited_layer.append(display_item)
+                        break
+                    elif composited_layer.overlaps(display_item.bounds()):
+                        self.composited_layers.append(CompositedLayer(
+                            display_item, can_extend=True))
+                        break
+
+    def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
         timer = None
         draw_timer = None
@@ -1449,6 +1474,7 @@ class Browser:
         if self.needs_chrome_raster:
             self.raster_chrome()
         if self.needs_tab_raster:
+            self.composite()
             self.raster_tab()
         if self.needs_draw:
             draw_timer = Timer()
@@ -1520,12 +1546,8 @@ class Browser:
         self.tabs.append(new_tab)
 
     def raster_tab(self):
-        if not self.tab_surface or \
-                self.active_tab_height != self.tab_surface.height():
-            self.tab_surface = skia.Surface(WIDTH, self.active_tab_height)
-        canvas = self.tab_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-        raster(self.active_tab_display_list, canvas)
+        for composited_layer in self.composited_layers:
+            composited_layer.raster()
 
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
@@ -1571,14 +1593,15 @@ class Browser:
         canvas = self.root_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         
-        if self.tab_surface:
-            tab_rect = skia.Rect.MakeLTRB(0, CHROME_PX, WIDTH, HEIGHT)
-            tab_offset = CHROME_PX - self.tabs[self.active_tab].scroll
-            canvas.save()
-            canvas.clipRect(tab_rect)
-            canvas.translate(0, tab_offset)
-            self.tab_surface.draw(canvas, 0, 0)
-            canvas.restore()
+        if self.composited_layers:
+            for composited_layer in self.composited_layers:
+                layer_rect = composited_layer.bounds
+                offset = CHROME_PX - self.tabs[self.active_tab].scroll
+                canvas.save()
+                canvas.clipRect(layer_rect)
+                canvas.translate(0, offset)
+                composited_layer.surface.draw(canvas, 0, 0)
+                canvas.restore()
 
         chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
         canvas.save()
@@ -1640,4 +1663,4 @@ if __name__ == "__main__":
         if not USE_BROWSER_THREAD and \
             browser.tabs[browser.active_tab].tab.display_scheduled:
             browser.render()
-        browser.raster_and_draw()
+        browser.composite_raster_draw()
