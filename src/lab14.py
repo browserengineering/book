@@ -61,14 +61,14 @@ def center_point(rect):
 
 class DisplayItem:
     def __init__(self, rect, needs_compositing=False):
-        self.rect = skia.Rect.MakeEmpty()
-        self.needs_compositing
+        self.rect = rect if rect else skia.Rect.MakeEmpty()
+        self.composited=needs_compositing
 
     def bounds(self):
         return self.rect
 
     def needs_compositing(self):
-        return self.needs_compositing
+        return self.composited
 
 class Transform(DisplayItem):
     def __init__(self, translation, rotation_degrees, rect, cmds,
@@ -81,6 +81,8 @@ class Transform(DisplayItem):
         assert translation == None or rotation_degrees == None
 
         super().__init__(self.compute_bounds(rect))
+        if should_transform:
+            print('transform bounds: ' + str(self.bounds()))
 
     def execute(self, canvas):
         if not self.should_transform:
@@ -116,7 +118,12 @@ class Transform(DisplayItem):
         else:
             matrix.setRotate(
                 self.rotation_degrees, self.center_x, self.center_y)
+        print('transform bounds: ' + str(matrix.mapRect(rect)))
+
         return matrix.mapRect(rect)
+
+    def __repr__(self):
+        return "Transform()"
 
 class DrawRRect(DisplayItem):
     def __init__(self, rect, radius, color):
@@ -907,15 +914,23 @@ class Animation:
         return needs_another_frame
 
 class CompositedLayer:
-    def __init__(self, display_item=None, can_extend=True):
+    def __init__(self, display_item=None, can_extend=True, surface=None):
+        print('new composited layer')
+        if surface:
+            self.bounds = skia.Rect.MakeLTRB(
+                0, 0, surface.width(), surface.height())
         if display_item:
             self.display_list = [display_item]
-            self.bounds = display_item.bounds()
+            if not surface:
+                print('from bounds')
+                self.bounds = display_item.bounds()
+
         else:
             self.display_list = []
-            self.bounds = skia.Rect.MakeEmpty()
+            if not surface:
+                self.bounds = skia.Rect.MakeEmpty()
         self.can_extend = can_extend
-        self.surface = None
+        self.surface = surface
 
     def append(self, display_item):
         assert self.can_extend
@@ -927,8 +942,9 @@ class CompositedLayer:
 
     def raster(self):
         irect = self.bounds.roundOut()
-        print(irect)
-        self.surface = skia.Surface(irect.width(), irect.height())
+        print("raster: " + str(irect))
+        if not self.surface:
+            self.surface = skia.Surface(irect.width(), irect.height())
         canvas = self.surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         raster(self.display_list, canvas)
@@ -1121,6 +1137,7 @@ class Tab:
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
             self.needs_paint = False
+            print('painted')
 
         self.needs_pipeline_update = False
 
@@ -1430,7 +1447,8 @@ class Browser:
 
         self.active_tab_height = None
         self.active_tab_display_list = None
-        self.composited_layers
+        self.composited_layers = []
+        self.tab_surface = None
 
     def render(self):
         assert not USE_BROWSER_THREAD
@@ -1449,12 +1467,21 @@ class Browser:
         self.needs_draw = True
 
     def composite(self):
-        self.composited_layers = [CompositedLayer(can_extend=True)]
+        print('composite')
+        if not self.tab_surface or \
+                self.active_tab_height != self.tab_surface.height():
+            self.tab_surface = skia.Surface(WIDTH, self.active_tab_height)
+
+        self.composited_layers = [CompositedLayer(can_extend=True,
+            surface=self.tab_surface)]
         for display_item in self.active_tab_display_list:
             if display_item.needs_compositing():
+                print("needs compositing: " + str(display_item) + \
+                    " bounds:" + str(display_item.bounds()))
                 self.composited_layers.append(CompositedLayer(
                     display_item, can_extend=False))
             else:
+                print("merge if possible: " + str(display_item))
                 for composited_layer in reversed(self.composited_layers):
                     if composited_layer.can_extend:
                         composited_layer.append(display_item)
