@@ -888,10 +888,6 @@ def set_timeout(func, sec):
     t = threading.Timer(sec, func)
     t.start()
 
-def raster(display_list, canvas):
-    for cmd in display_list:
-        cmd.execute(canvas)
-
 def clamp_scroll(scroll, tab_height):
     return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
 
@@ -961,7 +957,8 @@ class Animation:
         return needs_another_frame
 
 class CompositedLayer:
-    def __init__(self, display_item=None, can_extend=True, surface=None):
+    def __init__(self, display_item=None, can_extend=True, surface=None,
+        surface_offset=(0, 0)):
         print('new composited layer')
         if surface:
             self.bounds = skia.Rect.MakeLTRB(
@@ -977,6 +974,7 @@ class CompositedLayer:
                 self.bounds = skia.Rect.MakeEmpty()
         self.can_extend = can_extend
         self.surface = surface
+        self.surface_offset = surface_offset
 
     def append(self, display_item):
         assert self.can_extend
@@ -988,12 +986,14 @@ class CompositedLayer:
 
     def raster(self):
         irect = self.bounds.roundOut()
-#        print("raster: " + str(irect))
         if not self.surface:
             self.surface = skia.Surface(irect.width(), irect.height())
         canvas = self.surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
-        raster(self.display_list, canvas)
+        (surface_offset_x, surface_offset_y) = self.surface_offset
+        canvas.translate(-surface_offset_x, -surface_offset_y)
+        for cmd in self.display_list:
+            cmd.execute(canvas)
 
 class Tab:
     def __init__(self, commit_func):
@@ -1153,7 +1153,7 @@ class Tab:
 
         self.run_rendering_pipeline()
 
-        self.print_display_list()
+#        self.print_display_list()
         document_bounds = self.compute_document_bounds()
         clamped_scroll = clamp_scroll(self.scroll,
             document_bounds.height())
@@ -1536,10 +1536,11 @@ class Browser:
             self.tab_surface = skia.Surface(
                 self.active_tab_bounds.width(),
                 self.active_tab_bounds.height())
-        print("tab bounds: " + str(self.active_tab_bounds))
 
         self.composited_layers = [CompositedLayer(can_extend=True,
-            surface=self.tab_surface)]
+            surface=self.tab_surface,
+            surface_offset=(
+                self.active_tab_bounds.left(), self.active_tab_bounds.top()))]
         for display_item in self.active_tab_display_list:
             if display_item.needs_compositing():
 #                print("needs compositing: " + str(display_item) + \
@@ -1689,9 +1690,11 @@ class Browser:
         if self.composited_layers:
             for composited_layer in self.composited_layers:
                 layer_rect = composited_layer.bounds
-                offset = CHROME_PX - self.tabs[self.active_tab].scroll
+                offset_y = CHROME_PX - self.tabs[self.active_tab].scroll + \
+                    self.active_tab_bounds.top()
+                offset_x = self.active_tab_bounds.left()
                 canvas.save()
-                canvas.translate(0, offset)
+                canvas.translate(offset_x, offset_y)
                 canvas.clipRect(layer_rect)
                 composited_layer.surface.draw(canvas, 0, 0)
                 canvas.restore()
