@@ -79,17 +79,23 @@ class DisplayItem:
     def is_noop(self):
         return self.noop
 
-    def repr_recursive(self, indent=0):
+    def repr_recursive(self, indent=0, include_noop=False):
         inner = ""
-        if self.is_noop():
+        if not include_noop and self.is_noop():
             for cmd in self.cmds:
-               inner += cmd.repr_recursive(indent)
+               inner += cmd.repr_recursive(indent, include_noop)
             return inner
         else:
             for cmd in self.cmds:
-                inner += cmd.repr_recursive(indent + 2)
-            return " " * indent + self.__repr__() + ": bounds={}\n{}".format(
-                self.bounds(), inner)
+                inner += cmd.repr_recursive(indent + 2, include_noop)
+            return ("{indentation}{repr}: bounds={bounds}, " +
+                "needs_compositing={needs_compositing}{noop}\n{inner} ").format(
+                indentation=" " * indent,
+                repr=self.__repr__(),
+                bounds=self.bounds(),
+                needs_compositing=self.needs_compositing(),
+                inner=inner,
+                noop=(" <no-op>" if self.is_noop() else ""))
 
 class Transform(DisplayItem):
     def __init__(self, translation, rotation_degrees, rect, cmds,
@@ -140,7 +146,7 @@ class Transform(DisplayItem):
 
     def __repr__(self):
         if self.is_noop():
-            return "<no-op>"
+            return "Transform(<no-op>)"
         elif self.translation:
             return "Transform(translate({}, {}))".format(self.translation)
         else:
@@ -204,7 +210,8 @@ class DrawRect(DisplayItem):
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, cmds, should_clip=True):
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        super().__init__(rect, False, cmds, not should_clip)
+        super().__init__(
+            ClipRRect.compute_bounds(rect, cmds), False, cmds, not should_clip)
 
     def execute(self, canvas):
         if not self.is_noop():
@@ -217,11 +224,16 @@ class ClipRRect(DisplayItem):
         if not self.is_noop():
             canvas.restore()
 
+    def compute_bounds(rect, cmds):
+        for cmd in cmds:
+            rect.join(cmd.bounds())
+        return rect
+
     def __repr__(self):
         if self.is_noop():
-            return "<no-op>"
+            return "ClipRRect(<no-op>)"
         else:
-            return "ClipRRect()"
+            return "ClipRRect({})".format(str(self.rrect))
 
 class DrawLine(DisplayItem):
     def __init__(self, x1, y1, x2, y2):
@@ -255,7 +267,7 @@ class SaveLayer(DisplayItem):
 
     def __repr__(self):
         if self.is_noop():
-            return "<no-op>"
+            return "SaveLayer(<no-op>)"
         else:
             return "SaveLayer(alpha={})".format(self.sk_paint.getAlphaf())
 
@@ -1132,7 +1144,7 @@ class Tab:
         print("Display list:")
         out = ""
         for display_item in self.display_list:
-            out += display_item.repr_recursive(2)
+            out += display_item.repr_recursive(indent=2, include_noop=True)
         print(out)
 
     def run_animation_frame(self):
