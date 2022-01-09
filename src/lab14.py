@@ -60,9 +60,12 @@ def center_point(rect):
         rect.top() + (rect.bottom() - rect.top()) / 2)
 
 class DisplayItem:
-    def __init__(self, rect, needs_compositing=False):
+    def __init__(self, rect, needs_compositing=False, cmds=[],
+        is_noop=False):
         self.rect = rect if rect else skia.Rect.MakeEmpty()
         self.composited=needs_compositing
+        self.cmds = cmds
+        self.noop = is_noop
 
     def bounds(self):
         return self.rect
@@ -70,29 +73,43 @@ class DisplayItem:
     def needs_compositing(self):
         return self.composited
 
+    def get_cmds(self):
+        return self.cmds
+
+    def is_noop(self):
+        return self.noop
+
+    def repr_recursive(self, indent=0):
+        inner = ""
+        if self.is_noop():
+            for cmd in self.cmds:
+               inner += cmd.repr_recursive(indent)
+            return inner
+        else:
+            for cmd in self.cmds:
+                inner += cmd.repr_recursive(indent + 2)
+            return " " * indent + self.__repr__() + ":\n{}".format(inner)
+
 class Transform(DisplayItem):
     def __init__(self, translation, rotation_degrees, rect, cmds,
         should_transform):
         self.rotation_degrees = rotation_degrees
         self.translation = translation
         (self.center_x, self.center_y) = center_point(rect)
-        self.cmds = cmds
-        self.should_transform = should_transform
         assert translation == None or rotation_degrees == None
 
-        super().__init__(self.compute_bounds(rect))
-        if should_transform:
-            print('transform bounds: ' + str(self.bounds()))
+        my_bounds = self.compute_bounds(rect, cmds, should_transform)
+        super().__init__(my_bounds, False, cmds, not should_transform)
 
     def execute(self, canvas):
-        if not self.should_transform:
-            for cmd in self.cmds:
+        if self.is_noop():
+            for cmd in self.get_cmds():
                 cmd.execute(canvas)            
         elif self.translation:
             (x, y) = self.translation
             canvas.save()
             canvas.translate(x, y)
-            for cmd in self.cmds:
+            for cmd in self.get_cmds():
                 cmd.execute(canvas)
             canvas.restore()
         else:
@@ -106,10 +123,10 @@ class Transform(DisplayItem):
 
             canvas.restore()
 
-    def compute_bounds(self, rect):
-        for cmd in self.cmds:
+    def compute_bounds(self, rect, cmds, should_transform):
+        for cmd in cmds:
             rect.join(cmd.bounds())
-        if not self.should_transform:
+        if not should_transform:
             return rect
         matrix = skia.Matrix()
         if self.translation:
@@ -121,7 +138,12 @@ class Transform(DisplayItem):
         return matrix.mapRect(rect)
 
     def __repr__(self):
-        return "Transform()"
+        if self.is_noop():
+            return "<no-op>"
+        elif self.translation:
+            return "Transform(translate({}, {}))".format(self.translation)
+        else:
+            return "Transform(rotate({}))".format(self.rotation_degrees)
 
 class DrawRRect(DisplayItem):
     def __init__(self, rect, radius, color):
@@ -133,6 +155,12 @@ class DrawRRect(DisplayItem):
         sk_color = parse_color(self.color)
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=sk_color))
+
+    def print(self, indent=0):
+        return " " * indent + self.__repr__()
+
+    def __repr__(self):
+        return "DrawRRect({})".format(str(self.rrect))
 
 class DrawText(DisplayItem):
     def __init__(self, x1, y1, text, font, color):
@@ -175,20 +203,24 @@ class DrawRect(DisplayItem):
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, cmds, should_clip=True):
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.cmds = cmds
-        self.should_clip = should_clip
-        super().__init__(rect)
+        super().__init__(rect, False, cmds, not should_clip)
 
     def execute(self, canvas):
-        if self.should_clip:
+        if not self.is_noop():
             canvas.save()
             canvas.clipRRect(self.rrect)
 
         for cmd in self.cmds:
             cmd.execute(canvas)
 
-        if self.should_clip:
+        if not self.is_noop():
             canvas.restore()
+
+    def __repr__(self):
+        if self.is_noop():
+            return "<no-op>"
+        else:
+            return "ClipRRect()"
 
 class DrawLine(DisplayItem):
     def __init__(self, x1, y1, x2, y2):
@@ -204,23 +236,27 @@ class DrawLine(DisplayItem):
 class SaveLayer(DisplayItem):
     def __init__(self, sk_paint, cmds,
             should_save=True, should_paint_cmds=True, needs_animation=False):
-        self.should_save = should_save
         self.should_paint_cmds = should_paint_cmds
         self.sk_paint = sk_paint
-        self.cmds = cmds
         rect = skia.Rect.MakeEmpty()
-        for cmd in self.cmds:
+        for cmd in cmds:
             rect.join(cmd.rect)
-        super().__init__(rect, needs_animation)
+        super().__init__(rect, needs_animation, cmds, not should_save)
 
     def execute(self, canvas):
-        if self.should_save:
+        if not self.is_noop():
             canvas.saveLayer(paint=self.sk_paint)
         if self.should_paint_cmds:
-            for cmd in self.cmds:
+            for cmd in self.get_cmds():
                 cmd.execute(canvas)
-        if self.should_save:
+        if not self.is_noop():
             canvas.restore()
+
+    def __repr__(self):
+        if self.is_noop():
+            return "<no-op>"
+        else:
+            return "SaveLayer(alpha={})".format(self.sk_paint.getAlphaf())
 
 def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
@@ -920,7 +956,7 @@ class CompositedLayer:
         if display_item:
             self.display_list = [display_item]
             if not surface:
-                print('from bounds')
+#                print('from bounds')
                 self.bounds = display_item.bounds()
 
         else:
@@ -940,7 +976,7 @@ class CompositedLayer:
 
     def raster(self):
         irect = self.bounds.roundOut()
-        print("raster: " + str(irect))
+#        print("raster: " + str(irect))
         if not self.surface:
             self.surface = skia.Surface(irect.width(), irect.height())
         canvas = self.surface.getCanvas()
@@ -1084,9 +1120,19 @@ class Tab:
         self.set_needs_animation_frame()
 
     def compute_document_bounds(self):
-        rect = skia.IRect.MakeEmpty()
+#        print('compute_document_bounds')
+        rect = skia.Rect.MakeEmpty()
         for display_item in self.display_list:
+#            print("   " + str(display_item) + " " + str(display_item.bounds()))
             rect.join(display_item.bounds())
+        return rect.roundOut()
+
+    def print_display_list(self):
+        print("Display list:")
+        out = ""
+        for display_item in self.display_list:
+            out += display_item.repr_recursive(2)
+        print(out)
 
     def run_animation_frame(self):
         if self.needs_raf_callbacks:
@@ -1095,7 +1141,10 @@ class Tab:
 
         self.run_rendering_pipeline()
 
-        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        self.print_display_list()
+        document_bounds = self.compute_document_bounds()
+        clamped_scroll = clamp_scroll(self.scroll,
+            document_bounds.height())
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
@@ -1103,7 +1152,7 @@ class Tab:
         self.commit_func(
             self.url, clamped_scroll if self.scroll_changed_in_tab \
                 else None, 
-            self.compute_document_bounds(),
+            document_bounds,
             self.display_list)
         self.scroll_changed_in_tab = False
 
@@ -1139,7 +1188,6 @@ class Tab:
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
             self.needs_paint = False
-            print('painted')
 
         self.needs_pipeline_update = False
 
@@ -1469,25 +1517,25 @@ class Browser:
         self.needs_draw = True
 
     def composite(self):
-        print('composite')
+#        print('composite')
         if not self.tab_surface \
             or self.active_tab_bounds.height() != self.tab_surface.height() \
-            or self.active_tab_bounds.width() != self.tab_surface.width()
+            or self.active_tab_bounds.width() != self.tab_surface.width():
             self.tab_surface = skia.Surface(
                 self.active_tab_bounds.width(),
                 self.active_tab_bounds.height())
-        print("tab bounds: " + str(self.active_tab_bounds))
+#        print("tab bounds: " + str(self.active_tab_bounds))
 
         self.composited_layers = [CompositedLayer(can_extend=True,
             surface=self.tab_surface)]
         for display_item in self.active_tab_display_list:
             if display_item.needs_compositing():
-                print("needs compositing: " + str(display_item) + \
-                    " bounds:" + str(display_item.bounds()))
+#                print("needs compositing: " + str(display_item) + \
+#                    " bounds:" + str(display_item.bounds()))
                 self.composited_layers.append(CompositedLayer(
                     display_item, can_extend=False))
             else:
-                print("merge if possible: " + str(display_item))
+#                print("merge if possible: " + str(display_item))
                 for composited_layer in reversed(self.composited_layers):
                     if composited_layer.can_extend:
                         composited_layer.append(display_item)
