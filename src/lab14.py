@@ -106,7 +106,7 @@ class Transform(DisplayItem):
         assert translation == None or rotation_degrees == None
 
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
-        super().__init__(my_bounds, False, cmds, not should_transform)
+        super().__init__(my_bounds, should_transform, cmds, not should_transform)
 
     def execute(self, canvas):
         if self.is_noop():
@@ -958,12 +958,13 @@ class Animation:
 
 class CompositedLayer:
     def __init__(self, display_item=None, can_extend=True, surface=None,
-        surface_offset=(0, 0)):
+        surface_offset=(0, 0), draw_offset=(0, 0)):
         print('new composited layer')
         if surface:
             self.bounds = skia.Rect.MakeLTRB(
                 0, 0, surface.width(), surface.height())
         if display_item:
+            print('  display item: ' + str(display_item))
             self.display_list = [display_item]
             if not surface:
                 self.bounds = display_item.bounds()
@@ -975,14 +976,23 @@ class CompositedLayer:
         self.can_extend = can_extend
         self.surface = surface
         self.surface_offset = surface_offset
+        self.draw_offset = draw_offset
 
     def append(self, display_item):
         assert self.can_extend
         self.bounds.join(display_item.bounds())
         self.display_list.append(display_item)
 
-    def overlaps(rect):
+    def overlaps(self, rect):
         return skia.Rect.Intersects(self.bounds, rect)
+
+    def draw(self, canvas):
+        canvas.save()
+        (offset_x, offset_y) = self.draw_offset
+        canvas.translate(offset_x, offset_y)
+        canvas.clipRect(self.bounds)
+        self.surface.draw(canvas, 0, 0)
+        canvas.restore()
 
     def raster(self):
         irect = self.bounds.roundOut()
@@ -992,8 +1002,13 @@ class CompositedLayer:
         canvas.clear(skia.ColorWHITE)
         (surface_offset_x, surface_offset_y) = self.surface_offset
         canvas.translate(-surface_offset_x, -surface_offset_y)
-        for cmd in self.display_list:
-            cmd.execute(canvas)
+        if self.can_extend:
+            for cmd in self.display_list:
+                cmd.execute(canvas)
+        else:
+            assert len(self.display_list) == 1
+            for cmd in self.display_list[0].get_cmds():
+                cmd.execute(canvas)
 
 class Tab:
     def __init__(self, commit_func):
@@ -1528,8 +1543,9 @@ class Browser:
     def set_needs_draw(self):
         self.needs_draw = True
 
+
     def composite(self):
-#        print('composite')
+        print('compositing...')
         if not self.tab_surface \
             or self.active_tab_bounds.height() != self.tab_surface.height() \
             or self.active_tab_bounds.width() != self.tab_surface.width():
@@ -1537,26 +1553,38 @@ class Browser:
                 self.active_tab_bounds.width(),
                 self.active_tab_bounds.height())
 
+        draw_offset_x = self.active_tab_bounds.left()
+        draw_offset_y = CHROME_PX - self.tabs[self.active_tab].scroll + \
+            self.active_tab_bounds.top()
+
         self.composited_layers = [CompositedLayer(can_extend=True,
             surface=self.tab_surface,
             surface_offset=(
-                self.active_tab_bounds.left(), self.active_tab_bounds.top()))]
-        for display_item in self.active_tab_display_list:
+                self.active_tab_bounds.left(), self.active_tab_bounds.top()),
+            draw_offset=(
+                draw_offset_x, draw_offset_y))]
+
+        Browser.composite_internal(
+            self.composited_layers, self.active_tab_display_list)
+
+    def composite_internal(composited_layers, display_list):
+        for display_item in display_list:
             if display_item.needs_compositing():
-#                print("needs compositing: " + str(display_item) + \
-#                    " bounds:" + str(display_item.bounds()))
-                self.composited_layers.append(CompositedLayer(
+                print("need causing compositing: " + str(display_item))
+                composited_layers.append(CompositedLayer(
                     display_item, can_extend=False))
             else:
-#                print("merge if possible: " + str(display_item))
-                for composited_layer in reversed(self.composited_layers):
+                for composited_layer in reversed(composited_layers):
                     if composited_layer.can_extend:
                         composited_layer.append(display_item)
                         break
                     elif composited_layer.overlaps(display_item.bounds()):
-                        self.composited_layers.append(CompositedLayer(
+                        print('overlap causing compositing:  ' + str(display_item))
+                        composited_layers.append(CompositedLayer(
                             display_item, can_extend=True))
                         break
+#            Browser.composite_internal(
+#                composited_layers, display_item.get_cmds())
 
     def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
@@ -1689,15 +1717,7 @@ class Browser:
         
         if self.composited_layers:
             for composited_layer in self.composited_layers:
-                layer_rect = composited_layer.bounds
-                offset_y = CHROME_PX - self.tabs[self.active_tab].scroll + \
-                    self.active_tab_bounds.top()
-                offset_x = self.active_tab_bounds.left()
-                canvas.save()
-                canvas.translate(offset_x, offset_y)
-                canvas.clipRect(layer_rect)
-                composited_layer.surface.draw(canvas, 0, 0)
-                canvas.restore()
+                composited_layer.draw(canvas)
 
         chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
         canvas.save()
