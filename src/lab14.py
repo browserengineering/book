@@ -118,8 +118,6 @@ class Transform(DisplayItem):
         else:
             matrix.setRotate(
                 self.rotation_degrees, self.center_x, self.center_y)
-        print('transform bounds: ' + str(matrix.mapRect(rect)))
-
         return matrix.mapRect(rect)
 
     def __repr__(self):
@@ -1085,6 +1083,11 @@ class Tab:
         self.needs_raf_callbacks = True
         self.set_needs_animation_frame()
 
+    def compute_document_bounds(self):
+        rect = skia.IRect.MakeEmpty()
+        for display_item in self.display_list:
+            rect.join(display_item.bounds())
+
     def run_animation_frame(self):
         if self.needs_raf_callbacks:
             self.needs_raf_callbacks = False
@@ -1092,7 +1095,6 @@ class Tab:
 
         self.run_rendering_pipeline()
 
-        document_height = math.ceil(self.document.height)
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
@@ -1101,7 +1103,7 @@ class Tab:
         self.commit_func(
             self.url, clamped_scroll if self.scroll_changed_in_tab \
                 else None, 
-            document_height,
+            self.compute_document_bounds(),
             self.display_list)
         self.scroll_changed_in_tab = False
 
@@ -1373,14 +1375,14 @@ class TabWrapper:
             Task(self.tab.load, url, body))
         self.browser.set_needs_chrome_raster()
 
-    def commit(self, url, scroll, tab_height, display_list):
+    def commit(self, url, scroll, tab_bounds, display_list):
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
         self.url = url
         if scroll != None:
             self.scroll = scroll
-        self.browser.active_tab_height = tab_height
+        self.browser.active_tab_bounds = tab_bounds
         self.browser.active_tab_display_list = display_list.copy()
         self.browser.set_needs_tab_raster()
         self.browser.compositor_lock.release()
@@ -1445,7 +1447,7 @@ class Browser:
         self.needs_chrome_raster = True
         self.needs_draw = True
 
-        self.active_tab_height = None
+        self.active_tab_bound = None
         self.active_tab_display_list = None
         self.composited_layers = []
         self.tab_surface = None
@@ -1468,9 +1470,13 @@ class Browser:
 
     def composite(self):
         print('composite')
-        if not self.tab_surface or \
-                self.active_tab_height != self.tab_surface.height():
-            self.tab_surface = skia.Surface(WIDTH, self.active_tab_height)
+        if not self.tab_surface \
+            or self.active_tab_bounds.height() != self.tab_surface.height() \
+            or self.active_tab_bounds.width() != self.tab_surface.width()
+            self.tab_surface = skia.Surface(
+                self.active_tab_bounds.width(),
+                self.active_tab_bounds.height())
+        print("tab bounds: " + str(self.active_tab_bounds))
 
         self.composited_layers = [CompositedLayer(can_extend=True,
             surface=self.tab_surface)]
@@ -1517,13 +1523,13 @@ class Browser:
 
     def handle_down(self):
         self.compositor_lock.acquire(blocking=True)
-        if not self.active_tab_height:
+        if not self.active_tab_bounds:
             return
         active_tab = self.tabs[self.active_tab]
         active_tab.schedule_scroll(
             clamp_scroll(
                 active_tab.scroll + SCROLL_STEP,
-                self.active_tab_height))
+                self.active_tab_bounds.height()))
         self.set_needs_draw()
         self.compositor_lock.release()
 
