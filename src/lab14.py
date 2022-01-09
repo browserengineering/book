@@ -1534,9 +1534,9 @@ class Browser:
         if not self.tab_surface \
             or self.active_tab_bounds.height() != self.tab_surface.height() \
             or self.active_tab_bounds.width() != self.tab_surface.width():
-            self.tab_surface = skia.Surface(
-                self.active_tab_bounds.width(),
-                self.active_tab_bounds.height())
+            self.tab_surface = skia.Surface(WIDTH, 800)
+#                self.active_tab_bounds.width(),
+#                self.active_tab_bounds.height())
 #        print("tab bounds: " + str(self.active_tab_bounds))
 
         self.composited_layers = [CompositedLayer(can_extend=True,
