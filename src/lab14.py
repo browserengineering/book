@@ -88,7 +88,8 @@ class DisplayItem:
         else:
             for cmd in self.cmds:
                 inner += cmd.repr_recursive(indent + 2)
-            return " " * indent + self.__repr__() + ":\n{}".format(inner)
+            return " " * indent + self.__repr__() + ": bounds={}\n{}".format(
+                self.bounds(), inner)
 
 class Transform(DisplayItem):
     def __init__(self, translation, rotation_degrees, rect, cmds,
