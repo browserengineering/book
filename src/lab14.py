@@ -132,6 +132,7 @@ class Transform(DisplayItem):
             op()
             canvas.restore()
         else:
+            print('center: x=' + str(self.center_x) + ' y=' + str(self.center_y))
             canvas.save()
             canvas.translate(self.center_x, self.center_y)
             canvas.rotate(self.rotation_degrees)
