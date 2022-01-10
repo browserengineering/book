@@ -79,6 +79,17 @@ class DisplayItem:
     def is_noop(self):
         return self.noop
 
+    def execute(self, canvas, should_draw_self=True, should_draw_if_composited=True):
+        def op():
+            for cmd in self.get_cmds():
+                print('  op cmd: ' + str(cmd))
+                cmd.execute(canvas, True, False)
+
+        self.draw(canvas, op, should_draw_self, should_draw_if_composited)
+
+    def draw(self, canvas, op, should_draw_self, should_draw_if_composited):
+        pass
+
     def repr_recursive(self, indent=0, include_noop=False):
         inner = ""
         if not include_noop and self.is_noop():
@@ -108,26 +119,24 @@ class Transform(DisplayItem):
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
         super().__init__(my_bounds, should_transform, cmds, not should_transform)
 
-    def execute(self, canvas):
-        if self.is_noop():
-            for cmd in self.get_cmds():
-                cmd.execute(canvas)            
+    def draw(self, canvas, op, should_draw_self, should_draw_if_composited):
+        if not should_draw_if_composited and self.needs_compositing():
+            return
+        if not should_draw_self or self.is_noop():
+            print('op')
+            op()
         elif self.translation:
             (x, y) = self.translation
             canvas.save()
             canvas.translate(x, y)
-            for cmd in self.get_cmds():
-                cmd.execute(canvas)
+            op()
             canvas.restore()
         else:
             canvas.save()
             canvas.translate(self.center_x, self.center_y)
             canvas.rotate(self.rotation_degrees)
             canvas.translate(-self.center_x, -self.center_y)
-            
-            for cmd in self.cmds:
-                cmd.execute(canvas)
-
+            op()
             canvas.restore()
 
     def compute_bounds(self, rect, cmds, should_transform):
@@ -158,7 +167,7 @@ class DrawRRect(DisplayItem):
         self.color = color
         super().__init__(rect)
 
-    def execute(self, canvas):
+    def draw(self, canvas, *args):
         sk_color = parse_color(self.color)
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=sk_color))
@@ -181,7 +190,7 @@ class DrawText(DisplayItem):
         self.color = color
         super().__init__(skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
 
-    def execute(self, canvas):
+    def draw(self, canvas, *args):
         draw_text(canvas, self.left, self.top,
             self.text, self.font, self.color)
 
@@ -197,7 +206,7 @@ class DrawRect(DisplayItem):
         self.color = color
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
 
-    def execute(self, canvas):
+    def draw(self, canvas, *args):
         draw_rect(canvas,
             self.left, self.top,
             self.right, self.bottom,
@@ -213,14 +222,11 @@ class ClipRRect(DisplayItem):
         super().__init__(
             ClipRRect.compute_bounds(rect, cmds), False, cmds, not should_clip)
 
-    def execute(self, canvas):
+    def draw(self, canvas, op, *args):
         if not self.is_noop():
             canvas.save()
             canvas.clipRRect(self.rrect)
-
-        for cmd in self.cmds:
-            cmd.execute(canvas)
-
+        op()
         if not self.is_noop():
             canvas.restore()
 
@@ -243,7 +249,7 @@ class DrawLine(DisplayItem):
         self.y2 = y2
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
 
-    def execute(self, canvas):
+    def execute(self, canvas, *args):
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 class SaveLayer(DisplayItem):
@@ -254,15 +260,16 @@ class SaveLayer(DisplayItem):
         rect = skia.Rect.MakeEmpty()
         for cmd in cmds:
             rect.join(cmd.rect)
-        super().__init__(rect, needs_animation, cmds, not should_save)
+        super().__init__(rect, False, cmds, not should_save)
 
-    def execute(self, canvas):
-        if not self.is_noop():
+    def draw(self, canvas, op, should_draw_self, should_draw_if_composited):
+        if not should_draw_if_composited and self.needs_compositing():
+            return
+        if should_draw_self:
             canvas.saveLayer(paint=self.sk_paint)
         if self.should_paint_cmds:
-            for cmd in self.get_cmds():
-                cmd.execute(canvas)
-        if not self.is_noop():
+            op()
+        if should_draw_self:
             canvas.restore()
 
     def __repr__(self):
@@ -958,25 +965,21 @@ class Animation:
 
 class CompositedLayer:
     def __init__(self, display_item=None, can_extend=True, surface=None,
-        surface_offset=(0, 0), draw_offset=(0, 0)):
+        bounds=None):
         print('new composited layer')
-        if surface:
-            self.bounds = skia.Rect.MakeLTRB(
-                0, 0, surface.width(), surface.height())
+        if bounds:
+            self.bounds = bounds
         if display_item:
             print('  display item: ' + str(display_item))
             self.display_list = [display_item]
             if not surface:
                 self.bounds = display_item.bounds()
-
         else:
             self.display_list = []
             if not surface:
                 self.bounds = skia.Rect.MakeEmpty()
         self.can_extend = can_extend
         self.surface = surface
-        self.surface_offset = surface_offset
-        self.draw_offset = draw_offset
 
     def append(self, display_item):
         assert self.can_extend
@@ -986,29 +989,45 @@ class CompositedLayer:
     def overlaps(self, rect):
         return skia.Rect.Intersects(self.bounds, rect)
 
-    def draw(self, canvas):
-        canvas.save()
-        (offset_x, offset_y) = self.draw_offset
-        canvas.translate(offset_x, offset_y)
-        canvas.clipRect(self.bounds)
-        self.surface.draw(canvas, 0, 0)
-        canvas.restore()
+    def draw(self, canvas, draw_offset):
+        def op():
+            canvas.save()
+            (offset_x, offset_y) = draw_offset
+            offset_x += self.bounds.left()
+            offset_y += self.bounds.top()
+            canvas.translate(offset_x, offset_y)
+            canvas.clipRect(self.bounds)
+            self.surface.draw(canvas, 0, 0)
+            canvas.restore()
+        if self.can_extend:
+            op()
+        else:
+            assert len(self.display_list) == 1
+            print('draw special: ' + str(self.display_list[0]))
+            self.display_list[0].draw(canvas, op, should_draw_self=True,
+                should_draw_if_composited=True)
 
     def raster(self):
         irect = self.bounds.roundOut()
         if not self.surface:
+            print('make surface: bounds=' + str(irect))
             self.surface = skia.Surface(irect.width(), irect.height())
         canvas = self.surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
-        (surface_offset_x, surface_offset_y) = self.surface_offset
-        canvas.translate(-surface_offset_x, -surface_offset_y)
+        canvas.save()
+        canvas.translate(-self.bounds.left(), -self.bounds.top())
         if self.can_extend:
             for cmd in self.display_list:
-                cmd.execute(canvas)
+#                    print("raster regular cmd: " + str(cmd))
+                cmd.execute(canvas, should_draw_if_composited=False)
+#                    print("end")
         else:
             assert len(self.display_list) == 1
-            for cmd in self.display_list[0].get_cmds():
-                cmd.execute(canvas)
+            print('raster special: ' + str(self.display_list[0]))
+            print('bounds: ' + str(self.bounds))
+            self.display_list[0].execute(canvas, should_draw_self=False)
+            print('done with raster special')
+        canvas.restore()
 
 class Tab:
     def __init__(self, commit_func):
@@ -1546,23 +1565,9 @@ class Browser:
 
     def composite(self):
         print('compositing...')
-        if not self.tab_surface \
-            or self.active_tab_bounds.height() != self.tab_surface.height() \
-            or self.active_tab_bounds.width() != self.tab_surface.width():
-            self.tab_surface = skia.Surface(
-                self.active_tab_bounds.width(),
-                self.active_tab_bounds.height())
-
-        draw_offset_x = self.active_tab_bounds.left()
-        draw_offset_y = CHROME_PX - self.tabs[self.active_tab].scroll + \
-            self.active_tab_bounds.top()
-
         self.composited_layers = [CompositedLayer(can_extend=True,
             surface=self.tab_surface,
-            surface_offset=(
-                self.active_tab_bounds.left(), self.active_tab_bounds.top()),
-            draw_offset=(
-                draw_offset_x, draw_offset_y))]
+            bounds=self.active_tab_bounds)]
 
         Browser.composite_internal(
             self.composited_layers, self.active_tab_display_list)
@@ -1583,8 +1588,8 @@ class Browser:
                         composited_layers.append(CompositedLayer(
                             display_item, can_extend=True))
                         break
-#            Browser.composite_internal(
-#                composited_layers, display_item.get_cmds())
+                Browser.composite_internal(
+                    composited_layers, display_item.get_cmds())
 
     def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
@@ -1715,9 +1720,10 @@ class Browser:
         canvas = self.root_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         
+        draw_offset=(0, CHROME_PX - self.tabs[self.active_tab].scroll)
         if self.composited_layers:
             for composited_layer in self.composited_layers:
-                composited_layer.draw(canvas)
+                composited_layer.draw(canvas, draw_offset)
 
         chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
         canvas.save()
