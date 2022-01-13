@@ -60,7 +60,7 @@ def center_point(rect):
         rect.top() + (rect.bottom() - rect.top()) / 2)
 
 class DisplayItem:
-    def __init__(self, rect, needs_compositing=False, cmds=[],
+    def __init__(self, rect, needs_compositing=False, cmds=None,
         is_noop=False):
         self.rect = rect if rect else skia.Rect.MakeEmpty()
         self.composited=needs_compositing
@@ -71,7 +71,9 @@ class DisplayItem:
         return self.rect
 
     def needs_compositing(self):
-        return self.composited
+        if self.composited:
+            return True
+        return False
 
     def get_cmds(self):
         return self.cmds
@@ -79,15 +81,16 @@ class DisplayItem:
     def is_noop(self):
         return self.noop
 
-    def execute(self, canvas, should_draw_self=True, should_draw_if_composited=True):
-        def op():
-            for cmd in self.get_cmds():
-                print('  op cmd: ' + str(cmd))
-                cmd.execute(canvas, True, False)
+    def execute(self, canvas):
+        if self.cmds:
+            def op():
+                for cmd in self.get_cmds():
+                    cmd.execute(canvas, True, False)
+            self.draw(canvas, op)
+        else:
+            self.draw(canvas)
 
-        self.draw(canvas, op, should_draw_self, should_draw_if_composited)
-
-    def draw(self, canvas, op, should_draw_self, should_draw_if_composited):
+    def draw(self, canvas, op):
         pass
 
     def repr_recursive(self, indent=0, include_noop=False):
@@ -115,15 +118,12 @@ class Transform(DisplayItem):
         self.translation = translation
         (self.center_x, self.center_y) = center_point(rect)
         assert translation == None or rotation_degrees == None
-
+        self.should_transform = should_transform
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
         super().__init__(my_bounds, should_transform, cmds, not should_transform)
 
-    def draw(self, canvas, op, should_draw_self, should_draw_if_composited):
-        if not should_draw_if_composited and self.needs_compositing():
-            return
-        if not should_draw_self or self.is_noop():
-            print('op')
+    def draw(self, canvas, op):
+        if self.is_noop():
             op()
         elif self.translation:
             (x, y) = self.translation
@@ -132,10 +132,11 @@ class Transform(DisplayItem):
             op()
             canvas.restore()
         else:
-            print('center: x=' + str(self.center_x) + ' y=' + str(self.center_y))
+#            print('center: x=' + str(self.center_x) + ' y=' + str(self.center_y))
             canvas.save()
             canvas.translate(self.center_x, self.center_y)
             canvas.rotate(self.rotation_degrees)
+            print('rotate: ' + str(self.rotation_degrees))
             canvas.translate(-self.center_x, -self.center_y)
             op()
             canvas.restore()
@@ -168,7 +169,7 @@ class DrawRRect(DisplayItem):
         self.color = color
         super().__init__(rect)
 
-    def draw(self, canvas, *args):
+    def draw(self, canvas):
         sk_color = parse_color(self.color)
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=sk_color))
@@ -177,7 +178,8 @@ class DrawRRect(DisplayItem):
         return " " * indent + self.__repr__()
 
     def __repr__(self):
-        return "DrawRRect({})".format(str(self.rrect))
+        return "DrawRRect(rect={}, color={})".format(
+            str(self.rrect), self.color)
 
 class DrawText(DisplayItem):
     def __init__(self, x1, y1, text, font, color):
@@ -191,7 +193,7 @@ class DrawText(DisplayItem):
         self.color = color
         super().__init__(skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
 
-    def draw(self, canvas, *args):
+    def draw(self, canvas, **args):
         draw_text(canvas, self.left, self.top,
             self.text, self.font, self.color)
 
@@ -223,7 +225,7 @@ class ClipRRect(DisplayItem):
         super().__init__(
             ClipRRect.compute_bounds(rect, cmds), False, cmds, not should_clip)
 
-    def draw(self, canvas, op, *args):
+    def draw(self, canvas, op):
         if not self.is_noop():
             canvas.save()
             canvas.clipRRect(self.rrect)
@@ -263,14 +265,12 @@ class SaveLayer(DisplayItem):
             rect.join(cmd.rect)
         super().__init__(rect, False, cmds, not should_save)
 
-    def draw(self, canvas, op, should_draw_self, should_draw_if_composited):
-        if not should_draw_if_composited and self.needs_compositing():
-            return
-        if should_draw_self:
+    def draw(self, canvas, op):
+        if not self.is_noop():
             canvas.saveLayer(paint=self.sk_paint)
         if self.should_paint_cmds:
             op()
-        if should_draw_self:
+        if not self.is_noop():
             canvas.restore()
 
     def __repr__(self):
@@ -965,70 +965,66 @@ class Animation:
         return needs_another_frame
 
 class CompositedLayer:
-    def __init__(self, display_item=None, can_extend=True, surface=None,
-        bounds=None):
-        print('new composited layer')
-        if bounds:
-            self.bounds = bounds
-        if display_item:
-            print('  display item: ' + str(display_item))
-            self.display_list = [display_item]
-            if not surface:
-                self.bounds = display_item.bounds()
-        else:
-            self.display_list = []
-            if not surface:
-                self.bounds = skia.Rect.MakeEmpty()
-        self.can_extend = can_extend
-        self.surface = surface
+    def __init__(self, bounds=None, first_chunk=None):
+        print('new composited layer: bounds=' + str(bounds))
+        self.surface = None
+        self.first_chunk = first_chunk
+        self.display_list = []
+        if first_chunk:
+            self.extend(first_chunk)
 
-    def append(self, display_item):
-        assert self.can_extend
-        self.bounds.join(display_item.bounds())
-        self.display_list.append(display_item)
+    def can_merge(self, chunk):
+        if self.first_chunk == None:
+            return not chunk.needs_compositing()
+        return  \
+            self.first_chunk.composited_item() == chunk.composited_item()
+
+    def bounds(self):
+        retval = skia.Rect.MakeEmpty()
+        for item in self.display_list:
+            retval.join(item.bounds())
+        return retval
+
+    def extend(self, chunk):
+        assert self.can_merge(chunk)
+        self.display_list.extend(chunk.display_list())
 
     def overlaps(self, rect):
-        return skia.Rect.Intersects(self.bounds, rect)
+        return skia.Rect.Intersects(self.bounds(), rect)
 
     def draw(self, canvas, draw_offset):
         def op():
             canvas.save()
             (offset_x, offset_y) = draw_offset
-            offset_x += self.bounds.left()
-            offset_y += self.bounds.top()
+            bounds = self.bounds()
+            offset_x += bounds.left()
+            offset_y += bounds.top()
             canvas.translate(offset_x, offset_y)
-            canvas.clipRect(self.bounds)
+            canvas.clipRect(bounds)
             self.surface.draw(canvas, 0, 0)
             canvas.restore()
-        if self.can_extend:
-            op()
+        if self.first_chunk:
+            self.first_chunk.draw(canvas, op)
         else:
-            assert len(self.display_list) == 1
-            print('draw special: ' + str(self.display_list[0]))
-            self.display_list[0].draw(canvas, op, should_draw_self=True,
-                should_draw_if_composited=True)
+            op()
 
     def raster(self):
-        irect = self.bounds.roundOut()
+        print('raster')
+        bounds = self.bounds()
+        irect = bounds.roundOut()
         if not self.surface:
             print('make surface: bounds=' + str(irect))
             self.surface = skia.Surface(irect.width(), irect.height())
         canvas = self.surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         canvas.save()
-        canvas.translate(-self.bounds.left(), -self.bounds.top())
-        if self.can_extend:
-            for cmd in self.display_list:
-#                    print("raster regular cmd: " + str(cmd))
-                cmd.execute(canvas, should_draw_if_composited=False)
-#                    print("end")
-        else:
-            assert len(self.display_list) == 1
-            print('raster special: ' + str(self.display_list[0]))
-            print('bounds: ' + str(self.bounds))
-            self.display_list[0].execute(canvas, should_draw_self=False)
-            print('done with raster special')
+        canvas.translate(-bounds.left(), -bounds.top())
+        for cmd in self.display_list:
+            print("raster regular cmd: " + str(cmd))
+            cmd.execute(canvas)
+            print("end")
         canvas.restore()
+        print('raster done')
 
 class Tab:
     def __init__(self, commit_func):
@@ -1172,7 +1168,7 @@ class Tab:
         for display_item in self.display_list:
 #            print("   " + str(display_item) + " " + str(display_item.bounds()))
             rect.join(display_item.bounds())
-        return rect.roundOut()
+        return rect
 
     def print_display_list(self):
         print("Display list:")
@@ -1505,6 +1501,109 @@ class TabWrapper:
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
+class PaintChunk:
+    def __init__(self, ancestor_effects):
+        self.ancestor_effects = ancestor_effects
+        self.chunk_items = []
+
+        self.composited_ancestor_index = -1
+        count = len(ancestor_effects) - 1
+        for display_item in reversed(ancestor_effects):
+            if display_item.needs_compositing():
+                self.composited_ancestor_index = count
+                break
+            count -= 1
+
+    def bounds(self):
+        retval = skia.Rect.MakeEmpty()
+        for item in self.chunk_items:
+            retval.join(item.bounds())
+        return retval
+
+    def append(self, display_item):
+        self.chunk_items.append(display_item)
+
+    def needs_compositing(self):
+        return self.composited_ancestor_index >= 0
+
+    def composited_item(self):
+        if not self.needs_compositing():
+            return None
+        return self.ancestor_effects[self.composited_ancestor_index]
+
+    def display_list(self):
+        return self.chunk_items
+
+    def raster(self, canvas):
+        def op():
+            for display_item in self.chunk_items:
+                display_item.raster(canvas)
+        draw_internal(self, canvas, op, self.composited_ancestor_index + 1)
+
+    def draw_internal(self, canvas, op, index):
+        display_item = self.ancestor_effects[index]
+        if index == len(self.ancestor_effects):
+            display_item.draw(canvas, op)
+        else:
+            def recurse_op():
+                draw_internal(canvas, op, index + 1)
+            display_item.draw(canvas, recurse_op)
+
+    def draw(self, canvas, op):
+        draw_internal(canvas, op, 0)
+
+
+def display_list_to_paint_chunks_internal(
+    display_list, chunks, ancestor_effects):
+    current_chunk = None
+    for display_item in display_list:
+        if display_item.get_cmds() != None:
+            display_list_to_paint_chunks_internal(display_item.get_cmds(), chunks,
+                ancestor_effects + [display_item])
+        else:
+            if not current_chunk:
+                current_chunk = PaintChunk(ancestor_effects)
+                chunks.append(current_chunk)
+            current_chunk.append(display_item)
+
+def print_chunks(chunks):
+    for chunk in chunks:
+        print('chunk:')
+        print("  chunk display items:")
+        for display_item in chunk.chunk_items:
+            print(" " * 4 + str(display_item))
+        print("  chunk ancestor visual effect (skipping no-ops):")
+        count = 4
+        for display_item in chunk.ancestor_effects:
+            if not display_item.is_noop():
+                print(" " * count + str(display_item))
+                count += 2
+
+def display_list_to_paint_chunks(display_list):
+    chunks = []
+    display_list_to_paint_chunks_internal(display_list, chunks, [])
+    return chunks
+
+def do_composite(display_list, initial_layer):
+    chunks = display_list_to_paint_chunks(display_list)
+    composited_layers = [initial_layer]
+    for chunk in chunks:
+        print('compositing chunk: ' + str(chunk.display_list()[0]))
+        print(chunk.needs_compositing())
+        placed = False
+        for layer in reversed(composited_layers):
+            if layer.can_merge(chunk):
+                layer.extend(chunk)
+                placed = True
+                break
+            elif layer.overlaps(chunk.bounds()):
+                composited_layers.append(
+                    CompositedLayer(first_chunk=chunk))
+                placed = True
+                break
+        assert placed
+    return composited_layers
+
 class Browser:
     def __init__(self):
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -1563,34 +1662,14 @@ class Browser:
     def set_needs_draw(self):
         self.needs_draw = True
 
-
     def composite(self):
-        print('compositing...')
-        self.composited_layers = [CompositedLayer(can_extend=True,
-            surface=self.tab_surface,
-            bounds=self.active_tab_bounds)]
+        print('\n\ncompositing...')
+        initial_layer = CompositedLayer(bounds=self.active_tab_bounds)
 
-        Browser.composite_internal(
-            self.composited_layers, self.active_tab_display_list)
+#        print_chunks(display_list_to_paint_chunks(self.active_tab_display_list))
 
-    def composite_internal(composited_layers, display_list):
-        for display_item in display_list:
-            if display_item.needs_compositing():
-                print("need causing compositing: " + str(display_item))
-                composited_layers.append(CompositedLayer(
-                    display_item, can_extend=False))
-            else:
-                for composited_layer in reversed(composited_layers):
-                    if composited_layer.can_extend:
-                        composited_layer.append(display_item)
-                        break
-                    elif composited_layer.overlaps(display_item.bounds()):
-                        print('overlap causing compositing:  ' + str(display_item))
-                        composited_layers.append(CompositedLayer(
-                            display_item, can_extend=True))
-                        break
-                Browser.composite_internal(
-                    composited_layers, display_item.get_cmds())
+        self.composited_layers = do_composite(
+            self.active_tab_display_list, initial_layer)
 
     def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
