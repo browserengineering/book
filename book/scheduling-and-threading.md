@@ -39,8 +39,8 @@ and positions, paint it to a display list, raster the result into a
 surface, and draw that surface to the screen. These rendering steps
 make up the browser's basic [*rendering pipeline*][graphics-pipeline]
 for the browser, and can be expensive and slow. For this reason,
-browser implementations split the rendering pipeline across threads
-and make sure to run the rendering pipeline only when necessary.
+modern browsers split the rendering pipeline across threads and make
+sure to run the rendering pipeline only when necessary.
 
 [graphics-pipeline]: https://en.wikipedia.org/wiki/Graphics_pipeline
 
