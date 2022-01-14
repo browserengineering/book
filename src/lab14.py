@@ -139,9 +139,9 @@ class Transform(DisplayItem):
         else:
             rotation_x = self.center_x
             rotation_y = self.center_y
-            if not raster:
-                rotation_x -= self.bounds.left()
-                rotation_y -= self.bounds.top()
+            if not is_raster:
+                rotation_x -= self.bounds().left()
+                rotation_y -= self.bounds().top()
             canvas.save()
             canvas.rotate(
                 degrees=self.rotation_degrees, px=rotation_x, py=rotation_y)
