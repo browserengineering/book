@@ -86,11 +86,11 @@ class DisplayItem:
             def op():
                 for cmd in self.get_cmds():
                     cmd.execute(canvas, True, False)
-            self.draw(canvas, op)
+            self.draw(canvas, op, True)
         else:
             self.draw(canvas)
 
-    def draw(self, canvas, op):
+    def draw(self, canvas, op, is_raster):
         pass
 
     def transform(self, rect):
@@ -125,9 +125,9 @@ class Transform(DisplayItem):
         assert translation == None or rotation_degrees == None
         self.should_transform = should_transform
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
-        super().__init__(my_bounds, False, cmds, not should_transform)
+        super().__init__(my_bounds, should_transform, cmds, not should_transform)
 
-    def draw(self, canvas, op):
+    def draw(self, canvas, op, is_raster):
         if self.is_noop():
             op()
         elif self.translation:
@@ -137,10 +137,11 @@ class Transform(DisplayItem):
             op()
             canvas.restore()
         else:
+            print('is_raster: ' + str(is_raster))
             print('center: x=' + str(self.center_x) + ' y=' + str(self.center_y))
             canvas.save()
             canvas.rotate(
-                degrees=self.rotation_degrees, px=self.center_x, py=self.center_y)
+                degrees=self.rotation_degrees, px=100, py=100)
             print('rotate: ' + str(self.rotation_degrees))
             op()
             canvas.restore()
@@ -235,7 +236,7 @@ class ClipRRect(DisplayItem):
         super().__init__(
             ClipRRect.compute_bounds(rect, cmds), False, cmds, not should_clip)
 
-    def draw(self, canvas, op):
+    def draw(self, canvas, op, is_raster):
         if not self.is_noop():
             canvas.save()
             canvas.clipRRect(self.rrect)
@@ -275,7 +276,7 @@ class SaveLayer(DisplayItem):
             rect.join(cmd.rect)
         super().__init__(rect, False, cmds, not should_save)
 
-    def draw(self, canvas, op):
+    def draw(self, canvas, op, is_raster):
         if not self.is_noop():
             canvas.saveLayer(paint=self.sk_paint)
         if self.should_paint_cmds:
@@ -981,7 +982,7 @@ class CompositedLayer:
         self.chunks = []
         self.first_chunk = first_chunk
         if first_chunk:
-            self.append(first_chunk)
+            self.chunks.append(first_chunk)
 
     def can_merge(self, chunk):
         if len(self.chunks) == 0:
@@ -1006,16 +1007,20 @@ class CompositedLayer:
         def op():
             canvas.save()
             (offset_x, offset_y) = draw_offset
-            bounds = self.bounds()
-            offset_x += bounds.left()
-            offset_y += bounds.top()
-            canvas.translate(offset_x, offset_y)
+#            bounds = self.bounds()
+#            offset_x += bounds.left()
+#            offset_y += bounds.top()
+            print('draw_offset: ' + str(draw_offset))
+#            canvas.translate(offset_x, offset_y)
             self.surface.draw(canvas, 0, 0)
             canvas.restore()
+        print('drawing layer')
+        if self.first_chunk:
+            print('drawing surface: ' + str(self.first_chunk.composited_item()))
         if not self.surface:
             return
         if self.first_chunk:
-            self.first_chunk.draw(canvas, op)
+            self.first_chunk.draw(canvas, op, False)
         else:
             op()
 
@@ -1555,19 +1560,19 @@ class PaintChunk:
         def op():
             for display_item in self.chunk_items:
                 display_item.execute(canvas)
-        self.draw_internal(canvas, op, self.composited_ancestor_index + 1)
+        self.draw_internal(canvas, op, self.composited_ancestor_index + 1, False)
 
-    def draw_internal(self, canvas, op, index):
+    def draw_internal(self, canvas, op, index, is_raster):
         if index == len(self.ancestor_effects):
             op()
         else:
             display_item = self.ancestor_effects[index]
             def recurse_op():
-                self.draw_internal(canvas, op, index + 1)
-            display_item.draw(canvas, recurse_op)
+                self.draw_internal(canvas, op, index + 1, is_raster)
+            display_item.draw(canvas, recurse_op, is_raster)
 
-    def draw(self, canvas, op):
-        self.draw_internal(canvas, op, 0)
+    def draw(self, canvas, op, is_raster):
+        self.draw_internal(canvas, op, 0, is_raster)
 
 
 def display_list_to_paint_chunks_internal(
