@@ -96,12 +96,14 @@ class DisplayItem:
     def repr_recursive(self, indent=0, include_noop=False):
         inner = ""
         if not include_noop and self.is_noop():
-            for cmd in self.cmds:
-               inner += cmd.repr_recursive(indent, include_noop)
-            return inner
+            if self.cmds:
+                for cmd in self.cmds:
+                   inner += cmd.repr_recursive(indent, include_noop)
+                return inner
         else:
-            for cmd in self.cmds:
-                inner += cmd.repr_recursive(indent + 2, include_noop)
+            if self.cmds:
+                for cmd in self.cmds:
+                    inner += cmd.repr_recursive(indent + 2, include_noop)
             return ("{indentation}{repr}: bounds={bounds}, " +
                 "needs_compositing={needs_compositing}{noop}\n{inner} ").format(
                 indentation=" " * indent,
@@ -120,7 +122,7 @@ class Transform(DisplayItem):
         assert translation == None or rotation_degrees == None
         self.should_transform = should_transform
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
-        super().__init__(my_bounds, should_transform, cmds, not should_transform)
+        super().__init__(my_bounds, False, cmds, not should_transform)
 
     def draw(self, canvas, op):
         if self.is_noop():
@@ -132,12 +134,10 @@ class Transform(DisplayItem):
             op()
             canvas.restore()
         else:
-#            print('center: x=' + str(self.center_x) + ' y=' + str(self.center_y))
+            print('center: x=' + str(self.center_x) + ' y=' + str(self.center_y))
             canvas.save()
-            canvas.translate(self.center_x, self.center_y)
-            canvas.rotate(self.rotation_degrees)
+            canvas.rotate(degrees=self.rotation_degrees, px=0, py=0)
             print('rotate: ' + str(self.rotation_degrees))
-            canvas.translate(-self.center_x, -self.center_y)
             op()
             canvas.restore()
 
@@ -966,7 +966,7 @@ class Animation:
 
 class CompositedLayer:
     def __init__(self, bounds=None, first_chunk=None):
-        print('new composited layer: bounds=' + str(bounds))
+#        print('new composited layer: bounds=' + str(bounds) + ' ' + str(first_chunk))
         self.surface = None
         self.first_chunk = first_chunk
         self.display_list = []
@@ -1000,31 +1000,34 @@ class CompositedLayer:
             offset_x += bounds.left()
             offset_y += bounds.top()
             canvas.translate(offset_x, offset_y)
-            canvas.clipRect(bounds)
             self.surface.draw(canvas, 0, 0)
             canvas.restore()
+        if not self.surface:
+            return
         if self.first_chunk:
             self.first_chunk.draw(canvas, op)
         else:
             op()
 
     def raster(self):
-        print('raster')
         bounds = self.bounds()
+        if bounds.isEmpty():
+            return
         irect = bounds.roundOut()
         if not self.surface:
-            print('make surface: bounds=' + str(irect))
+#            print('make surface: bounds=' + str(irect))
             self.surface = skia.Surface(irect.width(), irect.height())
+#        print('surface width: ' + str(irect.width()))
         canvas = self.surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         canvas.save()
+#        print(bounds.left())
         canvas.translate(-bounds.left(), -bounds.top())
         for cmd in self.display_list:
-            print("raster regular cmd: " + str(cmd))
+ #           print("  raster regular cmd: " + str(cmd))
             cmd.execute(canvas)
-            print("end")
         canvas.restore()
-        print('raster done')
+  #      print('raster done')
 
 class Tab:
     def __init__(self, commit_func):
@@ -1541,16 +1544,16 @@ class PaintChunk:
         draw_internal(self, canvas, op, self.composited_ancestor_index + 1)
 
     def draw_internal(self, canvas, op, index):
-        display_item = self.ancestor_effects[index]
         if index == len(self.ancestor_effects):
-            display_item.draw(canvas, op)
+            op()
         else:
+            display_item = self.ancestor_effects[index]
             def recurse_op():
-                draw_internal(canvas, op, index + 1)
+                self.draw_internal(canvas, op, index + 1)
             display_item.draw(canvas, recurse_op)
 
     def draw(self, canvas, op):
-        draw_internal(canvas, op, 0)
+        self.draw_internal(canvas, op, 0)
 
 
 def display_list_to_paint_chunks_internal(
@@ -1588,8 +1591,8 @@ def do_composite(display_list, initial_layer):
     chunks = display_list_to_paint_chunks(display_list)
     composited_layers = [initial_layer]
     for chunk in chunks:
-        print('compositing chunk: ' + str(chunk.display_list()[0]))
-        print(chunk.needs_compositing())
+#        print('compositing chunk: ' + str(chunk.display_list()[0]))
+#        print(chunk.needs_compositing())
         placed = False
         for layer in reversed(composited_layers):
             if layer.can_merge(chunk):
@@ -1601,7 +1604,10 @@ def do_composite(display_list, initial_layer):
                     CompositedLayer(first_chunk=chunk))
                 placed = True
                 break
-        assert placed
+        if not placed:
+#            print('placing..')
+            composited_layers.append(
+                CompositedLayer(first_chunk=chunk))
     return composited_layers
 
 class Browser:
@@ -1807,7 +1813,7 @@ class Browser:
 
         chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
         canvas.save()
-        canvas.clipRect(chrome_rect)
+#        canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
         canvas.restore()
 
