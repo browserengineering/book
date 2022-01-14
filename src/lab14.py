@@ -968,26 +968,25 @@ class CompositedLayer:
     def __init__(self, bounds=None, first_chunk=None):
 #        print('new composited layer: bounds=' + str(bounds) + ' ' + str(first_chunk))
         self.surface = None
-        self.first_chunk = first_chunk
-        self.display_list = []
+        self.chunks = []
         if first_chunk:
-            self.extend(first_chunk)
+            self.append(first_chunk)
 
     def can_merge(self, chunk):
-        if self.first_chunk == None:
+        if len(self.chunks) == 0:
             return not chunk.needs_compositing()
         return  \
-            self.first_chunk.composited_item() == chunk.composited_item()
+            self.chunks[0].composited_item() == chunk.composited_item()
 
     def bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for item in self.display_list:
-            retval.join(item.bounds())
+        for chunk in self.chunks:
+            retval.join(chunk.bounds())
         return retval
 
-    def extend(self, chunk):
+    def append(self, chunk):
         assert self.can_merge(chunk)
-        self.display_list.extend(chunk.display_list())
+        self.chunks.append(chunk)
 
     def overlaps(self, rect):
         return skia.Rect.Intersects(self.bounds(), rect)
@@ -1023,9 +1022,9 @@ class CompositedLayer:
         canvas.save()
 #        print(bounds.left())
         canvas.translate(-bounds.left(), -bounds.top())
-        for cmd in self.display_list:
+        for chunk in self.chunks:
  #           print("  raster regular cmd: " + str(cmd))
-            cmd.execute(canvas)
+            chunk.raster(canvas)
         canvas.restore()
   #      print('raster done')
 
@@ -1596,7 +1595,7 @@ def do_composite(display_list, initial_layer):
         placed = False
         for layer in reversed(composited_layers):
             if layer.can_merge(chunk):
-                layer.extend(chunk)
+                layer.append(chunk)
                 placed = True
                 break
             elif layer.overlaps(chunk.bounds()):
