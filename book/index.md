@@ -25,6 +25,8 @@ talk about the book with others in our [discussion forum][forum].
 
 If you are enjoying the book, consider supporting us on [Patreon](https://patreon.com/browserengineering).
 
+Or just [send us an email](mailto:author@browser.engineering)!
+
 ::: {.intro}
 Introduction
 ============
