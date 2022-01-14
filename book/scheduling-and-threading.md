@@ -5,6 +5,16 @@ prev: visual-effects
 next: skipped
 ...
 
+To be a capable application platform, the browser must execute
+applications quickly and user actions immediately. To do so, the
+browser must explicitly choose which of its many tasks to prioritize
+and delay unnecessary tasks until later. Such a task queue system also
+allows the browser to split tasks across multiple threads, which makes
+the browser more responsive and better fit to modern hardware.
+
+Tasks and task queues
+=====================
+
 Our browser now knows how to load a web page and *render* it, by constructing
 the layout tree, computing styles on it, laying out its contents, painting it
 into a dispaly list, rastering the result into surfaces, and drawing those
