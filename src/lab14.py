@@ -1004,25 +1004,33 @@ class CompositedLayer:
         return skia.Rect.Intersects(self.bounds(), rect)
 
     def draw(self, canvas, draw_offset):
-        def op():
-            canvas.save()
-            (offset_x, offset_y) = draw_offset
-#            bounds = self.bounds()
-#            offset_x += bounds.left()
-#            offset_y += bounds.top()
-            print('draw_offset: ' + str(draw_offset))
-#            canvas.translate(offset_x, offset_y)
-            self.surface.draw(canvas, 0, 0)
-            canvas.restore()
         print('drawing layer')
         if self.first_chunk:
             print('drawing surface: ' + str(self.first_chunk.composited_item()))
         if not self.surface:
             return
         if self.first_chunk:
+            def op():
+                self.surface.draw(canvas, 0, 0)
+            print('first chunk draw')
+            canvas.save()
+            (offset_x, offset_y) = draw_offset
+            bounds = self.bounds()
+            offset_x += bounds.left()
+            offset_y += bounds.top()
+            canvas.translate(offset_x, offset_y)
             self.first_chunk.draw(canvas, op, False)
+            canvas.restore()
         else:
-            op()
+            canvas.save()
+            (offset_x, offset_y) = draw_offset
+            bounds = self.bounds()
+            offset_x += bounds.left()
+            offset_y += bounds.top()
+            print('draw_offset: ' + str(draw_offset))
+            canvas.translate(offset_x, offset_y)
+            self.surface.draw(canvas, 0, 0)
+            canvas.restore()
 
     def raster(self):
         bounds = self.bounds()
