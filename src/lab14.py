@@ -93,6 +93,9 @@ class DisplayItem:
     def draw(self, canvas, op):
         pass
 
+    def transform(self, rect):
+        return rect
+
     def repr_recursive(self, indent=0, include_noop=False):
         inner = ""
         if not include_noop and self.is_noop():
@@ -136,14 +139,16 @@ class Transform(DisplayItem):
         else:
             print('center: x=' + str(self.center_x) + ' y=' + str(self.center_y))
             canvas.save()
-            canvas.rotate(degrees=self.rotation_degrees, px=0, py=0)
+            canvas.rotate(
+                degrees=self.rotation_degrees, px=self.center_x, py=self.center_y)
             print('rotate: ' + str(self.rotation_degrees))
             op()
             canvas.restore()
 
-    def compute_bounds(self, rect, cmds, should_transform):
-        for cmd in cmds:
-            rect.join(cmd.bounds())
+    def transform(self, rect):
+        return self.transform_internal(rect, not self.is_noop())
+
+    def transform_internal(self, rect, should_transform):
         if not should_transform:
             return rect
         matrix = skia.Matrix()
@@ -154,6 +159,11 @@ class Transform(DisplayItem):
             matrix.setRotate(
                 self.rotation_degrees, self.center_x, self.center_y)
         return matrix.mapRect(rect)
+
+    def compute_bounds(self, rect, cmds, should_transform):
+        for cmd in cmds:
+            rect.join(cmd.bounds())
+        return self.transform_internal(rect, should_transform)
 
     def __repr__(self):
         if self.is_noop():
@@ -1521,6 +1531,10 @@ class PaintChunk:
         retval = skia.Rect.MakeEmpty()
         for item in self.chunk_items:
             retval.join(item.bounds())
+        for display_item in reversed(self.ancestor_effects):
+            if display_item.needs_compositing():
+                break
+            retval = display_item.transform(retval)
         return retval
 
     def append(self, display_item):
@@ -1587,6 +1601,10 @@ def display_list_to_paint_chunks(display_list):
     display_list_to_paint_chunks_internal(display_list, chunks, [])
     return chunks
 
+def print_composited_layers(composited_layers):
+    for layer in composited_layers:
+        print("layer: bounds=" + str(layer.bounds()))
+
 def do_composite(display_list, initial_layer):
     chunks = display_list_to_paint_chunks(display_list)
     composited_layers = [initial_layer]
@@ -1608,6 +1626,7 @@ def do_composite(display_list, initial_layer):
 #            print('placing..')
             composited_layers.append(
                 CompositedLayer(first_chunk=chunk))
+    print_composited_layers(composited_layers)
     return composited_layers
 
 class Browser:
