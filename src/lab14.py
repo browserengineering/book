@@ -137,12 +137,14 @@ class Transform(DisplayItem):
             op()
             canvas.restore()
         else:
-            print('is_raster: ' + str(is_raster))
-            print('center: x=' + str(self.center_x) + ' y=' + str(self.center_y))
+            rotation_x = self.center_x
+            rotation_y = self.center_y
+            if not raster:
+                rotation_x -= self.bounds.left()
+                rotation_y -= self.bounds.top()
             canvas.save()
             canvas.rotate(
-                degrees=self.rotation_degrees, px=100, py=100)
-            print('rotate: ' + str(self.rotation_degrees))
+                degrees=self.rotation_degrees, px=rotation_x, py=rotation_y)
             op()
             canvas.restore()
 
@@ -977,7 +979,6 @@ class Animation:
 
 class CompositedLayer:
     def __init__(self, bounds=None, first_chunk=None):
-#        print('new composited layer: bounds=' + str(bounds) + ' ' + str(first_chunk))
         self.surface = None
         self.chunks = []
         self.first_chunk = first_chunk
@@ -1004,33 +1005,24 @@ class CompositedLayer:
         return skia.Rect.Intersects(self.bounds(), rect)
 
     def draw(self, canvas, draw_offset):
-        print('drawing layer')
-        if self.first_chunk:
-            print('drawing surface: ' + str(self.first_chunk.composited_item()))
         if not self.surface:
             return
-        if self.first_chunk:
-            def op():
-                self.surface.draw(canvas, 0, 0)
-            print('first chunk draw')
-            canvas.save()
-            (offset_x, offset_y) = draw_offset
-            bounds = self.bounds()
-            offset_x += bounds.left()
-            offset_y += bounds.top()
-            canvas.translate(offset_x, offset_y)
-            self.first_chunk.draw(canvas, op, False)
-            canvas.restore()
-        else:
-            canvas.save()
-            (offset_x, offset_y) = draw_offset
-            bounds = self.bounds()
-            offset_x += bounds.left()
-            offset_y += bounds.top()
-            print('draw_offset: ' + str(draw_offset))
-            canvas.translate(offset_x, offset_y)
+        (offset_x, offset_y) = draw_offset
+        bounds = self.bounds()
+        offset_x += bounds.left()
+        offset_y += bounds.top()
+
+        def op():
             self.surface.draw(canvas, 0, 0)
-            canvas.restore()
+
+        canvas.save()
+        canvas.translate(offset_x, offset_y)
+
+        if self.first_chunk:
+            self.first_chunk.draw(canvas, op, False)
+        else:
+            self.surface.draw(canvas, 0, 0)
+        canvas.restore()
 
     def raster(self):
         bounds = self.bounds()
@@ -1038,19 +1030,14 @@ class CompositedLayer:
             return
         irect = bounds.roundOut()
         if not self.surface:
-#            print('make surface: bounds=' + str(irect))
             self.surface = skia.Surface(irect.width(), irect.height())
-#        print('surface width: ' + str(irect.width()))
         canvas = self.surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         canvas.save()
-#        print(bounds.left())
         canvas.translate(-bounds.left(), -bounds.top())
         for chunk in self.chunks:
- #           print("  raster regular cmd: " + str(cmd))
             chunk.raster(canvas)
         canvas.restore()
-  #      print('raster done')
 
 class Tab:
     def __init__(self, commit_func):
@@ -1622,8 +1609,6 @@ def do_composite(display_list, initial_layer):
     chunks = display_list_to_paint_chunks(display_list)
     composited_layers = [initial_layer]
     for chunk in chunks:
-#        print('compositing chunk: ' + str(chunk.display_list()[0]))
-#        print(chunk.needs_compositing())
         placed = False
         for layer in reversed(composited_layers):
             if layer.can_merge(chunk):
@@ -1635,11 +1620,8 @@ def do_composite(display_list, initial_layer):
                     CompositedLayer(first_chunk=chunk))
                 placed = True
                 break
-        if not placed:
-#            print('placing..')
-            composited_layers.append(
+        if not placed:            composited_layers.append(
                 CompositedLayer(first_chunk=chunk))
-    print_composited_layers(composited_layers)
     return composited_layers
 
 class Browser:
