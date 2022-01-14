@@ -1540,7 +1540,7 @@ class PaintChunk:
         def op():
             for display_item in self.chunk_items:
                 display_item.raster(canvas)
-        draw_internal(self, canvas, op, self.composited_ancestor_index + 1)
+        self.draw_internal(self, canvas, op, self.composited_ancestor_index + 1)
 
     def draw_internal(self, canvas, op, index):
         if index == len(self.ancestor_effects):
