@@ -969,6 +969,7 @@ class CompositedLayer:
 #        print('new composited layer: bounds=' + str(bounds) + ' ' + str(first_chunk))
         self.surface = None
         self.chunks = []
+        self.first_chunk = first_chunk
         if first_chunk:
             self.append(first_chunk)
 
@@ -1539,8 +1540,8 @@ class PaintChunk:
     def raster(self, canvas):
         def op():
             for display_item in self.chunk_items:
-                display_item.raster(canvas)
-        self.draw_internal(self, canvas, op, self.composited_ancestor_index + 1)
+                display_item.execute(canvas)
+        self.draw_internal(canvas, op, self.composited_ancestor_index + 1)
 
     def draw_internal(self, canvas, op, index):
         if index == len(self.ancestor_effects):
