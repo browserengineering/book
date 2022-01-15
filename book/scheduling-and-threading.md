@@ -791,18 +791,20 @@ thread, and all code in `Tab` and `JSContext` will run on the main thread.
 
 The thread that already exists (the one started by the Python interpreter
 by default) will be the browser thread, and we'll make a new one for
-the main thread. Let's add a new `MainThreadEventLoop` class that will
-encapsulate the main thread and its event loop. The two threads will
-communicate by reading and writing shared data structures, and use
-`threading.Lock` objects to prevent race conditions. `MainThreadEventLoop` will
-be the only class allowed to call methods on `Tab` or `JSContext`.
+the main thread. Let's add more code to the `TaskRunner` class to make it
+into a complete event loop, and then rename it to `MainThreadEventLoop`.
 
-`MainThreadEventLoop` will have a lock and a thread object. Calling `start` will
-begin the thread. This will excute the `run` method on that thread; `run` will
-execute forever (or until the program quits, which is indicated by the
-`needs_quit` dirty bit) and is where we'll put the main thread event loop.
-There will also be a task queue for browser-generated tasks and scripts, and a
-rendering pipeline dirty bit.
+The two threads will communicate by reading and writing shared data structures,
+and use `threading.Lock` objects to prevent race conditions.
+`MainThreadEventLoop` will be the only class allowed to call methods on `Tab`
+or `JSContext`.
+
+`MainThreadEventLoop` will add a lock and a thread object. Calling `start` will
+begin the thread. This will excute the `run` method on that thread; `run`
+(instead of `run_once`) will execute forever (or until the program quits, which
+is indicated by the `needs_quit` dirty bit) and is where we'll put the main
+thread event loop. There will also be a task queue for browser-generated tasks
+and scripts, and a rendering pipeline dirty bit.
 
 ``` {.python}
 class MainThreadEventLoop:
