@@ -176,7 +176,7 @@ class JSContext:
             if url_origin(full_url) != url_origin(self.tab.url):
                 raise Exception(
                     "Cross-origin XHR request not allowed")
-            self.tab.main_thread_runner.schedule_task(
+            self.tab.event_loop.schedule_task(
                 Task(self.xhr_onload, out, handle_local))
             return out
 
@@ -220,10 +220,10 @@ class Tab:
         self.needs_pipeline_update = False
         self.commit_func = commit_func
         if USE_BROWSER_THREAD:
-            self.main_thread_runner = MainThreadRunner(self)
+            self.event_loop = MainThreadEventLoop(self)
         else:
-            self.main_thread_runner = SingleThreadedTaskRunner(self)
-        self.main_thread_runner.start()
+            self.event_loop = SingleThreadedEventLoop(self)
+        self.event_loop.start()
 
         self.time_in_style_layout_and_paint = 0.0
 
@@ -238,7 +238,7 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
-        self.main_thread_runner.clear_pending_tasks()
+        self.event_loop.clear_pending_tasks()
         headers, body = request(url, self.url, payload=body)
         self.scroll = 0
         self.scroll_changed_in_tab = True
@@ -298,7 +298,7 @@ class Tab:
             async_req["thread"].join()
             req_url = async_req["url"]
             if async_req["type"] == "script":
-                self.main_thread_runner.schedule_task(
+                self.event_loop.schedule_task(
                     Task(self.js.run, req_url,
                         script_results[req_url]['body']))
             else:
@@ -318,7 +318,7 @@ class Tab:
     def set_needs_animation_frame(self):
         def callback():
             self.display_scheduled = False
-            self.main_thread_runner.schedule_animation_frame()
+            self.event_loop.schedule_animation_frame()
         if not self.display_scheduled:
             if USE_BROWSER_THREAD:
                 set_timeout(callback, REFRESH_RATE_SEC)
@@ -468,7 +468,7 @@ class TaskQueue:
     def clear(self):
         self.tasks = []
 
-class SingleThreadedTaskRunner:
+class SingleThreadedEventLoop:
     def __init__(self, tab):
         self.tab = tab
 
@@ -496,7 +496,7 @@ class SingleThreadedTaskRunner:
     def run(self):
         pass
 
-class MainThreadRunner:
+class MainThreadEventLoop:
     def __init__(self, tab):
         self.lock = threading.Lock()
         self.condition = threading.Condition(self.lock)
@@ -579,7 +579,7 @@ class TabWrapper:
         self.scroll = 0
 
     def schedule_load(self, url, body=None):
-        self.tab.main_thread_runner.schedule_task(
+        self.tab.event_loop.schedule_task(
             Task(self.tab.load, url, body))
         self.browser.set_needs_chrome_raster()
 
@@ -596,25 +596,25 @@ class TabWrapper:
         self.browser.compositor_lock.release()
 
     def schedule_click(self, x, y):
-        self.tab.main_thread_runner.schedule_task(
+        self.tab.event_loop.schedule_task(
             Task(self.tab.click, x, y))
 
     def schedule_keypress(self, char):
-        self.tab.main_thread_runner.schedule_task(
+        self.tab.event_loop.schedule_task(
             Task(self.tab.keypress, char))
 
     def schedule_go_back(self):
-        self.tab.main_thread_runner.schedule_task(
+        self.tab.event_loop.schedule_task(
             Task(self.tab.go_back))
 
     def schedule_scroll(self, scroll):
         self.scroll = scroll
-        self.tab.main_thread_runner.schedule_scroll(scroll)
+        self.tab.event_loop.schedule_scroll(scroll)
 
     def handle_quit(self):
         print("Time in style, layout and paint: {:>.6f}s".format(
             self.tab.time_in_style_layout_and_paint))
-        self.tab.main_thread_runner.set_needs_quit()
+        self.tab.event_loop.set_needs_quit()
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
