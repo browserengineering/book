@@ -107,6 +107,8 @@ class JSContext:
         self.interp.export_function("innerHTML_set", self.innerHTML_set)
         self.interp.export_function("XMLHttpRequest_send",
             self.XMLHttpRequest_send)
+        self.interp.export_function("setTimeout",
+            self.setTimeout)
         self.interp.export_function("now",
             self.now)
         self.interp.export_function("requestAnimationFrame",
@@ -158,6 +160,14 @@ class JSContext:
         for child in elt.children:
             child.parent = elt
         self.tab.set_needs_pipeline_update()
+
+    def setTimeout(self, handle, time):
+        def run_callback():
+            self.tab.event_loop.schedule_task(
+                Task(self.interp.evaljs,
+                    "__runSetTimeout({})".format(handle)))
+
+        set_timeout(run_callback, time / 1000.0)
 
     def xhr_onload(self, out, handle):
         do_default = self.interp.evaljs(

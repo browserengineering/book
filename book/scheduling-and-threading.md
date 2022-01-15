@@ -34,7 +34,7 @@ feature of modern browsers.
 Task queues
 ===========
 
-At the moment, our browser has a lot of work tangled up, and it will take some
+At the moment, our browser has a lot of entangled code, and it will take
 substantial work to put everything in tasks on event loops. Let's start by
 defining the infrastructure of event loops, and then move JavaScript
 tasks to the new infrastructure. Then we can reward ourselves for this
@@ -59,12 +59,9 @@ it.[^event-loop] The job of the event loop is to schedule tasks
 [chapter 11](visual-effects.md#sdl-creates-the-window) (before that, we used
 `tkinter.mainloop`).
 
-Let's implement the `Task` and `TaskQueue` classes. Then we can move all of the
-event loop tasks into task queues later in the chapter.
-
-A `Task` encapsulates some code to run in the form of a function, plus arguments
-to that function.[^task-notes] A `TaskQueue` is simply a
-first-in-first-out list of `Task`s.
+Implement the `Task` and `TaskQueue` classes. A `Task` encapsulates some code to
+run in the form of a function, plus arguments to that function.[^task-notes] A
+`TaskQueue` is simply a first-in-first-out list of `Task`s.
 
 [^task-notes]: In `Task`, we're using the varargs syntax for Python, allowing
 any number of arguments to be passed to the task. We're also using Python's
@@ -104,11 +101,10 @@ class TaskQueue:
         self.tasks = []
 ```
 
-Also define a new `EventLoop` class to collect up the task queues and run them.
-It will have a `TaskQueue`, a method to add a task(represented by a function to
-call when running the task, and a method to run once through the event loop.
-We'll implement a simple scheduling heuristic that runs one task each time
-through, if thre is one to run.
+Also define a new `TaskQueue` class to manage the task queues and run them. It
+will have a `TaskQueue`, a method to add a `Task`, and a method to run once
+through the event loop. We'll implement a simple scheduling heuristic in
+`run_once` that executes one task each time through, if there is one to run.
 
 ``` {.python expected=False}
 class TaskRunner:
@@ -126,7 +122,7 @@ class TaskRunner:
 
 Now we're ready to move all the JavaScript execution code for a `Tab` onto
 a `TaskRunner`. Add the `TaskRunner` to `Tab` and, instead of running a
-script synchronously, schedule it on the `Tab` event loop:
+script synchronously, schedule it:
 
 ``` {.python expected=False}
 class Tab:
@@ -162,22 +158,109 @@ if __name__ == "__main__":
 ```
 
 That's it! Now our browser will not run scripts until after `load` has completed
-and the event loop comes around again. Before continuing, let's consider
-why this change is interesting. Before moving script evaluation out into
-a task runner, we always ran scripts right away just as they were loaded, and
-more-or-less had no choice to do otherwise. But now it's pretty clear that
-we have a lot more control over when to run scripts. For example, it's easy
-to make a change to `TaskRunner` to only run one script per second, or
-to not run them at all during page load, or when a tab is not the active tab.
-This flexibilty is quite powerful, and we can use it without having to dive
-into the guts of a `Tab` or how it loads web pages at all---all we'd have to do
-is implement a new `TaskRunner` heuristic.
+and the event loop comes around again.
+
+Before continuing, let's consider why this change is interesting. It used to be
+that we always ran scripts right away just as they were loaded, and
+more-or-less had no choice to do otherwise. But now it's pretty clear that we
+have a lot more control over when to run scripts. For example, it's easy to
+make a change to `TaskRunner` to only run one script per second, or to not run
+them at all during page load, or when a tab is not the active tab. This
+flexibilty is quite powerful, and we can use it without having to dive into the
+guts of a `Tab` or how it loads web pages at all---all we'd have to do is
+implement a new `TaskRunner` heuristic.
 
 Alright, now for the fun part I promised. Let's implement the
-[`setTimeout`][settimeout] JavaScript API.
+[`setTimeout`][settimeout] JavaScript API, which provides a way to run
+JavaScript a given number of milliseconds from now. In terms of the JavaScript
+and Python communication, it'll use an approach with handles, similar to the
+`addEventListener` we added in [Chapter 9](scripts.md#event-handling). The new
+part will be our first use of Python threads.
 
 [settimeout]: https://developer.mozilla.org/en-US/docs/Web/API/setTimeout
 
+We'll very soon have a lot more use for threads; for now all you need to know is
+that the `threading` module allows you to create threads and run code on them
+now or at a time specified in the future. To use them, start by adding an import
+for that module:
+
+``` {.python}
+import threading
+```
+
+Implement a `set_timeout` helper function that runs a callback at a specified
+time in the future. You can do that by starting a new
+[Python thread][python-thread] via the `threading.Timer` class, which takes
+two parameters: a time delta in seconds from now, and a function to call when
+that time expires.
+
+[python-thread]: https://docs.python.org/3/library/threading.html
+
+``` {.python}
+def set_timeout(func, sec):     
+    t = threading.Timer(sec, func)
+    t.start()
+```
+
+Now we're ready to implement `setTimeout`. In the JavaScript runtime, add make
+a new intere handle for each call to `setTimeout`, and store the mapping
+between handles and callback functions in a global object called
+`SET_TIMEOUT_REQUESTS`. When the timeout occurs, Python will call
+`__runSetTimeout` and be passed the handle.
+
+``` {.javascript file=runtime}
+SET_TIMEOUT_REQUESTS = {}
+
+function setTimeout(callback, time_delta) {
+    var handle = Object.keys(SET_TIMEOUT_REQUESTS).length;
+    SET_TIMEOUT_REQUESTS[handle] = callback;
+    call_python("setTimeout", handle, time_delta)
+}
+
+function __runSetTimeout(handle) {
+    var callback = SET_TIMEOUT_REQUESTS[handle]
+    delete SET_TIMEOUT_REQUESTS[handle];
+    callback();
+}
+```
+
+On the Python side, add a binding for `setTimeout` and an implementation that
+calls `set_timeout`. However, we have to be careful here, since in the code
+below, `run_callback` will run *on a different Python thread. than the current
+one*. So we can't just call `evaljs` directly, or we'll end up with JavaScript
+running on two Python threads at the same time, which is not ok.[^js-thread]
+
+Not all is lost though! This problem can be solved elegantly with the
+`TaskRunner`: instead of running the script right away, schedule a task to
+do it later, when the other thread is free.[^locking] Here's the code:
+
+[^locking]: This code has a bug: it accesses data structures shared
+between two threads without a thread lock. We'll see soon why this is and is
+not a problem, and how to solve it.
+
+[^js-thread]: JavaScript is not a multi-threaded programming language.
+It's possible on the web to create [js-workers] of various kinds, but they
+all run independently and communicate only via special message-passing APIs.
+
+[js-workers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
+
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.interp.export_function("setTimeout",
+            self.setTimeout)
+
+    def setTimeout(self, handle, time):
+        def run_callback():
+            self.tab.event_loop.schedule_task(
+                Task(self.interp.evaljs,
+                    "__runSetTimeout({})".format(handle)))
+
+        set_timeout(run_callback, time / 1000.0)
+```
+
+That's it! Your browser now supports running asynchronous JavaScript tasks.
 
 ::: {.further}
 Event loops often map 1:1 to CPU threads within a single CPU process, but
@@ -261,20 +344,6 @@ pipeline needs updating. Then when the pipeline is run, we'll run the parts
 indicated by the dirty bits. We'll also need some way of
 *scheduling* the rendering pipeline to be updated at a given time in the
 future.
-
-Let's start with how to schedule the update, via a new `set_timeout` function.
-This function will run a callback at a specified time in the future.
-You can do that by starting a new [Python thread][python-thread] via the
-`threading.Timer` class, which takes two parameters: a time delta from now, and
-a function to call when that time expires.
-
-[python-thread]: https://docs.python.org/3/library/threading.html
-
-``` {.python}
-def set_timeout(func, sec):     
-    t = threading.Timer(sec, func)
-    t.start()
-```
 
 Next, add a dirty bit called `needs_pipeline_update` (plus `display_scheduled`
 to avoid double-running `set_timeout` unnecessarily) to `Tab`, which means
