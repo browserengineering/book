@@ -1654,12 +1654,6 @@ should now look something like this:
 Exercises
 =========
 
-* *setTimeout*: The [`setTimeout`][setTimeout] JavaScript API schedules a
-   function to be called a fixed number of milliseconds from now. Implement
-   it.
-
-[setTimeout]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setTimeout
-
 * *setInterval*: [`setInterval`][setInterval] is similar to `setTimeout` but
 runs repeatedly at a given cadence until [`clearInterval`][clearInterval] is
 called. Implement these, and test them out on a sample page that also uses
