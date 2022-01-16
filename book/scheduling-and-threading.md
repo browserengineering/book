@@ -36,9 +36,10 @@ Task queues
 
 At the moment, our browser has a lot of entangled code, and it will take
 substantial work to put everything in tasks on event loops. Let's start by
-defining the infrastructure of event loops, and then move just JavaScript
-tasks to the new infrastructure. Then we can reward ourselves for this
-work by adding a fun new feature--the `setTimeout` API.
+defining the infrastructure of event loops, and then move just JavaScript tasks
+to the new infrastructure. This will be a bit of work, so let's reward
+ourselves for this work by adding a fun new feature built on top of this
+tech--the `setTimeout` API.
 
 When the browser is free to do work, it finds the next pending *task* and runs
 it, and repeats. A sequence of related tasks is a *task queue*, and browsers
