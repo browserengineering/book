@@ -470,27 +470,14 @@ class Browser:
         self.set_needs_draw()
 ```
 
-Scripts in the event loop
-=========================
+Scripts and rendering
+=====================
 
-In addition to event handlers and rendering, JavaScript also runs on the
-rendering event loop. As we saw in [chapter 9](scripts.md), when the parser
-encounters a `<script>` tag, , the script subsequently loads and then runs. We
-can easily wrap all this in a `Task`, with a zero-second timeout, like so:
-
-``` {.python expected=False}
-class Tab:
-    for script in find_scripts(self.nodes, []):
-        # ...
-        header, body = request(script_url, url)
-        set_timeout(0, Task(self.js.run, script, body))
-```
-
-As you probably know, scripts are not just for running straight through in one
-task, or responding to input events. They can also schedule more events to be
-put on the rendering event loop and run later. There are multiple JavaScript
-APIs in browsers to do this, but let's focus on the one most related to
-rendering: `requestAnimationFrame`. It's used like this:
+Scripts are not just just for tasks unrelated to rendering. In fact, many
+scripts tasks are there to update rendering state in the DOM after a state
+change of the application (perhaps caused by an input event, or new information
+downloaded from the server). To facilitate this, browsers have the
+`requestAnimationFrame` JavaScript API. It's used like this:
 
 ``` {.javascript expected=False}
 /* This is JavaScript */
@@ -501,12 +488,13 @@ requestAnimationFrame(callback);
 ```
 
 This code will do two things: request an *animation frame* (rendering) task to
-be run on the event loop,[^animation-frame] and call `callback` at the
-beginning of that rendering task. This is super useful to web page authors, as
-it allows them to do any setup work related to rendering just before it occurs.
-The implementation of this JavaScript API is straightforward: add a new dirty
-bit to `Tab` and code to call the JavaScript callbacks during the next
-animation frame.
+be scheduled on the event loop,
+[^animation-frame] and call `callback` *at the beginning* of that rendering
+task, before any browser rendering code. This is super useful to web page
+authors, as it allows them to do any setup work related to rendering just
+before it occurs. The implementation of this JavaScript API is straightforward:
+add a new dirty bit to `Tab` and code to call the JavaScript callbacks during
+the next animation frame.
 
 [^animation-frame]: Now you know why I chose the `*_animation_frame` naming
 for the methods on `Tab` in the previous section!
