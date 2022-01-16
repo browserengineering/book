@@ -169,15 +169,15 @@ But now it's pretty clear that we have a lot more control over when to run
 scripts. For example, it's easy to make a change to `TaskRunner` to only run
 one script per second, or to not run them at all during page load, or when a
 tab is not the active tab. This flexibilty is quite powerful, and we can use it
-without having to dive into the guts of a `Tab` or how it loads web pages at
-all---all we'd have to do is implement a new `TaskRunner` heuristic.
+without having to dive into the guts of a `Tab` or how it loads web pages---all
+we'd have to do is implement a new `TaskRunner` heuristic.
 
 Now for the fun part I promised. Let's implement the
 [`setTimeout`][settimeout] JavaScript API, which provides a way to run
 JavaScript a given number of milliseconds from now. In terms of the JavaScript
 and Python communication, it'll use an approach with handles, similar to the
 `addEventListener` code we added in [Chapter 9](scripts.md#event-handling).
-The new part will be our first use of Python threads.
+The *new* part will be our first use of Python threads.
 
 [settimeout]: https://developer.mozilla.org/en-US/docs/Web/API/setTimeout
 
