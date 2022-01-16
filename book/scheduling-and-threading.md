@@ -36,7 +36,7 @@ Task queues
 
 At the moment, our browser has a lot of entangled code, and it will take
 substantial work to put everything in tasks on event loops. Let's start by
-defining the infrastructure of event loops, and then move JavaScript
+defining the infrastructure of event loops, and then move just JavaScript
 tasks to the new infrastructure. Then we can reward ourselves for this
 work by adding a fun new feature--the `setTimeout` API.
 
@@ -101,9 +101,9 @@ class TaskQueue:
         self.tasks = []
 ```
 
-Also define a new `TaskQueue` class to manage the task queues and run them. It
+Also define a new `TaskRunner` class to manage the task queues and run them. It
 will have a `TaskQueue`, a method to add a `Task`, and a method to run once
-through the event loop. We'll implement a simple scheduling heuristic in
+through the event loop. Implement a simple scheduling heuristic in
 `run_once` that executes one task each time through, if there is one to run.
 
 ``` {.python expected=False}
@@ -120,9 +120,11 @@ class TaskRunner:
             task()
 ```
 
-Now we're ready to move all the JavaScript execution code for a `Tab` onto
-a `TaskRunner`. Add the `TaskRunner` to `Tab` and, instead of running a
-script synchronously, schedule it:
+Now we're ready to move JavaScript script loading for a `Tab` onto a
+`TaskRunner`.[^event-handlers-later] Add the `TaskRunner` to `Tab` and, instead
+of running a script synchronously, schedule it:
+
+[^event-handlers-later]: Well move JavaScript event handlers to a task later.
 
 ``` {.python expected=False}
 class Tab:
@@ -161,21 +163,20 @@ That's it! Now our browser will not run scripts until after `load` has completed
 and the event loop comes around again.
 
 Before continuing, let's consider why this change is interesting. It used to be
-that we always ran scripts right away just as they were loaded, and
-more-or-less had no choice to do otherwise. But now it's pretty clear that we
-have a lot more control over when to run scripts. For example, it's easy to
-make a change to `TaskRunner` to only run one script per second, or to not run
-them at all during page load, or when a tab is not the active tab. This
-flexibilty is quite powerful, and we can use it without having to dive into the
-guts of a `Tab` or how it loads web pages at all---all we'd have to do is
-implement a new `TaskRunner` heuristic.
+that we had no choice but to eval scripts right away just as they were loaded.
+But now it's pretty clear that we have a lot more control over when to run
+scripts. For example, it's easy to make a change to `TaskRunner` to only run
+one script per second, or to not run them at all during page load, or when a
+tab is not the active tab. This flexibilty is quite powerful, and we can use it
+without having to dive into the guts of a `Tab` or how it loads web pages at
+all---all we'd have to do is implement a new `TaskRunner` heuristic.
 
-Alright, now for the fun part I promised. Let's implement the
+Now for the fun part I promised. Let's implement the
 [`setTimeout`][settimeout] JavaScript API, which provides a way to run
 JavaScript a given number of milliseconds from now. In terms of the JavaScript
 and Python communication, it'll use an approach with handles, similar to the
-`addEventListener` we added in [Chapter 9](scripts.md#event-handling). The new
-part will be our first use of Python threads.
+`addEventListener` code we added in [Chapter 9](scripts.md#event-handling).
+The new part will be our first use of Python threads.
 
 [settimeout]: https://developer.mozilla.org/en-US/docs/Web/API/setTimeout
 
@@ -189,7 +190,7 @@ import threading
 ```
 
 Implement a `set_timeout` helper function that runs a callback at a specified
-time in the future. You can do that by starting a new
+time in the future. You can do that by creating a new
 [Python thread][python-thread] via the `threading.Timer` class, which takes
 two parameters: a time delta in seconds from now, and a function to call when
 that time expires.
@@ -202,8 +203,8 @@ def set_timeout(func, sec):
     t.start()
 ```
 
-Now we're ready to implement `setTimeout`. In the JavaScript runtime, add make
-a new intere handle for each call to `setTimeout`, and store the mapping
+Now we're ready to implement `setTimeout`. In the JavaScript runtime, add
+a new internal handle for each call to `setTimeout`, and store the mapping
 between handles and callback functions in a global object called
 `SET_TIMEOUT_REQUESTS`. When the timeout occurs, Python will call
 `__runSetTimeout` and be passed the handle.
@@ -226,7 +227,7 @@ function __runSetTimeout(handle) {
 
 On the Python side, add a binding for `setTimeout` and an implementation that
 calls `set_timeout`. However, we have to be careful here, since in the code
-below, `run_callback` will run *on a different Python thread. than the current
+below, `run_callback` will run *on a different Python thread than the current
 one*. So we can't just call `evaljs` directly, or we'll end up with JavaScript
 running on two Python threads at the same time, which is not ok.[^js-thread]
 
@@ -235,8 +236,7 @@ Not all is lost though! This problem can be solved elegantly with the
 do it later, when the other thread is free.[^locking] Here's the code:
 
 [^locking]: This code has a bug: it accesses data structures shared
-between two threads without a thread lock. We'll see soon why this is and is
-not a problem, and how to solve it.
+between two threads without a thread lock. We'll see soon how to fix it.
 
 [^js-thread]: JavaScript is not a multi-threaded programming language.
 It's possible on the web to create [js-workers] of various kinds, but they
