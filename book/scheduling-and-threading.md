@@ -1059,7 +1059,8 @@ Threaded scrolling
 Two sections back we talked about how important it is to run scrolling on the 
 browser thread, to avoid slow scripts. But right now, even though there
 is a browser thread, scrolling still happens in a `Task` on the main thread.
-Let's fix that.
+Let's now make scrolling truly *threaded*, meaning it runs on the browser
+thread in parallel with scripts and other main thread work.
 
 Threaded scrolling is quite tricky to implement. The reason is that both the
 browser thread *and* the main thread can affect scroll. For example, when
