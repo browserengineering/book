@@ -770,7 +770,7 @@ In `run`, implement a simple event loop scheduling strategy that runs the
 rendering pipeline if needed, and also one browser method and one script task,
 if there are any on those queues.
 
-The part at thet end is the trickiest. First, check if there are more tasks
+The part at the end is the trickiest. First, check if there are more tasks
 to execute; if so, loop again and run those tasks. If not, sleep until there
 is a task to run. The way we "sleep until there is a task" is via a *condition
 variable*, which is a way for one thread to block until it has been notified by
@@ -926,10 +926,9 @@ same time. For this reason commit needs to be as fast as possible, so as to
 lose the minimum possible amount of parallelism and responsiveness.
 
 Finally, let's add some methods on `TabWrapper` to schedule various kinds
-of main thread tasks scheduled by the `Browser` (`schedule_scroll` will be
-implementd on `MainThreadRunner` in a bit).
+of main thread tasks scheduled by the `Browser`.
 
-``` {.python}
+``` {.python expected=False}
 class TabWrapper:
     def schedule_load(self, url, body=None):
         self.tab.main_thread_runner.schedule_task(
@@ -948,9 +947,9 @@ class TabWrapper:
         self.tab.main_thread_runner.schedule_task(
             Task(self.tab.go_back))
 
-    def schedule_scroll(self, scroll):
-        self.scroll = scroll
-        self.tab.main_thread_runner.schedule_scroll(scroll)
+    def schedule_scrolldown(self):
+        self.tab.main_thread_runner.schedule_task(
+            Task(self.tab.scrolldown))
 
     def handle_quit(self):
         self.tab.main_thread_runner.set_needs_quit()
@@ -1017,8 +1016,7 @@ class Browser:
         self.compositor_lock.release()
 ```
 
-As it turns out, the return key and scrolling have no use at all for the main
-thread. Here's `handle_down`:
+And `handle_down`:
 
 ``` {.python expected=False}
 class Browser:
@@ -1028,8 +1026,7 @@ class Browser:
             return
         max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
-        active_tab.schedule_scroll(
-            min(active_tab.scroll + SCROLL_STEP, max_y))
+        active_tab.schedule_scrolldown()
         self.set_needs_draw()
         self.compositor_lock.release()
 ```
@@ -1059,16 +1056,17 @@ Skia is thread-safe, but SDL may not be.
 Threaded scrolling
 ==================
 
-Recall how we've added some scroll-related code, but we didn't really get into
-how it works (I also omitted some of the code). Let's now carefully examine
-how to implement threaded scrolling.
+Two sections back we talked about how important it is to run scrolling on the 
+browser thread, to avoid slow scripts. But right now, even though there
+is a browser thread, scrolling still happens in a `Task` on the main thread.
+Let's fix that.
 
-The reason that scrolling can be so responsive is that it happens on the browser
-thread, without waiting around to synchronize with the main thread. But the
-main thread can and does affect scroll. For example, when loading a new page,
-scroll is set to 0; when running `innerHTML`, the height of the document could
-change, leading to a potential change of scroll offset. What should
-we do if the two threads disagree about the scroll offset?
+Threaded scrolling is quite tricky to implement. The reason is that both the
+browser thread *and* the main thread can affect scroll. For example, when
+loading a new page, scroll is set to 0; when running `innerHTML`, the height of
+the document could change, leading to a potential change of scroll offset to
+clamp it to that height. What should we do if the two threads disagree about
+the scroll offset?
 
 The best policy is to respect the scroll offset the user last observed, unless
 it's incompatible with the web page. In other words, use the browser thread
@@ -1189,7 +1187,7 @@ class Browser:
         # ...
 ```
 
-That's it! Pretty complicated, but we got it done. Fire up the counting demo and
+That was pretty complicated, but we got it done. Fire up the counting demo and
 enjoy the newly smooth scrolling.
 
 Now let's step back from the code for a moment and consider the full scope and
