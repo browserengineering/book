@@ -813,7 +813,7 @@ class JSContext:
             self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
-        with open("runtime14.js") as f:
+        with open("runtime13.js") as f:
             self.interp.evaljs(f.read())
 
         self.node_to_handle = {}
