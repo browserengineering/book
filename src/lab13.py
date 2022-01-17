@@ -273,7 +273,7 @@ class SaveLayer(DisplayItem):
         rect = skia.Rect.MakeEmpty()
         for cmd in cmds:
             rect.join(cmd.rect)
-        super().__init__(rect, False, cmds, not should_save)
+        super().__init__(rect, should_save, cmds, not should_save)
 
     def draw(self, canvas, op):
         if not self.is_noop():
@@ -921,6 +921,7 @@ def animate_style(node, old_style, new_style, tab):
         return
     if old_style["opacity"] == new_style["opacity"]:
         return
+
     tab.animations[node] = start_opacity_animation(float(old_style["opacity"]), new_style, tab)
 
 ANIMATION_FRAME_COUNT = 60
@@ -971,11 +972,8 @@ class Animation:
         self.frame_count += 1
         self.computed_style[self.property_name] = \
             self.old_value + self.change_per_frame * self.frame_count
-        needs_another_frame = self.frame_count < ANIMATION_FRAME_COUNT
-        if needs_another_frame:
-            self.tab.set_needs_paint()
-            self.tab.set_needs_animation_frame()
-        return needs_another_frame
+        self.tab.set_needs_paint()
+        return self.frame_count < ANIMATION_FRAME_COUNT
 
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
@@ -1180,12 +1178,16 @@ class Tab:
 
     def set_needs_animation_frame(self):
         def callback():
+            self.main_thread_runner.lock.acquire(blocking=True)
             self.display_scheduled = False
+            self.main_thread_runner.lock.release()
             self.main_thread_runner.schedule_animation_frame()
+        self.main_thread_runner.lock.acquire(blocking=True)
         if not self.display_scheduled:
             if USE_BROWSER_THREAD:
                 set_timeout(callback, REFRESH_RATE_SEC)
             self.display_scheduled = True
+        self.main_thread_runner.lock.release()
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
@@ -1209,9 +1211,19 @@ class Tab:
             self.needs_raf_callbacks = False
             self.js.interp.evaljs("__runRAFHandlers()")
 
+        to_delete = []
+        needs_another_animation_frame = False
+        for animation_key in self.animations:
+            if not self.animations[animation_key].animate():
+                to_delete.append(animation_key)
+            else:
+                needs_another_animation_frame = True
+
+        for key in to_delete:
+            del self.animations[key]
+
         self.run_rendering_pipeline()
 
-#        self.print_display_list()
         document_bounds = self.compute_document_bounds()
         clamped_scroll = clamp_scroll(self.scroll,
             document_bounds.height())
@@ -1226,16 +1238,11 @@ class Tab:
             self.display_list)
         self.scroll_changed_in_tab = False
 
+        if needs_another_animation_frame:
+            self.set_needs_animation_frame()
+
     def run_rendering_pipeline(self):
         timer = None
-
-        to_delete = []
-        for animation_key in self.animations:
-            if not self.animations[animation_key].animate():
-                to_delete.append(animation_key)
-
-        for key in to_delete:
-            del self.animations[key]
 
         if self.needs_pipeline_update:
             timer = Timer()
@@ -1444,7 +1451,6 @@ class MainThreadRunner:
         while True:
             if self.needs_quit:
                 return;
-
             self.lock.acquire(blocking=True)
             needs_animation_frame = self.needs_animation_frame
             self.needs_animation_frame = False
