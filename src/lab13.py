@@ -116,7 +116,7 @@ class DisplayItem:
                 inner=inner,
                 noop=(" <no-op>" if self.is_noop() else ""))
 
-class Transform(DisplayItem):
+fclass Transform(DisplayItem):
     def __init__(self, translation, rotation_degrees, rect, cmds):
         self.rotation_degrees = rotation_degrees
         self.translation = translation
@@ -142,7 +142,7 @@ class Transform(DisplayItem):
             canvas.save()
             print('rotate')
             canvas.rotate(
-                degrees=self.rotation_degrees, px=rotation_x, py=rotation_y)
+                degrees=10, px=rotation_x, py=rotation_y)
             op()
             canvas.restore()
 
