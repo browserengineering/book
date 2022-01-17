@@ -1594,7 +1594,7 @@ def display_list_to_paint_chunks_internal(
 
 def print_chunks(chunks):
     for chunk in chunks:
-        print('chunk:')
+        print('chunks:')
         print("  chunk display items:")
         for display_item in chunk.chunk_items:
             print(" " * 4 + str(display_item))
@@ -1611,8 +1611,9 @@ def display_list_to_paint_chunks(display_list):
     return chunks
 
 def print_composited_layers(composited_layers):
+    print("Composited layers:")
     for layer in composited_layers:
-        print("layer: bounds=" + str(layer.bounds()))
+        print("  layer: bounds=" + str(layer.bounds()))
 
 def do_composite(display_list, initial_layer):
     chunks = display_list_to_paint_chunks(display_list)
@@ -1693,10 +1694,7 @@ class Browser:
         self.needs_draw = True
 
     def composite(self):
-#        print('\n\ncompositing...')
         initial_layer = CompositedLayer(bounds=self.active_tab_bounds)
-
-#        print_chunks(display_list_to_paint_chunks(self.active_tab_display_list))
 
         self.composited_layers = do_composite(
             self.active_tab_display_list, initial_layer)
