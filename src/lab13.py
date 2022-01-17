@@ -1613,7 +1613,8 @@ def display_list_to_paint_chunks(display_list):
 def print_composited_layers(composited_layers):
     print("Composited layers:")
     for layer in composited_layers:
-        print("  layer: bounds=" + str(layer.bounds()))
+        print("  layer: composited_bounds={} screen_bounds={}".format(
+            layer.composited_bounds(), layer.screen_bounds()))
 
 def do_compositing(display_list):
     chunks = display_list_to_paint_chunks(display_list)
