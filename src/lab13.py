@@ -59,6 +59,8 @@ def center_point(rect):
     return (rect.left() + (rect.right() - rect.left()) / 2,
         rect.top() + (rect.bottom() - rect.top()) / 2)
 
+USE_COMPOSITING = True
+
 class DisplayItem:
     def __init__(self, rect, needs_compositing=False, cmds=None,
         is_noop=False):
@@ -71,9 +73,7 @@ class DisplayItem:
         return self.rect
 
     def needs_compositing(self):
-        if self.composited:
-            return True
-        return False
+        return USE_COMPOSITING and self.composited
 
     def get_cmds(self):
         return self.cmds
@@ -90,7 +90,7 @@ class DisplayItem:
         else:
             self.draw(canvas)
 
-    def draw(self, canvas, op, is_raster):
+    def draw(self, canvas, op):
         pass
 
     def transform(self, rect):
@@ -116,20 +116,18 @@ class DisplayItem:
                 inner=inner,
                 noop=(" <no-op>" if self.is_noop() else ""))
 
-USE_COMPOSITING = True
-
 class Transform(DisplayItem):
-    def __init__(self, translation, rotation_degrees, rect, cmds,
-        should_transform):
+    def __init__(self, translation, rotation_degrees, rect, cmds):
         self.rotation_degrees = rotation_degrees
         self.translation = translation
         (self.center_x, self.center_y) = center_point(rect)
         assert translation == None or rotation_degrees == None
-        self.should_transform = should_transform
+        should_transform = translation != None or rotation_degrees != None
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
-        super().__init__(my_bounds, should_transform and USE_COMPOSITING, cmds, not should_transform)
+        super().__init__(
+            my_bounds, should_transform, cmds, not should_transform)
 
-    def draw(self, canvas, op, is_raster):
+    def draw(self, canvas, op):
         if self.is_noop():
             op()
         elif self.translation:
@@ -142,6 +140,7 @@ class Transform(DisplayItem):
             rotation_x = self.center_x
             rotation_y = self.center_y
             canvas.save()
+            print('rotate')
             canvas.rotate(
                 degrees=self.rotation_degrees, px=rotation_x, py=rotation_y)
             op()
@@ -237,7 +236,7 @@ class ClipRRect(DisplayItem):
         super().__init__(
             ClipRRect.compute_bounds(rect, cmds), False, cmds, not should_clip)
 
-    def draw(self, canvas, op, is_raster):
+    def draw(self, canvas, op):
         if not self.is_noop():
             canvas.save()
             canvas.clipRRect(self.rrect)
@@ -277,7 +276,7 @@ class SaveLayer(DisplayItem):
             rect.join(cmd.rect)
         super().__init__(rect, False, cmds, not should_save)
 
-    def draw(self, canvas, op, is_raster):
+    def draw(self, canvas, op):
         if not self.is_noop():
             canvas.saveLayer(paint=self.sk_paint)
         if self.should_paint_cmds:
@@ -610,6 +609,9 @@ class DocumentLayout:
         self.height = child.height + 2*VSTEP
 
     def paint(self, display_list):
+#        display_list.append(
+#            DrawRect(self.x, self.y, self.x + self.width, self.y + self.height,
+ #               "white"))
         self.children[0].paint(display_list)
 
     def __repr__(self):
@@ -789,8 +791,7 @@ def paint_visual_effects(node, cmds, rect):
                     cmds,
                 should_clip=needs_clip),
             ], should_save=needs_blend_isolation),
-        ],
-        should_transform=translation != None or rotation != None)
+        ])
     ]
 
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
@@ -1013,6 +1014,8 @@ class CompositedLayer:
         if not self.surface:
             return
 
+        assert self.first_chunk
+
         def op():
             bounds = self.composited_bounds()
             surface_offset_x = bounds.left()
@@ -1024,7 +1027,7 @@ class CompositedLayer:
         canvas.save()
         canvas.translate(draw_offset_x, draw_offset_y)
         if self.first_chunk:
-            self.first_chunk.draw(canvas, op, False)
+            self.first_chunk.draw(canvas, op)
         else:
             op()
         canvas.restore()
@@ -1563,19 +1566,21 @@ class PaintChunk:
         def op():
             for display_item in self.chunk_items:
                 display_item.execute(canvas)
-        self.draw_internal(canvas, op, self.composited_ancestor_index + 1, True)
+        self.draw_internal(canvas, op, self.composited_ancestor_index + 1)
 
-    def draw_internal(self, canvas, op, index, is_raster):
+    def draw_internal(self, canvas, op, index):
         if index == len(self.ancestor_effects):
             op()
         else:
             display_item = self.ancestor_effects[index]
+            if display_item.needs_compositing():
+                return
             def recurse_op():
-                self.draw_internal(canvas, op, index + 1, is_raster)
-            display_item.draw(canvas, recurse_op, is_raster)
+                self.draw_internal(canvas, op, index + 1)
+            display_item.draw(canvas, recurse_op)
 
-    def draw(self, canvas, op, is_raster):
-        self.draw_internal(canvas, op, 0, is_raster)
+    def draw(self, canvas, op):
+        self.draw_internal(canvas, op, 0)
 
 
 def display_list_to_paint_chunks_internal(
@@ -1612,8 +1617,9 @@ def display_list_to_paint_chunks(display_list):
 def print_composited_layers(composited_layers):
     print("Composited layers:")
     for layer in composited_layers:
-        print("  layer: composited_bounds={} screen_bounds={}".format(
-            layer.composited_bounds(), layer.screen_bounds()))
+        print("  layer: composited_bounds={} screen_bounds={} first_chunk_item={}".format(
+            layer.composited_bounds(), layer.screen_bounds(),
+            layer.first_chunk.chunk_items[0]))
 
 def do_compositing(display_list):
     chunks = display_list_to_paint_chunks(display_list)
@@ -1696,6 +1702,9 @@ class Browser:
     def composite(self):
         self.composited_layers = do_compositing(
             self.active_tab_display_list)
+
+        print_composited_layers(self.composited_layers)
+
         self.active_tab_height = 0
         for layer in self.composited_layers:
             self.active_tab_height = \
