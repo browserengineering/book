@@ -1615,9 +1615,9 @@ def print_composited_layers(composited_layers):
     for layer in composited_layers:
         print("  layer: bounds=" + str(layer.bounds()))
 
-def do_composite(display_list, initial_layer):
+def do_compositing(display_list):
     chunks = display_list_to_paint_chunks(display_list)
-    composited_layers = [initial_layer]
+    composited_layers = []
     for chunk in chunks:
         placed = False
         for layer in reversed(composited_layers):
@@ -1694,10 +1694,8 @@ class Browser:
         self.needs_draw = True
 
     def composite(self):
-        initial_layer = CompositedLayer(bounds=self.active_tab_bounds)
-
-        self.composited_layers = do_composite(
-            self.active_tab_display_list, initial_layer)
+        self.composited_layers = do_compositing(
+            self.active_tab_display_list)
 
     def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
