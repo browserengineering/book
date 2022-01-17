@@ -1697,8 +1697,6 @@ class Browser:
     def composite(self):
         self.composited_layers = do_compositing(
             self.active_tab_display_list)
-        print("active tab height: " + str(self.active_tab.active_tab_bounds))
-        print_composited_layers(self.composited_layers)
 
     def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
@@ -1732,7 +1730,7 @@ class Browser:
         active_tab.schedule_scroll(
             clamp_scroll(
                 active_tab.scroll + SCROLL_STEP,
-                self.active_tab_bounds.height()))
+                self.active_tab_bounds.bottom()))
         self.set_needs_draw()
         self.compositor_lock.release()
 
