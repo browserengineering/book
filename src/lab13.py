@@ -1570,8 +1570,6 @@ class PaintChunk:
             op()
         else:
             display_item = self.ancestor_effects[index]
-            if display_item.needs_compositing():
-                return
             def recurse_op():
                 self.draw_internal(canvas, op, index + 1)
             display_item.draw(canvas, recurse_op)
