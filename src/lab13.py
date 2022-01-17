@@ -116,7 +116,7 @@ class DisplayItem:
                 inner=inner,
                 noop=(" <no-op>" if self.is_noop() else ""))
 
-fclass Transform(DisplayItem):
+class Transform(DisplayItem):
     def __init__(self, translation, rotation_degrees, rect, cmds):
         self.rotation_degrees = rotation_degrees
         self.translation = translation
@@ -142,7 +142,7 @@ fclass Transform(DisplayItem):
             canvas.save()
             print('rotate')
             canvas.rotate(
-                degrees=10, px=rotation_x, py=rotation_y)
+                degrees=self.rotation_degrees, px=rotation_x, py=rotation_y)
             op()
             canvas.restore()
 
@@ -1026,10 +1026,7 @@ class CompositedLayer:
 
         canvas.save()
         canvas.translate(draw_offset_x, draw_offset_y)
-        if self.first_chunk:
-            self.first_chunk.draw(canvas, op)
-        else:
-            op()
+        self.first_chunk.draw(canvas, op)
         canvas.restore()
 
     def raster(self):
@@ -1580,7 +1577,10 @@ class PaintChunk:
             display_item.draw(canvas, recurse_op)
 
     def draw(self, canvas, op):
-        self.draw_internal(canvas, op, 0)
+        if self.composited_ancestor_index >= 0:
+            self.draw_internal(canvas, op, 0)
+        else:
+            op()
 
 
 def display_list_to_paint_chunks_internal(
