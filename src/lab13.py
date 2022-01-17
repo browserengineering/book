@@ -1489,7 +1489,6 @@ class TabWrapper:
         self.url = url
         if scroll != None:
             self.scroll = scroll
-        self.browser.active_tab_bounds = tab_bounds
         self.browser.active_tab_display_list = display_list.copy()
         self.browser.set_needs_tab_raster()
         self.browser.compositor_lock.release()
@@ -1673,7 +1672,7 @@ class Browser:
         self.needs_chrome_raster = True
         self.needs_draw = True
 
-        self.active_tab_bound = None
+        self.active_tab_height = None
         self.active_tab_display_list = None
         self.composited_layers = []
         self.tab_surface = None
@@ -1697,6 +1696,10 @@ class Browser:
     def composite(self):
         self.composited_layers = do_compositing(
             self.active_tab_display_list)
+        self.active_tab_height = 0
+        for layer in self.composited_layers:
+            self.active_tab_height = \
+                max(self.active_tab_height, layer.screen_bounds().bottom())
 
     def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
@@ -1724,13 +1727,13 @@ class Browser:
 
     def handle_down(self):
         self.compositor_lock.acquire(blocking=True)
-        if not self.active_tab_bounds:
+        if not self.active_tab_height:
             return
         active_tab = self.tabs[self.active_tab]
         active_tab.schedule_scroll(
             clamp_scroll(
                 active_tab.scroll + SCROLL_STEP,
-                self.active_tab_bounds.bottom()))
+                self.active_tab_height))
         self.set_needs_draw()
         self.compositor_lock.release()
 
