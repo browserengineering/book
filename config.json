@@ -19,10 +19,10 @@
 
         "visual-effects.md": { "disabled": false, "lab": "lab11.py", "examples": "examples11.py", "server": "server11.py"  },
         "scheduling-and-threading.md": { "disabled": true, "lab": "lab12.py", "server": "server12.py", "runtime": "runtime12.js", "eventloop": "eventloop12.js" },
-        "reflow.md": { "disabled": true, "lab": "lab13.py" },
 
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
+        "reflow.md": { "disabled": true, "lab": "reflow-chapter.py" },
 
         "glossary.md": { "disabled": true },
         "bibliography.md": { "disabled": false },
