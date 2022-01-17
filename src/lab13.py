@@ -978,12 +978,10 @@ class Animation:
         return needs_another_frame
 
 class CompositedLayer:
-    def __init__(self, bounds=None, first_chunk=None):
+    def __init__(self, first_chunk):
         self.surface = None
         self.chunks = []
-        self.first_chunk = first_chunk
-        if first_chunk:
-            self.chunks.append(first_chunk)
+        self.chunks.append(first_chunk)
 
     def can_merge(self, chunk):
         if len(self.chunks) == 0:
@@ -1014,7 +1012,7 @@ class CompositedLayer:
         if not self.surface:
             return
 
-        assert self.first_chunk
+        assert len(self.chunks) > 0
 
         def op():
             bounds = self.composited_bounds()
@@ -1026,7 +1024,7 @@ class CompositedLayer:
 
         canvas.save()
         canvas.translate(draw_offset_x, draw_offset_y)
-        self.first_chunk.draw(canvas, op)
+        self.chunks[0].draw(canvas, op)
         canvas.restore()
 
     def raster(self):
@@ -1616,7 +1614,7 @@ def print_composited_layers(composited_layers):
     for layer in composited_layers:
         print("  layer: composited_bounds={} screen_bounds={} first_chunk_item={}".format(
             layer.composited_bounds(), layer.screen_bounds(),
-            layer.first_chunk.chunk_items[0]))
+            layer.chunks[0].chunk_items[0]))
 
 def do_compositing(display_list):
     chunks = display_list_to_paint_chunks(display_list)
@@ -1629,13 +1627,11 @@ def do_compositing(display_list):
                 placed = True
                 break
             elif layer.overlaps(chunk.screen_bounds()):
-                composited_layers.append(
-                    CompositedLayer(first_chunk=chunk))
+                composited_layers.append(CompositedLayer(chunk))
                 placed = True
                 break
         if not placed:
-            composited_layers.append(
-                CompositedLayer(first_chunk=chunk))
+            composited_layers.append(CompositedLayer(chunk))
     return composited_layers
 
 class Browser:
