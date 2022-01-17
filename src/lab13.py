@@ -1037,7 +1037,6 @@ class CompositedLayer:
         if not self.surface:
             self.surface = skia.Surface(irect.width(), irect.height())
         canvas = self.surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
         canvas.save()
         canvas.translate(-bounds.left(), -bounds.top())
         for chunk in self.chunks:
