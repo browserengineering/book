@@ -140,7 +140,6 @@ class Transform(DisplayItem):
             rotation_x = self.center_x
             rotation_y = self.center_y
             canvas.save()
-            print('rotate')
             canvas.rotate(
                 degrees=self.rotation_degrees, px=rotation_x, py=rotation_y)
             op()
@@ -224,7 +223,7 @@ class DrawRect(DisplayItem):
         draw_rect(canvas,
             self.left, self.top,
             self.right, self.bottom,
-            fill=self.color, width=0)
+            fill_color=self.color, width=0)
 
     def __repr__(self):
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
@@ -304,15 +303,16 @@ def draw_text(canvas, x, y, text, font, color=None):
         text, float(x), y - font.getMetrics().fAscent,
         font, paint)
 
-def draw_rect(canvas, l, t, r, b, fill=None, width=1):
+def draw_rect(
+    canvas, l, t, r, b, fill_color=None, border_color="black", width=1):
     paint = skia.Paint()
-    if fill:
+    if fill_color:
         paint.setStrokeWidth(width);
-        paint.setColor(parse_color(fill))
+        paint.setColor(parse_color(fill_color))
     else:
         paint.setStyle(skia.Paint.kStroke_Style)
         paint.setStrokeWidth(1);
-        paint.setColor(skia.ColorBLACK)
+        paint.setColor(parse_color(border_color))
     rect = skia.Rect.MakeLTRB(l, t, r, b)
     canvas.drawRect(rect, paint)
 
@@ -977,6 +977,8 @@ class Animation:
             self.tab.set_needs_animation_frame()
         return needs_another_frame
 
+SHOW_COMPOSITED_LAYER_BORDERS = False
+
 class CompositedLayer:
     def __init__(self, first_chunk):
         self.surface = None
@@ -1035,6 +1037,11 @@ class CompositedLayer:
         if not self.surface:
             self.surface = skia.Surface(irect.width(), irect.height())
         canvas = self.surface.getCanvas()
+
+        if SHOW_COMPOSITED_LAYER_BORDERS:
+            draw_rect(
+                canvas, 0, 0, irect.width(), irect.height(), border_color="red")
+
         canvas.save()
         canvas.translate(-bounds.left(), -bounds.top())
         for chunk in self.chunks:
@@ -1878,9 +1885,12 @@ if __name__ == "__main__":
     parser.add_argument("url", type=str, help="URL to load")
     parser.add_argument('--disable_compositing', action="store_true",
         default=False, help='Whether to composite some elements')
+    parser.add_argument('--show_composited_layer_borders', action="store_true",
+        default=False, help='Whether to visually indicate composited layer borders')
     args = parser.parse_args()
 
     USE_COMPOSITING = not args.disable_compositing
+    SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
