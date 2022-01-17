@@ -1053,7 +1053,7 @@ class CompositedLayer:
         return ("layer: composited_bounds={} " +
             "screen_bounds={} first_chunk={}").format(
             self.composited_bounds(), self.screen_bounds(),
-            self..chunks[0])
+            self.chunks[0])
 
 class Tab:
     def __init__(self, commit_func):
