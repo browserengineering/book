@@ -116,6 +116,8 @@ class DisplayItem:
                 inner=inner,
                 noop=(" <no-op>" if self.is_noop() else ""))
 
+USE_COMPOSITING = True
+
 class Transform(DisplayItem):
     def __init__(self, translation, rotation_degrees, rect, cmds,
         should_transform):
@@ -125,7 +127,7 @@ class Transform(DisplayItem):
         assert translation == None or rotation_degrees == None
         self.should_transform = should_transform
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
-        super().__init__(my_bounds, should_transform, cmds, not should_transform)
+        super().__init__(my_bounds, should_transform and USE_COMPOSITING, cmds, not should_transform)
 
     def draw(self, canvas, op, is_raster):
         if self.is_noop():
@@ -139,9 +141,6 @@ class Transform(DisplayItem):
         else:
             rotation_x = self.center_x
             rotation_y = self.center_y
-            if not is_raster:
-                rotation_x -= self.bounds().left()
-                rotation_y -= self.bounds().top()
             canvas.save()
             canvas.rotate(
                 degrees=self.rotation_degrees, px=rotation_x, py=rotation_y)
@@ -991,10 +990,16 @@ class CompositedLayer:
         return  \
             self.chunks[0].composited_item() == chunk.composited_item()
 
-    def bounds(self):
+    def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
         for chunk in self.chunks:
-            retval.join(chunk.bounds())
+            retval.join(chunk.composited_bounds())
+        return retval
+
+    def screen_bounds(self):
+        retval = skia.Rect.MakeEmpty()
+        for chunk in self.chunks:
+            retval.join(chunk.screen_bounds())
         return retval
 
     def append(self, chunk):
@@ -1002,30 +1007,30 @@ class CompositedLayer:
         self.chunks.append(chunk)
 
     def overlaps(self, rect):
-        return skia.Rect.Intersects(self.bounds(), rect)
+        return skia.Rect.Intersects(self.screen_bounds(), rect)
 
     def draw(self, canvas, draw_offset):
         if not self.surface:
             return
-        (offset_x, offset_y) = draw_offset
-        bounds = self.bounds()
-        offset_x += bounds.left()
-        offset_y += bounds.top()
 
         def op():
-            self.surface.draw(canvas, 0, 0)
+            bounds = self.composited_bounds()
+            surface_offset_x = bounds.left()
+            surface_offset_y = bounds.top()
+            self.surface.draw(canvas, surface_offset_x, surface_offset_y)
+
+        (draw_offset_x, draw_offset_y) = draw_offset
 
         canvas.save()
-        canvas.translate(offset_x, offset_y)
-
+        canvas.translate(draw_offset_x, draw_offset_y)
         if self.first_chunk:
             self.first_chunk.draw(canvas, op, False)
         else:
-            self.surface.draw(canvas, 0, 0)
+            op()
         canvas.restore()
 
     def raster(self):
-        bounds = self.bounds()
+        bounds = self.composited_bounds()
         if bounds.isEmpty():
             return
         irect = bounds.roundOut()
@@ -1176,10 +1181,8 @@ class Tab:
         self.set_needs_animation_frame()
 
     def compute_document_bounds(self):
-#        print('compute_document_bounds')
         rect = skia.Rect.MakeEmpty()
         for display_item in self.display_list:
-#            print("   " + str(display_item) + " " + str(display_item.bounds()))
             rect.join(display_item.bounds())
         return rect
 
@@ -1527,12 +1530,18 @@ class PaintChunk:
                 break
             count -= 1
 
-    def bounds(self):
+    def screen_bounds(self):
+        return self.bounds_internal(True)
+
+    def composited_bounds(self):
+        return self.bounds_internal(False)
+
+    def bounds_internal(self, include_composited):
         retval = skia.Rect.MakeEmpty()
         for item in self.chunk_items:
             retval.join(item.bounds())
         for display_item in reversed(self.ancestor_effects):
-            if display_item.needs_compositing():
+            if display_item.needs_compositing() and not include_composited:
                 break
             retval = display_item.transform(retval)
         return retval
@@ -1555,7 +1564,7 @@ class PaintChunk:
         def op():
             for display_item in self.chunk_items:
                 display_item.execute(canvas)
-        self.draw_internal(canvas, op, self.composited_ancestor_index + 1, False)
+        self.draw_internal(canvas, op, self.composited_ancestor_index + 1, True)
 
     def draw_internal(self, canvas, op, index, is_raster):
         if index == len(self.ancestor_effects):
@@ -1615,12 +1624,13 @@ def do_composite(display_list, initial_layer):
                 layer.append(chunk)
                 placed = True
                 break
-            elif layer.overlaps(chunk.bounds()):
+            elif layer.overlaps(chunk.screen_bounds()):
                 composited_layers.append(
                     CompositedLayer(first_chunk=chunk))
                 placed = True
                 break
-        if not placed:            composited_layers.append(
+        if not placed:
+            composited_layers.append(
                 CompositedLayer(first_chunk=chunk))
     return composited_layers
 
@@ -1683,7 +1693,7 @@ class Browser:
         self.needs_draw = True
 
     def composite(self):
-        print('\n\ncompositing...')
+#        print('\n\ncompositing...')
         initial_layer = CompositedLayer(bounds=self.active_tab_bounds)
 
 #        print_chunks(display_list_to_paint_chunks(self.active_tab_display_list))
@@ -1827,7 +1837,7 @@ class Browser:
 
         chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
         canvas.save()
-#        canvas.clipRect(chrome_rect)
+        canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
         canvas.restore()
 
@@ -1860,10 +1870,19 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Chapter 13 code')
+    parser.add_argument("url", type=str, help="URL to load")
+    parser.add_argument('--disable_compositing', action="store_true",
+        default=False, help='Whether to composite some elements')
+    args = parser.parse_args()
+
+    USE_COMPOSITING = not args.disable_compositing
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(sys.argv[1])
+    browser.load(args.url)
 
     event = sdl2.SDL_Event()
     while True:
