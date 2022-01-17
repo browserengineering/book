@@ -1715,8 +1715,6 @@ class Browser:
         self.composited_layers = do_compositing(
             self.active_tab_display_list)
 
-        print_composited_layers(self.composited_layers)
-
         self.active_tab_height = 0
         for layer in self.composited_layers:
             self.active_tab_height = \
