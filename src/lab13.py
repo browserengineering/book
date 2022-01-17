@@ -1697,6 +1697,7 @@ class Browser:
     def composite(self):
         self.composited_layers = do_compositing(
             self.active_tab_display_list)
+        print("active tab height: " + str(self.active_tab.active_tab_bounds))
         print_composited_layers(self.composited_layers)
 
     def composite_raster_draw(self):
