@@ -1038,15 +1038,22 @@ class CompositedLayer:
             self.surface = skia.Surface(irect.width(), irect.height())
         canvas = self.surface.getCanvas()
 
-        if SHOW_COMPOSITED_LAYER_BORDERS:
-            draw_rect(
-                canvas, 0, 0, irect.width(), irect.height(), border_color="red")
-
         canvas.save()
         canvas.translate(-bounds.left(), -bounds.top())
         for chunk in self.chunks:
             chunk.raster(canvas)
         canvas.restore()
+
+        if SHOW_COMPOSITED_LAYER_BORDERS:
+            draw_rect(
+                canvas, 0, 0, irect.width() - 1, irect.height() - 1,
+                border_color="red")
+
+    def __repr__(self):
+        return ("layer: composited_bounds={} " +
+            "screen_bounds={} first_chunk={}").format(
+            self.composited_bounds(), self.screen_bounds(),
+            self..chunks[0])
 
 class Tab:
     def __init__(self, commit_func):
@@ -1584,6 +1591,13 @@ class PaintChunk:
         else:
             op()
 
+    def __repr__(self):
+        composited_item = None
+        if self.composited_ancestor_index >= 0:
+            composited_item = \
+                self.ancestor_effects[self.composited_ancestor_index]
+        return "Chunk: first_item={} composited_item=".format(
+            self.chunk_items[0], composited_item)
 
 def display_list_to_paint_chunks_internal(
     display_list, chunks, ancestor_effects):
@@ -1619,9 +1633,7 @@ def display_list_to_paint_chunks(display_list):
 def print_composited_layers(composited_layers):
     print("Composited layers:")
     for layer in composited_layers:
-        print("  layer: composited_bounds={} screen_bounds={} first_chunk_item={}".format(
-            layer.composited_bounds(), layer.screen_bounds(),
-            layer.chunks[0].chunk_items[0]))
+        print("  " * 4 + str(layer))
 
 def do_compositing(display_list):
     chunks = display_list_to_paint_chunks(display_list)
