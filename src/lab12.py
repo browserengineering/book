@@ -506,11 +506,20 @@ class MainThreadRunner:
         self.tasks = TaskQueue()
         self.needs_quit = False
         self.pending_scroll = None
+        self.display_scheduled = False
 
     def schedule_animation_frame(self):
+        def callback():
+            self.lock.acquire(blocking=True)
+            self.display_scheduled = False
+            self.needs_animation_frame = True
+            self.condition.notify_all()
+            self.lock.release()
         self.lock.acquire(blocking=True)
-        self.needs_animation_frame = True
-        self.condition.notify_all()
+        if not self.display_scheduled:
+            if USE_BROWSER_THREAD:
+                set_timeout(callback, REFRESH_RATE_SEC)
+            self.display_scheduled = True
         self.lock.release()
 
     def schedule_task(self, callback):
