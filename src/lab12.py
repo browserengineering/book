@@ -472,7 +472,7 @@ class SingleThreadedTaskRunner:
     def schedule_scroll(self, scroll):
         self.tab.apply_scroll(scroll)
 
-    def schedule_display(self):
+    def schedule_animation_frame(self):
         self.display_scheduled = True
 
     def schedule_task(self, callback):
