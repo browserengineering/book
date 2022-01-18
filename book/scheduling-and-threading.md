@@ -284,21 +284,7 @@ class Browser:
         self.needs_draw = False
 ```
 
-Oh, and we'll need to schedule an animation frame whenever any of those dirty
-bits are set. This is easiest to add in `set_needs_draw`. Note that scheduling
-an animation frame does *not* mean that `run_rendering_pipeline` does all its
-expensive work, just that the animation frame task is scheduled 16ms in the
-future. Only `set_needs_pipeline_update` will cause that expensive work.
-
-
-``` {.python expected=False}
-class Browser:
-    def set_needs_draw(self):
-        # ...
-        self.tabs[self.active_tab].set_needs_animation_frame()
-```
-
-And in each case where raster or draw was called previously, set the dirty
+In each case where raster or draw was called previously, set the dirty
 bits. Here's the change to `handle_click`:
 
 ``` {.python expected=False}
@@ -530,13 +516,15 @@ Count the total time spent in the two categories. We'll also need a
 `handle_quit` hook in `Tab`, called from `Browser`, to print out the `Tab`
 rendering time.
 
-``` {.python expected=False}
+``` {.python replace=browser/commit_func}
 class Tab:
     def __init__(self, browser):
         # ...
         self.time_in_style_layout_and_paint = 0.0
+        self.num_pipeline_updates = 0
 
     def run_rendering_pipeline(self):
+        # ...
         if self.needs_pipeline_update:
             timer = Timer()
             timer.start()
@@ -546,18 +534,28 @@ class Tab:
             self.document.layout()
             self.display_list = []
             self.document.paint(self.display_list)
+            # ...
             self.time_in_style_layout_and_paint += timer.stop()
+            self.num_pipeline_updates += 1
 
     def handle_quit(self):
-        print("Time in style, layout and paint: {:>.6f}s".format(
-            self.tab.time_in_style_layout_and_paint))
+        print("""Time in style, layout and paint: {:>.6f}s
+    ({:>.6f}ms per pipelne run on average;
+    {} total pipeline updates)""".format(
+            self.tab.time_in_style_layout_and_paint,
+            self.tab.time_in_style_layout_and_paint / \
+                self.tab.num_pipeline_updates * 1000,
+            self.tab.num_pipeline_updates))
+        # ...
 ```
 
 ``` {.python}
 class Browser:
     def __init__(self):
         self.time_in_raster_and_draw = 0
+        self.num_raster_and_draws = 0
         self.time_in_draw = 0
+        self.num_draws = 0
 
     def raster_and_draw(self):
         timer = None
@@ -573,19 +571,25 @@ class Browser:
             draw_timer.start()
             self.draw()
             self.time_in_draw += draw_timer.stop()
+            self.time_in_raster_and_draw += timer.stop()
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
-        if timer:
-            self.time_in_raster_and_draw += timer.stop()
 
     def handle_quit(self):
-        print("Time in raster and draw: {:>.6f}s".format(
-            self.time_in_raster_and_draw))
-        print("Time in draw: {:>.6f}s".format(
-            self.time_in_draw))
-
-        self.tabs[self.active_tab].handle_quit()
+        print("""Time in raster-and-draw: {:>.6f}s
+    ({:>.6f}ms per raster-and-draw run on average;
+    {} total raster-and-draw updates)""".format(
+            self.time_in_raster_and_draw,
+            self.time_in_raster_and_draw / \
+                self.num_raster_and_draws * 1000,
+            self.num_raster_and_draws))
+        print("""Time in draw: {:>.6f}s
+    ({:>.6f}ms per draw run on average;
+    {} total draw updates)""".format(
+            self.time_in_draw,
+            self.time_in_draw / self.num_draws * 1000,
+            self.num_draws))
         # ...
 ```
 
@@ -594,29 +598,34 @@ Now fire up the server and navigate to `/count`.^[The full URL will probably be
 on the window. The browser will print out the total time spent in each
 category. When I ran it on my computer, it said:
 
-    Time in raster and draw: 1.855505s
-    Time in draw: 1.753160s
-    Time in style, layout and paint: 0.097325s
+    Time in raster-and-draw: 4.135040s
+        (41.350403ms per raster-and-draw run on average;
+        100 total raster-and-draw updates)
+    Time in draw: 2.869909s
+        (28.699088ms per draw run on average;
+        100 total draw updates)
+    Time in style, layout and paint: 1.973732s
+        (19.737322ms per pipelne run on average;
+        100 total pipeline updates)
 
-Over a total of 100 frames of animation, the browser spent about 1.9s (or 19ms
-per animation frame on average) rastering and drawing,[^raster-draw] and most
-of the time is in draw, not raster.
+Over a total of 100 frames of animation, the browser spent about 40ms
+rastering and drawing per frame,[^raster-draw] and most
+of the time (29ms) is in draw, not raster. That's a lot, and certainly
+greater than our 16ms time budget.
 
-On the other hand, the browser spent about
-100ms (1ms per animation frame) in the other phases.[^timing-overhead]
-That's because the DOM in this example is very simple. If it was significantly
-larger, layout would start to become slow. We'll see how to optimize that in
+On the other hand, the browser spent about 20ms per animation frame in the other
+phases, which is also a lot. We'll see how to optimize that in
 [Chapter 13](reflow.md).
 
 Based on these timings, the first thing to try is optimizing
-draw. I profiled each step of it, and found that each of the steps of the
+draw. I profiled it in more depth, and found that each of the
 surface-drawing-into-surface steps (of which there are three) take a
 significant amount of time.[^profile-draw] (I told you that
 [optimizing surfaces](visual-effects.md#optimizing-surface-use) was important!) 
 
 But even if those surfaces were optimized (not such an easy feat), raster is
-still as slow as style, layout and paint put together. So we should see a win
-by running raster and draw on a parallel thread.
+still very expensive. So we should see a win by running raster and draw on a
+parallel thread.
 
 [^profile-draw]: I encourage you to do this profiling, to see for yourself.
 
@@ -624,11 +633,6 @@ by running raster and draw on a parallel thread.
 at how high the raster and draw time was, so I went back and added the separate
 draw timer that you see in the code above. Profiing your code often yields
 interesting insights!
-
-[^timing-overhead]: It's always good to remember that, unless you're careful,
-sometimes the overhead to measure timings can bias the timings themselves. In
-our case, since the style, layout and paint timer only showed 1ms per frame, it
-can't be all that high.
 
 ::: {.further}
 The best way to optimize `draw` is to perform raster and draw on the GPU (and
@@ -767,10 +771,10 @@ class MainThreadRunner:
             self.condition.notify_all()
             self.lock.release()
         self.lock.acquire(blocking=True)
+        display_scheduled = self.display_scheduled
         if not self.display_scheduled:
-            if USE_BROWSER_THREAD:
-                set_timeout(callback, REFRESH_RATE_SEC)
             self.display_scheduled = True
+            set_timeout(callback, REFRESH_RATE_SEC)
         self.lock.release()
 
     def schedule_task(self, callback):
@@ -848,11 +852,7 @@ class Tab:
                 Task(self.js.run, req_url, body))
 
     def set_needs_animation_frame(self):
-        def callback():
-            self.display_scheduled = False
-            self.main_thread_runner.schedule_animation_frame()
-        if not self.display_scheduled:
-            set_timeout(callback, REFRESH_RATE_SEC)
+        self.main_thread_runner.schedule_display()
 
     def run_rendering_pipeline(self):
         # ...
