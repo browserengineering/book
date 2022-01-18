@@ -1061,7 +1061,6 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
-        self.display_scheduled = False
         self.needs_pipeline_update = False
         self.needs_paint = False
         self.commit_func = commit_func
@@ -1175,19 +1174,6 @@ class Tab:
         self.needs_pipeline_update = True
         self.needs_paint = True
         self.set_needs_animation_frame()
-
-    def set_needs_animation_frame(self):
-        def callback():
-            self.main_thread_runner.lock.acquire(blocking=True)
-            self.display_scheduled = False
-            self.main_thread_runner.lock.release()
-            self.main_thread_runner.schedule_animation_frame()
-        self.main_thread_runner.lock.acquire(blocking=True)
-        if not self.display_scheduled:
-            if USE_BROWSER_THREAD:
-                set_timeout(callback, REFRESH_RATE_SEC)
-            self.display_scheduled = True
-        self.main_thread_runner.lock.release()
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
@@ -1930,6 +1916,7 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
         if not USE_BROWSER_THREAD and \
-            browser.tabs[browser.active_tab].tab.display_scheduled:
+            browser.tabs[browser.active_tab].tab.main_thread_runner.\
+                display_scheduled:
             browser.render()
         browser.composite_raster_draw()
