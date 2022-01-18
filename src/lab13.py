@@ -966,7 +966,7 @@ class Animation:
         self.computed_style = computed_style
         self.tab = tab
         self.frame_count = 0
-        tab.main_thread_runner.schedule_animation_frame()
+        tab.set_needs_animation_frame()
 
     def animate(self):
         self.frame_count += 1
@@ -1173,6 +1173,9 @@ class Tab:
     def set_needs_pipeline_update(self):
         self.needs_pipeline_update = True
         self.needs_paint = True
+        self.set_needs_animation_frame()
+
+    def set_needs_animation_frame(self):
         self.main_thread_runner.schedule_animation_frame()
 
     def request_animation_frame_callback(self):
