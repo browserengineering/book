@@ -215,7 +215,7 @@ class Tab:
         self.needs_pipeline_update = True
         set_needs_animation_frame()
 
-    def set_needs_animation_frame(self):
+    def schedule_animation_frame(self):
         def callback():
             self.display_scheduled = False
             self.run_rendering_pipeline()
@@ -750,19 +750,8 @@ Add some methods to set the dirty bit and schedule tasks. These need to
 acquire the lock before setting these thread-safe variables. (Ignore the
 `condition` line, we'll get to that in a moment).
 
-The first one---`schedule_animation_frame`---is a tricky one. It needs to
-schedule an animation to occur about 16ms in the future, *but only if one
-hasn't already been scheduled*. There is a new dirty bit called
-`display_scheduled`  to handle the
-"already been scheduled" condition. And since `callback` is called on a
-different thread, we need a lock to ensure thread safety.
-
-``` {.python}
+``` {.python expected=False}
 class MainThreadRunner:
-    def __init__(self, tab):
-         # ...
-        self.display_scheduled = False
-
     def schedule_animation_frame(self):
         def callback():
             self.lock.acquire(blocking=True)
@@ -771,7 +760,6 @@ class MainThreadRunner:
             self.condition.notify_all()
             self.lock.release()
         self.lock.acquire(blocking=True)
-        display_scheduled = self.display_scheduled
         if not self.display_scheduled:
             self.display_scheduled = True
             set_timeout(callback, REFRESH_RATE_SEC)
