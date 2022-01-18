@@ -316,7 +316,7 @@ class Tab:
         self.set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
-        self.main_thread_runner.schedule_display()
+        self.main_thread_runner.schedule_animation_frame()
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
