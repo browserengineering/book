@@ -1061,8 +1061,8 @@ threads in parallel.[^why-gil]
 This means that the *throughput* (animation frames delivered per second) of our
 browser will not actually be greater with two threads. Even though the
 throughput is not higher, the *responsiveness* of the browser thread is still
-massively improved, since it isn't blocked on JavaScript or the front half of
-the rendering pipeline.
+massively improved, since it often isn't blocked on JavaScript or the front
+half of the rendering pipeline.
 
 Another point: the global interpreter lock doesn't save us from race conditions
 for shared data structures. In particular, the Python interpreter on a thread
