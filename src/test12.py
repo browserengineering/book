@@ -19,7 +19,7 @@ class MockMainThreadRunner:
 	def __init__(self, tab):
 		self.tab = tab
 
-	def schedule_animation_frame(self):
+	def schedule_display(self):
 		self.tab.run_animation_frame()
 
 	def schedule_task(self, callback):
