@@ -63,11 +63,12 @@ USE_COMPOSITING = True
 
 class DisplayItem:
     def __init__(self, rect, needs_compositing=False, cmds=None,
-        is_noop=False):
+        is_noop=False, node=None, item_type=None):
         self.rect = rect if rect else skia.Rect.MakeEmpty()
         self.composited=needs_compositing
         self.cmds = cmds
         self.noop = is_noop
+        self.item_type = item_type
 
     def bounds(self):
         return self.rect
@@ -96,6 +97,9 @@ class DisplayItem:
     def transform(self, rect):
         return rect
 
+    def copy(self, display_item):
+        assert False
+
     def repr_recursive(self, indent=0, include_noop=False):
         inner = ""
         if not include_noop and self.is_noop():
@@ -117,15 +121,17 @@ class DisplayItem:
                 noop=(" <no-op>" if self.is_noop() else ""))
 
 class Transform(DisplayItem):
-    def __init__(self, translation, rotation_degrees, rect, cmds):
+    def __init__(self, translation, rotation_degrees, rect, node, cmds):
         self.rotation_degrees = rotation_degrees
         self.translation = translation
         (self.center_x, self.center_y) = center_point(rect)
         assert translation == None or rotation_degrees == None
         should_transform = translation != None or rotation_degrees != None
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
+        rect = rect
         super().__init__(
-            my_bounds, should_transform, cmds, not should_transform)
+            rect=my_bounds, needs_compositing=should_transform, cmds=cmds,
+            is_noop=not should_transform, node=node, item_type="transform")
 
     def draw(self, canvas, op):
         if self.is_noop():
@@ -164,6 +170,14 @@ class Transform(DisplayItem):
         for cmd in cmds:
             rect.join(cmd.bounds())
         return self.transform_internal(rect, should_transform)
+
+    def copy(seelf, display_item):
+        assert display_item.item_type == self.item_type
+        self.translation = other.translation
+        self.rotation_deegrees = other.rotation_degrees
+        should_transform = translation != None or rotation_degrees != None
+        self.update_bounds(self.compute_bounds(self.rect, self.get_cmds(),
+            should_transform))
 
     def __repr__(self):
         if self.is_noop():
@@ -266,14 +280,16 @@ class DrawLine(DisplayItem):
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 class SaveLayer(DisplayItem):
-    def __init__(self, sk_paint, cmds,
+    def __init__(self, sk_paint, node, cmds,
             should_save=True, should_paint_cmds=True, needs_animation=False):
         self.should_paint_cmds = should_paint_cmds
         self.sk_paint = sk_paint
         rect = skia.Rect.MakeEmpty()
         for cmd in cmds:
             rect.join(cmd.rect)
-        super().__init__(rect, should_save, cmds, not should_save)
+        super().__init__(
+            rect=rect, needs_compositing=should_save, cmds=cmds,
+            is_noop=not should_save, node=node, item_type="save_layer")
 
     def draw(self, canvas, op):
         if not self.is_noop():
@@ -282,6 +298,10 @@ class SaveLayer(DisplayItem):
             op()
         if not self.is_noop():
             canvas.restore()
+
+    def copy(self, display_item):
+        assert display_item.item_type == self.item_type
+        self.sk_paint = other.sk_paint
 
     def __repr__(self):
         if self.is_noop():
@@ -784,15 +804,19 @@ def paint_visual_effects(node, cmds, rect):
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
         needs_clip or opacity != 1.0
 
-    return [
-        Transform(translation, rotation, rect, [
-            SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
-                ClipRRect(rect, clip_radius,
-                    cmds,
+    save_layer = \
+        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), node, [
+            ClipRRect(rect, clip_radius, cmds,
                 should_clip=needs_clip),
-            ], should_save=needs_blend_isolation),
-        ])
-    ]
+        ], should_save=needs_blend_isolation)
+
+    transform = Transform(translation, rotation, rect, node, [save_layer])
+
+    if transform.needs_compositing() or save_layer.needs_compositing:
+        node.transform = transform
+        node.save_layer = save_layer
+
+    return [transform]
 
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
 
@@ -922,14 +946,14 @@ def animate_style(node, old_style, new_style, tab):
     if old_style["opacity"] == new_style["opacity"]:
         return
 
-    tab.animations[node] = start_opacity_animation(float(old_style["opacity"]), new_style, tab)
+    tab.animations[node] = start_opacity_animation(node, float(old_style["opacity"]), new_style, tab)
 
-ANIMATION_FRAME_COUNT = 60
+ANIMATION_FRAME_COUNT = 3
 
-def start_opacity_animation(old_opacity, new_style, tab):
+def start_opacity_animation(node, old_opacity, new_style, tab):
     new_opacity = float(new_style["opacity"])
     change_per_frame = (new_opacity - old_opacity) / ANIMATION_FRAME_COUNT
-    return Animation("opacity", old_opacity, change_per_frame, new_style, tab)
+    return Animation(node, "opacity", old_opacity, change_per_frame, new_style, tab)
 
 def style(node, rules, tab):
     old_style = None
@@ -959,7 +983,8 @@ def style(node, rules, tab):
 
 class Animation:
     def __init__(
-        self, property_name, old_value, change_per_frame, computed_style, tab):
+        self, node, property_name, old_value, change_per_frame, computed_style, tab):
+        self.node = node
         self.property_name = property_name
         self.old_value = old_value
         self.change_per_frame = change_per_frame
@@ -972,7 +997,8 @@ class Animation:
         self.frame_count += 1
         self.computed_style[self.property_name] = \
             self.old_value + self.change_per_frame * self.frame_count
-        self.tab.set_needs_paint()
+        self.tab.set_needs_animation(self.node, self.property_name,
+            self.property_name in ["opacity", "transform"])
         return self.frame_count < ANIMATION_FRAME_COUNT
 
 SHOW_COMPOSITED_LAYER_BORDERS = False
@@ -1033,6 +1059,7 @@ class CompositedLayer:
             return
         irect = bounds.roundOut()
         if not self.surface:
+            print('make surface')
             self.surface = skia.Surface(irect.width(), irect.height())
         canvas = self.surface.getCanvas()
 
@@ -1061,8 +1088,8 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
-        self.needs_pipeline_update = False
         self.needs_paint = False
+        self.needs_pipeline_update = False
         self.commit_func = commit_func
         if USE_BROWSER_THREAD:
             self.main_thread_runner = MainThreadRunner(self)
@@ -1072,6 +1099,7 @@ class Tab:
 
         self.time_in_style_layout_and_paint = 0.0
         self.animations = {}
+        self.composited_animation_updates = []
         self.display_list = []
 
         with open("browser8.css") as f:
@@ -1167,8 +1195,12 @@ class Tab:
     def apply_scroll(self, scroll):
         self.scroll = scroll
 
-    def set_needs_paint(self):
-        self.needs_paint = True
+    def set_needs_animation(self, node, property_name, is_composited):
+        if is_composited:
+            self.needs_paint = True
+            self.composited_animation_updates.append(node)
+        else:
+            self.set_needs_pipeline_update()
 
     def set_needs_pipeline_update(self):
         self.needs_pipeline_update = True
@@ -1211,6 +1243,8 @@ class Tab:
         for key in to_delete:
             del self.animations[key]
 
+        needs_composite = self.needs_pipeline_update
+
         self.run_rendering_pipeline()
 
         document_bounds = self.compute_document_bounds()
@@ -1220,11 +1254,19 @@ class Tab:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
 
+        composited_updates = []
+        if not needs_composite:
+            for node in self.composited_animation_updates:
+                composited_updates.append(
+                    (node, node.transform, node.save_layer))
+        self.composited_animation_updates.clear()
+
         self.commit_func(
             self.url, clamped_scroll if self.scroll_changed_in_tab \
                 else None, 
             document_bounds,
-            self.display_list)
+            self.display_list,
+            composited_updates, needs_composite)
         self.scroll_changed_in_tab = False
 
         if needs_another_animation_frame:
@@ -1253,7 +1295,6 @@ class Tab:
                 y = obj.y
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
-            self.needs_paint = False
 
         self.needs_pipeline_update = False
 
@@ -1488,7 +1529,9 @@ class TabWrapper:
             Task(self.tab.load, url, body))
         self.browser.set_needs_chrome_raster()
 
-    def commit(self, url, scroll, tab_bounds, display_list):
+    def commit(self, url, scroll, tab_bounds, display_list,
+        composited_updates, needs_composite):
+        print('commit')
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
@@ -1496,7 +1539,14 @@ class TabWrapper:
         if scroll != None:
             self.scroll = scroll
         self.browser.active_tab_display_list = display_list.copy()
-        self.browser.set_needs_tab_raster()
+        self.browser.composited_updates = \
+            composited_updates.copy()
+        if needs_composite:
+            self.browser.set_needs_composite()
+            self.browser.set_needs_tab_raster()
+        else:
+            self.browser.set_needs_composite()
+            self.browser.set_needs_draw()
         self.browser.compositor_lock.release()
 
     def schedule_click(self, x, y):
@@ -1659,7 +1709,6 @@ class Browser:
             ct=skia.kRGBA_8888_ColorType,
             at=skia.kUnpremul_AlphaType))
         self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
-        self.composited_layers = None
 
         self.tabs = []
         self.active_tab = None
@@ -1681,12 +1730,14 @@ class Browser:
             self.BLUE_MASK = 0x00ff0000
             self.ALPHA_MASK = 0xff000000
 
+        self.needs_composite = False
+        self.composited_updates = []
         self.needs_tab_raster = False
         self.needs_chrome_raster = True
         self.needs_draw = True
 
         self.active_tab_height = None
-        self.active_tab_display_list = None
+        self.active_tab_display_list = []
         self.composited_layers = []
         self.tab_surface = None
 
@@ -1694,6 +1745,11 @@ class Browser:
         assert not USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab].tab
         tab.run_animation_frame()
+
+    def set_needs_composite(self):
+        self.needs_composite = True
+#        self.needs_tab_raster = True
+        self.needs_draw = True
 
     def set_needs_tab_raster(self):
         self.needs_tab_raster = True
@@ -1707,16 +1763,32 @@ class Browser:
         self.needs_draw = True
 
     def composite(self):
-        self.composited_layers = do_compositing(
-            self.active_tab_display_list)
+        if self.needs_composite:
+#            print('composite')
+            self.composited_layers = do_compositing(
+                self.active_tab_display_list)
 
-        self.active_tab_height = 0
-        for layer in self.composited_layers:
-            self.active_tab_height = \
-                max(self.active_tab_height, layer.screen_bounds().bottom())
+            self.active_tab_height = 0
+            for layer in self.composited_layers:
+                self.active_tab_height = \
+                    max(self.active_tab_height, layer.screen_bounds().bottom())
+        else:
+            print('here...')
+            return
+            for (node, transform, save_layer) in self.composited_updates:
+                for layer in self.composited_layers:
+                    composited_item = layer.composited_item()
+                    if composited_item.node != node:
+                        continue
+                    if composited_item.type == "transform":
+                        composited_item.copy(transform)
+                    if composited_item.type == "save_layer":
+                        composited_item.copy(save_layer)
+
 
     def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
+        print('composite_raster_draw: ' + str(len(self.active_tab_display_list)))
         timer = None
         draw_timer = None
         if self.needs_draw:
@@ -1724,8 +1796,9 @@ class Browser:
             timer.start()
         if self.needs_chrome_raster:
             self.raster_chrome()
-        if self.needs_tab_raster:
+        if self.needs_composite or len(self.composited_updates) > 0:
             self.composite()
+        if self.needs_tab_raster:
             self.raster_tab()
         if self.needs_draw:
             draw_timer = Timer()
@@ -1797,6 +1870,7 @@ class Browser:
         self.tabs.append(new_tab)
 
     def raster_tab(self):
+        print('raster tabs: ' + str(len(self.composited_layers)))
         for composited_layer in self.composited_layers:
             composited_layer.raster()
 
