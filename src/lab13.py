@@ -1531,7 +1531,6 @@ class TabWrapper:
 
     def commit(self, url, scroll, tab_bounds, display_list,
         composited_updates, needs_composite):
-        print('commit')
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
@@ -1748,7 +1747,7 @@ class Browser:
 
     def set_needs_composite(self):
         self.needs_composite = True
-#        self.needs_tab_raster = True
+        self.needs_tab_raster = True
         self.needs_draw = True
 
     def set_needs_tab_raster(self):
@@ -1773,8 +1772,7 @@ class Browser:
                 self.active_tab_height = \
                     max(self.active_tab_height, layer.screen_bounds().bottom())
         else:
-            print('here...')
-            return
+#            print('here...')
             for (node, transform, save_layer) in self.composited_updates:
                 for layer in self.composited_layers:
                     composited_item = layer.composited_item()
@@ -1788,7 +1786,6 @@ class Browser:
 
     def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
-        print('composite_raster_draw: ' + str(len(self.active_tab_display_list)))
         timer = None
         draw_timer = None
         if self.needs_draw:
@@ -1805,9 +1802,11 @@ class Browser:
             draw_timer.start()
             self.draw()
             self.time_in_draw += draw_timer.stop()
+        self.needs_composite = False
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
+        self.composited_updates.clear()
         self.compositor_lock.release()
         if timer:
             self.time_in_raster_and_draw += timer.stop()
@@ -1870,7 +1869,6 @@ class Browser:
         self.tabs.append(new_tab)
 
     def raster_tab(self):
-        print('raster tabs: ' + str(len(self.composited_layers)))
         for composited_layer in self.composited_layers:
             composited_layer.raster()
 
