@@ -1027,6 +1027,9 @@ class CompositedLayer:
             retval.join(chunk.screen_bounds())
         return retval
 
+    def composited_item(self):
+        return self.chunks[0].composited_item()
+
     def append(self, chunk):
         assert self.can_merge(chunk)
         self.chunks.append(chunk)
@@ -1059,7 +1062,6 @@ class CompositedLayer:
             return
         irect = bounds.roundOut()
         if not self.surface:
-            print('make surface')
             self.surface = skia.Surface(irect.width(), irect.height())
         canvas = self.surface.getCanvas()
 
@@ -1531,6 +1533,7 @@ class TabWrapper:
 
     def commit(self, url, scroll, tab_bounds, display_list,
         composited_updates, needs_composite):
+        print('commit: ' + str(needs_composite))
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
@@ -1544,7 +1547,6 @@ class TabWrapper:
             self.browser.set_needs_composite()
             self.browser.set_needs_tab_raster()
         else:
-            self.browser.set_needs_composite()
             self.browser.set_needs_draw()
         self.browser.compositor_lock.release()
 
@@ -1772,10 +1774,12 @@ class Browser:
                 self.active_tab_height = \
                     max(self.active_tab_height, layer.screen_bounds().bottom())
         else:
-            print('here...')
+            print('composited_updates...')
             for (node, transform, save_layer) in self.composited_updates:
                 for layer in self.composited_layers:
                     composited_item = layer.composited_item()
+                    if not composited_item:
+                        continue
                     if composited_item.node != node:
                         continue
                     if composited_item.type == "transform":
@@ -1786,6 +1790,8 @@ class Browser:
 
     def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
+        if self.needs_draw:
+            print("composite_raster_draw")
         timer = None
         draw_timer = None
         if self.needs_draw:
