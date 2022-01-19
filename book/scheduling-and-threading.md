@@ -215,7 +215,7 @@ class Tab:
         self.needs_pipeline_update = True
         set_needs_animation_frame()
 
-    def set_needs_animation_frame(self):
+    def schedule_animation_frame(self):
         def callback():
             self.display_scheduled = False
             self.run_rendering_pipeline()
@@ -750,18 +750,16 @@ Add some methods to set the dirty bit and schedule tasks. These need to
 acquire the lock before setting these thread-safe variables. (Ignore the
 `condition` line, we'll get to that in a moment).
 
-
-``` {.python}
-    def schedule_display(self):
+``` {.python expected=False}
+class MainThreadRunner:
+    def schedule_animation_frame(self):
         def callback():
             self.lock.acquire(blocking=True)
             self.display_scheduled = False
             self.needs_animation_frame = True
             self.condition.notify_all()
             self.lock.release()
-
         self.lock.acquire(blocking=True)
-        display_scheduled = self.display_scheduled
         if not self.display_scheduled:
             self.display_scheduled = True
             set_timeout(callback, REFRESH_RATE_SEC)
@@ -1044,21 +1042,28 @@ class Browser:
 ```
 
 ::: {.further}
-Our browser code uses locks, because real multi-threaded programs
-will need them. However, Python has a [global interpreter lock][gil], which
-means that you can't really run two Python threads in parallel.[^why-gil]
-So technically these locks don't do anything useful in our
-browser, except that they are necessary for our use of condition variables.
+Python is unfortuately not fully thread-safe. For this reason, it has a
+[global interpreter lock][gil], which means that you can't truly run two Python
+threads in parallel.[^why-gil]
 
 This means that the *throughput* (animation frames delivered per second) of our
 browser will not actually be greater with two threads. Even though the
 throughput is not higher, the *responsiveness* of the browser thread is still
-massively improved, since it isn't running JavaScript or the front half of the
-rendering pipeline.
+massively improved, since it often isn't blocked on JavaScript or the front
+half of the rendering pipeline.
+
+Another point: the global interpreter lock doesn't save us from race conditions
+for shared data structures. In particular, the Python interpreter on a thread
+may yield between bytecode operations at any time. So the locks we added are
+still useful, because race coditions such as reading and writing sequentially
+from the same Python variable and getting locally-inconsistent results
+(because the other thread modified it in the meantime) are still possible. And
+in fact, while debugging the code for this chapter, I encountered this kind of
+race condition in cases where I forgot to add a lock; try removing some of the
+locks from your browser to see for yourself!
 :::
 
-[^why-gil]: The interpreter lock is present because the Python bytecode
-interpreter is not thread-safe.  However, it's possible to turn off the global
+[^why-gil]: It's possible to turn off the global
 interpreter lock while running foreign C/C++ code linked into a Python library.
 Skia is thread-safe, but SDL may not be.
 
