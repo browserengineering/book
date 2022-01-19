@@ -162,17 +162,17 @@ class Browser:
 ```
 
 The `CreateRGBSurfaceFrom` method then wraps the data in an SDL surface
-(this SDL surface does not copy the bytes!):
+(this SDL surface does not copy the bytes):
 [^use-after-free]
 
-[^use-after-free]: Note that since Skia and SDL are C++ libraries, they are
-generally unware of Python's garbage collection system. So the link between the
-output of `tobytes` and `sdl_window` is not guaranteed to be kept consistent
-when `skia_bytes` is garbage collected. Instead, the SDL surface will be
-pointing at a bogus piece of memory, which will lead to memory corruption or a
-crash. The code here is correct because all of these are local variables that
-are garbage-collected together, but if not you need to be careful to keep
-all of them alive at the same time.
+[^use-after-free]: Note that since Skia and SDL are C++ libraries, they are not
+always consistent with Python's garbage collection system. So the link between
+the output of `tobytes` and `sdl_window` is not guaranteed to be kept
+consistent when `skia_bytes` is garbage collected. Instead, the SDL surface
+will be pointing at a bogus piece of memory, which will lead to memory
+corruption or a crash. The code here is correct because all of these are local
+variables that are garbage-collected together, but if not you need to be
+careful to keep all of them alive at the same time.
 
 ``` {.python}
 class Browser:
