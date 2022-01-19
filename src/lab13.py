@@ -1763,7 +1763,7 @@ class Browser:
 
     def composite(self):
         if self.needs_composite:
-#            print('composite')
+            print('composite')
             self.composited_layers = do_compositing(
                 self.active_tab_display_list)
 
@@ -1772,7 +1772,7 @@ class Browser:
                 self.active_tab_height = \
                     max(self.active_tab_height, layer.screen_bounds().bottom())
         else:
-#            print('here...')
+            print('here...')
             for (node, transform, save_layer) in self.composited_updates:
                 for layer in self.composited_layers:
                     composited_item = layer.composited_item()
