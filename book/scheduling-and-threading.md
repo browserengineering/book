@@ -840,7 +840,7 @@ class Tab:
                 Task(self.js.run, req_url, body))
 
     def set_needs_animation_frame(self):
-        self.main_thread_runner.schedule_display()
+        self.main_thread_runner.schedule_animation_frame()
 
     def run_rendering_pipeline(self):
         # ...
