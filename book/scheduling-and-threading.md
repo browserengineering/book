@@ -958,10 +958,8 @@ while True:
     if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
         # ...
     browser.raster_and_draw()
-        if browser.needs_animation_frame:
-            active_tab.schedule_animation_frame()
+    browser.schedule_animation_frame()
 ```
-
 
 [^fast-commit]: `commit` is the one time when both threads are both "stopped"
 simultaneously---in the sense that neither is running a different task at the

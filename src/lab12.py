@@ -730,6 +730,11 @@ class Browser:
         self.needs_draw = False
         self.compositor_lock.release()
 
+    def schedule_animation_frame(self):
+        if self.needs_animation_frame:
+            self.needs_animation_frame = False
+            active_tab.schedule_animation_frame()
+
     def handle_down(self):
         self.compositor_lock.acquire(blocking=True)
         if not self.active_tab_height:
@@ -931,5 +936,4 @@ if __name__ == "__main__":
                 active_runner.display_scheduled = False
                 browser.render()
         browser.raster_and_draw()
-        if browser.needs_animation_frame:
-            active_tab.schedule_animation_frame()
+        browser.schedule_animation_frame()
