@@ -701,7 +701,7 @@ class Browser:
     def set_needs_draw(self):
         self.needs_draw = True
 
-    def raster_and_draw_if_needed(self):
+    def raster_and_draw(self):
         self.compositor_lock.acquire(blocking=True)
         timer = None
         draw_timer = None
@@ -930,6 +930,6 @@ if __name__ == "__main__":
             if active_runner.display_scheduled:
                 active_runner.display_scheduled = False
                 browser.render()
-        browser.raster_and_draw_if_needed()
+        browser.raster_and_draw()
         if browser.needs_animation_frame:
             active_tab.schedule_animation_frame()
