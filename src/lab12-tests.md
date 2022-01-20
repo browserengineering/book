@@ -10,6 +10,7 @@ This file contains tests for Chapter 12 (Scheduling and Threading).
     >>> import lab12
     >>> import time
     >>> import threading
+    >>> lab12.USE_BROWSER_THREAD = False
 
 Testing basic loading and dirty bits
 ====================================
@@ -36,6 +37,7 @@ Before load, there is no tab height or display list.
 Once the Tab has loaded, the browser should need raster and draw.
 
     >>> browser.load(test_url)
+    >>> browser.render()
     >>> browser.needs_chrome_raster
     True
     >>> browser.needs_tab_raster
