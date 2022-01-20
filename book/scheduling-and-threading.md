@@ -190,7 +190,7 @@ a function to call when that time expires.
 [python-thread]: https://docs.python.org/3/library/threading.html
 
 ``` {.python}
-def set_timeout(func, sec):     
+def set_timeout(func, sec):
     t = threading.Timer(sec, func)
     t.start()
 ```
@@ -201,8 +201,8 @@ to avoid double-running `set_timeout` unnecessarily) to `Tab`, which means
  
 Also, rename `render` to `run_rendering_pipeline`, and add a new
 `run_animation_frame` method that runs the pipeline and calls the other
-rendering pipeline stages on `Browser` via a new `raster_and_draw` method
-(which we'll implement shortly).
+rendering pipeline stages on `Browser` via a new `raster_and_draw`
+method (which we'll implement shortly).
 
 ``` {.python expected=False}
 class Tab:
@@ -516,9 +516,8 @@ Count the total time spent in the two categories. We'll also need a
 `handle_quit` hook in `Tab`, called from `Browser`, to print out the `Tab`
 rendering time.
 
-``` {.python replace=browser/commit_func}
+``` {.python}
 class Tab:
-    def __init__(self, browser):
         # ...
         self.time_in_style_layout_and_paint = 0.0
         self.num_pipeline_updates = 0
@@ -825,10 +824,9 @@ the focus painting behavior needs to become a new `DrawLine` canvas command.
 [^one-per-tab]: That means there will be one main thread per `Tab`, and even
 tabs that are not currently shown will be able to run tasks in the background.
 
-
-``` {.python replace=browser/commit_func,%20body))/}
+``` {.python expected=False}
 class Tab:
-    def __init__(self, browser):
+        # ...
         self.main_thread_runner = MainThreadRunner(self)
         self.main_thread_runner.start()
 
@@ -838,9 +836,6 @@ class Tab:
             # ...
             self.main_thread_runner.schedule_task(
                 Task(self.js.run, req_url, body))
-
-    def set_needs_animation_frame(self):
-        self.main_thread_runner.schedule_animation_frame()
 
     def run_rendering_pipeline(self):
         # ...
@@ -884,13 +879,18 @@ Likewise, `Tab` can't have direct acccess to the `Browser`. But the only
 method it needs to call on `Browser` is `raster_and_draw`. We'll rename that
 to a `commit` method on `TabWrapper`, and pass this method to `Tab`'s
 constructor. When `commit` is called, all state of the `Tab` that's relevant
-to the `Browser` is sent across.
+to the `Browser` is sent across. Likewise add a `set_needs_animation_frame`
+method and also pass it.
 
 ``` {.python expected=False}
 class Tab:
-    def __init__(self, commit_func):
+    def __init__(self, commit_func, set_needs_animation_frame_func):
         # ...
         self.commit_func = commit_func
+        self.set_needs_animation_frame_func = set_needs_animation_frame_func
+
+    def set_needs_animation_frame(self):
+        self.set_needs_animation_frame_func()
 
     def run_animation_frame(self):
         self.run_rendering_pipeline()
@@ -905,7 +905,7 @@ class Tab:
 ``` {.python}
 class TabWrapper:
     def __init__(self, browser):
-        self.tab = Tab(self.commit)
+        self.tab = Tab(self.commit, self.set_needs_animation_frame)
         self.browser = browser
         self.url = None
         self.scroll = 0
@@ -921,11 +921,45 @@ class TabWrapper:
         self.browser.active_tab_display_list = display_list.copy()
         self.browser.set_needs_tab_raster()
         self.browser.compositor_lock.release()
+
+    def set_needs_animation_frame(self):
+        self.browser.compositor_lock.acquire(blocking=True)
+        self.browser.set_needs_animation_frame()
+        self.browser.compositor_lock.release()
+    
 ```
 
 Note that `commit` will acquire a lock on the browser thread before doing
 any of its work, because all of the inputs and outputs to it are cross-thread
 data structures.[^fast-commit]
+
+Let's now finish plubing the animation frame dirty bit to `Browser`. We'll store
+the bit, and check for it each time through the browser's event loop. This will
+be the trigger for actually scheduling an animation frame back on the main
+thread. This completes the loop: now the main thread will request that the
+browser thread schedule a task back on the main thread 16ms in the future).
+
+This setup is important because it needs to be the browser thread that
+determines the frame rate of the main thread, not the other way around. The
+reason is simple: there is no point to running the front half of the rendering
+pipeline faster than it can be drawn to the screen on the browser thread.
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.needs_animation_frame = False
+
+    def set_needs_animation_frame(self):
+        self.needs_animation_frame = True
+# ...
+
+while True:
+    if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+        # ...
+    browser.raster_and_draw()
+    browser.schedule_animation_frame()
+```
 
 [^fast-commit]: `commit` is the one time when both threads are both "stopped"
 simultaneously---in the sense that neither is running a different task at the
@@ -1121,25 +1155,25 @@ class MainThreadRunner:
         self.lock.release()
 
     def run(self):
-        # ...
-        self.lock.acquire(blocking=True)
-        needs_animation_frame = self.needs_animation_frame
-        self.needs_animation_frame = False
-        pending_scroll = self.pending_scroll
-        self.pending_scroll = None
-        self.lock.release()
-        if pending_scroll:
-            self.tab.apply_scroll(pending_scroll)
-        if needs_animation_frame:
-            self.tab.run_animation_frame()
-        # ...
-        self.lock.acquire(blocking=True)
-        if not self.tasks.has_tasks() and \
-            not self.needs_animation_frame and \
-            not self.pending_scroll and \
-            not self.needs_quit:
-            self.condition.wait()
-        self.lock.release()
+        while True:
+            self.lock.acquire(blocking=True)
+            needs_animation_frame = self.needs_animation_frame
+            self.needs_animation_frame = False
+            pending_scroll = self.pending_scroll
+            self.pending_scroll = None
+            self.lock.release()
+            if pending_scroll:
+                self.tab.apply_scroll(pending_scroll)
+            if needs_animation_frame:
+                self.tab.run_animation_frame()
+            # ...
+            self.lock.acquire(blocking=True)
+            if not self.tasks.has_tasks() and \
+                not self.needs_animation_frame and \
+                not self.pending_scroll and \
+                not self.needs_quit:
+                self.condition.wait()
+            self.lock.release()
 ```
 
 in `Tab`:
