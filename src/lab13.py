@@ -786,7 +786,7 @@ class Browser:
         self.address_bar = url
         self.url = url
         self.history.append(url)
-        header, body = request(url, payload=body)
+        header, body = request(url, self.url, payload=body)
         self.timer.start("Parsing HTML")
         self.nodes = parse(lex(body))
         
@@ -795,7 +795,7 @@ class Browser:
             self.rules = CSSParser(f.read()).parse()
 
         for link in find_links(self.nodes, []):
-            header, body = request(resolve_url(link, url))
+            header, body = request(resolve_url(link, url), self.url)
             self.rules.extend(CSSParser(body).parse())
 
         self.rules.sort(key=lambda x: x[0].priority())
@@ -804,7 +804,8 @@ class Browser:
         self.timer.start("Running JS")
         self.setup_js()
         for script in find_scripts(self.nodes, []):
-            header, body = request(resolve_url(script, self.history[-1]))
+            header, body = request(
+                resolve_url(script, self.history[-1]), self.url)
             try:
                 print("Script returned: ", self.js.evaljs(body))
             except dukpy.JSRuntimeError as e:
