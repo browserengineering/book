@@ -201,7 +201,7 @@ to avoid double-running `set_timeout` unnecessarily) to `Tab`, which means
  
 Also, rename `render` to `run_rendering_pipeline`, and add a new
 `run_animation_frame` method that runs the pipeline and calls the other
-rendering pipeline stages on `Browser` via a new `raster_and_draw_if_needed`
+rendering pipeline stages on `Browser` via a new `raster_and_draw`
 method(which we'll implement shortly).
 
 ``` {.python expected=False}
