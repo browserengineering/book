@@ -1784,8 +1784,10 @@ class Browser:
                     if composited_item.node != node:
                         continue
                     if composited_item.item_type == "transform":
+                        print('copy transform')
                         composited_item.copy(transform)
                     if composited_item.item_type == "save_layer":
+                        print('Copy save layer: opacity=' + str(save_layer.sk_paint.getAlphaf()))
                         composited_item.copy(save_layer)
 
 
