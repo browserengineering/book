@@ -69,6 +69,7 @@ class DisplayItem:
         self.cmds = cmds
         self.noop = is_noop
         self.item_type = item_type
+        self.node = node
 
     def bounds(self):
         return self.rect
@@ -299,8 +300,8 @@ class SaveLayer(DisplayItem):
         if not self.is_noop():
             canvas.restore()
 
-    def copy(self, display_item):
-        assert display_item.item_type == self.item_type
+    def copy(self, other):
+        assert other.item_type == self.item_type
         self.sk_paint = other.sk_paint
 
     def __repr__(self):
@@ -1782,9 +1783,9 @@ class Browser:
                         continue
                     if composited_item.node != node:
                         continue
-                    if composited_item.type == "transform":
+                    if composited_item.item_type == "transform":
                         composited_item.copy(transform)
-                    if composited_item.type == "save_layer":
+                    if composited_item.item_type == "save_layer":
                         composited_item.copy(save_layer)
 
 
