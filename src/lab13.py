@@ -956,7 +956,8 @@ def animate_style(node, old_style, new_style, tab):
     transform_animation = \
         try_transform_animation(node, old_style, new_style, tab)
 
-    if transform_animation:    
+    if transform_animation:
+        print('found transform animation')
         tab.animations[node] = transform_animation
         return
 
@@ -1021,14 +1022,13 @@ class RotationAnimation:
         self.computed_style = computed_style
         self.tab = tab
         self.frame_count = 0
-        tab.set_needs_animation_frame()
+        self.animate()
 
     def animate(self):
         self.frame_count += 1
         self.computed_style["transform"] = \
             "rotate({}deg)".format(
                 self.old_rotation + self.change_per_frame * self.frame_count)
-#        print('animate: ' + str(self.computed_style["transform"]))
         self.tab.set_needs_animation(self.node, "transform", True)
         return self.frame_count < ANIMATION_FRAME_COUNT
 
@@ -1042,7 +1042,7 @@ class NumericAnimation:
         self.computed_style = computed_style
         self.tab = tab
         self.frame_count = 0
-        tab.set_needs_animation_frame()
+        self.animate()
 
     def animate(self):
         self.frame_count += 1
