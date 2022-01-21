@@ -1,6 +1,6 @@
 """
 This file compiles the code in Web Browser Engineering,
-up to and including Chapter 14 (Saving Partial Layouts),
+up to and including Chapter 13 (Saving Partial Layouts),
 without exercises.
 """
 
