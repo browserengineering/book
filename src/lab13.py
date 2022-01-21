@@ -1105,6 +1105,7 @@ class Tab:
         self.animations = {}
         self.composited_animation_updates = []
         self.display_list = []
+        self.num_pipeline_updates = 0
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -1301,6 +1302,7 @@ class Tab:
                     DrawLine(x, y, x, y + obj.height))
 
         self.needs_pipeline_update = False
+        self.num_pipeline_updates += 1
 
         if timer:
             self.time_in_style_layout_and_paint += timer.stop()
@@ -1544,7 +1546,7 @@ class TabWrapper:
 
     def commit(self, url, scroll, tab_bounds, display_list,
         composited_updates, needs_composite):
-        print('commit: needs_recomposite=' + str(needs_composite))
+#        print('commit: needs_recomposite=' + str(needs_composite))
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
@@ -1586,8 +1588,14 @@ class TabWrapper:
         self.tab.main_thread_runner.schedule_scroll(scroll)
 
     def handle_quit(self):
-        print("Time in style, layout and paint: {:>.6f}s".format(
-            self.tab.time_in_style_layout_and_paint))
+        print("""Time in style, layout and paint: {:>.6f}s
+    ({:>.6f}ms per pipelne run on average;
+    {} total pipeline updates)""".format(
+            self.tab.time_in_style_layout_and_paint,
+            self.tab.time_in_style_layout_and_paint / \
+                self.tab.num_pipeline_updates * 1000,
+            self.tab.num_pipeline_updates))
+
         self.tab.main_thread_runner.set_needs_quit()
 
 REFRESH_RATE_SEC = 0.016 # 16ms
@@ -1737,7 +1745,9 @@ class Browser:
         self.compositor_lock = threading.Lock()
 
         self.time_in_raster_and_draw = 0
+        self.num_raster_and_draws = 0
         self.time_in_draw = 0
+        self.num_draws = 0
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -1797,7 +1807,7 @@ class Browser:
                 self.active_tab_height = \
                     max(self.active_tab_height, layer.screen_bounds().bottom())
         else:
-            print('composited_updates...')
+#            print('composited_updates...')
             for (node, transform, save_layer) in self.composited_updates:
                 for layer in self.composited_layers:
                     composited_item = layer.composited_item()
@@ -1814,8 +1824,6 @@ class Browser:
 
     def composite_raster_draw(self):
         self.compositor_lock.acquire(blocking=True)
-        if self.needs_draw:
-            print("composite_raster_draw")
         timer = None
         draw_timer = None
         if self.needs_draw:
@@ -1827,10 +1835,12 @@ class Browser:
             self.composite()
         if self.needs_tab_raster:
             self.raster_tab()
+            self.num_raster_and_draws += 1
         if self.needs_draw:
             draw_timer = Timer()
             draw_timer.start()
             self.draw()
+            self.num_draws += 1
             self.time_in_draw += draw_timer.stop()
         self.needs_composite = False
         self.needs_tab_raster = False
@@ -1981,10 +1991,19 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        print("Time in raster and draw: {:>.6f}s".format(
-            self.time_in_raster_and_draw))
-        print("Time in draw: {:>.6f}s".format(
-            self.time_in_draw))
+        print("""Time in raster-and-draw: {:>.6f}s
+    ({:>.6f}ms per raster-and-draw run on average;
+    {} total raster-and-draw updates)""".format(
+            self.time_in_raster_and_draw,
+            self.time_in_raster_and_draw / \
+                self.num_raster_and_draws * 1000,
+            self.num_raster_and_draws))
+        print("""Time in draw: {:>.6f}s
+    ({:>.6f}ms per draw run on average;
+    {} total draw updates)""".format(
+            self.time_in_draw,
+            self.time_in_draw / self.num_draws * 1000,
+            self.num_draws))
 
         self.tabs[self.active_tab].handle_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
