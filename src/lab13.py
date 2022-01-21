@@ -293,7 +293,7 @@ class SaveLayer(DisplayItem):
         for cmd in cmds:
             rect.join(cmd.rect)
         super().__init__(
-            rect=rect, needs_compositing=False, cmds=cmds,
+            rect=rect, needs_compositing=should_save, cmds=cmds,
             is_noop=not should_save, node=node, item_type="save_layer")
 
     def draw(self, canvas, op):
