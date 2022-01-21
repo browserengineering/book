@@ -1084,7 +1084,7 @@ class CompositedLayer:
             self.chunks[0])
 
 class Tab:
-    def __init__(self, commit_func):
+    def __init__(self, commit_func, set_needs_animation_frame_func):
         self.history = []
         self.focus = None
         self.url = None
@@ -1441,6 +1441,7 @@ class MainThreadRunner:
         self.browser_tasks = TaskQueue()
         self.needs_quit = False
         self.pending_scroll = None
+        self.display_scheduled = False
 
     def schedule_animation_frame(self):
         def callback():
@@ -2025,9 +2026,9 @@ if __name__ == "__main__":
                     browser.handle_down()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
+        active_tab = browser.tabs[browser.active_tab]
         if not USE_BROWSER_THREAD and \
-            browser.tabs[browser.active_tab].tab.main_thread_runner.\
-                display_scheduled:
+            active_tab.tab.main_thread_runner.display_scheduled:
             browser.render()
         browser.composite_raster_draw()
         browser.schedule_animation_frame()
