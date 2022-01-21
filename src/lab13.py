@@ -1081,6 +1081,9 @@ class CompositedLayer:
     def composited_item(self):
         return self.chunks[0].composited_item()
 
+    def composited_items(self):
+        return self.chunks[0].composited_items()
+
     def append(self, chunk):
         assert self.can_merge(chunk)
         self.chunks.append(chunk)
@@ -1690,6 +1693,13 @@ class PaintChunk:
             return None
         return self.ancestor_effects[self.composited_ancestor_index]
 
+    def composited_items(self):
+        items = []
+        for item in reversed(self.ancestor_effects):
+            if item.needs_compositing():
+                items.append(item)
+        return items
+
     def display_list(self):
         return self.chunk_items
 
@@ -1862,21 +1872,16 @@ class Browser:
                 success = False
                 print(save_layer)
                 for layer in self.composited_layers:
-                    composited_item = layer.composited_item()
-                    if not composited_item:
-                        continue
-                    if composited_item.node != node:
-                        continue
-                    if composited_item.item_type == "transform":
-                        composited_item.copy(transform)
-                        print('copied transform...')
-                        success = True
-                        break
-                    if composited_item.item_type == "save_layer":
-                        print('copied save layer..')
-                        composited_item.copy(save_layer)
-                        success = True
-                        break
+                    composited_items = layer.composited_items()
+                    for composited_item in composited_items:
+                        if composited_item.item_type == "transform":
+                            composited_item.copy(transform)
+                            print('copied transform...')
+                            success = True
+                        elif composited_item.item_type == "save_layer":
+                            print('copied save layer..')
+                            composited_item.copy(save_layer)
+                            success = True
                 assert success
 
 
