@@ -1544,7 +1544,7 @@ class TabWrapper:
 
     def commit(self, url, scroll, tab_bounds, display_list,
         composited_updates, needs_composite):
-        print('commit: ' + str(needs_composite))
+        print('commit: needs_recomposite=' + str(needs_composite))
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
@@ -1809,7 +1809,6 @@ class Browser:
                         print('copy transform')
                         composited_item.copy(transform)
                     if composited_item.item_type == "save_layer":
-                        print('Copy save layer: opacity=' + str(save_layer.sk_paint.getAlphaf()))
                         composited_item.copy(save_layer)
 
 
