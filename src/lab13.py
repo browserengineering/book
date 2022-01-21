@@ -130,6 +130,9 @@ class Transform(DisplayItem):
         should_transform = translation != None or rotation_degrees != None
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
         rect = rect
+
+        if rotation_degrees != None:
+            print('rotation: ' + str(rotation_degrees))
         super().__init__(
             rect=my_bounds, needs_compositing=should_transform, cmds=cmds,
             is_noop=not should_transform, node=node, item_type="transform")
@@ -172,13 +175,14 @@ class Transform(DisplayItem):
             rect.join(cmd.bounds())
         return self.transform_internal(rect, should_transform)
 
-    def copy(seelf, display_item):
-        assert display_item.item_type == self.item_type
+    def copy(self, other):
+        assert other.item_type == self.item_type
         self.translation = other.translation
-        self.rotation_deegrees = other.rotation_degrees
-        should_transform = translation != None or rotation_degrees != None
-        self.update_bounds(self.compute_bounds(self.rect, self.get_cmds(),
-            should_transform))
+#        print('previous: ' + str(self.rotation_degrees))
+        self.rotation_degrees = other.rotation_degrees
+#        print('copy: ' + str(self.rotation_degrees))
+        should_transform = self.translation != None or self.rotation_degrees != None
+        self.rect = self.compute_bounds(self.rect, self.get_cmds(), should_transform)
 
     def __repr__(self):
         if self.is_noop():
@@ -289,7 +293,7 @@ class SaveLayer(DisplayItem):
         for cmd in cmds:
             rect.join(cmd.rect)
         super().__init__(
-            rect=rect, needs_compositing=should_save, cmds=cmds,
+            rect=rect, needs_compositing=False, cmds=cmds,
             is_noop=not should_save, node=node, item_type="save_layer")
 
     def draw(self, canvas, op):
@@ -942,19 +946,45 @@ def animate_style(node, old_style, new_style, tab):
         return
     if not "transition" in old_style or not "transition" in new_style:
         return
+    
+    opacity_animation = \
+        try_opacity_animation(node, old_style, new_style, tab)
+    if opacity_animation:   
+        tab.animations[node] = opacity_animation
+        return
+
+    transform_animation = \
+        try_transform_animation(node, old_style, new_style, tab)
+
+    if transform_animation:    
+        tab.animations[node] = transform_animation
+        return
+
+ANIMATION_FRAME_COUNT = 60
+
+def try_transform_animation(node, old_style, new_style, tab):
+    if not old_style["transition"] == "transform" or not new_style["transition"] == "transform":
+        return None
+    if old_style["transform"] == new_style["transform"]:
+        return None
+    (old_translation, old_rotation) = parse_transform(old_style["transform"])
+    (new_translation, new_rotation) = parse_transform(new_style["transform"])
+
+    if old_rotation == None or new_rotation == None:
+        return None
+
+    change_per_frame = (new_rotation - old_rotation) / ANIMATION_FRAME_COUNT
+    return RotationAnimation(node, old_rotation, change_per_frame, new_style, tab)
+
+def try_opacity_animation(node, old_style, new_style, tab):
     if not old_style["transition"] == "opacity" or not new_style["transition"] == "opacity":
-        return
+        return None
     if old_style["opacity"] == new_style["opacity"]:
-        return
-
-    tab.animations[node] = start_opacity_animation(node, float(old_style["opacity"]), new_style, tab)
-
-ANIMATION_FRAME_COUNT = 120
-
-def start_opacity_animation(node, old_opacity, new_style, tab):
+        return None
+    old_opacity = float(old_style["opacity"])
     new_opacity = float(new_style["opacity"])
     change_per_frame = (new_opacity - old_opacity) / ANIMATION_FRAME_COUNT
-    return Animation(node, "opacity", old_opacity, change_per_frame, new_style, tab)
+    return NumericAnimation(node, "opacity", old_opacity, change_per_frame, new_style, tab)
 
 def style(node, rules, tab):
     old_style = None
@@ -982,7 +1012,27 @@ def style(node, rules, tab):
     for child in node.children:
         style(child, rules, tab)
 
-class Animation:
+class RotationAnimation:
+    def __init__(
+        self, node, old_rotation, change_per_frame, computed_style, tab):
+        self.node = node
+        self.old_rotation = old_rotation
+        self.change_per_frame = change_per_frame
+        self.computed_style = computed_style
+        self.tab = tab
+        self.frame_count = 0
+        tab.set_needs_animation_frame()
+
+    def animate(self):
+        self.frame_count += 1
+        self.computed_style["transform"] = \
+            "rotate({}deg)".format(
+                self.old_rotation + self.change_per_frame * self.frame_count)
+#        print('animate: ' + str(self.computed_style["transform"]))
+        self.tab.set_needs_animation(self.node, "transform", True)
+        return self.frame_count < ANIMATION_FRAME_COUNT
+
+class NumericAnimation:
     def __init__(
         self, node, property_name, old_value, change_per_frame, computed_style, tab):
         self.node = node
@@ -1807,7 +1857,6 @@ class Browser:
                 self.active_tab_height = \
                     max(self.active_tab_height, layer.screen_bounds().bottom())
         else:
-#            print('composited_updates...')
             for (node, transform, save_layer) in self.composited_updates:
                 for layer in self.composited_layers:
                     composited_item = layer.composited_item()
@@ -1816,7 +1865,6 @@ class Browser:
                     if composited_item.node != node:
                         continue
                     if composited_item.item_type == "transform":
-                        print('copy transform')
                         composited_item.copy(transform)
                     if composited_item.item_type == "save_layer":
                         composited_item.copy(save_layer)
