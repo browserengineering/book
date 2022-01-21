@@ -1857,7 +1857,7 @@ class Browser:
                 self.active_tab_height = \
                     max(self.active_tab_height, layer.screen_bounds().bottom())
         else:
-            print('compositsed updates: length=' + str(len(self.composited_updates)))
+            print('composited updates: length=' + str(len(self.composited_updates)))
             for (node, transform, save_layer) in self.composited_updates:
                 success = False
                 print(save_layer)
