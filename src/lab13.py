@@ -1857,8 +1857,10 @@ class Browser:
                 self.active_tab_height = \
                     max(self.active_tab_height, layer.screen_bounds().bottom())
         else:
+            print('compositsed updates: length=' + str(len(self.composited_updates)))
             for (node, transform, save_layer) in self.composited_updates:
                 success = False
+                print(save_layer)
                 for layer in self.composited_layers:
                     composited_item = layer.composited_item()
                     if not composited_item:
@@ -1867,9 +1869,11 @@ class Browser:
                         continue
                     if composited_item.item_type == "transform":
                         composited_item.copy(transform)
+                        print('copied transform...')
                         success = True
                         break
                     if composited_item.item_type == "save_layer":
+                        print('copied save layer..')
                         composited_item.copy(save_layer)
                         success = True
                         break
