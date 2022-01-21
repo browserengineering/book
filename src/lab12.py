@@ -209,7 +209,7 @@ def clamp_scroll(scroll, tab_height):
     return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
 
 class Tab:
-    def __init__(self, commit_func):
+    def __init__(self, commit_func, set_needs_animation_frame_func):
         self.history = []
         self.focus = None
         self.url = None
@@ -218,6 +218,7 @@ class Tab:
         self.needs_raf_callbacks = False
         self.needs_pipeline_update = False
         self.commit_func = commit_func
+        self.set_needs_animation_frame_func = set_needs_animation_frame_func
         if USE_BROWSER_THREAD:
             self.main_thread_runner = MainThreadRunner(self)
         else:
@@ -316,7 +317,7 @@ class Tab:
         self.set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
-        self.main_thread_runner.schedule_animation_frame()
+        self.set_needs_animation_frame_func()
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
@@ -579,7 +580,7 @@ class MainThreadRunner:
 
 class TabWrapper:
     def __init__(self, browser):
-        self.tab = Tab(self.commit)
+        self.tab = Tab(self.commit, self.set_needs_animation_frame)
         self.browser = browser
         self.url = None
         self.scroll = 0
@@ -599,6 +600,14 @@ class TabWrapper:
         self.browser.active_tab_height = tab_height
         self.browser.active_tab_display_list = display_list.copy()
         self.browser.set_needs_tab_raster()
+        self.browser.compositor_lock.release()
+
+    def schedule_animation_frame(self):
+        self.tab.main_thread_runner.schedule_animation_frame()
+
+    def set_needs_animation_frame(self):
+        self.browser.compositor_lock.acquire(blocking=True)
+        self.browser.set_needs_animation_frame()
         self.browser.compositor_lock.release()
 
     def schedule_click(self, x, y):
@@ -665,6 +674,7 @@ class Browser:
             self.BLUE_MASK = 0x00ff0000
             self.ALPHA_MASK = 0xff000000
 
+        self.needs_animation_frame = False
         self.needs_tab_raster = False
         self.needs_chrome_raster = True
         self.needs_draw = True
@@ -676,6 +686,9 @@ class Browser:
         assert not USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab].tab
         tab.run_animation_frame()
+
+    def set_needs_animation_frame(self):
+        self.needs_animation_frame = True
 
     def set_needs_tab_raster(self):
         self.needs_tab_raster = True
@@ -716,6 +729,11 @@ class Browser:
         self.needs_chrome_raster = False
         self.needs_draw = False
         self.compositor_lock.release()
+
+    def schedule_animation_frame(self):
+        if self.needs_animation_frame:
+            self.needs_animation_frame = False
+            active_tab.schedule_animation_frame()
 
     def handle_down(self):
         self.compositor_lock.acquire(blocking=True)
@@ -911,10 +929,11 @@ if __name__ == "__main__":
                     browser.handle_down()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
+        active_tab = browser.tabs[browser.active_tab]
         if not USE_BROWSER_THREAD:
-            active_runner = \
-                browser.tabs[browser.active_tab].tab.main_thread_runner
+            active_runner = active_tab.tab.main_thread_runner
             if active_runner.display_scheduled:
                 active_runner.display_scheduled = False
                 browser.render()
         browser.raster_and_draw()
+        browser.schedule_animation_frame()
