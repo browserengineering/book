@@ -174,18 +174,25 @@ Asynchronous rendering
 ======================
 
 In order to separate rendering from other tasks and make it into a proper
-pipeline, we'll need to make it asynchronous. Instead of updating rendering
-right away, we'll set *dirty bits* indicating that a particular part of the
-pipeline needs updating. Then when the pipeline is run, we'll run the parts
+pipeline, let make it asynchronous. Instead of updating rendering right away,
+the browser should set *dirty bits* indicating that a particular part of the
+pipeline needs updating. Then when the pipeline is run, it will run the parts
 indicated by the dirty bits. We'll also need some way of
 *scheduling* the rendering pipeline to be updated at a given time in the
 future.
 
 Let's start with how to schedule the update, via a new `set_timeout` function.
-This function will run a callback at a specified time in the future.
-You can do that by starting a new [Python thread][python-thread] via the
-`threading.Timer` class, which takes two parameters: a time delta from now, and
-a function to call when that time expires.
+This function will run a callback at a specified time in the future. You can do
+that by starting a new [Python thread][python-thread] via the `threading.Timer`
+class, which takes two parameters: a time delta from now, and a function to
+call when that time expires. It will start a new thread and call that
+function *on that thread*[^thread-timer] at the desired time. When the
+function completes, the timer thread is automatically ended.
+
+[^thread-timer]: This is convenient because it enables the timer to
+execute at about the time desired---even if the current thread is busy at that
+time---but, as we'll see, leads to some complications if you really want the
+function to be called on the same thread as the one calling `set_timeout`.
 
 [python-thread]: https://docs.python.org/3/library/threading.html
 
@@ -195,34 +202,53 @@ def set_timeout(func, sec):
     t.start()
 ```
 
-Next, add a dirty bit called `needs_pipeline_update` (plus `display_scheduled`
-to avoid double-running `set_timeout` unnecessarily) to `Tab`, which means
-"rendering needs to happen, and has been scheduled, but hasn't happened yet".
+Next, add three dirty bits to `Tab`:
+
+* `needs_pipeline_update`, indicating that
+the pipeline needs to be re-run
+* `display_scheduled`, indicating that `set_timeout` was already called (this
+avoids double-running `set_timeout` unnecessarily)
+* `run_pipeline_now`, indicating that the event loop should
+run the pipeline.
+
+Add methods to set the dirty bits and call `set_timeout` as
+needed.[^race-condition]
+
+[^race-condition]: This code has a race condition because it's setting variables
+on one thread from another without a thread lock. Let's ignore that for now and
+fix it later in the chapter.
+
+``` {.python expected=False}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.needs_pipeline_update = False
+        self.display_scheduled = False
+        self.run_pipeline_now = False
+
+    def set_needs_pipeline_update(self):
+        self.needs_pipeline_update = True
+        self.schedule_animation_frame()
+
+    def schedule_animation_frame(self):
+        def callback():
+            self.display_scheduled = False
+            self.run_pipeline_now = True
+
+        if not self.display_scheduled:
+            set_timeout(callback, REFRESH_RATE_SEC)
+            self.display_scheduled = True
+```
  
 Also, rename `render` to `run_rendering_pipeline`, and add a new
 `run_animation_frame` method that runs the pipeline and calls the other
 rendering pipeline stages on `Browser` via a new `raster_and_draw`
-method (which we'll implement shortly).
+method.
 
 ``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
         self.browser = browser
-        self.display_scheduled = False
-        self.needs_pipeline_update = False
-
-    def set_needs_pipeline_update(self):
-        self.needs_pipeline_update = True
-        set_needs_animation_frame()
-
-    def schedule_animation_frame(self):
-        def callback():
-            self.display_scheduled = False
-            self.run_rendering_pipeline()
-
-        if not self.display_scheduled:
-            set_timeout(callback, REFRESH_RATE_SEC)
-            self.display_scheduled = True
 
     def run_animation_frame(self):
         self.run_rendering_pipeline()
@@ -237,10 +263,33 @@ class Tab:
             self.display_list = []
             self.document.paint(self.display_list)
             self.needs_pipeline_update = False
+
+class Browser:
+    def raster_and_draw(self):
+        self.raster_chrome()
+        self.raster_tab()
+        self.draw()
 ```
 
-Replace all cases where parts of the rendering pipeline were called with
-`set_needs_pipeline_update`, for example `load`:
+The last piece is to actually call `run_animation_frame` from somewhere; at the
+moment all we're doing is setting `run_pipeline_now`, which is not too useful
+on its own! This needs to happen in the main event loop, just as I diagrammed
+in the previous section:
+
+``` {.python expected=False}
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+        active_tab = browser.tabs[browser.active_tab]
+        if active_tab.run_pipeline_now:
+            active_tab.run_pipeline_now = False
+            active_tab.run_animation_frame()
+```
+
+Let's take advantage of this new asynchronous technology by replacing all cases
+where the rendering pipeline is computed synchronously with
+`set_needs_pipeline_update`, for example `load`:^[There are more of them; you
+shoud fix them all.]
 
 ``` {.python}
 class Tab:
@@ -249,9 +298,14 @@ class Tab:
         self.set_needs_pipeline_update()
 ```
 
-Add dirty bits to `Browser` to control what happens in  `raster_and_draw`.
-This will get us back the same performance we had at the end of chapter 11,
-where the browser only ran raster and draw when needed.
+Now our browser can run rendering in an asynchronous, scheduled way on the event
+loop!
+
+But along the way we lost some performance. We're now always calling
+`raster_and_draw` instead of only when needed. Add dirty bits to `Browser` to
+fix this. This will get us back the same performance we had at the end of
+[chapter 11](visual-effects.md#browser-compositing), where the browser only ran
+raster and draw when needed.
 
 ``` {.python} 
 class Browser:
@@ -284,8 +338,8 @@ class Browser:
         self.needs_draw = False
 ```
 
-In each case where raster or draw was called previously, set the dirty
-bits. Here's the change to `handle_click`:
+In each case where raster or draw was previously called synchronously, set the
+dirty bits instead. Here's the change to `handle_click`:
 
 ``` {.python expected=False}
 class Browser:
@@ -293,7 +347,10 @@ class Browser:
         if e.y < CHROME_PX:
             # ...
             self.set_needs_chrome_raster()
-            self.tabs[self.active_tab].set_needs_animation_frame()
+        else:
+            # ...
+            self.set_needs_tab_raster()
+        self.tabs[self.active_tab].set_needs_animation_frame()
 ```
 
 and `handle_down`:
