@@ -195,8 +195,8 @@ time---but, as we'll see, leads to some complications if you really want the
 function to be called on the same thread as the one calling `set_timeout`.
 But in any case, it wouldn't make any sense to run the task on the "current"
 thread, because the only time the current thread is free to run such a task
-is when the program has quit. Unlike JavaScript programming on a website,
-Python has no built-in event loop.
+is when the program has already quit! Unlike JavaScript programming on a
+website, Python has no built-in event loop.
 
 [python-thread]: https://docs.python.org/3/library/threading.html
 
@@ -209,9 +209,9 @@ def set_timeout(func, sec):
 Next, add three dirty bits to `Tab`:
 
 * `needs_pipeline_update`, indicating that
-the pipeline needs to be re-run
+the pipeline needs to be re-run.
 * `display_scheduled`, indicating that `set_timeout` was already called (this
-avoids double-running `set_timeout` unnecessarily)
+avoids double-running `set_timeout` unnecessarily).
 * `run_pipeline_now`, indicating that the event loop should
 run the pipeline.
 
