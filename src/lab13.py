@@ -131,8 +131,6 @@ class Transform(DisplayItem):
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
         rect = rect
 
-        if rotation_degrees != None:
-            print('rotation: ' + str(rotation_degrees))
         super().__init__(
             rect=my_bounds, needs_compositing=should_transform, cmds=cmds,
             is_noop=not should_transform, node=node, item_type="transform")
@@ -178,9 +176,7 @@ class Transform(DisplayItem):
     def copy(self, other):
         assert other.item_type == self.item_type
         self.translation = other.translation
-#        print('previous: ' + str(self.rotation_degrees))
         self.rotation_degrees = other.rotation_degrees
-#        print('copy: ' + str(self.rotation_degrees))
         should_transform = self.translation != None or self.rotation_degrees != None
         self.rect = self.compute_bounds(self.rect, self.get_cmds(), should_transform)
 
@@ -946,26 +942,33 @@ def animate_style(node, old_style, new_style, tab):
         return
     if not "transition" in old_style or not "transition" in new_style:
         return
-    
+
     opacity_animation = \
         try_opacity_animation(node, old_style, new_style, tab)
-    if opacity_animation:   
-        tab.animations[node] = opacity_animation
-        return
 
     transform_animation = \
         try_transform_animation(node, old_style, new_style, tab)
 
+    if opacity_animation or transform_animation:
+        tab.animations[node] = []
+
+    if opacity_animation:
+        tab.animations[node].append(opacity_animation)
+
     if transform_animation:
-        print('found transform animation')
-        tab.animations[node] = transform_animation
-        return
+        tab.animations[node].append(transform_animation)
 
 ANIMATION_FRAME_COUNT = 60
 
+def has_transition(property_value, style):
+    transition_items = style["transition"].split(",")
+    return property_value in transition_items
+
 def try_transform_animation(node, old_style, new_style, tab):
-    if not old_style["transition"] == "transform" or not new_style["transition"] == "transform":
+    if not has_transition("transform", old_style) or \
+        not has_transition("transform", new_style):
         return None
+
     if old_style["transform"] == new_style["transform"]:
         return None
     (old_translation, old_rotation) = parse_transform(old_style["transform"])
@@ -978,8 +981,10 @@ def try_transform_animation(node, old_style, new_style, tab):
     return RotationAnimation(node, old_rotation, change_per_frame, new_style, tab)
 
 def try_opacity_animation(node, old_style, new_style, tab):
-    if not old_style["transition"] == "opacity" or not new_style["transition"] == "opacity":
+    if not has_transition("opacity", old_style) or \
+        not has_transition("opacity", new_style):
         return None
+
     if old_style["opacity"] == new_style["opacity"]:
         return None
     old_opacity = float(old_style["opacity"])
@@ -1293,13 +1298,20 @@ class Tab:
         to_delete = []
         needs_another_animation_frame = False
         for animation_key in self.animations:
-            if not self.animations[animation_key].animate():
-                to_delete.append(animation_key)
-            else:
-                needs_another_animation_frame = True
+            index = 0
+            for animation in self.animations[animation_key]:
+                if not animation.animate():
+                    to_delete.append((animation_key, index))
+                else:
+                    needs_another_animation_frame = True
+                index += 1
 
-        for key in to_delete:
-            del self.animations[key]
+        delete_count = 0
+        for (key, index) in to_delete:
+            del self.animations[key][index - delete_count]
+            if len(self.animations[key]) == 0:
+                del self.animations[key]
+            delete_count += 1
 
         needs_composite = self.needs_pipeline_update
 
@@ -1599,7 +1611,6 @@ class TabWrapper:
 
     def commit(self, url, scroll, tab_bounds, display_list,
         composited_updates, needs_composite):
-#        print('commit: needs_recomposite=' + str(needs_composite))
         self.browser.compositor_lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
@@ -1858,7 +1869,6 @@ class Browser:
 
     def composite(self):
         if self.needs_composite:
-            print('composite')
             self.composited_layers = do_compositing(
                 self.active_tab_display_list)
 
@@ -1867,19 +1877,15 @@ class Browser:
                 self.active_tab_height = \
                     max(self.active_tab_height, layer.screen_bounds().bottom())
         else:
-            print('composited updates: length=' + str(len(self.composited_updates)))
             for (node, transform, save_layer) in self.composited_updates:
                 success = False
-                print(save_layer)
                 for layer in self.composited_layers:
                     composited_items = layer.composited_items()
                     for composited_item in composited_items:
                         if composited_item.item_type == "transform":
                             composited_item.copy(transform)
-                            print('copied transform...')
                             success = True
                         elif composited_item.item_type == "save_layer":
-                            print('copied save layer..')
                             composited_item.copy(save_layer)
                             success = True
                 assert success
