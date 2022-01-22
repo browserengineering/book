@@ -174,7 +174,7 @@ Asynchronous rendering
 ======================
 
 In order to separate rendering from other tasks and make it into a proper
-pipeline, let make it asynchronous. Instead of updating rendering right away,
+pipeline, let's make it asynchronous. Instead of updating rendering right away,
 the browser should set *dirty bits* indicating that a particular part of the
 pipeline needs updating. Then when the pipeline is run, it will run the parts
 indicated by the dirty bits. We'll also need some way of
@@ -193,6 +193,10 @@ function completes, the timer thread is automatically ended.
 execute at about the time desired---even if the current thread is busy at that
 time---but, as we'll see, leads to some complications if you really want the
 function to be called on the same thread as the one calling `set_timeout`.
+But in any case, it wouldn't make any sense to run the task on the "current"
+thread, because the only time the current thread is free to run such a task
+is when the program has quit. Unlike JavaScript programming on a website,
+Python has no built-in event loop.
 
 [python-thread]: https://docs.python.org/3/library/threading.html
 
@@ -338,7 +342,7 @@ class Browser:
         self.needs_draw = False
 ```
 
-In each case where raster or draw was previously called synchronously, set the
+In each case where raster or draw was previously synchronous, set the
 dirty bits instead. Here's the change to `handle_click`:
 
 ``` {.python expected=False}
