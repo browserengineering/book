@@ -34,6 +34,13 @@ feature of modern browsers.
 Task queues
 ===========
 
+At the moment, our browser has a lot of entangled code, and it will take
+substantial work to put everything in tasks on event loops. Let's start by
+defining the infrastructure of event loops, and then move just JavaScript tasks
+to the new infrastructure. This will be a bit of work, so let's reward
+ourselves for this work by adding a fun new feature built on top of this
+tech--the `setTimeout` API.
+
 When the browser is free to do work, it finds the next pending *task* and runs
 it, and repeats. A sequence of related tasks is a *task queue*, and browsers
 have multiple tasks queues.
@@ -53,12 +60,9 @@ it.[^event-loop] The job of the event loop is to schedule tasks
 [chapter 11](visual-effects.md#sdl-creates-the-window) (before that, we used
 `tkinter.mainloop`).
 
-Let's implement the `Task` and `TaskQueue` classes. Then we can move all of the
-event loop tasks into task queues later in the chapter.
-
-A `Task` encapsulates some code to run in the form of a function, plus arguments
-to that function.[^task-notes] A `TaskQueue` is simply a
-first-in-first-out list of `Task`s.
+Implement the `Task` and `TaskQueue` classes. A `Task` encapsulates some code to
+run in the form of a function, plus arguments to that function.[^task-notes] A
+`TaskQueue` is simply a first-in-first-out list of `Task`s.
 
 [^task-notes]: In `Task`, we're using the varargs syntax for Python, allowing
 any number of arguments to be passed to the task. We're also using Python's
@@ -97,6 +101,167 @@ class TaskQueue:
     def clear(self):
         self.tasks = []
 ```
+
+Also define a new `TaskRunner` class to manage the task queues and run them. It
+will have a `TaskQueue`, a method to add a `Task`, and a method to run once
+through the event loop. Implement a simple scheduling heuristic in
+`run_once` that executes one task each time through, if there is one to run.
+
+``` {.python expected=False}
+class TaskRunner:
+    def __init__(self):
+        self.tasks = TaskQueue()
+
+    def schedule_task(self, callback):
+        self.tasks.add_task(callback)
+
+    def run_once(self):
+        if self.tasks.has_tasks():
+            task = self.tasks.get_next_task()
+            task()
+```
+
+Now we're ready to move JavaScript script loading for a `Tab` onto a
+`TaskRunner`.[^event-handlers-later] Add the `TaskRunner` to `Tab` and, instead
+of running a script synchronously, schedule it:
+
+[^event-handlers-later]: Well move JavaScript event handlers to a task later.
+
+``` {.python expected=False}
+class Tab:
+    def __init__(self):
+        self.task_runner = TaskRunner()
+
+    def run_script(self, url, body):
+        try:
+            print("Script returned: ", self.js.run(body))
+        except dukpy.JSRuntimeError as e:
+            print("Script", url, "crashed", e)
+
+    def load(self):
+        # ...
+
+        for script in scripts:
+            # ...
+            header, body = request(script_url, url)
+            self.task_runner.schedule_task(
+                Task(self.run_script, script_url body))            
+```
+
+Now we just need to modify the main event loop to run the task runner each time,
+in case there is a script task to execute:
+
+``` {.python expected=False}
+if __name__ == "__main__":
+    # ...
+    while True:
+        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+            browser.tabs[browser.active_tab].task_runner.run_once()
+```
+
+That's it! Now our browser will not run scripts until after `load` has completed
+and the event loop comes around again.
+
+Before continuing, let's consider why this change is interesting. It used to be
+that we had no choice but to eval scripts right away just as they were loaded.
+But now it's pretty clear that we have a lot more control over when to run
+scripts. For example, it's easy to make a change to `TaskRunner` to only run
+one script per second, or to not run them at all during page load, or when a
+tab is not the active tab. This flexibilty is quite powerful, and we can use it
+without having to dive into the guts of a `Tab` or how it loads web pages---all
+we'd have to do is implement a new `TaskRunner` heuristic.
+
+Now for the fun part I promised. Let's implement the
+[`setTimeout`][settimeout] JavaScript API, which provides a way to run
+JavaScript a given number of milliseconds from now. In terms of the JavaScript
+and Python communication, it'll use an approach with handles, similar to the
+`addEventListener` code we added in [Chapter 9](scripts.md#event-handling).
+The *new* part will be our first use of Python threads.
+
+[settimeout]: https://developer.mozilla.org/en-US/docs/Web/API/setTimeout
+
+We'll very soon have a lot more use for threads; for now all you need to know is
+that the `threading` module allows you to create threads and run code on them
+now or at a time specified in the future. To use them, start by adding an import
+for that module:
+
+``` {.python}
+import threading
+```
+
+Implement a `set_timeout` helper function that runs a callback at a specified
+time in the future. You can do that by creating a new
+[Python thread][python-thread] via the `threading.Timer` class, which takes
+two parameters: a time delta in seconds from now, and a function to call when
+that time expires.
+
+[python-thread]: https://docs.python.org/3/library/threading.html
+
+``` {.python}
+def set_timeout(func, sec):     
+    t = threading.Timer(sec, func)
+    t.start()
+```
+
+Now we're ready to implement `setTimeout`. In the JavaScript runtime, add
+a new internal handle for each call to `setTimeout`, and store the mapping
+between handles and callback functions in a global object called
+`SET_TIMEOUT_REQUESTS`. When the timeout occurs, Python will call
+`__runSetTimeout` and be passed the handle.
+
+``` {.javascript file=runtime}
+SET_TIMEOUT_REQUESTS = {}
+
+function setTimeout(callback, time_delta) {
+    var handle = Object.keys(SET_TIMEOUT_REQUESTS).length;
+    SET_TIMEOUT_REQUESTS[handle] = callback;
+    call_python("setTimeout", handle, time_delta)
+}
+
+function __runSetTimeout(handle) {
+    var callback = SET_TIMEOUT_REQUESTS[handle]
+    delete SET_TIMEOUT_REQUESTS[handle];
+    callback();
+}
+```
+
+On the Python side, add a binding for `setTimeout` and an implementation that
+calls `set_timeout`. However, we have to be careful here, since in the code
+below, `run_callback` will run *on a different Python thread than the current
+one*. So we can't just call `evaljs` directly, or we'll end up with JavaScript
+running on two Python threads at the same time, which is not ok.[^js-thread]
+
+Not all is lost though! This problem can be solved elegantly with the
+`TaskRunner`: instead of running the script right away, schedule a task to
+do it later, when the other thread is free.[^locking] Here's the code:
+
+[^locking]: This code has a bug: it accesses data structures shared
+between two threads without a thread lock. We'll see soon how to fix it.
+
+[^js-thread]: JavaScript is not a multi-threaded programming language.
+It's possible on the web to create [js-workers] of various kinds, but they
+all run independently and communicate only via special message-passing APIs.
+
+[js-workers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
+
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.interp.export_function("setTimeout",
+            self.setTimeout)
+
+    def setTimeout(self, handle, time):
+        def run_callback():
+            self.tab.event_loop.schedule_task(
+                Task(self.interp.evaljs,
+                    "__runSetTimeout({})".format(handle)))
+
+        set_timeout(run_callback, time / 1000.0)
+```
+
+That's it! Your browser now supports running asynchronous JavaScript tasks.
 
 ::: {.further}
 Event loops often map 1:1 to CPU threads within a single CPU process, but
@@ -366,27 +531,14 @@ class Browser:
         self.set_needs_draw()
 ```
 
-Scripts in the event loop
-=========================
+Scripts and rendering
+=====================
 
-In addition to event handlers and rendering, JavaScript also runs on the
-rendering event loop. As we saw in [chapter 9](scripts.md), when the parser
-encounters a `<script>` tag, , the script subsequently loads and then runs. We
-can easily wrap all this in a `Task`, with a zero-second timeout, like so:
-
-``` {.python expected=False}
-class Tab:
-    for script in find_scripts(self.nodes, []):
-        # ...
-        header, body = request(script_url, url)
-        set_timeout(0, Task(self.js.run, script, body))
-```
-
-As you probably know, scripts are not just for running straight through in one
-task, or responding to input events. They can also schedule more events to be
-put on the rendering event loop and run later. There are multiple JavaScript
-APIs in browsers to do this, but let's focus on the one most related to
-rendering: `requestAnimationFrame`. It's used like this:
+Scripts are not just just for tasks unrelated to rendering. In fact, many
+scripts tasks are there to update rendering state in the DOM after a state
+change of the application (perhaps caused by an input event, or new information
+downloaded from the server). To facilitate this, browsers have the
+`requestAnimationFrame` JavaScript API. It's used like this:
 
 ``` {.javascript expected=False}
 /* This is JavaScript */
@@ -397,12 +549,13 @@ requestAnimationFrame(callback);
 ```
 
 This code will do two things: request an *animation frame* (rendering) task to
-be run on the event loop,[^animation-frame] and call `callback` at the
-beginning of that rendering task. This is super useful to web page authors, as
-it allows them to do any setup work related to rendering just before it occurs.
-The implementation of this JavaScript API is straightforward: add a new dirty
-bit to `Tab` and code to call the JavaScript callbacks during the next
-animation frame.
+be scheduled on the event loop,
+[^animation-frame] and call `callback` *at the beginning* of that rendering
+task, before any browser rendering code. This is super useful to web page
+authors, as it allows them to do any setup work related to rendering just
+before it occurs. The implementation of this JavaScript API is straightforward:
+add a new dirty bit to `Tab` and code to call the JavaScript callbacks during
+the next animation frame.
 
 [^animation-frame]: Now you know why I chose the `*_animation_frame` naming
 for the methods on `Tab` in the previous section!
@@ -774,21 +927,23 @@ thread, and all code in `Tab` and `JSContext` will run on the main thread.
 
 The thread that already exists (the one started by the Python interpreter
 by default) will be the browser thread, and we'll make a new one for
-the main thread. Let's add a new `MainThreadRunner` class that will
-encapsulate the main thread and its event loop. The two threads will
-communicate by reading and writing shared data structures, and use
-`threading.Lock` objects to prevent race conditions. `MainThreadRunner` will
-be the only class allowed to call methods on `Tab` or `JSContext`.
+the main thread. Let's add more code to the `TaskRunner` class to make it
+into a complete event loop, and then rename it to `MainThreadEventLoop`.
 
-`MainThreadRunner` will have a lock and a thread object. Calling `start` will
-begin the thread. This will excute the `run` method on that thread; `run` will
-execute forever (or until the program quits, which is indicated by the
-`needs_quit` dirty bit) and is where we'll put the main thread event loop.
-There will also be a task queue for browser-generated tasks and scripts, and a
-rendering pipeline dirty bit.
+The two threads will communicate by reading and writing shared data structures,
+and use `threading.Lock` objects to prevent race conditions.
+`MainThreadEventLoop` will be the only class allowed to call methods on `Tab`
+or `JSContext`.
+
+`MainThreadEventLoop` will add a lock and a thread object. Calling `start` will
+begin the thread. This will excute the `run` method on that thread; `run`
+(instead of `run_once`) will execute forever (or until the program quits, which
+is indicated by the `needs_quit` dirty bit) and is where we'll put the main
+thread event loop. There will also be a task queue for browser-generated tasks
+and scripts, and a rendering pipeline dirty bit.
 
 ``` {.python}
-class MainThreadRunner:
+class MainThreadEventLoop:
     def __init__(self, tab):
         self.lock = threading.Lock()
         self.condition = threading.Condition(self.lock)
@@ -841,7 +996,7 @@ In `run`, implement a simple event loop scheduling strategy that runs the
 rendering pipeline if needed, and also one browser method and one script task,
 if there are any on those queues.
 
-The part at thet end is the trickiest. First, check if there are more tasks
+The part at the end is the trickiest. First, check if there are more tasks
 to execute; if so, loop again and run those tasks. If not, sleep until there
 is a task to run. The way we "sleep until there is a task" is via a *condition
 variable*, which is a way for one thread to block until it has been notified by
@@ -877,7 +1032,7 @@ the thread will deadlock in the next while loop iteration.
             self.lock.release()
 ```
 
-Each `Tab` will own a `MainThreadRunner` and schedule script eval tasks and
+Each `Tab` will own a `MainThreadEventLoop` and schedule script eval tasks and
 animation frames on it.[^one-per-tab]
 And since we'll be copying the display list across threads and not a canvas,
 the focus painting behavior needs to become a new `DrawLine` canvas command.
@@ -887,16 +1042,23 @@ tabs that are not currently shown will be able to run tasks in the background.
 
 ``` {.python expected=False}
 class Tab:
-        # ...
-        self.main_thread_runner = MainThreadRunner(self)
-        self.main_thread_runner.start()
+    def __init__(self, browser):
+        self.event_loop = MainThreadEventLoop(self)
+        self.event_loop.start()
 
     def load(self, url, body=None):
         # ...
         for script in scripts:
             # ...
-            self.main_thread_runner.schedule_task(
+            self.event_loop.schedule_task(
                 Task(self.js.run, req_url, body))
+
+    def set_needs_animation_frame(self):
+        def callback():
+            self.display_scheduled = False
+            self.event_loop.schedule_animation_frame()
+        if not self.display_scheduled:
+            set_timeout(callback, REFRESH_RATE_SEC)
 
     def run_rendering_pipeline(self):
         # ...
@@ -932,7 +1094,7 @@ class DrawLine:
 The `Browser` will also schedule tasks on the main thread. But now it's not
 safe for any methods on `Tab` to be directly called by `Browser`, because
 `Tab` runs on a different thread. All requests must be queued as tasks on the
-`MainThreadRunner`. To make this easier, let's wrap `Tab` in a new `TabWrapper`
+`MainThreadEventLoop`. To make this easier, let's wrap `Tab` in a new `TabWrapper`
 class that only exposes what's needed. `TabWrapper` will run on the browser
 thread.
 
@@ -1028,34 +1190,33 @@ same time. For this reason commit needs to be as fast as possible, so as to
 lose the minimum possible amount of parallelism and responsiveness.
 
 Finally, let's add some methods on `TabWrapper` to schedule various kinds
-of main thread tasks scheduled by the `Browser` (`schedule_scroll` will be
-implementd on `MainThreadRunner` in a bit).
+of main thread tasks scheduled by the `Browser`.
 
-``` {.python}
+``` {.python expected=False}
 class TabWrapper:
     def schedule_load(self, url, body=None):
-        self.tab.main_thread_runner.schedule_task(
+        self.tab.event_loop.schedule_task(
             Task(self.tab.load, url, body))
         self.browser.set_needs_chrome_raster()
 
     def schedule_click(self, x, y):
-        self.tab.main_thread_runner.schedule_task(
+        self.tab.event_loop.schedule_task(
             Task(self.tab.click, x, y))
 
     def schedule_keypress(self, char):
-        self.tab.main_thread_runner.schedule_task(
+        self.tab.event_loop.schedule_task(
             Task(self.tab.keypress, char))
 
     def schedule_go_back(self):
-        self.tab.main_thread_runner.schedule_task(
+        self.tab.event_loop.schedule_task(
             Task(self.tab.go_back))
 
-    def schedule_scroll(self, scroll):
-        self.scroll = scroll
-        self.tab.main_thread_runner.schedule_scroll(scroll)
+    def schedule_scrolldown(self):
+        self.tab.main_thread_runner.schedule_task(
+            Task(self.tab.scrolldown))
 
     def handle_quit(self):
-        self.tab.main_thread_runner.set_needs_quit()
+        self.tab.event_loop.set_needs_quit()
 ```
 
 Next up we'll call all these methods from the browser thread, for example
@@ -1119,8 +1280,7 @@ class Browser:
         self.compositor_lock.release()
 ```
 
-As it turns out, the return key and scrolling have no use at all for the main
-thread. Here's `handle_down`:
+And `handle_down`:
 
 ``` {.python expected=False}
 class Browser:
@@ -1130,8 +1290,7 @@ class Browser:
             return
         max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
-        active_tab.schedule_scroll(
-            min(active_tab.scroll + SCROLL_STEP, max_y))
+        active_tab.schedule_scrolldown()
         self.set_needs_draw()
         self.compositor_lock.release()
 ```
@@ -1168,16 +1327,18 @@ Skia is thread-safe, but SDL may not be.
 Threaded scrolling
 ==================
 
-Recall how we've added some scroll-related code, but we didn't really get into
-how it works (I also omitted some of the code). Let's now carefully examine
-how to implement threaded scrolling.
+Two sections back we talked about how important it is to run scrolling on the 
+browser thread, to avoid slow scripts. But right now, even though there
+is a browser thread, scrolling still happens in a `Task` on the main thread.
+Let's now make scrolling truly *threaded*, meaning it runs on the browser
+thread in parallel with scripts and other main thread work.
 
-The reason that scrolling can be so responsive is that it happens on the browser
-thread, without waiting around to synchronize with the main thread. But the
-main thread can and does affect scroll. For example, when loading a new page,
-scroll is set to 0; when running `innerHTML`, the height of the document could
-change, leading to a potential change of scroll offset. What should
-we do if the two threads disagree about the scroll offset?
+Threaded scrolling is quite tricky to implement. The reason is that both the
+browser thread *and* the main thread can affect scroll. For example, when
+loading a new page, scroll is set to 0; when running `innerHTML`, the height of
+the document could change, leading to a potential change of scroll offset to
+clamp it to that height. What should we do if the two threads disagree about
+the scroll offset?
 
 The best policy is to respect the scroll offset the user last observed, unless
 it's incompatible with the web page. In other words, use the browser thread
@@ -1188,11 +1349,12 @@ The trickiest part is how to communicate a browser thread scroll offset to the
 main thread, and integrate it with the rendering pipeline. It'll work like
 this:
 
-* When the browser thread changes scroll offset, notify the `MainThreadRunner`
+* When the browser thread changes scroll offset, notify the
+`MainThreadEventLoop`
 and store the result in a `pending_scroll` variable. (Note that this does 
 *not* cause an animation frame, it just stores the scroll for the next
 time an animation frame happens to occur.)
-* When `MainThreadRunner` decides to run an animation frame, first apply
+* When `MainThreadEventLoop` decides to run an animation frame, first apply
 the `pending_scroll` to the `Tab`. Then, after running the rendering pipeline,
 *adjust* it if the document height requires clamping it.
 * When loading a new page in a `Tab`, override the scroll to 0.
@@ -1201,10 +1363,10 @@ new `scroll_changed_in_tab` variable on `Tab`.
 * When calling `commit`, only pass the scroll if it was changed in the `Tab`,
 and otherwise pass `None`. The commit will ignore the scroll if it is `None`.
 
-Implement each of these in turn. In `MainThreadRunner`:
+Implement each of these in turn. In `MainThreadEventLoop`:
 
 ``` {.python}
-class MainThreadRunner:
+class MainThreadEventLoop:
     def __init__(self, tab):
         # ...
         self.pending_scroll = None
@@ -1298,7 +1460,7 @@ class Browser:
         # ...
 ```
 
-That's it! Pretty complicated, but we got it done. Fire up the counting demo and
+That was pretty complicated, but we got it done. Fire up the counting demo and
 enjoy the newly smooth scrolling.
 
 Now let's step back from the code for a moment and consider the full scope and
@@ -1423,7 +1585,7 @@ class Tab:
             async_req["thread"].join()
             req_url = async_req["url"]
             if async_req["type"] == "script":
-                self.main_thread_runner.schedule_task(
+                self.event_loop.schedule_task(
                     Task(self.js.run, req_url,
                         script_results[req_url]['body']))
             else:
@@ -1486,7 +1648,7 @@ function __runXHROnload(body, handle) {
 ```
 
 * Augment `XMLHttpRequest_send` to support async requests that use a thread
-and a script task on `main_thread_runner`.
+and a script task on `event_loop`.
 
 ``` {.python}
 class JSContext:
@@ -1503,7 +1665,7 @@ class JSContext:
             if url_origin(full_url) != url_origin(self.tab.url):
                 raise Exception(
                     "Cross-origin XHR request not allowed")
-            self.tab.main_thread_runner.schedule_task(
+            self.tab.event_loop.schedule_task(
                 Task(self.xhr_onload, out, handle_local))
             return out
 
@@ -1678,12 +1840,6 @@ should now look something like this:
 
 Exercises
 =========
-
-* *setTimeout*: The [`setTimeout`][setTimeout] JavaScript API schedules a
-   function to be called a fixed number of milliseconds from now. Implement
-   it.
-
-[setTimeout]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setTimeout
 
 * *setInterval*: [`setInterval`][setInterval] is similar to `setTimeout` but
 runs repeatedly at a given cadence until [`clearInterval`][clearInterval] is
