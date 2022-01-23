@@ -327,17 +327,7 @@ class Tab:
         self.set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
-<<<<<<< HEAD
-        def callback():
-            self.display_scheduled = False
-            self.event_loop.schedule_animation_frame()
-        if not self.display_scheduled:
-            if USE_BROWSER_THREAD:
-                set_timeout(callback, REFRESH_RATE_SEC)
-            self.display_scheduled = True
-=======
         self.set_needs_animation_frame_func()
->>>>>>> a709d555a30a0d1bbcc582c6679162fe474d73f0
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
@@ -647,11 +637,6 @@ class TabWrapper:
         self.tab.event_loop.schedule_scroll(scroll)
 
     def handle_quit(self):
-<<<<<<< HEAD
-        print("Time in style, layout and paint: {:>.6f}s".format(
-            self.tab.time_in_style_layout_and_paint))
-        self.tab.event_loop.set_needs_quit()
-=======
         print("""Time in style, layout and paint: {:>.6f}s
     ({:>.6f}ms per pipelne run on average;
     {} total pipeline updates)""".format(
@@ -661,7 +646,6 @@ class TabWrapper:
             self.tab.num_pipeline_updates))
 
         self.tab.main_thread_runner.set_needs_quit()
->>>>>>> a709d555a30a0d1bbcc582c6679162fe474d73f0
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
