@@ -346,14 +346,28 @@ indicated by the dirty bits. We'll also need some way of
 *scheduling* the rendering pipeline to be updated at a given time in the
 future.
 
+Let's start with how to schedule the update, via a new `set_timeout` function.
+This function will run a callback at a specified time in the future.
+You can do that by starting a new [Python thread][python-thread] via the
+`threading.Timer` class, which takes two parameters: a time delta from now, and
+a function to call when that time expires.
+
+[python-thread]: https://docs.python.org/3/library/threading.html
+
+``` {.python}
+def set_timeout(func, sec):
+    t = threading.Timer(sec, func)
+    t.start()
+```
+
 Next, add a dirty bit called `needs_pipeline_update` (plus `display_scheduled`
 to avoid double-running `set_timeout` unnecessarily) to `Tab`, which means
 "rendering needs to happen, and has been scheduled, but hasn't happened yet".
  
 Also, rename `render` to `run_rendering_pipeline`, and add a new
 `run_animation_frame` method that runs the pipeline and calls the other
-rendering pipeline stages on `Browser` via a new `raster_and_draw` method
-(which we'll implement shortly).
+rendering pipeline stages on `Browser` via a new `raster_and_draw`
+method (which we'll implement shortly).
 
 ``` {.python expected=False}
 class Tab:
@@ -366,7 +380,7 @@ class Tab:
         self.needs_pipeline_update = True
         set_needs_animation_frame()
 
-    def set_needs_animation_frame(self):
+    def schedule_animation_frame(self):
         def callback():
             self.display_scheduled = False
             self.run_rendering_pipeline()
@@ -435,21 +449,7 @@ class Browser:
         self.needs_draw = False
 ```
 
-Oh, and we'll need to schedule an animation frame whenever any of those dirty
-bits are set. This is easiest to add in `set_needs_draw`. Note that scheduling
-an animation frame does *not* mean that `run_rendering_pipeline` does all its
-expensive work, just that the animation frame task is scheduled 16ms in the
-future. Only `set_needs_pipeline_update` will cause that expensive work.
-
-
-``` {.python expected=False}
-class Browser:
-    def set_needs_draw(self):
-        # ...
-        self.tabs[self.active_tab].set_needs_animation_frame()
-```
-
-And in each case where raster or draw was called previously, set the dirty
+In each case where raster or draw was called previously, set the dirty
 bits. Here's the change to `handle_click`:
 
 ``` {.python expected=False}
@@ -669,13 +669,14 @@ Count the total time spent in the two categories. We'll also need a
 `handle_quit` hook in `Tab`, called from `Browser`, to print out the `Tab`
 rendering time.
 
-``` {.python expected=False}
+``` {.python}
 class Tab:
-    def __init__(self, browser):
         # ...
         self.time_in_style_layout_and_paint = 0.0
+        self.num_pipeline_updates = 0
 
     def run_rendering_pipeline(self):
+        # ...
         if self.needs_pipeline_update:
             timer = Timer()
             timer.start()
@@ -685,18 +686,28 @@ class Tab:
             self.document.layout()
             self.display_list = []
             self.document.paint(self.display_list)
+            # ...
             self.time_in_style_layout_and_paint += timer.stop()
+            self.num_pipeline_updates += 1
 
     def handle_quit(self):
-        print("Time in style, layout and paint: {:>.6f}s".format(
-            self.tab.time_in_style_layout_and_paint))
+        print("""Time in style, layout and paint: {:>.6f}s
+    ({:>.6f}ms per pipelne run on average;
+    {} total pipeline updates)""".format(
+            self.tab.time_in_style_layout_and_paint,
+            self.tab.time_in_style_layout_and_paint / \
+                self.tab.num_pipeline_updates * 1000,
+            self.tab.num_pipeline_updates))
+        # ...
 ```
 
 ``` {.python}
 class Browser:
     def __init__(self):
         self.time_in_raster_and_draw = 0
+        self.num_raster_and_draws = 0
         self.time_in_draw = 0
+        self.num_draws = 0
 
     def raster_and_draw(self):
         timer = None
@@ -712,19 +723,25 @@ class Browser:
             draw_timer.start()
             self.draw()
             self.time_in_draw += draw_timer.stop()
+            self.time_in_raster_and_draw += timer.stop()
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
-        if timer:
-            self.time_in_raster_and_draw += timer.stop()
 
     def handle_quit(self):
-        print("Time in raster and draw: {:>.6f}s".format(
-            self.time_in_raster_and_draw))
-        print("Time in draw: {:>.6f}s".format(
-            self.time_in_draw))
-
-        self.tabs[self.active_tab].handle_quit()
+        print("""Time in raster-and-draw: {:>.6f}s
+    ({:>.6f}ms per raster-and-draw run on average;
+    {} total raster-and-draw updates)""".format(
+            self.time_in_raster_and_draw,
+            self.time_in_raster_and_draw / \
+                self.num_raster_and_draws * 1000,
+            self.num_raster_and_draws))
+        print("""Time in draw: {:>.6f}s
+    ({:>.6f}ms per draw run on average;
+    {} total draw updates)""".format(
+            self.time_in_draw,
+            self.time_in_draw / self.num_draws * 1000,
+            self.num_draws))
         # ...
 ```
 
@@ -733,29 +750,34 @@ Now fire up the server and navigate to `/count`.^[The full URL will probably be
 on the window. The browser will print out the total time spent in each
 category. When I ran it on my computer, it said:
 
-    Time in raster and draw: 1.855505s
-    Time in draw: 1.753160s
-    Time in style, layout and paint: 0.097325s
+    Time in raster-and-draw: 4.135040s
+        (41.350403ms per raster-and-draw run on average;
+        100 total raster-and-draw updates)
+    Time in draw: 2.869909s
+        (28.699088ms per draw run on average;
+        100 total draw updates)
+    Time in style, layout and paint: 1.973732s
+        (19.737322ms per pipelne run on average;
+        100 total pipeline updates)
 
-Over a total of 100 frames of animation, the browser spent about 1.9s (or 19ms
-per animation frame on average) rastering and drawing,[^raster-draw] and most
-of the time is in draw, not raster.
+Over a total of 100 frames of animation, the browser spent about 40ms
+rastering and drawing per frame,[^raster-draw] and most
+of the time (29ms) is in draw, not raster. That's a lot, and certainly
+greater than our 16ms time budget.
 
-On the other hand, the browser spent about
-100ms (1ms per animation frame) in the other phases.[^timing-overhead]
-That's because the DOM in this example is very simple. If it was significantly
-larger, layout would start to become slow. We'll see how to optimize that in
+On the other hand, the browser spent about 20ms per animation frame in the other
+phases, which is also a lot. We'll see how to optimize that in
 [Chapter 13](reflow.md).
 
 Based on these timings, the first thing to try is optimizing
-draw. I profiled each step of it, and found that each of the steps of the
+draw. I profiled it in more depth, and found that each of the
 surface-drawing-into-surface steps (of which there are three) take a
 significant amount of time.[^profile-draw] (I told you that
 [optimizing surfaces](visual-effects.md#optimizing-surface-use) was important!) 
 
 But even if those surfaces were optimized (not such an easy feat), raster is
-still as slow as style, layout and paint put together. So we should see a win
-by running raster and draw on a parallel thread.
+still very expensive. So we should see a win by running raster and draw on a
+parallel thread.
 
 [^profile-draw]: I encourage you to do this profiling, to see for yourself.
 
@@ -763,11 +785,6 @@ by running raster and draw on a parallel thread.
 at how high the raster and draw time was, so I went back and added the separate
 draw timer that you see in the code above. Profiing your code often yields
 interesting insights!
-
-[^timing-overhead]: It's always good to remember that, unless you're careful,
-sometimes the overhead to measure timings can bias the timings themselves. In
-our case, since the style, layout and paint timer only showed 1ms per frame, it
-can't be all that high.
 
 ::: {.further}
 The best way to optimize `draw` is to perform raster and draw on the GPU (and
@@ -887,12 +904,19 @@ Add some methods to set the dirty bit and schedule tasks. These need to
 acquire the lock before setting these thread-safe variables. (Ignore the
 `condition` line, we'll get to that in a moment).
 
-
-``` {.python}
+``` {.python expected=False}
+class MainThreadRunner:
     def schedule_animation_frame(self):
+        def callback():
+            self.lock.acquire(blocking=True)
+            self.display_scheduled = False
+            self.needs_animation_frame = True
+            self.condition.notify_all()
+            self.lock.release()
         self.lock.acquire(blocking=True)
-        self.needs_animation_frame = True
-        self.condition.notify_all()
+        if not self.display_scheduled:
+            self.display_scheduled = True
+            set_timeout(callback, REFRESH_RATE_SEC)
         self.lock.release()
 
     def schedule_task(self, callback):
@@ -911,7 +935,7 @@ In `run`, implement a simple event loop scheduling strategy that runs the
 rendering pipeline if needed, and also one browser method and one script task,
 if there are any on those queues.
 
-The part at thet end is the trickiest. First, check if there are more tasks
+The part at the end is the trickiest. First, check if there are more tasks
 to execute; if so, loop again and run those tasks. If not, sleep until there
 is a task to run. The way we "sleep until there is a task" is via a *condition
 variable*, which is a way for one thread to block until it has been notified by
@@ -955,8 +979,7 @@ the focus painting behavior needs to become a new `DrawLine` canvas command.
 [^one-per-tab]: That means there will be one main thread per `Tab`, and even
 tabs that are not currently shown will be able to run tasks in the background.
 
-
-``` {.python replace=browser/commit_func,%20body))/}
+``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
         self.event_loop = MainThreadEventLoop(self)
@@ -1018,13 +1041,18 @@ Likewise, `Tab` can't have direct acccess to the `Browser`. But the only
 method it needs to call on `Browser` is `raster_and_draw`. We'll rename that
 to a `commit` method on `TabWrapper`, and pass this method to `Tab`'s
 constructor. When `commit` is called, all state of the `Tab` that's relevant
-to the `Browser` is sent across.
+to the `Browser` is sent across. Likewise add a `set_needs_animation_frame`
+method and also pass it.
 
 ``` {.python expected=False}
 class Tab:
-    def __init__(self, commit_func):
+    def __init__(self, commit_func, set_needs_animation_frame_func):
         # ...
         self.commit_func = commit_func
+        self.set_needs_animation_frame_func = set_needs_animation_frame_func
+
+    def set_needs_animation_frame(self):
+        self.set_needs_animation_frame_func()
 
     def run_animation_frame(self):
         self.run_rendering_pipeline()
@@ -1039,7 +1067,7 @@ class Tab:
 ``` {.python}
 class TabWrapper:
     def __init__(self, browser):
-        self.tab = Tab(self.commit)
+        self.tab = Tab(self.commit, self.set_needs_animation_frame)
         self.browser = browser
         self.url = None
         self.scroll = 0
@@ -1055,11 +1083,45 @@ class TabWrapper:
         self.browser.active_tab_display_list = display_list.copy()
         self.browser.set_needs_tab_raster()
         self.browser.compositor_lock.release()
+
+    def set_needs_animation_frame(self):
+        self.browser.compositor_lock.acquire(blocking=True)
+        self.browser.set_needs_animation_frame()
+        self.browser.compositor_lock.release()
+    
 ```
 
 Note that `commit` will acquire a lock on the browser thread before doing
 any of its work, because all of the inputs and outputs to it are cross-thread
 data structures.[^fast-commit]
+
+Let's now finish plubing the animation frame dirty bit to `Browser`. We'll store
+the bit, and check for it each time through the browser's event loop. This will
+be the trigger for actually scheduling an animation frame back on the main
+thread. This completes the loop: now the main thread will request that the
+browser thread schedule a task back on the main thread 16ms in the future).
+
+This setup is important because it needs to be the browser thread that
+determines the frame rate of the main thread, not the other way around. The
+reason is simple: there is no point to running the front half of the rendering
+pipeline faster than it can be drawn to the screen on the browser thread.
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.needs_animation_frame = False
+
+    def set_needs_animation_frame(self):
+        self.needs_animation_frame = True
+# ...
+
+while True:
+    if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+        # ...
+    browser.raster_and_draw()
+    browser.schedule_animation_frame()
+```
 
 [^fast-commit]: `commit` is the one time when both threads are both "stopped"
 simultaneously---in the sense that neither is running a different task at the
@@ -1067,10 +1129,9 @@ same time. For this reason commit needs to be as fast as possible, so as to
 lose the minimum possible amount of parallelism and responsiveness.
 
 Finally, let's add some methods on `TabWrapper` to schedule various kinds
-of main thread tasks scheduled by the `Browser` (`schedule_scroll` will be
-implementd on `MainThreadEventLoop` in a bit).
+of main thread tasks scheduled by the `Browser`.
 
-``` {.python}
+``` {.python expected=False}
 class TabWrapper:
     def schedule_load(self, url, body=None):
         self.tab.event_loop.schedule_task(
@@ -1089,9 +1150,9 @@ class TabWrapper:
         self.tab.event_loop.schedule_task(
             Task(self.tab.go_back))
 
-    def schedule_scroll(self, scroll):
-        self.scroll = scroll
-        self.tab.event_loop.schedule_scroll(scroll)
+    def schedule_scrolldown(self):
+        self.tab.main_thread_runner.schedule_task(
+            Task(self.tab.scrolldown))
 
     def handle_quit(self):
         self.tab.event_loop.set_needs_quit()
@@ -1158,8 +1219,7 @@ class Browser:
         self.compositor_lock.release()
 ```
 
-As it turns out, the return key and scrolling have no use at all for the main
-thread. Here's `handle_down`:
+And `handle_down`:
 
 ``` {.python expected=False}
 class Browser:
@@ -1169,28 +1229,34 @@ class Browser:
             return
         max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
-        active_tab.schedule_scroll(
-            min(active_tab.scroll + SCROLL_STEP, max_y))
+        active_tab.schedule_scrolldown()
         self.set_needs_draw()
         self.compositor_lock.release()
 ```
 
 ::: {.further}
-Our browser code uses locks, because real multi-threaded programs
-will need them. However, Python has a [global interpreter lock][gil], which
-means that you can't really run two Python threads in parallel.[^why-gil]
-So technically these locks don't do anything useful in our
-browser, except that they are necessary for our use of condition variables.
+Python is unfortuately not fully thread-safe. For this reason, it has a
+[global interpreter lock][gil], which means that you can't truly run two Python
+threads in parallel.[^why-gil]
 
 This means that the *throughput* (animation frames delivered per second) of our
 browser will not actually be greater with two threads. Even though the
 throughput is not higher, the *responsiveness* of the browser thread is still
-massively improved, since it isn't running JavaScript or the front half of the
-rendering pipeline.
+massively improved, since it often isn't blocked on JavaScript or the front
+half of the rendering pipeline.
+
+Another point: the global interpreter lock doesn't save us from race conditions
+for shared data structures. In particular, the Python interpreter on a thread
+may yield between bytecode operations at any time. So the locks we added are
+still useful, because race coditions such as reading and writing sequentially
+from the same Python variable and getting locally-inconsistent results
+(because the other thread modified it in the meantime) are still possible. And
+in fact, while debugging the code for this chapter, I encountered this kind of
+race condition in cases where I forgot to add a lock; try removing some of the
+locks from your browser to see for yourself!
 :::
 
-[^why-gil]: The interpreter lock is present because the Python bytecode
-interpreter is not thread-safe.  However, it's possible to turn off the global
+[^why-gil]: It's possible to turn off the global
 interpreter lock while running foreign C/C++ code linked into a Python library.
 Skia is thread-safe, but SDL may not be.
 
@@ -1200,16 +1266,18 @@ Skia is thread-safe, but SDL may not be.
 Threaded scrolling
 ==================
 
-Recall how we've added some scroll-related code, but we didn't really get into
-how it works (I also omitted some of the code). Let's now carefully examine
-how to implement threaded scrolling.
+Two sections back we talked about how important it is to run scrolling on the 
+browser thread, to avoid slow scripts. But right now, even though there
+is a browser thread, scrolling still happens in a `Task` on the main thread.
+Let's now make scrolling truly *threaded*, meaning it runs on the browser
+thread in parallel with scripts and other main thread work.
 
-The reason that scrolling can be so responsive is that it happens on the browser
-thread, without waiting around to synchronize with the main thread. But the
-main thread can and does affect scroll. For example, when loading a new page,
-scroll is set to 0; when running `innerHTML`, the height of the document could
-change, leading to a potential change of scroll offset. What should
-we do if the two threads disagree about the scroll offset?
+Threaded scrolling is quite tricky to implement. The reason is that both the
+browser thread *and* the main thread can affect scroll. For example, when
+loading a new page, scroll is set to 0; when running `innerHTML`, the height of
+the document could change, leading to a potential change of scroll offset to
+clamp it to that height. What should we do if the two threads disagree about
+the scroll offset?
 
 The best policy is to respect the scroll offset the user last observed, unless
 it's incompatible with the web page. In other words, use the browser thread
@@ -1249,25 +1317,25 @@ class MainThreadEventLoop:
         self.lock.release()
 
     def run(self):
-        # ...
-        self.lock.acquire(blocking=True)
-        needs_animation_frame = self.needs_animation_frame
-        self.needs_animation_frame = False
-        pending_scroll = self.pending_scroll
-        self.pending_scroll = None
-        self.lock.release()
-        if pending_scroll:
-            self.tab.apply_scroll(pending_scroll)
-        if needs_animation_frame:
-            self.tab.run_animation_frame()
-        # ...
-        self.lock.acquire(blocking=True)
-        if not self.tasks.has_tasks() and \
-            not self.needs_animation_frame and \
-            not self.pending_scroll and \
-            not self.needs_quit:
-            self.condition.wait()
-        self.lock.release()
+        while True:
+            self.lock.acquire(blocking=True)
+            needs_animation_frame = self.needs_animation_frame
+            self.needs_animation_frame = False
+            pending_scroll = self.pending_scroll
+            self.pending_scroll = None
+            self.lock.release()
+            if pending_scroll:
+                self.tab.apply_scroll(pending_scroll)
+            if needs_animation_frame:
+                self.tab.run_animation_frame()
+            # ...
+            self.lock.acquire(blocking=True)
+            if not self.tasks.has_tasks() and \
+                not self.needs_animation_frame and \
+                not self.pending_scroll and \
+                not self.needs_quit:
+                self.condition.wait()
+            self.lock.release()
 ```
 
 in `Tab`:
@@ -1331,7 +1399,7 @@ class Browser:
         # ...
 ```
 
-That's it! Pretty complicated, but we got it done. Fire up the counting demo and
+That was pretty complicated, but we got it done. Fire up the counting demo and
 enjoy the newly smooth scrolling.
 
 Now let's step back from the code for a moment and consider the full scope and

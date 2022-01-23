@@ -219,16 +219,16 @@ def clamp_scroll(scroll, tab_height):
     return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
 
 class Tab:
-    def __init__(self, commit_func):
+    def __init__(self, commit_func, set_needs_animation_frame_func):
         self.history = []
         self.focus = None
         self.url = None
         self.scroll = 0
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
-        self.display_scheduled = False
         self.needs_pipeline_update = False
         self.commit_func = commit_func
+        self.set_needs_animation_frame_func = set_needs_animation_frame_func
         if USE_BROWSER_THREAD:
             self.event_loop = MainThreadEventLoop(self)
         else:
@@ -236,6 +236,7 @@ class Tab:
         self.event_loop.start()
 
         self.time_in_style_layout_and_paint = 0.0
+        self.num_pipeline_updates = 0
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -326,6 +327,7 @@ class Tab:
         self.set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
+<<<<<<< HEAD
         def callback():
             self.display_scheduled = False
             self.event_loop.schedule_animation_frame()
@@ -333,6 +335,9 @@ class Tab:
             if USE_BROWSER_THREAD:
                 set_timeout(callback, REFRESH_RATE_SEC)
             self.display_scheduled = True
+=======
+        self.set_needs_animation_frame_func()
+>>>>>>> a709d555a30a0d1bbcc582c6679162fe474d73f0
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
@@ -343,6 +348,7 @@ class Tab:
             self.needs_raf_callbacks = False
             self.js.interp.evaljs("__runRAFHandlers()")
 
+        needs_commit = self.needs_pipeline_update
         self.run_rendering_pipeline()
 
         document_height = math.ceil(self.document.height)
@@ -351,11 +357,14 @@ class Tab:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
 
-        self.commit_func(
-            self.url, clamped_scroll if self.scroll_changed_in_tab \
-                else None, 
-            document_height,
-            self.display_list)
+        if self.scroll_changed_in_tab:
+            need_commit = True
+
+        if needs_commit:
+            self.commit_func(
+                self.url, clamped_scroll if self.scroll_changed_in_tab \
+                    else None, 
+                document_height, self.display_list)
         self.scroll_changed_in_tab = False
 
     def run_rendering_pipeline(self):
@@ -378,11 +387,10 @@ class Tab:
                 y = obj.y
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
+            self.time_in_style_layout_and_paint += timer.stop()
+            self.num_pipeline_updates += 1
 
         self.needs_pipeline_update = False
-
-        if timer:
-            self.time_in_style_layout_and_paint += timer.stop()
 
     def click(self, x, y):
         self.run_rendering_pipeline()
@@ -486,7 +494,7 @@ class SingleThreadedEventLoop:
         self.tab.apply_scroll(scroll)
 
     def schedule_animation_frame(self):
-        self.tab.run_animation_frame()
+        self.display_scheduled = True
 
     def schedule_task(self, callback):
         callback()
@@ -516,11 +524,20 @@ class MainThreadEventLoop:
         self.tasks = TaskQueue()
         self.needs_quit = False
         self.pending_scroll = None
+        self.display_scheduled = False
 
     def schedule_animation_frame(self):
+        def callback():
+            self.lock.acquire(blocking=True)
+            self.display_scheduled = False
+            self.needs_animation_frame = True
+            self.condition.notify_all()
+            self.lock.release()
         self.lock.acquire(blocking=True)
-        self.needs_animation_frame = True
-        self.condition.notify_all()
+        if not self.display_scheduled:
+            if USE_BROWSER_THREAD:
+                set_timeout(callback, REFRESH_RATE_SEC)
+            self.display_scheduled = True
         self.lock.release()
 
     def schedule_task(self, callback):
@@ -583,7 +600,7 @@ class MainThreadEventLoop:
 
 class TabWrapper:
     def __init__(self, browser):
-        self.tab = Tab(self.commit)
+        self.tab = Tab(self.commit, self.set_needs_animation_frame)
         self.browser = browser
         self.url = None
         self.scroll = 0
@@ -605,6 +622,14 @@ class TabWrapper:
         self.browser.set_needs_tab_raster()
         self.browser.compositor_lock.release()
 
+    def schedule_animation_frame(self):
+        self.tab.main_thread_runner.schedule_animation_frame()
+
+    def set_needs_animation_frame(self):
+        self.browser.compositor_lock.acquire(blocking=True)
+        self.browser.set_needs_animation_frame()
+        self.browser.compositor_lock.release()
+
     def schedule_click(self, x, y):
         self.tab.event_loop.schedule_task(
             Task(self.tab.click, x, y))
@@ -622,9 +647,21 @@ class TabWrapper:
         self.tab.event_loop.schedule_scroll(scroll)
 
     def handle_quit(self):
+<<<<<<< HEAD
         print("Time in style, layout and paint: {:>.6f}s".format(
             self.tab.time_in_style_layout_and_paint))
         self.tab.event_loop.set_needs_quit()
+=======
+        print("""Time in style, layout and paint: {:>.6f}s
+    ({:>.6f}ms per pipelne run on average;
+    {} total pipeline updates)""".format(
+            self.tab.time_in_style_layout_and_paint,
+            self.tab.time_in_style_layout_and_paint / \
+                self.tab.num_pipeline_updates * 1000,
+            self.tab.num_pipeline_updates))
+
+        self.tab.main_thread_runner.set_needs_quit()
+>>>>>>> a709d555a30a0d1bbcc582c6679162fe474d73f0
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
@@ -648,7 +685,9 @@ class Browser:
         self.compositor_lock = threading.Lock()
 
         self.time_in_raster_and_draw = 0
+        self.num_raster_and_draws = 0
         self.time_in_draw = 0
+        self.num_draws = 0
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -661,6 +700,7 @@ class Browser:
             self.BLUE_MASK = 0x00ff0000
             self.ALPHA_MASK = 0xff000000
 
+        self.needs_animation_frame = False
         self.needs_tab_raster = False
         self.needs_chrome_raster = True
         self.needs_draw = True
@@ -672,6 +712,9 @@ class Browser:
         assert not USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab].tab
         tab.run_animation_frame()
+
+    def set_needs_animation_frame(self):
+        self.needs_animation_frame = True
 
     def set_needs_tab_raster(self):
         self.needs_tab_raster = True
@@ -691,21 +734,32 @@ class Browser:
         if self.needs_draw:
             timer = Timer()
             timer.start()
+        else:
+            assert not self.needs_chrome_raster
+            assert not self.needs_tab_raster
+            self.compositor_lock.release()
+            return
         if self.needs_chrome_raster:
             self.raster_chrome()
         if self.needs_tab_raster:
             self.raster_tab()
+            self.num_raster_and_draws += 1
         if self.needs_draw:
             draw_timer = Timer()
             draw_timer.start()
             self.draw()
             self.time_in_draw += draw_timer.stop()
+            self.num_draws += 1
+            self.time_in_raster_and_draw += timer.stop()
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
         self.compositor_lock.release()
-        if timer:
-            self.time_in_raster_and_draw += timer.stop()
+
+    def schedule_animation_frame(self):
+        if self.needs_animation_frame:
+            self.needs_animation_frame = False
+            active_tab.schedule_animation_frame()
 
     def handle_down(self):
         self.compositor_lock.acquire(blocking=True)
@@ -851,10 +905,19 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        print("Time in raster and draw: {:>.6f}s".format(
-            self.time_in_raster_and_draw))
-        print("Time in draw: {:>.6f}s".format(
-            self.time_in_draw))
+        print("""Time in raster-and-draw: {:>.6f}s
+    ({:>.6f}ms per raster-and-draw run on average;
+    {} total raster-and-draw updates)""".format(
+            self.time_in_raster_and_draw,
+            self.time_in_raster_and_draw / \
+                self.num_raster_and_draws * 1000,
+            self.num_raster_and_draws))
+        print("""Time in draw: {:>.6f}s
+    ({:>.6f}ms per draw run on average;
+    {} total draw updates)""".format(
+            self.time_in_draw,
+            self.time_in_draw / self.num_draws * 1000,
+            self.num_draws))
 
         self.tabs[self.active_tab].handle_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
@@ -892,7 +955,11 @@ if __name__ == "__main__":
                     browser.handle_down()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
-        if not USE_BROWSER_THREAD and \
-            browser.tabs[browser.active_tab].tab.display_scheduled:
-            browser.render()
+        active_tab = browser.tabs[browser.active_tab]
+        if not USE_BROWSER_THREAD:
+            active_runner = active_tab.tab.main_thread_runner
+            if active_runner.display_scheduled:
+                active_runner.display_scheduled = False
+                browser.render()
         browser.raster_and_draw()
+        browser.schedule_animation_frame()
