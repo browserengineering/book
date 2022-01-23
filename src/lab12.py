@@ -613,7 +613,7 @@ class TabWrapper:
         self.browser.compositor_lock.release()
 
     def schedule_animation_frame(self):
-        self.tab.main_thread_runner.schedule_animation_frame()
+        self.tab.event_loop.schedule_animation_frame()
 
     def set_needs_animation_frame(self):
         self.browser.compositor_lock.acquire(blocking=True)
@@ -645,7 +645,7 @@ class TabWrapper:
                 self.tab.num_pipeline_updates * 1000,
             self.tab.num_pipeline_updates))
 
-        self.tab.main_thread_runner.set_needs_quit()
+        self.tab.event_loop.set_needs_quit()
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
@@ -941,7 +941,7 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
         if not USE_BROWSER_THREAD:
-            active_runner = active_tab.tab.main_thread_runner
+            active_runner = active_tab.tab.event_loop
             if active_runner.display_scheduled:
                 active_runner.display_scheduled = False
                 browser.render()
