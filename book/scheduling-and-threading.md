@@ -5,12 +5,13 @@ prev: visual-effects
 next: skipped
 ...
 
-To be a capable application platform, the browser must execute
-applications quickly and user actions immediately. To do so, the
-browser must explicitly choose which of its many tasks to prioritize
-and delay unnecessary tasks until later. Such a task queue system also
-allows the browser to split tasks across multiple threads, which makes
-the browser more responsive and better fit to modern hardware.
+To be a capable application platform, the browser must run
+applications effieciently and stay responsive to user actions. To do
+so, the browser must explicitly choose which of its many tasks to
+prioritize and delay unnecessary tasks until later. Such a task queue
+system also allows the browser to split tasks across multiple threads,
+which makes the browser even more responsive and a better fit to
+modern multi-core hardware.
 
 Tasks and task queues
 =====================
@@ -48,7 +49,7 @@ Refactoring our browser to think in terms of tasks will require
 significant changes throughout the browser---concurrent programming is
 never easy! But these architectural changes are a key optimization
 behind modern browsers, and enable many advanced features discussed in
-later chapters.
+this and later chapters.
 
 Task queues
 ===========
