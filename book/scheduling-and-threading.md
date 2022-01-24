@@ -875,7 +875,7 @@ and use `threading.Lock` objects to prevent race conditions.
 or `JSContext`.
 
 `MainThreadEventLoop` will add a lock and a thread object. Calling `start` will
-begin the thread. This will excute the `run` method on that thread; `run`
+begin the thread. This will execute the `run` method on that thread; `run`
 (instead of `run_once`) will execute forever (or until the program quits, which
 is indicated by the `needs_quit` dirty bit) and is where we'll put the main
 thread event loop. There will also be a task queue for browser-generated tasks
