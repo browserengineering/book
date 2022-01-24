@@ -488,8 +488,8 @@ requestAnimationFrame(callback);
 ```
 
 This code will do two things: request an *animation frame* (rendering) task to
-be scheduled on the event loop,
-[^animation-frame] and call `callback` *at the beginning* of that rendering
+be scheduled on the event loop,[^animation-frame] and call `callback`
+*at the beginning* of that rendering
 task, before any browser rendering code. This is super useful to web page
 authors, as it allows them to do any setup work related to rendering just
 before it occurs. The implementation of this JavaScript API is straightforward:
