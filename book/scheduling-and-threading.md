@@ -38,7 +38,7 @@ One of the most expensive tasks a browser does is render a web
 page---style the HTML elements, construct a layout tree, compute sizes
 and positions, paint it to a display list, raster the result into a
 surface, and draw that surface to the screen. These rendering steps
-make up the browser's basic [*rendering pipeline*][graphics-pipeline]
+make up the [*rendering pipeline*][graphics-pipeline]
 for the browser, and can be expensive and slow. For this reason,
 modern browsers split the rendering pipeline across threads and make
 sure to run the rendering pipeline only when necessary.
