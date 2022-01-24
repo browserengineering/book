@@ -5,31 +5,51 @@ prev: visual-effects
 next: skipped
 ...
 
-Our browser now knows how to load a web page and *render* it, by constructing
-the layout tree, computing styles on it, laying out its contents, painting it
-into a dispaly list, rastering the result into surfaces, and drawing those
-surfaces to the screen. These rendering steps make up a basic
-[*rendering pipeline*](https://en.wikipedia.org/wiki/Graphics_pipeline) for the
-browser.[^rendering-pipeline]
+To be a capable application platform, the browser must run
+applications effieciently and stay responsive to user actions. To do
+so, the browser must explicitly choose which of its many tasks to
+prioritize and delay unnecessary tasks until later. Such a task queue
+system also allows the browser to split tasks across multiple threads,
+which makes the browser even more responsive and a better fit to
+modern multi-core hardware.
 
-[^rendering-pipeline]: Our browse's current rendering pipeline has 5 steps:
-style, layout, paint, raster and draw.
+Tasks and task queues
+=====================
 
-But of course, there is more to web pages than just running the rendering
-pipeline. There is user input, scrolling, interacting with browser chrome,
-submitting forms, executing scripts, loading things off the network, and so on.
-All of these *tasks* currently run on the main *event loop*; since it has only
-one such loop, the browser is generally single-threaded.
+So far, most of the work our browser's been doing has been handling
+user actions like scrolling, pressing buttons, and clicking on links.
+But as our browser runs more and more sophisticated web applications,
+it starts spend more and more time querying remote servers, animating
+objects on the page, or prefetching information that the user may
+need. This requires a change in perspective: while users are slow and
+deliberative, leaving long gaps between actions for the browser to
+catch up, applications can be very demanding, with a neverending queue
+of tasks for the browser to do.
 
-In this chapter we'll see how to reason more deeply about the main event loop,
-generalizing to multiple event loops, types of tasks, and task queues. We'll
-refactor the rendering pipeline into its own special kind of task, and use this
-to add a second *browser thread*, separate from the thread for web page contents.
+Modern browsers adapt to this reality by multitasking, prioritizing,
+and deduplicating work. To do so, events from the operating system are
+turned into *tasks* and placed onto one of several task queues. Those
+task queues are each assigned to different threads, and each thread
+chooses the most important task to work on next to keep the browser
+fast and responsive. Loading pages, running scripts, and responding to
+user actions all become tasks in this framework.
 
-The browser thread will process input, scroll, interact with the browser chrome,
-raster display lists, and draw---basically, all the things the browser can do
-without interacting with the web page. This thread is a central performance
-feature of modern browsers.
+One of the most expensive tasks a browser does is render a web
+page---style the HTML elements, construct a layout tree, compute sizes
+and positions, paint it to a display list, raster the result into a
+surface, and draw that surface to the screen. These rendering steps
+make up the [*rendering pipeline*][graphics-pipeline]
+for the browser, and can be expensive and slow. For this reason,
+modern browsers split the rendering pipeline across threads and make
+sure to run the rendering pipeline only when necessary.
+
+[graphics-pipeline]: https://en.wikipedia.org/wiki/Graphics_pipeline
+
+Refactoring our browser to think in terms of tasks will require
+significant changes throughout the browser---concurrent programming is
+never easy! But these architectural changes are a key optimization
+behind modern browsers, and enable many advanced features discussed in
+this and later chapters.
 
 Task queues
 ===========
