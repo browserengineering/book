@@ -939,19 +939,19 @@ is a task to run. The way we "sleep until there is a task" is via a *condition
 variable*.
 
 Condition variables are a way for one thread to block until it has been notified
-by another thread that the the desired condition has become
-true.[^threading-hard] Condition variables allow a thread not to run an
-infinite loop and use up a lot of CPU, when there is nothing to
-do.[^browser-thread-burn] Instead, the `while True` loop in `run` should
-only continue if there is actually a task to execute.
+by another thread that some condition has become true.[^threading-hard]
+Condition variables allow a thread not to run an infinite
+loop and use up a lot of CPU when there is nothing to do.
+[^browser-thread-burn] Instead, the `while True` loop in `run` should only
+continue if there is actually a task to execute.
 
-Add `condition.wait()` call to the run loop (meaning: wait until there is a task
+Add a `condition.wait()` call to the run loop (meaning: wait until there is a task
 to run), and `condition.notifyAll()` (meaning: notify the run loop that a task
 has been added) to all the places where tasks are added.
 
 [^browser-thread-burn]: At the moment, the browser thread's `while True` loop
 does just this, but we need not do it for the main thread. (It appears there
-may not be a way to avoid this in SDL at present.)
+is not a way to avoid this in SDL at present.)
 
 [^threading-hard]: Threading and locks are hard, and it's easy to get into a
 deadlock situation. Read the [documentation][python-thread] for the classes
