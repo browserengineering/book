@@ -905,7 +905,6 @@ and scripts, and a rendering pipeline dirty bit.
 class MainThreadEventLoop:
     def __init__(self, tab):
         self.lock = threading.Lock()
-        self.condition = threading.Condition(self.lock)
         self.tab = tab
         self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
@@ -942,12 +941,11 @@ class MainThreadRunner:
     def schedule_task(self, callback):
         self.lock.acquire(blocking=True)
         self.tasks.add_task(callback)
-        self.condition.notify_all()
+        self.lock.release()
 
     def set_needs_quit(self):
         self.lock.acquire(blocking=True)
         self.needs_quit = True
-        self.condition.notify_all()
         self.lock.release()
 ```
 
@@ -958,8 +956,22 @@ if there are any on those queues.
 The part at the end is the trickiest. First, check if there are more tasks
 to execute; if so, loop again and run those tasks. If not, sleep until there
 is a task to run. The way we "sleep until there is a task" is via a *condition
-variable*, which is a way for one thread to block until it has been notified by
-another thread that the the desired condition has become true.[^threading-hard]
+variable*.
+
+Condition variables are a way for one thread to block until it has been notified
+by another thread that some condition has become true.[^threading-hard]
+Condition variables allow a thread not to run an infinite
+loop and use up a lot of CPU when there is nothing to do.
+[^browser-thread-burn] Instead, the `while True` loop in `run` should only
+continue if there is actually a task to execute.
+
+Add a `condition.wait()` call to the run loop (meaning: wait until there is a task
+to run), and `condition.notifyAll()` (meaning: notify the run loop that a task
+has been added) to all the places where tasks are added.
+
+[^browser-thread-burn]: At the moment, the browser thread's `while True` loop
+does just this, but we need not do it for the main thread. (It appears there
+is not a way to avoid this in SDL at present.)
 
 [^threading-hard]: Threading and locks are hard, and it's easy to get into a
 deadlock situation. Read the [documentation][python-thread] for the classes
@@ -969,7 +981,21 @@ been notified, so you'll need to release the lock immediately after, or else
 the thread will deadlock in the next while loop iteration.
 
 ``` {.python}
-     def run(self):
+class MainThreadEventLoop:
+    def __init__(self, tab):
+        self.condition = threading.Condition(self.lock)
+
+    def schedule_task(self, callback):
+        # ...
+        self.condition.notify_all()
+        self.lock.release()
+
+    def set_needs_quit(self):
+        # ...
+        self.condition.notify_all()
+        self.lock.release()
+
+    def run(self):
         while True:
             self.lock.acquire(blocking=True)
             needs_animation_frame = self.needs_animation_frame
