@@ -474,7 +474,7 @@ Scripts and rendering
 =====================
 
 Scripts are not just just for tasks unrelated to rendering. In fact, many
-scripts tasks are there to update rendering state in the DOM after a state
+script tasks are there to update rendering state in the DOM after a state
 change of the application (perhaps caused by an input event, or new information
 downloaded from the server). To facilitate this, browsers have the
 `requestAnimationFrame` JavaScript API. It's used like this:
