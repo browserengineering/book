@@ -374,14 +374,11 @@ call when that time expires. It will start a new thread and call that
 function *on that thread*[^thread-timer] at the desired time. When the
 function completes, the timer thread is automatically ended.
 
-[^thread-timer]: This is convenient because it enables the timer to
-execute at about the time desired---even if the current thread is busy at that
-time---but, as we'll see, leads to some complications if you really want the
-function to be called on the same thread as the one calling `set_timeout`.
-But in any case, it wouldn't make any sense to run the task on the "current"
-thread, because the only time the current thread is free to run such a task
-is when the program has already quit! Unlike JavaScript programming on a
-website, Python has no built-in event loop.
+[^thread-timer]: This is convenient because it enables the timer callback
+function to execute at about the time desired---even if the current thread is
+busy at that time. Nevertheless, we need the *task the callback wishes to
+trigger* to run on the current thread, not the timer thread. We'll use a task
+queue for that.
 
 [python-thread]: https://docs.python.org/3/library/threading.html
 
