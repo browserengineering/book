@@ -5,31 +5,51 @@ prev: visual-effects
 next: skipped
 ...
 
-Our browser now knows how to load a web page and *render* it, by constructing
-the layout tree, computing styles on it, laying out its contents, painting it
-into a dispaly list, rastering the result into surfaces, and drawing those
-surfaces to the screen. These rendering steps make up a basic
-[*rendering pipeline*](https://en.wikipedia.org/wiki/Graphics_pipeline) for the
-browser.[^rendering-pipeline]
+To be a capable application platform, the browser must run
+applications effieciently and stay responsive to user actions. To do
+so, the browser must explicitly choose which of its many tasks to
+prioritize and delay unnecessary tasks until later. Such a task queue
+system also allows the browser to split tasks across multiple threads,
+which makes the browser even more responsive and a better fit to
+modern multi-core hardware.
 
-[^rendering-pipeline]: Our browse's current rendering pipeline has 5 steps:
-style, layout, paint, raster and draw.
+Tasks and task queues
+=====================
 
-But of course, there is more to web pages than just running the rendering
-pipeline. There is user input, scrolling, interacting with browser chrome,
-submitting forms, executing scripts, loading things off the network, and so on.
-All of these *tasks* currently run on the main *event loop*; since it has only
-one such loop, the browser is generally single-threaded.
+So far, most of the work our browser's been doing has been handling
+user actions like scrolling, pressing buttons, and clicking on links.
+But as our browser runs more and more sophisticated web applications,
+it starts spend more and more time querying remote servers, animating
+objects on the page, or prefetching information that the user may
+need. This requires a change in perspective: while users are slow and
+deliberative, leaving long gaps between actions for the browser to
+catch up, applications can be very demanding, with a neverending queue
+of tasks for the browser to do.
 
-In this chapter we'll see how to reason more deeply about the main event loop,
-generalizing to multiple event loops, types of tasks, and task queues. We'll
-refactor the rendering pipeline into its own special kind of task, and use this
-to add a second *browser thread*, separate from the thread for web page contents.
+Modern browsers adapt to this reality by multitasking, prioritizing,
+and deduplicating work. To do so, events from the operating system are
+turned into *tasks* and placed onto one of several task queues. Those
+task queues are each assigned to different threads, and each thread
+chooses the most important task to work on next to keep the browser
+fast and responsive. Loading pages, running scripts, and responding to
+user actions all become tasks in this framework.
 
-The browser thread will process input, scroll, interact with the browser chrome,
-raster display lists, and draw---basically, all the things the browser can do
-without interacting with the web page. This thread is a central performance
-feature of modern browsers.
+One of the most expensive tasks a browser does is render a web
+page---style the HTML elements, construct a layout tree, compute sizes
+and positions, paint it to a display list, raster the result into a
+surface, and draw that surface to the screen. These rendering steps
+make up the [*rendering pipeline*][graphics-pipeline]
+for the browser, and can be expensive and slow. For this reason,
+modern browsers split the rendering pipeline across threads and make
+sure to run the rendering pipeline only when necessary.
+
+[graphics-pipeline]: https://en.wikipedia.org/wiki/Graphics_pipeline
+
+Refactoring our browser to think in terms of tasks will require
+significant changes throughout the browser---concurrent programming is
+never easy! But these architectural changes are a key optimization
+behind modern browsers, and enable many advanced features discussed in
+this and later chapters.
 
 Task queues
 ===========
@@ -535,7 +555,7 @@ Scripts and rendering
 =====================
 
 Scripts are not just just for tasks unrelated to rendering. In fact, many
-scripts tasks are there to update rendering state in the DOM after a state
+script tasks are there to update rendering state in the DOM after a state
 change of the application (perhaps caused by an input event, or new information
 downloaded from the server). To facilitate this, browsers have the
 `requestAnimationFrame` JavaScript API. It's used like this:
@@ -549,8 +569,8 @@ requestAnimationFrame(callback);
 ```
 
 This code will do two things: request an *animation frame* (rendering) task to
-be scheduled on the event loop,
-[^animation-frame] and call `callback` *at the beginning* of that rendering
+be scheduled on the event loop,[^animation-frame] and call `callback`
+*at the beginning* of that rendering
 task, before any browser rendering code. This is super useful to web page
 authors, as it allows them to do any setup work related to rendering just
 before it occurs. The implementation of this JavaScript API is straightforward:
@@ -936,7 +956,7 @@ and use `threading.Lock` objects to prevent race conditions.
 or `JSContext`.
 
 `MainThreadEventLoop` will add a lock and a thread object. Calling `start` will
-begin the thread. This will excute the `run` method on that thread; `run`
+begin the thread. This will execute the `run` method on that thread; `run`
 (instead of `run_once`) will execute forever (or until the program quits, which
 is indicated by the `needs_quit` dirty bit) and is where we'll put the main
 thread event loop. There will also be a task queue for browser-generated tasks
@@ -946,7 +966,6 @@ and scripts, and a rendering pipeline dirty bit.
 class MainThreadEventLoop:
     def __init__(self, tab):
         self.lock = threading.Lock()
-        self.condition = threading.Condition(self.lock)
         self.tab = tab
         self.needs_animation_frame = False
         self.main_thread = threading.Thread(target=self.run, args=())
@@ -983,12 +1002,11 @@ class MainThreadRunner:
     def schedule_task(self, callback):
         self.lock.acquire(blocking=True)
         self.tasks.add_task(callback)
-        self.condition.notify_all()
+        self.lock.release()
 
     def set_needs_quit(self):
         self.lock.acquire(blocking=True)
         self.needs_quit = True
-        self.condition.notify_all()
         self.lock.release()
 ```
 
@@ -999,8 +1017,22 @@ if there are any on those queues.
 The part at the end is the trickiest. First, check if there are more tasks
 to execute; if so, loop again and run those tasks. If not, sleep until there
 is a task to run. The way we "sleep until there is a task" is via a *condition
-variable*, which is a way for one thread to block until it has been notified by
-another thread that the the desired condition has become true.[^threading-hard]
+variable*.
+
+Condition variables are a way for one thread to block until it has been notified
+by another thread that some condition has become true.[^threading-hard]
+Condition variables allow a thread not to run an infinite
+loop and use up a lot of CPU when there is nothing to do.
+[^browser-thread-burn] Instead, the `while True` loop in `run` should only
+continue if there is actually a task to execute.
+
+Add a `condition.wait()` call to the run loop (meaning: wait until there is a task
+to run), and `condition.notifyAll()` (meaning: notify the run loop that a task
+has been added) to all the places where tasks are added.
+
+[^browser-thread-burn]: At the moment, the browser thread's `while True` loop
+does just this, but we need not do it for the main thread. (It appears there
+is not a way to avoid this in SDL at present.)
 
 [^threading-hard]: Threading and locks are hard, and it's easy to get into a
 deadlock situation. Read the [documentation][python-thread] for the classes
@@ -1010,7 +1042,21 @@ been notified, so you'll need to release the lock immediately after, or else
 the thread will deadlock in the next while loop iteration.
 
 ``` {.python}
-     def run(self):
+class MainThreadEventLoop:
+    def __init__(self, tab):
+        self.condition = threading.Condition(self.lock)
+
+    def schedule_task(self, callback):
+        # ...
+        self.condition.notify_all()
+        self.lock.release()
+
+    def set_needs_quit(self):
+        # ...
+        self.condition.notify_all()
+        self.lock.release()
+
+    def run(self):
         while True:
             self.lock.acquire(blocking=True)
             needs_animation_frame = self.needs_animation_frame
