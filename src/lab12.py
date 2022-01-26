@@ -668,8 +668,8 @@ class Browser:
         self.address_bar = ""
         self.compositor_lock = threading.Lock()
 
-        self.time_in_raster_and_draw = 0
-        self.num_raster_and_draws = 0
+        self.time_in_raster = 0
+        self.num_rasters = 0
         self.time_in_draw = 0
         self.num_draws = 0
 
@@ -713,28 +713,27 @@ class Browser:
 
     def raster_and_draw(self):
         self.compositor_lock.acquire(blocking=True)
-        timer = None
+        raster_timer = None
         draw_timer = None
-        if self.needs_draw:
-            timer = Timer()
-            timer.start()
-        else:
-            assert not self.needs_chrome_raster
-            assert not self.needs_tab_raster
-            self.compositor_lock.release()
-            return
         if self.needs_chrome_raster:
+            raster_timer = Timer()
+            raster_timer.start()
+            self.num_rasters += 1
             self.raster_chrome()
         if self.needs_tab_raster:
+            if not raster_timer:
+                raster_timer = Timer()
+                raster_timer.start()
+                self.num_rasters += 1
             self.raster_tab()
-            self.num_raster_and_draws += 1
         if self.needs_draw:
             draw_timer = Timer()
             draw_timer.start()
             self.draw()
             self.time_in_draw += draw_timer.stop()
             self.num_draws += 1
-            self.time_in_raster_and_draw += timer.stop()
+        if raster_timer:
+            self.time_in_raster += raster_timer.stop()
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
@@ -889,13 +888,13 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        print("""Time in raster-and-draw: {:>.6f}s
-    ({:>.6f}ms per raster-and-draw run on average;
-    {} total raster-and-draw updates)""".format(
-            self.time_in_raster_and_draw,
-            self.time_in_raster_and_draw / \
-                self.num_raster_and_draws * 1000,
-            self.num_raster_and_draws))
+        print("""Time in raster: {:>.6f}s
+    ({:>.6f}ms per raster run on average;
+    {} total rasters)""".format(
+            self.time_in_raster,
+            self.time_in_raster / \
+                self.num_rasters * 1000,
+            self.num_rasters))
         print("""Time in draw: {:>.6f}s
     ({:>.6f}ms per draw run on average;
     {} total draw updates)""".format(
