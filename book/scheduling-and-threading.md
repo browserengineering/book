@@ -221,7 +221,7 @@ run `func` 10 seconds in the future on a new thread:
 
 [python-thread]: https://docs.python.org/3/library/threading.html
 
-``` {.python}
+``` {.python expected=False}
 threading.Timer(10, func).start()
 ```
 
