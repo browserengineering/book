@@ -634,7 +634,7 @@ class TabWrapper:
 
     def handle_quit(self):
         print("""Time in style, layout and paint: {:>.6f}s
-    ({:>.6f}ms per pipelne run on average;
+    ({:>.6f}ms per pipeline run on average;
     {} total pipeline updates)""".format(
             self.tab.time_in_style_layout_and_paint,
             self.tab.time_in_style_layout_and_paint / \
