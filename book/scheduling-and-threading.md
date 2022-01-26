@@ -834,19 +834,18 @@ Now fire up the server and navigate to `/count`.^[The full URL will probably be
 on the window. The browser will print out the total time spent in each
 category. When I ran it on my computer, it said:
 
-    Time in raster-and-draw: 4.135040s
-        (41.350403ms per raster-and-draw run on average;
-        100 total raster-and-draw updates)
-    Time in draw: 2.869909s
-        (28.699088ms per draw run on average;
-        100 total draw updates)
-    Time in style, layout and paint: 1.973732s
-        (19.737322ms per pipelne run on average;
+    Time in raster: 4.859493s
+        (48.113797ms per raster run on average;
+        101 total rasters)
+    Time in draw: 3.137893s
+        (31.068245ms per draw run on average;
+        101 total draw updates)
+    Time in style, layout and paint: 2.899477s
+        (28.994775ms per pipelne run on average;
         100 total pipeline updates)
 
-Over a total of 100 frames of animation, the browser spent about 40ms
-rastering and drawing per frame,[^raster-draw] and most
-of the time (29ms) is in draw, not raster. That's a lot, and certainly
+Over a total of 100 frames of animation, the browser spent about 50ms
+rastering per frame,[^raster-draw] and 30ms drawing. That's a lot, and certainly
 greater than our 16ms time budget.
 
 On the other hand, the browser spent about 20ms per animation frame in the other
