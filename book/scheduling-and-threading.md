@@ -215,7 +215,7 @@ import threading
 
 The `threading` module has a class  called `Timer`. This class lets you run a
 callback at a specified time in the future, on a new
-[Python thread][python-thread]. It taes two parameters: a time delta in seconds
+[Python thread][python-thread]. It takes two parameters: a time delta in seconds
 from now, and a function to call when that time expires. The following code will
 run `func` 10 seconds in the future on a new thread:
 
