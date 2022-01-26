@@ -167,7 +167,7 @@ class JSContext:
                 Task(self.interp.evaljs,
                     "__runSetTimeout({})".format(handle)))
 
-        set_timeout(run_callback, time / 1000.0)
+        threading.Timer(time / 1000.0, run_callback).start()
 
     def xhr_onload(self, out, handle):
         do_default = self.interp.evaljs(
@@ -206,10 +206,6 @@ SCROLL_STEP = 100
 CHROME_PX = 100
 
 USE_BROWSER_THREAD = True
-
-def set_timeout(func, sec):
-    t = threading.Timer(sec, func)
-    t.start()
 
 def raster(display_list, canvas):
     for cmd in display_list:
@@ -526,7 +522,7 @@ class MainThreadEventLoop:
         self.lock.acquire(blocking=True)
         if not self.display_scheduled:
             if USE_BROWSER_THREAD:
-                set_timeout(callback, REFRESH_RATE_SEC)
+                threading.Timer(REFRESH_RATE_SEC, callback).start()
             self.display_scheduled = True
         self.lock.release()
 

@@ -192,6 +192,9 @@ tab is not the active tab. This flexibilty is quite powerful, and we can use it
 without having to dive into the guts of a `Tab` or how it loads web pages---all
 we'd have to do is implement a new `TaskRunner` heuristic.
 
+Example: setTimeout
+===================
+
 Now for the fun part I promised. Let's implement the
 [`setTimeout`][settimeout] JavaScript API, which provides a way to run
 JavaScript a given number of milliseconds from now. In terms of the JavaScript
@@ -210,21 +213,19 @@ for that module:
 import threading
 ```
 
-Implement a `set_timeout` helper function that runs a callback at a specified
-time in the future. You can do that by creating a new
-[Python thread][python-thread] via the `threading.Timer` class, which takes
-two parameters: a time delta in seconds from now, and a function to call when
-that time expires.
+The `threading` module has a class  called `Timer`. This class lets you run a
+callback at a specified time in the future, on a new
+[Python thread][python-thread]. It taes two parameters: a time delta in seconds
+from now, and a function to call when that time expires. The following code will
+run `func` 10 seconds in the future on a new thread:
 
 [python-thread]: https://docs.python.org/3/library/threading.html
 
 ``` {.python}
-def set_timeout(func, sec):     
-    t = threading.Timer(sec, func)
-    t.start()
+threading.Timer(10, func).start()
 ```
 
-Now we're ready to implement `setTimeout`. In the JavaScript runtime, add
+Now implement `setTimeout` on top of this class. In the JavaScript runtime, add
 a new internal handle for each call to `setTimeout`, and store the mapping
 between handles and callback functions in a global object called
 `SET_TIMEOUT_REQUESTS`. When the timeout occurs, Python will call
@@ -247,23 +248,21 @@ function __runSetTimeout(handle) {
 ```
 
 On the Python side, add a binding for `setTimeout` and an implementation that
-calls `set_timeout`. However, we have to be careful here, since in the code
-below, `run_callback` will run *on a different Python thread than the current
-one*. So we can't just call `evaljs` directly, or we'll end up with JavaScript
-running on two Python threads at the same time, which is not ok.[^js-thread]
+starts a `threading.Timer`. However, we have to be careful here, since in the
+code below, `run_callback` will run *on a different Python thread than the
+current one*. So we can't just call `evaljs` directly, or we'll end up with
+JavaScript running on two Python threads at the same time, which is not
+ok.[^js-thread]
 
-Not all is lost though! This problem can be solved elegantly with the
-`TaskRunner`: instead of running the script right away, schedule a task to
-do it later, when the other thread is free.[^locking] Here's the code:
-
-[^locking]: This code has a bug: it accesses data structures shared
-between two threads without a thread lock. We'll see soon how to fix it.
+This is easy to fix by using the `TaskRunner` you already implemented: instead
+of running the script right away, schedule a task to do it later, when the
+other thread is free. Here's the code:
 
 [^js-thread]: JavaScript is not a multi-threaded programming language.
-It's possible on the web to create [js-workers] of various kinds, but they
+It's possible on the web to create [workers] of various kinds, but they
 all run independently and communicate only via special message-passing APIs.
 
-[js-workers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
+[workers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 
 ``` {.python}
 class JSContext:
@@ -278,10 +277,47 @@ class JSContext:
                 Task(self.interp.evaljs,
                     "__runSetTimeout({})".format(handle)))
 
-        set_timeout(run_callback, time / 1000.0)
+        threading.Timer(time / 1000.0, run_callback).start()
 ```
 
 That's it! Your browser now supports running asynchronous JavaScript tasks.
+
+Except there is a bug in this code: it doesn't account for the fact that
+the first thread and the timer thread run concurrently, and there is therefore
+no guarantee that one callback that writes to `schedule_task` will not be 
+interleaved with code on the other thread trying to read the task queue,
+leading to a [race condition](https://en.wikipedia.org/wiki/Race_condition)
+bug and nondeterministic results.
+
+This bug is easily fixed by use of a `threading.Lock` object. Before reading
+or writing to a data structure shared across threads, acquire the lock; after
+you're done, release it.^[The `blocking` parameter to `acquire` indicates
+whether the thread should block on acquiring the lock or not; in this chapter
+you'll always set it to true.] The code changes in `TaskRunner` are pretty
+easy---just be careful to not forget to release the lock, and hold it for the
+minimum time possible, so as to maximize thread parallelism.^[That's why the
+code releases the lock before calling `task`: after the task has been removed
+from the queue, it can't be accessed by another thread.]
+
+``` {.python expected=False}
+class TaskRunner:
+    def __init__(self):
+        # ...
+        self.lock = threading.Lock()
+
+    def schedule_task(self, callback):
+        self.lock.acquire(blocking=True)
+        self.tasks.add_task(callback)
+        self.lock.release()
+
+    def run_once(self):
+        self.lock.acquire(blocking=True)
+        task = None
+        if self.tasks.has_tasks():
+            task = self.tasks.get_next_task()
+        self.lock.release()
+        task()
+```
 
 ::: {.further}
 Event loops often map 1:1 to CPU threads within a single CPU process, but
@@ -366,29 +402,7 @@ indicated by the dirty bits. We'll also need some way of
 *scheduling* the rendering pipeline to be updated at a given time in the
 future.
 
-Let's start with how to schedule the update, via a new `set_timeout` function.
-This function will run a callback at a specified time in the future. You can do
-that by starting a new [Python thread][python-thread] via the `threading.Timer`
-class, which takes two parameters: a time delta from now, and a function to
-call when that time expires. It will start a new thread and call that
-function *on that thread*[^thread-timer] at the desired time. When the
-function completes, the timer thread is automatically ended.
-
-[^thread-timer]: This is convenient because it enables the timer callback
-function to execute at about the time desired---even if the current thread is
-busy at that time. Nevertheless, we need the *task the callback wishes to
-trigger* to run on the current thread, not the timer thread. We'll use a task
-queue for that.
-
-[python-thread]: https://docs.python.org/3/library/threading.html
-
-``` {.python}
-def set_timeout(func, sec):
-    t = threading.Timer(sec, func)
-    t.start()
-```
-
-Next, add three dirty bits to `Tab`:
+First, add three dirty bits to `Tab`:
 
 * `needs_pipeline_update`, indicating that
 the pipeline needs to be re-run.
@@ -397,12 +411,8 @@ avoids double-running `set_timeout` unnecessarily).
 * `run_pipeline_now`, indicating that the event loop should
 run the pipeline.
 
-Add methods to set the dirty bits and call `set_timeout` as
-needed.[^race-condition]
-
-[^race-condition]: This code has a race condition because it's setting variables
-on one thread from another without a thread lock. Let's ignore that for now and
-fix it later in the chapter.
+Add methods to set the dirty bits and use a `threading.Timer`  as
+needed to schedule future renders.
 
 ``` {.python expected=False}
 class Tab:
@@ -422,7 +432,7 @@ class Tab:
             self.run_pipeline_now = True
 
         if not self.display_scheduled:
-            set_timeout(callback, REFRESH_RATE_SEC)
+            threading.Timer(REFRESH_RATE_SEC, callback).start()
             self.display_scheduled = True
 ```
  
@@ -947,12 +957,12 @@ by default) will be the browser thread, and we'll make a new one for
 the main thread. Let's add more code to the `TaskRunner` class to make it
 into a complete event loop, and then rename it to `MainThreadEventLoop`.
 
-The two threads will communicate by reading and writing shared data structures,
-and use `threading.Lock` objects to prevent race conditions.
-`MainThreadEventLoop` will be the only class allowed to call methods on `Tab`
-or `JSContext`.
+The two threads will communicate by reading and writing shared data structures
+(and use `threading.Lock` objects to prevent race conditions, just like with
+`TaskRunner`). `MainThreadEventLoop` will be the only class allowed to call
+methods on `Tab` or `JSContext`.
 
-`MainThreadEventLoop` will add a lock and a thread object. Calling `start` will
+`MainThreadEventLoop` will add a thread object. Calling `start` will
 begin the thread. This will execute the `run` method on that thread; `run`
 (instead of `run_once`) will execute forever (or until the program quits, which
 is indicated by the `needs_quit` dirty bit) and is where we'll put the main
