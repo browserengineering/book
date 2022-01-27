@@ -782,45 +782,51 @@ class Tab:
 ``` {.python}
 class Browser:
     def __init__(self):
-        self.time_in_raster_and_draw = 0
-        self.num_raster_and_draws = 0
+        self.time_in_raster = 0
+        self.num_rasters = 0
         self.time_in_draw = 0
         self.num_draws = 0
 
     def raster_and_draw(self):
-        timer = None
-        if self.needs_draw:
-            timer = Timer()
-            timer.start()
+        raster_timer = None
+        draw_timer = None
         if self.needs_chrome_raster:
+            raster_timer = Timer()
+            raster_timer.start()
+            self.num_rasters += 1
             self.raster_chrome()
         if self.needs_tab_raster:
+            if not raster_timer:
+                raster_timer = Timer()
+                raster_timer.start()
+                self.num_rasters += 1
             self.raster_tab()
         if self.needs_draw:
             draw_timer = Timer()
             draw_timer.start()
             self.draw()
             self.time_in_draw += draw_timer.stop()
-            self.time_in_raster_and_draw += timer.stop()
+            self.num_draws += 1
+        if raster_timer:
+            self.time_in_raster += raster_timer.stop()
         self.needs_tab_raster = False
         self.needs_chrome_raster = False
         self.needs_draw = False
 
     def handle_quit(self):
-        print("""Time in raster-and-draw: {:>.6f}s
-    ({:>.6f}ms per raster-and-draw run on average;
-    {} total raster-and-draw updates)""".format(
-            self.time_in_raster_and_draw,
-            self.time_in_raster_and_draw / \
-                self.num_raster_and_draws * 1000,
-            self.num_raster_and_draws))
+        print("""Time in raster: {:>.6f}s
+    ({:>.6f}ms per raster run on average;
+    {} total rasters)""".format(
+            self.time_in_raster,
+            self.time_in_raster / \
+                self.num_rasters * 1000,
+            self.num_rasters))
         print("""Time in draw: {:>.6f}s
     ({:>.6f}ms per draw run on average;
     {} total draw updates)""".format(
             self.time_in_draw,
             self.time_in_draw / self.num_draws * 1000,
-            self.num_draws))
-        # ...
+            self.num_draws)        # ...
 ```
 
 Now fire up the server and navigate to `/count`.^[The full URL will probably be
@@ -828,19 +834,18 @@ Now fire up the server and navigate to `/count`.^[The full URL will probably be
 on the window. The browser will print out the total time spent in each
 category. When I ran it on my computer, it said:
 
-    Time in raster-and-draw: 4.135040s
-        (41.350403ms per raster-and-draw run on average;
-        100 total raster-and-draw updates)
-    Time in draw: 2.869909s
-        (28.699088ms per draw run on average;
-        100 total draw updates)
-    Time in style, layout and paint: 1.973732s
-        (19.737322ms per pipelne run on average;
+    Time in raster: 4.859493s
+        (48.113797ms per raster run on average;
+        101 total rasters)
+    Time in draw: 3.137893s
+        (31.068245ms per draw run on average;
+        101 total draw updates)
+    Time in style, layout and paint: 2.899477s
+        (28.994775ms per pipelne run on average;
         100 total pipeline updates)
 
-Over a total of 100 frames of animation, the browser spent about 40ms
-rastering and drawing per frame,[^raster-draw] and most
-of the time (29ms) is in draw, not raster. That's a lot, and certainly
+Over a total of 100 frames of animation, the browser spent about 50ms
+rastering per frame,[^raster-draw] and 30ms drawing. That's a lot, and certainly
 greater than our 16ms time budget.
 
 On the other hand, the browser spent about 20ms per animation frame in the other
