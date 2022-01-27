@@ -405,13 +405,16 @@ need some way of
 *scheduling* the rendering pipeline to be updated at a given time in the
 future.
 
-First, add three dirty bits to `Tab`:
+First, add one dirty bit to `Tab`:
 
 * `needs_pipeline_update`, indicating that
 the pipeline needs to be re-run.
+
+And two to `TaskRunner`:
+
 * `display_scheduled`, indicating that a rendering task was already scheduled
 via a `threading.Timer` (this avoids double-running a timer unnecessarily).
-* `run_pipeline_now`, indicating that the event loop should
+* `needs_animation_frame`, indicating that the event loop should
 run the pipeline ASAP.
 
 Add methods to set the dirty bits and use a `threading.Timer`  as
@@ -421,22 +424,31 @@ needed to schedule future renders.
 class Tab:
     def __init__(self, browser):
         # ...
+        self.task_runner = TaskRunner(self)
         self.needs_pipeline_update = False
-        self.display_scheduled = False
-        self.run_pipeline_now = False
 
     def set_needs_pipeline_update(self):
         self.needs_pipeline_update = True
         self.schedule_animation_frame()
 
+
+class TaskRunner:
+    def __init__(self, tab):
+        # ...
+        self.tab = tab
+        self.display_scheduled = False
+        self.needs_animation_frame = False
+
     def schedule_animation_frame(self):
         def callback():
+            self.lock.acquire(blocking=True)
             self.display_scheduled = False
-            self.run_pipeline_now = True
-
+            self.needs_animation_frame = True
+            self.lock.release()
+        self.lock.acquire(blocking=True)
         if not self.display_scheduled:
             threading.Timer(REFRESH_RATE_SEC, callback).start()
-            self.display_scheduled = True
+        self.lock.release()
 ```
  
 Also, rename `render` to `run_rendering_pipeline`, and add a new
@@ -471,24 +483,28 @@ class Browser:
 ```
 
 The last piece is to actually call `run_animation_frame` from somewhere; at the
-moment all we're doing is setting `run_pipeline_now`, which is not too useful
-on its own! This needs to happen in the main event loop, just as I diagrammed
-in the previous section:
+moment all we're doing is setting `needs_animation frame`. The place to put
+it is in `run_once`, of course:
 
 ``` {.python expected=False}
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
-        active_tab = browser.tabs[browser.active_tab]
-        if active_tab.run_pipeline_now:
-            active_tab.run_pipeline_now = False
-            active_tab.run_animation_frame()
+class TaskRunner:
+    # ...
+    def run_once():
+        # ...
+        lock.acquire(blocking=True)
+        needs_animation_frame = self.needs_animation_frame
+        lock.release()
+        if needs_animation_frame:
+            self.tab.run_animation_frame()
 ```
 
-Let's take advantage of this new asynchronous technology by replacing all cases
-where the rendering pipeline is computed synchronously with
-`set_needs_pipeline_update`, for example `load`:^[There are more of them; you
-should fix them all.]
+Rendering is now async and scheduled according to the desired cadence.
+
+Let's now take advantage of this new asynchronous technology by replacing all
+cases where the rendering pipeline is computed synchronously with
+`set_needs_pipeline_update`, for example `load`:[^more-examples]
+
+[^more-examples]: There are more of them; you should fix them all.
 
 ``` {.python}
 class Tab:
