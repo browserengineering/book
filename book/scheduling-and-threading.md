@@ -13,8 +13,8 @@ system also allows the browser to split tasks across multiple threads,
 which makes the browser even more responsive and a better fit to
 modern multi-core hardware.
 
-Tasks and task queues
-=====================
+Tasks
+=====
 
 So far, most of the work our browser's been doing has been handling
 user actions like scrolling, pressing buttons, and clicking on links.
@@ -36,8 +36,8 @@ user actions all become tasks in this framework.
 
 One of the most expensive tasks a browser does is render a web
 page---style the HTML elements, construct a layout tree, compute sizes
-and positions, paint it to a display list, raster the result into a
-surface, and draw that surface to the screen. These rendering steps
+and positions, paint it to a display list, raster the result into
+surfaces, and draw tha surfaces to the screen. These rendering steps
 make up the [*rendering pipeline*][graphics-pipeline]
 for the browser, and can be expensive and slow. For this reason,
 modern browsers split the rendering pipeline across threads and make
@@ -46,7 +46,7 @@ sure to run the rendering pipeline only when necessary.
 [graphics-pipeline]: https://en.wikipedia.org/wiki/Graphics_pipeline
 
 Refactoring our browser to think in terms of tasks will require
-significant changes throughout the browser---concurrent programming is
+significant changes throughout---concurrent programming is
 never easy! But these architectural changes are a key optimization
 behind modern browsers, and enable many advanced features discussed in
 this and later chapters.
@@ -55,9 +55,8 @@ Task queues
 ===========
 
 At the moment, our browser has a lot of entangled code, and it will take
-substantial work to put everything in tasks on event loops. Let's start by
-defining the infrastructure of event loops, and then move just JavaScript tasks
-to the new infrastructure. This will be a bit of work, so let's reward
+substantial work to put everything in tasks on queues. Let's start by defining
+the infrastructure. This will be a bit of work, so once it's done we'll reward
 ourselves for this work by adding a fun new feature built on top of this
 tech--the `setTimeout` API.
 
@@ -141,11 +140,11 @@ class TaskRunner:
             task()
 ```
 
-Now we're ready to move JavaScript script loading for a `Tab` onto a
+Now we're ready to move script loading for a `Tab` onto a
 `TaskRunner`.[^event-handlers-later] Add the `TaskRunner` to `Tab` and, instead
 of running a script synchronously, schedule it:
 
-[^event-handlers-later]: Well move JavaScript event handlers to a task later.
+[^event-handlers-later]: We'll move script event handlers to a task later.
 
 ``` {.python expected=False}
 class Tab:
@@ -165,7 +164,7 @@ class Tab:
             # ...
             header, body = request(script_url, url)
             self.task_runner.schedule_task(
-                Task(self.run_script, script_url body))            
+                Task(self.run_script, script_url, body))
 ```
 
 Now we just need to modify the main event loop to run the task runner each time,
@@ -197,7 +196,7 @@ Example: setTimeout
 
 Now for the fun part I promised. Let's implement the
 [`setTimeout`][settimeout] JavaScript API, which provides a way to run
-JavaScript a given number of milliseconds from now. In terms of the JavaScript
+a function a given number of milliseconds from now. In terms of the JavaScript
 and Python communication, it'll use an approach with handles, similar to the
 `addEventListener` code we added in [Chapter 9](scripts.md#event-handling).
 The *new* part will be our first use of Python threads.
@@ -225,11 +224,11 @@ run `func` 10 seconds in the future on a new thread:
 threading.Timer(10, func).start()
 ```
 
-Now implement `setTimeout` on top of this class. In the JavaScript runtime, add
-a new internal handle for each call to `setTimeout`, and store the mapping
-between handles and callback functions in a global object called
+Now implement `setTimeout` on top of this functionality. In the JavaScript
+runtime, add a new internal handle for each call to `setTimeout`, and store the
+mapping between handles and callback functions in a global object called
 `SET_TIMEOUT_REQUESTS`. When the timeout occurs, Python will call
-`__runSetTimeout` and be passed the handle.
+`__runSetTimeout` and pass the handle as an argument.
 
 ``` {.javascript file=runtime}
 SET_TIMEOUT_REQUESTS = {}
@@ -284,7 +283,7 @@ That's it! Your browser now supports running asynchronous JavaScript tasks.
 
 Except there is a bug in this code: it doesn't account for the fact that
 the first thread and the timer thread run concurrently, and there is therefore
-no guarantee that one callback that writes to `schedule_task` will not be 
+no guarantee that one callback that adds a task via `schedule_task` will not be
 interleaved with code on the other thread trying to read the task queue,
 leading to a [race condition](https://en.wikipedia.org/wiki/Race_condition)
 bug and nondeterministic results.
@@ -293,8 +292,8 @@ This bug is easily fixed by use of a `threading.Lock` object. Before reading
 from or writing to a data structure shared across threads, acquire the lock;
 after you're done, release it.^[The `blocking` parameter to `acquire` indicates
 whether the thread should wait for the lock to be available before continuing;
-in this chapter you'll always set it to true. When the thread is waiting, it's
-said to be *blocked*.] The code changes in `TaskRunner` are pretty easy---just
+in this chapter you'll always set it to true. (When the thread is waiting, it's
+said to be *blocked*.)] The code changes in `TaskRunner` are pretty easy---just
 be careful to not forget to release the lock, and hold it for the minimum time
 possible, so as to maximize thread parallelism. That's why the code releases
 the lock before calling `task`: after the task has been removed from the queue,
@@ -317,7 +316,8 @@ class TaskRunner:
         if self.tasks.has_tasks():
             task = self.tasks.get_next_task()
         self.lock.release()
-        task()
+        if task:
+            task()
 ```
 
 ::: {.further}
@@ -354,16 +354,17 @@ while True:
         run_a_task_from_a_task_queue()
     run_rendering_pipeline()
 ```
-This is "ideal" because separating rendering into its own task will allow us
+
+The way the loop is written implies that the rendering pipeline is its own task.
+And it's "ideal" because separating rendering into its own task will allow us
 to optimize it and spread it across multiple threads.^[Here
 `run_rendering_pipeline` is made to look like it's all on the main event loop,
 but all the parts of it that are after layout are invisible to web page
 authors, so we'll be able to optimize them later on into a second event loop
 on another thread.]
 
-This loop implies that the rendering pipeline is its own task. But right now,
-the rendering pipeline in our browser is not a task at all---it's hidden in
-various subroutines of other tasks in the event loop. 
+But right now, the rendering pipeline in our browser is not a task at
+all---it's hidden in various subroutines of other tasks in the event loop.
 
 ``` {.python expected=False}
 # This is what our browser currently does.
@@ -372,7 +373,7 @@ while True:
 ```
 
 We'll need to fix that, but first let's figure out how long "enough time" in the
-above loop should be. This was discussed in Chapter 2, which introduced the
+"ideal" loop should be. This was discussed in Chapter 2, which introduced the
 [animation frame budget](graphics.md#framebudget), The animation frame budget
 is the amount of time allocated to re-draw the screen after an something has
 changed. It's typically about 16ms, in order to draw at 60Hz (60 * 16.66ms ~
@@ -397,9 +398,10 @@ Asynchronous rendering
 
 In order to separate rendering from other tasks and make it into a proper
 pipeline, let's make it asynchronous. Instead of updating rendering right away,
-the browser should set *dirty bits* indicating that a particular part of the
-pipeline needs updating. Then when the pipeline is run, it will run the parts
-indicated by the dirty bits. We'll also need some way of
+the browser should set *dirty bits* (a fancy name for a boolean state variable)
+indicating that a particular part of the pipeline needs updating. Then when the
+pipeline is run, it will run the parts indicated by the dirty bits. We'll also
+need some way of
 *scheduling* the rendering pipeline to be updated at a given time in the
 future.
 
@@ -407,10 +409,10 @@ First, add three dirty bits to `Tab`:
 
 * `needs_pipeline_update`, indicating that
 the pipeline needs to be re-run.
-* `display_scheduled`, indicating that `set_timeout` was already called (this
-avoids double-running `set_timeout` unnecessarily).
+* `display_scheduled`, indicating that a rendering task was already scheduled
+via a `threading.Timer` (this avoids double-running a timer unnecessarily).
 * `run_pipeline_now`, indicating that the event loop should
-run the pipeline.
+run the pipeline ASAP.
 
 Add methods to set the dirty bits and use a `threading.Timer`  as
 needed to schedule future renders.
