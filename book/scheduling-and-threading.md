@@ -295,9 +295,9 @@ you're done, release it.^[The `blocking` parameter to `acquire` indicates
 whether the thread should block on acquiring the lock or not; in this chapter
 you'll always set it to true.] The code changes in `TaskRunner` are pretty
 easy---just be careful to not forget to release the lock, and hold it for the
-minimum time possible, so as to maximize thread parallelism.^[That's why the
+minimum time possible, so as to maximize thread parallelism. That's why the
 code releases the lock before calling `task`: after the task has been removed
-from the queue, it can't be accessed by another thread.]
+from the queue, it can't be accessed by another thread.
 
 ``` {.python expected=False}
 class TaskRunner:
