@@ -429,7 +429,7 @@ class Tab:
 
     def set_needs_pipeline_update(self):
         self.needs_pipeline_update = True
-        self.schedule_animation_frame()
+        self.task_runner.schedule_animation_frame()
 
 
 class TaskRunner:
@@ -502,7 +502,7 @@ Rendering is now async and scheduled according to the desired cadence.
 
 Let's now take advantage of this new asynchronous technology by replacing all
 cases where the rendering pipeline is computed synchronously with
-`set_needs_pipeline_update`, for example `load`:[^more-examples]
+`set_needs_pipeline_update`. Here is `load`, for example:[^more-examples]
 
 [^more-examples]: There are more of them; you should fix them all.
 
@@ -517,8 +517,11 @@ Now our browser can run rendering in an asynchronous, scheduled way on the event
 loop!
 
 But along the way we lost some performance. We're now always calling
-`raster_and_draw` instead of only when needed. Add dirty bits to `Browser` to
-fix this. This will get us back the same performance we had at the end of
+`raster_and_draw` instead of only when needed. Dirty bits on `Browser` can fix
+this: one for chrome raster, one for tab raster, and one for draw. Wherever it
+used to call `raster_chrome`, `raster_tab` or `draw`  directly, now the browser
+should set the corresponding dirty bit. This will get us back the same
+performance we had at the end of
 [chapter 11](visual-effects.md#browser-compositing), where the browser only ran
 raster and draw when needed.
 
@@ -553,8 +556,8 @@ class Browser:
         self.needs_draw = False
 ```
 
-In each case where raster or draw was previously synchronous, set the
-dirty bits instead. Here's the change to `handle_click`:
+Here's the change to `handle_click` to set the dirty bit instead of calling
+`raster_chrome` or `raster_tab` directly:
 
 ``` {.python expected=False}
 class Browser:
@@ -568,7 +571,7 @@ class Browser:
         self.tabs[self.active_tab].set_needs_animation_frame()
 ```
 
-and `handle_down`:
+and `handle_down`:^[And so on, for all the call sites.]
 
 ``` {.python}
 class Browser:
@@ -594,35 +597,25 @@ function callback() {
 requestAnimationFrame(callback);
 ```
 
-This code will do two things: request an *animation frame* (rendering) task to
-be scheduled on the event loop,[^animation-frame] and call `callback`
-*at the beginning* of that rendering
-task, before any browser rendering code. This is super useful to web page
-authors, as it allows them to do any setup work related to rendering just
-before it occurs. The implementation of this JavaScript API is straightforward:
-add a new dirty bit to `Tab` and code to call the JavaScript callbacks during
-the next animation frame.
+This code will do two things: request an *animation frame* task to be scheduled
+on the event loop (i.e. `Tab.run_animation_frame`, the one you already
+implemented in the previous section) and call `callback` *at the beginning* of
+that rendering task, before any browser rendering code. This is super useful to
+web page authors, as it allows them to do any setup work related to rendering
+just before it occurs. The implementation of this JavaScript API is
+straightforward:
 
-[^animation-frame]: Now you know why I chose the `*_animation_frame` naming
-for the methods on `Tab` in the previous section!
+* Add a new dirty bit to `Tab` and code to call the JavaScript
+callbacks during the next animation frame:
 
 ``` {.python expected=False}
-class JSContext:
-    def __init__(self, tab):
-        # ...
-        self.interp.export_function("requestAnimationFrame",
-            self.requestAnimationFrame)
-
-    def requestAnimationFrame(self):
-        self.tab.request_animation_frame_callback()
-
 class Tab:
     def __init__(self, browser):
         self.needs_raf_callbacks = False
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
-        self.set_needs_animation_frame()
+        self.task_runner.schedule_animation_frame()
 
     def run_animation_frame(self):
         if self.needs_raf_callbacks:
@@ -633,7 +626,20 @@ class Tab:
         browser.raster_and_draw()
 ```
 
-And in the JavaScript runtime we'll need:
+* Add the interface to JSContext:
+
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.interp.export_function("requestAnimationFrame",
+            self.requestAnimationFrame)
+
+    def requestAnimationFrame(self):
+        self.tab.request_animation_frame_callback()
+```
+
+* Extend the JavaScript runtime, once again using handles:
 
 ``` {.javascript file=runtime}
 RAF_LISTENERS = [];
@@ -655,24 +661,27 @@ function __runRAFHandlers() {
 }
 ```
 
-Let's walk through what `run_animation_frame` does:
+Now let's take a deeper look at what `run_animation_frame` does:
 
-1. Reset `needs_animation_frame` and `needs_raf_callbacks` to
-`False`
-2. Call the JavaScript callbacks
-3. Run the rendering pipeline
+1. Reset `needs_raf_callbacks` to false.
+2. Call the JavaScript callbacks.
+3. Run the rendering pipeline.
 
 Look a bit more closely at steps 1 and 2. Would it work to run step 1 *after*
 step 2? The answer is no, but the reason is subtle: it's because the JavaScript
 callback code could call `requestAnimationFrame`. If this happens
 during such a callback, the spec says that a *second*  animation frame should
-be scheduled (and 16ms further in the future, naturally). Likewise, the runtime
-JavaScript needs to be careful to copy the `RAF_LISTENERS` array to a temporary
-variable and then clear out ``RAF_LISTENERS``, so that it can be re-filled by
-any new calls to `requestAnimationFrame`.
+be scheduled (and 16ms further in the future, naturally). If the order of
+operations had been different, it wouldn't correctly schedule another animation
+frame.
+
+ Likewise, the runtime JavaScript needs to be careful to copy the
+ `RAF_LISTENERS` array to a temporary variable and then clear out
+ ``RAF_LISTENERS``, so that it can be re-filled by any new calls to
+ `requestAnimationFrame`.
 
 This situation may seem like a corner case, but it's actually very important, as
-this is how JavaScript can run a 60Hz animation. Let's
+this is how JavaScript can run an *animation*. Let's
 try it out with a script that counts from 1 to 100, one frame at a time:
 
 ``` {.javascript file=eventloop}
@@ -752,10 +761,12 @@ complex.
 
 [faster-text-loading]: text.md#faster-text-layout
 
-What if we ran raster and draw *in parallel* with the main thread, by using
-CPU parallelism? That sounds fun to try, but before adding such complexity,
-let's instrument the browser and measure how much time is really being spent
-in raster and draw (always measure before optimizing!).
+What if we ran raster and draw *in parallel* with the main thread, by using CPU
+parallelism? After all, they take as input only the display list and not the
+DOM. That sounds fun to try, but before adding such complexity, let's
+instrument the browser and measure how much time is really being spent in
+raster and draw.^[Pro tip: always measure before optimizing. You'll often
+be surprised at where the bottlenecks are.]
 
 Add a simple class measuring time spent:
 
@@ -768,8 +779,9 @@ class Timer:
         self.time = time.time()
 
     def stop(self):
-        return time.time() - self.time
+        result = time.time() - self.time
         self.time = None
+        return result
 ```
 
 Count the total time spent in the two categories. We'll also need a
@@ -879,7 +891,7 @@ greater than our 16ms time budget.
 
 On the other hand, the browser spent about 20ms per animation frame in the other
 phases, which is also a lot. We'll see how to optimize that in
-[Chapter 13](reflow.md).
+a future chapter.
 
 Based on these timings, the first thing to try is optimizing
 draw. I profiled it in more depth, and found that each of the
@@ -950,8 +962,8 @@ The browser thread
 This new thread will be called the *browser thread*.[^also-compositor] The
 browser thread will be for:
 
-[^also-compositor]: This thread is similar to what modern browsers call the 
-*compositor thread*.
+[^also-compositor]: This thread is similar to what modern browsers often call
+the *compositor thread*.
 
 * Raster and draw
 * Interacting with browser chrome
@@ -965,6 +977,7 @@ be for:
 * The front half of the rendering pipeline: animation frame callbacks, style,
   layout, and paint
 * Event handlers for clicking on and typing into web pages
+* `setTimeout` callbacks
 
 [^main-thread-name]: Here I'm going with the name real browsers often use. A
 better name might be the "JavaScript" thread (or even better, the "DOM"
@@ -972,9 +985,8 @@ thread, since JavaScript can sometimes run on [other threads][webworker]).
 
 [webworker]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 
-Just as with `set_timeout`, let's implement the browser thread with
-[Python threads][python-thread]. All code in `Browser` will run on the browser
-thread, and all code in `Tab` and `JSContext` will run on the main thread.
+In other words: all code in `Browser` will run on the browser thread, and all
+code in `Tab` and `JSContext` will run on the existing thread.
 
 The thread that already exists (the one started by the Python interpreter
 by default) will be the browser thread, and we'll make a new one for
@@ -986,91 +998,80 @@ The two threads will communicate by reading and writing shared data structures
 `TaskRunner`). `MainThreadEventLoop` will be the only class allowed to call
 methods on `Tab` or `JSContext`.
 
-`MainThreadEventLoop` will add a thread object. Calling `start` will
-begin the thread. This will execute the `run` method on that thread; `run`
-(instead of `run_once`) will execute forever (or until the program quits, which
-is indicated by the `needs_quit` dirty bit) and is where we'll put the main
-thread event loop. There will also be a task queue for browser-generated tasks
-and scripts, and a rendering pipeline dirty bit.
+`MainThreadEventLoop` will add a thread object called `main_thread`, using the
+`threading.Thread` class. The constructor for a `Thread` takes a `target`
+argument indicating what function to execute on the thread once it's started.
+Calling `start` will begin the thread. This will execute the target function
+(`run`, in our case; rename `run_once` for this purpose), which will execute
+forever, or until the function quits. The need to quit is is indicated by the
+`needs_quit` dirty bit.
+
+The main thread event loop is `run`.
 
 ``` {.python}
 class MainThreadEventLoop:
     def __init__(self, tab):
-        self.lock = threading.Lock()
-        self.tab = tab
-        self.needs_animation_frame = False
+        # ...
         self.main_thread = threading.Thread(target=self.run, args=())
-        self.tasks = TaskQueue()
         self.needs_quit = False
+
+    def set_needs_quit(self):
+        self.lock.acquire(blocking=True)
+        self.needs_quit = True
+        self.lock.release()
 
     def start(self):
         self.main_thread.start()    
 
     def run(self):
         while True:
+            if self.needs_quit:
+                return
             # ...
 ```
 
-Add some methods to set the dirty bit and schedule tasks. These need to 
-acquire the lock before setting these thread-safe variables. (Ignore the
-`condition` line, we'll get to that in a moment).
+In `run`, implement a simple event loop scheduling strategy that runs the
+rendering pipeline if needed, and also one other task, if there are any on
+the queue.
 
-``` {.python expected=False}
-class MainThreadRunner:
-    def schedule_animation_frame(self):
-        def callback():
+``` {.python}
+class MainThreadEventLoop:
+    def run(self):
+        while True:
             self.lock.acquire(blocking=True)
-            self.display_scheduled = False
-            self.needs_animation_frame = True
-            self.condition.notify_all()
+            needs_animation_frame = self.needs_animation_frame
             self.lock.release()
-        self.lock.acquire(blocking=True)
-        if not self.display_scheduled:
-            self.display_scheduled = True
-            set_timeout(callback, REFRESH_RATE_SEC)
-        self.lock.release()
+            if needs_animation_frame:
+                self.tab.run_animation_frame()
 
-    def schedule_task(self, callback):
-        self.lock.acquire(blocking=True)
-        self.tasks.add_task(callback)
-        self.lock.release()
-
-    def set_needs_quit(self):
-        self.lock.acquire(blocking=True)
-        self.needs_quit = True
-        self.lock.release()
+            task = None
+            self.lock.acquire(blocking=True)
+            if self.tasks.has_tasks():
+                task = self.tasks.get_next_task()
+            self.lock.release()
+            if task:
+                task()
 ```
 
-In `run`, implement a simple event loop scheduling strategy that runs the
-rendering pipeline if needed, and also one browser method and one script task,
-if there are any on those queues.
-
-The part at the end is the trickiest. First, check if there are more tasks
-to execute; if so, loop again and run those tasks. If not, sleep until there
-is a task to run. The way we "sleep until there is a task" is via a *condition
+This works, but is quite inefficient in terms of CPU use. Even if there are no
+tasks, the thread will keep looping over and over. Let's add a way for the
+thread to go to sleep once all the queues are empty, until they have something
+in them again. The way to "sleep until there is a task" is via a *condition
 variable*.
 
 Condition variables are a way for one thread to block until it has been notified
 by another thread that some condition has become true.[^threading-hard]
 Condition variables allow a thread not to run an infinite
-loop and use up a lot of CPU when there is nothing to do.
-[^browser-thread-burn] Instead, the `while True` loop in `run` should only
+loop and use up a lot of CPU when there is nothing to
+do.[^browser-thread-burn] Instead, the `while True` loop in `run` should only
 continue if there is actually a task to execute.
 
 Add a `condition.wait()` call to the run loop (meaning: wait until there is a task
 to run), and `condition.notifyAll()` (meaning: notify the run loop that a task
-has been added) to all the places where tasks are added.
-
-[^browser-thread-burn]: At the moment, the browser thread's `while True` loop
-does just this, but we need not do it for the main thread. (It appears there
-is not a way to avoid this in SDL at present.)
-
-[^threading-hard]: Threading and locks are hard, and it's easy to get into a
-deadlock situation. Read the [documentation][python-thread] for the classes
-you're using very carefully, and make sure to release the lock in all the right
-places. For example, `condition.wait()` will re-acquire the lock once it has
-been notified, so you'll need to release the lock immediately after, or else
-the thread will deadlock in the next while loop iteration.
+has been added) to all the places where tasks are added. Notice that
+`notify_all` can only be called when the lock is held, and does *not* release
+the lock. `wait`, on the other hand, releases the lock when it goes to sleep
+and re-acquires it automatically when it awakens.
 
 ``` {.python}
 class MainThreadEventLoop:
@@ -1089,17 +1090,7 @@ class MainThreadEventLoop:
 
     def run(self):
         while True:
-            self.lock.acquire(blocking=True)
-            needs_animation_frame = self.needs_animation_frame
-            self.lock.release()
-            if needs_animation_frame:
-                self.tab.run_animation_frame()
-
-            task = None
-            if self.tasks.has_tasks():
-                task = self.tasks.get_next_task()
-            if task:
-                task()
+            # ...
 
             self.lock.acquire(blocking=True)
             if not self.tasks.has_tasks() and \
@@ -1109,10 +1100,20 @@ class MainThreadEventLoop:
             self.lock.release()
 ```
 
-Each `Tab` will own a `MainThreadEventLoop` and schedule script eval tasks and
-animation frames on it.[^one-per-tab]
+[^browser-thread-burn]: At the moment, the browser thread's `while True` loop
+does just this, but we need not do it for the main thread. (It appears there
+is not a way to avoid this in SDL at present.)
+
+[^threading-hard]: Threading and locks are hard, and it's easy to get into a
+deadlock situation. Read the [documentation][python-thread] for the classes
+you're using very carefully, and make sure to release the lock in all the right
+places. For example, `condition.wait()` will re-acquire the lock once it has
+been notified, so you'll need to release the lock immediately after, or else
+the thread will deadlock in the next while loop iteration.
+
+Note that each `Tab` owns a `MainThreadEventLoop`.[^one-per-tab]
 And since we'll be copying the display list across threads and not a canvas,
-the focus painting behavior needs to become a new `DrawLine` canvas command.
+the focus painting behavior needs to become a new `DrawLine` canvas command:
 
 [^one-per-tab]: That means there will be one main thread per `Tab`, and even
 tabs that are not currently shown will be able to run tasks in the background.
@@ -1122,20 +1123,6 @@ class Tab:
     def __init__(self, browser):
         self.event_loop = MainThreadEventLoop(self)
         self.event_loop.start()
-
-    def load(self, url, body=None):
-        # ...
-        for script in scripts:
-            # ...
-            self.event_loop.schedule_task(
-                Task(self.js.run, req_url, body))
-
-    def set_needs_animation_frame(self):
-        def callback():
-            self.display_scheduled = False
-            self.event_loop.schedule_animation_frame()
-        if not self.display_scheduled:
-            set_timeout(callback, REFRESH_RATE_SEC)
 
     def run_rendering_pipeline(self):
         # ...
@@ -1179,18 +1166,13 @@ Likewise, `Tab` can't have direct access to the `Browser`. But the only
 method it needs to call on `Browser` is `raster_and_draw`. We'll rename that
 to a `commit` method on `TabWrapper`, and pass this method to `Tab`'s
 constructor. When `commit` is called, all state of the `Tab` that's relevant
-to the `Browser` is sent across. Likewise add a `set_needs_animation_frame`
-method and also pass it.
+to the `Browser` is sent across.
 
 ``` {.python expected=False}
 class Tab:
-    def __init__(self, commit_func, set_needs_animation_frame_func):
+    def __init__(self, commit_func):
         # ...
         self.commit_func = commit_func
-        self.set_needs_animation_frame_func = set_needs_animation_frame_func
-
-    def set_needs_animation_frame(self):
-        self.set_needs_animation_frame_func()
 
     def run_animation_frame(self):
         self.run_rendering_pipeline()
@@ -1202,6 +1184,8 @@ class Tab:
 
 ```
 
+In TabWrapper:
+
 ``` {.python}
 class TabWrapper:
     def __init__(self, browser):
@@ -1211,7 +1195,7 @@ class TabWrapper:
         self.scroll = 0
 
     def commit(self, url, scroll, tab_height, display_list):
-        self.browser.compositor_lock.acquire(blocking=True)
+        self.browser.lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
             self.browser.set_needs_chrome_raster()
         self.url = url
@@ -1220,18 +1204,44 @@ class TabWrapper:
         self.browser.active_tab_height = tab_height
         self.browser.active_tab_display_list = display_list.copy()
         self.browser.set_needs_tab_raster()
-        self.browser.compositor_lock.release()
-
-    def set_needs_animation_frame(self):
-        self.browser.compositor_lock.acquire(blocking=True)
-        self.browser.set_needs_animation_frame()
-        self.browser.compositor_lock.release()
-    
+        self.browser.lock.release()
 ```
 
 Note that `commit` will acquire a lock on the browser thread before doing
 any of its work, because all of the inputs and outputs to it are cross-thread
 data structures.[^fast-commit]
+
+But we're not done. We need to have the *browser thread* determine the cadence
+of animation frames, *not* the main thread. The reason is simple: there is no
+point to running the front half of the rendering pipeline faster than it can be
+drawn to the screen on the browser thread.
+
+To implement this, we'll need to pass another function to the `Tab` constructor
+that is called whenever a `Tab` has a need for an animation frame:
+
+``` {.python}
+class Tab:
+    def __init__(self, commit_func, set_needs_animation_frame_func):
+        # ...
+        self.set_needs_animation_frame_func = \
+            set_needs_animation_frame_func
+
+    def set_needs_animation_frame(self):
+        self.set_needs_animation_frame_func()
+```
+
+Each `TabWrapper` will pass on the animation frame dirty bit to the browser.
+Note the use of a lock, because this method on `TabWrapper` is running
+on the main thread, not the browser thread.
+
+``` {.python}
+class TabWrapper:
+    def set_needs_animation_frame(self):
+        self.browser.lock.acquire(blocking=True)
+        self.browser.set_needs_animation_frame()
+        self.browser.lock.release()
+
+```
 
 Let's now finish plumbing the animation frame dirty bit to `Browser`. We'll store
 the bit, and check for it each time through the browser's event loop. This will
@@ -1240,9 +1250,9 @@ thread. This completes the loop: now the main thread will request that the
 browser thread schedule a task back on the main thread 16ms in the future).
 
 This setup is important because it needs to be the browser thread that
-determines the frame rate of the main thread, not the other way around. The
-reason is simple: there is no point to running the front half of the rendering
-pipeline faster than it can be drawn to the screen on the browser thread.
+determines the frame rate of the main thread, not the other way around. 
+
+
 
 ``` {.python}
 class Browser:
@@ -1321,7 +1331,7 @@ compositor thread, and leave the main thread none the wiser:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        self.compositor_lock.acquire(blocking=True)
+        self.lock.acquire(blocking=True)
         if e.y < CHROME_PX:
             self.focus = None
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
@@ -1338,7 +1348,7 @@ class Browser:
             self.focus = "content"
             self.tabs[self.active_tab].schedule_click(
                 e.x, e.y - CHROME_PX)
-        self.compositor_lock.release()
+        self.lock.release()
 
 ```
 
@@ -1347,14 +1357,14 @@ The same logic holds for `keypress`:
 ``` {.python}
 class Browser:
     def handle_key(self, char):
-        self.compositor_lock.acquire(blocking=True)
+        self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += char
             self.set_needs_chrome_raster()
         elif self.focus == "content":
             self.tabs[self.active_tab].schedule_keypress(char)
-        self.compositor_lock.release()
+        self.lock.release()
 ```
 
 And `handle_down`:
@@ -1362,14 +1372,14 @@ And `handle_down`:
 ``` {.python expected=False}
 class Browser:
     def handle_down(self):
-        self.compositor_lock.acquire(blocking=True)
+        self.lock.acquire(blocking=True)
         if not self.active_tab_height:
             return
         max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
         active_tab.schedule_scrolldown()
         self.set_needs_draw()
-        self.compositor_lock.release()
+        self.lock.release()
 ```
 
 ::: {.further}
