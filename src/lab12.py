@@ -557,7 +557,7 @@ class MainThreadEventLoop:
     def run(self):
         while True:
             if self.needs_quit:
-                return;
+                return
 
             self.lock.acquire(blocking=True)
             needs_animation_frame = self.needs_animation_frame

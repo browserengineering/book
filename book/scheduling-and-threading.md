@@ -517,7 +517,7 @@ Now our browser can run rendering in an asynchronous, scheduled way on the event
 loop!
 
 But along the way we lost some performance. We're now always calling
-`raster_and_draw` instead of only when needed. Dirty bits on  `Browser` can fix
+`raster_and_draw` instead of only when needed. Dirty bits on `Browser` can fix
 this: one for chrome raster, one for tab raster, and one for draw. Wherever it
 used to call `raster_chrome`, `raster_tab` or `draw`  directly, now the browser
 should set the corresponding dirty bit. This will get us back the same
@@ -597,12 +597,12 @@ function callback() {
 requestAnimationFrame(callback);
 ```
 
-This code will do two things: request an *animation frame* task to
-be scheduled on the event loop (i.e. `Tab.run_animation_frame`, then one you
-already implemented) and call `callback` *at the beginning* of
-that rendering task, before any browser rendering code. This is super useful
-to web page authors, as it allows them to do any setup work related to
-rendering just before it occurs. The implementation of this JavaScript API is
+This code will do two things: request an *animation frame* task to be scheduled
+on the event loop (i.e. `Tab.run_animation_frame`, the one you already
+implemented in the previous section) and call `callback` *at the beginning* of
+that rendering task, before any browser rendering code. This is super useful to
+web page authors, as it allows them to do any setup work related to rendering
+just before it occurs. The implementation of this JavaScript API is
 straightforward:
 
 * Add a new dirty bit to `Tab` and code to call the JavaScript
@@ -762,7 +762,7 @@ complex.
 [faster-text-loading]: text.md#faster-text-layout
 
 What if we ran raster and draw *in parallel* with the main thread, by using CPU
-parallelism? After all, they take as input only on the display list and not the
+parallelism? After all, they take as input only the display list and not the
 DOM. That sounds fun to try, but before adding such complexity, let's
 instrument the browser and measure how much time is really being spent in
 raster and draw.^[Pro tip: always measure before optimizing. You'll often
@@ -998,12 +998,12 @@ The two threads will communicate by reading and writing shared data structures
 `TaskRunner`). `MainThreadEventLoop` will be the only class allowed to call
 methods on `Tab` or `JSContext`.
 
-`MainThreadEventLoop` will add a thread object called `man_thread`, using the
-`threading.Thread` class. The constructor for a thread takes a `target`
+`MainThreadEventLoop` will add a thread object called `main_thread`, using the
+`threading.Thread` class. The constructor for a `Thread` takes a `target`
 argument indicating what function to execute on the thread once it's started.
 Calling `start` will begin the thread. This will execute the target function
 (`run`, in our case; rename `run_once` for this purpose), which will execute
-forever (or until the program quits. The need to quite is is indicated by the
+forever, or until the function quits. The need to quit is is indicated by the
 `needs_quit` dirty bit.
 
 The main thread event loop is `run`.
@@ -1025,6 +1025,8 @@ class MainThreadEventLoop:
 
     def run(self):
         while True:
+            if self.needs_quit:
+                return
             # ...
 ```
 
@@ -1043,8 +1045,10 @@ class MainThreadEventLoop:
                 self.tab.run_animation_frame()
 
             task = None
+            self.lock.acquire(blocking=True)
             if self.tasks.has_tasks():
                 task = self.tasks.get_next_task()
+            self.lock.release()
             if task:
                 task()
 ```
@@ -1052,13 +1056,14 @@ class MainThreadEventLoop:
 This works, but is quite inefficient in terms of CPU use. Even if there are no
 tasks, the thread will keep looping over and over. Let's add a way for the
 thread to go to sleep once all the queues are empty, until they have something
-again. The way to "sleep until there is a task" is via a *condition variable*.
+in them again. The way to "sleep until there is a task" is via a *condition
+variable*.
 
 Condition variables are a way for one thread to block until it has been notified
 by another thread that some condition has become true.[^threading-hard]
 Condition variables allow a thread not to run an infinite
-loop and use up a lot of CPU when there is nothing to do.
-[^browser-thread-burn] Instead, the `while True` loop in `run` should only
+loop and use up a lot of CPU when there is nothing to
+do.[^browser-thread-burn] Instead, the `while True` loop in `run` should only
 continue if there is actually a task to execute.
 
 Add a `condition.wait()` call to the run loop (meaning: wait until there is a task
