@@ -554,18 +554,18 @@ class TabWrapper:
     def schedule_load(self, url, body=None):
         self.tab.event_loop.schedule_task(
             Task(self.tab.load, url, body))
-        self.browser.set_needs_chrome_raster()
+        self.browser.set_needs_raster_and_draw()
 
     def commit(self, url, scroll, tab_height, display_list):
         self.browser.lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
-            self.browser.set_needs_chrome_raster()
+            self.browser.set_needs_raster_and_draw()
         self.url = url
         if scroll != None:
             self.scroll = scroll
         self.browser.active_tab_height = tab_height
         self.browser.active_tab_display_list = display_list.copy()
-        self.browser.set_needs_tab_raster()
+        self.browser.set_needs_raster_and_draw()
         self.browser.lock.release()
 
     def schedule_animation_frame(self):
@@ -637,9 +637,8 @@ class Browser:
         self.lock = threading.Lock()
 
         self.time_in_raster = 0
-        self.num_rasters = 0
         self.time_in_draw = 0
-        self.num_draws = 0
+        self.num_raster_and_draws = 0
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -653,9 +652,7 @@ class Browser:
             self.ALPHA_MASK = 0xff000000
 
         self.needs_animation_frame = False
-        self.needs_tab_raster = False
-        self.needs_chrome_raster = True
-        self.needs_draw = True
+        self.needs_raster_and_draw = False
 
         self.active_tab_height = None
         self.active_tab_display_list = None
@@ -668,43 +665,26 @@ class Browser:
     def set_needs_animation_frame(self):
         self.needs_animation_frame = True
 
-    def set_needs_tab_raster(self):
-        self.needs_tab_raster = True
-        self.needs_draw = True
-
-    def set_needs_chrome_raster(self):
-        self.needs_chrome_raster = True
-        self.needs_draw = True
-
-    def set_needs_draw(self):
-        self.needs_draw = True
+    def set_needs_raster_and_draw(self):
+        self.needs_raster_and_draw = True
 
     def raster_and_draw(self):
+        if not self.needs_raster_and_draw:
+            return
         self.lock.acquire(blocking=True)
-        raster_timer = None
-        draw_timer = None
-        if self.needs_chrome_raster:
-            raster_timer = Timer()
-            raster_timer.start()
-            self.num_rasters += 1
-            self.raster_chrome()
-        if self.needs_tab_raster:
-            if not raster_timer:
-                raster_timer = Timer()
-                raster_timer.start()
-                self.num_rasters += 1
-            self.raster_tab()
-        if self.needs_draw:
-            draw_timer = Timer()
-            draw_timer.start()
-            self.draw()
-            self.time_in_draw += draw_timer.stop()
-            self.num_draws += 1
-        if raster_timer:
-            self.time_in_raster += raster_timer.stop()
-        self.needs_tab_raster = False
-        self.needs_chrome_raster = False
-        self.needs_draw = False
+        self.num_raster_and_draws += 1
+
+        raster_timer = Timer()
+        raster_timer.start()
+        self.raster_chrome()
+        self.raster_tab()
+        self.time_in_raster += raster_timer.stop()
+
+        draw_timer = Timer()
+        draw_timer.start()
+        self.draw()
+        self.time_in_draw += draw_timer.stop()
+        self.needs_raster_and_draw = False
         self.lock.release()
 
     def schedule_animation_frame(self):
@@ -717,7 +697,7 @@ class Browser:
         if not self.active_tab_height:
             return
         active_tab = self.tabs[self.active_tab]
-        self.set_needs_draw()
+        self.needs_raster_and_draw()
         scroll = clamp_scroll(
             active_tab.scroll + SCROLL_STEP,
             self.active_tab_height)
@@ -770,6 +750,8 @@ class Browser:
         self.tabs.append(new_tab)
 
     def raster_tab(self):
+        if self.active_tab_height == None:
+            return
         if not self.tab_surface or \
                 self.active_tab_height != self.tab_surface.height():
             self.tab_surface = skia.Surface(WIDTH, self.active_tab_height)
@@ -861,14 +843,14 @@ class Browser:
     {} total rasters)""".format(
             self.time_in_raster,
             self.time_in_raster / \
-                self.num_rasters * 1000,
-            self.num_rasters))
+                self.num_raster_and_draws * 1000,
+            self.num_raster_and_draws))
         print("""Time in draw: {:>.6f}s
     ({:>.6f}ms per draw run on average;
     {} total draw updates)""".format(
             self.time_in_draw,
-            self.time_in_draw / self.num_draws * 1000,
-            self.num_draws))
+            self.time_in_draw / self.num_raster_and_draws * 1000,
+            self.num_raster_and_draws))
 
         self.tabs[self.active_tab].handle_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
