@@ -1195,7 +1195,12 @@ drawn to the screen on the browser thread.
 
 ``` {.python}
 class Tab:
-    def set_needs_animation_frame(self):
+    def set_needs_pipeline_update(self):
+        self.needs_pipeline_update = True
+        self.browser.set_needs_animation_frame()
+
+    def request_animation_frame_callback(self):
+        self.needs_raf_callbacks = True
         self.browser.set_needs_animation_frame()
 ```
 

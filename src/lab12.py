@@ -320,14 +320,11 @@ class Tab:
 
     def set_needs_pipeline_update(self):
         self.needs_pipeline_update = True
-        self.set_needs_animation_frame()
-
-    def set_needs_animation_frame(self):
         self.browser.set_needs_animation_frame()
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
-        self.set_needs_animation_frame()
+        self.browser.set_needs_animation_frame()
 
     def run_animation_frame(self, scroll):
         self.scroll = scroll
