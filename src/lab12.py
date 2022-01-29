@@ -216,7 +216,7 @@ def clamp_scroll(scroll, tab_height):
     return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
 
 class Tab:
-    def __init__(self, commit_func, set_needs_animation_frame_func):
+    def __init__(self, browser):
         self.history = []
         self.focus = None
         self.url = None
@@ -224,9 +224,7 @@ class Tab:
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
         self.needs_pipeline_update = False
-        self.commit_func = commit_func
-        self.set_needs_animation_frame_func = \
-            set_needs_animation_frame_func
+        self.browser = browser
         if USE_BROWSER_THREAD:
             self.event_loop = MainThreadEventLoop(self)
         else:
@@ -325,7 +323,7 @@ class Tab:
         self.set_needs_animation_frame()
 
     def set_needs_animation_frame(self):
-        self.set_needs_animation_frame_func()
+        self.browser.set_needs_animation_frame()
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
@@ -350,7 +348,7 @@ class Tab:
             need_commit = True
 
         if needs_commit:
-            self.commit_func(
+            self.browser.commit(
                 self.url, clamped_scroll if self.scroll_changed_in_tab \
                     else None, 
                 document_height, self.display_list)
@@ -443,6 +441,16 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
+    def handle_quit(self):
+        print("""Time in style, layout and paint: {:>.6f}s
+    ({:>.6f}ms per pipeline run on average;
+    {} total pipeline updates)""".format(
+            self.time_in_style_layout_and_paint,
+            self.time_in_style_layout_and_paint / \
+                self.num_pipeline_updates * 1000,
+            self.num_pipeline_updates))
+
+
 WIDTH, HEIGHT = 800, 600
 HSTEP, VSTEP = 13, 18
 
@@ -526,7 +534,11 @@ class MainThreadEventLoop:
 
     def run(self):
         while True:
-            if self.needs_quit:
+            self.lock.acquire(blocking=True)
+            needs_quit = self.needs_quit
+            self.lock.release()
+            if needs_quit:
+                self.tab.handle_quit()
                 return
 
             task = None
@@ -542,56 +554,6 @@ class MainThreadEventLoop:
                 not self.needs_quit:
                 self.condition.wait()
             self.lock.release()
-
-class TabWrapper:
-    def __init__(self, browser):
-        self.tab = Tab(self.commit, self.set_needs_animation_frame)
-        self.browser = browser
-        self.url = None
-        self.display_scheduled = False
-
-    def commit(self, url, scroll, tab_height, display_list):
-        self.browser.lock.acquire(blocking=True)
-        if url != self.url or scroll != self.browser.scroll:
-            self.browser.set_needs_raster_and_draw()
-        self.url = url
-        if scroll != None:
-            self.browser.scroll = scroll
-        self.browser.active_tab_height = tab_height
-        self.browser.active_tab_display_list = display_list.copy()
-        self.browser.set_needs_raster_and_draw()
-        self.browser.lock.release()
-
-    def schedule_animation_frame(self):
-        def callback():
-            self.browser.lock.acquire(blocking=True)
-            self.display_scheduled = False
-            scroll = self.browser.scroll
-            self.browser.lock.release()
-            self.tab.event_loop.schedule_task(
-                Task(self.tab.run_animation_frame, scroll))
-        self.browser.lock.acquire(blocking=True)
-        if not self.display_scheduled:
-            if USE_BROWSER_THREAD:
-                threading.Timer(REFRESH_RATE_SEC, callback).start()
-            self.display_scheduled = True
-        self.browser.lock.release()
-
-    def set_needs_animation_frame(self):
-        self.browser.lock.acquire(blocking=True)
-        self.browser.set_needs_animation_frame()
-        self.browser.lock.release()
-
-    def handle_quit(self):
-        print("""Time in style, layout and paint: {:>.6f}s
-    ({:>.6f}ms per pipeline run on average;
-    {} total pipeline updates)""".format(
-            self.tab.time_in_style_layout_and_paint,
-            self.tab.time_in_style_layout_and_paint / \
-                self.tab.num_pipeline_updates * 1000,
-            self.tab.num_pipeline_updates))
-
-        self.tab.event_loop.set_needs_quit()
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
@@ -614,6 +576,7 @@ class Browser:
         self.address_bar = ""
         self.lock = threading.Lock()
         self.display_scheduled = False
+        self.url = None
         self.scroll = 0
 
         self.time_in_raster = 0
@@ -639,11 +602,25 @@ class Browser:
 
     def render(self):
         assert not USE_BROWSER_THREAD
-        tab = self.tabs[self.active_tab].tab
+        tab = self.tabs[self.active_tab]
         tab.run_animation_frame(self.scroll)
 
+    def commit(self, url, scroll, tab_height, display_list):
+        self.lock.acquire(blocking=True)
+        if url != self.url or scroll != self.scroll:
+            self.set_needs_raster_and_draw()
+        self.url = url
+        if scroll != None:
+            self.scroll = scroll
+        self.active_tab_height = tab_height
+        self.active_tab_display_list = display_list.copy()
+        self.set_needs_raster_and_draw()
+        self.lock.release()
+
     def set_needs_animation_frame(self):
+        self.lock.acquire(blocking=True)
         self.needs_animation_frame = True
+        self.lock.release()
 
     def set_needs_raster_and_draw(self):
         self.needs_raster_and_draw = True
@@ -678,8 +655,8 @@ class Browser:
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
             self.lock.release()
-            active_tab.tab.event_loop.schedule_task(
-                Task(active_tab.tab.run_animation_frame, scroll))
+            active_tab.event_loop.schedule_task(
+                Task(active_tab.run_animation_frame, scroll))
         self.lock.acquire(blocking=True)
         if not self.display_scheduled:
             if USE_BROWSER_THREAD:
@@ -698,21 +675,26 @@ class Browser:
             self.active_tab_height)
         self.scroll = scroll
         self.lock.release()
-        active_tab.schedule_animation_frame()
+        self.schedule_animation_frame()
+
+    def set_active_tab(self, index):
+        self.active_tab = index
+        self.scroll = 0
+        self.url = None
+        self.schedule_animation_frame()
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < CHROME_PX:
             self.focus = None
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.active_tab = int((e.x - 40) / 80)
-                self.scroll = 0
+                self.set_active_tab(int((e.x - 40) / 80))
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
                 active_tab = self.tabs[self.active_tab]
-                active_tab.tab.event_loop.schedule_task(
-                    Task(active_tab.tab.go_back))
+                active_tab.event_loop.schedule_task(
+                    Task(active_tab.go_back))
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
@@ -720,8 +702,8 @@ class Browser:
         else:
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
-            active_tab.tab.event_loop.schedule_task(
-                Task(active_tab.tab.click, e.x, e.y - CHROME_PX))
+            active_tab.event_loop.schedule_task(
+                Task(active_tab.click, e.x, e.y - CHROME_PX))
         self.lock.release()
 
     def handle_key(self, char):
@@ -731,29 +713,29 @@ class Browser:
             self.address_bar += char
             self.set_needs_raster_and_draw()
         elif self.focus == "content":
-            self.tabs[self.active_tab].tab.event_loop.schedule_task(
-                Task(self.tab.keypress, char))
+            active_tab = self.tabs[self.active_tab]
+            active_tab.event_loop.schedule_task(
+                Task(active_tab.keypress, char))
         self.lock.release()
 
     def schedule_load(self, url, body=None):
         active_tab = self.tabs[self.active_tab]
-        active_tab.tab.event_loop.schedule_task(
-            Task(active_tab.tab.load, url, body))
+        active_tab.event_loop.schedule_task(
+            Task(active_tab.load, url, body))
         self.set_needs_raster_and_draw()
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
-        if self.focus == "address bar`":
+        if self.focus == "address bar":
             self.schedule_load(self.address_bar)
-            self.tabs[self.active_tab].url = self.address_bar
+            self.url = self.address_bar
             self.focus = None
             self.set_needs_raster_and_draw()
         self.lock.release()
 
     def load(self, url):
-        new_tab = TabWrapper(self)
-        self.active_tab = len(self.tabs)
-        self.scroll = 0
+        new_tab = Tab(self)
+        self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
         self.schedule_load(url)
 
@@ -796,9 +778,8 @@ class Browser:
             w = buttonfont.measureText(self.address_bar)
             draw_line(canvas, 55 + w, 55, 55 + w, 85)
         else:
-            url = self.tabs[self.active_tab].url
-            if url:
-                draw_text(canvas, 55, 55, url, buttonfont)
+            if self.url:
+                draw_text(canvas, 55, 55, self.url, buttonfont)
 
         # Draw the back button:
         draw_rect(canvas, 10, 50, 35, 90)
@@ -860,7 +841,7 @@ class Browser:
             self.time_in_draw / self.num_raster_and_draws * 1000,
             self.num_raster_and_draws))
 
-        self.tabs[self.active_tab].handle_quit()
+        self.tabs[self.active_tab].event_loop.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
@@ -898,7 +879,7 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
         if not USE_BROWSER_THREAD:
-            if active_tab.tab.event_loop.needs_quit:
+            if active_tab.event_loop.needs_quit:
                 break
             if active_tab.display_scheduled:
                 active_tab.display_scheduled = False
