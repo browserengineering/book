@@ -1030,20 +1030,16 @@ class MainThreadEventLoop:
             # ...
 ```
 
-In `run`, implement a simple event loop scheduling strategy that runs the
-rendering pipeline if needed, and also one other task, if there are any on
-the queue.
+In `run`, implement a simple event loop scheduling strategy that runs one
+task per loop.[^not-ideal]
+
+[^not-ideal]: This is not quite the "ideal" loop described at the beginning
+of the chapter, but I hope it's clear that it would be easy to change strategies
+to prioritize rendering.
 
 ``` {.python}
 class MainThreadEventLoop:
     def run(self):
-        while True:
-            self.lock.acquire(blocking=True)
-            needs_animation_frame = self.needs_animation_frame
-            self.lock.release()
-            if needs_animation_frame:
-                self.tab.run_animation_frame()
-
             task = None
             self.lock.acquire(blocking=True)
             if self.tasks.has_tasks():
@@ -1094,7 +1090,6 @@ class MainThreadEventLoop:
 
             self.lock.acquire(blocking=True)
             if not self.tasks.has_tasks() and \
-                not self.needs_animation_frame and \
                 not self.needs_quit:
                 self.condition.wait()
             self.lock.release()
@@ -1243,16 +1238,14 @@ class TabWrapper:
 
 ```
 
-Let's now finish plumbing the animation frame dirty bit to `Browser`. We'll store
-the bit, and check for it each time through the browser's event loop. This will
-be the trigger for actually scheduling an animation frame back on the main
-thread. This completes the loop: now the main thread will request that the
+Let's now finish plumbing the animation frame dirty bit to `Browser`. We'll
+store the bit, and check for it each time through the browser's event loop.
+This will be the trigger for actually scheduling an animation frame back on the
+main thread. This completes the loop: now the main thread will request that the
 browser thread schedule a task back on the main thread 16ms in the future).
 
 This setup is important because it needs to be the browser thread that
 determines the frame rate of the main thread, not the other way around. 
-
-
 
 ``` {.python}
 class Browser:
@@ -1262,6 +1255,30 @@ class Browser:
 
     def set_needs_animation_frame(self):
         self.needs_animation_frame = True
+
+    def schedule_animation_frame(self):
+        if self.needs_animation_frame:
+            self.needs_animation_frame = False
+            active_tab.schedule_animation_frame()
+```
+
+``` {.python expected=False}
+class TabWrapper:
+    def schedule_animation_frame(self):
+        def callback():
+            self.browser.lock.acquire(blocking=True)
+            self.display_scheduled = False
+            self.browser.lock.release()
+            self.tab.event_loop.schedule_task(
+                Task(self.tab.run_animation_frame))
+        self.browser.lock.acquire(blocking=True)
+        if not self.display_scheduled:
+            threading.Timer(REFRESH_RATE_SEC, callback).start()
+            self.display_scheduled = True
+        self.browser.lock.release()
+```
+
+``` {.python}
 # ...
 
 while True:
@@ -1452,39 +1469,6 @@ and otherwise pass `None`. The commit will ignore the scroll if it is `None`.
 
 Implement each of these in turn. In `MainThreadEventLoop`:
 
-``` {.python}
-class MainThreadEventLoop:
-    def __init__(self, tab):
-        # ...
-        self.pending_scroll = None
-
-    def schedule_scroll(self, scroll):
-        self.lock.acquire(blocking=True)
-        self.pending_scroll = scroll
-        self.condition.notify_all()
-        self.lock.release()
-
-    def run(self):
-        while True:
-            self.lock.acquire(blocking=True)
-            needs_animation_frame = self.needs_animation_frame
-            self.needs_animation_frame = False
-            pending_scroll = self.pending_scroll
-            self.pending_scroll = None
-            self.lock.release()
-            if pending_scroll:
-                self.tab.apply_scroll(pending_scroll)
-            if needs_animation_frame:
-                self.tab.run_animation_frame()
-            # ...
-            self.lock.acquire(blocking=True)
-            if not self.tasks.has_tasks() and \
-                not self.needs_animation_frame and \
-                not self.pending_scroll and \
-                not self.needs_quit:
-                self.condition.wait()
-            self.lock.release()
-```
 
 in `Tab`:
 
@@ -1506,7 +1490,8 @@ class Tab:
         self.scroll_changed_in_tab = True
         # ...
 
-    def run_animation_frame(self):
+    def run_animation_frame(self, scroll):
+        self.scroll = scroll
         # ....
         self.run_rendering_pipeline()
 
@@ -1532,7 +1517,14 @@ class TabWrapper:
         # ...
         if scroll != None:
             self.scroll = scroll
-```
+
+    def schedule_animation_frame(self):
+        def callback():
+            # ...
+            scroll = self.scroll
+            # ...
+            self.tab.event_loop.schedule_task(
+                Task(self.tab.run_animation_frame, scroll))```
 
 In `Browser`:
 
