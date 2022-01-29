@@ -807,10 +807,10 @@ class Tab:
         print("""Time in style, layout and paint: {:>.6f}s
     ({:>.6f}ms per pipeline run on average;
     {} total pipeline updates)""".format(
-            self.tab.time_in_style_layout_and_paint,
-            self.tab.time_in_style_layout_and_paint / \
-                self.tab.num_pipeline_updates * 1000,
-            self.tab.num_pipeline_updates))
+            self.time_in_style_layout_and_paint,
+            self.time_in_style_layout_and_paint / \
+                self.num_pipeline_updates * 1000,
+            self.num_pipeline_updates))
         # ...
 ```
 
@@ -1009,7 +1009,8 @@ class MainThreadEventLoop:
 
     def run(self):
         while True:
-            if self.needs_quit:
+            needs_quit = self.needs_quit
+            if needs_quit:
                 return
             # ...
 ```
@@ -1098,7 +1099,7 @@ the focus painting behavior needs to become a new `DrawLine` canvas command:
 [^one-per-tab]: That means there will be one main thread per `Tab`, and even
 tabs that are not currently shown will be able to run tasks in the background.
 
-``` {.python expected=False}
+``` {.python}
 class Tab:
     def __init__(self, browser):
         self.event_loop = MainThreadEventLoop(self)
@@ -1138,53 +1139,49 @@ class DrawLine:
 The `Browser` will also schedule tasks on the main thread. But now it's not
 safe for any methods on `Tab` to be directly called by `Browser`, because
 `Tab` runs on a different thread. All requests must be queued as tasks on the
-`MainThreadEventLoop`. To make this easier, let's wrap `Tab` in a new `TabWrapper`
-class that only exposes what's needed. `TabWrapper` will run on the browser
-thread.
+`MainThreadEventLoop`.
 
 Likewise, `Tab` can't have direct access to the `Browser`. But the only
-method it needs to call on `Browser` is `raster_and_draw`. We'll rename that
-to a `commit` method on `TabWrapper`, and pass this method to `Tab`'s
-constructor. When `commit` is called, all state of the `Tab` that's relevant
-to the `Browser` is sent across.
+method it needs to call on `Browser` is `raster_and_draw`. We'll add a new
+`commit` method on `Browser` that will copy state from the main thread to the
+browser thread. Then the browser won't have to depend on any main thread
+data structures in order to raster, draw and scrolll.
 
 ``` {.python expected=False}
 class Tab:
-    def __init__(self, commit_func):
+    def __init__(self, browser):
         # ...
-        self.commit_func = commit_func
+        self.browser = browser
 
     def run_animation_frame(self):
         self.run_rendering_pipeline()
         # ...
-        self.commit_func(
+        self.browser.commit(
             self.url, self.scroll,
             document_height,
             self.display_list)
 
 ```
 
-In `TabWrapper`:
+In `Browser`:
 
 ``` {.python}
-class TabWrapper:
-    def __init__(self, browser):
-        self.tab = Tab(self.commit, self.set_needs_animation_frame)
-        self.browser = browser
+class Browser:
+    def __init__(self):
         self.url = None
         self.scroll = 0
 
     def commit(self, url, scroll, tab_height, display_list):
-        self.browser.lock.acquire(blocking=True)
+        self.lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
-            self.browser.set_needs_raster_and_draw()
+            self.set_needs_raster_and_draw()
         self.url = url
         if scroll != None:
             self.scroll = scroll
-        self.browser.active_tab_height = tab_height
-        self.browser.active_tab_display_list = display_list.copy()
-        self.browser.set_needs_raster_and_draw()
-        self.browser.lock.release()
+        self.active_tab_height = tab_height
+        self.active_tab_display_list = display_list.copy()
+        self.set_needs_raster_and_draw()
+        self.lock.release()
 ```
 
 Note that `commit` will acquire a lock on the browser thread before doing
@@ -1196,30 +1193,18 @@ of animation frames, *not* the main thread. The reason is simple: there is no
 point to running the front half of the rendering pipeline faster than it can be
 drawn to the screen on the browser thread.
 
-To implement this, we'll need to pass another function to the `Tab` constructor
-that is called whenever a `Tab` has a need for an animation frame:
-
 ``` {.python}
 class Tab:
-    def __init__(self, commit_func, set_needs_animation_frame_func):
-        # ...
-        self.set_needs_animation_frame_func = \
-            set_needs_animation_frame_func
-
     def set_needs_animation_frame(self):
-        self.set_needs_animation_frame_func()
+        self.browser.set_needs_animation_frame_func()
 ```
 
-Each `TabWrapper` will pass on the animation frame dirty bit to the browser.
-Note the use of a lock, because this method on `TabWrapper` is running
-on the main thread, not the browser thread.
-
 ``` {.python}
-class TabWrapper:
+class Browser:
     def set_needs_animation_frame(self):
-        self.browser.lock.acquire(blocking=True)
-        self.browser.set_needs_animation_frame()
-        self.browser.lock.release()
+        self.lock.acquire(blocking=True)
+        self.needs_animation_frame = True
+        self.lock.release()
 
 ```
 
@@ -1239,25 +1224,24 @@ class Browser:
         self.needs_animation_frame = True
 
     def schedule_animation_frame(self):
-        if self.needs_animation_frame:
-            self.needs_animation_frame = False
-            active_tab.schedule_animation_frame()
-```
+        if not self.needs_animation_frame:
+            return
+        self.needs_animation_frame = False
 
-``` {.python expected=False}
-class TabWrapper:
-    def schedule_animation_frame(self):
         def callback():
-            self.browser.lock.acquire(blocking=True)
+            self.lock.acquire(blocking=True)
             self.display_scheduled = False
-            self.browser.lock.release()
-            self.tab.event_loop.schedule_task(
-                Task(self.tab.run_animation_frame))
-        self.browser.lock.acquire(blocking=True)
+            scroll = self.scroll
+            active_tab = self.tabs[self.active_tab]
+            self.lock.release()
+            active_tab.event_loop.schedule_task(
+                Task(active_tab.run_animation_frame, scroll))
+        self.lock.acquire(blocking=True)
         if not self.display_scheduled:
-            threading.Timer(REFRESH_RATE_SEC, callback).start()
+            if USE_BROWSER_THREAD:
+                threading.Timer(REFRESH_RATE_SEC, callback).start()
             self.display_scheduled = True
-        self.browser.lock.release()
+        self.lock.release()
 ```
 
 ``` {.python}
@@ -1275,46 +1259,22 @@ simultaneously---in the sense that neither is running a different task at the
 same time. For this reason commit needs to be as fast as possible, so as to
 lose the minimum possible amount of parallelism and responsiveness.
 
-Finally, let's add some methods on `TabWrapper` to schedule various kinds
-of main thread tasks scheduled by the `Browser`.
-
-``` {.python expected=False}
-class TabWrapper:
-    def schedule_load(self, url, body=None):
-        self.tab.event_loop.schedule_task(
-            Task(self.tab.load, url, body))
-        self.browser.set_needs_raster_and_draw()
-
-    def schedule_click(self, x, y):
-        self.tab.event_loop.schedule_task(
-            Task(self.tab.click, x, y))
-
-    def schedule_keypress(self, char):
-        self.tab.event_loop.schedule_task(
-            Task(self.tab.keypress, char))
-
-    def schedule_go_back(self):
-        self.tab.event_loop.schedule_task(
-            Task(self.tab.go_back))
-
-    def schedule_scrolldown(self):
-        self.tab.main_thread_runner.schedule_task(
-            Task(self.tab.scrolldown))
-
-    def handle_quit(self):
-        self.tab.event_loop.set_needs_quit()
-```
-
-Next up we'll call all these methods from the browser thread, for example
-loading:
+Finally, let's modify methods on `Browser` to schedule various kinds
+of main thread tasks. Here is `load`:
 
 ``` {.python}
 class Browser:
+    def schedule_load(self, url, body=None):
+        active_tab = self.tabs[self.active_tab]
+        active_tab.event_loop.schedule_task(
+            Task(active_tab.load, url, body))
+        self.set_needs_raster_and_draw()
+
     def load(self, url):
-        new_tab = TabWrapper(self)
-        new_tab.schedule_load(url)
-        self.active_tab = len(self.tabs)
+        new_tab = Tab(self)
+        self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
+        self.schedule_load(url)
 ```
 
 We can do the same for input event handlers, but there are a few additional
@@ -1332,23 +1292,13 @@ class Browser:
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < CHROME_PX:
-            self.focus = None
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.active_tab = int((e.x - 40) / 80)
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load("https://browser.engineering/")
-            elif 10 <= e.x < 35 and 40 <= e.y < 90:
-                self.tabs[self.active_tab].schedule_go_back()
-            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
-                self.focus = "address bar"
-                self.address_bar = ""
-            self.set_needs_raster_and_draw()
+             # ...
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].schedule_click(
-                e.x, e.y - CHROME_PX)
+            active_tab = self.tabs[self.active_tab]
+            active_tab.event_loop.schedule_task(
+                Task(active_tab.click, e.x, e.y - CHROME_PX))
         self.lock.release()
-
 ```
 
 The same logic holds for `keypress`:
@@ -1359,25 +1309,11 @@ class Browser:
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
-            self.address_bar += char
-            self.set_needs_raster_and_draw()
+            # ...
         elif self.focus == "content":
-            self.tabs[self.active_tab].schedule_keypress(char)
-        self.lock.release()
-```
-
-And `handle_down`:
-
-``` {.python expected=False}
-class Browser:
-    def handle_down(self):
-        self.lock.acquire(blocking=True)
-        if not self.active_tab_height:
-            return
-        max_y = self.active_tab_height - (HEIGHT - CHROME_PX)
-        active_tab = self.tabs[self.active_tab]
-        active_tab.schedule_scrolldown()
-        self.set_needs_draw()
+            active_tab = self.tabs[self.active_tab]
+            active_tab.event_loop.schedule_task(
+                Task(active_tab.keypress, char))
         self.lock.release()
 ```
 
@@ -1491,10 +1427,10 @@ class Tab:
         self.scroll_changed_in_tab = False
 ```
 
-In `TabWrapper`:
+In `Browser`:
 
 ``` {.python}
-class TabWrapper:
+class Browser:
     def commit(self, url, scroll, tab_height, display_list):
         # ...
         if scroll != None:
@@ -1505,8 +1441,8 @@ class TabWrapper:
             # ...
             scroll = self.scroll
             # ...
-            self.tab.event_loop.schedule_task(
-                Task(self.tab.run_animation_frame, scroll))
+            active_tab.event_loop.schedule_task(
+                Task(active_tab.run_animation_frame, scroll))
 ```
 
 In `Browser`:
@@ -1515,10 +1451,10 @@ In `Browser`:
 class Browser:
     def handle_down(self):
         scroll = clamp_scroll(
-            active_tab.scroll + SCROLL_STEP,
+            self.scroll + SCROLL_STEP,
             self.active_tab_height)
-        # ...
-        active_tab.schedule_scroll(scroll)
+        self.scroll = scroll
+        self.schedule_animation_frame()
 ```
 
 That was pretty complicated, but we got it done. Fire up the counting demo and
