@@ -38,11 +38,7 @@ Once the Tab has loaded, the browser should need raster and draw.
 
     >>> browser.load(test_url)
     >>> browser.render()
-    >>> browser.needs_chrome_raster
-    True
-    >>> browser.needs_tab_raster
-    True
-    >>> browser.needs_draw
+    >>> browser.needs_raster_and_draw
     True
 
 The Tab has already committed:
@@ -66,11 +62,7 @@ After performing raster and draw, the display list should be present.
     drawString(text=Text, x=13.0, y=36.10546875, color=ff000000)
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
 
-    >>> browser.needs_chrome_raster
-    False
-    >>> browser.needs_tab_raster
-    False
-    >>> browser.needs_draw
+    >>> browser.needs_raster_and_draw
     False
 
 The initial sroll offset is 0.
@@ -81,11 +73,7 @@ The initial sroll offset is 0.
 Scrolling down causes a draw but nothing else.
 
     >>> browser.handle_down()
-    >>> browser.needs_chrome_raster
-    False
-    >>> browser.needs_tab_raster
-    False
-    >>> browser.needs_draw
+    >>> browser.needs_raster_and_draw
     True
 
     Focusing the address bar and typing into it causes chrome raster and draw,
@@ -95,11 +83,7 @@ Scrolling down causes a draw but nothing else.
     >>> browser.focus
     'address bar'
     >>> browser.handle_key('c')
-    >>> browser.needs_chrome_raster
-    True
-    >>> browser.needs_tab_raster
-    False
-    >>> browser.needs_draw
+    >>> browser.needs_raster_and_draw
     True
 
 Testing TabWrapper
