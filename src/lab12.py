@@ -697,7 +697,7 @@ class Browser:
         if not self.active_tab_height:
             return
         active_tab = self.tabs[self.active_tab]
-        self.needs_raster_and_draw()
+        self.set_needs_raster_and_draw()
         scroll = clamp_scroll(
             active_tab.scroll + SCROLL_STEP,
             self.active_tab_height)
@@ -717,7 +717,7 @@ class Browser:
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
-            self.set_needs_chrome_raster()
+            self.set_needs_raster_and_draw()
         else:
             self.focus = "content"
             self.tabs[self.active_tab].schedule_click(
@@ -729,7 +729,7 @@ class Browser:
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += char
-            self.set_needs_chrome_raster()
+            self.set_needs_raster_and_draw()
         elif self.focus == "content":
             self.tabs[self.active_tab].schedule_keypress(char)
         self.lock.release()
@@ -740,7 +740,7 @@ class Browser:
             self.tabs[self.active_tab].schedule_load(self.address_bar)
             self.tabs[self.active_tab].url = self.address_bar
             self.focus = None
-            self.set_needs_chrome_raster()
+            self.set_needs_raster_and_draw()
         self.lock.release()
 
     def load(self, url):

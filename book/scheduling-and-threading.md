@@ -517,43 +517,29 @@ Now our browser can run rendering in an asynchronous, scheduled way on the event
 loop!
 
 But along the way we lost some performance. We're now always calling
-`raster_and_draw` instead of only when needed. Dirty bits on `Browser` can fix
-this: one for chrome raster, one for tab raster, and one for draw. Wherever it
-used to call `raster_chrome`, `raster_tab` or `draw`  directly, now the browser
-should set the corresponding dirty bit. This will get us back the same
+`raster_and_draw` instead of only when needed. A dirty bit called
+`needs_raster_and_draw` on `Browser` can fix most of this. Wherever it used to
+call `raster_chrome`, `raster_tab` or `draw`  directly, now the browser should
+set the dirty bit.^[Note that this will not get back some of the same
 performance we had at the end of
 [chapter 11](visual-effects.md#browser-compositing), where the browser only ran
-raster and draw when needed.
+raster and draw when needed. I've left this as an exercise.]
 
 ``` {.python} 
 class Browser:
     def __init__(self):
         # ...
-        self.needs_tab_raster = False
-        self.needs_chrome_raster = True
-        self.needs_draw = True
+        self.needs_raster_and_draw = False
 
-    def set_needs_tab_raster(self):
-        self.needs_tab_raster = True
-        self.needs_draw = True
-
-    def set_needs_chrome_raster(self):
-        self.needs_chrome_raster = True
-        self.needs_draw = True
-
-    def set_needs_draw(self):
-        self.needs_draw = True
+    def set_needs_raster_and_draw(self):
+        self.needs_raster_and_draw = True
 
     def raster_and_draw(self):
-        if self.needs_chrome_raster:
-            self.raster_chrome()
-        if self.needs_tab_raster:
-            self.raster_tab()
-        if self.needs_draw:
-            self.draw()
-        self.needs_tab_raster = False
-        self.needs_chrome_raster = False
-        self.needs_draw = False
+        if not self.needs_raster_and_draw:
+            return
+        # ...
+        self.needs_raster_and_draw = False
+
 ```
 
 Here's the change to `handle_click` to set the dirty bit instead of calling
@@ -564,10 +550,10 @@ class Browser:
     def handle_click(self, e):
         if e.y < CHROME_PX:
             # ...
-            self.set_needs_chrome_raster()
+            self.set_needs_raster_and_draw()
         else:
             # ...
-            self.set_needs_tab_raster()
+            self.set_needs_raster_and_draw()
         self.tabs[self.active_tab].set_needs_animation_frame()
 ```
 
@@ -577,7 +563,7 @@ and `handle_down`:^[And so on, for all the call sites.]
 class Browser:
     def handle_down(self):
         # ...
-        self.set_needs_draw()
+        self.set_needs_raster_and_draw()
 ```
 
 Scripts and rendering
@@ -824,35 +810,25 @@ class Tab:
 class Browser:
     def __init__(self):
         self.time_in_raster = 0
-        self.num_rasters = 0
         self.time_in_draw = 0
-        self.num_draws = 0
+        self.num_raster_and_draws = 0
 
     def raster_and_draw(self):
-        raster_timer = None
-        draw_timer = None
-        if self.needs_chrome_raster:
-            raster_timer = Timer()
-            raster_timer.start()
-            self.num_rasters += 1
-            self.raster_chrome()
-        if self.needs_tab_raster:
-            if not raster_timer:
-                raster_timer = Timer()
-                raster_timer.start()
-                self.num_rasters += 1
-            self.raster_tab()
-        if self.needs_draw:
-            draw_timer = Timer()
-            draw_timer.start()
-            self.draw()
-            self.time_in_draw += draw_timer.stop()
-            self.num_draws += 1
-        if raster_timer:
-            self.time_in_raster += raster_timer.stop()
-        self.needs_tab_raster = False
-        self.needs_chrome_raster = False
-        self.needs_draw = False
+        if not self.needs_raster_and_draw:
+            return
+        self.num_raster_and_draws += 1
+
+        raster_timer = Timer()
+        raster_timer.start()
+        self.raster_chrome()
+        self.raster_tab()
+        self.time_in_raster += raster_timer.stop()
+
+        draw_timer = Timer()
+        draw_timer.start()
+        self.draw()
+        self.time_in_draw += draw_timer.stop()
+        self.needs_raster_and_draw = False
 
     def handle_quit(self):
         print("""Time in raster: {:>.6f}s
@@ -860,14 +836,14 @@ class Browser:
     {} total rasters)""".format(
             self.time_in_raster,
             self.time_in_raster / \
-                self.num_rasters * 1000,
-            self.num_rasters))
+                self.num_raster_and_draws * 1000,
+            self.num_raster_and_draws))
         print("""Time in draw: {:>.6f}s
     ({:>.6f}ms per draw run on average;
     {} total draw updates)""".format(
             self.time_in_draw,
-            self.time_in_draw / self.num_draws * 1000,
-            self.num_draws)        # ...
+            self.time_in_draw / self.num_raster_and_draws * 1000,
+            self.num_raster_and_draws))
 ```
 
 Now fire up the server and navigate to `/count`.^[The full URL will probably be
@@ -875,15 +851,15 @@ Now fire up the server and navigate to `/count`.^[The full URL will probably be
 on the window. The browser will print out the total time spent in each
 category. When I ran it on my computer, it said:
 
-    Time in raster: 4.859493s
-        (48.113797ms per raster run on average;
-        101 total rasters)
-    Time in draw: 3.137893s
-        (31.068245ms per draw run on average;
-        101 total draw updates)
-    Time in style, layout and paint: 2.899477s
-        (28.994775ms per pipelne run on average;
-        100 total pipeline updates)
+Time in raster: 1.379575s
+    (13.659154ms per raster run on average;
+    101 total rasters)
+Time in draw: 2.961407s
+    (29.320861ms per draw run on average;
+    101 total draw updates)
+Time in style, layout and paint: 2.192260s
+    (21.922598ms per pipeline run on average;
+    100 total pipeline updates)
 
 Over a total of 100 frames of animation, the browser spent about 50ms
 rastering per frame,[^raster-draw] and 30ms drawing. That's a lot, and certainly
@@ -1193,13 +1169,13 @@ class TabWrapper:
     def commit(self, url, scroll, tab_height, display_list):
         self.browser.lock.acquire(blocking=True)
         if url != self.url or scroll != self.scroll:
-            self.browser.set_needs_chrome_raster()
+            self.browser.set_needs_raster_and_draw()
         self.url = url
         if scroll != None:
             self.scroll = scroll
         self.browser.active_tab_height = tab_height
         self.browser.active_tab_display_list = display_list.copy()
-        self.browser.set_needs_tab_raster()
+        self.browser.set_needs_raster_and_draw()
         self.browser.lock.release()
 ```
 
@@ -1299,7 +1275,7 @@ class TabWrapper:
     def schedule_load(self, url, body=None):
         self.tab.event_loop.schedule_task(
             Task(self.tab.load, url, body))
-        self.browser.set_needs_chrome_raster()
+        self.browser.set_needs_raster_and_draw()
 
     def schedule_click(self, x, y):
         self.tab.event_loop.schedule_task(
@@ -1358,7 +1334,7 @@ class Browser:
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
-            self.set_needs_chrome_raster()
+            self.set_needs_raster_and_draw()
         else:
             self.focus = "content"
             self.tabs[self.active_tab].schedule_click(
@@ -1376,7 +1352,7 @@ class Browser:
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += char
-            self.set_needs_chrome_raster()
+            self.set_needs_raster_and_draw()
         elif self.focus == "content":
             self.tabs[self.active_tab].schedule_keypress(char)
         self.lock.release()
@@ -1946,3 +1922,11 @@ these two needs.
    networking (and other I/O) instead of creating a one thread per request.
    Implement a third thread with an event loop and put all networking tasks
    (including HTML and script fetches) on it.
+
+* *Fine-grained dirty bits*: at the moment, the browser always re-runs
+the entire rendering pipeline if anything changed. For example, it re-rasters
+the browser chrome every time (this is a performance regression as compoared
+with the state at the end of chapter 11). Add in additional dirty bits for
+raster and draw stages. (You can also try adding dirty bits for whether layout
+needs to be run, but be careful to think very carefully about all the ways
+this dirty bit might need to end up being set.)
