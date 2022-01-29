@@ -571,7 +571,7 @@ The `needs_raster_and_draw` dirty bit is not just for making the browser a
 bit more efficient. Later in the chapter, we'll move raster and draw to another
 thread. If that bit was not there, then that thread would cause very erratic
 behavior when animating. Once you've read the whole chapter and implemented
-that thread, try removing this dirty bit and see for yourself.
+that thread, try removing this dirty bit and see for yourself!
 :::
 
 Scripts and rendering
