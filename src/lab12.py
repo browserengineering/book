@@ -548,21 +548,15 @@ class TabWrapper:
         self.tab = Tab(self.commit, self.set_needs_animation_frame)
         self.browser = browser
         self.url = None
-        self.scroll = 0
         self.display_scheduled = False
-
-    def schedule_load(self, url, body=None):
-        self.tab.event_loop.schedule_task(
-            Task(self.tab.load, url, body))
-        self.browser.set_needs_raster_and_draw()
 
     def commit(self, url, scroll, tab_height, display_list):
         self.browser.lock.acquire(blocking=True)
-        if url != self.url or scroll != self.scroll:
+        if url != self.url or scroll != self.browser.scroll:
             self.browser.set_needs_raster_and_draw()
         self.url = url
         if scroll != None:
-            self.scroll = scroll
+            self.browser.scroll = scroll
         self.browser.active_tab_height = tab_height
         self.browser.active_tab_display_list = display_list.copy()
         self.browser.set_needs_raster_and_draw()
@@ -572,7 +566,7 @@ class TabWrapper:
         def callback():
             self.browser.lock.acquire(blocking=True)
             self.display_scheduled = False
-            scroll = self.scroll
+            scroll = self.browser.scroll
             self.browser.lock.release()
             self.tab.event_loop.schedule_task(
                 Task(self.tab.run_animation_frame, scroll))
@@ -587,22 +581,6 @@ class TabWrapper:
         self.browser.lock.acquire(blocking=True)
         self.browser.set_needs_animation_frame()
         self.browser.lock.release()
-
-    def schedule_click(self, x, y):
-        self.tab.event_loop.schedule_task(
-            Task(self.tab.click, x, y))
-
-    def schedule_keypress(self, char):
-        self.tab.event_loop.schedule_task(
-            Task(self.tab.keypress, char))
-
-    def schedule_go_back(self):
-        self.tab.event_loop.schedule_task(
-            Task(self.tab.go_back))
-
-    def schedule_scroll(self, scroll):
-        self.scroll = scroll
-        self.schedule_animation_frame()
 
     def handle_quit(self):
         print("""Time in style, layout and paint: {:>.6f}s
@@ -635,6 +613,8 @@ class Browser:
         self.focus = None
         self.address_bar = ""
         self.lock = threading.Lock()
+        self.display_scheduled = False
+        self.scroll = 0
 
         self.time_in_raster = 0
         self.time_in_draw = 0
@@ -660,7 +640,7 @@ class Browser:
     def render(self):
         assert not USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab].tab
-        tab.run_animation_frame(self.tabs[self.active_tab].scroll)
+        tab.run_animation_frame(self.scroll)
 
     def set_needs_animation_frame(self):
         self.needs_animation_frame = True
@@ -688,21 +668,37 @@ class Browser:
         self.lock.release()
 
     def schedule_animation_frame(self):
-        if self.needs_animation_frame:
-            self.needs_animation_frame = False
-            active_tab.schedule_animation_frame()
+        if not self.needs_animation_frame:
+            return
+        self.needs_animation_frame = False
+
+        def callback():
+            self.lock.acquire(blocking=True)
+            self.display_scheduled = False
+            scroll = self.scroll
+            active_tab = self.tabs[self.active_tab]
+            self.lock.release()
+            active_tab.tab.event_loop.schedule_task(
+                Task(active_tab.tab.run_animation_frame, scroll))
+        self.lock.acquire(blocking=True)
+        if not self.display_scheduled:
+            if USE_BROWSER_THREAD:
+                threading.Timer(REFRESH_RATE_SEC, callback).start()
+            self.display_scheduled = True
+        self.lock.release()
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if not self.active_tab_height:
             return
         active_tab = self.tabs[self.active_tab]
-        self.needs_raster_and_draw()
+        self.set_needs_raster_and_draw()
         scroll = clamp_scroll(
-            active_tab.scroll + SCROLL_STEP,
+            self.scroll + SCROLL_STEP,
             self.active_tab_height)
+        self.scroll = scroll
         self.lock.release()
-        active_tab.schedule_scroll(scroll)
+        active_tab.schedule_animation_frame()
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
@@ -710,18 +706,22 @@ class Browser:
             self.focus = None
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.active_tab = int((e.x - 40) / 80)
+                self.scroll = 0
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
-                self.tabs[self.active_tab].schedule_go_back()
+                active_tab = self.tabs[self.active_tab]
+                active_tab.tab.event_loop.schedule_task(
+                    Task(active_tab.tab.go_back))
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
-            self.set_needs_chrome_raster()
+            self.set_needs_raster_and_draw()
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].schedule_click(
-                e.x, e.y - CHROME_PX)
+            active_tab = self.tabs[self.active_tab]
+            active_tab.tab.event_loop.schedule_task(
+                Task(active_tab.tab.click, e.x, e.y - CHROME_PX))
         self.lock.release()
 
     def handle_key(self, char):
@@ -729,25 +729,33 @@ class Browser:
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += char
-            self.set_needs_chrome_raster()
+            self.set_needs_raster_and_draw()
         elif self.focus == "content":
-            self.tabs[self.active_tab].schedule_keypress(char)
+            self.tabs[self.active_tab].tab.event_loop.schedule_task(
+                Task(self.tab.keypress, char))
         self.lock.release()
+
+    def schedule_load(self, url, body=None):
+        active_tab = self.tabs[self.active_tab]
+        active_tab.tab.event_loop.schedule_task(
+            Task(active_tab.tab.load, url, body))
+        self.set_needs_raster_and_draw()
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.focus == "address bar`":
-            self.tabs[self.active_tab].schedule_load(self.address_bar)
+            self.schedule_load(self.address_bar)
             self.tabs[self.active_tab].url = self.address_bar
             self.focus = None
-            self.set_needs_chrome_raster()
+            self.set_needs_raster_and_draw()
         self.lock.release()
 
     def load(self, url):
         new_tab = TabWrapper(self)
-        new_tab.schedule_load(url)
         self.active_tab = len(self.tabs)
+        self.scroll = 0
         self.tabs.append(new_tab)
+        self.schedule_load(url)
 
     def raster_tab(self):
         if self.active_tab_height == None:
@@ -806,7 +814,7 @@ class Browser:
         
         if self.tab_surface:
             tab_rect = skia.Rect.MakeLTRB(0, CHROME_PX, WIDTH, HEIGHT)
-            tab_offset = CHROME_PX - self.tabs[self.active_tab].scroll
+            tab_offset = CHROME_PX - self.scroll
             canvas.save()
             canvas.clipRect(tab_rect)
             canvas.translate(0, tab_offset)
