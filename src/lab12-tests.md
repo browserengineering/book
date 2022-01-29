@@ -92,32 +92,23 @@ Testing TabWrapper
 	>>> lab12.MainThreadEventLoop = test.MockNoOpMainThreadEventLoop
     >>> browser = lab12.Browser()
     >>> browser.load(test_url)
-    >>> tab_wrapper = browser.tabs[browser.active_tab]
 
  The URL is not set until the load has committed.
 
-    >>> tab_wrapper.url == None
+    >>> browser.url == None
     True
-    >>> tab_wrapper.scroll == 0
+    >>> browser.scroll == 0
     True
 
-    >>> tab_wrapper.commit("test-url", 1, 24, [3])
-    >>> tab_wrapper.url
+    >>> browser.commit("test-url", 1, 24, [3])
+    >>> browser.url
     'test-url'
-    >>> tab_wrapper.scroll
+    >>> browser.scroll
     1
     >>> browser.active_tab_height
     24
     >>> browser.active_tab_display_list
     [3]
-
-When scheduling a scroll, the browser thread one is retained even before commit,
-because the user can scroll while the Tab is still busy. (This is different
-than url behavior, which should usually be synchronized for security reasons.)
-
-    >>> tab_wrapper.schedule_scroll(333)
-    >>> tab_wrapper.scroll
-    333
 
 Testing TaskQueue
 =================
