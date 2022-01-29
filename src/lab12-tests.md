@@ -38,11 +38,7 @@ Once the Tab has loaded, the browser should need raster and draw.
 
     >>> browser.load(test_url)
     >>> browser.render()
-    >>> browser.needs_chrome_raster
-    True
-    >>> browser.needs_tab_raster
-    True
-    >>> browser.needs_draw
+    >>> browser.needs_raster_and_draw
     True
 
 The Tab has already committed:
@@ -66,11 +62,7 @@ After performing raster and draw, the display list should be present.
     drawString(text=Text, x=13.0, y=36.10546875, color=ff000000)
     drawString(text=), x=13.0, y=58.44921875, color=ff000000)
 
-    >>> browser.needs_chrome_raster
-    False
-    >>> browser.needs_tab_raster
-    False
-    >>> browser.needs_draw
+    >>> browser.needs_raster_and_draw
     False
 
 The initial sroll offset is 0.
@@ -81,11 +73,7 @@ The initial sroll offset is 0.
 Scrolling down causes a draw but nothing else.
 
     >>> browser.handle_down()
-    >>> browser.needs_chrome_raster
-    False
-    >>> browser.needs_tab_raster
-    False
-    >>> browser.needs_draw
+    >>> browser.needs_raster_and_draw
     True
 
     Focusing the address bar and typing into it causes chrome raster and draw,
@@ -95,11 +83,7 @@ Scrolling down causes a draw but nothing else.
     >>> browser.focus
     'address bar'
     >>> browser.handle_key('c')
-    >>> browser.needs_chrome_raster
-    True
-    >>> browser.needs_tab_raster
-    False
-    >>> browser.needs_draw
+    >>> browser.needs_raster_and_draw
     True
 
 Testing TabWrapper
@@ -108,32 +92,23 @@ Testing TabWrapper
 	>>> lab12.MainThreadEventLoop = test.MockNoOpMainThreadEventLoop
     >>> browser = lab12.Browser()
     >>> browser.load(test_url)
-    >>> tab_wrapper = browser.tabs[browser.active_tab]
 
  The URL is not set until the load has committed.
 
-    >>> tab_wrapper.url == None
+    >>> browser.url == None
     True
-    >>> tab_wrapper.scroll == 0
+    >>> browser.scroll == 0
     True
 
-    >>> tab_wrapper.commit("test-url", 1, 24, [3])
-    >>> tab_wrapper.url
+    >>> browser.commit("test-url", 1, 24, [3])
+    >>> browser.url
     'test-url'
-    >>> tab_wrapper.scroll
+    >>> browser.scroll
     1
     >>> browser.active_tab_height
     24
     >>> browser.active_tab_display_list
     [3]
-
-When scheduling a scroll, the browser thread one is retained even before commit,
-because the user can scroll while the Tab is still busy. (This is different
-than url behavior, which should usually be synchronized for security reasons.)
-
-    >>> tab_wrapper.schedule_scroll(333)
-    >>> tab_wrapper.scroll
-    333
 
 Testing TaskQueue
 =================
