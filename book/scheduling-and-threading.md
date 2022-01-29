@@ -1524,19 +1524,19 @@ class TabWrapper:
             scroll = self.scroll
             # ...
             self.tab.event_loop.schedule_task(
-                Task(self.tab.run_animation_frame, scroll))```
+                Task(self.tab.run_animation_frame, scroll))
+```
 
 In `Browser`:
 
 ``` {.python}
 class Browser:
     def handle_down(self):
+        scroll = clamp_scroll(
+            active_tab.scroll + SCROLL_STEP,
+            self.active_tab_height)
         # ...
-        active_tab.schedule_scroll(
-            clamp_scroll(
-                active_tab.scroll + SCROLL_STEP,
-                self.active_tab_height))
-        # ...
+        active_tab.schedule_scroll(scroll)
 ```
 
 That was pretty complicated, but we got it done. Fire up the counting demo and
