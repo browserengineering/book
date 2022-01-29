@@ -1040,13 +1040,13 @@ to prioritize rendering.
 ``` {.python}
 class MainThreadEventLoop:
     def run(self):
-            task = None
-            self.lock.acquire(blocking=True)
-            if self.tasks.has_tasks():
-                task = self.tasks.get_next_task()
-            self.lock.release()
-            if task:
-                task()
+        task = None
+        self.lock.acquire(blocking=True)
+        if self.tasks.has_tasks():
+            task = self.tasks.get_next_task()
+        self.lock.release()
+        if task:
+            task()
 ```
 
 This works, but is quite inefficient in terms of CPU use. Even if there are no
