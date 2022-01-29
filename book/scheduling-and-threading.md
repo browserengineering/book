@@ -1040,16 +1040,17 @@ to prioritize rendering.
 ``` {.python}
 class MainThreadEventLoop:
     def run(self):
-        task = None
-        self.lock.acquire(blocking=True)
-        if self.tasks.has_tasks():
-            task = self.tasks.get_next_task()
-        self.lock.release()
-        if task:
-            task()
+        while True:
+            task = None
+            self.lock.acquire(blocking=True)
+            if self.tasks.has_tasks():
+                task = self.tasks.get_next_task()
+            self.lock.release()
+            if task:
+                task()
 ```
 
-This works, but is quite inefficient in terms of CPU use. Even if there are no
+This works, but is wasteful of the CPU. Even if there are no
 tasks, the thread will keep looping over and over. Let's add a way for the
 thread to go to sleep once all the queues are empty, until they have something
 in them again. The way to "sleep until there is a task" is via a *condition
@@ -1179,7 +1180,7 @@ class Tab:
 
 ```
 
-In TabWrapper:
+In `TabWrapper`:
 
 ``` {.python}
 class TabWrapper:
@@ -1243,9 +1244,6 @@ store the bit, and check for it each time through the browser's event loop.
 This will be the trigger for actually scheduling an animation frame back on the
 main thread. This completes the loop: now the main thread will request that the
 browser thread schedule a task back on the main thread 16ms in the future).
-
-This setup is important because it needs to be the browser thread that
-determines the frame rate of the main thread, not the other way around. 
 
 ``` {.python}
 class Browser:
