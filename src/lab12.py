@@ -331,7 +331,8 @@ class Tab:
         self.needs_raf_callbacks = True
         self.set_needs_animation_frame()
 
-    def run_animation_frame(self):
+    def run_animation_frame(self, scroll):
+        self.scroll = scroll
         if self.needs_raf_callbacks:
             self.needs_raf_callbacks = False
             self.js.interp.evaljs("__runRAFHandlers()")
@@ -477,18 +478,10 @@ class TaskQueue:
 class SingleThreadedEventLoop:
     def __init__(self, tab):
         self.tab = tab
-
-    def schedule_scroll(self, scroll):
-        self.tab.apply_scroll(scroll)
-
-    def schedule_animation_frame(self):
-        self.display_scheduled = True
+        self.needs_quit = False
 
     def schedule_task(self, callback):
         callback()
-
-    def schedule_scroll(self, scroll):
-        self.tab.scroll = scroll
 
     def clear_pending_tasks(self):
         pass
@@ -497,6 +490,7 @@ class SingleThreadedEventLoop:
         pass
 
     def set_needs_quit(self):
+        self.needs_quit = True
         pass
 
     def run(self):
@@ -507,26 +501,9 @@ class MainThreadEventLoop:
         self.lock = threading.Lock()
         self.condition = threading.Condition(self.lock)
         self.tab = tab
-        self.needs_animation_frame = False
         self.tasks = TaskQueue()
-        self.display_scheduled = False
         self.main_thread = threading.Thread(target=self.run, args=())
         self.needs_quit = False
-        self.pending_scroll = None
-
-    def schedule_animation_frame(self):
-        def callback():
-            self.lock.acquire(blocking=True)
-            self.display_scheduled = False
-            self.needs_animation_frame = True
-            self.condition.notify_all()
-            self.lock.release()
-        self.lock.acquire(blocking=True)
-        if not self.display_scheduled:
-            if USE_BROWSER_THREAD:
-                threading.Timer(REFRESH_RATE_SEC, callback).start()
-            self.display_scheduled = True
-        self.lock.release()
 
     def schedule_task(self, callback):
         self.lock.acquire(blocking=True)
@@ -540,14 +517,7 @@ class MainThreadEventLoop:
         self.condition.notify_all()
         self.lock.release()
 
-    def schedule_scroll(self, scroll):
-        self.lock.acquire(blocking=True)
-        self.pending_scroll = scroll
-        self.condition.notify_all()
-        self.lock.release()
-
     def clear_pending_tasks(self):
-        self.needs_animation_frame = False
         self.tasks.clear()
         self.pending_scroll = None
 
@@ -559,17 +529,6 @@ class MainThreadEventLoop:
             if self.needs_quit:
                 return
 
-            self.lock.acquire(blocking=True)
-            needs_animation_frame = self.needs_animation_frame
-            self.needs_animation_frame = False
-            pending_scroll = self.pending_scroll
-            self.pending_scroll = None
-            self.lock.release()
-            if pending_scroll:
-                self.tab.apply_scroll(pending_scroll)
-            if needs_animation_frame:
-                self.tab.run_animation_frame()
-
             task = None
             self.lock.acquire(blocking=True)
             if self.tasks.has_tasks():
@@ -580,8 +539,6 @@ class MainThreadEventLoop:
 
             self.lock.acquire(blocking=True)
             if not self.tasks.has_tasks() and \
-                not self.needs_animation_frame and \
-                not self.pending_scroll and \
                 not self.needs_quit:
                 self.condition.wait()
             self.lock.release()
@@ -592,6 +549,7 @@ class TabWrapper:
         self.browser = browser
         self.url = None
         self.scroll = 0
+        self.display_scheduled = False
 
     def schedule_load(self, url, body=None):
         self.tab.event_loop.schedule_task(
@@ -611,7 +569,19 @@ class TabWrapper:
         self.browser.lock.release()
 
     def schedule_animation_frame(self):
-        self.tab.event_loop.schedule_animation_frame()
+        def callback():
+            self.browser.lock.acquire(blocking=True)
+            self.display_scheduled = False
+            scroll = self.scroll
+            self.browser.lock.release()
+            self.tab.event_loop.schedule_task(
+                Task(self.tab.run_animation_frame, scroll))
+        self.browser.lock.acquire(blocking=True)
+        if not self.display_scheduled:
+            if USE_BROWSER_THREAD:
+                threading.Timer(REFRESH_RATE_SEC, callback).start()
+            self.display_scheduled = True
+        self.browser.lock.release()
 
     def set_needs_animation_frame(self):
         self.browser.lock.acquire(blocking=True)
@@ -632,7 +602,7 @@ class TabWrapper:
 
     def schedule_scroll(self, scroll):
         self.scroll = scroll
-        self.tab.event_loop.schedule_scroll(scroll)
+        self.schedule_animation_frame()
 
     def handle_quit(self):
         print("""Time in style, layout and paint: {:>.6f}s
@@ -693,7 +663,7 @@ class Browser:
     def render(self):
         assert not USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab].tab
-        tab.run_animation_frame()
+        tab.run_animation_frame(self.tabs[self.active_tab].scroll)
 
     def set_needs_animation_frame(self):
         self.needs_animation_frame = True
@@ -747,12 +717,12 @@ class Browser:
         if not self.active_tab_height:
             return
         active_tab = self.tabs[self.active_tab]
-        active_tab.schedule_scroll(
-            clamp_scroll(
-                active_tab.scroll + SCROLL_STEP,
-                self.active_tab_height))
         self.set_needs_draw()
+        scroll = clamp_scroll(
+            active_tab.scroll + SCROLL_STEP,
+            self.active_tab_height)
         self.lock.release()
+        active_tab.schedule_scroll(scroll)
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
@@ -938,9 +908,10 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
         if not USE_BROWSER_THREAD:
-            active_runner = active_tab.tab.event_loop
-            if active_runner.display_scheduled:
-                active_runner.display_scheduled = False
+            if active_tab.tab.event_loop.needs_quit:
+                break
+            if active_tab.display_scheduled:
+                active_tab.display_scheduled = False
                 browser.render()
         browser.raster_and_draw()
         browser.schedule_animation_frame()

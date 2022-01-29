@@ -19,14 +19,8 @@ class MockMainThreadEventLoop:
 	def __init__(self, tab):
 		self.tab = tab
 
-	def schedule_animation_frame(self):
-		self.tab.run_animation_frame()
-
 	def schedule_task(self, callback):
 		callback()
-
-	def schedule_scroll(self, scroll):
-		pass
 
 	def clear_pending_tasks(self):
 		pass
@@ -41,13 +35,7 @@ class MockNoOpMainThreadEventLoop:
 	def __init__(self, tab):
 		self.tab = tab
 
-	def schedule_animation_frame(self):
-		pass
-
 	def schedule_task(self, callback):
-		pass
-
-	def schedule_scroll(self, scroll):
 		pass
 
 	def start(self):
