@@ -1196,7 +1196,7 @@ drawn to the screen on the browser thread.
 ``` {.python}
 class Tab:
     def set_needs_animation_frame(self):
-        self.browser.set_needs_animation_frame_func()
+        self.browser.set_needs_animation_frame()
 ```
 
 ``` {.python}
