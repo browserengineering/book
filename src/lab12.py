@@ -909,7 +909,7 @@ if __name__ == "__main__":
         active_tab = browser.tabs[browser.active_tab]
         if not USE_BROWSER_THREAD:
             if active_tab.tab.event_loop.needs_quit:
-x                break
+                break
             if active_tab.display_scheduled:
                 active_tab.display_scheduled = False
                 browser.render()
