@@ -478,18 +478,10 @@ class TaskQueue:
 class SingleThreadedEventLoop:
     def __init__(self, tab):
         self.tab = tab
-
-    def schedule_scroll(self, scroll):
-        self.tab.apply_scroll(scroll)
-
-    def schedule_animation_frame(self):
-        self.display_scheduled = True
+        self.needs_quit = False
 
     def schedule_task(self, callback):
         callback()
-
-    def schedule_scroll(self, scroll):
-        self.tab.scroll = scroll
 
     def clear_pending_tasks(self):
         pass
@@ -498,6 +490,7 @@ class SingleThreadedEventLoop:
         pass
 
     def set_needs_quit(self):
+        self.needs_quit = True
         pass
 
     def run(self):
@@ -670,7 +663,7 @@ class Browser:
     def render(self):
         assert not USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab].tab
-        tab.run_animation_frame(self.tab_wrapper.scroll)
+        tab.run_animation_frame(self.tabs[self.active_tab].scroll)
 
     def set_needs_animation_frame(self):
         self.needs_animation_frame = True
@@ -915,9 +908,10 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
         if not USE_BROWSER_THREAD:
-            active_runner = active_tab.tab.event_loop
-            if active_runner.display_scheduled:
-                active_runner.display_scheduled = False
+            if active_tab.tab.event_loop.needs_quit:
+x                break
+            if active_tab.display_scheduled:
+                active_tab.display_scheduled = False
                 browser.render()
         browser.raster_and_draw()
         browser.schedule_animation_frame()
