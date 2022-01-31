@@ -340,9 +340,6 @@ class Tab:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
 
-        if self.scroll_changed_in_tab:
-            need_commit = True
-
         self.browser.commit(
             self.url, clamped_scroll if self.scroll_changed_in_tab \
                 else None, 
