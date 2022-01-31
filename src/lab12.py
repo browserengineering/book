@@ -245,10 +245,10 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
-        self.event_loop.clear_pending_tasks()
-        headers, body = request(url, self.url, payload=body)
         self.scroll = 0
         self.scroll_changed_in_tab = True
+        self.event_loop.clear_pending_tasks()
+        headers, body = request(url, self.url, payload=body)
         self.url = url
         self.history.append(url)
 
