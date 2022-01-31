@@ -1376,36 +1376,29 @@ The trickiest part is how to communicate a browser thread scroll offset to the
 main thread, and integrate it with the rendering pipeline. It'll work like
 this:
 
-* When the browser thread changes scroll offset, notify the
-`MainThreadEventLoop`
-and store the result in a `pending_scroll` variable. (Note that this does 
-*not* cause an animation frame, it just stores the scroll for the next
-time an animation frame happens to occur.)
-* When `MainThreadEventLoop` decides to run an animation frame, first apply
-the `pending_scroll` to the `Tab`. Then, after running the rendering pipeline,
-*adjust* it if the document height requires clamping it.
+* When the browser thread changes scroll offset, store it in a `scroll` variable
+on the `Browser`.
+* When the browser thread decides to run an animation frame^[Remember, it's the
+browser thread that decides the cadence of animation farmes, pass the scroll
+as an argument to the `Task` that calls `Tab.run_animation_frame`.
+* `Tab.run_animation_frame` will set the scroll variable on itself as the first
+step.
 * When loading a new page in a `Tab`, override the scroll to 0.
 * If an animation frame or load caused a scroll adjustment, note it in a
 new `scroll_changed_in_tab` variable on `Tab`.
 * When calling `commit`, only pass the scroll if it was changed in the `Tab`,
 and otherwise pass `None`. The commit will ignore the scroll if it is `None`.
 
-Implement each of these in turn. In `MainThreadEventLoop`:
+In `Tab`:
 
-
-in `Tab`:
-
-``` {.python expected=False}
+``` {.python}
 def clamp_scroll(scroll, tab_height):
     return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
 
 class Tab:
-    def __init__(self, commit_func):
+    def __init__(self, browser):
         # ...
         self.scroll_changed_in_tab = False
-    # ...
-    def apply_scroll(self, scroll):
-        self.scroll = scroll
 
     def load(self, url, body=None):
         headers, body = request(url, self.url, payload=body)
@@ -1415,7 +1408,9 @@ class Tab:
 
     def run_animation_frame(self, scroll):
         self.scroll = scroll
-        # ....
+        # ...
+
+        needs_commit = self.needs_pipeline_update
         self.run_rendering_pipeline()
 
         document_height = math.ceil(self.document.height)
@@ -1424,11 +1419,14 @@ class Tab:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
 
-        self.commit_func(
-            self.url, clamped_scroll if self.scroll_changed_in_tab \
-                else None, 
-            document_height,
-            self.display_list)
+        if self.scroll_changed_in_tab:
+            need_commit = True
+
+        if needs_commit:
+            self.browser.commit(
+                self.url, clamped_scroll if self.scroll_changed_in_tab \
+                    else None, 
+                document_height, self.display_list)
         self.scroll_changed_in_tab = False
 ```
 

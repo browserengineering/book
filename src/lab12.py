@@ -315,9 +315,6 @@ class Tab:
 
         self.set_needs_pipeline_update()
 
-    def apply_scroll(self, scroll):
-        self.scroll = scroll
-
     def set_needs_pipeline_update(self):
         self.needs_pipeline_update = True
         self.browser.set_needs_animation_frame()
