@@ -1458,7 +1458,7 @@ class Tab:
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
-        self.scroll = clamped_scroll
+        self.scroll = clamped_scrollp
 ```
 
 * When calling `commit`, only pass the scroll if `scroll_changed_in_tab` was
