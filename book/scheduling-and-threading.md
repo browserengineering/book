@@ -1377,9 +1377,11 @@ main thread, and integrate it with the rendering pipeline. It'll work like
 this:
 
 * When the browser thread changes scroll offset, store it in a `scroll` variable
-on the `Browser`, and schedule an animation frame.
-
-This is one such example:
+  on the `Browser`, set `needs_raster_and_draw`, and schedule an animation
+  frame. This will immediately apply the scroll offset to the screen (at the
+  next time `raster_and_draw` is called from the browser thread event loop).
+  Scheduling an animation frame is necessary only to notify the main thread
+  that scroll was changed.
 
 ``` {.python}
 class Browser:
@@ -1390,13 +1392,28 @@ class Browser:
     def handle_down(self):
         # ...
         self.scroll = scroll
+        self.set_needs_raster_and_draw()
         self.lock.release()
         self.schedule_animation_frame()
 ```
 
-* When the browser thread decides to run the animation frame^[Remember, it's the
-  browser thread, not the main thread, that decides the cadence of animation
-  frames], pass the scroll as an argument to the `Task` that calls
+The `set_active_tab` method is an interesting case, because it causes
+scroll to be set back to 0, but we need the main thread to run in order
+to commit a new display list for the other tab. That's why this method doesn't
+call `set_needs_raster_and_draw`.
+
+``` {.python}
+class Browser:
+    def set_active_tab(self, index):
+        self.active_tab = index
+        self.scroll = 0
+        self.url = None
+        self.schedule_animation_frame()
+```
+
+* When the browser thread decides to run the animation frame,^[Remember, it's
+  the browser thread, not the main thread, that decides the cadence of
+  animation frames.] pass the scroll as an argument to the `Task` that calls
   `Tab.run_animation_frame`. `Tab.run_animation_frame` will set the scroll
   variable on itself as the first step.
 
@@ -1428,6 +1445,7 @@ class Tab:
     def __init__(self, browser):
         # ...
         self.scroll_changed_in_tab = False
+
     def load(self, url, body=None):
         self.scroll = 0
         self.scroll_changed_in_tab = True
@@ -1450,11 +1468,12 @@ class Tab:
 ``` {.python}
 class Tab:
     def run_animation_frame(self, scroll):
-            # ...
-            self.browser.commit(
-                self.url, clamped_scroll if self.scroll_changed_in_tab \
-                    else None, 
-                document_height, self.display_list)
+        # ...
+        self.browser.commit(
+            self.url,
+            clamped_scroll if self.scroll_changed_in_tab \
+                else None, 
+            document_height, self.display_list)
 ```
 
 That was pretty complicated, but we got it done. Fire up the counting demo and
@@ -1874,3 +1893,8 @@ with the state at the end of chapter 11). Add in additional dirty bits for
 raster and draw stages. (You can also try adding dirty bits for whether layout
 needs to be run, but be careful to think very carefully about all the ways
 this dirty bit might need to end up being set.)
+
+* *Multi-tab scroll offsets*: our browser doesn't currently keep track of the
+   scroll offset of each tab separately. That's why `set_active_tab`
+   unconditionally sets it to zero. In a real browser, all the tabs would
+   remember their scroll offset. Fix this.
