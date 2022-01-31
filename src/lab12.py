@@ -332,7 +332,6 @@ class Tab:
             self.needs_raf_callbacks = False
             self.js.interp.evaljs("__runRAFHandlers()")
 
-        needs_commit = self.needs_pipeline_update
         self.run_rendering_pipeline()
 
         document_height = math.ceil(self.document.height)
@@ -341,14 +340,10 @@ class Tab:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
 
-        if self.scroll_changed_in_tab:
-            need_commit = True
-
-        if needs_commit:
-            self.browser.commit(
-                self.url, clamped_scroll if self.scroll_changed_in_tab \
-                    else None, 
-                document_height, self.display_list)
+        self.browser.commit(
+            self.url, clamped_scroll if self.scroll_changed_in_tab \
+                else None, 
+            document_height, self.display_list)
         self.scroll_changed_in_tab = False
 
     def run_rendering_pipeline(self):
