@@ -79,9 +79,8 @@ it.[^event-loop] The job of the event loop is to schedule tasks
 [chapter 11](visual-effects.md#sdl-creates-the-window) (before that, we used
 `tkinter.mainloop`).
 
-Implement the `Task` and `TaskQueue` classes. A `Task` encapsulates some code to
-run in the form of a function, plus arguments to that function.[^task-notes] A
-`TaskQueue` is simply a first-in-first-out list of `Task`s.
+Implement the `Task` class. A `Task` encapsulates some code to
+run in the form of a function, plus arguments to that function.[^task-notes]
 
 [^task-notes]: In `Task`, we're using the varargs syntax for Python, allowing
 any number of arguments to be passed to the task. We're also using Python's
@@ -102,41 +101,22 @@ class Task:
         self.args = None
 ```
 
-``` {.python expected=False}
-
-class TaskQueue:
-    def __init__(self):
-        self.tasks = []
-
-    def add_task(self, task_code):
-        self.tasks.append(task_code)
-
-    def has_tasks(self):
-        return len(self.tasks) > 0
-
-    def get_next_task(self):
-        return self.tasks.pop(0)
-
-    def clear(self):
-        self.tasks = []
-```
-
 Also define a new `TaskRunner` class to manage the task queues and run them. It
-will have a `TaskQueue`, a method to add a `Task`, and a method to run once
+will have a list of `Task`s, a method to add a `Task`, and a method to run once
 through the event loop. Implement a simple scheduling heuristic in
 `run_once` that executes one task each time through, if there is one to run.
 
 ``` {.python expected=False}
 class TaskRunner:
     def __init__(self):
-        self.tasks = TaskQueue()
+        self.tasks = []
 
     def schedule_task(self, callback):
-        self.tasks.add_task(callback)
+        self.tasks.append(callback)
 
     def run_once(self):
-        if self.tasks.has_tasks():
-            task = self.tasks.get_next_task()
+        if len(self.tasks) > 0):
+            task = self.tasks.pop(0)
             task()
 ```
 
@@ -313,8 +293,8 @@ class TaskRunner:
     def run_once(self):
         self.lock.acquire(blocking=True)
         task = None
-        if self.tasks.has_tasks():
-            task = self.tasks.get_next_task()
+        if len(self.tasks) > 0:
+            task = self.tasks.pop(0)
         self.lock.release()
         if task:
             task()
@@ -1028,8 +1008,8 @@ class MainThreadEventLoop:
         while True:
             task = None
             self.lock.acquire(blocking=True)
-            if self.tasks.has_tasks():
-                task = self.tasks.get_next_task()
+            if len(self.tasks) > 0:
+                task = self.tasks.pop(0)
             self.lock.release()
             if task:
                 task()
@@ -1075,7 +1055,7 @@ class MainThreadEventLoop:
             # ...
 
             self.lock.acquire(blocking=True)
-            if not self.tasks.has_tasks() and \
+            if len(self.tasks) == 0 and \
                 not self.needs_quit:
                 self.condition.wait()
             self.lock.release()

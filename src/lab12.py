@@ -455,24 +455,6 @@ class Task:
         self.task_code = None
         self.args = None
 
-class TaskQueue:
-    def __init__(self):
-        self.tasks = []
-
-    def add_task(self, task_code):
-        self.tasks.append(task_code)
-
-    def has_tasks(self):
-        retval = len(self.tasks) > 0
-        return retval
-
-    def get_next_task(self):
-        retval = self.tasks.pop(0)
-        return retval
-
-    def clear(self):
-        self.tasks = []
-
 class SingleThreadedEventLoop:
     def __init__(self, tab):
         self.tab = tab
@@ -499,13 +481,13 @@ class MainThreadEventLoop:
         self.lock = threading.Lock()
         self.condition = threading.Condition(self.lock)
         self.tab = tab
-        self.tasks = TaskQueue()
+        self.tasks = []
         self.main_thread = threading.Thread(target=self.run, args=())
         self.needs_quit = False
 
     def schedule_task(self, callback):
         self.lock.acquire(blocking=True)
-        self.tasks.add_task(callback)
+        self.tasks.append(callback)
         self.condition.notify_all()
         self.lock.release()
 
@@ -533,14 +515,14 @@ class MainThreadEventLoop:
 
             task = None
             self.lock.acquire(blocking=True)
-            if self.tasks.has_tasks():
-                task = self.tasks.get_next_task()
+            if len(self.tasks) > 0:
+                task = self.tasks.pop(0)
             self.lock.release()
             if task:
                 task()
 
             self.lock.acquire(blocking=True)
-            if not self.tasks.has_tasks() and \
+            if len(self.tasks) == 0 and \
                 not self.needs_quit:
                 self.condition.wait()
             self.lock.release()
