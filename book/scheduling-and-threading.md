@@ -1015,63 +1015,6 @@ class MainThreadEventLoop:
                 task()
 ```
 
-This works, but is wasteful of the CPU. Even if there are no
-tasks, the thread will keep looping over and over. Let's add a way for the
-thread to go to sleep once all the queues are empty, until they have something
-in them again. The way to "sleep until there is a task" is via a *condition
-variable*.
-
-Condition variables are a way for one thread to block until it has been notified
-by another thread that some condition has become true.[^threading-hard]
-Condition variables allow a thread not to run an infinite
-loop and use up a lot of CPU when there is nothing to
-do.[^browser-thread-burn] Instead, the `while True` loop in `run` should only
-continue if there is actually a task to execute.
-
-Add a `condition.wait()` call to the run loop (meaning: wait until there is a task
-to run), and `condition.notifyAll()` (meaning: notify the run loop that a task
-has been added) to all the places where tasks are added. Notice that
-`notify_all` can only be called when the lock is held, and does *not* release
-the lock. `wait`, on the other hand, releases the lock when it goes to sleep
-and re-acquires it automatically when it awakens.
-
-``` {.python}
-class MainThreadEventLoop:
-    def __init__(self, tab):
-        self.condition = threading.Condition(self.lock)
-
-    def schedule_task(self, callback):
-        # ...
-        self.condition.notify_all()
-        self.lock.release()
-
-    def set_needs_quit(self):
-        # ...
-        self.condition.notify_all()
-        self.lock.release()
-
-    def run(self):
-        while True:
-            # ...
-
-            self.lock.acquire(blocking=True)
-            if len(self.tasks) == 0 and \
-                not self.needs_quit:
-                self.condition.wait()
-            self.lock.release()
-```
-
-[^browser-thread-burn]: At the moment, the browser thread's `while True` loop
-does just this, but we need not do it for the main thread. (It appears there
-is not a way to avoid this in SDL at present.)
-
-[^threading-hard]: Threading and locks are hard, and it's easy to get into a
-deadlock situation. Read the [documentation][python-thread] for the classes
-you're using very carefully, and make sure to release the lock in all the right
-places. For example, `condition.wait()` will re-acquire the lock once it has
-been notified, so you'll need to release the lock immediately after, or else
-the thread will deadlock in the next while loop iteration.
-
 Note that each `Tab` owns a `MainThreadEventLoop`.[^one-per-tab]
 And since we'll be copying the display list across threads and not a canvas,
 the focus painting behavior needs to become a new `DrawLine` canvas command:
@@ -1904,3 +1847,17 @@ this dirty bit might need to end up being set.)
    scroll offset of each tab separately. That's why `set_active_tab`
    unconditionally sets it to zero. In a real browser, all the tabs would
    remember their scroll offset. Fix this.
+
+* *Condition variables*: the main thread event loop works, but but is wasteful
+   of the CPU. Even if there are no tasks, the thread will keep looping over
+   and over. You can fix this by introducing a *condition variable* that
+   wakes up the thread and runs it only when there is actually a task to run.
+  [^browser-thread-burn]
+   The [`threading.Condition`][condition] class implements this pattern in
+   Python. Call `wait()` to stop the thread until notified that a task has
+   arrived, and call `notify_all` when the task is added.
+
+[condition]: https://docs.python.org/3/library/threading.html#condition-objects
+[^browser-thread-burn]: The browser thread's `while True` loop is also
+wasteful. Unfortunately, itt appears there is not a way to avoid this in SDL at
+present.
