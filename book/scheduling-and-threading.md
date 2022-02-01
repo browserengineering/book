@@ -267,7 +267,7 @@ class JSContext:
 
     def setTimeout(self, handle, time):
         def run_callback():
-            self.tab.event_loop.schedule_task(
+            self.tab.task_runner.schedule_task(
                 Task(self.interp.evaljs,
                     "__runSetTimeout({})".format(handle)))
 
@@ -387,7 +387,7 @@ class JSContext:
             if url_origin(full_url) != url_origin(self.tab.url):
                 raise Exception(
                     "Cross-origin XHR request not allowed")
-            self.tab.event_loop.schedule_task(
+            self.tab.task_runner.schedule_task(
                 Task(self.xhr_onload, out, handle_local))
             return out
 
@@ -1074,14 +1074,14 @@ code in `Tab` and `JSContext` will run on the existing thread.
 The thread that already exists (the one started by the Python interpreter
 by default) will be the browser thread, and we'll make a new one for
 the main thread. Let's add more code to the `TaskRunner` class to make it
-into a complete event loop, and then rename it to `MainThreadEventLoop`.
+into a complete event loop.
 
 The two threads will communicate by reading and writing shared data structures
 (and use `threading.Lock` objects to prevent race conditions, just like with
-`TaskRunner`). `MainThreadEventLoop` will be the only class allowed to call
+`TaskRunner`). `TaskRunner` will be the only class allowed to call
 methods on `Tab` or `JSContext`.
 
-`MainThreadEventLoop` will add a thread object called `main_thread`, using the
+`TaskRunner` will add a thread object called `main_thread`, using the
 `threading.Thread` class. The constructor for a `Thread` takes a `target`
 argument indicating what function to execute on the thread once it's started.
 Calling `start` will begin the thread. This will execute the target function
@@ -1092,7 +1092,7 @@ forever, or until the function quits. The need to quit is is indicated by the
 The main thread event loop is `run`.
 
 ``` {.python}
-class MainThreadEventLoop:
+class TaskRunner:
     def __init__(self, tab):
         # ...
         self.main_thread = threading.Thread(target=self.run)
@@ -1122,7 +1122,7 @@ of the chapter, but I hope it's clear that it would be easy to change strategies
 to prioritize rendering.
 
 ``` {.python}
-class MainThreadEventLoop:
+class TaskRunner:
     def run(self):
         while True:
             task = None
@@ -1134,7 +1134,7 @@ class MainThreadEventLoop:
                 task()
 ```
 
-Note that each `Tab` owns a `MainThreadEventLoop`.[^one-per-tab]
+Note that each `Tab` owns a `TaskRunner`.[^one-per-tab]
 And since we'll be copying the display list across threads and not a canvas,
 the focus painting behavior needs to become a new `DrawLine` canvas command:
 
@@ -1144,8 +1144,8 @@ tabs that are not currently shown will be able to run tasks in the background.
 ``` {.python}
 class Tab:
     def __init__(self, browser):
-        self.event_loop = MainThreadEventLoop(self)
-        self.event_loop.start()
+        self.task_runner = TaskRunner(self)
+        self.task_runner.start()
 
     def render(self):
         # ...
@@ -1179,7 +1179,7 @@ class DrawLine:
 The `Browser` will also schedule tasks on the main thread. But now it's not
 safe for any methods on `Tab` to be directly called by `Browser`, because
 `Tab` runs on a different thread. All requests must be queued as tasks on the
-`MainThreadEventLoop`.
+`TaskRunner`.
 
 Likewise, `Tab` can't have direct access to the `Browser`. But the only
 method it needs to call on `Browser` is `raster_and_draw`. We'll add a new
@@ -1279,7 +1279,7 @@ class Browser:
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
             self.lock.release()
-            active_tab.event_loop.schedule_task(
+            active_tab.task_runner.schedule_task(
                 Task(active_tab.run_animation_frame, scroll))
         self.lock.acquire(blocking=True)
         if not self.display_scheduled:
@@ -1311,7 +1311,7 @@ of main thread tasks. Here is `load`:
 class Browser:
     def schedule_load(self, url, body=None):
         active_tab = self.tabs[self.active_tab]
-        active_tab.event_loop.schedule_task(
+        active_tab.task_runner.schedule_task(
             Task(active_tab.load, url, body))
         self.set_needs_raster_and_draw()
 
@@ -1341,7 +1341,7 @@ class Browser:
         else:
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
-            active_tab.event_loop.schedule_task(
+            active_tab.task_runner.schedule_task(
                 Task(active_tab.click, e.x, e.y - CHROME_PX))
         self.lock.release()
 ```
@@ -1357,7 +1357,7 @@ class Browser:
             # ...
         elif self.focus == "content":
             active_tab = self.tabs[self.active_tab]
-            active_tab.event_loop.schedule_task(
+            active_tab.task_runner.schedule_task(
                 Task(active_tab.keypress, char))
         self.lock.release()
 ```
@@ -1471,7 +1471,7 @@ class Browser:
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
             self.lock.release()
-            active_tab.event_loop.schedule_task(
+            active_tab.task_runner.schedule_task(
                 Task(active_tab.run_animation_frame, scroll))
         # ...
 ```
@@ -1639,7 +1639,7 @@ class Tab:
                 "url": script_url,
                 "type": "script",
                 "thread": async_request(
-                    script_url, url, script_results, self.event_loop.lock)
+                    script_url, url, script_results, self.task_runner.lock)
             })
  
         self.rules = self.default_style_sheet.copy()
@@ -1660,14 +1660,14 @@ class Tab:
                 "url": style_url,
                 "type": "style sheet",
                 "thread": async_request(
-                    style_url, url, style_results, self.event_loop.lock)
+                    style_url, url, style_results, self.task_runner.lock)
             })
 
         for async_req in async_requests:
             async_req["thread"].join()
             req_url = async_req["url"]
             if async_req["type"] == "script":
-                self.event_loop.schedule_task(
+                self.task_runner.schedule_task(
                     Task(self.js.run, req_url,
                         script_results[req_url]['body']))
             else:

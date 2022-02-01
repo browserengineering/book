@@ -16,9 +16,9 @@ Testing basic loading and dirty bits
 ====================================
 
 Testing a multi-threaded program is quite complicated, so here we just mock
-the MainThreadRunner and run all the tests on the same thread as the Browser.
+the TaskRunner and run all the tests on the same thread as the Browser.
 
-	>>> lab12.MainThreadEventLoop = test.MockMainThreadEventLoop
+	>>> lab12.TaskRunner = test.MockTaskRunner
 
     >>> test_url = 'http://test.test/'
     >>> test.socket.respond(test_url, b"HTTP/1.0 200 OK\r\n" +
@@ -89,7 +89,7 @@ Scrolling down causes a draw but nothing else.
 Testing TabWrapper
 ==================
 
-	>>> lab12.MainThreadEventLoop = test.MockNoOpMainThreadEventLoop
+	>>> lab12.TaskRunner = test.MockNoOpTaskRunner
     >>> browser = lab12.Browser()
     >>> browser.load(test_url)
 

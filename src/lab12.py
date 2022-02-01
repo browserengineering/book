@@ -250,7 +250,7 @@ class JSContext:
 
     def setTimeout(self, handle, time):
         def run_callback():
-            self.tab.event_loop.schedule_task(
+            self.tab.task_runner.schedule_task(
                 Task(self.interp.evaljs,
                     "__runSetTimeout({})".format(handle)))
 
@@ -273,7 +273,7 @@ class JSContext:
             if url_origin(full_url) != url_origin(self.tab.url):
                 raise Exception(
                     "Cross-origin XHR request not allowed")
-            self.tab.event_loop.schedule_task(
+            self.tab.task_runner.schedule_task(
                 Task(self.xhr_onload, out, handle_local))
             return out
 
@@ -312,10 +312,10 @@ class Tab:
         self.needs_render = False
         self.browser = browser
         if USE_BROWSER_THREAD:
-            self.event_loop = MainThreadEventLoop(self)
+            self.task_runner = TaskRunner(self)
         else:
-            self.event_loop = SingleThreadedEventLoop(self)
-        self.event_loop.start()
+            self.task_runner = SingleThreadedTaskRunner(self)
+        self.task_runner.start()
 
         self.time_in_style_layout_and_paint = 0.0
         self.num_renders = 0
@@ -333,7 +333,7 @@ class Tab:
     def load(self, url, body=None):
         self.scroll = 0
         self.scroll_changed_in_tab = True
-        self.event_loop.clear_pending_tasks()
+        self.task_runner.clear_pending_tasks()
         headers, body = request(url, self.url, payload=body)
         self.url = url
         self.history.append(url)
@@ -364,7 +364,7 @@ class Tab:
                 "url": script_url,
                 "type": "script",
                 "thread": async_request(
-                    script_url, url, script_results, self.event_loop.lock)
+                    script_url, url, script_results, self.task_runner.lock)
             })
  
         self.rules = self.default_style_sheet.copy()
@@ -385,14 +385,14 @@ class Tab:
                 "url": style_url,
                 "type": "style sheet",
                 "thread": async_request(
-                    style_url, url, style_results, self.event_loop.lock)
+                    style_url, url, style_results, self.task_runner.lock)
             })
 
         for async_req in async_requests:
             async_req["thread"].join()
             req_url = async_req["url"]
             if async_req["type"] == "script":
-                self.event_loop.schedule_task(
+                self.task_runner.schedule_task(
                     Task(self.js.run, req_url,
                         script_results[req_url]['body']))
             else:
@@ -541,7 +541,7 @@ class Task:
         self.task_code = None
         self.args = None
 
-class SingleThreadedEventLoop:
+class SingleThreadedTaskRunner:
     def __init__(self, tab):
         self.tab = tab
         self.needs_quit = False
@@ -562,7 +562,7 @@ class SingleThreadedEventLoop:
     def run(self):
         pass
 
-class MainThreadEventLoop:
+class TaskRunner:
     def __init__(self, tab):
         self.lock = threading.Lock()
         self.tab = tab
@@ -704,7 +704,7 @@ class Browser:
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
             self.lock.release()
-            active_tab.event_loop.schedule_task(
+            active_tab.task_runner.schedule_task(
                 Task(active_tab.run_animation_frame, scroll))
         self.lock.acquire(blocking=True)
         if not self.display_scheduled:
@@ -742,7 +742,7 @@ class Browser:
                 self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
                 active_tab = self.tabs[self.active_tab]
-                active_tab.event_loop.schedule_task(
+                active_tab.task_runner.schedule_task(
                     Task(active_tab.go_back))
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
@@ -751,7 +751,7 @@ class Browser:
         else:
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
-            active_tab.event_loop.schedule_task(
+            active_tab.task_runner.schedule_task(
                 Task(active_tab.click, e.x, e.y - CHROME_PX))
         self.lock.release()
 
@@ -763,13 +763,13 @@ class Browser:
             self.set_needs_raster_and_draw()
         elif self.focus == "content":
             active_tab = self.tabs[self.active_tab]
-            active_tab.event_loop.schedule_task(
+            active_tab.task_runner.schedule_task(
                 Task(active_tab.keypress, char))
         self.lock.release()
 
     def schedule_load(self, url, body=None):
         active_tab = self.tabs[self.active_tab]
-        active_tab.event_loop.schedule_task(
+        active_tab.task_runner.schedule_task(
             Task(active_tab.load, url, body))
         self.set_needs_raster_and_draw()
 
@@ -890,7 +890,7 @@ class Browser:
             self.time_in_draw / self.num_raster_and_draws * 1000,
             self.num_raster_and_draws))
 
-        self.tabs[self.active_tab].event_loop.set_needs_quit()
+        self.tabs[self.active_tab].task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
@@ -928,7 +928,7 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
         if not USE_BROWSER_THREAD:
-            if active_tab.event_loop.needs_quit:
+            if active_tab.task_runner.needs_quit:
                 break
             if active_tab.display_scheduled:
                 active_tab.display_scheduled = False
