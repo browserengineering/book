@@ -246,7 +246,7 @@ class JSContext:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
-        self.tab.set_needs_pipeline_update()
+        self.tab.set_needs_render()
 
     def setTimeout(self, handle, time):
         def run_callback():
@@ -309,7 +309,7 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
-        self.needs_pipeline_update = False
+        self.needs_render = False
         self.browser = browser
         if USE_BROWSER_THREAD:
             self.event_loop = MainThreadEventLoop(self)
@@ -400,10 +400,10 @@ class Tab:
                     CSSParser(
                         style_results[req_url]['body']).parse())
 
-        self.set_needs_pipeline_update()
+        self.set_needs_render()
 
-    def set_needs_pipeline_update(self):
-        self.needs_pipeline_update = True
+    def set_needs_render(self):
+        self.needs_render = True
         self.browser.set_needs_animation_frame()
 
     def request_animation_frame_callback(self):
@@ -416,7 +416,7 @@ class Tab:
             self.needs_raf_callbacks = False
             self.js.interp.evaljs("__runRAFHandlers()")
 
-        self.run_rendering_pipeline()
+        self.render()
 
         document_height = math.ceil(self.document.height)
         clamped_scroll = clamp_scroll(self.scroll, document_height)
@@ -431,9 +431,9 @@ class Tab:
             document_height, self.display_list)
         self.scroll_changed_in_tab = False
 
-    def run_rendering_pipeline(self):
+    def render(self):
         timer = None
-        if self.needs_pipeline_update:
+        if self.needs_render:
             timer = Timer()
             timer.start()
             style(self.nodes, sorted(self.rules,
@@ -457,7 +457,7 @@ class Tab:
         self.needs_pipeline_update = False
 
     def click(self, x, y):
-        self.run_rendering_pipeline()
+        self.render()
         self.focus = None
         y += self.scroll
         objs = [obj for obj in tree_to_list(self.document, [])
@@ -476,7 +476,7 @@ class Tab:
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
                 if elt != self.focus:
-                    self.set_needs_pipeline_update()
+                    self.set_needs_render()
                 self.focus = elt
                 return
             elif elt.tag == "button":
@@ -510,7 +510,7 @@ class Tab:
         if self.focus:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
-            self.set_needs_pipeline_update()
+            self.set_needs_render()
 
     def go_back(self):
         if len(self.history) > 1:
