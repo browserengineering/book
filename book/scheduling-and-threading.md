@@ -1859,5 +1859,5 @@ this dirty bit might need to end up being set.)
 
 [condition]: https://docs.python.org/3/library/threading.html#condition-objects
 [^browser-thread-burn]: The browser thread's `while True` loop is also
-wasteful. Unfortunately, itt appears there is not a way to avoid this in SDL at
+wasteful. Unfortunately, it appears there is not a way to avoid this in SDL at
 present.
