@@ -318,7 +318,7 @@ class Tab:
         self.event_loop.start()
 
         self.time_in_style_layout_and_paint = 0.0
-        self.num_pipeline_updates = 0
+        self.num_renders = 0
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -432,29 +432,28 @@ class Tab:
         self.scroll_changed_in_tab = False
 
     def render(self):
-        timer = None
-        if self.needs_render:
-            timer = Timer()
-            timer.start()
-            style(self.nodes, sorted(self.rules,
-                key=cascade_priority))
-            self.document = DocumentLayout(self.nodes)
-            self.document.layout()
-            self.display_list = []
+        if not self.needs_render:
+            return
+        timer = Timer()
+        timer.start()
+        style(self.nodes, sorted(self.rules,
+            key=cascade_priority))
+        self.document = DocumentLayout(self.nodes)
+        self.document.layout()
+        self.display_list = []
 
-            self.document.paint(self.display_list)
-            if self.focus:
-                obj = [obj for obj in tree_to_list(self.document, [])
-                       if obj.node == self.focus][0]
-                text = self.focus.attributes.get("value", "")
-                x = obj.x + obj.font.measureText(text)
-                y = obj.y
-                self.display_list.append(
-                    DrawLine(x, y, x, y + obj.height))
-            self.time_in_style_layout_and_paint += timer.stop()
-            self.num_pipeline_updates += 1
-
-        self.needs_pipeline_update = False
+        self.document.paint(self.display_list)
+        if self.focus:
+            obj = [obj for obj in tree_to_list(self.document, [])
+                   if obj.node == self.focus][0]
+            text = self.focus.attributes.get("value", "")
+            x = obj.x + obj.font.measureText(text)
+            y = obj.y
+            self.display_list.append(
+                DrawLine(x, y, x, y + obj.height))
+        self.time_in_style_layout_and_paint += timer.stop()
+        self.num_renders += 1
+        self.needs_render = False
 
     def click(self, x, y):
         self.render()
@@ -520,12 +519,12 @@ class Tab:
 
     def handle_quit(self):
         print("""Time in style, layout and paint: {:>.6f}s
-    ({:>.6f}ms per pipeline run on average;
-    {} total pipeline updates)""".format(
+    ({:>.6f}ms per render on average;
+    {} total renders)""".format(
             self.time_in_style_layout_and_paint,
             self.time_in_style_layout_and_paint / \
-                self.num_pipeline_updates * 1000,
-            self.num_pipeline_updates))
+                self.num_renders * 1000,
+            self.num_renders))
 
 
 WIDTH, HEIGHT = 800, 600

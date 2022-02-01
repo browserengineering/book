@@ -394,7 +394,7 @@ class JSContext:
         if not is_async:
             return run_load(is_async)
         else:
-            load_thread = threading.Thread(target=run_load, args=())
+            load_thread = threading.Thread(target=run_load)
             load_thread.start()
 ```
 
@@ -725,9 +725,9 @@ REFRESH_RATE_SEC = 0.016 # 16ms
 
 To not go faster than the refresh rate, use a `Timer`:
 
-``` {.python}
+``` {.python expected=False}
 class Tab:
-    def schedule_aninimation_frame(self):
+    def schedule_animation_frame(self):
         # ...
         def callback():
             self.task_runner.schedule_task( \
@@ -753,7 +753,7 @@ and `needs_raster_and_draw`. They will come with methods to set them to true
 and we'll obey them when considering running `render` or `raster_and_draw`.
 
 
-``` {.python} 
+``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
         # ...
@@ -766,7 +766,7 @@ class Tab:
     def render(self):
         if not self.needs_render:
             return
-        self.render()
+        # ...
         self.needs_render = False
 
 class Browser:
@@ -792,7 +792,7 @@ not `set_needs_render`.
 On the `Browser` side, here are some optimizations we can now add, such as to
 `handle_click`:
 
-``` {.python expected=False}
+``` {.python}
 class Browser:
     def handle_click(self, e):
         if e.y < CHROME_PX:
@@ -863,31 +863,30 @@ rendering time.
 class Tab:
         # ...
         self.time_in_style_layout_and_paint = 0.0
-        self.num_pipeline_updates = 0
+        self.num_renders = 0
 
-    def run_rendering_pipeline(self):
+    def render(self):
         # ...
-        if self.needs_pipeline_update:
-            timer = Timer()
-            timer.start()
-            style(self.nodes, sorted(self.rules,
-                key=cascade_priority))
-            self.document = DocumentLayout(self.nodes)
-            self.document.layout()
-            self.display_list = []
-            self.document.paint(self.display_list)
-            # ...
-            self.time_in_style_layout_and_paint += timer.stop()
-            self.num_pipeline_updates += 1
+        timer = Timer()
+        timer.start()
+        style(self.nodes, sorted(self.rules,
+            key=cascade_priority))
+        self.document = DocumentLayout(self.nodes)
+        self.document.layout()
+        self.display_list = []
+        self.document.paint(self.display_list)
+        # ...
+        self.time_in_style_layout_and_paint += timer.stop()
+        self.num_renders += 1
 
     def handle_quit(self):
         print("""Time in style, layout and paint: {:>.6f}s
-    ({:>.6f}ms per pipeline run on average;
-    {} total pipeline updates)""".format(
+    ({:>.6f}ms per render on average;
+    {} total renders)""".format(
             self.time_in_style_layout_and_paint,
             self.time_in_style_layout_and_paint / \
-                self.num_pipeline_updates * 1000,
-            self.num_pipeline_updates))
+                self.num_renders * 1000,
+            self.num_renders))
         # ...
 ```
 
@@ -943,8 +942,8 @@ Time in draw: 2.961407s
     (29.320861ms per draw run on average;
     101 total draw updates)
 Time in style, layout and paint: 2.192260s
-    (21.922598ms per pipeline run on average;
-    100 total pipeline updates)
+    (21.922598ms per render on average;
+    100 total renders)
 
 Over a total of 100 frames of animation, the browser spent about 50ms
 rastering per frame,[^raster-draw] and 30ms drawing. That's a lot, and certainly
@@ -1096,7 +1095,7 @@ The main thread event loop is `run`.
 class MainThreadEventLoop:
     def __init__(self, tab):
         # ...
-        self.main_thread = threading.Thread(target=self.run, args=())
+        self.main_thread = threading.Thread(target=self.run)
         self.needs_quit = False
 
     def set_needs_quit(self):
@@ -1148,20 +1147,18 @@ class Tab:
         self.event_loop = MainThreadEventLoop(self)
         self.event_loop.start()
 
-    def run_rendering_pipeline(self):
+    def render(self):
         # ...
-        if self.needs_pipeline_update:
-            # ...
-            self.document.paint(self.display_list)
-            if self.focus:
-                obj = [obj for obj in tree_to_list(self.document, [])
-                       if obj.node == self.focus][0]
-                text = self.focus.attributes.get("value", "")
-                x = obj.x + obj.font.measureText(text)
-                y = obj.y
-                self.display_list.append(
-                    DrawLine(x, y, x, y + obj.height))
         # ...
+        self.document.paint(self.display_list)
+        if self.focus:
+            obj = [obj for obj in tree_to_list(self.document, [])
+                   if obj.node == self.focus][0]
+            text = self.focus.attributes.get("value", "")
+            x = obj.x + obj.font.measureText(text)
+            y = obj.y
+            self.display_list.append(
+                DrawLine(x, y, x, y + obj.height))
 ```
 
 Here's `DrawLine`:
@@ -1197,7 +1194,7 @@ class Tab:
         self.browser = browser
 
     def run_animation_frame(self):
-        self.run_rendering_pipeline()
+        self.render()
         # ...
         self.browser.commit(
             self.url, self.scroll,
@@ -1238,8 +1235,8 @@ drawn to the screen on the browser thread.
 
 ``` {.python}
 class Tab:
-    def set_needs_pipeline_update(self):
-        self.needs_pipeline_update = True
+    def set_needs_render(self):
+        self.needs_render = True
         self.browser.set_needs_animation_frame()
 
     def request_animation_frame_callback(self):
@@ -1495,7 +1492,7 @@ class Tab:
 
     def run_animation_frame(self, scroll):
         # ...
-        self.run_rendering_pipeline()
+        self.render()
 
         document_height = math.ceil(self.document.height)
         clamped_scroll = clamp_scroll(self.scroll, document_height)
@@ -1794,11 +1791,11 @@ first line of this method forces a layout:
 ``` {.python}
 class Tab:
     def click(self, x, y):
-        self.run_rendering_pipeline()
+        self.render()
         # ...
 ```
 
-The call to `run_rendering_pipeline` is a forced layout. It's needed because
+The call to `render` is a forced layout. It's needed because
 clicking needs to run hit testing, which in turn requires layout.
 
 It's not impossible to move style and layout off the main thread
@@ -1857,7 +1854,7 @@ via `Date.now`. How consistent are the cadences?
 * *Clock-based frame timing*: Right now our browser schedules the next
 animation frame to happen exactly 16ms later than the first time
 `set_needs_animation_frame` is called. However, this actually leads to a slower
-animation frame rate cadence than 16ms, for example if `run_rendering_pipeline`
+animation frame rate cadence than 16ms, for example if `render`
 takes say 10ms to run. Can you see why? Fix this in our browser by aligning
 calls to `begin_main_frame` to an absolute clock time cadence.
 
