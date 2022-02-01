@@ -1376,46 +1376,82 @@ The trickiest part is how to communicate a browser thread scroll offset to the
 main thread, and integrate it with the rendering pipeline. It'll work like
 this:
 
-* When the browser thread changes scroll offset, notify the
-`MainThreadEventLoop`
-and store the result in a `pending_scroll` variable. (Note that this does 
-*not* cause an animation frame, it just stores the scroll for the next
-time an animation frame happens to occur.)
-* When `MainThreadEventLoop` decides to run an animation frame, first apply
-the `pending_scroll` to the `Tab`. Then, after running the rendering pipeline,
-*adjust* it if the document height requires clamping it.
-* When loading a new page in a `Tab`, override the scroll to 0.
-* If an animation frame or load caused a scroll adjustment, note it in a
-new `scroll_changed_in_tab` variable on `Tab`.
-* When calling `commit`, only pass the scroll if it was changed in the `Tab`,
-and otherwise pass `None`. The commit will ignore the scroll if it is `None`.
+* When the browser thread changes scroll offset, store it in a `scroll` variable
+  on the `Browser`, set `needs_raster_and_draw`, and schedule an animation
+  frame. This will immediately apply the scroll offset to the screen (at the
+  next time `raster_and_draw` is called from the browser thread event loop).
+  Scheduling an animation frame is necessary only to notify the main thread
+  that scroll was changed.
 
-Implement each of these in turn. In `MainThreadEventLoop`:
-
-
-in `Tab`:
-
-``` {.python expected=False}
-def clamp_scroll(scroll, tab_height):
-    return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
-
-class Tab:
-    def __init__(self, commit_func):
+``` {.python}
+class Browser:
+    def __init__(self):
         # ...
-        self.scroll_changed_in_tab = False
-    # ...
-    def apply_scroll(self, scroll):
-        self.scroll = scroll
-
-    def load(self, url, body=None):
-        headers, body = request(url, self.url, payload=body)
         self.scroll = 0
-        self.scroll_changed_in_tab = True
-        # ...
 
+    def handle_down(self):
+        # ...
+        self.scroll = scroll
+        self.set_needs_raster_and_draw()
+        self.lock.release()
+        self.schedule_animation_frame()
+```
+
+The `set_active_tab` method is an interesting case, because it causes
+scroll to be set back to 0, but we need the main thread to run in order
+to commit a new display list for the other tab. That's why this method doesn't
+call `set_needs_raster_and_draw`.
+
+``` {.python}
+class Browser:
+    def set_active_tab(self, index):
+        self.active_tab = index
+        self.scroll = 0
+        self.url = None
+        self.schedule_animation_frame()
+```
+
+* When the browser thread decides to run the animation frame,^[Remember, it's
+  the browser thread, not the main thread, that decides the cadence of
+  animation frames.] pass the scroll as an argument to the `Task` that calls
+  `Tab.run_animation_frame`. `Tab.run_animation_frame` will set the scroll
+  variable on itself as the first step.
+
+``` {.python}
+class Tab:
     def run_animation_frame(self, scroll):
         self.scroll = scroll
-        # ....
+        # ...
+
+class Browser:
+    def schedule_animation_frame(self):
+        # ...
+        def callback():
+            self.lock.acquire(blocking=True)
+            scroll = self.scroll
+            active_tab = self.tabs[self.active_tab]
+            self.lock.release()
+            active_tab.event_loop.schedule_task(
+                Task(active_tab.run_animation_frame, scroll))
+        # ...
+```
+
+* When loading a new page in a `Tab`, override the scroll to 0. Do the same for
+  cases when the document height causes scroll clamping. If either of these
+  happened, note it in a new `scroll_changed_in_tab` variable on `Tab`.
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.scroll_changed_in_tab = False
+
+    def load(self, url, body=None):
+        self.scroll = 0
+        self.scroll_changed_in_tab = True
+
+    def run_animation_frame(self, scroll):
+        # ...
         self.run_rendering_pipeline()
 
         document_height = math.ceil(self.document.height)
@@ -1423,43 +1459,21 @@ class Tab:
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
-
-        self.commit_func(
-            self.url, clamped_scroll if self.scroll_changed_in_tab \
-                else None, 
-            document_height,
-            self.display_list)
-        self.scroll_changed_in_tab = False
 ```
 
-In `Browser`:
+* When calling `commit`, only pass the scroll if `scroll_changed_in_tab` was
+  set, and otherwise pass `None`. The commit will ignore the scroll if it is
+  `None`.
 
 ``` {.python}
-class Browser:
-    def commit(self, url, scroll, tab_height, display_list):
+class Tab:
+    def run_animation_frame(self, scroll):
         # ...
-        if scroll != None:
-            self.scroll = scroll
-
-    def schedule_animation_frame(self):
-        def callback():
-            # ...
-            scroll = self.scroll
-            # ...
-            active_tab.event_loop.schedule_task(
-                Task(active_tab.run_animation_frame, scroll))
-```
-
-In `Browser`:
-
-``` {.python}
-class Browser:
-    def handle_down(self):
-        scroll = clamp_scroll(
-            self.scroll + SCROLL_STEP,
-            self.active_tab_height)
-        self.scroll = scroll
-        self.schedule_animation_frame()
+        self.browser.commit(
+            self.url,
+            clamped_scroll if self.scroll_changed_in_tab \
+                else None, 
+            document_height, self.display_list)
 ```
 
 That was pretty complicated, but we got it done. Fire up the counting demo and
@@ -1879,3 +1893,8 @@ with the state at the end of chapter 11). Add in additional dirty bits for
 raster and draw stages. (You can also try adding dirty bits for whether layout
 needs to be run, but be careful to think very carefully about all the ways
 this dirty bit might need to end up being set.)
+
+* *Multi-tab scroll offsets*: our browser doesn't currently keep track of the
+   scroll offset of each tab separately. That's why `set_active_tab`
+   unconditionally sets it to zero. In a real browser, all the tabs would
+   remember their scroll offset. Fix this.

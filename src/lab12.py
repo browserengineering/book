@@ -245,10 +245,10 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
-        self.event_loop.clear_pending_tasks()
-        headers, body = request(url, self.url, payload=body)
         self.scroll = 0
         self.scroll_changed_in_tab = True
+        self.event_loop.clear_pending_tasks()
+        headers, body = request(url, self.url, payload=body)
         self.url = url
         self.history.append(url)
 
@@ -315,9 +315,6 @@ class Tab:
 
         self.set_needs_pipeline_update()
 
-    def apply_scroll(self, scroll):
-        self.scroll = scroll
-
     def set_needs_pipeline_update(self):
         self.needs_pipeline_update = True
         self.browser.set_needs_animation_frame()
@@ -341,7 +338,8 @@ class Tab:
         self.scroll = clamped_scroll
 
         self.browser.commit(
-            self.url, clamped_scroll if self.scroll_changed_in_tab \
+            self.url,
+            clamped_scroll if self.scroll_changed_in_tab \
                 else None, 
             document_height, self.display_list)
         self.scroll_changed_in_tab = False
@@ -661,11 +659,11 @@ class Browser:
         if not self.active_tab_height:
             return
         active_tab = self.tabs[self.active_tab]
-        self.set_needs_raster_and_draw()
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height)
         self.scroll = scroll
+        self.set_needs_raster_and_draw()
         self.lock.release()
         self.schedule_animation_frame()
 
