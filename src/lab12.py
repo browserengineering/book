@@ -45,11 +45,97 @@ class Timer:
 
 FONTS = {}
 
-def async_request(url, top_level_url, results):
+def request(url, top_level_url, payload=None, lock=None):
+    scheme, url = url.split("://", 1)
+    assert scheme in ["http", "https"], \
+        "Unknown scheme {}".format(scheme)
+
+    if "/" not in url:
+        url = url + "/"
+    host, path = url.split("/", 1)
+
+    path = "/" + path
+    port = 80 if scheme == "http" else 443
+
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    s.connect((host, port))
+
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
+
+    method = "POST" if payload else "GET"
+    body = "{} {} HTTP/1.0\r\n".format(method, path)
+    body += "Host: {}\r\n".format(host)
+
+    if lock:
+        lock.acquire(blocking=True)
+    has_cookie = host in COOKIE_JAR
+    if has_cookie:
+        cookie, params = COOKIE_JAR[host]
+    if lock:
+        lock.release()
+
+    if has_cookie:
+        allow_cookie = True
+        if top_level_url and params.get("samesite", "none") == "lax":
+            _, _, top_level_host, _ = top_level_url.split("/", 3)
+            allow_cookie = (host == top_level_host or method == "GET")
+        if allow_cookie:
+            body += "Cookie: {}\r\n".format(cookie)
+    if payload:
+        content_length = len(payload.encode("utf8"))
+        body += "Content-Length: {}\r\n".format(content_length)
+    body += "\r\n" + (payload or "")
+    s.send(body.encode("utf8"))
+    response = s.makefile("r", encoding="utf8", newline="\r\n")
+
+    statusline = response.readline()
+    version, status, explanation = statusline.split(" ", 2)
+    assert status == "200", "{}: {}".format(status, explanation)
+
+    headers = {}
+    while True:
+        line = response.readline()
+        if line == "\r\n": break
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+
+    if "set-cookie" in headers:
+        params = {}
+        if ";" in headers["set-cookie"]:
+            cookie, rest = headers["set-cookie"].split(";", 1)
+            for param_pair in rest.split(";"):
+                if '=' in param_pair:
+                    name, value = param_pair.strip().split("=", 1)
+                    params[name.lower()] = value.lower()
+        else:
+            cookie = headers["set-cookie"]
+
+        if lock:
+            lock.acquire(blocking=True)
+        COOKIE_JAR[host] = (cookie, params)
+        if lock:
+            lock.release()
+
+    body = response.read()
+    s.close()
+
+    return headers, body
+
+def async_request(url, top_level_url, results, lock):
     headers = None
     body = None
     def runner():
-        headers, body = request(url, top_level_url)
+        headers, body = request(url, top_level_url, None, lock)
         results[url] = {'headers': headers, 'body': body}
     thread = threading.Thread(target=runner)
     thread.start()
@@ -278,7 +364,7 @@ class Tab:
                 "url": script_url,
                 "type": "script",
                 "thread": async_request(
-                    script_url, url, script_results)
+                    script_url, url, script_results, self.event_loop.lock)
             })
  
         self.rules = self.default_style_sheet.copy()
@@ -298,7 +384,8 @@ class Tab:
             async_requests.append({
                 "url": style_url,
                 "type": "style sheet",
-                "thread": async_request(style_url, url, style_results)
+                "thread": async_request(
+                    style_url, url, style_results, self.event_loop.lock)
             })
 
         for async_req in async_requests:
