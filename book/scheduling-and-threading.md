@@ -1537,8 +1537,7 @@ def async_request(url, top_level_url, results, lock):
     return thread
 ```
 
-And we'll need a small edit to `request` to use the lcok to control access
-to the cookie jar:
+And we'll need a small edit to `request` to use the lock:
 
 ``` {.python}
 def request(url, top_level_url, payload=None, lock=None):
