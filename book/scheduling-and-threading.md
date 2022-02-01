@@ -1522,18 +1522,44 @@ Define a new `async_request` function. This will start a thread. The thread will
 request the resource, store the result in `results`, and then return. The
 thread object will be returned by `async_request`. It's expected that the
 caller of this function will call `join` on the thread (`join` means
-"block until the thread has completed").
+"block until the thread has completed"). `async_request` will need a lock,
+because `request` will need to access the thread-shared `COOKIE_JAR` variable.
 
 ``` {.python}
-def async_request(url, top_level_url, results):
+def async_request(url, top_level_url, results, lock):
     headers = None
     body = None
     def runner():
-        headers, body = request(url, top_level_url)
+        headers, body = request(url, top_level_url, None, lock)
         results[url] = {'headers': headers, 'body': body}
     thread = threading.Thread(target=runner)
     thread.start()
     return thread
+```
+
+And we'll need a small edit to `request` to use the lcok to control access
+to the cookie jar:
+
+``` {.python}
+def request(url, top_level_url, payload=None, lock=None):
+    # ...
+    if lock:
+        lock.acquire(blocking=True)
+    has_cookie = host in COOKIE_JAR
+    if has_cookie:
+        cookie, params = COOKIE_JAR[host]
+    if lock:
+        lock.release()
+
+    # ...
+
+    if "set-cookie" in headers:
+        # ...
+        if lock:
+            lock.acquire(blocking=True)
+        COOKIE_JAR[host] = (cookie, params)
+        if lock:
+            lock.release()
 ```
 
 Then we can use it in `load`. Note how we send off all of the requests first,
