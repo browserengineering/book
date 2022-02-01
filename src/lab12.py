@@ -278,9 +278,9 @@ class JSContext:
             return out
 
         if not is_async:
-            run_load(is_async)
+            return run_load(is_async)
         else:
-            load_thread = threading.Thread(target=run_load, args=())
+            load_thread = threading.Thread(target=run_load)
             load_thread.start()
 
     def now(self):
@@ -568,7 +568,7 @@ class MainThreadEventLoop:
         self.lock = threading.Lock()
         self.tab = tab
         self.tasks = []
-        self.main_thread = threading.Thread(target=self.run, args=())
+        self.main_thread = threading.Thread(target=self.run)
         self.needs_quit = False
 
     def schedule_task(self, callback):
