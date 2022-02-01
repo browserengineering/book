@@ -173,7 +173,7 @@ when a tab is not the active tab. This flexibility is quite powerful, and we
 can use it without having to dive into the guts of a `Tab` or how it loads web
 pages---all we'd have to do is implement a new `TaskRunner` heuristic.
 
-Timer and setTimeout
+Timers and setTimeout
 ====================
 
 It's often the case that when adding a task, it's not to be run right away, but
@@ -398,9 +398,7 @@ class JSContext:
             load_thread.start()
 ```
 
-Now for the JavaScript plumbing\. We'll make the following changes. There are a
-bunch of them, but they are mostly about communicating back and forth with
-JavaScript.
+Now for the JavaScript plumbing. We'll make the following changes:
 
 * Allow `is_async` to be `true` in the constructor of `XMLHttpRequest` in the
 runtime.
@@ -518,7 +516,7 @@ class Browser:
 ```
 
 The last piece is to actually call `set_needs_render` from somewhere.
-Replacing all cases where the rendering pipeline is computed synchronously with
+Replace all cases where the rendering pipeline is computed synchronously with
 `set_needs_render`. Here, for example, is `load`:[^more-examples]
 
 [^more-examples]: There are more of them; you should fix them all.
@@ -547,7 +545,7 @@ loop!
 Unfortunately, we also regressed the overall performance of the browser by
 quite a lot in some cases. For example, scrolling down will now cause
 the entire rendering pipeline (style, layout, etc.) to run, instead of
-just `draw`. Let's fix that next.
+just `draw`. Let's see how to fix tha.
 
 Animating frames
 ================
@@ -555,9 +553,9 @@ Animating frames
 Scrolling is an interesting case, actually. It's a situation that is the closest
 to a true animation in the browser right now---if you hold down the down-arrow
 key, you'll see what looks like a scrolling animation. Since it's one case of a
-more general situation (animations of all kinds), let's figure out how to
-understand the more general case and apply what we learned to scrolling as
-well. To this end, let's explore yet another JavaScript API,
+more general situation (animations of all kinds), it makes sense to understand
+animations more generally, then apply what we learned to scrolling as
+a special case. To this end, let's explore yet another JavaScript API,
 [`requestAnimationFrame`][raf].
 
 [raf]: https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
@@ -735,17 +733,17 @@ class Tab:
         threading.Timer(REFRESH_RATE_SEC, callback).start()
 ```
 
-Unfortunately, not going slower than the refresh rate is not so easy. We can't
+Unfortunately, not going slower than the refresh rate is difficult. We can't
 just randomly speed up a computer; instead we need to do the painstaking work
 of *optimizing* the rendering pipeline.
 
-Here's a start: let's avoid running `render` or `raster_and_draw` just because
+Here's a start: avoid running `render` or `raster_and_draw` just because
 an animation frame was scheduled. As we saw with `requestAnimationFrame`,
 sometimes frames are scheduled just to run a script, and style etc. may not
 need to run at all. Likewise, just because we're scrolling doesn't mean we
 need to style or raster anything.
 
-To achieve this, let's add two *dirty bits*, boolean variables that indicate
+To achieve this, add two *dirty bits*, boolean variables that indicate
 whether something changed that requires re-doing the first or second half of
 the rendering pipeline. Naturally, they will be called `needs_render`
 and `needs_raster_and_draw`. They will come with methods to set them to true
