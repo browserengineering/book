@@ -109,28 +109,3 @@ Testing TabWrapper
     24
     >>> browser.active_tab_display_list
     [3]
-
-Testing TaskQueue
-=================
-
-	>>> task_queue = lab12.TaskQueue()
-	>>> def callback1():
-	...		print('callback1')
-	>>> def callback2():
-	...		print('callback2')
-	>>> task_queue.add_task(callback1)
-	>>> task_queue.has_tasks()
-	True
-	>>> task_queue.get_next_task()()
-	callback1
-	>>> task_queue.has_tasks()
-	False
-
-	>>> task_queue.add_task(callback2)
-	>>> task_queue.add_task(callback1)
-	>>> task_queue.get_next_task()()
-	callback2
-	>>> task_queue.get_next_task()()
-	callback1
-	>>> task_queue.has_tasks()
-	False
