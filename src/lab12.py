@@ -566,7 +566,6 @@ class SingleThreadedEventLoop:
 class MainThreadEventLoop:
     def __init__(self, tab):
         self.lock = threading.Lock()
-        self.condition = threading.Condition(self.lock)
         self.tab = tab
         self.tasks = []
         self.main_thread = threading.Thread(target=self.run, args=())
@@ -575,13 +574,11 @@ class MainThreadEventLoop:
     def schedule_task(self, callback):
         self.lock.acquire(blocking=True)
         self.tasks.append(callback)
-        self.condition.notify_all()
         self.lock.release()
 
     def set_needs_quit(self):
         self.lock.acquire(blocking=True)
         self.needs_quit = True
-        self.condition.notify_all()
         self.lock.release()
 
     def clear_pending_tasks(self):
@@ -607,12 +604,6 @@ class MainThreadEventLoop:
             self.lock.release()
             if task:
                 task()
-
-            self.lock.acquire(blocking=True)
-            if len(self.tasks) == 0 and \
-                not self.needs_quit:
-                self.condition.wait()
-            self.lock.release()
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
