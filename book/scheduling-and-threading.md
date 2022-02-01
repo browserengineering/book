@@ -1580,7 +1580,7 @@ class Tab:
                 "url": script_url,
                 "type": "script",
                 "thread": async_request(
-                    script_url, url, script_results)
+                    script_url, url, script_results, self.event_loop.lock)
             })
  
         self.rules = self.default_style_sheet.copy()
@@ -1600,7 +1600,8 @@ class Tab:
             async_requests.append({
                 "url": style_url,
                 "type": "style sheet",
-                "thread": async_request(style_url, url, style_results)
+                "thread": async_request(
+                    style_url, url, style_results, self.event_loop.lock)
             })
 
         for async_req in async_requests:
