@@ -29,7 +29,7 @@ from lab6 import CSSParser, compute_style, style
 from lab6 import TagSelector, DescendantSelector
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
-from lab11 import DocumentLayout, parse_color
+from lab11 import DocumentLayout, DrawLine, parse_color
 
 class Timer:
     def __init__(self):
@@ -140,17 +140,6 @@ def async_request(url, top_level_url, results, lock):
     thread = threading.Thread(target=runner)
     thread.start()
     return thread
-
-class DrawLine:
-    def __init__(self, x1, y1, x2, y2):
-        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
-
-    def execute(self, canvas):
-        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
