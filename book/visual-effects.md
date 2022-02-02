@@ -444,8 +444,7 @@ class Browser:
 
 `Tab` also has a `draw` method, which draws a cursor; it needs to use
 `draw_line` for that. Also wrap it in a display list
-command called `DrawLine`; this way everything is now in the display list
-and raster is nice and simple:
+command called `DrawLine`.
 
 ``` {.python replace=draw%28/raster%28,%20-%20self.scroll%20+%20CHROME_PX/}
 class DrawLine:
@@ -470,10 +469,6 @@ class Tab:
             y = obj.y
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height))
-
-    def raster(self, canvas):
-        for cmd in self.display_list:
-            cmd.execute(canvas)
 ```
 
 That's most of it. The last few changes we need to upgrade from
@@ -537,7 +532,7 @@ are provided by the `measureText` and `getMetrics` methods. Let's
 start with `measureText`---it needs to replace all calls to `measure`.
 For example, in the `draw` method for a `Tab`, we must do:
 
-``` {.python replace=draw/raster}
+``` {.python expected=False}
 class Tab:
     def draw(self, canvas):
         if self.focus:
@@ -1715,14 +1710,6 @@ class Tab:
     def raster(self, canvas):
         for cmd in self.display_list:
             cmd.execute(canvas)
-
-        if self.focus:
-            obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
-            text = self.focus.attributes.get("value", "")
-            x = obj.x + obj.font.measureText(text)
-            y = obj.y
-            draw_line(canvas, x, y, x, y + obj.height)
 ```
 
 Likewise, we can remove the `scroll` parameter from each drawing
