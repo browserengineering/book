@@ -1126,11 +1126,7 @@ class TaskRunner:
 ```
 
 In `run`, implement a simple event loop scheduling strategy that runs one
-task per loop.[^not-ideal]
-
-[^not-ideal]: This is not quite the "ideal" loop described at the beginning
-of the chapter, but I hope it's clear that it would be easy to change strategies
-to prioritize rendering.
+task per loop.
 
 ``` {.python}
 class TaskRunner:
