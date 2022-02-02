@@ -443,14 +443,32 @@ class Browser:
 ```
 
 `Tab` also has a `draw` method, which draws a cursor; it needs to use
-`draw_line` for that:
+`draw_line` for that. Also wrap it in a display list
+command called `DrawLine`.
 
 ``` {.python replace=draw%28/raster%28,%20-%20self.scroll%20+%20CHROME_PX/}
+class DrawLine:
+    def __init__(self, x1, y1, x2, y2):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+    def execute(self, canvas):
+        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
+
 class Tab:
-    def draw(self, canvas):
+    def render(self):
+        # ...
         if self.focus:
-            # ...
-            draw_line(canvas, x, y, x, y + obj.height)
+            obj = [obj for obj in tree_to_list(self.document, [])
+                   if obj.node == self.focus][0]
+            text = self.focus.attributes.get("value", "")
+            x = obj.x + obj.font.measureText(text)
+            y = obj.y
+            self.display_list.append(
+                DrawLine(x, y, x, y + obj.height))
 ```
 
 That's most of it. The last few changes we need to upgrade from
@@ -514,7 +532,7 @@ are provided by the `measureText` and `getMetrics` methods. Let's
 start with `measureText`---it needs to replace all calls to `measure`.
 For example, in the `draw` method for a `Tab`, we must do:
 
-``` {.python replace=draw/raster}
+``` {.python expected=False}
 class Tab:
     def draw(self, canvas):
         if self.focus:
@@ -1692,14 +1710,6 @@ class Tab:
     def raster(self, canvas):
         for cmd in self.display_list:
             cmd.execute(canvas)
-
-        if self.focus:
-            obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
-            text = self.focus.attributes.get("value", "")
-            x = obj.x + obj.font.measureText(text)
-            y = obj.y
-            draw_line(canvas, x, y, x, y + obj.height)
 ```
 
 Likewise, we can remove the `scroll` parameter from each drawing

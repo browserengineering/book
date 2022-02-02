@@ -145,6 +145,17 @@ class DrawRect:
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
             self.left, self.top, self.right, self.bottom, self.color)
 
+class DrawLine:
+    def __init__(self, x1, y1, x2, y2):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+    def execute(self, canvas):
+        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
+
 class ClipRRect:
     def __init__(self, rect, radius, cmds, should_clip=True):
         self.rect = rect
@@ -611,17 +622,18 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-    def raster(self, canvas):
-        for cmd in self.display_list:
-            cmd.execute(canvas)
-
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
                    if obj.node == self.focus][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measureText(text)
             y = obj.y
-            draw_line(canvas, x, y, x, y + obj.height)
+            self.display_list.append(
+                DrawLine(x, y, x, y + obj.height))
+
+    def raster(self, canvas):
+        for cmd in self.display_list:
+            cmd.execute(canvas)
 
     def scrolldown(self):
         max_y = self.document.height - (HEIGHT - CHROME_PX)

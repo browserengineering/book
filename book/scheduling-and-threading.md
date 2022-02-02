@@ -1146,46 +1146,9 @@ class TaskRunner:
 ```
 
 Note that each `Tab` owns a `TaskRunner`.[^one-per-tab]
-And since we'll be copying the display list across threads and not a canvas,
-the focus painting behavior needs to become a new `DrawLine` canvas command:
 
 [^one-per-tab]: That means there will be one main thread per `Tab`, and even
 tabs that are not currently shown will be able to run tasks in the background.
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        self.task_runner = TaskRunner(self)
-        self.task_runner.start()
-
-    def render(self):
-        # ...
-        # ...
-        self.document.paint(self.display_list)
-        if self.focus:
-            obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
-            text = self.focus.attributes.get("value", "")
-            x = obj.x + obj.font.measureText(text)
-            y = obj.y
-            self.display_list.append(
-                DrawLine(x, y, x, y + obj.height))
-```
-
-Here's `DrawLine`:
-
-``` {.python}
-class DrawLine:
-    def __init__(self, x1, y1, x2, y2):
-        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
-
-    def execute(self, canvas):
-        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
-```
 
 The `Browser` will also schedule tasks on the main thread. But now it's not
 safe for any methods on `Tab` to be directly called by `Browser`, because
