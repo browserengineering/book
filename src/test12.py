@@ -15,7 +15,7 @@ class MockTimer:
 
 threading.Timer = MockTimer
 
-class MockMainThreadEventLoop:
+class MockTaskRunner:
 	def __init__(self, tab):
 		self.tab = tab
 
@@ -31,7 +31,7 @@ class MockMainThreadEventLoop:
 	def run(self):
 		pass
 
-class MockNoOpMainThreadEventLoop:
+class MockNoOpTaskRunner:
 	def __init__(self, tab):
 		self.tab = tab
 
