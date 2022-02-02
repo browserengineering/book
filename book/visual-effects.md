@@ -443,14 +443,37 @@ class Browser:
 ```
 
 `Tab` also has a `draw` method, which draws a cursor; it needs to use
-`draw_line` for that:
+`draw_line` for that. Also wrap it in a display list
+command called `DrawLine`; this way everything is now in the display list
+and raster is nice and simple:
 
 ``` {.python replace=draw%28/raster%28,%20-%20self.scroll%20+%20CHROME_PX/}
+class DrawLine:
+    def __init__(self, x1, y1, x2, y2):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+    def execute(self, canvas):
+        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
+
 class Tab:
-    def draw(self, canvas):
+    def render(self):
+        # ...
         if self.focus:
-            # ...
-            draw_line(canvas, x, y, x, y + obj.height)
+            obj = [obj for obj in tree_to_list(self.document, [])
+                   if obj.node == self.focus][0]
+            text = self.focus.attributes.get("value", "")
+            x = obj.x + obj.font.measureText(text)
+            y = obj.y
+            self.display_list.append(
+                DrawLine(x, y, x, y + obj.height))
+
+    def raster(self, canvas):
+        for cmd in self.display_list:
+            cmd.execute(canvas)
 ```
 
 That's most of it. The last few changes we need to upgrade from
