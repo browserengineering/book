@@ -265,14 +265,14 @@ class JSContext:
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
+        if url_origin(full_url) != url_origin(self.tab.url):
+            raise Exception(
+                "Cross-origin XHR request not allowed")
 
         def run_load():
             headers, out = request(
                 full_url, self.tab.url, payload=body)
             handle_local = handle
-            if url_origin(full_url) != url_origin(self.tab.url):
-                raise Exception(
-                    "Cross-origin XHR request not allowed")
             self.tab.task_runner.schedule_task(
                 Task(self.xhr_onload, out, handle_local))
             return out

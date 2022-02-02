@@ -373,20 +373,26 @@ die.^[Note that for async requests, the return statement is meaningless;
 it's only there for the sync version.]
 
 ``` {.python}
+XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+
 class JSContext:
+    def xhr_onload(self, out, handle):
+        do_default = self.interp.evaljs(
+            XHR_ONLOAD_CODE, out=out, handle=handle)
+
     def XMLHttpRequest_send(
         self, method, url, body, is_async, handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
+        if url_origin(full_url) != url_origin(self.tab.url):
+            raise Exception(
+                "Cross-origin XHR request not allowed")
 
         def run_load():
             headers, out = request(
                 full_url, self.tab.url, payload=body)
             handle_local = handle
-            if url_origin(full_url) != url_origin(self.tab.url):
-                raise Exception(
-                    "Cross-origin XHR request not allowed")
             self.tab.task_runner.schedule_task(
                 Task(self.xhr_onload, out, handle_local))
             return out
@@ -529,7 +535,14 @@ class Tab:
 ```
 
 All the places that call `raster_chrome`, `raster_tab` or `draw` directly will
-also need to call `set_needs_render` instead. Here's `handle_down`:
+also need to call `set_needs_render` instead.[^render-instead] Here's
+`handle_down`:
+
+[^render-instead]: Technically, it's not necessary to do so, but thinking of all
+of rendering (including raster and draw) as one pipeline that's either run or
+not run is a good way to think about what is going on. Later we'll add ways to
+get back equivalent performance to rastering directly without resorting to
+a short-circuit of the rendering pipeline.
 
 ``` {.python expected=False}
 class Browser:
@@ -545,7 +558,7 @@ loop!
 Unfortunately, we also regressed the overall performance of the browser by
 quite a lot in some cases. For example, scrolling down will now cause
 the entire rendering pipeline (style, layout, etc.) to run, instead of
-just `draw`. Let's see how to fix tha.
+just `draw`. Let's see how to fix that.
 
 Animating frames
 ================
@@ -725,7 +738,7 @@ To not go faster than the refresh rate, use a `Timer`:
 
 ``` {.python expected=False}
 class Tab:
-    def schedule_animation_frame(self):
+    def schedule_animation_fraggme(self):
         # ...
         def callback():
             self.task_runner.schedule_task( \
