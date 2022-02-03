@@ -662,6 +662,7 @@ class Browser:
 
     def set_needs_raster_and_draw(self):
         self.needs_raster_and_draw = True
+        self.set_needs_animation_frame()
 
     def raster_and_draw(self):
         if not self.needs_raster_and_draw:

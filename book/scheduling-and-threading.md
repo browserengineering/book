@@ -1224,7 +1224,7 @@ class Browser:
 ```
 
 Now let's go the other direction, and implement the `commit` method that
-copies the display list, url and scroll to the browser thread.
+copies the display list, url and scroll offset to the browser thread.
 
 ``` {.python expected=False}
 class Tab:
@@ -1266,10 +1266,11 @@ Note that `commit` will acquire a lock on the browser thread before doing
 any of its work, because all of the inputs and outputs to it are cross-thread
 data structures.[^fast-commit]
 
-[^fast-commit]: `commit` is the one time when both threads are both "stopped"
-simultaneously---in the sense that neither is running a different task at the
-same time. For this reason commit needs to be as fast as possible, so as to
-lose the minimum possible amount of parallelism and responsiveness.
+[^fast-commit]: Fun fact: `commit` is the main time when both threads are
+both "stopped" simultaneously---in the sense that neither is running a
+different task at the same time. For this reason commit needs to be as fast as
+possible, to maximize parallelism and responsiveness. In modern browsers,
+optimizing commit is quite challenging.
 
 But we're not done. The last piece is to ensure that the *browser thread*
 determines the cadence of animation frames, *not* the main thread.
@@ -1277,7 +1278,7 @@ Why the browser thread and not the main thread? The reason
 is simple: there is no point to rendering display lists
 faster than they can be drawn to the screen.
 
-Implement this by adding a `needs_animation_frame` variable on `Browser`.
+Implement this by adding a `needs_animation_frame` dirty bit on `Browser`.
 
 ``` {.python}
 class Browser:
@@ -1292,7 +1293,10 @@ class Browser:
 ```
 
 Then, *only once the browser thread is done drawing to the screen*
-will it schedule an animation frame on the main thread.
+will it schedule an animation frame on the main thread.[^backpressure]
+
+[^backpressure]: The technique of controlling the speed of the front of a
+pipeline by means of the speed of its end is called *back pressure*.
 
 ``` {.python}
 if __name__ == "__main__":
@@ -1304,20 +1308,7 @@ if __name__ == "__main__":
         browser.needs_animation_frame = False
 ```
 
-Now call `set_needs_animation_frame` from `set_needs_render`:
-
-``` {.python}
-class Tab:
-    def set_needs_render(self):
-        self.needs_render = True
-        self.browser.set_needs_animation_frame()
-
-    def request_animation_frame_callback(self):
-        self.needs_raf_callbacks = True
-        self.browser.set_needs_animation_frame()
-```
-
-And finally, `schedule_animation_frame` on `Browser` works just like the version
+And `schedule_animation_frame` on `Browser` works just like the version
 earlier in the chapter:
 
 ``` {.python expected=False}
@@ -1341,8 +1332,32 @@ class Browser:
         self.lock.release()
 ```
 
+To make use of this sytem, call `set_needs_animation_frame` from
+`set_needs_render` and `request_animation_frame_callback`:
+
+``` {.python}
+class Tab:
+    def set_needs_render(self):
+        self.needs_render = True
+        self.browser.set_needs_animation_frame()
+
+    def request_animation_frame_callback(self):
+        self.needs_raf_callbacks = True
+        self.browser.set_needs_animation_frame()
+```
+
+And also in `Browser`:
+
+``` {.python}
+class Browser:
+    def set_needs_raster_and_draw(self):
+        self.needs_raster_and_draw = True
+        self.set_needs_animation_frame()
+```
+
 That's it. Don't forget to remove the old implementation of
-`schedule_animation_frame` on `Tab`.
+`schedule_animation_frame` on `Tab`, and also convert over all of the other
+callsites I omitted here for brevity.
 
 ::: {.further}
 Python is unfortunately not fully thread-safe. For this reason, it has a
