@@ -102,7 +102,7 @@ class Task:
 Also define a new `TaskRunner` class to manage the task queues and run them. It
 will have a list of `Task`s, a method to add a `Task`, and a method to run once
 through the event loop. Implement a simple scheduling heuristic in
-`run_once` that executes one task each time through, if there is one to run.
+`run` that executes one task each time through, if there is one to run.
 
 ``` {.python expected=False}
 class TaskRunner:
@@ -112,7 +112,7 @@ class TaskRunner:
     def schedule_task(self, callback):
         self.tasks.append(callback)
 
-    def run_once(self):
+    def run(self):
         if len(self.tasks) > 0):
             task = self.tasks.pop(0)
             task()
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     while True:
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
-            browser.tabs[browser.active_tab].task_runner.run_once()
+            browser.tabs[browser.active_tab].task_runner.run()
 ```
 
 Of course, this is all pointless at the moment, since there aren't any tasks
@@ -305,7 +305,7 @@ class TaskRunner:
         self.tasks.add_task(callback)
         self.lock.release()
 
-    def run_once(self):
+    def run(self):
         self.lock.acquire(blocking=True)
         task = None
         if len(self.tasks) > 0:
@@ -1056,8 +1056,10 @@ The browser thread
 This new thread will be called the *browser thread*.[^also-compositor] The
 browser thread will be for:
 
-[^also-compositor]: This thread is similar to what modern browsers often call
-the *compositor thread*.
+[^also-compositor]: Th browser thread is similar to what modern browsers often
+call the [*compositor thread*][cc].
+
+[cc]: https://chromium.googlesource.com/chromium/src.git/+/refs/heads/main/docs/how_cc_works.md
 
 * Raster and draw
 * Interacting with browser chrome
@@ -1068,9 +1070,8 @@ be for:
 
 * Evaluating scripts
 * Loading resources
-* The front half of the rendering pipeline: animation frame callbacks, style,
-  layout, and paint
-* Event handlers for clicking on and typing into web pages
+* Animation frame callbacks, style, layout, and paint
+* DOM Event handlers
 * `setTimeout` callbacks
 
 [^main-thread-name]: Here I'm going with the name real browsers often use. A
@@ -1079,24 +1080,47 @@ thread, since JavaScript can sometimes run on [other threads][webworker]).
 
 [webworker]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 
-In other words: all code in `Browser` will run on the browser thread, and all
-code in `Tab` and `JSContext` will run on the existing thread.
+In terms of the our browser implementation, all code in `Browser` will run on
+the *browser* thread, and all code in `Tab` and `JSContext` will run on the
+*main* thread.
 
-The thread that already exists (the one started by the Python interpreter
-by default) will be the browser thread, and we'll make a new one for
-the main thread.
+Let's design out the implementation of this two-thread setup:
 
-The two threads will communicate as follows:
+* The thread that already exists (the one started by the Python interpreter
+by default) will be the browser thread, and we'll make a new one for the main
+thread.
 
-* The browser thread will place tasks on the main thread `TaskRunner`.
+* The two threads will communicate as follows:
 
-* The main thread will call a new method called `commit` on `Browser` that
-  copies across the display list the browser thread, and one called
-  `set_needs_animation_frame` that requests an animation frame.
+  * *Browser->main*: The browser thread will place tasks on the main thread
+    `TaskRunner`.
 
-Begin by adding a `threading.Thread` object called `main_thread` to
-`TaskRunner`, with a `target of` `run`. Since it's not running just once
-through, `run_once` is renamed to `run`).
+  * *Main->browser*: The main thread will call two new methods on `Browser`:
+     `commit` and `set_needs_animation_frame`. `commit` will copy the
+     display list the browser thread.
+     `set_needs_animation_frame` will request an animation frame.
+
+The control flow for generating a rendered frame will be:
+
+1. The main thread (or browser thread) code requests an animation frame.
+2. The browser thread event loop schedules an animation frame on the main
+thread `TaskRunner`.
+3. The main thread executes its part of rendering, then calls `browser.commit`.
+4. The browser rasters the display list and draws to the screen.
+
+Other tasks started by the browser thread event loop (input event handlers
+for mouse and keyboard) will work like this:
+
+1. The main thread event loop calls the appropriate method on the `browser`.
+2. If the event's target is in the web page, the browser will schedule a task
+on the main thead `TaskRunner`.
+3. The main thread executes the task. If the task affects rendering, it calls
+`browser.set_needs_animation_frame`.
+
+Let's implement this design. Begin by adding a `threading.Thread` object
+called `main_thread` to `TaskRunner`, with a `target of` `run`. `run` will
+no longer just go once through, and will instead start an infinite loop looking
+for tasks. This infinite loop will keep the main thread live indefinitely.
 
 ``` {.python}
 class TaskRunner:
@@ -1129,7 +1153,7 @@ class TaskRunner:
                 task()
 ```
 
-Next let's make the `Browser` also schedule tasks on the main thread
+Next, make the `Browser` schedule tasks on the main thread
 instead of calling them directly. For example, here is loading:
 
 ``` {.python}
@@ -1140,6 +1164,15 @@ class Browser:
             Task(active_tab.load, url, body))
         self.set_needs_raster_and_draw()
 
+    def handle_enter(self):
+        self.lock.acquire(blocking=True)
+        if self.focus == "address bar":
+            self.schedule_load(self.address_bar)
+            self.url = self.address_bar
+            self.focus = None
+            self.set_needs_raster_and_draw()
+        self.lock.release()
+
     def load(self, url):
         new_tab = Tab(self)
         self.set_active_tab(len(self.tabs))
@@ -1147,15 +1180,17 @@ class Browser:
         self.schedule_load(url)
 ```
 
-We can do the same for input event handlers, but there are a few additional
-subtleties. Let's look closely at each of them in turn, starting with
-`handle_click`. In most cases, we will need to
+Do the same for input event handlers, but there is one additional
+subtlety: sometimes the event is handled on the browser thread, and
+sometimes the main thread.
+
+Consider `handle_click`: typically, we will need to
 [hit test](chrome.md#hit-testing) for which DOM element receives the click
-event, and also fire an event that JavaScript can listen to. Since DOM
-computations and JavaScript can only be run on the main thread, it seems we
+event, and also fire an event that scripts can listen to. Since DOM
+computations and scripts can only run on the main thread, it seems we
 should just send the click event to the main thread for processing. But if the
-click was *not* within the web page window (i.e. `e.y < CHROME_PX`, we can
-handle it right there in the compositor thread, and leave the main thread
+click was *not* within the web page window (i.e. `e.y < CHROME_PX`), we can
+handle it right there in the browser thread, and leave the main thread
 none the wiser:
 
 ``` {.python}
