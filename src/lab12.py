@@ -754,7 +754,6 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         active_tab.task_runner.schedule_task(
             Task(active_tab.load, url, body))
-        self.set_needs_raster_and_draw()
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)

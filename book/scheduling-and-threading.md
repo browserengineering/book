@@ -1084,7 +1084,7 @@ In terms of the our browser implementation, all code in `Browser` will run on
 the *browser* thread, and all code in `Tab` and `JSContext` will run on the
 *main* thread.
 
-Let's design out the implementation of this two-thread setup:
+Let's plan out the implementation of this two-thread setup:
 
 * The thread that already exists (the one started by the Python interpreter
 by default) will be the browser thread, and we'll make a new one for the main
@@ -1162,7 +1162,6 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         active_tab.task_runner.schedule_task(
             Task(active_tab.load, url, body))
-        self.set_needs_raster_and_draw()
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
@@ -1189,7 +1188,7 @@ Consider `handle_click`: typically, we will need to
 event, and also fire an event that scripts can listen to. Since DOM
 computations and scripts can only run on the main thread, it seems we
 should just send the click event to the main thread for processing. But if the
-click was *not* within the web page window (i.e. `e.y < CHROME_PX`), we can
+click was *not* within the web page window (i.e., `e.y < CHROME_PX`), we can
 handle it right there in the browser thread, and leave the main thread
 none the wiser:
 
@@ -1266,7 +1265,7 @@ Note that `commit` will acquire a lock on the browser thread before doing
 any of its work, because all of the inputs and outputs to it are cross-thread
 data structures.[^fast-commit]
 
-[^fast-commit]: Fun fact: `commit` is the main time when both threads are
+[^fast-commit]: Fun fact: `commit` is a critical time when both threads are
 both "stopped" simultaneously---in the sense that neither is running a
 different task at the same time. For this reason commit needs to be as fast as
 possible, to maximize parallelism and responsiveness. In modern browsers,
@@ -1287,9 +1286,7 @@ class Browser:
         self.needs_animation_frame = False
 
     def set_needs_animation_frame(self):
-        self.lock.acquire(blocking=True)
         self.needs_animation_frame = True
-        self.lock.release()
 ```
 
 Then, *only once the browser thread is done drawing to the screen*
@@ -1905,3 +1902,10 @@ present.
    attempt to keep up, implement a *frame time estimator* that estimates the
    true cadence of the browser based on previous frames, and
    adjust `schedule_animation_frame` to match.
+
+   A third problem is that the main thread `TaskRunner` only has one task queue,
+   and both rendering and non-rendering tasks go into it. Therefore a slow
+   sequence of script or event handler tasks may interfere with the desired
+   rendering cadence. This problem can be lessened by *prioritizing* rendering
+   tasks: placing them in a separate queue that can take priority over
+   other tasks. Implement this.
