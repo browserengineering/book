@@ -1534,7 +1534,9 @@ Threaded loading
 ================
 
 The last piece of code that can be threaded is loading resources from the
-network, i.e calls to `request` and `XMLHTTPRequest`.
+network, i.e calls to `request` and `XMLHTTPRequest`. This will allow us to
+load all resources for the page *in parallel*, greatly reducing the time to
+load the page. This feature is a key to good performance in modern browsers.
 
 In the `load` method on `Tab`, currently the first thing it does is
 synchronously wait for a network response to load the main HTML resource.
@@ -1550,14 +1552,31 @@ We should be able to send off all of the requests in parallel. Let's use an
 async, threaded version of `request` to do that. For simplicity, let's use a
 new Python thread for each resource. When a resource loads, the thread will
 complete and we can parse the script or load the style sheet, as appropriate.
-[^ignore-order]
+
+To make it work, we'll use a new threading feature: `join`. Join blocks
+one thread's execution on another thread completing. For example, this code:
+
+``` {.python expected=False}
+def run:
+    count = 0
+    while count < 100:
+        print("Thread")
+        count += 1
+
+thread = threading.Thread(target=run)
+thread.start()
+thread.join()
+while True:
+    print("Browser")
+```
+
+will print "Thread" 100 times, and *only then* start printing "Browser".
 
 Define a new `async_request` function. This will start a thread. The thread will
 request the resource, store the result in `results`, and then return. The
-thread object will be returned by `async_request`. It's expected that the
-caller of this function will call `join` on the thread (`join` means
-"block until the thread has completed"). `async_request` will need a lock,
-because `request` will need to access the thread-shared `COOKIE_JAR` variable.
+thread object will be returned by `async_request`. `async_request` will need a
+lock, because `request` will need to access the thread-shared `COOKIE_JAR`
+variable.
 
 ``` {.python}
 def async_request(url, top_level_url, results, lock):
@@ -1595,8 +1614,7 @@ def request(url, top_level_url, payload=None, lock=None):
             lock.release()
 ```
 
-Then we can use it in `load`. Note how we send off all of the requests first,
-and only at the end `join` all of the threads created.
+Then we can use it in `load`. Note how we send off all of the requests first:
 
 ``` {.python}
 class Tab:
@@ -1613,7 +1631,8 @@ class Tab:
                 "url": script_url,
                 "type": "script",
                 "thread": async_request(
-                    script_url, url, script_results, self.task_runner.lock)
+                    script_url, url, script_results,
+                    self.task_runner.lock)
             })
  
         self.rules = self.default_style_sheet.copy()
@@ -1634,9 +1653,14 @@ class Tab:
                 "url": style_url,
                 "type": "style sheet",
                 "thread": async_request(
-                    style_url, url, style_results, self.task_runner.lock)
+                    style_url, url, style_results,
+                    self.task_runner.lock)
             })
+```
 
+And only at the end `join` all of the threads created:
+
+``` {.python}
         for async_req in async_requests:
             async_req["thread"].join()
             req_url = async_req["url"]
@@ -1651,7 +1675,6 @@ class Tab:
 ```
 
 Now our browser will parallelize loading sub-resources!
-
 
 Now let's try out this new async API by augmenting our counter javascript like
 this:
@@ -1696,11 +1719,25 @@ Load the counter page. You should see the counter going up, and then after
 5 seconds, "Slow XMLHttpRequest response!" should appear onscreen. This
 would not have been possible without an async request to `/xhr`.
 
-[^ignore-order]: This ignores the parse order of the scripts and style sheets,
-which is technically incorrect and a real browser would be much more
+::: {.further}
+
+The approach in this section ignores the parse order of the scripts and style
+sheets, which is technically incorrect and a real browser would be much more
 careful. But as mentioned in an earlier chapter, our browser is already
 incorrect in terms of orders of operations, as scripts and style sheets are
-supposed to block the HTML parser as well.
+supposed to block the HTML parser as well. Nevertheless, modern browsers
+achieve performance similar to the one here, by use of a *preload scanner*.
+
+While the "observable" side-effects of loading have to be done in a certain
+order, that doesn't mean that the browser has to issue network requests in that
+order. Modern browsers take advantage of that by adding a second, simpler
+HTML parser called a preload scanner (the HTML spec calls it a
+[speculative HTML parser][speculative-parser]). The preload scanner does nothing
+but look for URLs referred to by DOM elements, and kicks off network requests
+to load them.
+:::
+
+[speculative-parser]: https://html.spec.whatwg.org/#active-speculative-html-parser
 
 Threaded style and layout
 =========================
