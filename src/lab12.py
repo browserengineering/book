@@ -656,9 +656,7 @@ class Browser:
         self.lock.release()
 
     def set_needs_animation_frame(self):
-        self.lock.acquire(blocking=True)
         self.needs_animation_frame = True
-        self.lock.release()
 
     def set_needs_raster_and_draw(self):
         self.needs_raster_and_draw = True
