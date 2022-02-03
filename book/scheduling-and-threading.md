@@ -1111,7 +1111,7 @@ thread `TaskRunner`.
 Other tasks started by the browser thread event loop (input event handlers
 for mouse and keyboard) will work like this:
 
-1. The main thread event loop calls the appropriate method on the `browser`.
+1. The browser thread event loop calls the appropriate method on the `browser`.
 2. If the event's target is in the web page, the browser will schedule a task
 on the main thead `TaskRunner`.
 3. The main thread executes the task. If the task affects rendering, it calls
@@ -1892,3 +1892,16 @@ this dirty bit might need to end up being set.)
 [^browser-thread-burn]: The browser thread's `while True` loop is also
 wasteful. Unfortunately, it appears there is not a way to avoid this in SDL at
 present.
+
+* *Optimized scheduling*: currently, `schedule_animation_frame` uses a timer to
+   run the animation frame task `REFRESH_RATE_SEC` in the future, regardless of
+   how long the browser event loop took to run once through. This doesn't make
+   a lot of sense, since the whole point of the refresh rate is to generate
+   frames at about the desired cadence. Fix this by subtracting from
+   `REFRESH_RATE_SEC` according to how much time the *previous* frame took.
+
+   A second problem is that the browser may simply not be able to keep up with
+   the desired cadence. Instead of constantly pegging the CPU in a futile
+   attempt to keep up, implement a *frame time estimator* that estimates the
+   true cadence of the browser based on previous frames, and
+   adjust `schedule_animation_frame` to match.
