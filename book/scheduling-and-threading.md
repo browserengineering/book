@@ -133,56 +133,41 @@ isn't a higher-priority user action to respond to. A browser could
 even have multiple task runners, optimized for different use cases.
 
 Timers and setTimeout
-====================
+=====================
 
-It's often the case that when adding a task, it's not to be run right away, but
-instead at some point in the future. One example is the
-[`setTimeout`][settimeout] JavaScript API, which provides a way to run a
-function a given number of milliseconds from now. For example,
+Tasks are a natural way to support several JavaScript APIs that ask
+for a function to be run at some point in the future. For example, the
+[`setTimeout`][settimeout] JavaScript API lets you run a function some
+number of milliseconds from now. This code prints "Callback" to the
+console one minute in the future, for example:
+
+[settimeout]: https://developer.mozilla.org/en-US/docs/Web/API/setTimeout
 
 ``` {.javascript expected=false}
-function callback() {
-    console.log('Callback')
-}
+function callback() { console.log('Callback'); }
 setTimeout(callback, 1000);
 ```
-will print "Callback" to the console log one second from now.
 
-This API *could* be implemented by recording a time associated with each new
-`Task`, and comparing that time against the current time in the event
-loop.^[This approach is called
-*polling*, and is also what the SDL event loop does to look for events and
- tasks.] A better approach is to use Python's [`threading.Timer`][timer] class,
- which does this for you (and probably much more efficiently) with a
- [Python thread][python-thread].
+We can implement `setTimeout` in our browser using the
+[`Timer`][timer] class in Python's [`threading`][threading] module.
+You use the class like this:
 
 [timer]: https://docs.python.org/3/library/threading.html#timer-objects
-[settimeout]: https://developer.mozilla.org/en-US/docs/Web/API/setTimeout
-[python-thread]: https://docs.python.org/3/library/threading.html
-
-Start by importing that module:
-
-``` {.python}
-import threading
-```
-
-The `Timer` class lets you run a callback at a specified time in the future. It
-takes two parameters: a time delta in seconds from now, and a function to call
-when that time expires. The following code will run `callback` 10 seconds in
-the future on a new Python thread:
+[threading]: https://docs.python.org/3/library/threading.html
 
 ``` {.python expected=False}
-threading.Timer(10, callback).start()
+import threading
+threading.Timer(1, callback).start()
 ```
 
-Now implement `setTimeout` on top of this functionality.  In terms of the
-JavaScript and Python communication, it'll use an approach with handles,
-similar to the `addEventListener` code we added in
-[Chapter 9](scripts.md#event-handling). In the
-JavaScript runtime, add a new internal handle for each call to `setTimeout`,
-and store the mapping between handles and callback functions in a global object
-called `SET_TIMEOUT_REQUESTS`. When the timeout occurs, Python will call
-`__runSetTimeout` and pass the handle as an argument.
+This runs `callback` in 1 seconds on a new Python thread. Now, it's
+going to be a little tricky to use `Timer` to implement `setTimeout`
+due to the fact that multiple threads will be involved.
+
+As with `addEventListener` in [Chapter 9](scripts.md#event-handling),
+the call to `setTimeout` will save the callback in a Javascript
+variable and create a handle by which the Python-side code can call
+it:
 
 ``` {.javascript file=runtime}
 SET_TIMEOUT_REQUESTS = {}
@@ -192,7 +177,13 @@ function setTimeout(callback, time_delta) {
     SET_TIMEOUT_REQUESTS[handle] = callback;
     call_python("setTimeout", handle, time_delta)
 }
+```
 
+The exported `setTimeout` function will create a timer, wait for the
+requested time period, and then call back into JavaScript to run the
+callback. The call back can call this `__runSetTimeout` function:
+
+``` {.javascript file=runtime}
 function __runSetTimeout(handle) {
     var callback = SET_TIMEOUT_REQUESTS[handle]
     delete SET_TIMEOUT_REQUESTS[handle];
@@ -200,16 +191,12 @@ function __runSetTimeout(handle) {
 }
 ```
 
-On the Python side, add a binding for `setTimeout` and an implementation that
-starts a `threading.Timer`. However, we have to be careful here, since in the
-code below, `run_callback` will run *on a different Python thread than the
-current one*. So we can't just call `evaljs` directly, or we'll end up with
-JavaScript running on two Python threads at the same time, which is not
-ok.[^js-thread]
-
-This is easy to fix by using the `TaskRunner` you already implemented: instead
-of running the script right away, schedule a task to do it later, when the
-other thread is free. Here's the code:
+The Python side, however, is quite a bit more complex, because
+`threading.Timer` executes its callback *on a new Python thread*. That
+thread can't just call `evaljs` directly: we'll end up with JavaScript
+running on two Python threads at the same time, which is not
+ok.[^js-thread] Instead, the timer will have to merely add a new
+`Task`, which the main thread will execute, to call the callback:
 
 [^js-thread]: JavaScript is not a multi-threaded programming language.
 It's possible on the web to create [workers] of various kinds, but they
@@ -233,25 +220,20 @@ class JSContext:
         threading.Timer(time / 1000.0, run_callback).start()
 ```
 
-That's it! Your browser now supports running asynchronous JavaScript tasks.
+Now only the main thread will call `evaljs`, which is better. But now
+we have two threads accessing the `task_runner`: the main thread, to
+run tasks, and the timer thread, to add them. This is a [race
+condition](https://en.wikipedia.org/wiki/Race_condition) that can
+cause all sorts of bad things to happen, so we need to make sure only
+one thread accesses the `task_runner` at a time.
 
-Except there is a bug in this code: it doesn't account for the fact that
-the first thread and the timer thread run concurrently, and there is therefore
-no guarantee that one callback that adds a task via `schedule_task` will not be
-interleaved with code on the other thread trying to read the task queue,
-leading to a [race condition](https://en.wikipedia.org/wiki/Race_condition)
-bug and nondeterministic results.
-
-This bug is easily fixed by use of a `threading.Lock` object. Before reading
-from or writing to a data structure shared across threads, acquire the lock;
-after you're done, release it.^[The `blocking` parameter to `acquire` indicates
-whether the thread should wait for the lock to be available before continuing;
-in this chapter you'll always set it to true. (When the thread is waiting, it's
-said to be *blocked*.)] The code changes in `TaskRunner` are pretty easy---just
-be careful to not forget to release the lock, and hold it for the minimum time
-possible, so as to maximize thread parallelism. That's why the code releases
-the lock before calling `task`: after the task has been removed from the queue,
-it can't be accessed by another thread.
+To do so we use a `Lock` object, which can only held by one thread at
+a time. Each thread will try to acquire the lock before reading or
+writing to the `task_runner`, avoiding simultaneous access:^[The
+`blocking` parameter to `acquire` indicates whether the thread should
+wait for the lock to be available before continuing; in this chapter
+you'll always set it to true. (When the thread is waiting, it's said
+to be *blocked*.)]
 
 ``` {.python expected=False}
 class TaskRunner:
@@ -274,6 +256,13 @@ class TaskRunner:
             task.run()
 ```
 
+When using locks, it's super important to remember to release the lock
+eventually and to hold it for the shortest time possible. The code
+above, for example, why releases the lock before running the `task`.
+That's because after the task has been removed from the queue, it
+can't be accessed by another thread, so the lock does not need to be
+held while the task is running.
+
 ::: {.further}
 Event loops often map 1:1 to CPU threads within a single CPU process, but
 this is not required. For example, multiple event loops could be placed together
@@ -291,96 +280,42 @@ sensitive to battery power usage.
 Long-lived threads
 ==================
 
-Python not only lets you create timers, but you can create and manipulate
-threads themselves, via the `threading.Thread` class. Let's use threads to
-implement async `XHMLHttpRequest`, a feature we left out of
-[Chapter 10](security.md#cross-site-requests). At the time, we implemented it
-as a synchronous API, but in fact, the synchronous version of that API is almost
-useless for real websites,^[It's also a huge performance footgun, for the same
-reason we've been adding async tasks in this chapter!] because the whole point
-of using this API is to keep the website responsive to the user while
-network requests are going on.
+Threads can also be used to have the browser multitask. For example,
+in [Chapter 10](security.md#cross-site-requests) we implemented the
+`XMLHttpRequest` class, which lets scripts make requests to other
+websites. But in our implementation, the whole browser would seize up
+while waiting for the request to finish. That's obviously bad.^[For
+this reason, the synchronous version of the API that we implemented in
+Chapter 10 is basically useless and a huge performance footgun. Some
+browsers are now moving to deprecate this API.]
 
-Our approach will be to start a thread, run some code on it that does the
-request and gets a response, then schedule a `Task` to send the response back
-to the script. Starting a thread is easy: define a function that is the "main"
-function of the thread, then start the thread with the function passed as the
-`target` argument. When the main function exits, the thread will automatically
-die.
+Threads let us do better. In Python, the code
 
-In this example:
-``` {.python expected=False}
-def run:
-    count = 0
-    while count < 100:
-        print("Thread")
-        count += 1
+    threading.Thread(target=callback).start()
+    
+creates a new thread that runs the `callback` function. Importantly,
+this code returns right away, and `callback` runs in parallel with any
+other code. We'll use this to implement asynchronous `XMLHttpRequest`
+calls: we'll have the browser start a thread, do the request and parse
+the response on that thread, and then schedule a `Task` to send the
+response back to the script.
 
-thread = threading.Thread(target=run)
-thread.start()
-while True:
-    print("Browser")
-```
+Like with `setTimeout`, we'll store the callback on the
+JavaScript side and refer to it with a handle:
 
-a stream of lines with the words "Thread" and "Browser" will be
-interspersed---according to the CPU scheduling algorithm of the computer and
-the Python runtime---until the thread has printed 100 times, after which
-"Browser" will continue printing forever.
-
-Here is the code for `XMLHttpRequest_send` (the new `is_async` parameter
-indicates an async request). In this case, `run_load` is the thread main
-function, and after the line that says "return out" executes, the thread will
-die.^[Note that for async requests, the return statement is meaningless;
-it's only there for the sync version.]
-
-``` {.python}
-XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
-
-class JSContext:
-    def xhr_onload(self, out, handle):
-        do_default = self.interp.evaljs(
-            XHR_ONLOAD_CODE, out=out, handle=handle)
-
-    def XMLHttpRequest_send(
-        self, method, url, body, is_async, handle):
-        full_url = resolve_url(url, self.tab.url)
-        if not self.tab.allowed_request(full_url):
-            raise Exception("Cross-origin XHR blocked by CSP")
-        if url_origin(full_url) != url_origin(self.tab.url):
-            raise Exception(
-                "Cross-origin XHR request not allowed")
-
-        def run_load():
-            headers, out = request(
-                full_url, self.tab.url, payload=body)
-            handle_local = handle
-            self.tab.task_runner.schedule_task(
-                Task(self.xhr_onload, out, handle_local))
-            return out
-
-        if not is_async:
-            return run_load(is_async)
-        else:
-            load_thread = threading.Thread(target=run_load)
-            load_thread.start()
-```
-
-Now for the JavaScript plumbing. We'll make the following changes:
-
-* Allow `is_async` to be `true` in the constructor of `XMLHttpRequest` in the
-runtime.
-* Store a unique handle for each `XMLHttpRequest` object, analogous to how we
-  used handles for `Node`s.
-* Store a map from request handle to object.
-
-``` {.javascript}
+``` {.javascript file=runtime}
 XHR_REQUESTS = {}
 
 function XMLHttpRequest() {
     this.handle = Object.keys(XHR_REQUESTS).length;
     XHR_REQUESTS[this.handle] = this;
 }
+```
 
+When a script calls the `open` method on an `XMLHttpRequest` object,
+we'll now allow the `is_async` flag to be true:
+
+``` {.javascript file=runtime}
 XMLHttpRequest.prototype.open = function(method, url, is_async) {
     this.is_async = is_async
     this.method = method;
@@ -388,16 +323,81 @@ XMLHttpRequest.prototype.open = function(method, url, is_async) {
 }
 ```
 
-* Add a new `__runXHROnload` method that will call the `onload` function
-specified on a `XMLHttpRequest`, if any.
-* Store the response on the `responseText` field, as required by the API.
+The `send` method will need to send over the `is_async` flag and the
+handle:
 
-``` {.javascript}
+``` {.javascript file=runtime}
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
         this.method, this.url, this.body, this.is_async, this.handle);
 }
+```
 
+On the browser side, we'll need to split the `XMLHttpRequest_send`
+function into three parts. The first part will resolve the URL and
+do security checks:
+
+``` {.python}
+class JSContext:
+    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+        full_url = resolve_url(url, self.tab.url)
+        if not self.tab.allowed_request(full_url):
+            raise Exception("Cross-origin XHR blocked by CSP")
+        if url_origin(full_url) != url_origin(self.tab.url):
+            raise Exception(
+                "Cross-origin XHR request not allowed")
+```
+
+Then, we'll define a function that makes the request and enqueues a
+task for running callbacks:^[For async requests, the `return` at the
+end of `run_load` is meaningless; it's only there for the sync version.]
+
+``` {.python}
+class JSContext:
+    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+        # ...
+        def run_load():
+            headers, body = request(
+                full_url, self.tab.url, payload=body)
+            self.tab.task_runner.schedule_task(
+                Task(self.dispatch_xhr_onload, body, handle))
+            return body
+```
+
+Finally, depending on the `is_async` flag the browser will either call
+this function right away, or in a new thread using the `target`
+argument to the `Thread` constructor:
+
+``` {.python}
+class JSContext:
+    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+        # ...
+        if not is_async:
+            return run_load(is_async)
+        else:
+            load_thread = threading.Thread(target=run_load)
+            load_thread.start()
+```
+
+Note that in the async case, the `XMLHttpRequest_send` method starts a
+thread and then immediately returns. That thread will run in parallel
+to the browser's main work until it adds a new task for running
+`dispatch_xhr_online` on the main thread. This method runs the
+JavaScript callback:
+
+``` {.python}
+XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+
+class JSContext:
+    def dispatch_xhr_onload(self, out, handle):
+        do_default = self.interp.evaljs(
+            XHR_ONLOAD_CODE, out=out, handle=handle)
+```
+
+The `__runXHROnload` method just pulls the relevant object from
+`XHR_REQUESTS` and calls its `onload` function:
+
+``` {.javascript}
 function __runXHROnload(body, handle) {
     var obj = XHR_REQUESTS[handle];
     var evt = new Event('load');
@@ -407,9 +407,10 @@ function __runXHROnload(body, handle) {
 }
 ```
 
-And there you have it. With the task machinery and only a few more lines of
-non-plumbing code, we can support lots of new features, and `setTimeout` and
-async `XMLHttpRequest` are only the start.
+So tasks not only allow our browser to delay tasks until later, but
+also allow applications running in the browser to do the same.
+However, there's a whole other category of work done by the browser
+not directly related to running JavaScript.
 
 Rendering pipeline tasks
 ========================
