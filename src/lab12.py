@@ -656,12 +656,11 @@ class Browser:
         self.lock.release()
 
     def set_needs_animation_frame(self):
-        self.lock.acquire(blocking=True)
         self.needs_animation_frame = True
-        self.lock.release()
 
     def set_needs_raster_and_draw(self):
         self.needs_raster_and_draw = True
+        self.set_needs_animation_frame()
 
     def raster_and_draw(self):
         if not self.needs_raster_and_draw:
@@ -683,10 +682,6 @@ class Browser:
         self.lock.release()
 
     def schedule_animation_frame(self):
-        if not self.needs_animation_frame:
-            return
-        self.needs_animation_frame = False
-
         def callback():
             self.lock.acquire(blocking=True)
             self.display_scheduled = False
@@ -713,13 +708,12 @@ class Browser:
         self.scroll = scroll
         self.set_needs_raster_and_draw()
         self.lock.release()
-        self.schedule_animation_frame()
 
     def set_active_tab(self, index):
         self.active_tab = index
         self.scroll = 0
         self.url = None
-        self.schedule_animation_frame()
+        self.set_needs_animation_frame()
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
@@ -760,7 +754,6 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         active_tab.task_runner.schedule_task(
             Task(active_tab.load, url, body))
-        self.set_needs_raster_and_draw()
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
@@ -923,4 +916,6 @@ if __name__ == "__main__":
                 active_tab.display_scheduled = False
                 browser.render()
         browser.raster_and_draw()
-        browser.schedule_animation_frame()
+        if browser.needs_animation_frame:
+            browser.schedule_animation_frame()
+        browser.needs_animation_frame = False
