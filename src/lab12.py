@@ -353,7 +353,8 @@ class Tab:
                 "url": script_url,
                 "type": "script",
                 "thread": async_request(
-                    script_url, url, script_results, self.task_runner.lock)
+                    script_url, url, script_results,
+                    self.task_runner.lock)
             })
  
         self.rules = self.default_style_sheet.copy()
@@ -374,7 +375,8 @@ class Tab:
                 "url": style_url,
                 "type": "style sheet",
                 "thread": async_request(
-                    style_url, url, style_results, self.task_runner.lock)
+                    style_url, url, style_results,
+                    self.task_runner.lock)
             })
 
         for async_req in async_requests:
