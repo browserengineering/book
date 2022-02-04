@@ -5,86 +5,37 @@ prev: visual-effects
 next: skipped
 ...
 
-To be a capable application platform, the browser must run
-applications efficiently and stay responsive to user actions. To do
-so, the browser must explicitly choose which of its many tasks to
-prioritize and delay unnecessary tasks until later. Such a task queue
-system also allows the browser to split tasks across multiple threads,
-which makes the browser even more responsive and a better fit to
-modern multi-core hardware.
+The browser must run sophisticated applications while staying
+responsive to user actions. To do so, the browser must explicitly
+choose which of its many tasks to prioritize and which to delay until
+later---tasks like Javascript callbacks, user input, and rendering.
+Moreover, the browser can be split across multiple threads, with
+different threads running events in parallel to maximize
+responsiveness.
 
-Tasks
-=====
+Tasks and Task Queues
+=====================
 
 So far, most of the work our browser's been doing has been handling
 user actions like scrolling, pressing buttons, and clicking on links.
-But as our browser runs more and more sophisticated web applications,
-it starts spend more and more time querying remote servers, animating
-objects on the page, or prefetching information that the user may
-need. This requires a change in perspective: while users are slow and
+But as the web applications our browser runs get more and more
+sophisticated, they begin querying remote servers, showing animations,
+or and prefetching information for later. And while users are slow and
 deliberative, leaving long gaps between actions for the browser to
-catch up, applications can be very demanding, with a never-ending queue
-of tasks for the browser to do.
+catch up, applications can be very demanding. This requires a change
+in perspective: the browser now has a never-ending queue of tasks to
+do.
 
 Modern browsers adapt to this reality by multitasking, prioritizing,
-and deduplicating work. To do so, events from the operating system are
-turned into *tasks* and placed onto one of several task queues. Those
-task queues are each assigned to different threads, and each thread
-chooses the most important task to work on next to keep the browser
-fast and responsive. Loading pages, running scripts, and responding to
-user actions all become tasks in this framework.
+and deduplicating work. Every bit of work the browser might
+do---loading pages, running scripts, and responding to user
+actions---is turned into a *task*, which can be executed later. Here,
+a task is just a function (plus its arguments) that can be executed
+later:[^varargs]
 
-One of the most expensive tasks a browser does is render a web
-page---style the HTML elements, construct a layout tree, compute sizes
-and positions, paint it to a display list, raster the result into
-surfaces, and draw tha surfaces to the screen. These rendering steps
-make up the [*rendering pipeline*][graphics-pipeline]
-for the browser, and can be expensive and slow. For this reason,
-modern browsers split the rendering pipeline across threads and make
-sure to run the rendering pipeline only when necessary.
-
-[graphics-pipeline]: https://en.wikipedia.org/wiki/Graphics_pipeline
-
-Refactoring our browser to think in terms of tasks will require
-significant changes throughout---concurrent programming is
-never easy! But these architectural changes are a key optimization
-behind modern browsers, and enable many advanced features discussed in
-this and later chapters.
-
-Task queues
-===========
-
-At the moment, our browser has a lot of entangled code, and it will take
-substantial work to put everything in tasks on queues. Let's start by defining
-the infrastructure, and then try it out on some examples.
-
-When the browser is free to do work, it finds the next pending *task* and runs
-it, and repeats. A sequence of related tasks is a *task queue*, and browsers
-have multiple tasks queues.
-
-One or more task queues can be grouped together into a single, sequential
-*thread* of execution. Each thread has an *event loop* associated with
-it.[^event-loop] The job of the event loop is to schedule tasks
- according to the priorities of the browser---to make sure it's responsive to
- the user, uses hardware efficiently, loads pages fast, and so on. You've
- already seen many examples of tasks, such as handling clicks, loading, and
- scrolling.
-
-[cores]: https://en.wikipedia.org/wiki/Multi-core_processor
-
-[^event-loop]: Event loops were also briefly touched on in
-[chapter 2](graphics.md#eventloop), and we wrote our own event loop in
-[chapter 11](visual-effects.md#sdl-creates-the-window) (before that, we used
-`tkinter.mainloop`).
-
-Implement the `Task` class. A `Task` encapsulates some code to
-run in the form of a function, plus arguments to that function.[^task-notes]
-
-[^task-notes]: In `Task`, we're using the varargs syntax for Python, allowing
-any number of arguments to be passed to the task. We're also using Python's
-`__call__` builtin method. It is called when an object is called as if it's a
-function. The Python code `Task()()` will constructs a `Task` and then "call"
-(run) it.
+[^varargs]: By writing `*args` as an argument to `Task`, we indicate
+that a `Task` can be constructed with any number of arguments, which
+are then available as the list `args`.
 
 ``` {.python}
 class Task:
@@ -93,57 +44,58 @@ class Task:
         self.args = args
         self.__name__ = "task"
 
-    def __call__(self):
+    def run(self):
         self.task_code(*self.args)
         self.task_code = None
         self.args = None
 ```
 
-Also define a new `TaskRunner` class to manage the task queues and run them. It
-will have a list of `Task`s, a method to add a `Task`, and a method to run once
-through the event loop. Implement a simple scheduling heuristic in
-`run` that executes one task each time through, if there is one to run.
+The point of a task is that it can be created at one point, and then
+run at some later point by a task runner of some kind.[^event-loop] In
+our browser, the task runner will store tasks in a first-in first-out
+queue:
 
-``` {.python expected=False}
+[^event-loop]: Event loops, which we discussed in [Chapter
+2](graphics.md#eventloop) and [Chapter
+11](visual-effects.md#sdl-creates-the-window) are one kind of task
+runner, where the tasks to run are provided by the operating system.
+
+``` {.python replace=(self)/(self%2c%20tab)}
 class TaskRunner:
     def __init__(self):
         self.tasks = []
 
     def schedule_task(self, callback):
         self.tasks.append(callback)
+```
 
+When the time comes to run a task, our task runner can just remove
+the first task from the queue and run it:
+
+``` {.python expected=False}
+class TaskRunner:
     def run(self):
         if len(self.tasks) > 0):
             task = self.tasks.pop(0)
-            task()
-```
+            task.run()
 
-Finally we just need to modify the main event loop to run the task runner each
-time, in case there is a script task to execute:
-
-``` {.python expected=False}
-if __name__ == "__main__":
-    # ...
-    while True:
-        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
-            browser.tabs[browser.active_tab].task_runner.run()
-```
-
-Of course, this is all pointless at the moment, since there aren't any tasks
-yet. Let's try out this infrastructure on a simple example: evaluating scripts
-after load. Currently the browser just evaluates them right away, but instead
-let's make script evaluationt a task.
-
-It's as simple as calling `schedule_task` with a `Task` that runs the script,
-and then continuing on with the rest of the loading logic as if nothing
-was changed:
-
-``` {.python expected=False}
 class Tab:
     def __init__(self):
         self.task_runner = TaskRunner()
+```
 
+This is a pretty simplistic of choosing which task to run next, and
+real browsers have sophisticated *schedulers* which consider things
+like XXX.
+
+But even this simple scheduler lets us save tasks for later and
+execute when there's time. For example, right now, when loading a web
+page, our browser will download and run all scripts before doing its
+rendering steps. That makes pages slower to load. We can fix this by
+creating tasks for running scripts later.
+
+``` {.python expected=False}
+class Tab:
     def run_script(self, url, body):
         try:
             print("Script returned: ", self.js.run(body))
@@ -151,8 +103,6 @@ class Tab:
             print("Script", url, "crashed", e)
 
     def load(self):
-        # ...
-
         for script in scripts:
             # ...
             header, body = request(script_url, url)
@@ -160,18 +110,27 @@ class Tab:
                 Task(self.run_script, script_url, body))
 ```
 
-That's it! Now our browser will not run scripts until after `load` has completed
-and the event loop comes around again. But before continuing, let's consider
-why this change is interesting---is it anything other than just some
-refactoring?
+To run those tasks, we need to call the `run` method on our
+`TaskRunner`, which we can do in the main event loop:
 
-It used to be that we had no choice but to eval scripts right away just as they
-were loaded. But now it's pretty clear that we have a lot more control over
-when to run scripts. For example, it's easy to make a change to `TaskRunner` to
-only run one script per second, or to not run them at all during page load, or
-when a tab is not the active tab. This flexibility is quite powerful, and we
-can use it without having to dive into the guts of a `Tab` or how it loads web
-pages---all we'd have to do is implement a new `TaskRunner` heuristic.
+``` {.python expected=False}
+if __name__ == "__main__":
+    while True:
+        # ...
+        browser.tabs[browser.active_tab].task_runner.run()
+```
+
+Here I've chosen to only run tasks on the active tab. Now our browser
+will not run scripts until after `load` has completed and the event
+loop comes around again.
+
+This change is nice---pages will load a bit faster---but there's more
+to it than that. Before this change, we no choice but to run scripts
+right away just as they were loaded. But now that running scripts is a
+`Task`, the task runner controls when it runs. It could run only one
+script per second, or only when the page is active, or only if there
+isn't a higher-priority user action to respond to. A browser could
+even have multiple task runners, optimized for different use cases.
 
 Timers and setTimeout
 ====================
@@ -312,7 +271,7 @@ class TaskRunner:
             task = self.tasks.pop(0)
         self.lock.release()
         if task:
-            task()
+            task.run()
 ```
 
 ::: {.further}
@@ -326,6 +285,8 @@ ability to use more or less hardware parallelism as appropriate to the
 situation---some devices have more [CPU cores][cores] than others, or are more
 sensitive to battery power usage.
 :::
+
+[cores]: https://en.wikipedia.org/wiki/Multi-core_processor
 
 Long-lived threads
 ==================
@@ -452,6 +413,28 @@ async `XMLHttpRequest` are only the start.
 
 Rendering pipeline tasks
 ========================
+
+
+
+One of the most expensive tasks a browser does is render a web
+page---style the HTML elements, construct a layout tree, compute sizes
+and positions, paint it to a display list, raster the result into
+surfaces, and draw tha surfaces to the screen. These rendering steps
+make up the [*rendering pipeline*][graphics-pipeline]
+for the browser, and can be expensive and slow. For this reason,
+modern browsers split the rendering pipeline across threads and make
+sure to run the rendering pipeline only when necessary.
+Those task queues also allow multiple
+threads to communicate by assigning each other additional tasks.
+
+
+[graphics-pipeline]: https://en.wikipedia.org/wiki/Graphics_pipeline
+
+Refactoring our browser to think in terms of tasks will require
+significant changes throughout---concurrent programming is
+never easy! But these architectural changes are a key optimization
+behind modern browsers, and enable many advanced features discussed in
+this and later chapters.
 
 Everything in a browser can be considered a task, including rendering. In fact,
 the most important task in a browser is the rendering pipeline---but not just
@@ -1150,7 +1133,7 @@ class TaskRunner:
                 task = self.tasks.pop(0)
             self.lock.release()
             if task:
-                task()
+                task.run()
 ```
 
 Next, make the `Browser` schedule tasks on the main thread

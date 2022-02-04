@@ -527,7 +527,7 @@ class Task:
         self.args = args
         self.__name__ = "task"
 
-    def __call__(self):
+    def run(self):
         self.task_code(*self.args)
         self.task_code = None
         self.args = None
@@ -538,7 +538,7 @@ class SingleThreadedTaskRunner:
         self.needs_quit = False
 
     def schedule_task(self, callback):
-        callback()
+        callback.run()
 
     def clear_pending_tasks(self):
         pass
@@ -593,7 +593,7 @@ class TaskRunner:
                 task = self.tasks.pop(0)
             self.lock.release()
             if task:
-                task()
+                task.run()
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
