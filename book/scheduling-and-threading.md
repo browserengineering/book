@@ -415,66 +415,50 @@ not directly related to running JavaScript.
 Rendering pipeline tasks
 ========================
 
+So far we've focused on creating tasks that run JavaScript code. But
+the results of that JavaScript code---and also the results of
+interactions like loading new pages, scrolling, clicking, and
+typing---are only available to the user after the browser renders the
+page. In this sensem, the most important task in a browser is running
+the [rendering pipeline][graphics-pipline]: styling the HTML elements,
+constructing the layout tree, computing sizes and positions, painting
+layout objects to a display list, rastering the result into surfaces,
+and drawing those surfaces to the screen.
 
+Right now, the browser executes these rendering steps eagerly: as soon
+as the user scrolls or clicks, or as soon as JavaScript modifies the
+document. But we want to make these interactions faster and smoother,
+and the very first step is to make rendering a schedulable task, so we
+can decide when it occurs.
 
-One of the most expensive tasks a browser does is render a web
-page---style the HTML elements, construct a layout tree, compute sizes
-and positions, paint it to a display list, raster the result into
-surfaces, and draw tha surfaces to the screen. These rendering steps
-make up the [*rendering pipeline*][graphics-pipeline]
-for the browser, and can be expensive and slow. For this reason,
-modern browsers split the rendering pipeline across threads and make
-sure to run the rendering pipeline only when necessary.
-Those task queues also allow multiple
-threads to communicate by assigning each other additional tasks.
+At a high level, that requires code like this:
 
+``` {.python expected=False}
+self.task_runner.schedule_task(Task(self.render))
+```
 
-[graphics-pipeline]: https://en.wikipedia.org/wiki/Graphics_pipeline
-
-Refactoring our browser to think in terms of tasks will require
-significant changes throughout---concurrent programming is
-never easy! But these architectural changes are a key optimization
-behind modern browsers, and enable many advanced features discussed in
-this and later chapters.
-
-Everything in a browser can be considered a task, including rendering. In fact,
-the most important task in a browser is the rendering pipeline---but not just
-for the obvious reason that it's impossible to see web pages that aren't
-rendered. Most of the time spent doing work in a browser is in *rendering
-interactions* with the browser, such as loading, scrolling, clicking and
-typing. All of these interactions require rendering. If you want to make those
-interactions faster and smoother, the very first think you have to do is
-schedule the rendering pipeline, and to achieve that it'll need to be a
-schedulable task.
-
-On thing that is special about rendering is that it's a "singleton" task. There
-is only one rendering task, and either it's been scheduled or not, but it
-doesn't make sense to schedule it twice at the same time. On the other hand,
-it's totally fine and natural to have many `setTimeout` or `XMLHttpRequest`
-callbacks pending at the same time. The singleton nature of the rendering task
-has to do with there being only one DOM to render.
-
-Because it's a singleton, we'll need an additional boolean variable on a `Tab`
-to avoid having two rendering tasks, called `needs_animation_frame`. This
-variable means "a rendering task was already scheduled". Also add a
-`schedule_animation_frame`[^animation-frame] method that adds a new task to
-render, and a new method `run_animation_frame` as the task callback. Note
-how we avoid two scheduled frames with an if statement.
-
-[^animation-frame]: It's called an "animation frame" because sequential
-rendering of different pixels is an animation, and each time you render it's
-one "frame"---like a drawing in a picture frame.
-
+However, rendering is special in that it never makes sense to do
+scheduling twice in a row, since the page wouldn't have changed in
+between. To avoid having two rendering tasks we'll add a boolean
+called named `needs_animation_frame` to each `Tab` which indicates
+whether a rendering task is scheduled:
 
 ``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
         # ...
         self.needs_animation_frame = False
+```
 
-    def set_needs_render(self):
-        self.schedule_animation_frame()
+A new `schedule_animation_frame`[^animation-frame] method will check
+the flag before scheduling a new rendering task:
 
+[^animation-frame]: It's called an "animation frame" because
+sequential rendering of different pixels is an animation, and each
+time you render it's one "frame"---like a drawing in a picture frame.
+
+``` {.python expected=False}
+class Tab:
     def schedule_animation_frame(self):
         if self.needs_animation_frame:
             return
@@ -486,8 +470,45 @@ class Tab:
         self.needs_animation_frame = False
 ```
 
-But `render` only does style, layout and paint. We also need raster and draw,
-so add a method to `Browser` and call it from `run_animation_frame`:
+Now, take a look at all the other calls to `render` in your `Tab` and
+`JSContext` methods. Instead of calling `render`, which causes the
+browser to immediately rerun the rendering pipeline, these methods
+should schedule the rendering pipeline to run later. For
+future-proofing, I'm doing to do this in a new `set_needs_render`
+call:
+
+``` {.python expected=False}
+class Tab
+    def set_needs_render(self):
+        self.schedule_animation_frame()
+```
+
+So, for example, the `load` method can call
+`set_needs_render`:[^more-examples]
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        self.set_needs_render()
+```
+
+As can `innerHTML_set`:
+
+``` {.python}
+class JSContext:
+    def innerHTML_set(self, handle, s):
+        # ...
+        self.tab.set_needs_render()
+```
+
+There are more calls to `render`; you should find and fix all of them.
+
+So this handles the front half of the rendering pipeline: style,
+layout, and paint. The back half of the rendering pipeline (raster and
+draw) is handled by `Browser`, so the `Tab` needs to tell the
+`Browser` when to run it. I'll add a new `raster_and_draw` method for
+the `Tab` to call:
 
 ``` {.python expected=False}
 class Tab:
@@ -495,7 +516,7 @@ class Tab:
         self.browser = browser
 
     def run_animation_frame(self):
-        self.render()
+        # ...
         browser.raster_and_draw()
 
 class Browser:
@@ -505,44 +526,23 @@ class Browser:
         self.draw()
 ```
 
-The last piece is to actually call `set_needs_render` from somewhere.
-Replace all cases where the rendering pipeline is computed synchronously with
-`set_needs_render`. Here, for example, is `load`:[^more-examples]
-
-[^more-examples]: There are more of them; you should fix them all.
-
-``` {.python}
-class Tab:
-    def load(self, url, body=None):
-        # ...
-        self.set_needs_render()
-```
-
-All the places that call `raster_chrome`, `raster_tab` or `draw` directly will
-also need to call `set_needs_render` instead.[^render-instead] Here's
-`handle_down`:
-
-[^render-instead]: Technically, it's not necessary to do so, but thinking of all
-of rendering (including raster and draw) as one pipeline that's either run or
-not run is a good way to think about what is going on. Later we'll add ways to
-get back equivalent performance to rastering directly without resorting to
-a short-circuit of the rendering pipeline.
+This system is getting complex, with the `Browser` and `Tab` each
+requesting additional work of the other, so for now let's try to
+simplify it by making everything go through the same series of steps.
+Any time the `Browser` does anything that can affect the page, like
+scrolling, it should call `set_needs_render` instead of calling
+`raster_tab` or similar. Then it's up to `set_needs_render` to cause
+the raster task to be run:
 
 ``` {.python expected=False}
 class Browser:
     def handle_down(self):
-        active_tab = self.tabs[self.active_tab]
-        active_tab.scrolldown()
+        # ...
         self.active_tab.set_needs_render()
 ```
 
-Now our browser can run rendering in an asynchronous, scheduled way on the event
-loop!
-
-Unfortunately, we also regressed the overall performance of the browser by
-quite a lot in some cases. For example, scrolling down will now cause
-the entire rendering pipeline (style, layout, etc.) to run, instead of
-just `draw`. Let's see how to fix that.
+This lets us thinking of both halves of rendering as one single
+pipeline that's either run or not in a single unit.
 
 Animating frames
 ================
