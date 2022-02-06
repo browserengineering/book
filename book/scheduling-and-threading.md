@@ -873,7 +873,7 @@ rendering time.
 ``` {.python}
 class Tab:
         # ...
-        self.time_in_style_layout_and_paint = 0.0
+        self.time_in_render = 0.0
         self.num_renders = 0
 
     def render(self):
@@ -882,7 +882,7 @@ class Tab:
         timer = Timer()
         timer.start()
         # ...
-        self.time_in_style_layout_and_paint += timer.stop()
+        self.time_in_render += timer.stop()
         self.num_renders += 1
 
     def handle_quit(self):
@@ -909,7 +909,7 @@ class Browser:
         self.num_raster_and_draws += 1
 
     def handle_quit(self):
-        print("Time in raster-and-draw on average: {:>.0f}s".format(
+        print("Time in raster-and-draw on average: {:>.0f}ms".format(
             self.time_in_raster_and_draw / \
                 self.num_raster_and_draws * 1000))
 ```
@@ -1221,10 +1221,10 @@ class Browser:
 
     def commit(self, tab, url, scroll, tab_height, display_list):
         self.lock.acquire(blocking=True)
-        self.display_scheduled = False
         if tab != self.tabs[self.active_tab]:
             self.lock.release()
             return
+        self.display_scheduled = False
         if url != self.url or scroll != self.scroll:
             self.set_needs_raster_and_draw()
         self.url = url
