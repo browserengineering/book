@@ -1235,12 +1235,16 @@ class Tab:
         self.render()
         # ...
         self.browser.commit(
-            self.url, self.scroll,
+            self, self.url, self.scroll,
             document_height,
             self.display_list)
 ```
 
-In `Browser`:
+In `Browser`, commit will copy across the url, scroll offset and display list,
+and call `set_needs_raster_and_draw` as needed. Since each `Tab` has its own
+thread that is always running, the `tab` parameter is
+compared with the active tab to avoid committing display lists for invisible
+tabs.
 
 ``` {.python}
 class Browser:
@@ -1248,8 +1252,12 @@ class Browser:
         self.url = None
         self.scroll = 0
 
-    def commit(self, url, scroll, tab_height, display_list):
+    def commit(self, tab, url, scroll, tab_height, display_list):
         self.lock.acquire(blocking=True)
+        self.display_scheduled = False
+        if tab != self.tabs[self.active_tab]:
+            self.lock.release()
+            return
         if url != self.url or scroll != self.scroll:
             self.set_needs_raster_and_draw()
         self.url = url
@@ -1277,13 +1285,32 @@ Why the browser thread and not the main thread? The reason
 is simple: there is no point to rendering display lists
 faster than they can be drawn to the screen.
 
-Implement this by adding a `needs_animation_frame` dirty bit on `Browser`.
+Implement this by adding a `needs_animation_frame` dirty bit on `Browser`. Tabs
+call a special version of this method that uses a lock and disallows setting
+the bit for a non-active tab.^[The `Browser` use-cases that set this dirty bit
+also need a lock, but all of the calling functions already hold the lock. If
+they tried to call the version that locks then a [deadlock] would occur.]
+
+Setting the bit only for active tabs prevents others from setting a
+dirty bit they don't need (because there is nothing to display for a non-active
+tab), and elegantly prevents any `requestAnimationFrame`
+callbacks from running. Try making a second tab while the counter demo is
+running, then go back to the demo tab. Notice that it stopped counting up
+while the other tab was visible, and resumes when it is made visible again!
+
+[deadlock]: https://en.wikipedia.org/wiki/Deadlock
 
 ``` {.python}
 class Browser:
     def __init__(self):
         # ...
         self.needs_animation_frame = False
+
+    def set_tab_needs_animation_frame(self, tab):
+        self.lock.acquire(blocking=True)
+        if tab == self.tabs[self.active_tab]:
+            self.needs_animation_frame = True
+        self.lock.release()
 
     def set_needs_animation_frame(self):
         self.needs_animation_frame = True
@@ -1300,9 +1327,7 @@ if __name__ == "__main__":
     while True:
         # ...
         browser.raster_and_draw()
-        if browser.needs_animation_frame:
-            browser.schedule_animation_frame()
-        browser.needs_animation_frame = False
+        browser.schedule_animation_frame()
 ```
 
 And `schedule_animation_frame` on `Browser` works just like the version
@@ -1317,30 +1342,30 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             self.lock.acquire(blocking=True)
-            self.display_scheduled = False
             active_tab = self.tabs[self.active_tab]
-            self.lock.release()
             active_tab.task_runner.schedule_task(
                 Task(active_tab.run_animation_frame))
+            self.lock.release()
         self.lock.acquire(blocking=True)
-        if not self.display_scheduled:
+        if not self.display_scheduled and self.needs_animation_frame:
             threading.Timer(REFRESH_RATE_SEC, callback).start()
             self.display_scheduled = True
+            self.needs_animation_frame = False
         self.lock.release()
 ```
 
-To make use of this sytem, call `set_needs_animation_frame` from
-`set_needs_render` and `request_animation_frame_callback`:
+To make use of this sytem, call `set_tab_needs_animation_frame` from
+`set_needs_render`, and also from `request_animation_frame_callback`:
 
 ``` {.python}
 class Tab:
     def set_needs_render(self):
         self.needs_render = True
-        self.browser.set_needs_animation_frame()
+        self.browser.set_tab_needs_animation_frame(self)
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
-        self.browser.set_needs_animation_frame()
+        self.browser.set_tab_needs_animation_frame(self)
 ```
 
 And also in `Browser`:
@@ -1463,9 +1488,9 @@ class Browser:
             self.lock.acquire(blocking=True)
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
-            self.lock.release()
             active_tab.task_runner.schedule_task(
                 Task(active_tab.run_animation_frame, scroll))
+            self.lock.release()
         # ...
 ```
 
@@ -1503,7 +1528,7 @@ class Tab:
     def run_animation_frame(self, scroll):
         # ...
         self.browser.commit(
-            self.url,
+            self, self.url,
             clamped_scroll if self.scroll_changed_in_tab \
                 else None, 
             document_height, self.display_list)
