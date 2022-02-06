@@ -393,11 +393,11 @@ class Tab:
 
     def set_needs_render(self):
         self.needs_render = True
-        self.browser.set_needs_animation_frame()
+        self.browser.set_tab_needs_animation_frame(self)
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
-        self.browser.set_needs_animation_frame()
+        self.browser.set_tab_needs_animation_frame(self)
 
     def run_animation_frame(self, scroll):
         self.scroll = scroll
@@ -414,7 +414,7 @@ class Tab:
         self.scroll = clamped_scroll
 
         self.browser.commit(
-            self.url,
+            self, self.url,
             clamped_scroll if self.scroll_changed_in_tab \
                 else None, 
             document_height, self.display_list)
@@ -643,8 +643,12 @@ class Browser:
         tab = self.tabs[self.active_tab]
         tab.run_animation_frame(self.scroll)
 
-    def commit(self, url, scroll, tab_height, display_list):
+    def commit(self, tab, url, scroll, tab_height, display_list):
         self.lock.acquire(blocking=True)
+        self.display_scheduled = False
+        if tab != self.tabs[self.active_tab]:
+            self.lock.release()
+            return
         if url != self.url or scroll != self.scroll:
             self.set_needs_raster_and_draw()
         self.url = url
@@ -653,6 +657,12 @@ class Browser:
         self.active_tab_height = tab_height
         self.active_tab_display_list = display_list.copy()
         self.set_needs_raster_and_draw()
+        self.lock.release()
+
+    def set_tab_needs_animation_frame(self, tab):
+        self.lock.acquire(blocking=True)
+        if tab == self.tabs[self.active_tab]:
+            self.needs_animation_frame = True
         self.lock.release()
 
     def set_needs_animation_frame(self):
@@ -684,17 +694,17 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             self.lock.acquire(blocking=True)
-            self.display_scheduled = False
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
-            self.lock.release()
             active_tab.task_runner.schedule_task(
                 Task(active_tab.run_animation_frame, scroll))
+            self.lock.release()
         self.lock.acquire(blocking=True)
-        if not self.display_scheduled:
+        if not self.display_scheduled and self.needs_animation_frame:
             if USE_BROWSER_THREAD:
                 threading.Timer(REFRESH_RATE_SEC, callback).start()
             self.display_scheduled = True
+            self.needs_animation_frame = False
         self.lock.release()
 
     def handle_down(self):
@@ -916,6 +926,4 @@ if __name__ == "__main__":
                 active_tab.display_scheduled = False
                 browser.render()
         browser.raster_and_draw()
-        if browser.needs_animation_frame:
-            browser.schedule_animation_frame()
-        browser.needs_animation_frame = False
+        browser.schedule_animation_frame()

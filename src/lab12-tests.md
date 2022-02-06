@@ -100,7 +100,7 @@ Testing TabWrapper
     >>> browser.scroll == 0
     True
 
-    >>> browser.commit("test-url", 1, 24, [3])
+    >>> browser.commit(browser.tabs[0], "test-url", 1, 24, [3])
     >>> browser.url
     'test-url'
     >>> browser.scroll
