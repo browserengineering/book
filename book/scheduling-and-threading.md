@@ -923,20 +923,15 @@ category. When I ran it on my computer, it said:
     Time in render on average: 20ms
 
 Over a total of 100 frames of animation, the browser spent about 66ms rastering
-and drawing per frame.[^raster-draw] Therefore, moving that to a second thread
-has the potential to reduce total rendering time from 88ms to 66 ms by running
-them in parallel. In addition, there would only be 20ms delay to any other
-main-thread task that wants to run after rendering.
-
-[^raster-draw]: When I first wrote this section of the chapter, I was surprised
-at how high the raster and draw time was, so I went back and added the separate
-draw timer that you see in the code above. Profiling your code often yields
-interesting insights!
+and drawing per frame. Therefore, moving that to a second thread
+has the potential to reduce total rendering time from 88ms to 66ms by running
+the two halves in parallel. In addition, there would only be a 20ms delay to any
+other main-thread task that wants to run after rendering.
 
 ::: {.further}
 
 If you profile just raster and draw, you'll find that there is lots of time
-spent doing both. Within draw, each surface-drawing-into-surface steps(of which
+spent doing both. Within draw, each surface-drawing-into-surface steps (of which
 there are three) take a significant amount of time. I told you that
 [optimizing surfaces](visual-effects.md#optimizing-surface-use) was important!
 In any case, I encourage you to do this profiling, to see for yourself.
@@ -947,11 +942,11 @@ hardware. Skia also supports this, so you could try it. But raster and draw
 sometimes really do take a lot of time on complex pages, even
 with the GPU. So rendering pipeline parallelism is a performance win regardless.
 
-But now that leaves the browser thread unresponsive to clicks and scrolls! It
-would be shape for handling clicks to be blocked on raster. For this reason,
-modern browsers run raster and draw on [*yet other* threads or
-processes][renderingng-architecture]. This leaves the browser thread extremely
-responsive to input.
+But now that leaves the browser thread unresponsive to clicks and scrolls---it's
+not good to wait around 66ms before *starting* to handle a click event! For
+this reason, modern browsers run raster and draw on [*yet other* threads or
+processes][renderingng-architecture]. This further change leaves the browser
+thread extremely responsive to input.
 
 [renderingng-architecture]: https://developer.chrome.com/blog/renderingng-architecture/#process-and-thread-structure
 :::
@@ -1938,3 +1933,11 @@ present.
    rendering cadence. This problem can be lessened by *prioritizing* rendering
    tasks: placing them in a separate queue that can take priority over
    other tasks. Implement this.
+
+* *Raster-and-draw thread*: the browser thread is currently not very responsive
+   to input events, because raster and draw are so[slow]
+   (#parallel-rendering). Fix this by adding a raster-and-draw thread
+   controlled by the browser thread, so that the browser thread is no longer
+   blocked on this work. Be careful to take into account that SDL is not
+   thread-safe, so all of the steps that directly use SDL still need to happen
+   on the browser thread.
