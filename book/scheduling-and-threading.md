@@ -719,7 +719,7 @@ The cadence of rendering
 
 So what should this cadence be? Well, clearly it shouldn't go faster
 than the display hardware can refresh. On most computers, this is 60 times
-per second, or 16ms per frame (`60 * 16.66ms ~= 1s`).
+per second, or 16ms per frame (`60*16.66ms ~= 1s`).
 
 Ideally, the cadence shouldn't be slower than that either, so that animations
 are as smooth as possibile. This was discussed briefly in Chapter 2 as well,
@@ -877,15 +877,10 @@ class Tab:
         self.num_renders = 0
 
     def render(self):
-        # ...
+        if not self.needs_render:
+            return
         timer = Timer()
         timer.start()
-        style(self.nodes, sorted(self.rules,
-            key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
-        self.document.layout()
-        self.display_list = []
-        self.document.paint(self.display_list)
         # ...
         self.time_in_style_layout_and_paint += timer.stop()
         self.num_renders += 1
@@ -904,40 +899,28 @@ class Tab:
 ``` {.python}
 class Browser:
     def __init__(self):
-        self.time_in_raster = 0
+        self.time_in_raster_and_draw = 0
         self.time_in_draw = 0
         self.num_raster_and_draws = 0
 
     def raster_and_draw(self):
+
         if not self.needs_raster_and_draw:
             return
+        self.lock.acquire(blocking=True)
+        raster_and_draw_timer = Timer()
+        raster_and_draw_timer.start()
+        # ...
+        self.time_in_rater_and_draw += raster_and_draw_timer.stop()
         self.num_raster_and_draws += 1
-
-        raster_timer = Timer()
-        raster_timer.start()
-        self.raster_chrome()
-        self.raster_tab()
-        self.time_in_raster += raster_timer.stop()
-
-        draw_timer = Timer()
-        draw_timer.start()
-        self.draw()
-        self.time_in_draw += draw_timer.stop()
-        self.needs_raster_and_draw = False
 
     def handle_quit(self):
         print("""Time in raster: {:>.6f}s
-    ({:>.6f}ms per raster run on average;
+    ({:>.6f}ms per raster-and-draw run on average;
     {} total rasters)""".format(
-            self.time_in_raster,
-            self.time_in_raster / \
+            self.time_in_raster_and_draw,
+            self.time_in_raster_and_draw / \
                 self.num_raster_and_draws * 1000,
-            self.num_raster_and_draws))
-        print("""Time in draw: {:>.6f}s
-    ({:>.6f}ms per draw run on average;
-    {} total draw updates)""".format(
-            self.time_in_draw,
-            self.time_in_draw / self.num_raster_and_draws * 1000,
             self.num_raster_and_draws))
 ```
 
