@@ -1291,9 +1291,9 @@ the bit for a non-active tab.^[The `Browser` use-cases that set this dirty bit
 also need a lock, but all of the calling functions already hold the lock. If
 they tried to call the version that locks then a [deadlock] would occur.]
 
-Setting the bit only for active tabs not only prevents others from setting a
+Setting the bit only for active tabs prevents others from setting a
 dirty bit they don't need (because there is nothing to display for a non-active
-tab), but also elegantly prevents any `requestAnimationFrame`
+tab), and elegantly prevents any `requestAnimationFrame`
 callbacks from running. Try making a second tab while the counter demo is
 running, then go back to the demo tab. Notice that it stopped counting up
 while the other tab was visible, and resumes when it is made visible again!
