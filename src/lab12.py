@@ -306,7 +306,7 @@ class Tab:
             self.task_runner = SingleThreadedTaskRunner(self)
         self.task_runner.start()
 
-        self.time_in_style_layout_and_paint = 0.0
+        self.time_in_render = 0.0
         self.num_renders = 0
 
         with open("browser8.css") as f:
@@ -442,7 +442,7 @@ class Tab:
             y = obj.y
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height))
-        self.time_in_style_layout_and_paint += timer.stop()
+        self.time_in_render += timer.stop()
         self.num_renders += 1
         self.needs_render = False
 
@@ -509,13 +509,9 @@ class Tab:
             self.load(back)
 
     def handle_quit(self):
-        print("""Time in style, layout and paint: {:>.6f}s
-    ({:>.6f}ms per render on average;
-    {} total renders)""".format(
-            self.time_in_style_layout_and_paint,
-            self.time_in_style_layout_and_paint / \
-                self.num_renders * 1000,
-            self.num_renders))
+        print("Time in render on average: {:>.0f}ms".format(
+            self.time_in_render / \
+                self.num_renders * 1000))
 
 
 WIDTH, HEIGHT = 800, 600
@@ -646,10 +642,10 @@ class Browser:
 
     def commit(self, tab, url, scroll, tab_height, display_list):
         self.lock.acquire(blocking=True)
-        self.display_scheduled = False
         if tab != self.tabs[self.active_tab]:
             self.lock.release()
             return
+        self.display_scheduled = False
         if url != self.url or scroll != self.scroll:
             self.set_needs_raster_and_draw()
         self.url = url
@@ -866,13 +862,9 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        print("""Time in raster-and-draw: {:>.6f}s
-    ({:>.6f}ms per raster-and-draw run on average;
-    {} total rasters)""".format(
-            self.time_in_raster_and_draw,
+        print("Time in raster-and-draw on average: {:>.0f}ms".format(
             self.time_in_raster_and_draw / \
-                self.num_raster_and_draws * 1000,
-            self.num_raster_and_draws))
+                self.num_raster_and_draws * 1000))
 
         self.tabs[self.active_tab].task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)

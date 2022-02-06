@@ -886,21 +886,15 @@ class Tab:
         self.num_renders += 1
 
     def handle_quit(self):
-        print("""Time in style, layout and paint: {:>.6f}s
-    ({:>.6f}ms per render on average;
-    {} total renders)""".format(
-            self.time_in_style_layout_and_paint,
-            self.time_in_style_layout_and_paint / \
-                self.num_renders * 1000,
-            self.num_renders))
-        # ...
+        print("Time in render on average: {:>.0f}ms".format(
+            self.time_in_render / \
+                self.num_renders * 1000))
 ```
 
 ``` {.python}
 class Browser:
     def __init__(self):
         self.time_in_raster_and_draw = 0
-        self.time_in_draw = 0
         self.num_raster_and_draws = 0
 
     def raster_and_draw(self):
@@ -911,17 +905,13 @@ class Browser:
         raster_and_draw_timer = Timer()
         raster_and_draw_timer.start()
         # ...
-        self.time_in_rater_and_draw += raster_and_draw_timer.stop()
+        self.time_in_raster_and_draw += raster_and_draw_timer.stop()
         self.num_raster_and_draws += 1
 
     def handle_quit(self):
-        print("""Time in raster: {:>.6f}s
-    ({:>.6f}ms per raster-and-draw run on average;
-    {} total rasters)""".format(
-            self.time_in_raster_and_draw,
+        print("Time in raster-and-draw on average: {:>.0f}s".format(
             self.time_in_raster_and_draw / \
-                self.num_raster_and_draws * 1000,
-            self.num_raster_and_draws))
+                self.num_raster_and_draws * 1000))
 ```
 
 Now fire up the server and navigate to `/count`.^[The full URL will probably be
@@ -929,35 +919,14 @@ Now fire up the server and navigate to `/count`.^[The full URL will probably be
 on the window. The browser will print out the total time spent in each
 category. When I ran it on my computer, it said:
 
-Time in raster: 1.379575s
-    (13.659154ms per raster run on average;
-    101 total rasters)
-Time in draw: 2.961407s
-    (29.320861ms per draw run on average;
-    101 total draw updates)
-Time in style, layout and paint: 2.192260s
-    (21.922598ms per render on average;
-    100 total renders)
+    Time in raster-and-draw on average: 66ms
+    Time in render on average: 20ms
 
-Over a total of 100 frames of animation, the browser spent about 50ms
-rastering per frame,[^raster-draw] and 30ms drawing. That's a lot, and certainly
-greater than our 16ms time budget.
-
-On the other hand, the browser spent about 20ms per animation frame in the other
-phases, which is also a lot. We'll see how to optimize that in
-a future chapter.
-
-Based on these timings, the first thing to try is optimizing
-draw. I profiled it in more depth, and found that each of the
-surface-drawing-into-surface steps (of which there are three) take a
-significant amount of time.[^profile-draw] (I told you that
-[optimizing surfaces](visual-effects.md#optimizing-surface-use) was important!) 
-
-But even if those surfaces were optimized (not such an easy feat), raster is
-still very expensive. So we should see a win by running raster and draw on a
-parallel thread.
-
-[^profile-draw]: I encourage you to do this profiling, to see for yourself.
+Over a total of 100 frames of animation, the browser spent about 66ms rastering
+and drawing per frame.[^raster-draw] Therefore, moving that to a second thread
+has the potential to reduce total rendering time from 88ms to 66 ms by running
+them in parallel. In addition, there would only be 20ms delay to any other
+main-thread task that wants to run after rendering.
 
 [^raster-draw]: When I first wrote this section of the chapter, I was surprised
 at how high the raster and draw time was, so I went back and added the separate
@@ -965,11 +934,26 @@ draw timer that you see in the code above. Profiling your code often yields
 interesting insights!
 
 ::: {.further}
+
+If you profile just raster and draw, you'll find that there is lots of time
+spent doing both. Within draw, each surface-drawing-into-surface steps(of which
+there are three) take a significant amount of time. I told you that
+[optimizing surfaces](visual-effects.md#optimizing-surface-use) was important!
+In any case, I encourage you to do this profiling, to see for yourself.
+
 The best way to optimize `draw` is to perform raster and draw on the GPU (and
 modern browsers do this), so that the draws can happen in parallel in GPU
 hardware. Skia also supports this, so you could try it. But raster and draw
 sometimes really do take a lot of time on complex pages, even
 with the GPU. So rendering pipeline parallelism is a performance win regardless.
+
+But now that leaves the browser thread unresponsive to clicks and scrolls! It
+would be shape for handling clicks to be blocked on raster. For this reason,
+modern browsers run raster and draw on [*yet other* threads or
+processes][renderingng-architecture]. This leaves the browser thread extremely
+responsive to input.
+
+[renderingng-architecture]: https://developer.chrome.com/blog/renderingng-architecture/#process-and-thread-structure
 :::
 
 Slow scripts
