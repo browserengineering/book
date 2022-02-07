@@ -938,8 +938,8 @@ significant amount of time. I told you that
 [optimizing surfaces](visual-effects.md#optimizing-surface-use) was important!
 In any case, I encourage you to do this profiling, to see for yourself.
 
-The best way to optimize `draw` is to perform raster and draw on the GPU---
-modern browsers do this---so that the draws can happen in parallel in GPU
+The best way to optimize `draw` is to perform raster and draw on the
+GPU---modern browsers do this---so that the draws can happen in parallel in GPU
 hardware. Skia supports GPU raster, so you could try it. But raster and draw
 sometimes really do take a lot of time on complex pages, even with the GPU. So
 rendering pipeline parallelism is a performance win regardless, and if it's
@@ -948,9 +948,9 @@ done in a separate process, there are also security advantages.
 Further, even with the second thread, the browser thread is somewhat
 unresponsive to clicks and scrolls---it's not good to wait around 66ms
 before *starting* to handle a click event! For this reason, modern browsers run
-raster and draw on[*yet other* threads or processes][renderingng-architecture].
-[^thread-exercise] This change finally the browser thread extremely responsive
-to input.
+raster and draw on [*yet more* threads or processes][renderingng-architecture].
+ This change finally the browser thread extremely responsive
+to input.[^thread-exercise]
 
 [^thread-exercise]: I've left this task to an exercise.
 
