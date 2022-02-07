@@ -934,9 +934,9 @@ the second thread.
 
 If you profile just raster and draw, you'll find that there is lots of time
 spent doing both. Within draw, each drawing-into-surface step takes a
-significant amount of time. I told you that[optimizing surfaces]
-(visual-effects.md#optimizing-surface-use) was important! In any case, I
-encourage you to do this profiling, to see for yourself.
+significant amount of time. I told you that
+[optimizing surfaces](visual-effects.md#optimizing-surface-use) was important!
+In any case, I encourage you to do this profiling, to see for yourself.
 
 The best way to optimize `draw` is to perform raster and draw on the GPU---
 modern browsers do this---so that the draws can happen in parallel in GPU
