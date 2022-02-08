@@ -31,17 +31,24 @@ from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import DocumentLayout, DrawLine, parse_color
 
-class Timer:
-    def __init__(self):
-        self.time = None
+class MeasureTime:
+    def __init__(self, name):
+        self.name = name
+        self.start_time = None
+        self.total_s = 0
+        self.count = 0
 
     def start(self):
-        self.time = time.time()
+        self.start_time = time.time()
 
     def stop(self):
-        result = time.time() - self.time
-        self.time = None
-        return result
+        self.total_s += time.time() - self.start_time
+        self.count += 1
+        self.start_time = None
+
+    def text(self):
+        avg = self.total_s / self.count
+        return "Time in {} on average: {:>.0f}ms".format(self.name, avg * 1000)
 
 FONTS = {}
 
@@ -304,8 +311,7 @@ class Tab:
             self.task_runner = SingleThreadedTaskRunner(self)
         self.task_runner.start()
 
-        self.time_in_render = 0.0
-        self.num_renders = 0
+        self.measure_render = MeasureTime("render")
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -423,8 +429,7 @@ class Tab:
     def render(self):
         if not self.needs_render:
             return
-        timer = Timer()
-        timer.start()
+        self.measure_render.start()
         style(self.nodes, sorted(self.rules,
             key=cascade_priority))
         self.document = DocumentLayout(self.nodes)
@@ -440,8 +445,7 @@ class Tab:
             y = obj.y
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height))
-        self.time_in_render += timer.stop()
-        self.num_renders += 1
+        self.measure_render.stop()
         self.needs_render = False
 
     def click(self, x, y):
@@ -505,11 +509,6 @@ class Tab:
             self.history.pop()
             back = self.history.pop()
             self.load(back)
-
-    def handle_quit(self):
-        print("Time in render on average: {:>.0f}ms".format(
-            self.time_in_render / \
-                self.num_renders * 1000))
 
 
 WIDTH, HEIGHT = 800, 600
@@ -578,7 +577,7 @@ class TaskRunner:
             needs_quit = self.needs_quit
             self.lock.release()
             if needs_quit:
-                self.tab.handle_quit()
+                self.handle_quit()
                 return
 
             task = None
@@ -588,6 +587,9 @@ class TaskRunner:
             self.lock.release()
             if task:
                 task.run()
+
+    def handle_quit(self):
+        print(self.tab.measure_render.text())
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
@@ -613,8 +615,7 @@ class Browser:
         self.url = None
         self.scroll = 0
 
-        self.time_in_raster_and_draw = 0
-        self.num_raster_and_draws = 0
+        self.measure_raster_and_draw = MeasureTime("raster-and-draw")
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -671,15 +672,13 @@ class Browser:
         if not self.needs_raster_and_draw:
             return
         self.lock.acquire(blocking=True)
-        raster_and_draw_timer = Timer()
-        raster_and_draw_timer.start()
+        self.measure_raster_and_draw.start()
 
         self.raster_chrome()
         self.raster_tab()
         self.draw()
 
-        self.time_in_raster_and_draw += raster_and_draw_timer.stop()
-        self.num_raster_and_draws += 1
+        self.measure_raster_and_draw.stop()
         self.needs_raster_and_draw = False
         self.lock.release()
 
@@ -860,10 +859,7 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        print("Time in raster-and-draw on average: {:>.0f}ms".format(
-            self.time_in_raster_and_draw / \
-                self.num_raster_and_draws * 1000))
-
+        print(self.measure_raster_and_draw.text())
         self.tabs[self.active_tab].task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
