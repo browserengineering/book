@@ -845,74 +845,88 @@ web page is very large or complex.
 
 What if we ran raster and draw *in parallel* with the main thread, by using CPU
 parallelism? After all, they take as input only the display list and not the
-DOM. That sounds fun to try, but before adding such complexity, let's
-instrument the browser and measure how much time is really being spent in
-raster and draw.^[Pro tip: always measure before optimizing. You'll often
-be surprised at where the bottlenecks are.]
+DOM.
 
-Add a simple class measuring time spent:
+That sounds fun to try, but before adding such complexity, let's
+instrument the browser and measure how much time is really being spent
+in raster and draw.^[Pro tip: always measure before optimizing. You'll
+often be surprised at where the bottlenecks are.] We'll want to
+average across multiple raster-and-draw cycles:
 
 ``` {.python}
-class Timer:
-    def __init__(self):
-        self.time = None
+class MeasureTime:
+    def __init__(self, name):
+        self.name = name
+        self.start_time = None
+        self.total_s = 0
+        self.count = 0
 
+    def text(self):
+        avg = self.time_in_render / self.num_renders
+        return "Time in {} on average: {:>.0f}ms".format(self.name, avg * 1000)
+```
+
+We'll measure the time for something like raster and draw by just
+calling `start` and `stop` methods on one of these `MeasureTime`
+objects:
+
+``` {.python}
+class MeasureTime:
     def start(self):
         self.time = time.time()
 
     def stop(self):
-        result = time.time() - self.time
-        self.time = None
-        return result
+        self.total_s = time.time() - self.start_time
+        self.count += 1
+        self.start_time = None
 ```
 
-Count the total time spent in the two categories. We'll also need a
-`handle_quit` hook in `Tab`, called from `Browser`, to print out the `Tab`
-rendering time.
+Let's measure the total time for both render:
 
 ``` {.python}
 class Tab:
         # ...
-        self.time_in_render = 0.0
-        self.num_renders = 0
+        self.measure_render = MeasureTime("render")
 
     def render(self):
         if not self.needs_render:
             return
-        timer = Timer()
-        timer.start()
+        self.measure_render.start()
         # ...
-        self.time_in_render += timer.stop()
-        self.num_renders += 1
-
-    def handle_quit(self):
-        print("Time in render on average: {:>.0f}ms".format(
-            self.time_in_render / \
-                self.num_renders * 1000))
+        self.measure_render.stop()
 ```
+
+And raster-and-draw:
+
 
 ``` {.python}
 class Browser:
     def __init__(self):
-        self.time_in_raster_and_draw = 0
-        self.num_raster_and_draws = 0
+        self.measure_raster_and_draw = MeasureTime("raster-and-draw")
 
     def raster_and_draw(self):
-
         if not self.needs_raster_and_draw:
             return
         self.lock.acquire(blocking=True)
-        raster_and_draw_timer = Timer()
-        raster_and_draw_timer.start()
+        self.measure_raster_and_draw.start()
         # ...
-        self.time_in_raster_and_draw += raster_and_draw_timer.stop()
-        self.num_raster_and_draws += 1
-
-    def handle_quit(self):
-        print("Time in raster-and-draw on average: {:>.0f}ms".format(
-            self.time_in_raster_and_draw / \
-                self.num_raster_and_draws * 1000))
+        self.measure_raster_and_draw.stop()
 ```
+
+We can print out the timing measures when we quit:
+
+``` {.python}
+class Tab:
+    def handle_quit(self):
+        print(self.measure_render.text())
+
+class Browser:
+    def handle_quit(self):
+        print(self.measure_raster_and_draw.text())
+```
+
+Naturally we'll need to call the `Tab`'s `handle_quit` method before
+quitting, so it has a chance to print its timing data.
 
 Now fire up the server and navigate to `/count`.^[The full URL will probably be
 `http://localhost:8000/count`] When it's done counting, click the close button
@@ -923,7 +937,7 @@ category. When I ran it on my computer, it said:
     Time in render on average: 20ms
 
 Over a total of 100 frames of animation, the browser spent abou 20ms in `render`
-and aboutt 66ms in `raster_and_draw` per animation frame. Therefore, moving
+and about 66ms in `raster_and_draw` per animation frame. Therefore, moving
 `raster_and_draw` to a second thread has the potential to reduce total
 rendering time from 88ms to 66ms by running the two operations in parallel. In
 addition, there would only be a 20ms delay to any other main-thread task that
