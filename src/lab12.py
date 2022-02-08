@@ -260,9 +260,11 @@ class JSContext:
         def run_load():
             headers, body = request(
                 full_url, self.tab.url, payload=body)
-            self.tab.task_runner.schedule_task(
-                Task(self.dispatch_xhr_onload, body, handle))
-            return body
+            task = Task(self.dispatch_xhr_onload, body, handle)
+            if is_async:
+                self.tab.task_runner.schedule_task(task)
+            else:
+                return body
 
         if not is_async:
             return run_load(is_async)

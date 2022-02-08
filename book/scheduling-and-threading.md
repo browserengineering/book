@@ -358,8 +358,7 @@ class JSContext:
 ```
 
 Then, we'll define a function that makes the request and enqueues a
-task for running callbacks:^[For async requests, the `return` at the
-end of `run_load` is meaningless; it's only there for the sync version.]
+task for running callbacks:
 
 ``` {.python}
 class JSContext:
@@ -368,9 +367,10 @@ class JSContext:
         def run_load():
             headers, body = request(
                 full_url, self.tab.url, payload=body)
-            self.tab.task_runner.schedule_task(
-                Task(self.dispatch_xhr_onload, body, handle))
-            return body
+            if is_async:
+                self.tab.task_runner.schedule_task(task)
+            else:
+                return body
 ```
 
 Finally, depending on the `is_async` flag the browser will either call
@@ -381,7 +381,7 @@ argument to the `Thread` constructor:
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body, is_async, handle):
         # ...
-        if is_async:
+        if not is_async:
             return run_load(is_async)
         else:
             load_thread = threading.Thread(target=run_load)
@@ -452,7 +452,7 @@ between. To avoid having two rendering tasks we'll add a boolean
 called `needs_animation_frame` to each `Tab` which indicates
 whether a rendering task is scheduled:
 
-``` {.python expected=False}
+``` {.python}
 class Tab:
     def __init__(self, browser):
         # ...
