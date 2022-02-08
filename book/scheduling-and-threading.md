@@ -923,7 +923,7 @@ category. When I ran it on my computer, it said:
     Time in render on average: 20ms
 
 Over a total of 100 frames of animation, the browser spent abou 20ms in `render`
-and aboutt 66ms in `raster_and_draw` per animation frame. Therefore, moving
+and about 66ms in `raster_and_draw` per animation frame. Therefore, moving
 `raster_and_draw` to a second thread has the potential to reduce total
 rendering time from 88ms to 66ms by running the two operations in parallel. In
 addition, there would only be a 20ms delay to any other main-thread task that
