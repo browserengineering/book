@@ -918,7 +918,7 @@ We can print out the timing measures when we quit:
 ``` {.python}
 class Tab:
     def handle_quit(self):
-        print(self.measure_render.text())
+        print(self.tab.measure_render.text())
 
 class Browser:
     def handle_quit(self):
