@@ -862,7 +862,7 @@ class MeasureTime:
         self.count = 0
 
     def text(self):
-        avg = self.time_in_render / self.num_renders
+        avg = self.total_s / self.count
         return "Time in {} on average: {:>.0f}ms".format(self.name, avg * 1000)
 ```
 
@@ -873,10 +873,10 @@ objects:
 ``` {.python}
 class MeasureTime:
     def start(self):
-        self.time = time.time()
+        self.start_time = time.time()
 
     def stop(self):
-        self.total_s = time.time() - self.start_time
+        self.total_s += time.time() - self.start_time
         self.count += 1
         self.start_time = None
 ```
