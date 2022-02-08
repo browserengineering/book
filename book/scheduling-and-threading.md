@@ -228,7 +228,7 @@ class JSContext:
         threading.Timer(time / 1000.0, run_callback).start()
 ```
 
-Now only the main thread will call `evaljs`, which is better. But now
+Now only the primary thread will call `evaljs`,. But now
 we have two threads accessing the `task_runner`: the main thread, to
 run tasks, and the timer thread, to add them. This is a [race
 condition](https://en.wikipedia.org/wiki/Race_condition) that can
