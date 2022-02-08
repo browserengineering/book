@@ -39,15 +39,15 @@ class MeasureTime:
         self.count = 0
 
     def start(self):
-        self.time = time.time()
+        self.start_time = time.time()
 
     def stop(self):
-        self.total_s = time.time() - self.start_time
+        self.total_s += time.time() - self.start_time
         self.count += 1
         self.start_time = None
 
     def text(self):
-        avg = self.time_in_render / self.num_renders
+        avg = self.total_s / self.count
         return "Time in {} on average: {:>.0f}ms".format(self.name, avg * 1000)
 
 FONTS = {}
@@ -579,7 +579,7 @@ class TaskRunner:
             needs_quit = self.needs_quit
             self.lock.release()
             if needs_quit:
-                self.tab.handle_quit()
+                self.handle_quit()
                 return
 
             task = None
@@ -591,7 +591,7 @@ class TaskRunner:
                 task()
 
     def handle_quit(self):
-        print(self.measure_render.text())
+        print(self.tab.measure_render.text())
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
