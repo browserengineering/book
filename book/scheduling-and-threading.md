@@ -85,7 +85,9 @@ class Tab:
 
 First-in-first-out is a simplistic way to choose which task to run
 next, and real browsers have sophisticated *schedulers* which consider
-things like XXX.
+[many different factors][chrome-scheduling].
+
+[chrome-scheduling]: https://blog.chromium.org/2015/04/scheduling-tasks-intelligently-for_30.html
 
 To run those tasks, we need to call the `run` method on our
 `TaskRunner`, which we can do in the main event loop:
@@ -322,7 +324,10 @@ function XMLHttpRequest() {
 ```
 
 When a script calls the `open` method on an `XMLHttpRequest` object,
-we'll now allow the `is_async` flag to be true:
+we'll now allow the `is_async` flag to be true:[^async-default]
+
+[^async-default]: In browsers, the default for `is_async` is `true`,
+    which the code below does not implement just for expedience.
 
 ``` {.javascript file=runtime}
 XMLHttpRequest.prototype.open = function(method, url, is_async) {
@@ -367,10 +372,9 @@ class JSContext:
         def run_load():
             headers, body = request(
                 full_url, self.tab.url, payload=body)
-            if is_async:
-                self.tab.task_runner.schedule_task(task)
-            else:
-                return body
+            task = Task(self.dispatch_xhr_onload, body, handle)
+            self.tab.task_runner.schedule_task(task)
+            return body
 ```
 
 Finally, depending on the `is_async` flag the browser will either call
