@@ -51,6 +51,34 @@ never easy! But these architectural changes are a key optimization
 behind modern browsers, and enable many advanced features discussed in
 this and later chapters.
 
+::: {.further}
+Thinking of the browser as a rendering pipeline is strongly influenced
+by the history of graphics and games. High-performance games have a lot in
+common with a browser in this sense, especially those that use
+[scene graphs](https://en.wikipedia.org/wiki/Scene_graph), which are a lot
+like the DOM. Games and browsers are both driven by event loops that
+convert a representation of the scene graph into a display list, and the
+ display list into pixels.
+
+On the other hand, there are some aspects of browsers that are *very* different
+than games. The most important difference is that in games, the programmer
+almost always knows *in advance* what scene graphs will be provided. They
+can then pre-optimize the pipeline to make it super fast for those graphs.
+This is why games often take a while to load, because they are uploading
+hyper-optimized code and pre-rendered data to the CPU and GPU memory.
+
+Browsers, on the other hand, need to load arbritrary web pages, and do so
+extremely fast. So they can't spend much time optimizing anything, and instead
+have to get right to the business of pushing pixels. This important difference
+makes for a very different set of tradeoffs, and is why browsers often
+seen less fancy and smooth than games.
+
+Native apps also have the equivalent of a known-in-advance scene graph, though
+they don't have the advantage of tolerating a slow load time. As a consequence,
+they sometimes have a fancier user experience than equivalent websites, but not
+nearly so much as games.
+:::
+
 Task queues
 ===========
 
@@ -449,6 +477,7 @@ function __runXHROnload(body, handle) {
 And there you have it. With the task machinery and only a few more lines of
 non-plumbing code, we can support lots of new features, and `setTimeout` and
 async `XMLHttpRequest` are only the start.
+
 
 Rendering pipeline tasks
 ========================
@@ -1031,6 +1060,24 @@ but this has its limits. So the only way to keep the browser
 guaranteed-responsive is to run key interactions in parallel with JavaScript.
 Luckily, it's pretty easy to use the raster and draw thread we're planning
 to *also* scroll and interact with browser chrome.
+
+::: {.further}
+
+Threads are a much more powerful construct in recent decades, due to the
+emergence of multi-core CPUs. Before that, threads existed, but were a
+mechanism for improving *responsiveness* via pre-emptive multitasking, 
+but without increasing *throughput* (fraames per second).
+
+These days, a typical desktop computer can run many threads simultaneously, and
+even phones have several cores plus a highly parallel GPU. However, on phones
+it's difficult to make maximum use of all of the threads for rendering
+parallelism, because if you turn on all of the cores, the battery will drain
+quickly. In addition, there are usually system processes (such as to listen
+to the wireless radio or manage the screen and input) running in the background
+on one or more cores anyway, so the actual parallelism available to the browser
+might be in effect just two cores.
+:::
+
 
 The browser thread
 ==================
