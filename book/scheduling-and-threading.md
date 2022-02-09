@@ -134,6 +134,36 @@ pages, or only if there isn't a higher-priority user action to respond
 to. A browser could even have multiple task runners, optimized for
 different use cases.
 
+
+::: {.further}
+Thinking of the browser as a rendering pipeline is strongly influenced
+by the history of graphics and games. High-performance games have a lot in
+common with a browser in this sense, especially those that use
+[scene graphs](https://en.wikipedia.org/wiki/Scene_graph), which are a lot
+like the DOM. Games and browsers are both driven by event loops that
+convert a representation of the scene graph into a display list, and the
+ display list into pixels.
+
+On the other hand, there are some aspects of browsers that are *very* different
+than games. The most important difference is that in games, the programmer
+almost always knows *in advance* what scene graphs will be provided. They
+can then pre-optimize the pipeline to make it super fast for those graphs.
+This is why games often take a while to load, because they are uploading
+hyper-optimized code and pre-rendered data to the CPU and GPU memory.
+
+Browsers, on the other hand, need to load arbritrary web pages, and do so
+extremely fast. So they can't spend much time optimizing anything, and instead
+have to get right to the business of pushing pixels. This important difference
+makes for a very different set of tradeoffs, and is why browsers often
+feel less fancy and smooth than games.
+
+Native apps also have the equivalent of a known-in-advance scene graph, though
+they don't have the advantage of tolerating a slow load time. As a consequence,
+they sometimes have a fancier user experience than equivalent websites, but not
+nearly so much as games.
+:::
+
+
 Timers and setTimeout
 =====================
 
@@ -1029,6 +1059,24 @@ guaranteed-responsive is to run key interactions in parallel with JavaScript.
 Luckily, it's pretty easy to use the raster and draw thread we're planning
 to *also* scroll and interact with browser chrome.
 
+::: {.further}
+
+Threads are a much more powerful construct in recent decades, due to the
+emergence of multi-core CPUs. Before that, threads existed, but were a
+mechanism for improving *responsiveness* via pre-emptive multitasking, 
+but without increasing *throughput* (fraames per second).
+
+These days, a typical desktop computer can run many threads simultaneously, and
+even phones have several cores plus a highly parallel GPU. However, on phones
+it's difficult to make maximum use of all of the threads for rendering
+parallelism, because if you turn on all of the cores, the battery will drain
+quickly. In addition, there are usually system processes (such as to listen
+to the wireless radio or manage the screen and input) running in the background
+on one or more cores anyway, so the actual parallelism available to the browser
+might be in effect just two cores.
+:::
+
+
 The browser thread
 ==================
 
@@ -1392,11 +1440,12 @@ Skia is thread-safe, but SDL may not be.
 Threaded scrolling
 ==================
 
-Two sections back we talked about how important it is to run scrolling on the 
-browser thread, to avoid slow scripts. But right now, even though there
-is a browser thread, scrolling still happens in a `Task` on the main thread.
-Let's now make scrolling truly *threaded*, meaning it runs on the browser
-thread in parallel with scripts and other main thread work.
+Two sections back we talked about how important it is to run scrolling on the
+browser thread, to avoid slow scripts. But right now, even though there is a
+browser thread, scrolling still happens in a `Task` on the main thread. Let's
+now make scrolling truly *threaded*, meaning it runs on the browser thread in
+parallel with scripts and other main thread work, *including*
+calls to `render`.
 
 Threaded scrolling is quite tricky to implement. The reason is that both the
 browser thread *and* the main thread can affect scroll. For example, when
@@ -1405,10 +1454,11 @@ the document could change, leading to a potential change of scroll offset to
 clamp it to that height. What should we do if the two threads disagree about
 the scroll offset?
 
-The best policy is to respect the scroll offset the user last observed, unless
-it's incompatible with the web page. In other words, use the browser thread
-scroll, unless a new web page has loaded or the scroll exceeds the current
-document height. Let's implement that.
+The best policy is to respect the scroll offset the *user* last saw,^[In
+other words, the scroll leading to the last time pixels were updated on the
+screen.] unless it's incompatible with the web page. This translates to using
+the browser thread scroll position, unless a new web page has loaded or the
+scroll exceeds the current document height. Let's implement that.
 
 The trickiest part is how to communicate a browser thread scroll offset to the
 main thread, and integrate it with the rendering pipeline. It'll work like
@@ -1431,7 +1481,6 @@ class Browser:
         # ...
         self.scroll = scroll
         self.set_needs_raster_and_draw()
-        self.lock.release()
 ```
 
 The `set_active_tab` method is an interesting case, because it causes
@@ -1500,7 +1549,8 @@ class Tab:
 
 * When calling `commit`, only pass the scroll if `scroll_changed_in_tab` was
   set, and otherwise pass `None`. The commit will ignore the scroll if it is
-  `None`.
+  `None`. This avoids clobbering any browser thread scrolling that happened
+  in parallel with the latest main thread task work.
 
 ``` {.python}
 class Tab:
@@ -1516,12 +1566,13 @@ class Tab:
 That was pretty complicated, but we got it done. Fire up the counting demo and
 enjoy the newly smooth scrolling.
 
-Now let's step back from the code for a moment and consider the full scope and
-difficulty of scrolling in real browsers. It goes *way* beyond what we've
-implemented here. Unfortunately, due to some of this complexity, threaded
-scrolling is not always possible or feasible in real browsers. This means
-that they need to support both threaded and non-threaded scrolling modes, and
-all the complexity that entails.
+::: {.further}
+
+Consider the full scope and difficulty of scrolling in real browsers. It
+goes *way* beyond what we've implemented here. Unfortunately, due to some of
+this complexity, threaded scrolling is not always possible or feasible in real
+browsers. This means that they need to support both threaded and non-threaded
+scrolling modes, and all the complexity that entails.
 
 In the best browsers today, there are two primary reasons why threaded scrolling
 may fail to occur:
@@ -1542,16 +1593,19 @@ This situation is so important that there is also a special kind of event
 listener [designed just for it][designed-for].
 
 * Certain advanced (and thankfully uncommon) rendering features, such as
-[`background-attachment:
-fixed`](https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment).
-These features are complex and uncommon enough that that browsers disable
-threaded scrolling when they are present. Sometimes browsers simply
-disallow these features.[^not-supported]
+  [`background-attachment: fixed`]
+  (https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment).
+  These features are complex and uncommon enough that that browsers disable
+  threaded scrolling when they are present. Sometimes browsers simply *disallow
+  these features* on low-powered platforms in order to avoid slow scrolling.
+  [^not-supported]
 
 [designed-for]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#improving_scrolling_performance_with_passive_listeners
 
 [^not-supported]: Until 2020, Chromium-based browsers on Android did just this,
 and did not support `background-attachment: fixed`.
+
+:::
 
 Threaded loading
 ================
@@ -1589,11 +1643,10 @@ def run:
 thread = threading.Thread(target=run)
 thread.start()
 thread.join()
-while True:
-    print("Browser")
+print("Browser")
 ```
 
-will print "Thread" 100 times, and *only then* start printing "Browser".
+will print "Thread" 100 times, and then print "Browser".
 
 Define a new `async_request` function. This will start a thread. The thread will
 request the resource, store the result in `results`, and then return. The
@@ -1637,7 +1690,8 @@ def request(url, top_level_url, payload=None, lock=None):
             lock.release()
 ```
 
-Then we can use it in `load`. Note how we send off all of the requests first:
+Then we can use it in `load`. Note how we send off all of the requests first,
+starting with scripts:
 
 ``` {.python}
 class Tab:
@@ -1657,15 +1711,11 @@ class Tab:
                     script_url, url, script_results,
                     self.task_runner.lock)
             })
- 
-        self.rules = self.default_style_sheet.copy()
-        links = [node.attributes["href"]
-                 for node in tree_to_list(self.nodes, [])
-                 if isinstance(node, Element)
-                 and node.tag == "link"
-                 and "href" in node.attributes
-                 and node.attributes.get("rel") == "stylesheet"]
+```
 
+And style sheets:
+
+``` {.python}
         style_results = {}
         for link in links:
             style_url = resolve_url(link, url)
@@ -1818,9 +1868,9 @@ from anything later in the rendering pipeline than layout.
 By analogy with web pages that don't `preventDefault` a scroll, is it a good
 idea to try to optimistically move style and layout off the main thread for
 cases when JavaScript doesn't force it to be done otherwise? Maybe, but even
-setting aside this problem there are unfortunately other sources of forced
-style and layout. One example is our current implementation of `click`. The
-first line of this method forces a layout:
+setting aside JavaScript APIs, there are unfortunately *even more* sources of
+forced style and layout. One example is our current implementation of `click`.
+The first line of this method forces a layout:
 
 ``` {.python}
 class Tab:
@@ -1830,12 +1880,13 @@ class Tab:
 ```
 
 The call to `render` is a forced layout. It's needed because
-clicking needs to run hit testing, which in turn requires layout.
+clicking needs to run hit testing, which in turn requires layout. Fixing this
+would require even more fancy technology.
 
 It's not impossible to move style and layout off the main thread
-"optimistically", but here I outlined some of the reasons it's challenging. for
- browsers to do it. I expect that at some point in the future it will be
- achieved (maybe you'll be the one to do it?).
+"optimistically", but here I outlined some of the reasons it's challenging. I
+ expect that at some point in the future it will be achieved (maybe you'll be
+ the one to do it?).
 
 Summary
 =======
@@ -1854,8 +1905,7 @@ special JavaScript `requestAnimationFrame` callbacks in it, and at the end
 commits a display list to a second thread.
 
 * The second thread is the browser thread. It draws the display list to the
-screen and handles/dispatches input events, scrolls, and interactions with the
-browser chrome.
+screen, handles/dispatches input events, and scrolls.
 
 * Threads are useful for other kinds of tasks, such as network loading.
 
