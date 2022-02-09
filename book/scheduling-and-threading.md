@@ -1716,7 +1716,7 @@ class Tab:
 
 And style sheets:
 
-```
+``` {.python}
         style_results = {}
         for link in links:
             style_url = resolve_url(link, url)
