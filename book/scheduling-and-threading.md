@@ -1327,98 +1327,44 @@ forgot to add a lock; try removing some of the locks from your browser
 to see for yourself!
 
 
-Slow scripts
-============
-
-JavaScript can also be arbitrarily slow to run, of course. This is a problem,
-because these scripts can make the browser very janky and annoying to use---so
-annoying that you will quickly not want to use that browser. But don't take my
-word for it---let's implement an artificial slowdown and you can see for
-yourself.
-
-Add the slowdown to our counter page as follows, with a 200ms synchronous delay
-running JavaScript:
-
-``` {.javascript file=eventloop}
-var count = 0;
-var start_time = Date.now();
-var cur_frame_time = start_time;
-
-artificial_delay_ms = 200;
-
-function callback() {
-    var since_last_frame = Date.now() - cur_frame_time;
-    while (since_last_frame < artificial_delay_ms) {
-        var since_last_frame = Date.now() - cur_frame_time;
-    }
-    # ...
-}
-```
-
-To make the above code work, you'll need this small addition to the runtime 
-code to implement a subset of the [Date API][date-api]:
-
-[date-api]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
-
-``` {.javascript}
-function Date() {}
-Date.now = function() {
-    return call_python("now");
-}
-```
-and Python bindings:
-``` {.python}
-class JSContext:
-    def __init__(self, tab):
-        # ...
-        self.interp.export_function("now",
-            self.now)
-
-    def now(self):
-        return int(time.time() * 1000)
-```
-
-Now load the page and hold down the down-arrow button. Observe how inconsistent
-and janky the scrolling is. Compare with no artificial delay, which is pleasant
-to scroll.
-
-Browsers can and do optimize their JavaScript engines to be as fast as possible,
-but this has its limits. So the only way to keep the browser
-guaranteed-responsive is to run key interactions in parallel with JavaScript.
-Luckily, it's pretty easy to use the raster and draw thread we're planning
-to *also* scroll and interact with browser chrome.
-
 Threaded scrolling
 ==================
 
-Two sections back we talked about how important it is to run scrolling on the 
-browser thread, to avoid slow scripts. But right now, even though there
-is a browser thread, scrolling still happens in a `Task` on the main thread.
-Let's now make scrolling truly *threaded*, meaning it runs on the browser
-thread in parallel with scripts and other main thread work.
+Splitting the main thread from the browser thread means that the main
+thread can run a lot of JavaScript without slowing down the browser
+much. But it's still possible for really slow JavaScript to slow the
+browser down. For example, imagine our counter adds the following
+artificial slowdown:
 
-Threaded scrolling is quite tricky to implement. The reason is that both the
-browser thread *and* the main thread can affect scroll. For example, when
-loading a new page, scroll is set to 0; when running `innerHTML`, the height of
-the document could change, leading to a potential change of scroll offset to
-clamp it to that height. What should we do if the two threads disagree about
-the scroll offset?
+``` {.javascript file=eventloop}
+function callback() {
+    for (var i = 0; i < 1e9; i++);
+    // ...
+}
+```
 
-The best policy is to respect the scroll offset the user last observed, unless
-it's incompatible with the web page. In other words, use the browser thread
-scroll, unless a new web page has loaded or the scroll exceeds the current
-document height. Let's implement that.
+Now, every tick of the counter has an artificial pause during which
+the main thread is stuck running JavaScript. This means it can't
+respond to any events; for example, if you hold down the down array,
+the scrolling will be janky and annoying. To fix this, we need to move
+scrolling from the main thread to the browser thread.
 
-The trickiest part is how to communicate a browser thread scroll offset to the
-main thread, and integrate it with the rendering pipeline. It'll work like
-this:
+This is harder than it might seem, because the scroll offset can be
+affected by both the browser (when the user scrolls) and the main
+thread (when loading a new page or changing the height of the document
+via `innerHTML`). Now that the browser thread and the main thread run
+in parallel, they can disagree about the scroll offset.
 
-* When the browser thread changes scroll offset, store it in a `scroll` variable
-  on the `Browser`, set `needs_raster_and_draw`, and schedule an animation
-  frame. This will immediately apply the scroll offset to the screen (at the
-  next time `raster_and_draw` is called from the browser thread event loop).
-  Scheduling an animation frame is necessary only to notify the main thread
-  that scroll was changed.
+What should we do? The best we can do is to use the browser thread's
+scroll offset until the main thread tells us otherwise, unless that
+scroll offset is incompatible with the web page (by, say, exceeding
+the document height). To do this, we'll need the browser thread to
+inform the main thread about the current scroll offset, and then give
+the main thread the opportunity to *override* that scroll offset or to
+leave it unchanged.
+
+Let's implement that. To start, we'll need to store a `scroll`
+variable on the `Browser`, and update it when the user scrolls:
 
 ``` {.python}
 class Browser:
@@ -1433,25 +1379,27 @@ class Browser:
         self.lock.release()
 ```
 
-The `set_active_tab` method is an interesting case, because it causes
-scroll to be set back to 0, but we need the main thread to run in order
-to commit a new display list for the other tab. That's why this method doesn't
-call `set_needs_raster_and_draw`.
+This code sets `needs_raster_and_draw` to apply the new scroll offset.
+
+The scroll offset also needs to change when the user switches tabs,
+but in this case we don't know the right scroll offset yet. We need
+the main thread to run in order to commit a new display list for the
+other tab, and at that point we will have a new scroll offset as well.
+So in `set_active_tab`, we simply schedule a new animation frame:
 
 ``` {.python}
 class Browser:
     def set_active_tab(self, index):
         self.active_tab = index
-        self.scroll = 0
-        self.url = None
-        self.set_needs_animation_frame()
+        self.needs_animation_frame = True
 ```
 
-* When the browser thread decides to run the animation frame,^[Remember, it's
-  the browser thread, not the main thread, that decides the cadence of
-  animation frames.] pass the scroll as an argument to the `Task` that calls
-  `Tab.run_animation_frame`. `Tab.run_animation_frame` will set the scroll
-  variable on itself as the first step.
+So far, this is only updating the scroll offset on the browser thread.
+But the main thread eventually needs to know about the scroll offset,
+so it can pass it back to `commit`. So, when the `Browser` creates a
+rendering task for `run_animation_frame`, it should pass in the scroll
+offset. The `run_animation_frame` function can then store the scroll
+offset before doing anything else.
 
 ``` {.python}
 class Tab:
@@ -1466,15 +1414,16 @@ class Browser:
             self.lock.acquire(blocking=True)
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
-            active_tab.task_runner.schedule_task(
-                Task(active_tab.run_animation_frame, scroll))
+            task = Task(active_tab.run_animation_frame, scroll)
+            active_tab.task_runner.schedule_task(task)
             self.lock.release()
         # ...
 ```
 
-* When loading a new page in a `Tab`, override the scroll to 0. Do the same for
-  cases when the document height causes scroll clamping. If either of these
-  happened, note it in a new `scroll_changed_in_tab` variable on `Tab`.
+Now the browser thread can update the scroll offset. But the main
+thread can also modify the scroll offset, for example overriding it to
+0 when it loads a new page. We'll set a `scroll_changed_in_tab` flag
+to record when this happens:
 
 ``` {.python}
 class Tab:
@@ -1497,60 +1446,70 @@ class Tab:
         self.scroll = clamped_scroll
 ```
 
-* When calling `commit`, only pass the scroll if `scroll_changed_in_tab` was
-  set, and otherwise pass `None`. The commit will ignore the scroll if it is
-  `None`.
+Now `commit` can override the browser-passed scroll offset if this
+flag is set:
 
 ``` {.python}
 class Tab:
     def run_animation_frame(self, scroll):
         # ...
-        self.browser.commit(
-            self, self.url,
-            clamped_scroll if self.scroll_changed_in_tab \
-                else None, 
-            document_height, self.display_list)
+        scroll = None
+        if self.scroll_changed_in_tab:
+            scroll = self.scroll
+        commit = CommitForRaster(
+            url=self.url,
+            scroll=scroll,
+            height=document_height,
+            display_list=display_list
+        )
+        # ...
 ```
 
-That was pretty complicated, but we got it done. Fire up the counting demo and
-enjoy the newly smooth scrolling.
+Note that if the tab hasn't changed the scroll offset, we'll be
+committing a scroll offset of `None`. The browser thread can ignore
+the scroll offset in this case:
 
-Now let's step back from the code for a moment and consider the full scope and
-difficulty of scrolling in real browsers. It goes *way* beyond what we've
-implemented here. Unfortunately, due to some of this complexity, threaded
-scrolling is not always possible or feasible in real browsers. This means
-that they need to support both threaded and non-threaded scrolling modes, and
-all the complexity that entails.
+``` {.python}
+class Browser:
+    def commit(self, tab, url, scroll, tab_height, display_list):
+        if tab == self.tabs[self.active_tab]:
+            # ...
+            if commit.scroll != None:
+                self.scroll = commit.scroll
+```
 
-In the best browsers today, there are two primary reasons why threaded scrolling
-may fail to occur:
+That's it! If you try the counting demo now, you'll be able to scroll
+even during the artificial pauses. As you've seen, moving tasks to the
+browser thread can be challenging, but can also lead to a much more
+responsive browser. These same trade-offs are present in real
+browsers, at a much greater level of complexity.
 
-* Javascript events listening to a scroll. If the event handler
-for the [`scroll`][scroll-event] event calls `preventDefault` on the first such
-event (or via [`touchstart`][touchstart-event] on mobile devices), the scroll
-will not be threaded in most browsers. Our browser has not implemented these
-events, and so can avoid this situation.[^real-browser-threaded-scroll]
+::: {.further}
+Scrolling in real browsers goes *way* beyond what we've implemented
+here. For example, in a real browser JavaScript can listen to a scroll
+[`scroll`][scroll-event] event and call `preventDefault` to cancel
+scrolling. And some rendering features like `background-attachment:
+fixed` are hard to implement on browser thread.[^not-supported] For this
+reason, most real browsers implement both threaded and non-threaded
+scrolling, and fall back to non-threaded scrolling when these advanced
+features are used.[^real-browser-threaded-scroll] Concerns like this
+also drive [new JavaScript APIs][designed-for].
+:::
 
 [scroll-event]: https://developer.mozilla.org/en-US/docs/Web/API/Document/scroll_event
-[touchstart-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/touchstart_event
 
-[^real-browser-threaded-scroll]: A real browser would also have an optimization
-to disable threaded scrolling only if there was such an event listener, and
-transition back to threaded as soon as it doesn't see `preventDefault` called.
-This situation is so important that there is also a special kind of event
-listener [designed just for it][designed-for].
+[^real-browser-threaded-scroll]: Actually, a real browser only fall
+back to non-threaded scrolling when necessary. For example, it might
+disable threaded scrolling only if is a `scroll` event listener.
 
-* Certain advanced (and thankfully uncommon) rendering features, such as
-[`background-attachment:
-fixed`](https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment).
-These features are complex and uncommon enough that that browsers disable
-threaded scrolling when they are present. Sometimes browsers simply
-disallow these features.[^not-supported]
+[mdn-bg-fixed]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment
 
 [designed-for]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#improving_scrolling_performance_with_passive_listeners
 
-[^not-supported]: Until 2020, Chromium-based browsers on Android did just this,
-and did not support `background-attachment: fixed`.
+[^not-supported]: Our browser doesn't support any of these features,
+so it doesn't run into these difficulties. That's also a strategy;
+until 2020, Chromium-based browsers on Android, for example, did not
+support `background-attachment: fixed`.
 
 Threaded loading
 ================
