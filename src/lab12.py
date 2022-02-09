@@ -592,6 +592,9 @@ class TaskRunner:
     def handle_quit(self):
         print(self.tab.measure_render.text())
 
+    def handle_quit(self):
+        print(self.tab.measure_render.text())
+
 REFRESH_RATE_SEC = 0.016 # 16ms
 
 class Browser:
