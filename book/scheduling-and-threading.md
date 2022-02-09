@@ -962,8 +962,8 @@ extremely responsive to input, at the cost of even more complexity.
 
 [renderingng-architecture]: https://developer.chrome.com/blog/renderingng-architecture/#process-and-thread-structure
 
-The browser thread
-==================
+Two threads
+===========
 
 Running rendering in parallel with raster and draw would allow us to
 produce a new frame every 66ms, instead of every 88ms. But more
