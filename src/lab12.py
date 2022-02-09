@@ -529,6 +529,7 @@ class SingleThreadedTaskRunner:
     def __init__(self, tab):
         self.tab = tab
         self.needs_quit = False
+        self.lock = threading.Lock()
 
     def schedule_task(self, callback):
         callback.run()
@@ -900,8 +901,8 @@ if __name__ == "__main__":
         if not USE_BROWSER_THREAD:
             if active_tab.task_runner.needs_quit:
                 break
-            if active_tab.display_scheduled:
-                active_tab.display_scheduled = False
+            if browser.display_scheduled:
+                browser.display_scheduled = False
                 browser.render()
         browser.raster_and_draw()
         browser.schedule_animation_frame()
