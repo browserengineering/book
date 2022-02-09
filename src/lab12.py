@@ -401,11 +401,11 @@ class Tab:
 
     def set_needs_render(self):
         self.needs_render = True
-        self.browser.set_tab_needs_animation_frame(self)
+        self.browser.set_needs_animation_frame(self)
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
-        self.browser.set_tab_needs_animation_frame(self)
+        self.browser.set_needs_animation_frame(self)
 
     def run_animation_frame(self, scroll):
         self.scroll = scroll
@@ -658,18 +658,15 @@ class Browser:
         self.set_needs_raster_and_draw()
         self.lock.release()
 
-    def set_tab_needs_animation_frame(self, tab):
+    def set_needs_animation_frame(self, tab):
         self.lock.acquire(blocking=True)
         if tab == self.tabs[self.active_tab]:
             self.needs_animation_frame = True
         self.lock.release()
 
-    def set_needs_animation_frame(self):
-        self.needs_animation_frame = True
-
     def set_needs_raster_and_draw(self):
         self.needs_raster_and_draw = True
-        self.set_needs_animation_frame()
+        self.needs_animation_frame = True
 
     def raster_and_draw(self):
         if not self.needs_raster_and_draw:
@@ -717,7 +714,7 @@ class Browser:
         self.active_tab = index
         self.scroll = 0
         self.url = None
-        self.set_needs_animation_frame()
+        self.needs_animation_frame = True
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
