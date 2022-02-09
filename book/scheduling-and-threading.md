@@ -71,7 +71,7 @@ Browsers, on the other hand, need to load arbritrary web pages, and do so
 extremely fast. So they can't spend much time optimizing anything, and instead
 have to get right to the business of pushing pixels. This important difference
 makes for a very different set of tradeoffs, and is why browsers often
-seen less fancy and smooth than games.
+feel less fancy and smooth than games.
 
 Native apps also have the equivalent of a known-in-advance scene graph, though
 they don't have the advantage of tolerating a slow load time. As a consequence,
@@ -477,7 +477,6 @@ function __runXHROnload(body, handle) {
 And there you have it. With the task machinery and only a few more lines of
 non-plumbing code, we can support lots of new features, and `setTimeout` and
 async `XMLHttpRequest` are only the start.
-
 
 Rendering pipeline tasks
 ========================
