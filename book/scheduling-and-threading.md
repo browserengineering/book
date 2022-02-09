@@ -831,27 +831,17 @@ behavior when animating. Once you've read the whole chapter and implemented
 that thread, try removing this dirty bit and see for yourself!
 :::
 
-Parallel rendering
-==================
+Profiling rendering
+===================
 
-What happens if rendering takes much more than 16ms to finish and we're out of
-ideas for how to make it run more efficiently? If it's a rendering task that's
-slow, such as font loading (see [chapter 3][faster-text-loading]), if we're
-lucky we can make it faster. But sometimes it's not possible to make the code a
-lot faster, it just has a lot to do. In rendering, this could be because the
-web page is very large or complex.
+We now have a system for scheduling a rendering task every 16ms. But
+what if rendering takes longer than 16ms to finish? Before we answer
+this question, let's instrument the browser and measure how much time
+is really being spent rendering. It's important to always measure
+before optimizing, because the result often surprising.
 
-[faster-text-loading]: text.md#faster-text-layout
-
-What if we ran raster and draw *in parallel* with the main thread, by using CPU
-parallelism? After all, they take as input only the display list and not the
-DOM.
-
-That sounds fun to try, but before adding such complexity, let's
-instrument the browser and measure how much time is really being spent
-in raster and draw.^[Pro tip: always measure before optimizing. You'll
-often be surprised at where the bottlenecks are.] We'll want to
-average across multiple raster-and-draw cycles:
+Let's implement some simple instrumentation to measure time. We'll
+want to average across multiple raster-and-draw cycles:
 
 ``` {.python}
 class MeasureTime:
@@ -928,109 +918,56 @@ class Browser:
 Naturally we'll need to call the `Tab`'s `handle_quit` method before
 quitting, so it has a chance to print its timing data.
 
-Now fire up the server and navigate to `/count`.^[The full URL will probably be
-`http://localhost:8000/count`] When it's done counting, click the close button
-on the window. The browser will print out the total time spent in each
-category. When I ran it on my computer, it said:
+Now fire up the server, open our timer script, wait for it to finish
+counting, and then exit the browser. You should see it output timing
+data like this (from my computer):
 
     Time in raster-and-draw on average: 66ms
     Time in render on average: 20ms
 
-Over a total of 100 frames of animation, the browser spent abou 20ms in `render`
-and about 66ms in `raster_and_draw` per animation frame. Therefore, moving
-`raster_and_draw` to a second thread has the potential to reduce total
-rendering time from 88ms to 66ms by running the two operations in parallel. In
-addition, there would only be a 20ms delay to any other main-thread task that
-wants to run after rendering. That's more than enough of a win to justify
-the second thread.
+You can see that the browser spent about 20ms in `render` and about
+66ms in `raster_and_draw` per animation frame. That clearly blows
+through our 16ms budget. So, what can we do?
+
+Well, one option, of course, is optimizing raster-and-draw, or even
+render. And if we can, it's a great choice.[^see-go-further] But
+another option---complex, but worthwhile and done by every major
+browser---is to do the render step in parallel with the
+raster-and-draw step by adopting a multi-threaded architecture.
+
+Running the two operations in parallel would allow us to produce a new
+frame every 66ms, instead of every 88ms. But more importantly, since
+there's no point to running render more often than raster-and-draw,
+the render thread would have 46ms left over for run JavaScript, and
+events could be handled with a delay of no more than 20ms. That's more
+than enough of a win to justify the second thread.
+
+[^see-go-further]: See the go further at the end of this section for
+    some ideas on how to do this.
 
 ::: {.further}
-
-If you profile just raster and draw, you'll find that there is lots of time
-spent doing both. Within draw, each drawing-into-surface step takes a
-significant amount of time. I told you that
-[optimizing surfaces](visual-effects.md#optimizing-surface-use) was important!
-In any case, I encourage you to do this profiling, to see for yourself.
-
-The best way to optimize `draw` is to perform raster and draw on the
-GPU---modern browsers do this---so that the draws can happen in parallel in GPU
-hardware. Skia supports GPU raster, so you could try it. But raster and draw
-sometimes really do take a lot of time on complex pages, even with the GPU. So
-rendering pipeline parallelism is a performance win regardless, and if it's
-done in a separate process, there are also security advantages.
-
-Further, even with the second thread, the browser thread is somewhat
-unresponsive to clicks and scrolls---it's not good to wait around 66ms
-before *starting* to handle a click event! For this reason, modern browsers run
-raster and draw on [*yet more* threads or processes][renderingng-architecture].
- This change finally the browser thread extremely responsive
-to input.[^thread-exercise]
-
-[^thread-exercise]: I've left this task to an exercise.
-
-[renderingng-architecture]: https://developer.chrome.com/blog/renderingng-architecture/#process-and-thread-structure
+In our browser, a lot of time is spent in each drawing-into-surface
+step. That's why [optimizing surfaces][optimize-surfaces] is
+important! Modern browsers go a step further and perform raster and
+draw [on the GPU][skia-gpu], where a lot more parallelism is
+available. Even so, on complex pages raster and draw really do
+sometimes take a lot of time.
 :::
 
-Slow scripts
-============
+[optimize-surfaces]: visual-effects.md#optimizing-surface-use
 
-JavaScript can also be arbitrarily slow to run, of course. This is a problem,
-because these scripts can make the browser very janky and annoying to use---so
-annoying that you will quickly not want to use that browser. But don't take my
-word for it---let's implement an artificial slowdown and you can see for
-yourself.
+[skia-gpu]: https://skia.org/docs/user/api/skcanvas_creation/#gpu
 
-Add the slowdown to our counter page as follows, with a 200ms synchronous delay
-running JavaScript:
+::: {.further}
+Even with a second thread, the browser thread can wait up to 66ms
+before *starting* to handle a click event! For this reason, modern
+browsers use [*yet more*][renderingng-architecture] threads or
+processes. For example, raster-and-draw might run on its own thread,
+so that it can't block event handling. This makes the browser thread
+extremely responsive to input, at the cost of even more complexity.
+:::
 
-``` {.javascript file=eventloop}
-var count = 0;
-var start_time = Date.now();
-var cur_frame_time = start_time;
-
-artificial_delay_ms = 200;
-
-function callback() {
-    var since_last_frame = Date.now() - cur_frame_time;
-    while (since_last_frame < artificial_delay_ms) {
-        var since_last_frame = Date.now() - cur_frame_time;
-    }
-    # ...
-}
-```
-
-To make the above code work, you'll need this small addition to the runtime 
-code to implement a subset of the [Date API][date-api]:
-
-[date-api]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
-
-``` {.javascript}
-function Date() {}
-Date.now = function() {
-    return call_python("now");
-}
-```
-and Python bindings:
-``` {.python}
-class JSContext:
-    def __init__(self, tab):
-        # ...
-        self.interp.export_function("now",
-            self.now)
-
-    def now(self):
-        return int(time.time() * 1000)
-```
-
-Now load the page and hold down the down-arrow button. Observe how inconsistent
-and janky the scrolling is. Compare with no artificial delay, which is pleasant
-to scroll.
-
-Browsers can and do optimize their JavaScript engines to be as fast as possible,
-but this has its limits. So the only way to keep the browser
-guaranteed-responsive is to run key interactions in parallel with JavaScript.
-Luckily, it's pretty easy to use the raster and draw thread we're planning
-to *also* scroll and interact with browser chrome.
+[renderingng-architecture]: https://developer.chrome.com/blog/renderingng-architecture/#process-and-thread-structure
 
 The browser thread
 ==================
@@ -1391,6 +1328,67 @@ Skia is thread-safe, but SDL may not be.
 
 
 [gil]: https://wiki.python.org/moin/GlobalInterpreterLock
+
+Slow scripts
+============
+
+JavaScript can also be arbitrarily slow to run, of course. This is a problem,
+because these scripts can make the browser very janky and annoying to use---so
+annoying that you will quickly not want to use that browser. But don't take my
+word for it---let's implement an artificial slowdown and you can see for
+yourself.
+
+Add the slowdown to our counter page as follows, with a 200ms synchronous delay
+running JavaScript:
+
+``` {.javascript file=eventloop}
+var count = 0;
+var start_time = Date.now();
+var cur_frame_time = start_time;
+
+artificial_delay_ms = 200;
+
+function callback() {
+    var since_last_frame = Date.now() - cur_frame_time;
+    while (since_last_frame < artificial_delay_ms) {
+        var since_last_frame = Date.now() - cur_frame_time;
+    }
+    # ...
+}
+```
+
+To make the above code work, you'll need this small addition to the runtime 
+code to implement a subset of the [Date API][date-api]:
+
+[date-api]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
+
+``` {.javascript}
+function Date() {}
+Date.now = function() {
+    return call_python("now");
+}
+```
+and Python bindings:
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.interp.export_function("now",
+            self.now)
+
+    def now(self):
+        return int(time.time() * 1000)
+```
+
+Now load the page and hold down the down-arrow button. Observe how inconsistent
+and janky the scrolling is. Compare with no artificial delay, which is pleasant
+to scroll.
+
+Browsers can and do optimize their JavaScript engines to be as fast as possible,
+but this has its limits. So the only way to keep the browser
+guaranteed-responsive is to run key interactions in parallel with JavaScript.
+Luckily, it's pretty easy to use the raster and draw thread we're planning
+to *also* scroll and interact with browser chrome.
 
 Threaded scrolling
 ==================
