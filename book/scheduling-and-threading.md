@@ -400,11 +400,11 @@ class JSContext:
     def XMLHttpRequest_send(self, method, url, body, is_async, handle):
         # ...
         def run_load():
-            headers, body = request(
+            headers, local_body = request(
                 full_url, self.tab.url, payload=body)
             task = Task(self.dispatch_xhr_onload, body, handle)
             self.tab.task_runner.schedule_task(task)
-            return body
+            return local_body
 ```
 
 Finally, depending on the `is_async` flag the browser will either call
@@ -879,6 +879,8 @@ class MeasureTime:
         self.count = 0
 
     def text(self):
+        if self.count == 0:
+            return
         avg = self.total_s / self.count
         return "Time in {} on average: {:>.0f}ms".format(self.name, avg * 1000)
 ```
@@ -1383,7 +1385,7 @@ artificial slowdown:
 
 ``` {.javascript file=eventloop}
 function callback() {
-    for (var i = 0; i < 1e9; i++);
+    for (var i = 0; i < 5e6; i++);
     // ...
 }
 ```
