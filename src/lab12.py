@@ -252,12 +252,11 @@ class JSContext:
 
         threading.Timer(time / 1000.0, run_callback).start()
 
-    def xhr_onload(self, out, handle):
+    def dispatch_xhr_onload(self, out, handle):
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
-    def XMLHttpRequest_send(
-        self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
@@ -266,12 +265,11 @@ class JSContext:
                 "Cross-origin XHR request not allowed")
 
         def run_load():
-            headers, out = request(
+            headers, body = request(
                 full_url, self.tab.url, payload=body)
-            handle_local = handle
-            self.tab.task_runner.schedule_task(
-                Task(self.xhr_onload, out, handle_local))
-            return out
+            task = Task(self.dispatch_xhr_onload, body, handle)
+            self.tab.task_runner.schedule_task(task)
+            return body
 
         if not is_async:
             return run_load(is_async)
@@ -530,7 +528,7 @@ class Task:
         self.args = args
         self.__name__ = "task"
 
-    def __call__(self):
+    def run(self):
         self.task_code(*self.args)
         self.task_code = None
         self.args = None
@@ -542,7 +540,7 @@ class SingleThreadedTaskRunner:
         self.lock = threading.Lock()
 
     def schedule_task(self, callback):
-        callback()
+        callback.run()
 
     def clear_pending_tasks(self):
         pass
@@ -604,7 +602,10 @@ class TaskRunner:
                 task = self.tasks.pop(0)
             self.lock.release()
             if task:
-                task()
+                task.run()
+
+    def handle_quit(self):
+        print(self.tab.measure_render.text())
 
     def handle_quit(self):
         print(self.tab.measure_render.text())
