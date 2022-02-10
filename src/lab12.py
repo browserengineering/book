@@ -419,13 +419,21 @@ class Tab:
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
 
-        self.browser.commit(
-            self, self.url,
-            clamped_scroll if self.scroll_changed_in_tab \
-                else None, 
-            document_height, self.display_list)
+        scroll = None
+        if self.scroll_changed_in_tab:
+            scroll = self.scroll
+        commit_data = CommitForRaster(
+            url=self.url,
+            scroll=scroll,
+            height=document_height,
+            display_list=self.display_list,
+        )
+        self.display_list = None
+        self.browser.commit(self, commit_data)
         self.scroll_changed_in_tab = False
 
     def render(self):
@@ -549,6 +557,13 @@ class SingleThreadedTaskRunner:
     def run(self):
         pass
 
+class CommitForRaster:
+    def __init__(self, url, scroll, height, display_list):
+        self.url = url
+        self.scroll = scroll
+        self.height = height
+        self.display_list = display_list
+
 class TaskRunner:
     def __init__(self, tab):
         self.lock = threading.Lock()
@@ -642,20 +657,16 @@ class Browser:
         tab = self.tabs[self.active_tab]
         tab.run_animation_frame(self.scroll)
 
-    def commit(self, tab, url, scroll, tab_height, display_list):
+    def commit(self, tab, commit):
         self.lock.acquire(blocking=True)
-        if tab != self.tabs[self.active_tab]:
-            self.lock.release()
-            return
-        self.display_scheduled = False
-        if url != self.url or scroll != self.scroll:
+        if tab == self.tabs[self.active_tab]:
+            self.display_scheduled = False
+            self.url = commit.url
+            if commit.scroll != None:
+                self.scroll = commit.scroll
+            self.active_tab_height = commit.height
+            self.active_tab_display_list = commit.display_list
             self.set_needs_raster_and_draw()
-        self.url = url
-        if scroll != None:
-            self.scroll = scroll
-        self.active_tab_height = tab_height
-        self.active_tab_display_list = display_list.copy()
-        self.set_needs_raster_and_draw()
         self.lock.release()
 
     def set_needs_animation_frame(self, tab):
@@ -687,8 +698,8 @@ class Browser:
             self.lock.acquire(blocking=True)
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
-            active_tab.task_runner.schedule_task(
-                Task(active_tab.run_animation_frame, scroll))
+            task = Task(active_tab.run_animation_frame, scroll)
+            active_tab.task_runner.schedule_task(task)
             self.lock.release()
         self.lock.acquire(blocking=True)
         if not self.display_scheduled and self.needs_animation_frame:
@@ -726,8 +737,8 @@ class Browser:
                 self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
                 active_tab = self.tabs[self.active_tab]
-                active_tab.task_runner.schedule_task(
-                    Task(active_tab.go_back))
+                task = Task(active_tab.go_back)
+                active_tab.task_runner.schedule_task(task)
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
@@ -735,8 +746,8 @@ class Browser:
         else:
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
-            active_tab.task_runner.schedule_task(
-                Task(active_tab.click, e.x, e.y - CHROME_PX))
+            task = Task(active_tab.click, e.x, e.y - CHROME_PX)
+            active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def handle_key(self, char):
@@ -747,14 +758,14 @@ class Browser:
             self.set_needs_raster_and_draw()
         elif self.focus == "content":
             active_tab = self.tabs[self.active_tab]
-            active_tab.task_runner.schedule_task(
-                Task(active_tab.keypress, char))
+            task = Task(active_tab.keypress, char)
+            active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def schedule_load(self, url, body=None):
         active_tab = self.tabs[self.active_tab]
-        active_tab.task_runner.schedule_task(
-            Task(active_tab.load, url, body))
+        task = Task(active_tab.load, url, body)
+        active_tab.task_runner.schedule_task(task)
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)

@@ -1143,23 +1143,22 @@ class CommitForRaster:
 When running an animation frame, the `Tab` should construct one of
 these objects and pass it to `commit`:
 
-``` {.python expected=False}
+``` {.python replace=self.scroll%2c/scroll%2c,(self)/(self%2c%20scroll)}
 class Tab:
     def __init__(self, browser):
         # ...
         self.browser = browser
 
     def run_animation_frame(self):
-        self.render()
+        # ...
         commit_data = CommitForRaster(
             url=self.url,
             scroll=self.scroll,
             height=document_height,
-            display_list = display_list
+            display_list=self.display_list,
         )
         self.display_list = None
-        # ...
-        self.browser.commit(self, commit)
+        self.browser.commit(self, commit_data)
 ```
 
 We should think of the `CommitForRaster` object as being sent from the
@@ -1183,7 +1182,7 @@ class Browser:
             self.display_scheduled = False
             self.url = commit.url
             self.scroll = commit.scroll
-            self.active_tab_height = commit.tab_height
+            self.active_tab_height = commit.height
             self.active_tab_display_list = commit.display_list
             self.set_needs_raster_and_draw()
         self.lock.release()
@@ -1441,13 +1440,13 @@ class Tab:
 
     def run_animation_frame(self, scroll):
         # ...
-        self.render()
-
         document_height = math.ceil(self.document.height)
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
+        # ...
+        self.scroll_changed_in_tab = False
 ```
 
 Now `commit` can override the browser-passed scroll offset if this
@@ -1464,7 +1463,7 @@ class Tab:
             url=self.url,
             scroll=scroll,
             height=document_height,
-            display_list=display_list
+            display_list=self.display_list,
         )
         # ...
 ```
@@ -1475,7 +1474,7 @@ the scroll offset in this case:
 
 ``` {.python}
 class Browser:
-    def commit(self, tab, url, scroll, tab_height, display_list):
+    def commit(self, tab, commit):
         if tab == self.tabs[self.active_tab]:
             # ...
             if commit.scroll != None:
