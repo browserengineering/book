@@ -4,7 +4,7 @@ function callback() {
     if (count == 0)
         requestXHR();
 
-    for (var i = 0; i < 1e9; i++);
+    for (var i = 0; i < 5e6; i++);
     var output = document.querySelectorAll("div")[1];
     output.innerHTML = "count: " + (count++);
     if (count < 100)
