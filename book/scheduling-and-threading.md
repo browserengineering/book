@@ -838,7 +838,7 @@ We now have a system for scheduling a rendering task every 16ms. But
 what if rendering takes longer than 16ms to finish? Before we answer
 this question, let's instrument the browser and measure how much time
 is really being spent rendering. It's important to always measure
-before optimizing, because the result often surprising.
+before optimizing, because the result is often surprising.
 
 Let's implement some simple instrumentation to measure time. We'll
 want to average across multiple raster-and-draw cycles:
@@ -966,11 +966,13 @@ Two threads
 ===========
 
 Running rendering in parallel with raster and draw would allow us to
-produce a new frame every 66ms, instead of every 88ms. But more
-importantly, since there's no point to running render more often than
-raster-and-draw, the render thread would have 46ms left over for run
-JavaScript, and events could be handled with a delay of no more than
-20ms. That's more than enough of a win to justify a second thread.
+produce a new frame every 66ms, instead of every 88ms. Moreover, since
+there's no point to running render more often than raster-and-draw,
+the render thread would have 66ms to render each frame, and after the
+20ms spent rendering there would be 46ms left over for running
+JavaScript. Finally, events could be handled with a delay of no more
+than 20ms, which makes the browser much more responsive. That's more
+than enough of a win to justify a second thread.
 
 Let's call our two threads the *browser thread*[^also-compositor] and
 the *main thread*.[^main-thread-name] The *browser thread* corresponds
@@ -1120,8 +1122,8 @@ class Browser:
 Do the same with any other calls from the `Browser` to the `Tab`.
 
 Communication in the other direction is a little subtler. We already
-have the `set_needs_animation_frame` variable, but now we need the
-`Tab` to call `commit` when it's finished a display list.
+have the `set_needs_animation_frame` method, but now we need the `Tab`
+to call `commit` when it's finished creating a display list.
 
 If you look carefully at our raster-and-draw code, you'll see that to
 draw a display list we also need to know the URL (to update the
@@ -1149,7 +1151,7 @@ class Tab:
 
     def run_animation_frame(self):
         self.render()
-        commit = CommitForRaster(
+        commit_data = CommitForRaster(
             url=self.url,
             scroll=self.scroll,
             height=document_height,
@@ -1345,15 +1347,17 @@ function callback() {
 
 Now, every tick of the counter has an artificial pause during which
 the main thread is stuck running JavaScript. This means it can't
-respond to any events; for example, if you hold down the down array,
-the scrolling will be janky and annoying. To fix this, we need to move
-scrolling from the main thread to the browser thread.
+respond to any events; for example, if you hold down the down key, the
+scrolling will be janky and annoying. I encourage you to try this and
+witness how annoying it is, because modern browsers usually don't have
+this kind of jank.
 
-This is harder than it might seem, because the scroll offset can be
-affected by both the browser (when the user scrolls) and the main
-thread (when loading a new page or changing the height of the document
-via `innerHTML`). Now that the browser thread and the main thread run
-in parallel, they can disagree about the scroll offset.
+To fix this, we need to move scrolling from the main thread to the
+browser thread. This is harder than it might seem, because the scroll
+offset can be affected by both the browser (when the user scrolls) and
+the main thread (when loading a new page or changing the height of the
+document via `innerHTML`). Now that the browser thread and the main
+thread run in parallel, they can disagree about the scroll offset.
 
 What should we do? The best we can do is to use the browser thread's
 scroll offset until the main thread tells us otherwise, unless that
@@ -1456,7 +1460,7 @@ class Tab:
         scroll = None
         if self.scroll_changed_in_tab:
             scroll = self.scroll
-        commit = CommitForRaster(
+        commit_data = CommitForRaster(
             url=self.url,
             scroll=scroll,
             height=document_height,
