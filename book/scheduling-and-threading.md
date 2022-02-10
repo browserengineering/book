@@ -1698,9 +1698,9 @@ these two needs.
 
 * *Threaded loading*: When loading a page, our browser currently waits for each
    style sheet or script resource to load in turn. This is unnecessarily slow,
-   especially on a bad network. Sending off all of the network requests in
-   parallel would speed up loading substantially, and all modern browsers do
-   it. Now that we have threads available, this optimization is
+   especially on a bad network. Sending off all the network requests in
+   parallel would speed up loading substantially (and all modern browsers do
+   so). Now that we have threads available, this optimization is
    straightforward; implement it. (Tip: it may be convenient to use the `join`
    method on a `Thread`, which will block the thread calling `join` until the
    other thread completes. This will allow you to still have a single `load`
