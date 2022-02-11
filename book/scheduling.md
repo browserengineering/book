@@ -163,7 +163,6 @@ they sometimes have a fancier user experience than equivalent websites, but not
 nearly so much as games.
 :::
 
-
 Timers and setTimeout
 =====================
 
@@ -383,7 +382,8 @@ do security checks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, is_async,
+        handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
@@ -397,7 +397,8 @@ task for running callbacks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, is_async,
+        handle):
         # ...
         def run_load():
             headers, local_body = request(
@@ -413,7 +414,8 @@ argument to the `Thread` constructor:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, is_async,
+        handle):
         # ...
         if not is_async:
             return run_load(is_async)
@@ -455,6 +457,29 @@ also allow applications running in the browser to do the same.
 However, there's a whole other category of work done by the browser
 not directly related to running JavaScript.
 
+::: {.further}
+
+While it looks simple and maybe even obvious in retrospect, the `XMLHttpRequest`
+API played a key role in the evolution from the "90s web" that relied on
+loading new pages whenever anyone clicked a link or submitted a form. With the
+async version of this API, web pages were able to act a whole lot more like
+an *application* than a page of information. This ushered in a new generation
+of web sites that used this technique; GMail is one famous early example that
+dates from April 2004, [soon after][xhr-history] all browsers finished adding
+support for the API.
+
+[xhr-history]: https://en.wikipedia.org/wiki/XMLHttpRequest#History
+
+These new applications used an approach that is now called a [single-page app,
+or SPA][spa], as opposed to the earlier multi-page app, or MPA. An SPA replaces
+page loads with mutations to the DOM. This led to more and more interactive and
+complex web apps, which in turn greatly increased the need for browser
+rendering to be faster and more efficiently scheduled.
+
+[spa]: https://en.wikipedia.org/wiki/Single-page_application
+
+:::
+
 Rendering pipeline tasks
 ========================
 
@@ -467,6 +492,8 @@ the [rendering pipeline][graphics-pipeline]: styling the HTML elements,
 constructing the layout tree, computing sizes and positions, painting
 layout objects to a display list, rastering the result into surfaces,
 and drawing those surfaces to the screen.
+
+[graphics-pipeline]: https://en.wikipedia.org/wiki/Graphics_pipeline
 
 Right now, the browser executes these rendering steps eagerly: as soon
 as the user scrolls or clicks, or as soon as JavaScript modifies the
@@ -586,6 +613,21 @@ class Browser:
 
 This lets us thinking of both halves of rendering as one single
 pipeline that's either run or not in a single unit.
+
+::: {.further}
+
+It was not until the second decade of the 2000s that all modern browsers
+finished adopting this approach. Once the need became apparent due to the
+emergence of complex interactive web applications, it still took years of
+effort to safely refactor all of the complex existing browser codebases into
+a clean task-based system. In fact, in some ways it is only
+[very recently][renderingng] that this process can perhaps be said to have
+completed. Though since software can always be improved,
+in some sense the work is never done.
+
+:::
+
+[renderingng]: https://developer.chrome.com/blog/renderingng/
 
 Animating frames
 ================
@@ -740,6 +782,39 @@ fast or really slow. In fact, the animation will take a total amount of time
 about equal to the time it takes to run 100 rendering tasks. This is
 bad---animations should have a smooth and consistent frame rate, or *cadence*,
 regardless of the computer hardware.
+
+::: {.further}
+
+Before the `requestAnimationFrame` API, developers approximaterd it with code
+like this:
+
+``` {.javascript expected=False}
+function callback() {
+    // Mutate DOM for rendering
+    setTimeout(callback, 16);
+}
+setTimeout(callback, 16);
+```
+
+This sort of worked, but had multiple drawbacks. One was that there is no
+guarantee that the callbacks would cohere with the speed or timing of
+rendering. For example, sometimes two callbacks in a row could happen without
+any rendering between, which doubles the script work for rendering for no
+benefit.
+
+Another is that there is no guarantee that other tasks would not run between the
+callback and rendering. If the callback was setting up the DOM for rendering,
+but then a script click event handler occurs before *actually* rendering, the
+app might be forced to re-do its DOM mutations to avoid a delayed response to
+the click---yet another example of doubled rendering.
+
+A third is that there is no great way to turn off "rendering" `setTimeout` work
+when a web page window is backgrounded, minimized or otherwise throttled. If
+the browser chooses to stop all tasks, then it would also break any important
+background work the web app might want to do (such as syncing your information
+to the server so it's not lost).
+
+:::
 
 The cadence of rendering
 ========================
