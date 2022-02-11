@@ -161,7 +161,7 @@ class JSContext:
         return int(time.time() * 1000)
 
     def requestAnimationFrame(self):
-        self.tab.request_animation_frame_callback()
+        self.tab.browser.set_needs_animation_frame(self.tab)
 
 USE_BROWSER_THREAD = True
 
@@ -480,7 +480,6 @@ class Browser:
         self.focus = None
         self.address_bar = ""
         self.lock = threading.Lock()
-        self.display_scheduled = False
         self.url = None
         self.scroll = 0
 
@@ -500,7 +499,7 @@ class Browser:
         self.needs_animation_frame = False
         self.needs_raster_and_draw = False
 
-        self.active_tab_height = None
+        self.active_tab_height = 0
         self.active_tab_display_list = None
 
     def render(self):
@@ -511,7 +510,6 @@ class Browser:
     def commit(self, tab, commit):
         self.lock.acquire(blocking=True)
         if tab == self.tabs[self.active_tab]:
-            self.display_scheduled = False
             self.url = commit.url
             if commit.scroll != None:
                 self.scroll = commit.scroll
@@ -534,11 +532,9 @@ class Browser:
         if not self.needs_raster_and_draw: return
         self.lock.acquire(blocking=True)
         self.measure_raster_and_draw.start()
-
         self.raster_chrome()
         self.raster_tab()
         self.draw()
-
         self.measure_raster_and_draw.stop()
         self.needs_raster_and_draw = False
         self.lock.release()
@@ -548,14 +544,13 @@ class Browser:
             self.lock.acquire(blocking=True)
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
-            task = Task(self.run_animation_frame, scroll)
-            active_tab.task_runner.schedule_task(task)
             self.lock.release()
+            task = Task(active_tab.run_animation_frame, scroll)
+            active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
-        if not self.display_scheduled and self.needs_animation_frame:
+        if self.needs_animation_frame:
             if USE_BROWSER_THREAD:
                 threading.Timer(REFRESH_RATE_SEC, callback).start()
-            self.display_scheduled = True
             self.needs_animation_frame = False
         self.lock.release()
 
@@ -627,12 +622,10 @@ class Browser:
         self.lock.release()
 
     def load(self, url):
-        self.lock.acquire(blocking=True)
         new_tab = Tab(self)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
         self.schedule_load(url)
-        self.lock.release()
 
     def raster_tab(self):
         if self.active_tab_height == None:

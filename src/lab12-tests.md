@@ -29,7 +29,7 @@ the TaskRunner and run all the tests on the same thread as the Browser.
 
 Before load, there is no tab height or display list.
 
-	>>> browser.active_tab_height == None
+	>>> browser.active_tab_height == 0
 	True
     >>> browser.active_tab_display_list == None
     True

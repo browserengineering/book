@@ -465,7 +465,7 @@ to render the page, and as you may recall from [Chapter
 exactly as fast as the display hardware can refresh. On most
 computers, this is 60 times per second, or 16ms per frame.
 
-Let's establish 16ms our ideal refresh rate:^[why-16ms]
+Let's establish 16ms our ideal refresh rate:[^why-16ms]
 
 [^why-16ms]: 16 milliseconds isn't that precise, since it's 60 times
     16.66666...ms that is just about equal to 1 second. But it's a toy
@@ -490,7 +490,7 @@ method[^animation-frame] that schedules a `render` task to run the
 sequential rendering of different pixels is an animation, and each
 time you render it's one "frame"---like a drawing in a picture frame.
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def schedule_animation_frame(self):
         def callback():
@@ -527,7 +527,7 @@ class Browser:
 In the top-level loop, when run a task on the active tab the browser
 will need to raster-and-draw, in case that task was a rendering task:
 
-``` {.python}
+``` {.python expected=False}
 if __name__ == "__main__":
     while True:
         # ...
@@ -564,8 +564,7 @@ class Tab:
         self.needs_render = True
 
     def render(self):
-        if not self.needs_render:
-            return
+        if not self.needs_render: return
         # ...
         self.needs_render = False
 ```
@@ -642,13 +641,12 @@ class Browser:
 
 And the `Tab` should also set this bit after running `render`:
 
-``` {.python}
+``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
         # ...
         self.browser = browser
         
-
     def render(self):
         # ...
         self.browser.set_needs_raster_and_draw()
@@ -715,7 +713,7 @@ function requestAnimationFrame(fn) {
 In `JSContext`, when that method is called, we need to schedule a new
 rendering task:
 
-``` {.python}
+``` {.python expected=False}
 class JSContext:
     def __init__(self, tab):
         # ...
@@ -817,7 +815,7 @@ class Browser:
 
     def schedule_animation_frame(self):
         # ...
-        if not self.needs_animation_frame:
+        if self.needs_animation_frame:
             threading.Timer(REFRESH_RATE_SEC, callback).start()
             self.needs_animation_frame = False
 ```
@@ -828,7 +826,7 @@ frame is requested:
 ``` {.python}
 class JSContext:
     def requestAnimationFrame(self):
-        self.tab.browser.set_needs_animation_frame(self)
+        self.tab.browser.set_needs_animation_frame(self.tab)
 
 class Tab:
     def set_needs_render(self):
@@ -1201,12 +1199,12 @@ thread to browser thread. That means the main thread shouldn't access
 it any more, and for this reason I'm resetting the `display_list`
 field. The `Browser` should now schedule `run_animation_frame`:
 
-``` {.python}
+``` {.python replace=frame)/frame%2c%20scroll)}
 class Browser:
     def schedule_animation_frame(self):
         def callback():
             # ...
-            task = Task(self.run_animation_frame)
+            task = Task(active_tab.run_animation_frame)
             # ...
 ```
 
@@ -1256,7 +1254,8 @@ running their main threads and responding to callbacks from
 `setTimeout` or `XMLHttpRequest`.
 
 Now that we have a browser lock, we also need to acquire the lock any
-time the browser thread accesses any of its variables:
+time the browser thread accesses any of its variables. For example, in
+`set_needs_animation_frame`, do this:
 
 ``` {.python}
 class Browser:
@@ -1264,13 +1263,15 @@ class Browser:
         self.lock.acquire(blocking=True)
         # ...
         self.lock.release()
+```
 
-    def raster_and_draw(self):
-        if not self.needs_raster_and_draw: return
-        self.lock.acquire(blocking=True)
-        # ...
-        self.lock.release()
+In `schedule_animation_frame` you'll need to do it both inside and
+outside the callback:
 
+<!-- TODO: I'm not sure why this lint fails. -->
+
+``` {.python expected=False}
+class Browser:
     def schedule_animation_frame(self):
         def callback():
             self.lock.acquire(blocking=True)
@@ -1279,36 +1280,14 @@ class Browser:
         self.lock.acquire(blocking=True)
         # ...
         self.lock.release()
-
-    def handle_down(self):
-        self.lock.acquire(blocking=True)
-        # ...
-        self.lock.release()
-
-    def handle_click(self, e):
-        self.lock.acquire(blocking=True)
-        # ...
-        self.lock.release()
-
-    def handle_key(self, char):
-        self.lock.acquire(blocking=True)
-        # ...
-        self.lock.release()
-
-    def handle_enter(self):
-        self.lock.acquire(blocking=True)
-        # ...
-        self.lock.release()
-
-    def load(self, url):
-        self.lock.acquire(blocking=True)
-        # ...
-        self.lock.release()
 ```
 
-For example it can do so
-only once the browser thread is done drawing to the
-screen:[^backpressure]
+Add locks to `raster_and_draw`, `handle_down`, `handle_click`,
+`handle_key`, and `handle_enter` as well.
+
+We also don't want the main thread doing rendering faster than the
+browser thread can raster and draw. So we should only schedule
+animation frames once raster and draw are done:[^backpressure]
 
 [^backpressure]: The technique of controlling the speed of the front of a
 pipeline by means of the speed of its end is called *back pressure*.
@@ -1320,6 +1299,10 @@ if __name__ == "__main__":
         browser.raster_and_draw()
         browser.schedule_animation_frame()
 ```
+
+Remove the `schedule_animation_frame` call from inside the callback
+inside `schedule_animation_frame`. We're now scheduling an animation
+frame every time raster-and-draw is finished.
 
 And that's it: we should now be doing render on one thread and raster
 and draw on another!
