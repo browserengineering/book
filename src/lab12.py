@@ -55,6 +55,7 @@ class MeasureTime:
 
 FONTS = {}
 
+SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
 
 class JSContext:
@@ -124,12 +125,13 @@ class JSContext:
             child.parent = elt
         self.tab.set_needs_render()
 
+    def dispatch_settimeout(self, handle):
+        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+
     def setTimeout(self, handle, time):
         def run_callback():
-            self.tab.task_runner.schedule_task(
-                Task(self.interp.evaljs,
-                    "__runSetTimeout({})".format(handle)))
-
+            task = Task(self.dispatch_settimeout, handle)
+            self.tab.task_runner.schedule_task(task)
         threading.Timer(time / 1000.0, run_callback).start()
 
     def dispatch_xhr_onload(self, out, handle):
