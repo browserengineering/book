@@ -229,8 +229,8 @@ class Tab:
                 continue
 
             header, body = request(script_url, url)
-            self.task_runner.schedule_task(
-                Task(self.js.run, script_url, body))
+            task = Task(self.js.run, script_url, body)
+            self.task_runner.schedule_task(task)
 
         self.rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]

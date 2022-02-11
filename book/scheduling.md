@@ -99,15 +99,14 @@ if __name__ == "__main__":
         browser.tabs[browser.active_tab].task_runner.run()
 ```
 
-Here I've chosen to only run tasks on the active tab. Now our browser
-will not run scripts until after `load` has completed and the event
-loop comes around again.
+Here I've chosen to only run tasks on the active tab, which means
+background tabs can't slow our browser down.
 
-This simple task runner now lets us save tasks for later and execute
-when there's time. For example, right now, when loading a web page,
-our browser will download and run all scripts before doing its
-rendering steps. That makes pages slower to load. We can fix this by
-creating tasks for running scripts later.
+With this simple task runner, we can now save tasks and execute them
+later. For example, right now, when loading a web page, our browser
+will download and run all scripts before doing its rendering steps.
+That makes pages slower to load. We can fix this by creating tasks for
+running scripts later:
 
 ``` {.python expected=False}
 class Tab:
@@ -121,18 +120,19 @@ class Tab:
         for script in scripts:
             # ...
             header, body = request(script_url, url)
-            self.task_runner.schedule_task(
-                Task(self.run_script, script_url, body))
+            task = Task(self.run_script, script_url, body)
+            self.task_runner.schedule_task(task)
 ```
 
-This change is nice---pages will load a bit faster---but there's more
-to it than that. Before this change, we no choice but to run scripts
-right away just as they were loaded. But now that running scripts is a
-`Task`, the task runner controls when it runs. It could run only one
-script per second, or at different rates for active and inactive
-pages, or only if there isn't a higher-priority user action to respond
-to. A browser could even have multiple task runners, optimized for
-different use cases.
+Now our browser will not run scripts until after `load` has completed
+and the event loop comes around again. This change is nice---pages
+will load a bit faster---but there's more to it than that. Before this
+change, we no choice but to run scripts right away just as they were
+loaded. But now that running scripts is a `Task`, the task runner
+controls when it runs. It could run only one script per second, or at
+different rates for active and inactive pages, or only if there isn't
+a higher-priority user action to respond to. A browser could even have
+multiple task runners, optimized for different use cases.
 
 
 ::: {.further}
