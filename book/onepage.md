@@ -20,7 +20,7 @@ main: true
 - [Running Interactive Scripts](#scripts)
 - [Keeping Data Private](#security)
 - [Adding Visual Effects](#visual-effects)
-- [Scheduling and Threading](#scheduling-and-threading)
+- [Scheduling and Threading](#scheduling)
 - [Saving Partial Layouts](#reflow)
 - [What Wasn’t Covered](#skipped)
 - [A Changing Landscape](#change)
@@ -45,7 +45,7 @@ main: true
     cat www/onepage/security.html
 
     cat www/onepage/visual-effects.html
-    cat www/onepage/scheduling-and-threading.html
+    cat www/onepage/scheduling.html
 
     cat www/onepage/skipped.html
     cat www/onepage/change.html
