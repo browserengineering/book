@@ -384,8 +384,7 @@ do security checks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self,
-            method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
@@ -399,7 +398,7 @@ task for running callbacks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
         # ...
         def run_load():
             headers, response = request(
@@ -418,7 +417,7 @@ argument to the `Thread` constructor:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
         # ...
         if not is_async:
             return run_load(is_async)
@@ -885,10 +884,10 @@ class MeasureTime:
         self.count = 0
 
     def text(self):
-        if self.count == 0:
-            return
+        if self.count == 0: return ""
         avg = self.total_s / self.count
-        return "Time in {} on average: {:>.0f}ms".format(self.name, avg * 1000)
+        return "Time in {} on average: {:>.0f}ms".format(
+            self.name, avg * 1000)
 ```
 
 We'll measure the time for something like raster and draw by just

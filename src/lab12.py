@@ -48,10 +48,10 @@ class MeasureTime:
         self.start_time = None
 
     def text(self):
-        if self.count == 0:
-            return
+        if self.count == 0: return ""
         avg = self.total_s / self.count
-        return "Time in {} on average: {:>.0f}ms".format(self.name, avg * 1000)
+        return "Time in {} on average: {:>.0f}ms".format(
+            self.name, avg * 1000)
 
 FONTS = {}
 
@@ -138,7 +138,7 @@ class JSContext:
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
@@ -147,11 +147,11 @@ class JSContext:
                 "Cross-origin XHR request not allowed")
 
         def run_load():
-            headers, local_body = request(
+            headers, response = request(
                 full_url, self.tab.url, payload=body)
-            task = Task(self.dispatch_xhr_onload, body, handle)
+            task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
-            return local_body
+            return response
 
         if not is_async:
             return run_load(is_async)
