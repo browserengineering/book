@@ -1557,9 +1557,9 @@ architecture has started to resemble that of a real
 browser.[^processes] But why not move more parts of the browser into
 even more threads? Wouldn't that make the browser even faster?
 
-[^processes]: Note that many browsers now run the browser thread and
-    main thread in different processes, which has some advantages for
-    security and error handling.
+[^processes]: Note that many browsers now run some parts of the
+    browser thread and main thread in different processes, which has
+    some advantages for security and error handling.
     
 In a word, yes. Modern browsers have [dozens of
 threads][renderingng-architecture], which together serve to make the
@@ -1640,12 +1640,12 @@ class Tab:
 
 It's maybe possible to move hit testing off the main thread (but very
 hard) or to do hit testing against an older version of the layout
-tree, or to come up with some other technological fix. It's not
-impossible to move style and layout off the main thread
-"optimistically", but it's challenging. That said, browser developers
-are always looking for ways to make things faster, and I expect that
-at some point in the future style and layout will be moved to their
-own thread. Maybe you'll be the one to do it?
+tree, or to come up with some other technological fix. Thus it's not
+*impossible* to move style and layout off the main thread
+"optimistically", but it *is* challenging. That said, browser
+developers are always looking for ways to make things faster, and I
+expect that at some point in the future style and layout will be moved
+to their own thread. Maybe you'll be the one to do it?
 
 Summary
 =======
@@ -1660,13 +1660,13 @@ at the core of modern browsers. The main points to remember are:
 - The browser has two main threads. The main thread runs JavaScript
   and the special rendering task.
 - The browser draws the display list to the screen, handles/dispatches
-  input events, and handles scrolling. The main thread communicates
+  input events, and performs scrolling. The main thread communicates
   with the browser thread via `commit`, which synchronizes the two threads.
 
-Additionally, you've seen the challenges involved in moving tasks
-between the two threads, such as the challenges involved in scrolling
-on the browser thread, or how forced style and layout makes it hard to
-fully isolate the rendering pipeline from JavaScript.
+Additionally, you've seen how hard it is to move tasks between the two
+threads, such as the challenges involved in scrolling on the browser
+thread, or how forced style and layout makes it hard to fully isolate
+the rendering pipeline from JavaScript.
 
 Outline
 =======
@@ -1716,11 +1716,10 @@ convenient to use the `join` method on a `Thread`, which will block
 the thread calling `join` until the other thread completes. This way
 your `load` method can block until all network requests are complete.
 
-*Networking thread*: If you want an additional challenge, try this:
-real browsers usually have a separate thread for networking (and other
-I/O). Tasks are added to this thread in a similar fashion to the main
-thread. Implement a third *networking* thread and put all networking
-tasks on it.
+*Networking thread*: Real browsers usually have a separate thread for
+networking (and other I/O). Tasks are added to this thread in a
+similar fashion to the main thread. Implement a third *networking*
+thread and put all networking tasks on it.
 
 *Fine-grained dirty bits*: at the moment, the browser always re-runs
 the entire rendering pipeline if anything changed. For example, it
