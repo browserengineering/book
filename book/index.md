@@ -73,8 +73,8 @@ Part 4: Modern Browsers
 
 (@) [Adding Visual Effects](visual-effects.md)\
     Blending, Clipping and Compositing
-(@) [Scheduling and Threading](scheduling.md)\
-    The Rendering Event Loop and Pipeline
+(@) [Scheduling Tasks and Threads](scheduling.md)\
+    The event loop and the rendering pipeline
 (@) Compositing and Animations
 
 ::: {.outro}
