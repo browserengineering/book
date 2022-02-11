@@ -400,11 +400,11 @@ class JSContext:
     def XMLHttpRequest_send(self, method, url, body, is_async, handle):
         # ...
         def run_load():
-            headers, body = request(
+            headers, local_body = request(
                 full_url, self.tab.url, payload=body)
             task = Task(self.dispatch_xhr_onload, body, handle)
             self.tab.task_runner.schedule_task(task)
-            return body
+            return local_body
 ```
 
 Finally, depending on the `is_async` flag the browser will either call
@@ -879,6 +879,8 @@ class MeasureTime:
         self.count = 0
 
     def text(self):
+        if self.count == 0:
+            return
         avg = self.total_s / self.count
         return "Time in {} on average: {:>.0f}ms".format(self.name, avg * 1000)
 ```
@@ -1383,7 +1385,7 @@ artificial slowdown:
 
 ``` {.javascript file=eventloop}
 function callback() {
-    for (var i = 0; i < 1e9; i++);
+    for (var i = 0; i < 5e6; i++);
     // ...
 }
 ```
@@ -1557,212 +1559,6 @@ so it doesn't run into these difficulties. That's also a strategy;
 until 2020, Chromium-based browsers on Android, for example, did not
 support `background-attachment: fixed`.
 
-
-Threaded loading
-================
-
-The last piece of code that can be threaded is loading resources from the
-network, i.e calls to `request` and `XMLHTTPRequest`. This will allow us to
-load all resources for the page *in parallel*, greatly reducing the time to
-load the page. This feature is a key to good performance in modern browsers.
-
-In the `load` method on `Tab`, currently the first thing it does is
-synchronously wait for a network response to load the main HTML resource.
-It then does the same thing for each subsequent *sub-resource request*, to load
-style sheets and scripts. Arguably, there isn't a whole lot of point to making
-the initial request asynchronous, because there isn't anything else for the
-main thread to do in the meantime. But there is a pretty clear performance
-problem with the script and style sheet requests: they pile up sequentially,
-which means that there is a loading delay equal to the round-trip time to the
-server, multiplied by the number of scripts and style sheets.
-
-We should be able to send off all of the requests in parallel. Let's use an
-async, threaded version of `request` to do that. For simplicity, let's use a
-new Python thread for each resource. When a resource loads, the thread will
-complete and we can parse the script or load the style sheet, as appropriate.
-
-To make it work, we'll use a new threading feature: `join`. Join blocks
-one thread's execution on another thread completing. For example, this code:
-
-``` {.python expected=False}
-def run:
-    count = 0
-    while count < 100:
-        print("Thread")
-        count += 1
-
-thread = threading.Thread(target=run)
-thread.start()
-thread.join()
-print("Browser")
-```
-
-will print "Thread" 100 times, and then print "Browser".
-
-Define a new `async_request` function. This will start a thread. The thread will
-request the resource, store the result in `results`, and then return. The
-thread object will be returned by `async_request`. `async_request` will need a
-lock, because `request` will need to access the thread-shared `COOKIE_JAR`
-variable.
-
-``` {.python}
-def async_request(url, top_level_url, results, lock):
-    headers = None
-    body = None
-    def runner():
-        headers, body = request(url, top_level_url, None, lock)
-        results[url] = {'headers': headers, 'body': body}
-    thread = threading.Thread(target=runner)
-    thread.start()
-    return thread
-```
-
-And we'll need a small edit to `request` to use the lock:
-
-``` {.python}
-def request(url, top_level_url, payload=None, lock=None):
-    # ...
-    if lock:
-        lock.acquire(blocking=True)
-    has_cookie = host in COOKIE_JAR
-    if has_cookie:
-        cookie, params = COOKIE_JAR[host]
-    if lock:
-        lock.release()
-
-    # ...
-
-    if "set-cookie" in headers:
-        # ...
-        if lock:
-            lock.acquire(blocking=True)
-        COOKIE_JAR[host] = (cookie, params)
-        if lock:
-            lock.release()
-```
-
-Then we can use it in `load`. Note how we send off all of the requests first,
-starting with scripts:
-
-``` {.python}
-class Tab:
-    def load(self, url, body=None):
-        # ...
-        async_requests = []
-        script_results = {}
-        for script in scripts:
-            script_url = resolve_url(script, url)
-            if not self.allowed_request(script_url):
-                print("Blocked script", script, "due to CSP")
-                continue
-            async_requests.append({
-                "url": script_url,
-                "type": "script",
-                "thread": async_request(
-                    script_url, url, script_results,
-                    self.task_runner.lock)
-            })
-```
-
-And style sheets:
-
-``` {.python}
-        style_results = {}
-        for link in links:
-            style_url = resolve_url(link, url)
-            if not self.allowed_request(style_url):
-                print("Blocked style", link, "due to CSP")
-                continue
-            async_requests.append({
-                "url": style_url,
-                "type": "style sheet",
-                "thread": async_request(
-                    style_url, url, style_results,
-                    self.task_runner.lock)
-            })
-```
-
-And only at the end `join` all of the threads created:
-
-``` {.python}
-        for async_req in async_requests:
-            async_req["thread"].join()
-            req_url = async_req["url"]
-            if async_req["type"] == "script":
-                self.task_runner.schedule_task(
-                    Task(self.js.run, req_url,
-                        script_results[req_url]['body']))
-            else:
-                self.rules.extend(
-                    CSSParser(
-                        style_results[req_url]['body']).parse())
-```
-
-Now our browser will parallelize loading sub-resources!
-
-Now let's try out this new async API by augmenting our counter javascript like
-this:
-
-``` {.javascript file=eventloop}
-function callback() {
-    if (count == 0)
-        requestXHR();
-    # ...
-}
-
-var request;
-function requestXHR() {
-    request = new XMLHttpRequest();
-    request.open('GET', '/xhr', true);
-    request.onload = function(evt) {
-        document.querySelectorAll("div")[2].innerHTML = 
-            "XHR result: " + this.responseText;
-    };
-    request.send();
-}
-```
-
-And the HTTP server:
-
-``` {.python file=server}
-def show_count():
-    out = "<!doctype html>"
-    out += "<div>";
-    out += "  Let's count up to 100!"
-    out += "</div>";
-    out += "<div>Output</div>"
-    out += "<div>XHR</div>"
-    # ...
-
-def show_xhr():
-    time.sleep(5)
-    return "Slow XMLHttpRequest response!"
-```
-
-Load the counter page. You should see the counter going up, and then after
-5 seconds, "Slow XMLHttpRequest response!" should appear onscreen. This
-would not have been possible without an async request to `/xhr`.
-
-::: {.further}
-
-The approach in this section ignores the parse order of the scripts and style
-sheets, which is technically incorrect and a real browser would be much more
-careful. But as mentioned in an earlier chapter, our browser is already
-incorrect in terms of orders of operations, as scripts and style sheets are
-supposed to block the HTML parser as well. Nevertheless, modern browsers
-achieve performance similar to the one here, by use of a *preload scanner*.
-
-While the "observable" side-effects of loading have to be done in a certain
-order, that doesn't mean that the browser has to issue network requests in that
-order. Modern browsers take advantage of that by adding a second, simpler
-HTML parser called a preload scanner (the HTML spec calls it a
-[speculative HTML parser][speculative-parser]). The preload scanner does nothing
-but look for URLs referred to by DOM elements, and kicks off network requests
-to load them.
-:::
-
-[speculative-parser]: https://html.spec.whatwg.org/#active-speculative-html-parser
-
 Threaded style and layout
 =========================
 
@@ -1900,10 +1696,21 @@ sample web page that taxes the system with a lot of `setTimeout`-based tasks,
 come up with a simple scheduling algorithm that does a good job at balancing
 these two needs.
 
-* *Networking thread*: Real browsers tend to have a separate thread for
-   networking (and other I/O) instead of creating a one thread per request.
-   Implement a third thread with an event loop and put all networking tasks
-   (including HTML and script fetches) on it.
+* *Threaded loading*: When loading a page, our browser currently waits for each
+   style sheet or script resource to load in turn. This is unnecessarily slow,
+   especially on a bad network. Sending off all the network requests in
+   parallel would speed up loading substantially (and all modern browsers do
+   so). Now that we have threads available, this optimization is
+   straightforward; implement it. (Tip: it may be convenient to use the `join`
+   method on a `Thread`, which will block the thread calling `join` until the
+   other thread completes. This will allow you to still have a single `load`
+   method that only returns once everything is done.)
+
+   If you want an additional challenge, try this: real browsers tend
+   to have a separate thread for networking (and other I/O) instead of creating
+   a one thread per request. Tasks are added to this thread in a similar
+   fashion to the main thread. Implement a third *networking* thread and put
+   all networking tasks on it.
 
 * *Fine-grained dirty bits*: at the moment, the browser always re-runs
 the entire rendering pipeline if anything changed. For example, it re-rasters
