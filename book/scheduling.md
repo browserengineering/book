@@ -220,7 +220,15 @@ function setTimeout(callback, time_delta) {
 
 The exported `setTimeout` function will create a timer, wait for the
 requested time period, and then ask the JavaScript runtime to run the
-callback. That last part will happen via `__runSetTimeout`:
+callback. That last part will happen via `__runSetTimeout`:[^mem-leak]
+
+[^mem-leak]: Note that we never remove `callback` from
+    `SET_TIMEOUT_REQUESTS` dictionary. This could lead to a memory
+    leak, if the callback it holding on to the last reference to some
+    large data structure. We saw a similar issue in [Chapter
+    9](scripts.md). In general, avoiding memory leaks when you have
+    data structures shared between the browser and the browser
+    application takes a lot of care.
 
 ``` {.javascript file=runtime}
 function __runSetTimeout(handle) {
