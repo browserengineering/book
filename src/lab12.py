@@ -261,9 +261,7 @@ class Tab:
 
     def run_animation_frame(self, scroll):
         self.scroll = scroll
-        if self.needs_raf_callbacks:
-            self.needs_raf_callbacks = False
-            self.js.interp.evaljs("__runRAFHandlers()")
+        self.js.interp.evaljs("__runRAFHandlers()")
 
         self.render()
 
@@ -289,8 +287,7 @@ class Tab:
         self.scroll_changed_in_tab = False
 
     def render(self):
-        if not self.needs_render:
-            return
+        if not self.needs_render: return
         self.measure_render.start()
         style(self.nodes, sorted(self.rules,
             key=cascade_priority))
@@ -358,7 +355,6 @@ class Tab:
 
         url = resolve_url(elt.attributes["action"], self.url)
         self.load(url, body)
-
 
     def keypress(self, char):
         if self.focus:
@@ -535,8 +531,7 @@ class Browser:
         self.needs_animation_frame = True
 
     def raster_and_draw(self):
-        if not self.needs_raster_and_draw:
-            return
+        if not self.needs_raster_and_draw: return
         self.lock.acquire(blocking=True)
         self.measure_raster_and_draw.start()
 
@@ -553,7 +548,7 @@ class Browser:
             self.lock.acquire(blocking=True)
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.run_animation_frame, scroll)
+            task = Task(self.run_animation_frame, scroll)
             active_tab.task_runner.schedule_task(task)
             self.lock.release()
         self.lock.acquire(blocking=True)
@@ -632,10 +627,12 @@ class Browser:
         self.lock.release()
 
     def load(self, url):
+        self.lock.acquire(blocking=True)
         new_tab = Tab(self)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
         self.schedule_load(url)
+        self.lock.release()
 
     def raster_tab(self):
         if self.active_tab_height == None:
