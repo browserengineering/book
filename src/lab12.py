@@ -29,7 +29,8 @@ from lab6 import CSSParser, compute_style, style
 from lab6 import TagSelector, DescendantSelector
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
-from lab11 import DocumentLayout, DrawLine, parse_color, request
+from lab11 import DocumentLayout, DrawLine, draw_line, draw_rect, \
+    draw_text, parse_color, request, CHROME_PX, SCROLL_STEP
 
 class MeasureTime:
     def __init__(self, name):
@@ -53,33 +54,6 @@ class MeasureTime:
         return "Time in {} on average: {:>.0f}ms".format(self.name, avg * 1000)
 
 FONTS = {}
-
-def draw_line(canvas, x1, y1, x2, y2):
-    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
-    paint = skia.Paint(Color=skia.ColorBLACK)
-    paint.setStyle(skia.Paint.kStroke_Style)
-    paint.setStrokeWidth(1);
-    canvas.drawPath(path, paint)
-
-def draw_text(canvas, x, y, text, font, color=None):
-    sk_color = parse_color(color)
-    paint = skia.Paint(AntiAlias=True, Color=sk_color)
-    canvas.drawString(
-        text, float(x), y - font.getMetrics().fAscent,
-        font, paint)
-
-def draw_rect(canvas, l, t, r, b, fill=None, width=1):
-    paint = skia.Paint()
-    if fill:
-        paint.setStrokeWidth(width);
-        paint.setColor(parse_color(fill))
-    else:
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(1);
-        paint.setColor(skia.ColorBLACK)
-    rect = skia.Rect.MakeLTRB(l, t, r, b)
-    canvas.drawRect(rect, paint)
-
 
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
 
@@ -188,9 +162,6 @@ class JSContext:
 
     def requestAnimationFrame(self):
         self.tab.request_animation_frame_callback()
-
-SCROLL_STEP = 100
-CHROME_PX = 100
 
 USE_BROWSER_THREAD = True
 
