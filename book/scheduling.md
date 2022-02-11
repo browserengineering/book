@@ -1275,7 +1275,7 @@ do that inside `commit`.
 On the `Browser` side, the new `commit` method needs to read out all
 of the data it was sent and call `set_needs_raster_and_draw` as
 needed. Because this call will come from another thread, we'll need to
-take a lock:
+acquire a lock:
 
 ``` {.python}
 class Browser:
