@@ -156,7 +156,6 @@ they sometimes have a fancier user experience than equivalent websites, but not
 nearly so much as games.
 :::
 
-
 Timers and setTimeout
 =====================
 
@@ -376,7 +375,8 @@ do security checks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, is_async,
+        handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
@@ -390,7 +390,8 @@ task for running callbacks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, is_async,
+        handle):
         # ...
         def run_load():
             headers, local_body = request(
@@ -406,7 +407,8 @@ argument to the `Thread` constructor:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, is_async,
+        handle):
         # ...
         if not is_async:
             return run_load(is_async)
@@ -447,6 +449,28 @@ So tasks not only allow our browser to delay tasks until later, but
 also allow applications running in the browser to do the same.
 However, there's a whole other category of work done by the browser
 not directly related to running JavaScript.
+::: {.further}
+
+While it looks simple and maybe even obvious in retrospect, the `XMLHttpRequest`
+API played a key role in the evolution from the "90s web" that relied on
+loading new pages whenever anyone clicked a link or submitted a form. With the
+async version of this API, web pages were able to act a whole lot more like
+an *application* than a page of information. This ushered in a new generation
+of web sites that used this technique; GMail is one famous early example that
+dates from April 2004, [soon after][xhr-history] all browsers finished adding
+support for the API.
+
+[xhr-history]: https://en.wikipedia.org/wiki/XMLHttpRequest#History
+
+These new applications used an approach that is now called a [single-page app,
+or SPA][spa], as opposed to the earlier multi-page app, or MPA. An SPA replaces
+page loads with mutations to the DOM. This led to more and more interactive and
+complex web apps, which in turn greatly increased the need for browser
+rendering to be faster and more efficiently scheduled.
+
+[spa]: https://en.wikipedia.org/wiki/Single-page_application
+
+:::
 
 The cadence of rendering
 ========================
@@ -673,6 +697,21 @@ behavior when animating. Once you've read the whole chapter and implemented
 that thread, try removing this dirty bit and see for yourself!
 :::
 
+::: {.further}
+
+It was not until the second decade of the 2000s that all modern browsers
+finished adopting a scheduled, task-based approach to rendering. Once the need
+became apparent due to the emergence of complex interactive web applications,
+it still took years of effort to safely refactor all of the complex existing
+browser codebases. In fact, in some ways it is
+only [very recently][renderingng] that this process can perhaps be said to have
+completed. Though since software can always be improved, in some sense the work
+is never done.
+
+:::
+
+[renderingng]: https://developer.chrome.com/blog/renderingng/
+
 Animating frames
 ================
 
@@ -846,6 +885,39 @@ scheduling too many animation frames, this system also makes sure that
 if our browser consistently runs slower than 60 frames per second, we
 won't end up with an ever-growing queue of rendering tasks.
 
+::: {.further}
+
+Before the `requestAnimationFrame` API, developers approximated it with code
+like this:
+
+``` {.javascript expected=False}
+function callback() {
+    // Mutate DOM for rendering
+    setTimeout(callback, 16);
+}
+setTimeout(callback, 16);
+```
+
+This sort of worked, but had multiple drawbacks. One was that there is no
+guarantee that the callbacks would cohere with the speed or timing of
+rendering. For example, sometimes two callbacks in a row could happen without
+any rendering between, which doubles the script work for rendering for no
+benefit.
+
+Another is that there is no guarantee that other tasks would not run between the
+callback and rendering. If the callback was setting up the DOM for rendering,
+but then a script click event handler occurs before *actually* rendering, the
+app might be forced to re-do its DOM mutations to avoid a delayed response to
+the click---yet another example of doubled rendering.
+
+A third is that there is no great way to turn off "rendering" `setTimeout` work
+when a web page window is backgrounded, minimized or otherwise throttled. If
+the browser chooses to stop all tasks, then it would also break any important
+background work the web app might want to do (such as syncing your information
+to the server so it's not lost).
+
+:::
+
 Profiling rendering
 ===================
 
@@ -964,17 +1036,6 @@ sometimes take a lot of time.
 [optimize-surfaces]: visual-effects.md#optimizing-surface-use
 
 [skia-gpu]: https://skia.org/docs/user/api/skcanvas_creation/#gpu
-
-::: {.further}
-Even with a second thread, the browser thread can wait up to 66ms
-before *starting* to handle a click event! For this reason, modern
-browsers use [*yet more*][renderingng-architecture] threads or
-processes. For example, raster-and-draw might run on its own thread,
-so that it can't block event handling. This makes the browser thread
-extremely responsive to input, at the cost of even more complexity.
-:::
-
-[renderingng-architecture]: https://developer.chrome.com/blog/renderingng-architecture/#process-and-thread-structure
 
 
 ::: {.further}
@@ -1521,62 +1582,85 @@ support `background-attachment: fixed`.
 Threaded style and layout
 =========================
 
-You may have wondered: does the earlier part of the rendering pipeline---style,
-layout and paint---have to run on the main thread? The answer is: in principle,
-no. The only thing browsers *have* to do is implement all the web API
-specifications correctly, and draw to the screen after scripts and
-`requestAnimationFrame` callbacks have completed. The
+Now that we have separate browser and main threads, and now that some
+operations are performed on the browser thread, our browser's thread
+architecture has started to resemble that of a real
+browser.[^processes] But why not move more parts of the browser into
+even more threads? Wouldn't that make the browser even faster?
+
+[^processes]: Note that many browsers now run some parts of the
+    browser thread and main thread in different processes, which has
+    some advantages for security and error handling.
+    
+In a word, yes. Modern browsers have [dozens of
+threads][renderingng-architecture], which together serve to make the
+browser even faster and more responsive. For example, raster-and-draw
+typically runs on its own thread so that the browser thread can handle
+events even while a new frame is being prepared. Likewise, modern
+browsers typically have a collection of network or IO threads, which
+move all interaction with the network or the file system off of the
+main thread.
+
+[renderingng-architecture]: https://developer.chrome.com/blog/renderingng-architecture/#process-and-thread-structure
+
+On the other hand, some parts of the browser can't be easily threaded.
+For example, consider the earlier part of the rendering pipeline:
+style, layout and paint. In our browser, these run on the main thread.
+But could they move to their own thread?
+
+In principle, Yes. The only thing browsers *have* to do is implement
+all the web API specifications correctly, and draw to the screen after
+scripts and `requestAnimationFrame` callbacks have completed. The
 specification spells this out in detail in what it calls the
-[update-the-rendering] steps. Go look at that link and come back. Notice
-anything missing? That's right, it doesn't mention style or layout at all! All
-it says is "update the rendering or user interface" at the very end.
+[update-the-rendering] steps. But if you click that link, you might
+notice something missing: the specification it doesn't mention style
+or layout at all! All it says is "update the rendering or user
+interface" at the very end. That's because style and layout---just
+like paint and draw---are implementation details of a browser, not a
+*JavaScript-observable* component of the browser. To the
+specification, the update-the-rendering steps are the sequence of
+*JavaScript-observable* things that have to happen before drawing to
+the screen.
 
 [update-the-rendering]: https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering
 
-How can that be? Aren't style and layout crucial parts of the way HTML and CSS
-work? Yes they are---but note the spec doesn't mention paint, draw or raster
-either. And just like those parts of the pipeline, style and layout are
-considered pure implementation details of a browser. The spec simply says that
-if rendering "opportunities" arise, then the update-the-rendering steps are the
-sequence of *JavaScript-observable* things that have to happen before drawing
-to the screen.
-
-
-
-Nevertheless, no current modern browser runs style or layout on another thread
-than the main thread.[^servo] The reason is simple: there are many JavaScript
-APIs that can query style or layout state. For example, [`getComputedStyle`][gcs]
-can't be implemented without the browser first computing style, and
-[`getBoundingClientRect`][gbcr] needs layout.[^nothing-later] If a web page calls
-one of these APIs, and style or layout is not up-to-date, then is has to be
-computed synchronously, then and there. These computations are called
-*forced style* or *forced layout*. The world "forced" refers to forcing the
- computation to happen right away, as opposed to possibly 16ms in the future if
- it didn't happen to be already computed. Because there are forced style and
- layout situations, browsers have to be able to do that work on the main thread
- if necessary.[^or-stall]
+Nevertheless, in practice, no current modern browser runs style or
+layout on off the main thread.[^servo] The reason is simple: there are
+many JavaScript APIs that can query style or layout state. For
+example, [`getComputedStyle`][gcs] can't be implemented without the
+browser first computing style, and [`getBoundingClientRect`][gbcr]
+needs layout.[^nothing-later] If a web page calls one of these APIs,
+and style or layout is not up-to-date, then is has to be computed
+synchronously, then and there. These computations are called *forced
+style* or *forced layout*. The world "forced" refers to forcing the
+computation to happen right away, as opposed to possibly 16ms in the
+future if it didn't happen to be already computed. Because there are
+forced style and layout situations, browsers have to be able to do
+that work on the main thread if necessary.[^or-stall]
 
 [gcs]: https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle
 [gbcr]: https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect
 
- [^or-stall]: Or stall the compositor thread and ask it to do it synchronously,
- but that is generally a worse option because it'll jank scrolling.
+[^or-stall]: Or stall the compositor thread and ask it to do it synchronously,
+but that is generally a worse option because it'll make scrolling janky.
 
-[^servo]: The [Servo] rendering engine is sort of an exception. However, in that
-case it's not that style and layout run on a different thread, but that they
-attempt to take advantage of parallelism for faster end-to-end performance.
+[^servo]: The [Servo] rendering engine uses multiple threads to take
+advantage of parallelism in style and layout, but those steps still
+block, for example, JavaScript execution on the main thread.
 
 [Servo]: https://en.wikipedia.org/wiki/Servo_(software)
 
 [^nothing-later]: There is no JavaScript API that allows reading back state
-from anything later in the rendering pipeline than layout.
+from anything later in the rendering pipeline than layout. It's for
+this reason that we're able to move raster and draw to the browser
+thread.
 
-By analogy with web pages that don't `preventDefault` a scroll, is it a good
-idea to try to optimistically move style and layout off the main thread for
-cases when JavaScript doesn't force it to be done otherwise? Maybe, but even
-setting aside JavaScript APIs, there are unfortunately *even more* sources of
-forced style and layout. One example is our current implementation of `click`.
-The first line of this method forces a layout:
+One possible way to resolve these tensions is to optimistically move
+style and layout off the main thread, similar to optimistically doing
+threaded scrolling if a web page doesn't `preventDefault` a scroll. Is
+that a good idea? Maybe, but forced style and layout aren't just
+caused by JavaScript execution. One example is our implementation of
+`click`, which causes a render to run hit testing:
 
 ``` {.python}
 class Tab:
@@ -1585,38 +1669,35 @@ class Tab:
         # ...
 ```
 
-The call to `render` is a forced layout. It's needed because
-clicking needs to run hit testing, which in turn requires layout. Fixing this
-would require even more fancy technology.
-
-It's not impossible to move style and layout off the main thread
-"optimistically", but here I outlined some of the reasons it's challenging. I
- expect that at some point in the future it will be achieved (maybe you'll be
- the one to do it?).
+It's maybe possible to move hit testing off the main thread (but very
+hard) or to do hit testing against an older version of the layout
+tree, or to come up with some other technological fix. Thus it's not
+*impossible* to move style and layout off the main thread
+"optimistically", but it *is* challenging. That said, browser
+developers are always looking for ways to make things faster, and I
+expect that at some point in the future style and layout will be moved
+to their own thread. Maybe you'll be the one to do it?
 
 Summary
 =======
 
-This chapter explained in some detail the two-thread rendering system at the
-core of modern browsers. The main points to remember are:
+This chapter explained in some detail the two-thread rendering system
+at the core of modern browsers. The main points to remember are:
 
-* The browser uses event loops, tasks and task queues to do work.
+- The browser organizes work into task queues, with tasks for things
+  like running JavaScript, handling user input, and rendering the page.
+- The goal is to consistently generate frames to the screen at a 60Hz
+  cadence, which means a 16ms budget to draw each animation frame.
+- The browser has two main threads. The main thread runs JavaScript
+  and the special rendering task.
+- The browser draws the display list to the screen, handles/dispatches
+  input events, and performs scrolling. The main thread communicates
+  with the browser thread via `commit`, which synchronizes the two threads.
 
-* The goal is to consistently generate frames to the screen at a 60Hz
-cadence, which means a 16ms budget to draw each animation frame.
-
-* The main thread runs an event loop for various tasks, including
-JavaScript, style and layout. The rendering task is special, can include
-special JavaScript `requestAnimationFrame` callbacks in it, and at the end
-commits a display list to a second thread.
-
-* The second thread is the browser thread. It draws the display list to the
-screen, handles/dispatches input events, and scrolls.
-
-* Threads are useful for other kinds of tasks, such as network loading.
-
-* Forced style and layout makes it hard to fully isolate the rendering pipeline
-from JavaScript.
+Additionally, you've seen how hard it is to move tasks between the two
+threads, such as the challenges involved in scrolling on the browser
+thread, or how forced style and layout makes it hard to fully isolate
+the rendering pipeline from JavaScript.
 
 Outline
 =======
@@ -1631,97 +1712,83 @@ should now look something like this:
 Exercises
 =========
 
-* *setInterval*: [`setInterval`][setInterval] is similar to `setTimeout` but
-runs repeatedly at a given cadence until [`clearInterval`][clearInterval] is
-called. Implement these, and test them out on a sample page that also uses
-`requestAnimationFrame` with various cadences, and with some expensive rendering
-pipeline work to do. Use console.log or `innerHTML` to record the actual timings
-via `Date.now`. How consistent are the cadences?
+*setInterval*: [`setInterval`][setInterval] is similar to `setTimeout`
+but runs repeatedly at a given cadence until
+[`clearInterval`][clearInterval] is called. Implement these. Make sure
+to test `setInterval` with various cadences in a page that also uses
+`requestAnimationFrame` with some expensive rendering pipeline work to
+do. Record the actual timing of `setInterval` tasks; how consistent is
+the cadence?
 
 [setInterval]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setInterval
 [clearInterval]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/clearInterval
 
-* *Clock-based frame timing*: Right now our browser schedules the next
+*Clock-based frame timing*: Right now our browser schedules the next
 animation frame to happen exactly 16ms later than the first time
-`set_needs_animation_frame` is called. However, this actually leads to a slower
-animation frame rate cadence than 16ms, for example if `render`
-takes say 10ms to run. Can you see why? Fix this in our browser by aligning
-calls to `begin_main_frame` to an absolute clock time cadence.
+`set_needs_animation_frame` is called. However, this actually leads to
+a slower animation frame rate cadence than 16ms, for example if
+`render` takes say 10ms to run. Can you see why? Fix this in our
+browser by using the absolute time to schedule animation frames,
+instead of a fixed delay between frames. You will need to choose a
+slower cadence than 16ms so that the frames don't overlap.
 
-* *Scheduling*: As more types of complex tasks end up on the event queue, there
-comes a greater need to carefully schedule them to ensure the rendering cadence
-is as close to 16ms as possible, and also to avoid task starvation. Implement a
-sample web page that taxes the system with a lot of `setTimeout`-based tasks,
-come up with a simple scheduling algorithm that does a good job at balancing
-these two needs.
+*Scheduling*: As more types of complex tasks end up on the event
+queue, there comes a greater need to carefully schedule them to ensure
+the rendering cadence is as close to 16ms as possible, and also to
+avoid task starvation. Implement a task scheduler with a priority
+system that balances these two needs. Test it out on a web page that
+taxes the system with a lot of `setTimeout`-based tasks.
 
-* *Threaded loading*: When loading a page, our browser currently waits for each
-   style sheet or script resource to load in turn. This is unnecessarily slow,
-   especially on a bad network. Sending off all the network requests in
-   parallel would speed up loading substantially (and all modern browsers do
-   so). Now that we have threads available, this optimization is
-   straightforward; implement it. (Tip: it may be convenient to use the `join`
-   method on a `Thread`, which will block the thread calling `join` until the
-   other thread completes. This will allow you to still have a single `load`
-   method that only returns once everything is done.)
+*Threaded loading*: When loading a page, our browser currently waits
+for each style sheet or script resource to load in turn. This is
+unnecessarily slow, especially on a bad network. Instead, make your
+browser sending off all the network requests in parallel. It may be
+convenient to use the `join` method on a `Thread`, which will block
+the thread calling `join` until the other thread completes. This way
+your `load` method can block until all network requests are complete.
 
-   If you want an additional challenge, try this: real browsers tend
-   to have a separate thread for networking (and other I/O) instead of creating
-   a one thread per request. Tasks are added to this thread in a similar
-   fashion to the main thread. Implement a third *networking* thread and put
-   all networking tasks on it.
+*Networking thread*: Real browsers usually have a separate thread for
+networking (and other I/O). Tasks are added to this thread in a
+similar fashion to the main thread. Implement a third *networking*
+thread and put all networking tasks on it.
 
-* *Fine-grained dirty bits*: at the moment, the browser always re-runs
-the entire rendering pipeline if anything changed. For example, it re-rasters
-the browser chrome every time (this is a performance regression as compoared
-with the state at the end of chapter 11). Add in additional dirty bits for
-raster and draw stages. (You can also try adding dirty bits for whether layout
-needs to be run, but be careful to think very carefully about all the ways
-this dirty bit might need to end up being set.)
+*Fine-grained dirty bits*: at the moment, the browser always re-runs
+the entire rendering pipeline if anything changed. For example, it
+re-rasters the browser chrome every time (which chapter 11 didn't do).
+Add separate dirty bits for raster and draw stages.[^layout-dirty]
 
-* *Multi-tab scroll offsets*: our browser doesn't currently keep track of the
-   scroll offset of each tab separately. That's why `set_active_tab`
-   unconditionally sets it to zero. In a real browser, all the tabs would
-   remember their scroll offset. Fix this.
+[^layout-dirty]: You can also try adding dirty bits for whether layout
+needs to be run, but be careful to think very carefully about all the
+ways this dirty bit might need to end up being set.
 
-* *Condition variables*: the main thread event loop works, but but is wasteful
-   of the CPU. Even if there are no tasks, the thread will keep looping over
-   and over. You can fix this by introducing a *condition variable* that
-   wakes up the thread and runs it only when there is actually a task to run.
-  [^browser-thread-burn]
-   The [`threading.Condition`][condition] class implements this pattern in
-   Python. Call `wait()` to stop the thread until notified that a task has
-   arrived, and call `notify_all` when the task is added.
+*Condition variables*: the main thread's event loop will spin in a
+loop if there are no tasks available. This wastes CPU
+time.[^browser-thread-burn] Use a *condition variable* to put the main
+thread to sleep until there is a task to run. In Python, you need the
+`threading` module's [`Condition`][condition] class: call `wait` on a
+condition variable to stop the calling thread, and call `notify_all`
+on a condition variable to wake all threads waiting on it.
 
 [condition]: https://docs.python.org/3/library/threading.html#condition-objects
-[^browser-thread-burn]: The browser thread's `while True` loop is also
-wasteful. Unfortunately, it appears there is not a way to avoid this in SDL at
-present.
 
-* *Optimized scheduling*: currently, `schedule_animation_frame` uses a timer to
-   run the animation frame task `REFRESH_RATE_SEC` in the future, regardless of
-   how long the browser event loop took to run once through. This doesn't make
-   a lot of sense, since the whole point of the refresh rate is to generate
-   frames at about the desired cadence. Fix this by subtracting from
-   `REFRESH_RATE_SEC` according to how much time the *previous* frame took.
+[^browser-thread-burn]: The browser thread's `while True` loop, which
+asks SDL for new events, is also wasteful. Unfortunately, we couldn't
+find a way to avoid this in SDL.
 
-   A second problem is that the browser may simply not be able to keep up with
-   the desired cadence. Instead of constantly pegging the CPU in a futile
-   attempt to keep up, implement a *frame time estimator* that estimates the
-   true cadence of the browser based on previous frames, and
-   adjust `schedule_animation_frame` to match.
+*Optimized scheduling*: On a complicated web page, the browser may not
+be able to keep up with the desired cadence. Instead of constantly
+pegging the CPU in a futile attempt to keep up, implement a *frame
+time estimator* that estimates the true cadence of the browser based
+on previous frames, and adjust `schedule_animation_frame` to match.
+This way complicated pages get consistently slower, instead of having
+random slowdowns.
 
-   A third problem is that the main thread `TaskRunner` only has one task queue,
-   and both rendering and non-rendering tasks go into it. Therefore a slow
-   sequence of script or event handler tasks may interfere with the desired
-   rendering cadence. This problem can be lessened by *prioritizing* rendering
-   tasks: placing them in a separate queue that can take priority over
-   other tasks. Implement this.
-
-* *Raster-and-draw thread*: the browser thread is currently not very responsive
-   to input events, because raster and draw are
-   [slow](#parallel-rendering). Fix this by adding a raster-and-draw thread
-   controlled by the browser thread, so that the browser thread is no longer
-   blocked on this work. Be careful to take into account that SDL is not
-   thread-safe, so all of the steps that directly use SDL still need to happen
-   on the browser thread.
+*Raster-and-draw thread*: Right now, if an input event arrives while
+the browser thread is rastering or drawing, that input event won't be
+handled immediately. This is especially a problem because [raster and
+draw are slow](#profiling-rendering). Fix this by adding a separate
+raster-and-draw thread controlled by the browser thread. While the
+raster-and-draw thread is doing its work, the browser thread should be
+available to handle input events. Be careful: SDL is not thread-safe,
+so all of the steps that directly use SDL still need to happen on the
+browser thread.

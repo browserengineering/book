@@ -136,7 +136,8 @@ class JSContext:
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
-    def XMLHttpRequest_send(self, method, url, body, is_async, handle):
+    def XMLHttpRequest_send(self, method, url, body, is_async,
+        handle):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
