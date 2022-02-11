@@ -617,13 +617,13 @@ pipeline that's either run or not in a single unit.
 ::: {.further}
 
 It was not until the second decade of the 2000s that all modern browsers
-finished adopting this approach. Once the need became apparent due to the
-emergence of complex interactive web applications, it still took years of
-effort to safely refactor all of the complex existing browser codebases into
-a clean task-based system. In fact, in some ways it is only
-[very recently][renderingng] that this process can perhaps be said to have
-completed. Though since software can always be improved,
-in some sense the work is never done.
+finished adopting a scheduled, task-based approach to rendering. Once the need
+became apparent due to the emergence of complex interactive web applications,
+it still took years of effort to safely refactor all of the complex existing
+browser codebases. In fact, in some ways it is
+only [very recently][renderingng] that this process can perhaps be said to have
+completed. Though since software can always be improved, in some sense the work
+is never done.
 
 :::
 
@@ -785,7 +785,7 @@ regardless of the computer hardware.
 
 ::: {.further}
 
-Before the `requestAnimationFrame` API, developers approximaterd it with code
+Before the `requestAnimationFrame` API, developers approximated it with code
 like this:
 
 ``` {.javascript expected=False}
