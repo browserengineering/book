@@ -153,8 +153,8 @@ class JSContext:
             self.tab.task_runner.schedule_task(task)
             return response
 
-        if not is_async:
-            return run_load(is_async)
+        if not isasync:
+            return run_load()
         else:
             load_thread = threading.Thread(target=run_load)
             load_thread.start()
