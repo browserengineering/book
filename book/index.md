@@ -73,10 +73,9 @@ Part 4: Modern Browsers
 
 (@) [Adding Visual Effects](visual-effects.md)\
     Blending, Clipping and Compositing
-(@) [Scheduling and Threading](scheduling-and-threading.md)\
+(@) [Scheduling and Threading](scheduling.md)\
     The Rendering Event Loop and Pipeline
-(@) [Saving Partial Layouts](reflow.md)\
-    Two-phase layout and fast rendering
+(@) Compositing and Animations
 
 ::: {.outro}
 Conclusion

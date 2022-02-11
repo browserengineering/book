@@ -2,7 +2,7 @@
 title: Adding Visual Effects
 chapter: 11
 prev: security
-next: scheduling-and-threading
+next: scheduling
 ...
 
 Right now our browser can only draw colored rectangles and

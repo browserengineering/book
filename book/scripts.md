@@ -280,7 +280,7 @@ consequence of JavaScript's single-threaded semantics and its task-based,
 [run-to-completion scheduling][rtc]. Some APIs like [Web
 Workers][webworkers], allow limited multithreading, but those threads
 largely don't have access to the DOM. [Chapter
-13](scheduling-and-threading.md) has more to say about how browsers
+13](scheduling.md) has more to say about how browsers
 deal with slow user scripts.
 :::
 
