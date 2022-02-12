@@ -150,7 +150,7 @@ Tasks are *also* a natural way to support several JavaScript APIs that
 ask for a function to be run at some point in the future. For example,
 [`setTimeout`][settimeout] lets you run a JavaScript function some
 number of milliseconds from now. This code prints "Callback" to the
-console one second frow now:
+console one second from now:
 
 [settimeout]: https://developer.mozilla.org/en-US/docs/Web/API/setTimeout
 
@@ -834,7 +834,7 @@ def show_count():
 
 Load this up and observe an animation from 0 to 100.
 
-One flaw with our implementation so far is that an unattentive coder
+One flaw with our implementation so far is that an inattentive coder
 might call `requestAnimationFrame` multiple times and thereby schedule
 more animation frames than expected. If other JavaScript tasks appear
 later, they might end up delayed by many, many frames.
@@ -1041,7 +1041,7 @@ sometimes take a lot of time.
 Threads are a much more powerful construct in recent decades, due to the
 emergence of multi-core CPUs. Before that, threads existed, but were a
 mechanism for improving *responsiveness* via pre-emptive multitasking, 
-but without increasing *throughput* (fraames per second).
+but without increasing *throughput* (frames per second).
 
 These days, a typical desktop computer can run many threads simultaneously, and
 even phones have several cores plus a highly parallel GPU. However, on phones
@@ -1340,6 +1340,7 @@ class Browser:
             self.lock.acquire(blocking=True)
             # ...
             self.lock.release()
+            # ...
         self.lock.acquire(blocking=True)
         # ...
         self.lock.release()
@@ -1696,7 +1697,7 @@ can then pre-optimize the pipeline to make it super fast for those graphs.
 This is why games often take a while to load, because they are uploading
 hyper-optimized code and pre-rendered data to the CPU and GPU memory.
 
-Browsers, on the other hand, need to load arbritrary web pages, and do so
+Browsers, on the other hand, need to load arbitrary web pages, and do so
 extremely fast. So they can't spend much time optimizing anything, and instead
 have to get right to the business of pushing pixels. This important difference
 makes for a very different set of tradeoffs, and is why browsers often
