@@ -134,7 +134,7 @@ even in cases where it's [not embedded][nodejs-eventloop] in a browser. In
 addition, it has concepts of messages passed to event loops, run-to-completion
 semantics and generally speaking an
 [asynchronous][async-js], callback & event-based model of computing.
-JavaScript's programming model is also an important reason to architect a
+JavaScript's programming model is another important reason to architect a
 browser in the same way.
 
 [js-eventloop]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/EventLoop
@@ -1048,7 +1048,7 @@ even phones have several cores plus a highly parallel GPU. However, on phones
 it's difficult to make maximum use of all of the threads for rendering
 parallelism, because if you turn on all of the cores, the battery will drain
 quickly. In addition, there are usually system processes (such as listening to
-the wireless radio or manageing the screen and input) running in the background
+the wireless radio or managing the screen and input) running in the background
 on one or more cores anyway, so the actual parallelism available to the browser
 might be in effect just two cores.
 :::
