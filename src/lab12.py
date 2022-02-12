@@ -151,7 +151,8 @@ class JSContext:
                 full_url, self.tab.url, payload=body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
-            return response
+            if not isasync:
+                return response
 
         if not isasync:
             return run_load()
@@ -509,14 +510,15 @@ class Browser:
         tab = self.tabs[self.active_tab]
         tab.run_animation_frame(self.scroll)
 
-    def commit(self, tab, commit):
+    def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.tabs[self.active_tab]:
-            self.url = commit.url
-            if commit.scroll != None:
-                self.scroll = commit.scroll
-            self.active_tab_height = commit.height
-            self.active_tab_display_list = commit.display_list
+            self.url = data.url
+            if data.scroll != None:
+                self.scroll = data.scroll
+            self.active_tab_height = data.height
+            if data.display_list:
+                self.active_tab_display_list = data.display_list
             self.set_needs_raster_and_draw()
         self.lock.release()
 
