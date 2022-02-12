@@ -125,15 +125,7 @@ class Tab:
 ```
 
 Now our browser will not run scripts until after `load` has completed
-and the event loop comes around again. This change is nice---pages
-will load a bit faster---but there's more to it than that. Before this
-change, we no choice but to run scripts right away just as they were
-loaded. But now that running scripts is a `Task`, the task runner
-controls when it runs. It could run only one script per second, or at
-different rates for active and inactive pages, or only if there isn't
-a higher-priority user action to respond to. A browser could even have
-multiple task runners, optimized for different use cases.
-
+and the event loop comes around again.
 
 ::: {.further}
 Thinking of the browser as a rendering pipeline is strongly influenced
@@ -490,81 +482,133 @@ rendering to be faster and more efficiently scheduled.
 
 :::
 
-Rendering pipeline tasks
+The cadence of rendering
 ========================
 
-So far we've focused on creating tasks that run JavaScript code. But
-the results of that JavaScript code---and also the results of
-interactions like loading new pages, scrolling, clicking, and
-typing---are only available to the user after the browser renders the
-page. In this sensem, the most important task in a browser is running
-the [rendering pipeline][graphics-pipeline]: styling the HTML elements,
-constructing the layout tree, computing sizes and positions, painting
-layout objects to a display list, rastering the result into surfaces,
-and drawing those surfaces to the screen.
+There's more to tasks than just implementing some JavaScript APIs.
+Once something is a `Task`, the task runner controls when it runs:
+now, later, at most once a second, at different rates for active and
+inactive pages, or according to its priority. A browser could even
+have multiple task runners, optimized for different use cases.
 
-[graphics-pipeline]: https://en.wikipedia.org/wiki/Graphics_pipeline
+Now, it might be hard to see how the browser can prioritize which
+JavaScript callback to run, or why it might want to execute JavaScript
+tasks at a fixed cadence. But besides JavaScript the browser also has
+to render the page, and as you may recall from [Chapter
+2](graphics.md#framebudget), we'd like the browser to render the page
+exactly as fast as the display hardware can refresh. On most
+computers, this is 60 times per second, or 16ms per frame.
 
-Right now, the browser executes these rendering steps eagerly: as soon
-as the user scrolls or clicks, or as soon as JavaScript modifies the
-document. But we want to make these interactions faster and smoother,
-and the very first step in doing so is to make rendering a schedulable
-task, so we can decide when it occurs.
+Let's establish 16ms our ideal refresh rate:[^why-16ms]
 
-At a high level, that requires code like this:
-
-``` {.python expected=False}
-self.task_runner.schedule_task(Task(self.render))
-```
-
-However, rendering is special in that it never makes sense to do
-scheduling twice in a row, since the page wouldn't have changed in
-between. To avoid having two rendering tasks we'll add a boolean
-called `needs_animation_frame` to each `Tab` which indicates
-whether a rendering task is scheduled:
+[^why-16ms]: 16 milliseconds isn't that precise, since it's 60 times
+    16.66666...ms that is just about equal to 1 second. But it's a toy
+    browser!
 
 ``` {.python}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        self.needs_animation_frame = False
+REFRESH_RATE_SEC = 0.016 # 16ms
 ```
 
-A new `schedule_animation_frame`[^animation-frame] method will check
-the flag before scheduling a new rendering task:
+Now, there's some complexity here, because we have multiple tabs. We
+don't need _each_ tab redrawing itself every 16ms, because the user
+only sees one frame at a time. We just need the _active_ tab redrawing
+itself. That means that one tab needs to redo styling, layout, and
+painting (its `render` method), and then the browser needs to
+re-raster itself.
+
+First, let's can write a `schedule_animation_frame`
+method[^animation-frame] that schedules a `render` task to run the
+`Tab` half of the rendering pipeline:
 
 [^animation-frame]: It's called an "animation frame" because
 sequential rendering of different pixels is an animation, and each
 time you render it's one "frame"---like a drawing in a picture frame.
 
 ``` {.python expected=False}
-class Tab:
+class Browser:
     def schedule_animation_frame(self):
-        if self.needs_animation_frame:
-            return
-        self.needs_animation_frame = True
-        self.task_runner.schedule_task(Task(self.run_animation_frame))
-
-    def run_animation_frame(self):
-        self.render()
-        self.needs_animation_frame = False
+        def callback():
+            active_tab = self.tabs[self.active_tab]
+            task = Task(active_tab.render)
+            active_tab.task_runner.schedule_task(task)
+            self.schedule_animation_frame()
+        threading.Timer(REFRESH_RATE_SEC, callback).start()
 ```
 
-Now, take a look at all the other calls to `render` in your `Tab` and
-`JSContext` methods. Instead of calling `render`, which causes the
-browser to immediately rerun the rendering pipeline, these methods
-should schedule the rendering pipeline to run later. For
-future-proofing, I'm doing to do this in a new `set_needs_render`
-call:
+Note how every time a frame is scheduled, we set up a timer to
+schedule the next one. We can kick off the process when we start the
+Browser:
+
+``` {.python}
+if __name__ == "__main__":
+    # ...
+    browser = Browser()
+    browser.schedule_animation_frame()
+    # ...
+```
+
+Next, let's put the rastering and drawing tasks that the `Browser`
+does into their own method:
+
+``` {.python}
+class Browser:
+    def raster_and_draw(self):
+        self.raster_chrome()
+        self.raster_tab()
+        self.draw()
+```
+
+In the top-level loop, when run a task on the active tab the browser
+will need to raster-and-draw, in case that task was a rendering task:
 
 ``` {.python expected=False}
-class Tab
-    def set_needs_render(self):
-        self.schedule_animation_frame()
+if __name__ == "__main__":
+    while True:
+        # ...
+        browser.tabs[browser.active_tab].task_runner.run()
+        browser.raster_and_draw()
 ```
 
-So, for example, the `load` method can call
-`set_needs_render`:
+Now we're scheduling a new rendering task every 16 milliseconds, just
+as we wanted to.
+
+Optimizing the rendering tasks
+==============================
+
+If you run this on your computer, there's a good chance your CPU usage
+will spike and your batteries will start draining. That's because
+we're calling `render` every frame, which means our browser is now
+constantly styling elements, building layout trees, and painting
+display lists. Most of that work is wasted, because on most frames,
+the web page will not have changed at all, so the old styles, layout
+trees, and display lists would have worked just as well as the new
+ones.
+
+Let's fix this using a *dirty bit*, a piece of state that tells us if
+some complex data structure is up to date. Since we want to know if we
+need to run `render`, let's call our dirty bit `needs_render`:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.needs_render = False
+
+    def set_needs_render(self):
+        self.needs_render = True
+
+    def render(self):
+        if not self.needs_render: return
+        # ...
+        self.needs_render = False
+```
+
+One advantage of this flag is that we can now set `needs_render` when
+the HTML has changed instead of calling `render` directly. The
+`render` will still happen, but later. This makes scripts faster,
+especially if they modify the page multiple times. Make this change in
+`innerHTML_set`, `load`, `click`, and `keypress`. For example, in
+`load`, do this:
 
 ``` {.python}
 class Tab:
@@ -573,7 +617,7 @@ class Tab:
         self.set_needs_render()
 ```
 
-As can `innerHTML_set`:
+And in `innerHTML_set`, do this:
 
 ``` {.python}
 class JSContext:
@@ -584,45 +628,84 @@ class JSContext:
 
 There are more calls to `render`; you should find and fix all of them.
 
-So this handles the front half of the rendering pipeline: style,
-layout, and paint. The back half of the rendering pipeline (raster and
-draw) is handled by `Browser`, so the `Tab` needs to tell the
-`Browser` to run it. I'll add a new `raster_and_draw` method for the
-`Tab` to call:
+Another problem with our implementation is that the browser is now
+doing `raster_and_draw` every time the active tab runs a task.
+But sometimes that task is just running JavaScript that doesn't touch
+the web page, and the `raster_and_draw` call is a waste.
+
+We can avoid this using another dirty bit, which I'll call
+`needs_raster_and_draw`:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        self.needs_raster_and_draw = False
+
+    def set_needs_raster_and_draw(self):
+        self.needs_raster_and_draw = True
+
+    def raster_and_draw(self):
+        if not self.needs_raster_and_draw: return
+        # ...
+        self.needs_raster_and_draw = False
+```
+
+We will need to call `set_needs_raster_and_draw` every time either the
+`Browser` changes something about the browser chrome, or any time the
+`Tab` changes its rendering. The browser chrome is changed by event
+handlers:
+
+``` {.python}
+class Browser:
+    def handle_click(self, e):
+        if e.y < CHROME_PX:
+            # ...
+            self.set_needs_raster_and_draw()
+
+    def handle_key(self, char):
+        if self.focus == "address bar":
+            # ...
+            self.set_needs_raster_and_draw()
+
+    def handle_enter(self):
+        if self.focus == "address bar":
+            # ...
+            self.set_needs_raster_and_draw()
+```
+
+And the `Tab` should also set this bit after running `render`:
 
 ``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
+        # ...
         self.browser = browser
-
-    def run_animation_frame(self):
+        
+    def render(self):
         # ...
-        browser.raster_and_draw()
-
-class Browser:
-    def raster_and_draw(self):
-        self.raster_chrome()
-        self.raster_tab()
-        self.draw()
+        self.browser.set_needs_raster_and_draw()
 ```
 
-This system is getting complex, with the `Browser` and `Tab` each
-requesting additional work of the other, so for now let's try to
-simplify it by making everything go through the same series of steps.
-Any time the `Browser` does anything that can affect the page, like
-scrolling, it should call `set_needs_render` instead of calling
-`raster_tab` or similar. Then it's up to `set_needs_render` to cause
-the raster task to be run:
+You'll need to pass in the `browser` parameter when a `Tab` is
+constructed:
 
-``` {.python expected=False}
+``` {.python}
 class Browser:
-    def handle_down(self):
+    def load(self, url):
+        new_tab = Tab(self)
         # ...
-        self.active_tab.set_needs_render()
 ```
 
-This lets us thinking of both halves of rendering as one single
-pipeline that's either run or not in a single unit.
+Now the rendering pipeline is only run if necessary, and the browser
+should have acceptable performance again.
+
+::: {.further}
+The `needs_raster_and_draw` dirty bit is not just for making the browser a
+bit more efficient. Later in the chapter, we'll move raster and draw to another
+thread. If that bit was not there, then that thread would cause very erratic
+behavior when animating. Once you've read the whole chapter and implemented
+that thread, try removing this dirty bit and see for yourself!
+:::
 
 ::: {.further}
 
@@ -642,20 +725,15 @@ is never done.
 Animating frames
 ================
 
-Scrolling is an interesting case, actually. It's a situation that is the closest
-to a true animation in the browser right now---if you hold down the down-arrow
-key, you'll see what looks like a scrolling animation. Since it's one case of a
-more general situation (animations of all kinds), it makes sense to understand
-animations more generally, then apply what we learned to scrolling as
-a special case. To this end, let's explore yet another JavaScript API,
-[`requestAnimationFrame`][raf].
+One big reason for a steady rendering cadence is so that animations
+run smoothly. Web pages set up such animations using the
+[`requestAnimationFrame`][raf] API. This API allows scripts to run
+code right before the browser runs its rendering pipeline, making the
+animation maximally smooth. It works like this:
 
 [raf]: https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
 
-This API lets scripts run an animation by integrating with the rendering task.
-It works like this:
-
-``` {.javascript expected=False}
+``` {.javascript.example}
 /* This is JavaScript */
 function callback() {
     console.log("I was called!");
@@ -663,49 +741,14 @@ function callback() {
 requestAnimationFrame(callback);
 ```
 
-This code will do two things: request an animation frame task to be scheduled
-on the event loop (i.e. `Tab.run_animation_frame`, the one you already
-implemented in the previous section) and call `callback` *at the beginning* of
-that rendering task, before any browser rendering code. This is super useful to
-web page authors, as it allows them to do any setup work related to rendering
-just before it occurs. The implementation of this JavaScript API is
-straightforward:
+By calling `requestAnimationFrame`, this code is doing two things:
+scheduling a rendering task, and asking that the browser call
+`callback` *at the beginning* of that rendering task, before any
+browser rendering code. This lets web page authors change the page and
+be confident that it will be rendered right away.
 
-* Add a new dirty bit to `Tab` and code to call the JavaScript
-callbacks during the next animation frame:
-
-``` {.python expected=False}
-class Tab:
-    def __init__(self, browser):
-        self.needs_raf_callbacks = False
-
-    def request_animation_frame_callback(self):
-        self.needs_raf_callbacks = True
-        self.schedule_animation_frame()
-
-    def run_animation_frame(self):
-        if self.needs_raf_callbacks:
-            self.needs_raf_callbacks = False
-            self.js.interp.evaljs("__runRAFHandlers()")
-
-        self.render()
-        browser.raster_and_draw()
-```
-
-* Add the interface to JSContext:
-
-``` {.python}
-class JSContext:
-    def __init__(self, tab):
-        # ...
-        self.interp.export_function("requestAnimationFrame",
-            self.requestAnimationFrame)
-
-    def requestAnimationFrame(self):
-        self.tab.request_animation_frame_callback()
-```
-
-* Extend the JavaScript runtime, once again using handles:
+The implementation of this JavaScript API is straightforward. We store
+the callbacks on the JavaScript side:
 
 ``` {.javascript file=runtime}
 RAF_LISTENERS = [];
@@ -714,12 +757,39 @@ function requestAnimationFrame(fn) {
     RAF_LISTENERS.push(fn);
     call_python("requestAnimationFrame");
 }
+```
 
+In `JSContext`, when that method is called, we need to schedule a new
+rendering task:
+
+``` {.python expected=False}
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.interp.export_function("requestAnimationFrame",
+            self.requestAnimationFrame)
+
+    def requestAnimationFrame(self):
+        task = Task(self.tab.render)
+        self.tab.task_runner.schedule_task(task)
+```
+
+Then, when `render` is actually called, we need to call back into
+JavaScript, like this:
+
+``` {.python expected=False}
+class Tab:
+    def render(self):
+        if not self.needs_render: return
+        self.js.interp.evaljs("__runRAFHandlers()")
+        # ...
+```
+
+This `__runRAFHandlers` function is a little tricky:
+
+``` {.javascript file=runtime}
 function __runRAFHandlers() {
-    var handlers_copy = [];
-    for (var i = 0; i < RAF_LISTENERS.length; i++) {
-        handlers_copy.push(RAF_LISTENERS[i]);
-    }
+    var handlers_copy = RAF_LISTENERS;
     RAF_LISTENERS = [];
     for (var i = 0; i < handlers_copy.length; i++) {
         handlers_copy[i]();
@@ -727,29 +797,18 @@ function __runRAFHandlers() {
 }
 ```
 
-Ok, now that that's implemented, let's take a deeper look at what
-`run_animation_frame` does:
+Note that `__runRAFHandlers` needs to reset `RAF_LISTENERS` to the
+empty array before it runs any of the callbacks. That's because one of
+the callbacks could itself call `requestAnimationFrame`. If this
+happens during such a callback, the spec says that a *second*
+animation frame should be scheduled. That means we need to make sure
+to store the callbacks for the *current* frame separately from the
+callbacks for the *next* frame.
 
-1. Reset `needs_raf_callbacks` to false.
-2. Call the JavaScript callbacks.
-3. Run the rendering pipeline.
-
-Look a bit more closely at steps 1 and 2. Would it work to run step 1 *after*
-step 2? The answer is no, but the reason is subtle: it's because the JavaScript
-callback code could call `requestAnimationFrame`. If this happens
-during such a callback, the spec says that a *second*  animation frame should
-be scheduled (and 16ms further in the future, naturally). If the order of
-operations had been different, it wouldn't correctly schedule another animation
-frame.
-
- Likewise, the runtime JavaScript needs to be careful to copy the
- `RAF_LISTENERS` array to a temporary variable and then clear out
- ``RAF_LISTENERS``, so that it can be re-filled by any new calls to
- `requestAnimationFrame`.
-
-This situation may seem like a corner case, but it's actually very important, as
-this is how JavaScript can run an *animation*. Let's
-try it out with a script that counts from 1 to 100, one frame at a time:
+This situation may seem like a corner case, but it's actually very
+important, as this is how pages can run an *animation*: by iteratively
+scheduling one frame after another. For example, here's a simple
+counter "animation":
 
 ``` {.javascript file=eventloop}
 var count = 0;
@@ -762,9 +821,9 @@ function callback() {
 requestAnimationFrame(callback);
 ```
 
-This script will cause 100 animation frame tasks to run on the rendering event
-loop. During that time, our browser will display an animated count from 0 to
-99.
+This script will cause 100 animation frame tasks to run on the
+rendering event loop. During that time, our browser will display an
+animated count from 0 to 99.
 
 And while we're at it, let's add an web page to our HTTP server that
 serves this example:
@@ -786,12 +845,55 @@ def show_count():
 
 Load this up and observe an animation from 0 to 100.
 
-However, there is a pretty big flaw in our implementation that might be apparent
-when you try this demo. Depending on your computer's speed, it might run really
-fast or really slow. In fact, the animation will take a total amount of time
-about equal to the time it takes to run 100 rendering tasks. This is
-bad---animations should have a smooth and consistent frame rate, or *cadence*,
-regardless of the computer hardware.
+One flaw with our implementation so far is that an unattentive coder
+might call `requestAnimationFrame` multiple times and thereby schedule
+more animation frames than expected. If other JavaScript tasks appear
+later, they might end up delayed by many, many frames.
+
+Luckily, rendering is special in that it never makes sense to have two
+rendering tasks in a row, since the page wouldn't have changed in
+between. To avoid having two rendering tasks we'll add a dirty bit
+called `needs_animation_frame` to the `Browser` which indicates
+whether a rendering task actually needs to be scheduled:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.needs_animation_frame = True
+
+    def schedule_animation_frame(self):
+        # ...
+        if self.needs_animation_frame:
+            threading.Timer(REFRESH_RATE_SEC, callback).start()
+            self.needs_animation_frame = False
+```
+
+A tab will set the `needs_animation_frame` flag when an animation
+frame is requested:
+
+``` {.python}
+class JSContext:
+    def requestAnimationFrame(self):
+        self.tab.browser.set_needs_animation_frame(self.tab)
+
+class Tab:
+    def set_needs_render(self):
+        # ...
+        self.browser.set_needs_animation_frame(self)
+
+class Browser:
+    def set_needs_animation_frame(self, tab):
+        if tab == self.tabs[self.active_tab]:
+            self.needs_animation_frame = True
+```
+
+Note that `set_needs_animation_frame` will only actually set the dirty
+bit if called from the active tab. This guarantees that inactive tabs
+can't interfere with active tabs. Besides preventing scripts from
+scheduling too many animation frames, this system also makes sure that
+if our browser consistently runs slower than 60 frames per second, we
+won't end up with an ever-growing queue of rendering tasks.
 
 ::: {.further}
 
@@ -824,123 +926,6 @@ the browser chooses to stop all tasks, then it would also break any important
 background work the web app might want to do (such as syncing your information
 to the server so it's not lost).
 
-:::
-
-The cadence of rendering
-========================
-
-So what should this cadence be? Well, clearly it shouldn't go faster
-than the display hardware can refresh. On most computers, this is 60 times
-per second, or 16ms per frame (`60*16.66ms ~= 1s`).
-
-Ideally, the cadence shouldn't be slower than that either, so that animations
-are as smooth as possibile. This was discussed briefly in Chapter 2 as well,
-which introduced the [animation frame budget](graphics.md#framebudget). The
-animation frame budget is our target for how fast the rendering task should
-be.
-
-Therefore, let's use 16ms as the definition of the cadence (otherwise known
-as the refresh rate), and see how close we can get to that speed:
-
-``` {.python}
-REFRESH_RATE_SEC = 0.016 # 16ms
-```
-
-To not go faster than the refresh rate, use a `Timer`:
-
-``` {.python expected=False}
-class Tab:
-    def schedule_animation_fraggme(self):
-        # ...
-        def callback():
-            self.task_runner.schedule_task( \
-                Task(self.run_animation_frame))
-        threading.Timer(REFRESH_RATE_SEC, callback).start()
-```
-
-Unfortunately, not going slower than the refresh rate is difficult. We can't
-just randomly speed up a computer; instead we need to do the painstaking work
-of *optimizing* the rendering pipeline.
-
-Here's a start: avoid running `render` or `raster_and_draw` just because
-an animation frame was scheduled. As we saw with `requestAnimationFrame`,
-sometimes frames are scheduled just to run a script, and style etc. may not
-need to run at all. Likewise, just because we're scrolling doesn't mean we
-need to style or raster anything.
-
-To achieve this, add two *dirty bits*, boolean variables that indicate
-whether something changed that requires re-doing the first or second half of
-the rendering pipeline. Naturally, they will be called `needs_render`
-and `needs_raster_and_draw`. They will come with methods to set them to true
-(we already `have set_needs_render` in `Tab`, actually),
-and we'll obey them when considering running `render` or `raster_and_draw`.
-
-
-``` {.python expected=False}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        self.needs_render = False
-
-    def set_needs_render(self):
-        self.needs_render = True
-        self.schedule_animation_frame()
-
-    def render(self):
-        if not self.needs_render:
-            return
-        # ...
-        self.needs_render = False
-
-class Browser:
-    def __init__(self):
-        # ...
-        self.needs_raster_and_draw = False
-
-    def set_needs_raster_and_draw(self):
-        self.needs_raster_and_draw = True
-        self.tab.schedule_animation_frame()
-
-    def raster_and_draw(self):
-        if not self.needs_raster_and_draw:
-            return
-        # ...
-        self.needs_raster_and_draw = False
-```
-
-Note how this change also magically made `requestAnimationFrame` avoid calling
-`render` by defaut, because that API calls `request_animation_frame_callback`,
-not `set_needs_render`.
-
-On the `Browser` side, here are some optimizations we can now add, such as to
-`handle_click`:
-
-``` {.python}
-class Browser:
-    def handle_click(self, e):
-        if e.y < CHROME_PX:
-            # ...
-            self.set_needs_raster_and_draw()
-        else:
-            # ...
-            self.set_needs_raster_and_draw()
-```
-
-and `handle_down`:^[And so on, for all the call sites.]
-
-``` {.python}
-class Browser:
-    def handle_down(self):
-        # ...
-        self.set_needs_raster_and_draw()
-```
-
-::: {.further}
-The `needs_raster_and_draw` dirty bit is not just for making the browser a
-bit more efficient. Later in the chapter, we'll move raster and draw to another
-thread. If that bit was not there, then that thread would cause very erratic
-behavior when animating. Once you've read the whole chapter and implemented
-that thread, try removing this dirty bit and see for yourself!
 :::
 
 Profiling rendering
@@ -985,7 +970,7 @@ class MeasureTime:
         self.start_time = None
 ```
 
-Let's measure the total time for both render:
+Let's measure the total time for render:
 
 ``` {.python}
 class Tab:
@@ -993,14 +978,13 @@ class Tab:
         self.measure_render = MeasureTime("render")
 
     def render(self):
-        if not self.needs_render:
-            return
+        if not self.needs_render: return
         self.measure_render.start()
         # ...
         self.measure_render.stop()
 ```
 
-And raster-and-draw:
+And also raster-and-draw:
 
 
 ``` {.python}
@@ -1009,9 +993,7 @@ class Browser:
         self.measure_raster_and_draw = MeasureTime("raster-and-draw")
 
     def raster_and_draw(self):
-        if not self.needs_raster_and_draw:
-            return
-        self.lock.acquire(blocking=True)
+        if not self.needs_raster_and_draw: return
         self.measure_raster_and_draw.start()
         # ...
         self.measure_raster_and_draw.stop()
@@ -1032,16 +1014,16 @@ class Browser:
 Naturally we'll need to call the `Tab`'s `handle_quit` method before
 quitting, so it has a chance to print its timing data.
 
-Now fire up the server, open our timer script, wait for it to finish
+Fire up the server, open our timer script, wait for it to finish
 counting, and then exit the browser. You should see it output timing
-data like this (from my computer):
+data. On my computer, it looks like this:
 
     Time in raster-and-draw on average: 66ms
     Time in render on average: 20ms
 
-You can see that the browser spent about 20ms in `render` and about
-66ms in `raster_and_draw` per animation frame. That clearly blows
-through our 16ms budget. So, what can we do?
+On every animation frame, my browser spent about 20ms in `render` and
+about 66ms in `raster_and_draw`. That clearly blows through our 16ms
+budget. So, what can we do?
 
 Well, one option, of course, is optimizing raster-and-draw, or even
 render. And if we can, it's a great choice.[^see-go-further] But
@@ -1161,8 +1143,11 @@ class TaskRunner:
             # ...
 ```
 
-In `run`, implement a simple event loop scheduling strategy that runs one
-task per loop.
+Remove the call to `run` from the top-level `while True` loop, since
+that loop is now going to be the browser thread.
+
+Each iteration of the `run` loop will pick which scheduled task to run
+next. I'll stick with first-in first-out:
 
 ``` {.python}
 class TaskRunner:
@@ -1212,7 +1197,6 @@ on the web page, we must schedule a task on the main thread:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        self.lock.acquire(blocking=True)
         if e.y < CHROME_PX:
              # ...
         else:
@@ -1220,7 +1204,6 @@ class Browser:
             active_tab = self.tabs[self.active_tab]
             task = Task(active_tab.click, e.x, e.y - CHROME_PX)
             active_tab.task_runner.schedule_task(task)
-        self.lock.release()
 ```
 
 The same logic holds for `keypress`:
@@ -1228,7 +1211,6 @@ The same logic holds for `keypress`:
 ``` {.python}
 class Browser:
     def handle_key(self, char):
-        self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             # ...
@@ -1236,7 +1218,6 @@ class Browser:
             active_tab = self.tabs[self.active_tab]
             task = Task(active_tab.keypress, char)
             active_tab.task_runner.schedule_task(task)
-        self.lock.release()
 ```
 
 Do the same with any other calls from the `Browser` to the `Tab`.
@@ -1261,7 +1242,9 @@ class CommitForRaster:
 ```
 
 When running an animation frame, the `Tab` should construct one of
-these objects and pass it to `commit`:
+these objects and pass it to `commit`. To keep `render` from getting
+too confusing, let's put this in a new `run_animation_frame` method,
+and move `__runRAFHandlers` there too:
 
 ``` {.python replace=self.scroll%2c/scroll%2c,(self)/(self%2c%20scroll)}
 class Tab:
@@ -1270,7 +1253,8 @@ class Tab:
         self.browser = browser
 
     def run_animation_frame(self):
-        # ...
+        self.js.interp.evaljs("__runRAFHandlers()")
+        self.render()
         commit_data = CommitForRaster(
             url=self.url,
             scroll=self.scroll,
@@ -1281,25 +1265,41 @@ class Tab:
         self.browser.commit(self, commit_data)
 ```
 
-We should think of the `CommitForRaster` object as being sent from the
-main thread to browser thread. That means the main thread shouldn't
-access it any more, and for this reason I'm resetting the
-`display_list` field.
+Think of the `CommitForRaster` object as being sent from the main
+thread to browser thread. That means the main thread shouldn't access
+it any more, and for this reason I'm resetting the `display_list`
+field. The `Browser` should now schedule `run_animation_frame`:
+
+``` {.python replace=frame)/frame%2c%20scroll)}
+class Browser:
+    def schedule_animation_frame(self):
+        def callback():
+            # ...
+            task = Task(active_tab.run_animation_frame)
+            # ...
+```
+
+Also, remove the `set_needs_raster_and_draw` call from `render`. We'll
+do that inside `commit`.
 
 On the `Browser` side, the new `commit` method needs to read out all
 of the data it was sent and call `set_needs_raster_and_draw` as
-needed.
+needed. Because this call will come from another thread, we'll need to
+acquire a lock:
 
 ``` {.python}
 class Browser:
     def __init__(self):
+        self.lock = threading.Lock()
+
         self.url = None
         self.scroll = 0
+        self.active_tab_height = 0
+        self.active_tab_display_list = None
 
     def commit(self, tab, commit):
         self.lock.acquire(blocking=True)
         if tab == self.tabs[self.active_tab]:
-            self.display_scheduled = False
             self.url = commit.url
             self.scroll = commit.scroll
             self.active_tab_height = commit.height
@@ -1324,65 +1324,41 @@ optimizing commit is quite challenging.
 running their main threads and responding to callbacks from
 `setTimeout` or `XMLHttpRequest`.
 
-This architecture broadly works, but we need to make sure that the
-*browser thread* determines the cadence of animation frames, *not* the
-main thread, since there's no point to rendering display lists faster
-than they can be drawn to the screen. To do so, we need to prevent
-inactive tabs from requesting animation frames.
-
-We'll implement this with a `needs_animation_frame` dirty bit on
-`Browser`. When a tab needs an animation frame,
-`set_needs_animation_frame` will check whether the tab is active
-before setting the dirty bit. Methods in `Browser` can just set
-`needs_animation_frame` directly instead of calling
-`set_needs_animation_frame`.
+Now that we have a browser lock, we also need to acquire the lock any
+time the browser thread accesses any of its variables. For example, in
+`set_needs_animation_frame`, do this:
 
 ``` {.python}
 class Browser:
-    def __init__(self):
-        # ...
-        self.needs_animation_frame = False
-
     def set_needs_animation_frame(self, tab):
         self.lock.acquire(blocking=True)
-        if tab == self.tabs[self.active_tab]:
-            self.needs_animation_frame = True
+        # ...
         self.lock.release()
-
-    def set_needs_raster_and_draw(self):
-        # ...
-        self.needs_animation_frame = True
-
-    def set_active_tab(self, index):
-        # ...
-        self.needs_animation_frame = True
 ```
 
-In the main thread, we'll need to pass in the current tab when
-requesting an animation frame:
+In `schedule_animation_frame` you'll need to do it both inside and
+outside the callback:
 
-``` {.python}
-class Tab:
-    def set_needs_render(self):
-        # ...
-        self.browser.set_needs_animation_frame(self)
+<!-- TODO: I'm not sure why this lint fails. -->
 
-    def request_animation_frame_callback(self):
+``` {.python expected=False}
+class Browser:
+    def schedule_animation_frame(self):
+        def callback():
+            self.lock.acquire(blocking=True)
+            # ...
+            self.lock.release()
+        self.lock.acquire(blocking=True)
         # ...
-        self.browser.set_needs_animation_frame(self)
+        self.lock.release()
 ```
 
-Because only active tabs can request an animation frame,
-`requestAnimationFrame` callbacks won't run on inactive frames, which
-is what we want. For example, try making a second tab while the
-counter demo is running, then go back to the demo tab. It should stop
-counting while another tab is active, and resume when it is made
-active again!
+Add locks to `raster_and_draw`, `handle_down`, `handle_click`,
+`handle_key`, and `handle_enter` as well.
 
-Now tabs only set the dirty bit, and the browser thread can decide how
-often it should schedule an animation frame. For example it can do so
-only once the browser thread is done drawing to the
-screen:[^backpressure]
+We also don't want the main thread doing rendering faster than the
+browser thread can raster and draw. So we should only schedule
+animation frames once raster and draw are done:[^backpressure]
 
 [^backpressure]: The technique of controlling the speed of the front of a
 pipeline by means of the speed of its end is called *back pressure*.
@@ -1395,29 +1371,9 @@ if __name__ == "__main__":
         browser.schedule_animation_frame()
 ```
 
-The `schedule_animation_frame` method on `Browser` works just like our
-earlier implementation on `Tab`:
-
-``` {.python expected=False}
-class Browser:
-    def __init__(self):
-        # ...
-        self.display_scheduled = False
-
-    def schedule_animation_frame(self):
-        def callback():
-            self.lock.acquire(blocking=True)
-            active_tab = self.tabs[self.active_tab]
-            active_tab.task_runner.schedule_task(
-                Task(active_tab.run_animation_frame))
-            self.lock.release()
-        self.lock.acquire(blocking=True)
-        if not self.display_scheduled and self.needs_animation_frame:
-            threading.Timer(REFRESH_RATE_SEC, callback).start()
-            self.display_scheduled = True
-            self.needs_animation_frame = False
-        self.lock.release()
-```
+Remove the `schedule_animation_frame` call from inside the callback
+inside `schedule_animation_frame`. We're now scheduling an animation
+frame every time raster-and-draw is finished.
 
 And that's it: we should now be doing render on one thread and raster
 and draw on another!
