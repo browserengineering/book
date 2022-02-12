@@ -56,7 +56,6 @@ function setTimeout(callback, time_delta) {
 
 function __runSetTimeout(handle) {
     var callback = SET_TIMEOUT_REQUESTS[handle]
-    delete SET_TIMEOUT_REQUESTS[handle];
     callback();
 }
 
