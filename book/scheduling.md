@@ -1026,10 +1026,17 @@ raster-and-draw step by adopting a multi-threaded architecture.
 ::: {.further}
 In our browser, a lot of time is spent in each drawing-into-surface
 step. That's why [optimizing surfaces][optimize-surfaces] is
-important! Modern browsers go a step further and perform raster and
+important! One way to optimize is to do the *interest region* exercise from
+[Chapter 11](visual-effects.md#exercises) if you haven't already. For example,
+in local testing I was able to to speed up
+`raster_and_draw` by about 30% just with the `clipRect` technique; making
+`tab_surface` smaller also helps a lot.
+
+Modern browsers go a step further and perform raster and
 draw [on the GPU][skia-gpu], where a lot more parallelism is
 available. Even so, on complex pages raster and draw really do
-sometimes take a lot of time.
+sometimes take a lot of time. I'll dig into this more in
+Chapter 13.
 :::
 
 [optimize-surfaces]: visual-effects.md#optimizing-surface-use

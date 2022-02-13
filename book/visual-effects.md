@@ -1815,6 +1815,12 @@ interest region; you'll need to track what part of the interest region
 is being shown on the screen, and re-raster the interest region when
 the user attempts to scroll outside of it.
 
+One way to do this is to filter out all display list items that don't intersect
+the interest rect. Another, easier way is to take advantage of Skia's internal
+optimizations: if you call `save` and `clipRect` on a Skia canvas and then some
+draw operations, Skia will automatically avoid display item raster work outside
+of the clipping rectangle before the next `restore`.
+
 *Z-index*: Right now, elements later in the HTML document are drawn
 "on top" of earlier ones. The `z-index` CSS property changes that
 order: an element with the larger `z-index` draws on top (with ties
