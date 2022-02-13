@@ -424,9 +424,9 @@ class TaskRunner:
         self.main_thread = threading.Thread(target=self.run)
         self.needs_quit = False
 
-    def schedule_task(self, callback):
+    def schedule_task(self, task):
         self.lock.acquire(blocking=True)
-        self.tasks.append(callback)
+        self.tasks.append(task)
         self.lock.release()
 
     def set_needs_quit(self):
@@ -500,6 +500,8 @@ class Browser:
             self.BLUE_MASK = 0x00ff0000
             self.ALPHA_MASK = 0xff000000
 
+        self.animation_timer = None
+
         self.needs_animation_frame = False
         self.needs_raster_and_draw = False
 
@@ -521,6 +523,7 @@ class Browser:
             if data.display_list:
                 self.active_tab_display_list = data.display_list
             self.needs_animation_frame = False
+            self.animation_timer = None
             self.set_needs_raster_and_draw()
         self.lock.release()
 
@@ -553,10 +556,13 @@ class Browser:
             self.lock.release()
             task = Task(active_tab.run_animation_frame, scroll)
             active_tab.task_runner.schedule_task(task)
+
         self.lock.acquire(blocking=True)
-        if self.needs_animation_frame:
+        if self.needs_animation_frame and not self.animation_timer:
             if USE_BROWSER_THREAD:
-                threading.Timer(REFRESH_RATE_SEC, callback).start()
+                self.animation_timer = \
+                    threading.Timer(REFRESH_RATE_SEC, callback)
+                self.animation_timer.start()
         self.lock.release()
 
     def handle_down(self):

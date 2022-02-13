@@ -5,11 +5,11 @@ prev: visual-effects
 next: skipped
 ...
 
-The browser must run sophisticated applications while staying
+Modern browsers must run sophisticated applications while staying
 responsive to user actions. Doing so means choosing which of its many
 tasks to prioritize and which to delay until later---tasks like
-JavaScript callbacks, user input, and rendering. Moreover, the browser
-must be split across multiple threads, with different threads running
+JavaScript callbacks, user input, and rendering. Moreover, browser
+work must be split across multiple threads, with different threads running
 events in parallel to maximize responsiveness.
 
 Tasks and Task Queues
@@ -64,12 +64,12 @@ class TaskRunner:
     def __init__(self):
         self.tasks = []
 
-    def schedule_task(self, callback):
-        self.tasks.append(callback)
+    def schedule_task(self, task):
+        self.tasks.append(task)
 ```
 
 When the time comes to run a task, our task runner can just remove
-the first task from the queue and run it:
+the first task from the queue and run it:p
 
 ``` {.python expected=False}
 class TaskRunner:
@@ -102,11 +102,11 @@ if __name__ == "__main__":
 Here I've chosen to only run tasks on the active tab, which means
 background tabs can't slow our browser down.
 
-With this simple task runner, we can now save tasks and execute them
+With this simple task runner, we can now queue up tasks and execute them
 later. For example, right now, when loading a web page, our browser
 will download and run all scripts before doing its rendering steps.
 That makes pages slower to load. We can fix this by creating tasks for
-running scripts later:
+running scripts:
 
 ``` {.python expected=False}
 class Tab:
@@ -444,9 +444,7 @@ function __runXHROnload(body, handle) {
 ```
 
 As you can see, tasks allow not only the browser but also applications
-running in the browser to delay tasks until later. However, there's a
-whole other category of work done by the browser not directly related
-to running JavaScript.
+running in the browser to delay tasks until later.
 
 ::: {.further}
 
@@ -506,9 +504,9 @@ itself. That means that only one tab needs to redo styling, layout, and
 painting (its `render` method), and then the browser needs to
 re-raster itself.
 
-Let's make that happen. First, let's can write a `schedule_animation_frame`
-method[^animation-frame] that schedules a `render` task to run the
-`Tab` half of the rendering pipeline:
+Let's make that happen. First, let's write a `schedule_animation_frame`
+method[^animation-frame] on `Browser` that schedules a `render` task to run
+the `Tab` half of the rendering pipeline:
 
 [^animation-frame]: It's called an "animation frame" because
 sequential rendering of different pixels is an animation, and each
@@ -562,8 +560,8 @@ if __name__ == "__main__":
 Now we're scheduling a new rendering task every 16 milliseconds, just
 as we wanted to.
 
-Optimizing rendering tasks
-==========================
+Optimizing rendering
+====================
 
 If you run this on your computer, there's a good chance your CPU usage
 will spike and your batteries will start draining. That's because
@@ -832,7 +830,7 @@ def show_count():
     return out
 ```
 
-Load this up and observe an animation from 0 to 100.
+Load this up and observe an animation from 0 to 99.
 
 One flaw with our implementation so far is that an inattentive coder
 might call `requestAnimationFrame` multiple times and thereby schedule
@@ -848,18 +846,26 @@ whether a rendering task actually needs to be scheduled:
 ``` {.python expected=False}
 class Browser:
     def __init__(self):
+        self.animation_timer = None
         # ...
         self.needs_animation_frame = True
 
     def schedule_animation_frame(self):
+        def callback():
+             ...
+             self.animation_timer = None
         # ...
-        if self.needs_animation_frame:
-            threading.Timer(REFRESH_RATE_SEC, callback).start()
-            self.needs_animation_frame = False
+        if self.needs_animation_frame and not self.animation_timer:
+            self.animation_timer = \
+                threading.Timer(REFRESH_RATE_SEC, callback)
+            self.animation_timer.start()
 ```
 
-A tab will set the `needs_animation_frame` flag when an animation
-frame is requested:
+Note how I also checked for not having an animation timer object; this avoids
+running two at once.
+
+A tab will set the `needs_animation_frame` flag when an
+animation frame is requested:
 
 ``` {.python}
 class JSContext:
@@ -903,7 +909,7 @@ rendering. For example, sometimes two callbacks in a row could happen without
 any rendering between, which doubles the script work for rendering for no
 benefit.
 
-Another is that there is no guarantee that other tasks would not run between the
+Another is that there is other tasks might run between the
 callback and rendering. If the callback was setting up the DOM for rendering,
 but then a script click event handler occurs before *actually* rendering, the
 app might be forced to re-do its DOM mutations to avoid a delayed response to
@@ -1068,8 +1074,9 @@ new frame every 66ms, instead of every 88ms. Moreover, since there's no point
 to running render more often than raster-and-draw, the render thread would have
 66ms to render each frame, and after the 20ms spent rendering there would be
 46ms left over for running JavaScript. Finally, main-thread tasks could be
-handled with a delay of no more than 20ms, which makes the browser much more
-responsive. That's more than enough of a win to justify a second thread.
+handled with a delay of no more than 20ms (and the other thread 66ms), which
+makes the browser much more responsive. That's more than enough of a win to
+justify a second thread.
 
 Let's call our two threads the *browser thread*[^also-compositor] and
 the *main thread*.[^main-thread-name] The *browser thread* corresponds
@@ -1117,7 +1124,7 @@ The overall control flow for rendering a frame will therefore be:
    the main thread `TaskRunner`.
 3. The main thread executes its part of rendering, then calls
    `browser.commit`.
-4. The browser rasters the display list and draws to the screen.
+4. The browser thread rasters the display list and draws to the screen.
 
 Let's implement this design. To start, we'll add a `Thread` to
 `TaskRunner` to be the main thread. This thread will need to run in a
@@ -1305,6 +1312,7 @@ class Browser:
             if data.display_list:
                 self.active_tab_display_list = data.display_list
             self.needs_animation_frame = False
+            self.animation_timer = None
             self.set_needs_raster_and_draw()
         self.lock.release()
 ```
