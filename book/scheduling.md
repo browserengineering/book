@@ -1311,7 +1311,6 @@ class Browser:
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
-            self.needs_animation_frame = False
             self.animation_timer = None
             self.set_needs_raster_and_draw()
         self.lock.release()
@@ -1512,6 +1511,7 @@ class Browser:
             self.lock.acquire(blocking=True)
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
+            self.needs_animation_frame = False
             task = Task(active_tab.run_animation_frame, scroll)
             active_tab.task_runner.schedule_task(task)
             self.lock.release()
