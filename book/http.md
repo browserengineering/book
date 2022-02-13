@@ -614,7 +614,7 @@ Summary
 This chapter went from an empty file to a rudimentary web browser that
 can:
 
--   Parse a URL into a scheme, host, and path.
+-   Parse a URL into a scheme, host, port and path.
 -   Connect to that host using the `sockets` and `ssl` libraries
 -   Send an HTTP request to that host, including a `Host` header
 -   Split the HTTP response into a status line, headers, and a body
@@ -661,7 +661,7 @@ convenient for making tests without having to put them in separate files.
 *Body tag:* Only show text in an HTML document if it is between
 `<body>` and `</body>`. This avoids printing the title and style
 information. Try to do this in a single pass through the
-document---that means not string methods like `split` or similar. The
+document---that means not using string methods like `split` or similar. The
 loop in `show` will need more variables to track tag names.
 
 *Entities:* Implement support for the less-than (`&lt;`) and
@@ -720,7 +720,8 @@ valid to cache any HTTP response, as long as it was requested with
 and test it by requesting the same file multiple times. Servers
 control caches using the `Cache-Control` header. Add support for this
 header, specifically for `no-store` and `max-age` values. If the
-header contains some other value, it's best not to cache the response.
+`Cache-Control` header contains any other value than these two, it's best not
+to cache the response.
 
 [^5]: On some systems, you can run `dig +short example.org` to do this
     conversion yourself.

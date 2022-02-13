@@ -294,7 +294,7 @@ def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
     paint = skia.Paint(Color=skia.ColorBLACK)
     paint.setStyle(skia.Paint.kStroke_Style)
-    paint.setStrokeWidth(1);
+    paint.setStrokeWidth(1)
     canvas.drawPath(path, paint)
 ```
 
@@ -315,11 +315,11 @@ Finally, for drawing rectangles you use `drawRect`:
 def draw_rect(canvas, l, t, r, b, fill=None, width=1):
     paint = skia.Paint()
     if fill:
-        paint.setStrokeWidth(width);
+        paint.setStrokeWidth(width)
         paint.setColor(parse_color(fill))
     else:
         paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(1);
+        paint.setStrokeWidth(1)
         paint.setColor(skia.ColorBLACK)
     rect = skia.Rect.MakeLTRB(l, t, r, b)
     canvas.drawRect(rect, paint)
@@ -938,7 +938,7 @@ def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
 
     return [
-        SaveLayer(skia.Paint(Alphaf=opacity), cmds),
+        SaveLayer(skia.Paint(Alphaf=opacity), cmds)
     ]
 ```
 
@@ -1680,7 +1680,7 @@ class Browser:
 ```
 
 Finally, everywhere in `Browser` that we call `draw`, we now need to
-call either `raster_page` or `raster_chrome` first. For example, in
+call either `raster_tab` or `raster_chrome` first. For example, in
 `handle_click`, we do this:
 
 ``` {.python}

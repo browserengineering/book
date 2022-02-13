@@ -201,6 +201,7 @@ class InlineLayout:
         input = InputLayout(node, line, self.previous_word)
         line.children.append(input)
         self.previous_word = input
+        font = self.get_font(node)
         self.cursor_x += w + font.measure(" ")
 ```
 

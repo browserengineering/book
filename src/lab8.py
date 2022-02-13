@@ -239,7 +239,6 @@ class InlineLayout:
         input = InputLayout(node, line, self.previous_word)
         line.children.append(input)
         self.previous_word = input
-        size = int(float(node.style["font-size"][:-2]) * .75)
         font = self.get_font(node)
         self.cursor_x += w + font.measure(" ")
 
