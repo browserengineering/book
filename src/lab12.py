@@ -263,7 +263,8 @@ class Tab:
         self.browser.set_needs_animation_frame(self)
 
     def run_animation_frame(self, scroll):
-        self.scroll = scroll
+        if not self.scroll_changed_in_tab:
+            self.scroll = scroll
         self.js.interp.evaljs("__runRAFHandlers()")
 
         self.render()
@@ -519,6 +520,7 @@ class Browser:
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
+            self.needs_animation_frame = False
             self.set_needs_raster_and_draw()
         self.lock.release()
 
@@ -555,7 +557,6 @@ class Browser:
         if self.needs_animation_frame:
             if USE_BROWSER_THREAD:
                 threading.Timer(REFRESH_RATE_SEC, callback).start()
-            self.needs_animation_frame = False
         self.lock.release()
 
     def handle_down(self):
@@ -760,8 +761,8 @@ if __name__ == "__main__":
         if not USE_BROWSER_THREAD:
             if active_tab.task_runner.needs_quit:
                 break
-            if browser.display_scheduled:
-                browser.display_scheduled = False
+            if browser.needs_animation_frame:
+                browser.needs_animation_frame = False
                 browser.render()
         browser.raster_and_draw()
         browser.schedule_animation_frame()
