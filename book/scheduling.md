@@ -294,18 +294,28 @@ can't be accessed by another thread, so the lock does not need to be
 held while the task is running.
 
 ::: {.further}
-Event loops often map 1:1 to CPU threads within a single CPU process, but
-this is not required. For example, multiple event loops could be placed together
-on a single CPU thread with yet another scheduler on top of them that
-round-robins between them. More generally, it can be useful to distinguish between conceptual
-events; event queues and dependencies between them; and their implementation on
-a computer architecture. This way, the browser implementer (you!) has maximum
-flexibility to use more or less hardware parallelism as appropriate to the
-situation---some devices have more [CPU cores][cores] than others, or are more
-sensitive to battery power usage.
+Unfortunately, Python currently has a [global interpreter lock][gil],
+so our two Python threads don't truly run in parallel,[^why-gil]
+and our browser's *throughput* won't increase much from multi-threading.
+Nonetheless, the *responsiveness* of the browser thread is still
+massively improved, since it often isn't blocked on JavaScript or the
+front half of the rendering pipeline. This is an unfortunate
+limitation of Python that doesn't affect real browsers, so try to
+pretend it's not there.[^why-locks]
 :::
 
-[cores]: https://en.wikipedia.org/wiki/Multi-core_processor
+[gil]: https://wiki.python.org/moin/GlobalInterpreterLock
+
+[^why-gil]: It's possible to turn off the global interpreter lock
+while running foreign C/C++ code linked into a Python library. Skia is
+thread-safe, but DukPy and SDL may not be.
+
+[^why-locks]: Despite the global interpreter lock, we still need locks. Each
+Python thread can yield between bytecode operations, so you can still get
+concurrent accesses to shared variables, and race conditions are still
+possible. And in fact, while debugging the code for this chapter, I often
+encountered this kind of race condition when I forgot to add a lock; try
+removing some of the locks from your browser to see for yourself!
 
 Long-lived threads
 ==================
@@ -558,7 +568,23 @@ if __name__ == "__main__":
 Now we're scheduling a new rendering task every 16 milliseconds, just
 as we wanted to.
 
-Optimizing rendering tasks
+::: {.further}
+
+there's nothing special about 60 frames per second. Many displays
+refresh 72 times per second, and some that [refresh even more
+often][refresh-rate] are becoming more common. Movies are often shot
+in 24 frames per second (though [some directors advocate
+48][hobbit-fps]) while television shows often use 30 frames per
+second. Consistency is often more important than the actual frame
+rate: a consistant 24 frames per second can look a lot smoother than a
+varying framerate between 60 and 24.
+
+:::
+
+[refresh-rate]: https://www.intel.com/content/www/us/en/gaming/resources/highest-refresh-rate-gaming.html
+[hobbit-fps]: https://www.extremetech.com/extreme/128113-why-movies-are-moving-from-24-to-48-fps
+
+Optimizing with dirty bits
 ==========================
 
 If you run this on your computer, there's a good chance your CPU usage
@@ -684,14 +710,6 @@ class Browser:
 
 Now the rendering pipeline is only run if necessary, and the browser
 should have acceptable performance again.
-
-::: {.further}
-The `needs_raster_and_draw` dirty bit is not just for making the browser a
-bit more efficient. Later in the chapter, we'll move raster and draw to another
-thread. If that bit was not there, then that thread would cause very erratic
-behavior when animating. Once you've read the whole chapter and implemented
-that thread, try removing this dirty bit and see for yourself!
-:::
 
 ::: {.further}
 
@@ -1027,22 +1045,6 @@ Chapter 13.
 [skia-gpu]: https://skia.org/docs/user/api/skcanvas_creation/#gpu
 
 
-::: {.further}
-Threads are a much more powerful construct in recent decades, due to the
-emergence of multi-core CPUs. Before that, threads existed, but were a
-mechanism for improving *responsiveness* via pre-emptive multitasking, 
-but without increasing *throughput* (frames per second).
-
-These days, a typical desktop computer can run many threads simultaneously, and
-even phones have several cores plus a highly parallel GPU. However, on phones
-it's difficult to make maximum use of all of the threads for rendering
-parallelism, because if you turn on all of the cores, the battery will drain
-quickly. In addition, there are usually system processes (such as listening to
-the wireless radio or managing the screen and input) running in the background
-on one or more cores anyway, so the actual parallelism available to the browser
-might be in effect just two cores.
-:::
-
 Two threads
 ===========
 
@@ -1206,15 +1208,40 @@ class Browser:
 
 Do the same with any other calls from the `Browser` to the `Tab`.
 
-Communication in the other direction is a little subtler. We already
-have the `set_needs_animation_frame` method, but now we need the `Tab`
-to call `commit` when it's finished creating a display list.
+So now we have the browser thread telling the main thread what to do
+Communication in the other direction is a little subtler.
 
-If you look carefully at our raster-and-draw code, you'll see that to
-draw a display list we also need to know the URL (to update the
-browser chrome), the document height (to allocate a surface of the
-right size), and the scroll position (to draw the right part of the
-surface). Let's make a simple class for storing this data:
+::: {.further}
+
+Originally, threads were a mechanism for improving *responsiveness*
+via pre-emptive multitasking, not *throughput* (frames per second).
+Nowadays, even phones have several cores plus a highly parallel GPU,
+and threads are much more powerful. It's therefore useful to
+distinguish between conceptual events; event queues and dependencies
+between them; and their implementation on a computer architecture.
+This way, the browser implementer (you!) has maximum flexibility to
+use more or less hardware parallelism as appropriate to the situation.
+For example, some devices have more [CPU cores][cores] than others, or
+are more sensitive to battery power usage, or there system processes
+such as listening to the wireless radio may limit the actual
+parallelism available to the browser.
+
+:::
+
+[cores]: https://en.wikipedia.org/wiki/Multi-core_processor
+
+Committing a display list
+=========================
+
+We already have a `set_needs_animation_frame` method, but we also need
+a `commit` method that a `Tab` can call when it's finished creating a
+display list. And if you look carefully at our raster-and-draw code,
+you'll see that to draw a display list we also need to know the URL
+(to update the browser chrome), the document height (to allocate a
+surface of the right size), and the scroll position (to draw the right
+part of the surface).
+
+Let's make a simple class for storing this data:
 
 ``` {.python}
 class CommitForRaster:
@@ -1362,28 +1389,10 @@ And that's it: we should now be doing render on one thread and raster
 and draw on another!
 
 ::: {.further}
-Unfortunately, Python currently has a [global interpreter lock][gil],
-so our two Python threads don't truly run in parallel,[^why-gil]
-and our browser's *throughput* won't increase much from multi-threading.
-Nonetheless, the *responsiveness* of the browser thread is still
-massively improved, since it often isn't blocked on JavaScript or the
-front half of the rendering pipeline. This is an unfortunate
-limitation of Python that doesn't affect real browsers, so try to
-pretend it's not there.[^why-locks]
+The `needs_raster_and_draw` dirty bit doesn't just make the browser a
+bit more efficient. Without this bit, our threads would have erratic
+behavior when animating. Try removing it and see for yourself!
 :::
-
-[gil]: https://wiki.python.org/moin/GlobalInterpreterLock
-
-[^why-gil]: It's possible to turn off the global interpreter lock
-while running foreign C/C++ code linked into a Python library. Skia is
-thread-safe, but DukPy and SDL may not be.
-
-[^why-locks]: Despite the global interpreter lock, we still need locks. Each
-Python thread can yield between bytecode operations, so you can still get
-concurrent accesses to shared variables, and race conditions are still
-possible. And in fact, while debugging the code for this chapter, I often
-encountered this kind of race condition when I forgot to add a lock; try
-removing some of the locks from your browser to see for yourself!
 
 
 Threaded scrolling
