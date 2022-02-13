@@ -65,7 +65,7 @@ and make it universally accessible and useful” is almost exactly the same.
 This is not a coincidence---the search engine concept is inherently
 connected to the web, and was inspired by the web's design and antecedents.
 
-_As We May Think_ highlight two features of the memex: information record
+_As We May Think_ highlighted two features of the memex: information record
 lookup, and associations between related records. In fact, the essay emphasizes
 the importance of the latter---we learn by making previously unknown
 *connections between known things*:

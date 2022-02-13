@@ -56,5 +56,5 @@ XMLHttpRequest.prototype.open = function(method, url, is_async) {
 
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
-        this.method, this.url, this.body);
+        this.method, this.url, body);
 }

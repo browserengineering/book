@@ -355,7 +355,7 @@ best parts of browser development!
 The book then moves on to details and advanced features that flesh out the
 architecture of a real browser’s rendering engine, based on my experiences with
 Chrome. After finishing the book, you should be able to dig into the source code
-of Chrome or another browser, and understand it without too much trouble.
+of Chromium, Gecko, or WebKit, and understand it without too much trouble.
 
 I hope the book lets you appreciate a browser's depth, complexity, and power. I
 hope the book passes along its beauty---its clever algorithms and data

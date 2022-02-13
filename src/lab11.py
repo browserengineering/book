@@ -178,7 +178,7 @@ def draw_line(canvas, x1, y1, x2, y2):
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
     paint = skia.Paint(Color=skia.ColorBLACK)
     paint.setStyle(skia.Paint.kStroke_Style)
-    paint.setStrokeWidth(1);
+    paint.setStrokeWidth(1)
     canvas.drawPath(path, paint)
 
 def draw_text(canvas, x, y, text, font, color=None):
@@ -191,11 +191,11 @@ def draw_text(canvas, x, y, text, font, color=None):
 def draw_rect(canvas, l, t, r, b, fill=None, width=1):
     paint = skia.Paint()
     if fill:
-        paint.setStrokeWidth(width);
+        paint.setStrokeWidth(width)
         paint.setColor(parse_color(fill))
     else:
         paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(1);
+        paint.setStrokeWidth(1)
         paint.setColor(skia.ColorBLACK)
     rect = skia.Rect.MakeLTRB(l, t, r, b)
     canvas.drawRect(rect, paint)
