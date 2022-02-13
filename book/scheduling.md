@@ -128,31 +128,19 @@ Now our browser will not run scripts until after `load` has completed
 and the event loop comes around again.
 
 ::: {.further}
-Thinking of the browser as a rendering pipeline is strongly influenced
-by the history of graphics and games. High-performance games have a lot in
-common with a browser in this sense, especially those that use
-[scene graphs](https://en.wikipedia.org/wiki/Scene_graph), which are a lot
-like the DOM. Games and browsers are both driven by event loops that
-convert a representation of the scene graph into a display list, and the
- display list into pixels.
 
-On the other hand, there are some aspects of browsers that are *very* different
-than games. The most important difference is that in games, the programmer
-almost always knows *in advance* what scene graphs will be provided. They
-can then pre-optimize the pipeline to make it super fast for those graphs.
-This is why games often take a while to load, because they are uploading
-hyper-optimized code and pre-rendered data to the CPU and GPU memory.
+JavaScript itself also has an [event loop][js-eventloop] and tasks at its core,
+even in cases where it's [not embedded][nodejs-eventloop] in a browser. In
+addition, it has concepts of messages passed to event loops, run-to-completion
+semantics and generally speaking an
+[asynchronous][async-js], callback & event-based model of computing.
+JavaScript's programming model is another important reason to architect a
+browser in the same way.
 
-Browsers, on the other hand, need to load arbritrary web pages, and do so
-extremely fast. So they can't spend much time optimizing anything, and instead
-have to get right to the business of pushing pixels. This important difference
-makes for a very different set of tradeoffs, and is why browsers often
-feel less fancy and smooth than games.
+[js-eventloop]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/EventLoop
+[nodejs-eventloop]: https://nodejs.dev/learn/the-nodejs-event-loop
+[async-js]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/EventLoop#never_blocking
 
-Native apps also have the equivalent of a known-in-advance scene graph, though
-they don't have the advantage of tolerating a slow load time. As a consequence,
-they sometimes have a fancier user experience than equivalent websites, but not
-nearly so much as games.
 :::
 
 Timers and setTimeout
@@ -162,7 +150,7 @@ Tasks are *also* a natural way to support several JavaScript APIs that
 ask for a function to be run at some point in the future. For example,
 [`setTimeout`][settimeout] lets you run a JavaScript function some
 number of milliseconds from now. This code prints "Callback" to the
-console one second frow now:
+console one second from now:
 
 [settimeout]: https://developer.mozilla.org/en-US/docs/Web/API/setTimeout
 
@@ -213,7 +201,7 @@ The exported `setTimeout` function will create a timer, wait for the
 requested time period, and then ask the JavaScript runtime to run the
 callback. That last part will happen via `__runSetTimeout`:[^mem-leak]
 
-[^mem-leak]: Note that we never remove `callback` from
+[^mem-leak]: Note that we never remove `callback` from the
     `SET_TIMEOUT_REQUESTS` dictionary. This could lead to a memory
     leak, if the callback it holding on to the last reference to some
     large data structure. We saw a similar issue in [Chapter
@@ -261,8 +249,8 @@ class JSContext:
 
 ```
 
-This way it's ultimately the primary thread that calls `evaljs`,. But
-now we have two threads accessing the `task_runner`: the main thread,
+This way it's ultimately the primary thread that calls `evaljs`. But
+now we have two threads accessing the `task_runner`: the primary thread,
 to run tasks, and the timer thread, to add them. This is a [race
 condition](https://en.wikipedia.org/wiki/Race_condition) that can
 cause all sorts of bad things to happen, so we need to make sure only
@@ -299,7 +287,7 @@ class TaskRunner:
 
 When using locks, it's super important to remember to release the lock
 eventually and to hold it for the shortest time possible. The code
-above, for example, why releases the lock before running the `task`.
+above, for example, releases the lock before running the `task`.
 That's because after the task has been removed from the queue, it
 can't be accessed by another thread, so the lock does not need to be
 held while the task is running.
@@ -327,7 +315,7 @@ Threads can also be used to add browser multitasking. For example, in
 websites. But in our implementation, the whole browser would seize up
 while waiting for the request to finish. That's obviously bad.^[For
 this reason, the synchronous version of the API that we implemented in
-Chapter 10 is basically useless and a huge performance footgun. Some
+Chapter 10 is not very useful and a huge performance footgun. Some
 browsers are now moving to deprecate synchronous `XMLHttpRequest`.]
 
 Threads let us do better. In Python, the code
@@ -404,7 +392,8 @@ class JSContext:
                 full_url, self.tab.url, payload=body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
-            return response
+            if not isasync:
+                return response
 ```
 
 Note that the task runs `dispatch_xhr_onload`, which we'll define in
@@ -462,21 +451,22 @@ to running JavaScript.
 ::: {.further}
 
 While it looks simple and maybe even obvious in retrospect, the `XMLHttpRequest`
-API played a key role in the evolution from the "90s web" that relied on
+API played a key role in the web's evolution beyond the "90s web" that relied on
 loading new pages whenever anyone clicked a link or submitted a form. With the
 async version of this API, web pages were able to act a whole lot more like
 an *application* than a page of information. This ushered in a new generation
 of web sites that used this technique; GMail is one famous early example that
-dates from April 2004, [soon after][xhr-history] all browsers finished adding
+dates from April 2004, [soon after][xhr-history] enough browsers finished adding
 support for the API.
 
 [xhr-history]: https://en.wikipedia.org/wiki/XMLHttpRequest#History
 
-These new applications used an approach that is now called a [single-page app,
-or SPA][spa], as opposed to the earlier multi-page app, or MPA. An SPA replaces
-page loads with mutations to the DOM. This led to more and more interactive and
-complex web apps, which in turn greatly increased the need for browser
-rendering to be faster and more efficiently scheduled.
+These new applications used an approach that is now called a
+[single-page app][spa], or SPA, as opposed to the earlier multi-page app, or
+MPA. An SPA uses DOM mutations instead of page loads to update to the latest
+app state. The emergence of SPAs enabled more interactive and complex
+web apps, which in turn greatly increased the need for browser rendering to be
+faster and more efficiently scheduled.
 
 [spa]: https://en.wikipedia.org/wiki/Single-page_application
 
@@ -485,11 +475,11 @@ rendering to be faster and more efficiently scheduled.
 The cadence of rendering
 ========================
 
-There's more to tasks than just implementing some JavaScript APIs.
-Once something is a `Task`, the task runner controls when it runs:
-now, later, at most once a second, at different rates for active and
-inactive pages, or according to its priority. A browser could even
-have multiple task runners, optimized for different use cases.
+There's more to tasks than just implementing some JavaScript APIs. Once
+something is a `Task`, the task runner controls when it runs: perhaps now,
+later, at most once a second, at different rates for active and inactive pages,
+or according to its priority. A browser could even have multiple task runners,
+optimized for different use cases.
 
 Now, it might be hard to see how the browser can prioritize which
 JavaScript callback to run, or why it might want to execute JavaScript
@@ -511,12 +501,12 @@ REFRESH_RATE_SEC = 0.016 # 16ms
 
 Now, there's some complexity here, because we have multiple tabs. We
 don't need _each_ tab redrawing itself every 16ms, because the user
-only sees one frame at a time. We just need the _active_ tab redrawing
-itself. That means that one tab needs to redo styling, layout, and
+only sees one tab at a time. We just need the _active_ tab redrawing
+itself. That means that only one tab needs to redo styling, layout, and
 painting (its `render` method), and then the browser needs to
 re-raster itself.
 
-First, let's can write a `schedule_animation_frame`
+Let's make that happen. First, let's can write a `schedule_animation_frame`
 method[^animation-frame] that schedules a `render` task to run the
 `Tab` half of the rendering pipeline:
 
@@ -558,7 +548,7 @@ class Browser:
         self.draw()
 ```
 
-In the top-level loop, when run a task on the active tab the browser
+In the top-level loop, after running a task on the active tab the browser
 will need to raster-and-draw, in case that task was a rendering task:
 
 ``` {.python expected=False}
@@ -572,8 +562,8 @@ if __name__ == "__main__":
 Now we're scheduling a new rendering task every 16 milliseconds, just
 as we wanted to.
 
-Optimizing the rendering tasks
-==============================
+Optimizing rendering tasks
+==========================
 
 If you run this on your computer, there's a good chance your CPU usage
 will spike and your batteries will start draining. That's because
@@ -726,7 +716,7 @@ Animating frames
 ================
 
 One big reason for a steady rendering cadence is so that animations
-run smoothly. Web pages set up such animations using the
+run smoothly. Web pages can set up such animations using the
 [`requestAnimationFrame`][raf] API. This API allows scripts to run
 code right before the browser runs its rendering pipeline, making the
 animation maximally smooth. It works like this:
@@ -734,9 +724,8 @@ animation maximally smooth. It works like this:
 [raf]: https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
 
 ``` {.javascript.example}
-/* This is JavaScript */
 function callback() {
-    console.log("I was called!");
+    // Modify DOM
 }
 requestAnimationFrame(callback);
 ```
@@ -845,7 +834,7 @@ def show_count():
 
 Load this up and observe an animation from 0 to 100.
 
-One flaw with our implementation so far is that an unattentive coder
+One flaw with our implementation so far is that an inattentive coder
 might call `requestAnimationFrame` multiple times and thereby schedule
 more animation frames than expected. If other JavaScript tasks appear
 later, they might end up delayed by many, many frames.
@@ -856,7 +845,7 @@ between. To avoid having two rendering tasks we'll add a dirty bit
 called `needs_animation_frame` to the `Browser` which indicates
 whether a rendering task actually needs to be scheduled:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def __init__(self):
         # ...
@@ -902,7 +891,7 @@ like this:
 
 ``` {.javascript expected=False}
 function callback() {
-    // Mutate DOM for rendering
+    // Modify DOM
     setTimeout(callback, 16);
 }
 setTimeout(callback, 16);
@@ -921,10 +910,10 @@ app might be forced to re-do its DOM mutations to avoid a delayed response to
 the click---yet another example of doubled rendering.
 
 A third is that there is no great way to turn off "rendering" `setTimeout` work
-when a web page window is backgrounded, minimized or otherwise throttled. If
-the browser chooses to stop all tasks, then it would also break any important
-background work the web app might want to do (such as syncing your information
-to the server so it's not lost).
+when a web page tab or window is backgrounded, minimized or otherwise
+throttled. If the browser chooses to stop all tasks, then it would also break
+any important background work the web app might want to do (such as syncing
+your information to the server so it's not lost).
 
 :::
 
@@ -1011,8 +1000,8 @@ class Browser:
         print(self.measure_raster_and_draw.text())
 ```
 
-Naturally we'll need to call the `Tab`'s `handle_quit` method before
-quitting, so it has a chance to print its timing data.
+(Naturally you'll need to call these methods before quitting, from the main
+event loop, so it has a chance to print its timing data.)
 
 Fire up the server, open our timer script, wait for it to finish
 counting, and then exit the browser. You should see it output timing
@@ -1037,10 +1026,17 @@ raster-and-draw step by adopting a multi-threaded architecture.
 ::: {.further}
 In our browser, a lot of time is spent in each drawing-into-surface
 step. That's why [optimizing surfaces][optimize-surfaces] is
-important! Modern browsers go a step further and perform raster and
+important! One way to optimize is to do the *interest region* exercise from
+[Chapter 11](visual-effects.md#exercises) if you haven't already. For example,
+in local testing I was able to to speed up
+`raster_and_draw` by about 30% just with the `clipRect` technique; making
+`tab_surface` smaller also helps a lot.
+
+Modern browsers go a step further and perform raster and
 draw [on the GPU][skia-gpu], where a lot more parallelism is
 available. Even so, on complex pages raster and draw really do
-sometimes take a lot of time.
+sometimes take a lot of time. I'll dig into this more in
+Chapter 13.
 :::
 
 [optimize-surfaces]: visual-effects.md#optimizing-surface-use
@@ -1052,14 +1048,14 @@ sometimes take a lot of time.
 Threads are a much more powerful construct in recent decades, due to the
 emergence of multi-core CPUs. Before that, threads existed, but were a
 mechanism for improving *responsiveness* via pre-emptive multitasking, 
-but without increasing *throughput* (fraames per second).
+but without increasing *throughput* (frames per second).
 
 These days, a typical desktop computer can run many threads simultaneously, and
 even phones have several cores plus a highly parallel GPU. However, on phones
 it's difficult to make maximum use of all of the threads for rendering
 parallelism, because if you turn on all of the cores, the battery will drain
-quickly. In addition, there are usually system processes (such as to listen
-to the wireless radio or manage the screen and input) running in the background
+quickly. In addition, there are usually system processes (such as listening to
+the wireless radio or managing the screen and input) running in the background
 on one or more cores anyway, so the actual parallelism available to the browser
 might be in effect just two cores.
 :::
@@ -1067,14 +1063,13 @@ might be in effect just two cores.
 Two threads
 ===========
 
-Running rendering in parallel with raster and draw would allow us to
-produce a new frame every 66ms, instead of every 88ms. Moreover, since
-there's no point to running render more often than raster-and-draw,
-the render thread would have 66ms to render each frame, and after the
-20ms spent rendering there would be 46ms left over for running
-JavaScript. Finally, events could be handled with a delay of no more
-than 20ms, which makes the browser much more responsive. That's more
-than enough of a win to justify a second thread.
+Running rendering in parallel with raster and draw would allow us to produce a
+new frame every 66ms, instead of every 88ms. Moreover, since there's no point
+to running render more often than raster-and-draw, the render thread would have
+66ms to render each frame, and after the 20ms spent rendering there would be
+46ms left over for running JavaScript. Finally, main-thread tasks could be
+handled with a delay of no more than 20ms, which makes the browser much more
+responsive. That's more than enough of a win to justify a second thread.
 
 Let's call our two threads the *browser thread*[^also-compositor] and
 the *main thread*.[^main-thread-name] The *browser thread* corresponds
@@ -1163,8 +1158,10 @@ class TaskRunner:
                 task.run()
 ```
 
-Because this loop runs forever, the main thread will live
-indefinitely.
+Because this loop runs forever, the main thread will live on
+indefinitely.^[Or until the browser quits. You should also implement a method
+that sets a variable causing this loop to exit when the `SDL_QUIT` event is
+processed.]
 
 The `Browser` should no longer call any methods on the `Tab`. So, to
 handle events, it now needs schedule tasks on the main thread instead.
@@ -1282,10 +1279,12 @@ class Browser:
 Also, remove the `set_needs_raster_and_draw` call from `render`. We'll
 do that inside `commit`.
 
-On the `Browser` side, the new `commit` method needs to read out all
-of the data it was sent and call `set_needs_raster_and_draw` as
-needed. Because this call will come from another thread, we'll need to
-acquire a lock:
+On the `Browser` side, the new `commit` method needs to read out all of the data
+it was sent and call `set_needs_raster_and_draw` as needed. Because this call
+will come from another thread, we'll need to acquire a lock. Another important
+step is to not clear the `needs_animation_frame` bit until *after* the next
+commit occurs. Otherwise multiple rendering tasks could be queued at the same
+time.
 
 ``` {.python}
 class Browser:
@@ -1297,13 +1296,15 @@ class Browser:
         self.active_tab_height = 0
         self.active_tab_display_list = None
 
-    def commit(self, tab, commit):
+    def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.tabs[self.active_tab]:
-            self.url = commit.url
-            self.scroll = commit.scroll
-            self.active_tab_height = commit.height
-            self.active_tab_display_list = commit.display_list
+            self.url = data.url
+            self.scroll = data.scroll
+            self.active_tab_height = data.height
+            if data.display_list:
+                self.active_tab_display_list = data.display_list
+            self.needs_animation_frame = False
             self.set_needs_raster_and_draw()
         self.lock.release()
 ```
@@ -1316,9 +1317,10 @@ an inactive tab,[^inactive-tab-tasks] so the `tab` parameter is
 compared with the active tab to before copying any data over from the
 commit.
 
-[^fast-commit]: For this reason commit needs to be as fast as
-possible, to maximize parallelism and responsiveness. In modern browsers,
-optimizing commit is quite challenging.
+[^fast-commit]: For this reason commit needs to be as fast as possible, to
+maximize parallelism and responsiveness. In modern browsers, optimizing commit
+is quite challenging, because their method of caching and sending data between
+threads is much more sophisticated.
 
 [^inactive-tab-tasks]: That's because even inactive tabs are still
 running their main threads and responding to callbacks from
@@ -1348,6 +1350,7 @@ class Browser:
             self.lock.acquire(blocking=True)
             # ...
             self.lock.release()
+            # ...
         self.lock.acquire(blocking=True)
         # ...
         self.lock.release()
@@ -1381,7 +1384,7 @@ and draw on another!
 ::: {.further}
 Unfortunately, Python currently has a [global interpreter lock][gil],
 so our two Python threads don't truly run in parallel,[^why-gil]
-so our browser's *throughput* won't increase much from multi-threading.
+and our browser's *throughput* won't increase much from multi-threading.
 Nonetheless, the *responsiveness* of the browser thread is still
 massively improved, since it often isn't blocked on JavaScript or the
 front half of the rendering pipeline. This is an unfortunate
@@ -1395,13 +1398,12 @@ pretend it's not there.[^why-locks]
 while running foreign C/C++ code linked into a Python library. Skia is
 thread-safe, but SDL may not be.
 
-[^why-locks]: Despite the global interpreter lock, we still need
-locks. Each Python thread can still yield between bytecode operations,
-so you can still get concurrent accesses to shared variables, and race
-conditions are still possible. And in fact, while debugging the code
-for this chapter, I encountered this kind of race condition when I
-forgot to add a lock; try removing some of the locks from your browser
-to see for yourself!
+[^why-locks]: Despite the global interpreter lock, we still need locks. Each
+Python thread can yield between bytecode operations, so you can still get
+concurrent accesses to shared variables, and race conditions are still
+possible. And in fact, while debugging the code for this chapter, I often
+encountered this kind of race condition when I forgot to add a lock; try
+removing some of the locks from your browser to see for yourself!
 
 
 Threaded scrolling
@@ -1477,11 +1479,21 @@ But the main thread eventually needs to know about the scroll offset,
 so it can pass it back to `commit`. So, when the `Browser` creates a
 rendering task for `run_animation_frame`, it should pass in the scroll
 offset. The `run_animation_frame` function can then store the scroll
-offset before doing anything else.
+offset before doing anything else. But it should only do so if
+`scroll_changed_in_tab` is not already true, or else scroll overrides such
+as during `load` might be overridden by the browser.[^scroll-complicated]
+
+[^scroll-complicated]: Two-threaded scroll has a lot of edge cases. So many
+that I'm pretty sure that there are even more that this chapter didn't manage
+to anticipate. For example, it's pretty clear that a load should force scroll
+to 0, but what about a scroll clamp followed by a browser scroll that
+brings it back to within the clamped region?
 
 ``` {.python}
 class Tab:
     def run_animation_frame(self, scroll):
+        if not self.scroll_changed_in_tab:
+            self.scroll = scroll
         self.scroll = scroll
         # ...
 
@@ -1549,11 +1561,11 @@ the scroll offset in this case:
 
 ``` {.python}
 class Browser:
-    def commit(self, tab, commit):
+    def commit(self, tab, data):
         if tab == self.tabs[self.active_tab]:
             # ...
-            if commit.scroll != None:
-                self.scroll = commit.scroll
+            if data.scroll != None:
+                self.scroll = data.scroll
 ```
 
 That's it! If you try the counting demo now, you'll be able to scroll
@@ -1576,9 +1588,10 @@ also drive [new JavaScript APIs][designed-for].
 
 [scroll-event]: https://developer.mozilla.org/en-US/docs/Web/API/Document/scroll_event
 
-[^real-browser-threaded-scroll]: Actually, a real browser only fall
+[^real-browser-threaded-scroll]: Actually, a real browser only falls
 back to non-threaded scrolling when necessary. For example, it might
-disable threaded scrolling only if is a `scroll` event listener.
+disable threaded scrolling only if a `scroll` event listener calls
+`preventDefault`.
 
 [mdn-bg-fixed]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment
 
@@ -1642,7 +1655,7 @@ browser first computing style, and [`getBoundingClientRect`][gbcr]
 needs layout.[^nothing-later] If a web page calls one of these APIs,
 and style or layout is not up-to-date, then is has to be computed
 synchronously, then and there. These computations are called *forced
-style* or *forced layout*. The world "forced" refers to forcing the
+style* or *forced layout*. The word "forced" refers to forcing the
 computation to happen right away, as opposed to possibly 16ms in the
 future if it didn't happen to be already computed. Because there are
 forced style and layout situations, browsers have to be able to do
@@ -1670,7 +1683,7 @@ style and layout off the main thread, similar to optimistically doing
 threaded scrolling if a web page doesn't `preventDefault` a scroll. Is
 that a good idea? Maybe, but forced style and layout aren't just
 caused by JavaScript execution. One example is our implementation of
-`click`, which causes a render to run hit testing:
+`click`, which causes a forced render before hit testing:
 
 ``` {.python}
 class Tab:
@@ -1679,14 +1692,42 @@ class Tab:
         # ...
 ```
 
-It's maybe possible to move hit testing off the main thread (but very
-hard) or to do hit testing against an older version of the layout
-tree, or to come up with some other technological fix. Thus it's not
+It's possible (but very hard) to move hit testing off the main thread or to do
+hit testing against an older version of the layout tree, or to come up with
+some other technological fix. Thus it's not
 *impossible* to move style and layout off the main thread
 "optimistically", but it *is* challenging. That said, browser
 developers are always looking for ways to make things faster, and I
 expect that at some point in the future style and layout will be moved
 to their own thread. Maybe you'll be the one to do it?
+
+::: {.further}
+Thinking of the browser as a rendering pipeline is strongly influenced
+by the history of graphics and games. High-performance games have a lot in
+common with a browser in this sense, especially those that use
+[scene graphs](https://en.wikipedia.org/wiki/Scene_graph), which are a lot
+like the DOM. Games and browsers are both driven by event loops that
+convert a representation of the scene graph into a display list, and the
+ display list into pixels.
+
+On the other hand, there are some aspects of browsers that are *very* different
+than games. The most important difference is that in games, the programmer
+almost always knows *in advance* what scene graphs will be provided. They
+can then pre-optimize the pipeline to make it super fast for those graphs.
+This is why games often take a while to load, because they are uploading
+hyper-optimized code and pre-rendered data to the CPU and GPU memory.
+
+Browsers, on the other hand, need to load arbitrary web pages, and do so
+extremely fast. So they can't spend much time optimizing anything, and instead
+have to get right to the business of pushing pixels. This important difference
+makes for a very different set of tradeoffs, and is why browsers often
+feel less fancy and smooth than games.
+
+Native apps also have the equivalent of a known-in-advance scene graph, though
+they don't have the advantage of tolerating a slow load time. As a consequence,
+they sometimes have a fancier user experience than equivalent websites, but not
+nearly so much as games.
+:::
 
 Summary
 =======
