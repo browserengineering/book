@@ -845,7 +845,7 @@ between. To avoid having two rendering tasks we'll add a dirty bit
 called `needs_animation_frame` to the `Browser` which indicates
 whether a rendering task actually needs to be scheduled:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def __init__(self):
         # ...
@@ -1272,10 +1272,12 @@ class Browser:
 Also, remove the `set_needs_raster_and_draw` call from `render`. We'll
 do that inside `commit`.
 
-On the `Browser` side, the new `commit` method needs to read out all
-of the data it was sent and call `set_needs_raster_and_draw` as
-needed. Because this call will come from another thread, we'll need to
-acquire a lock:
+On the `Browser` side, the new `commit` method needs to read out all of the data
+it was sent and call `set_needs_raster_and_draw` as needed. Because this call
+will come from another thread, we'll need to acquire a lock. Another important
+step is to not clear the `needs_animation_frame` bit until *after* the next
+commit occurs. Otherwise multiple rendering tasks could be queued at the same
+time.
 
 ``` {.python}
 class Browser:
@@ -1295,6 +1297,7 @@ class Browser:
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
+            self.needs_animation_frame = False
             self.set_needs_raster_and_draw()
         self.lock.release()
 ```
@@ -1469,11 +1472,21 @@ But the main thread eventually needs to know about the scroll offset,
 so it can pass it back to `commit`. So, when the `Browser` creates a
 rendering task for `run_animation_frame`, it should pass in the scroll
 offset. The `run_animation_frame` function can then store the scroll
-offset before doing anything else.
+offset before doing anything else. But it should only do so if
+`scroll_changed_in_tab` is not already true, or else scroll overrides such
+as during `load` might be overridden by the browser.[^scroll-complicated]
+
+[^scroll-complicated]: Two-threaded scroll has a lot of edge cases. So many
+that I'm pretty sure that there are even more that this chapter didn't manage
+to anticipate. For example, it's pretty clear that a load should force scroll
+to 0, but what about a scroll clamp followed by a browser scroll that
+brings it back to within the clamped region?
 
 ``` {.python}
 class Tab:
     def run_animation_frame(self, scroll):
+        if not self.scroll_changed_in_tab:
+            self.scroll = scroll
         self.scroll = scroll
         # ...
 
