@@ -220,13 +220,25 @@ The Python side, however, is quite a bit more complex, because
 thread can't just call `evaljs` directly: we'll end up with JavaScript
 running on two Python threads at the same time, which is not
 ok.[^js-thread] Instead, the timer will have to merely add a new
-`Task` to the task queue for our primary thread will execute later:
+`Task` to the task queue for our primary thread will execute
+later:[^later-bug]
 
 [^js-thread]: JavaScript is not a multi-threaded programming language.
 It's possible on the web to create [workers] of various kinds, but they
 all run independently and communicate only via special message-passing APIs.
 
 [workers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
+
+[^later-bug]: This code has a *very* subtle bug, wherein a page might
+    create a `setTimeout`, an then have that timer trigger later, when
+    a user is visiting another web page. In our browser, that would
+    allow one page to run JavaScript that modifies a different
+    page---a huge security vulnerability! I *think* you can avoid this
+    by resetting `self.js.tab` when you navigate to a new page, but
+    ideally you'd do something more careful, like keeping track of all
+    the child threads spawned by a `JSContext` and ending all of them
+    before navigating. As our browser gets more complex, our bugs, and
+    their associated fixes, get more complex too!
 
 ``` {.python}
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
