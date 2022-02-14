@@ -4,6 +4,15 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Scheduling Tasks and Threads
+    link: https://browser.engineering/scheduling.html
+    pubDate: Mon, 14 Feb 2021, 09:55:00 -0700
+    description: 
+      With a new year and then some more time to actually finish
+      things, we present a new chapter on Scheduling Tasks and
+      Threads. This chapter splits the browser into multiple threads,
+      with threaded raster and scrolling, in only a couple thousand
+      lines of code.
   - title: Adding Visual Effects
     link: https://browser.engineering/visual-effects.html
     pubDate: Fri, 17 Dec 2021, 17:45:00 -0700
