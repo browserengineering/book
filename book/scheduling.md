@@ -1221,7 +1221,7 @@ Communication in the other direction is a little subtler.
 
 Originally, threads were a mechanism for improving *responsiveness*
 via pre-emptive multitasking, not *throughput* (frames per second).
-Nowadays, even phones have several cores plus a highly parallel GPU,
+Nowadays, though, even phones have several cores plus a highly parallel GPU,
 and threads are much more powerful. It's therefore useful to
 distinguish between conceptual events; event queues and dependencies
 between them; and their implementation on a computer architecture.
@@ -1519,11 +1519,14 @@ so, and only store the browser thread's scroll offset if
 
 [^scroll-complicated]: Two-threaded scroll has a lot of edge cases,
 including some I didn't anticipate when writing this chapter. For
-example, it's pretty clear that a load should force scroll to 0, but
+example, it's pretty clear that a load should force scroll to 0
+(unless the browser implements [scroll restoration][scroll-restoration]!), but
 what about a scroll clamp followed by a browser scroll that brings it
 back to within the clamped region? By splitting the browser into two
 threads, we've brought in all of the challenges of concurrency and
 distributed state.
+
+[scroll-restoration]: https://developer.mozilla.org/en-US/docs/Web/API/History/scrollRestoration
 
 ``` {.python}
 class Tab:
