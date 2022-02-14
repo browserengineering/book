@@ -295,25 +295,18 @@ held while the task is running.
 
 ::: {.further}
 Unfortunately, Python currently has a [global interpreter lock][gil],
-so Python threads don't truly run in parallel.[^why-gil] Threading in
-Python therefore doesn't increase *throughput*, though it can increase
-*responsiveness*. This is an unfortunate limitation of Python that
-doesn't affect real browsers, so in this chapter just try to pretend
-the GIL isn't there.[^why-locks]
+so Python threads don't truly run in parallel. This is an unfortunate
+limitation of Python that doesn't affect real browsers, so in this
+chapter just try to pretend the GIL isn't there. : Despite the global
+interpreter lock, we still need locks. Each Python thread can yield
+between bytecode operations, so you can still get concurrent accesses
+to shared variables, and race conditions are still possible. And in
+fact, while debugging the code for this chapter, I often encountered
+this kind of race condition when I forgot to add a lock; try removing
+some of the locks from your browser to see for yourself!
 :::
 
 [gil]: https://wiki.python.org/moin/GlobalInterpreterLock
-
-[^why-gil]: It's possible to turn off the global interpreter lock
-while running foreign C/C++ code linked into a Python library. Skia is
-thread-safe, but DukPy and SDL may not be.
-
-[^why-locks]: Despite the global interpreter lock, we still need locks. Each
-Python thread can yield between bytecode operations, so you can still get
-concurrent accesses to shared variables, and race conditions are still
-possible. And in fact, while debugging the code for this chapter, I often
-encountered this kind of race condition when I forgot to add a lock; try
-removing some of the locks from your browser to see for yourself!
 
 Long-lived threads
 ==================
@@ -645,7 +638,13 @@ But sometimes that task is just running JavaScript that doesn't touch
 the web page, and the `raster_and_draw` call is a waste.
 
 We can avoid this using another dirty bit, which I'll call
-`needs_raster_and_draw`:
+`needs_raster_and_draw`:[^not-just-speed]
+
+[^not-just-speed]: The `needs_raster_and_draw` dirty bit doesn't just
+make the browser a bit more efficient. Later in this chapter, we'll
+add multiple browser threads, and at that point this dirty bit is
+necessary to avoid erratic behavior when animating. Try removing it
+later and see for yourself!
 
 ``` {.python}
 class Browser:
@@ -1384,9 +1383,15 @@ And that's it: we should now be doing render on one thread and raster
 and draw on another!
 
 ::: {.further}
-The `needs_raster_and_draw` dirty bit doesn't just make the browser a
-bit more efficient. Without this bit, our threads would have erratic
-behavior when animating. Try removing it and see for yourself!
+Due to the Python GIL, threading in Python therefore doesn't increase
+*throughput*, but it can increase *responsiveness* by, say,
+running JavaScript tasks on the main thread while the browser does
+raster and draw. It's also possible to turn off the global interpreter
+lock while running foreign C/C++ code linked into a Python library;
+Skia is thread-safe, but DukPy and SDL may not be, and don't seem to
+release the GIL. If they did, then JavaScript or raster-and-draw truly
+could run in parallel with the rest of the browser, and performance
+would improve as well.
 :::
 
 
