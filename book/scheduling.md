@@ -166,7 +166,7 @@ this:[^polling]
 `Task` is supposed to occur, and compare against the current time in
 the event loop. This is called *polling*, and is what, for example,
 the SDL event loop does to look for events and tasks. However, that
-can mean wasting time in a loop until the task is ready, so I expect
+can mean wasting CPU cycles in a loop until the task is ready, so I expect
 the `Timer` to be more efficient.
 
 [timer]: https://docs.python.org/3/library/threading.html#timer-objects
@@ -306,10 +306,11 @@ can't be accessed by another thread, so the lock does not need to be
 held while the task is running.
 
 ::: {.further}
-Unfortunately, Python currently has a [global interpreter lock][gil],
+Unfortunately, Python currently has a [global interpreter lock][gil]
+(GIL),
 so Python threads don't truly run in parallel. This is an unfortunate
 limitation of Python that doesn't affect real browsers, so in this
-chapter just try to pretend the GIL isn't there. : Despite the global
+chapter just try to pretend the GIL isn't there. Despite the global
 interpreter lock, we still need locks. Each Python thread can yield
 between bytecode operations, so you can still get concurrent accesses
 to shared variables, and race conditions are still possible. And in
@@ -325,8 +326,8 @@ Long-lived threads
 
 Threads can also be used to add browser multitasking. For example, in
 [Chapter 10](security.md#cross-site-requests) we implemented the
-`XMLHttpRequest` class, which lets scripts make requests to other
-websites. But in our implementation, the whole browser would seize up
+`XMLHttpRequest` class, which lets scripts make requests to the
+server. But in our implementation, the whole browser would seize up
 while waiting for the request to finish. That's obviously bad.^[For
 this reason, the synchronous version of the API that we implemented in
 Chapter 10 is not very useful and a huge performance footgun. Some
@@ -572,7 +573,7 @@ as we wanted to.
 
 ::: {.further}
 
-there's nothing special about 60 frames per second. Some displays
+There's nothing special about 60 frames per second. Some displays
 refresh 72 times per second, and displays that [refresh even more
 often][refresh-rate] are becoming more common. Movies are often shot
 in 24 frames per second (though [some directors advocate
@@ -726,9 +727,9 @@ finished adopting a scheduled, task-based approach to rendering. Once the need
 became apparent due to the emergence of complex interactive web applications,
 it still took years of effort to safely refactor all of the complex existing
 browser codebases. In fact, in some ways it is
-only [very recently][renderingng] that this process can perhaps be said to have
-completed. Though since software can always be improved, in some sense the work
-is never done.
+only very recently--for [Chromium][renderingng] at least--that this process
+can perhaps be said to have completed . Though since software can always be
+improved, in some sense the work is never done.
 
 :::
 
@@ -843,7 +844,7 @@ def do_request(session, method, url, headers, body):
 def show_count():
     out = "<!doctype html>"
     out += "<div>";
-    out += "  Let's count up to 100!"
+    out += "  Let's count up to 99!"
     out += "</div>";
     out += "<div>Output</div>"
     out += "<script src=/eventloop.js></script>"
@@ -1305,7 +1306,7 @@ class Browser:
 On the `Browser` side, the new `commit` method needs to read out all of the data
 it was sent and call `set_needs_raster_and_draw` as needed. Because this call
 will come from another thread, we'll need to acquire a lock. Another important
-step is to not clear the `needs_animation_frame` bit until *after* the next
+step is to not clear the `animation_timer` object until *after* the next
 commit occurs. Otherwise multiple rendering tasks could be queued at the same
 time.
 
@@ -1344,9 +1345,9 @@ maximize parallelism and responsiveness. In modern browsers, optimizing commit
 is quite challenging, because their method of caching and sending data between
 threads is much more sophisticated.
 
-[^inactive-tab-tasks]: That's because even inactive tabs are still
-running their main threads and responding to callbacks from
-`setTimeout` or `XMLHttpRequest`.
+[^inactive-tab-tasks]: That's because even inactive tabs are still running their
+main threads and responding to callbacks from `setTimeout` or `XMLHttpRequest`,
+and might be processing one last animation frame.
 
 Now that we have a browser lock, we also need to acquire the lock any
 time the browser thread accesses any of its variables. For example, in
@@ -1447,7 +1448,7 @@ document via `innerHTML`). Now that the browser thread and the main
 thread run in parallel, they can disagree about the scroll offset.
 
 What should we do? The best we can do is to use the browser thread's
-scroll offset until the main thread tells us otherwise, unless that
+scroll offset until the main thread tells us otherwise, because the
 scroll offset is incompatible with the web page (by, say, exceeding
 the document height). To do this, we'll need the browser thread to
 inform the main thread about the current scroll offset, and then give
@@ -1527,11 +1528,11 @@ so, and only store the browser thread's scroll offset if
 [^scroll-complicated]: Two-threaded scroll has a lot of edge cases,
 including some I didn't anticipate when writing this chapter. For
 example, it's pretty clear that a load should force scroll to 0
-(unless the browser implements [scroll restoration][scroll-restoration]!), but
-what about a scroll clamp followed by a browser scroll that brings it
-back to within the clamped region? By splitting the browser into two
-threads, we've brought in all of the challenges of concurrency and
-distributed state.
+(unless the browser implements [scroll restoration][scroll-restoration]
+for back-navigations!), but what about a scroll clamp followed by a browser
+scroll that brings it back to within the clamped region? By splitting the
+browser into two threads, we've brought in all of the challenges of
+concurrency and distributed state.
 
 [scroll-restoration]: https://developer.mozilla.org/en-US/docs/Web/API/History/scrollRestoration
 
@@ -1651,7 +1652,7 @@ into even more threads? Wouldn't that make the browser even faster?
 In a word, yes. Modern browsers have [dozens of
 threads][renderingng-architecture], which together serve to make the
 browser even faster and more responsive. For example, raster-and-draw
-typically runs on its own thread so that the browser thread can handle
+often runs on its own thread so that the browser thread can handle
 events even while a new frame is being prepared. Likewise, modern
 browsers typically have a collection of network or IO threads, which
 move all interaction with the network or the file system off of the
@@ -1668,7 +1669,7 @@ In principle, yes. The only thing browsers *have* to do is implement
 all the web API specifications correctly, and draw to the screen after
 scripts and `requestAnimationFrame` callbacks have completed. The
 specification spells this out in detail in what it calls the
-[update-the-rendering] steps. The specification it doesn't mention
+[update-the-rendering] steps. The specification doesn't mention
 style or layout at all---because style and layout, just like paint and
 draw, are implementation details of a browser. The specification's
 update-the-rendering steps are the *JavaScript-observable* things that
@@ -1694,7 +1695,8 @@ be able to layout and style on the main thread.[^or-stall]
 
 [^or-stall]: Or the main thread could force the compositor thread to
 do that work, but that's even worse, because forcing work on the
-compositor thread will make scrolling janky.
+compositor thread will make scrolling janky unless you do even more work to
+avoid that somehow.
 
 [^servo]: The [Servo] rendering engine uses multiple threads to take
 advantage of parallelism in style and layout, but those steps still
@@ -1733,7 +1735,7 @@ to their own thread. Maybe you'll be the one to do it?
 
 Browser rendering pipelines are strongly influenced by graphics and
 games. Many high-performance games are driven by event loops, update a
-[scene graphs][scene-graph] on each event, convert the scene graph
+[scene graph][scene-graph] on each event, convert the scene graph
 into a display list, and then convert the display list into pixels.
 But in a game, the programmer knows *in advance* what scene graphs
 will be provided, and can tune the graphics pipeline for those graphs.
@@ -1841,7 +1843,7 @@ on a condition variable to wake all threads waiting on it.
 [condition]: https://docs.python.org/3/library/threading.html#condition-objects
 
 [^browser-thread-burn]: The browser thread's `while True` loop, which
-asks SDL for new events, is also wasteful. Unfortunately, we couldn't
+asks SDL for new events, is also wasteful. Unfortunately, I couldn't
 find a way to avoid this in SDL.
 
 *Optimized scheduling*: On a complicated web page, the browser may not
