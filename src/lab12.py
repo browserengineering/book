@@ -446,7 +446,8 @@ class TaskRunner:
             needs_quit = self.needs_quit
             self.lock.release()
             if needs_quit:
-                return self.handle_quit()
+                self.handle_quit()
+                return
 
             task = None
             self.lock.acquire(blocking=True)

@@ -166,8 +166,8 @@ this:[^polling]
 `Task` is supposed to occur, and compare against the current time in
 the event loop. This is called *polling*, and is what, for example,
 the SDL event loop does to look for events and tasks. However, that
-can mean wasting time in a loop until the task to be ready, so I
-expect the `Timer` to be more efficient.
+can mean wasting time in a loop until the task is ready, so I expect
+the `Timer` to be more efficient.
 
 [timer]: https://docs.python.org/3/library/threading.html#timer-objects
 [threading]: https://docs.python.org/3/library/threading.html
@@ -295,13 +295,11 @@ held while the task is running.
 
 ::: {.further}
 Unfortunately, Python currently has a [global interpreter lock][gil],
-so our two Python threads don't truly run in parallel,[^why-gil]
-and our browser's *throughput* won't increase much from multi-threading.
-Nonetheless, the *responsiveness* of the browser thread is still
-massively improved, since it often isn't blocked on JavaScript or the
-front half of the rendering pipeline. This is an unfortunate
-limitation of Python that doesn't affect real browsers, so try to
-pretend it's not there.[^why-locks]
+so Python threads don't truly run in parallel.[^why-gil] Threading in
+Python therefore doesn't increase *throughput*, though it can increase
+*responsiveness*. This is an unfortunate limitation of Python that
+doesn't affect real browsers, so in this chapter just try to pretend
+the GIL isn't there.[^why-locks]
 :::
 
 [gil]: https://wiki.python.org/moin/GlobalInterpreterLock
@@ -461,12 +459,12 @@ to running JavaScript.
 `XMLHttpRequest` played a key role in helping the web evolve. In the
 90s, clicking on a link or submitting a form required loading a new
 pages. With `XMLHttpRequest` web pages were able to act a whole lot
-more like a dynamic application, with GMail one famous early
+more like a dynamic application; GMail was one famous early
 example.[^when-gmail] Nowadays, a web application that uses DOM
 mutations instead of page loads to update its state is called a
-[single-page app][spa]. SPAs enabled more interactive and complex web
-apps, which in turn made browser speed and responsiveness more
-important.
+[single-page app][spa]. Single-page apps enabled more interactive and
+complex web apps, which in turn made browser speed and responsiveness
+more important.
 
 [^when-gmail]: GMail dates from April 2004, [soon after][xhr-history]
 enough browsers finished adding support for the API. The first
@@ -485,9 +483,10 @@ The cadence of rendering
 
 There's more to tasks than just implementing some JavaScript APIs.
 Once something is a `Task`, the task runner controls when it runs:
-now, later, at most once a second, at different rates for active and
-inactive pages, or according to its priority. A browser could even
-have multiple task runners, optimized for different use cases.
+perhaps now, perhaps later, or maybe at most once a second, or even at
+different rates for active and inactive pages, or according to its
+priority. A browser could even have multiple task runners, optimized
+for different use cases.
 
 Now, it might be hard to see how the browser can prioritize which
 JavaScript callback to run, or why it might want to execute JavaScript
@@ -570,11 +569,11 @@ as we wanted to.
 
 ::: {.further}
 
-there's nothing special about 60 frames per second. Many displays
-refresh 72 times per second, and some that [refresh even more
+there's nothing special about 60 frames per second. Some displays
+refresh 72 times per second, and displays that [refresh even more
 often][refresh-rate] are becoming more common. Movies are often shot
 in 24 frames per second (though [some directors advocate
-48][hobbit-fps]) while television shows often use 30 frames per
+48][hobbit-fps]) while television shows traditionally use 30 frames per
 second. Consistency is often more important than the actual frame
 rate: a consistant 24 frames per second can look a lot smoother than a
 varying framerate between 60 and 24.
@@ -907,7 +906,7 @@ function callback() {
 setTimeout(callback, 16);
 ```
 
-This sort of worked, there was no guarantee that the callbacks would
+This sort of worked, but there was no guarantee that the callbacks would
 cohere with the speed or timing of rendering. For example, sometimes
 two callbacks in a row could happen without any rendering between,
 which doubles the script work for rendering for no benefit. It was
@@ -1030,7 +1029,7 @@ raster-and-draw step by adopting a multi-threaded architecture.
 
 Our toy browser spends a lot of time copying pixels. That's why
 [optimizing surfaces][optimize-surfaces] is important! It'll be faster
-by about 30% if you've done the *interest region* exercise from
+by at least 30% if you've done the *interest region* exercise from
 [Chapter 11](visual-effects.md#exercises); making `tab_surface`
 smaller also helps a lot. Modern browsers go a step further and
 perform raster and draw [on the GPU][skia-gpu], where a lot more
@@ -1121,11 +1120,7 @@ class TaskRunner:
 
     def run(self):
         while True:
-            self.lock.acquire(blocking=True)
-            needs_quit = self.needs_quit
-            self.lock.release()
-            if needs_quit:
-                return self.handle_quit()
+            # ...
 ```
 
 Remove the call to `run` from the top-level `while True` loop, since
@@ -1150,7 +1145,7 @@ class TaskRunner:
 
 Because this loop runs forever, the main thread will live on
 indefinitely.^[Or until the browser quits, at which point it should
-sets the `needs_quit` flag.]
+ask the main thread to quit as well.]
 
 The `Browser` should no longer call any methods on the `Tab`. Instead,
 to handle events, it should schedule tasks on the main thread. For
@@ -1412,11 +1407,11 @@ function callback() {
 ```
 
 Now, every tick of the counter has an artificial pause during which
-the main thread is stuck running JavaScript.[^adjust] This means it
-can't respond to any events; for example, if you hold down the down
-key, the scrolling will be janky and annoying. I encourage you to try
-this and witness how annoying it is, because modern browsers usually
-don't have this kind of jank.
+the main thread is stuck running JavaScript. This means it can't
+respond to any events; for example, if you hold down the down key, the
+scrolling will be janky and annoying. I encourage you to try this and
+witness how annoying it is, because modern browsers usually don't have
+this kind of jank.[^adjust]
 
 [^adjust]: Adjust the loop bound to make it pause for about a second
     or so on your computer.
@@ -1657,8 +1652,8 @@ have to happen before drawing to the screen.
 Nevertheless, in practice, no current modern browser runs style or
 layout on off the main thread.[^servo] The reason is simple: there are
 many JavaScript APIs that can query style or layout state. For
-example, [`getComputedStyle`][gcs] can't be requires first computing
-style, and [`getBoundingClientRect`][gbcr] requires first doing
+example, [`getComputedStyle`][gcs] requires first computing style, and
+[`getBoundingClientRect`][gbcr] requires first doing
 layout.[^nothing-later] If a web page calls one of these APIs, and
 style or layout is not up-to-date, then it has to be computed then and
 there. These computations are called *forced style* or *forced
@@ -1682,7 +1677,7 @@ block, for example, JavaScript execution on the main thread.
 
 [^nothing-later]: There is no JavaScript API that allows reading back
 state from anything later in the rendering pipeline than layout.
-What's why we moved raster and draw to the browser thread.
+This made it relatively easy for us to move raster and draw to the browser thread.
 
 One possible way to resolve these tensions is to optimistically move
 style and layout off the main thread, similar to optimistically doing
