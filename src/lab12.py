@@ -157,8 +157,7 @@ class JSContext:
         if not isasync:
             return run_load()
         else:
-            load_thread = threading.Thread(target=run_load)
-            load_thread.start()
+            threading.Thread(target=run_load).start()
 
     def now(self):
         return int(time.time() * 1000)
@@ -561,8 +560,7 @@ class Browser:
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
-        if not self.active_tab_height:
-            return
+        if not self.active_tab_height: return
         active_tab = self.tabs[self.active_tab]
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
