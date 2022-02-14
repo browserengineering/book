@@ -728,7 +728,7 @@ became apparent due to the emergence of complex interactive web applications,
 it still took years of effort to safely refactor all of the complex existing
 browser codebases. In fact, in some ways it is
 only very recently--for [Chromium][renderingng] at least--that this process
-can perhaps be said to have completed . Though since software can always be
+can perhaps be said to have completed. Though since software can always be
 improved, in some sense the work is never done.
 
 :::
