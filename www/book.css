@@ -236,10 +236,10 @@ form.states.s-success #signup-close { display: block; }
     #toc a { text-decoration: none; color: black; }
 }
 
-.highlight-region { font-size: 36px; line-height: 1.5; padding: 1em; }
+.highlight-region { font-size: 24px; line-height: 1.5; padding: 1em; }
 .highlight-region mark { position: relative; padding: .1em; }
 .highlight-region label {
-    position: absolute; font: bold 75% sans-serif; 
+    position: absolute; font: bold 80% sans-serif; 
 }
 .highlight-region label.above { top: -1.2em; }
 .highlight-region label.below { bottom: -1.2em; }

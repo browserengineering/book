@@ -83,11 +83,13 @@ should type it into `telnet`:
 
 ::: {.cmd html=True}
     python3 infra/annotate-code.py <<EOF
-    [GET][tr|Method] [/index.html][tl|Path] [HTTP/1.0][tl|HTTP Version]
+    [GET][tl|Method] [/index.html][tr|Path] [HTTP/1.0][tl|HTTP Version]
     [Host][bl|Header]: [example.org][bl|Value]
 
     EOF
 :::
+
+Make sure to type a blank line after the `Host` line.
 
 Here, the word `GET` means that the browser would like to receive
 information,[^11] then comes the path, and finally there is the word
