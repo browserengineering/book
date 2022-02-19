@@ -53,8 +53,6 @@ class MeasureTime:
         return "Time in {} on average: {:>.0f}ms".format(
             self.name, avg * 1000)
 
-FONTS = {}
-
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
 
