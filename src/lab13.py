@@ -1,6 +1,6 @@
 """
 This file compiles the code in Web Browser Engineering,
-up to and including Chapter 12 (Scheduling and Threading),
+up to and including Chapter 13 (Animations and Compositing),
 without exercises.
 """
 
@@ -1909,13 +1909,19 @@ if __name__ == "__main__":
     import sys
     import argparse
 
-    parser = argparse.ArgumentParser(description='Chapter 12 code')
+    parser = argparse.ArgumentParser(description='Chapter 13 code')
     parser.add_argument("url", type=str, help="URL to load")
     parser.add_argument('--single_threaded', action="store_true", default=False,
         help='Whether to run the browser without a browser thread')
+    parser.add_argument('--disable_compositing', action="store_true",
+        default=False, help='Whether to composite some elements')
+    parser.add_argument('--show_composited_layer_borders', action="store_true",
+        default=False, help='Whether to visually indicate composited layer borders')
     args = parser.parse_args()
 
     USE_BROWSER_THREAD = not args.single_threaded
+    USE_COMPOSITING = not args.disable_compositing
+    SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
