@@ -31,6 +31,7 @@ from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import draw_line, draw_text, get_font, linespace, \
     parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
+from OpenGL import GL
 
 class MeasureTime:
     def __init__(self, name):
@@ -1046,10 +1047,11 @@ class NumericAnimation:
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
 class CompositedLayer:
-    def __init__(self, first_chunk):
+    def __init__(self, first_chunk, skia_context):
         self.surface = None
         self.chunks = []
         self.chunks.append(first_chunk)
+        self.skia_context = skia_context
 
     def can_merge(self, chunk):
         if len(self.chunks) == 0:
@@ -1107,7 +1109,11 @@ class CompositedLayer:
             return
         irect = bounds.roundOut()
         if not self.surface:
-            self.surface = skia.Surface(irect.width(), irect.height())
+            self.surface = skia.Surface.MakeRenderTarget(
+                self.skia_context, skia.Budgeted.kNo,
+                skia.ImageInfo.MakeN32Premul(
+                    irect.width(), irect.height()))
+            assert self.surface is not None
         canvas = self.surface.getCanvas()
 
         canvas.save()
@@ -1596,7 +1602,7 @@ def print_composited_layers(composited_layers):
     for layer in composited_layers:
         print("  " * 4 + str(layer))
 
-def do_compositing(display_list):
+def do_compositing(display_list, skia_context):
     chunks = display_list_to_paint_chunks(display_list)
     composited_layers = []
     for chunk in chunks:
@@ -1607,23 +1613,33 @@ def do_compositing(display_list):
                 placed = True
                 break
             elif layer.overlaps(chunk.screen_bounds()):
-                composited_layers.append(CompositedLayer(chunk))
+                composited_layers.append(CompositedLayer(chunk, skia_context))
                 placed = True
                 break
         if not placed:
-            composited_layers.append(CompositedLayer(chunk))
+            composited_layers.append(CompositedLayer(chunk, skia_context))
     return composited_layers
 
 class Browser:
     def __init__(self):
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-            WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-        self.root_surface = skia.Surface.MakeRaster(
-            skia.ImageInfo.Make(
-            WIDTH, HEIGHT,
-            ct=skia.kRGBA_8888_ColorType,
-            at=skia.kUnpremul_AlphaType))
+            WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
+        self.context = sdl2.SDL_GL_CreateContext(self.sdl_window)
+        self.skia_context = skia.GrDirectContext.MakeGL()
+        self.backend_render_target = skia.GrBackendRenderTarget(
+            WIDTH,
+            HEIGHT,
+            0,  # sampleCnt
+            0,  # stencilBits
+            skia.GrGLFramebufferInfo(0, GL.GL_RGBA8))
+
+        self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
+            self.skia_context, self.backend_render_target,
+            skia.kBottomLeft_GrSurfaceOrigin,
+            skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
+        assert self.root_surface is not None
+
         self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
 
         self.tabs = []
@@ -1699,7 +1715,7 @@ class Browser:
     def composite(self):
         if self.needs_composite:
             self.composited_layers = do_compositing(
-                self.active_tab_display_list)
+                self.active_tab_display_list, self.skia_context)
 
             self.active_tab_height = 0
             for layer in self.composited_layers:
@@ -1722,10 +1738,10 @@ class Browser:
     def composite_raster_and_draw(self):
         if not self.needs_raster_and_draw: return
         self.lock.acquire(blocking=True)
-        self.measure_composite_raster_and_draw.start()
         self.raster_chrome()
         if self.needs_composite or len(self.composited_updates) > 0:
             self.composite()
+        self.measure_composite_raster_and_draw.start()
         self.raster_tab()
         self.draw()
         self.measure_composite_raster_and_draw.stop()
@@ -1881,23 +1897,9 @@ class Browser:
         self.chrome_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        # This makes an image interface to the Skia surface, but
-        # doesn't actually copy anything yet.
-        skia_image = self.root_surface.makeImageSnapshot()
-        skia_bytes = skia_image.tobytes()
-
-        depth = 32 # Bits per pixel
-        pitch = 4 * WIDTH # Bytes per row
-        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-            skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            self.RED_MASK, self.GREEN_MASK,
-            self.BLUE_MASK, self.ALPHA_MASK)
-
-        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
-        window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
-        # SDL_BlitSurface is what actually does the copy.
-        sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
-        sdl2.SDL_UpdateWindowSurface(self.sdl_window)
+        self.root_surface.flushAndSubmit()
+        sdl2.SDL_GL_SwapWindow(self.sdl_window)
+        return
 
     def handle_quit(self):
         print(self.measure_composite_raster_and_draw.text())
