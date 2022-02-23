@@ -1487,9 +1487,6 @@ class TaskRunner:
     def handle_quit(self):
         print(self.tab.measure_render.text())
 
-    def handle_quit(self):
-        print(self.tab.measure_render.text())
-
 REFRESH_RATE_SEC = 0.016 # 16ms
 
 class PaintChunk:
@@ -1658,6 +1655,9 @@ class Browser:
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
         self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
         self.skia_context = skia.GrDirectContext.MakeGL()
+
+        print("OpenGL initialied: vendor={}, renderer={}".format(
+            GL.glGetString(GL.GL_VENDOR), GL.glGetString(GL.GL_RENDERER)))
 
         self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
             self.skia_context,
@@ -1937,6 +1937,7 @@ class Browser:
     def handle_quit(self):
         print(self.measure_composite_raster_and_draw.text())
         self.tabs[self.active_tab].task_runner.set_needs_quit()
+        sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
