@@ -1049,9 +1049,12 @@ SHOW_COMPOSITED_LAYER_BORDERS = False
 class CompositedLayer:
     def __init__(self, first_chunk, skia_context):
         self.surface = None
+        self.skia_context = skia_context
+        self.chunks = []
+
+    def init(self, first_chunk):
         self.chunks = []
         self.chunks.append(first_chunk)
-        self.skia_context = skia_context
 
     def can_merge(self, chunk):
         if len(self.chunks) == 0:
@@ -1114,8 +1117,10 @@ class CompositedLayer:
                 skia.ImageInfo.MakeN32Premul(
                     irect.width(), irect.height()))
             assert self.surface is not None
+
         canvas = self.surface.getCanvas()
 
+        canvas.clear(skia.ColorTRANSPARENT)
         canvas.save()
         canvas.translate(-bounds.left(), -bounds.top())
         for chunk in self.chunks:
@@ -1131,7 +1136,7 @@ class CompositedLayer:
         return ("layer: composited_bounds={} " +
             "screen_bounds={} first_chunk={}").format(
             self.composited_bounds(), self.screen_bounds(),
-            self.chunks[0])
+            self.chunks[0] if len(self.chunks) > 0 else 'None')
 
 def raster(display_list, canvas):
     for cmd in display_list:
@@ -1500,6 +1505,9 @@ class PaintChunk:
                 break
             count -= 1
 
+    def equals(self, other_chunk):
+        return self.chunk_items[0].node == other_chunk.chunk_items[0].node
+
     def screen_bounds(self):
         return self.bounds_internal(True)
 
@@ -1602,9 +1610,25 @@ def print_composited_layers(composited_layers):
     for layer in composited_layers:
         print("  " * 4 + str(layer))
 
-def do_compositing(display_list, skia_context):
+def get_composited_layer(
+    chunk, current_composited_layers, current_index, skia_context):
+    layer = None
+    if current_index < len(current_composited_layers):
+        if current_composited_layers[current_index].chunks[0].equals(chunk):
+            layer = current_composited_layers[current_index]
+            current_index += 1
+
+    if not layer:
+        layer = CompositedLayer(chunk, skia_context)
+        current_index = len(current_composited_layers)
+
+    layer.init(chunk)
+    return (layer, current_index)
+
+def do_compositing(display_list, skia_context, current_composited_layers):
     chunks = display_list_to_paint_chunks(display_list)
     composited_layers = []
+    current_index = 0
     for chunk in chunks:
         placed = False
         for layer in reversed(composited_layers):
@@ -1613,11 +1637,18 @@ def do_compositing(display_list, skia_context):
                 placed = True
                 break
             elif layer.overlaps(chunk.screen_bounds()):
-                composited_layers.append(CompositedLayer(chunk, skia_context))
+                (layer, current_index) = get_composited_layer(
+                    chunk, current_composited_layers, current_index,
+                    skia_context)
+                composited_layers.append(layer)
                 placed = True
                 break
         if not placed:
-            composited_layers.append(CompositedLayer(chunk, skia_context))
+            (layer, current_index) = get_composited_layer(
+                chunk, current_composited_layers, current_index,
+                skia_context)
+            composited_layers.append(layer)
+
     return composited_layers
 
 class Browser:
@@ -1716,7 +1747,8 @@ class Browser:
     def composite(self):
         if self.needs_composite:
             self.composited_layers = do_compositing(
-                self.active_tab_display_list, self.skia_context)
+                self.active_tab_display_list, self.skia_context,
+                self.composited_layers)
 
             self.active_tab_height = 0
             for layer in self.composited_layers:
