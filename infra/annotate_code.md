@@ -4,7 +4,7 @@ WBE's Python-to-JS compiler
 This file is mostly unit tests, but you could pretend it is
 documentation if you were so inclined.
 
-We need import the annotator:
+We need to import the annotator:
 
     >>> import sys
     >>> sys.path.append("infra")
