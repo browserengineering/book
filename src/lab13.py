@@ -1625,19 +1625,18 @@ class Browser:
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
-        self.context = sdl2.SDL_GL_CreateContext(self.sdl_window)
+        self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
         self.skia_context = skia.GrDirectContext.MakeGL()
-        self.backend_render_target = skia.GrBackendRenderTarget(
-            WIDTH,
-            HEIGHT,
-            0,  # sampleCnt
-            0,  # stencilBits
-            skia.GrGLFramebufferInfo(0, GL.GL_RGBA8))
 
         self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
-            self.skia_context, self.backend_render_target,
-            skia.kBottomLeft_GrSurfaceOrigin,
-            skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
+            self.skia_context,
+            skia.GrBackendRenderTarget(
+                WIDTH, HEIGHT,
+                0,  # sampleCnt
+                0,  # stencilBits
+                skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
+                skia.kBottomLeft_GrSurfaceOrigin,
+                skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
         assert self.root_surface is not None
 
         self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
@@ -1738,10 +1737,10 @@ class Browser:
     def composite_raster_and_draw(self):
         if not self.needs_raster_and_draw: return
         self.lock.acquire(blocking=True)
+        self.measure_composite_raster_and_draw.start()
         self.raster_chrome()
         if self.needs_composite or len(self.composited_updates) > 0:
             self.composite()
-        self.measure_composite_raster_and_draw.start()
         self.raster_tab()
         self.draw()
         self.measure_composite_raster_and_draw.stop()
