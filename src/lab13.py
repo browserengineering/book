@@ -1639,7 +1639,9 @@ class Browser:
                 skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
         assert self.root_surface is not None
 
-        self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
+        self.chrome_surface =  skia.Surface.MakeRenderTarget(
+                self.skia_context, skia.Budgeted.kNo,
+                skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
 
         self.tabs = []
         self.active_tab = None
