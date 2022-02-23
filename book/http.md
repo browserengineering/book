@@ -82,7 +82,7 @@ the host name, like `/index.html`. The request looks like this; you
 should type it into `telnet`:
 
 ::: {.cmd html=True}
-    python3 infra/annotate-code.py <<EOF
+    python3 infra/annotate_code.py <<EOF
     [GET][tl|Method] [/index.html][tr|Path] [HTTP/1.0][tl|HTTP Version]
     [Host][bl|Header]: [example.org][bl|Value]
 
@@ -141,7 +141,7 @@ The server's response
 The server's response starts with this line:
 
 ::: {.cmd html=True}
-    python3 infra/annotate-code.py <<EOF
+    python3 infra/annotate_code.py <<EOF
     [HTTP/1.0][tr|HTTP Version] [200][bl|Response Code] [OK][tl|Response Description]
     EOF
 :::
@@ -219,12 +219,12 @@ response.
 A URL looks like this:
 
 ::: {.cmd html=True}
-    python3 infra/annotate-code.py <<EOF
+    python3 infra/annotate_code.py <<EOF
     [http][tl|Scheme]://[example.org][bl|Hostname][/index.html][tl|Path]
     EOF
 :::
 
-This URL has three several parts the scheme explains *how* to get the
+This URL has three parts: the scheme explains *how* to get the
 information; the host explains *where* to get it; and the path
 explains *what* information to get.
 
@@ -598,7 +598,7 @@ While we're at it, let's add support for custom ports, which are
 specified in a URL by putting a colon after the host name:
 
 ::: {.cmd html=True}
-    python3 infra/annotate-code.py <<EOF
+    python3 infra/annotate_code.py <<EOF
     http://example.org:[8080][tl|Port]/index.html
     EOF
 :::
