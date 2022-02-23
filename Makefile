@@ -64,3 +64,4 @@ test:
 		(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest lab$$i-tests.md); \
 	done
 	python3 -m doctest infra/compiler.md
+	python3 -m doctest infra/annotate_code.md

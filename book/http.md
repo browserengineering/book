@@ -81,11 +81,15 @@ by giving its *path*, the path being the part of a URL that comes after
 the host name, like `/index.html`. The request looks like this; you
 should type it into `telnet`:
 
-``` {.example}
-GET /index.html HTTP/1.0
-Host: example.org
+::: {.cmd html=True}
+    python3 infra/annotate_code.py <<EOF
+    [GET][tl|Method] [/index.html][tr|Path] [HTTP/1.0][tl|HTTP Version]
+    [Host][bl|Header]: [example.org][bl|Value]
 
-```
+    EOF
+:::
+
+Make sure to type a blank line after the `Host` line.
 
 Here, the word `GET` means that the browser would like to receive
 information,[^11] then comes the path, and finally there is the word
@@ -136,9 +140,11 @@ The server's response
 
 The server's response starts with this line:
 
-``` {.example}
-HTTP/1.0 200 OK
-```
+::: {.cmd html=True}
+    python3 infra/annotate_code.py <<EOF
+    [HTTP/1.0][tr|HTTP Version] [200][bl|Response Code] [OK][tl|Response Description]
+    EOF
+:::
 
 That tells you that the host confirms that it, too, speaks `HTTP/1.0`,
 and that it found your request to be "OK" (which has a numeric code of
@@ -210,11 +216,17 @@ same programmatically. It'll require extracting host name and path
 from the URL, creating a *socket*, sending a request, and receiving a
 response.
 
-A URL like `http://example.org/index.html` has several parts:
+A URL looks like this:
 
--   The *scheme*, here `http`, explains *how* to get the information
--   The *host*, here `example.org`, explains *where* to get it
--   The *path*, here `/index.html`, explains *what* information to get
+::: {.cmd html=True}
+    python3 infra/annotate_code.py <<EOF
+    [http][tl|Scheme]://[example.org][bl|Hostname][/index.html][tl|Path]
+    EOF
+:::
+
+This URL has three parts: the scheme explains *how* to get the
+information; the host explains *where* to get it; and the path
+explains *what* information to get.
 
 There are also optional parts to the URL. Sometimes, like in
 `http://localhost:8080/`, there is a *port* that comes after the host,
@@ -583,8 +595,15 @@ if scheme == "https":
 Your browser should now be able to connect to HTTPS sites.
 
 While we're at it, let's add support for custom ports, which are
-specified in a URL by putting a colon after the host name, like in
-`http://example.org:8080/`:
+specified in a URL by putting a colon after the host name:
+
+::: {.cmd html=True}
+    python3 infra/annotate_code.py <<EOF
+    http://example.org:[8080][tl|Port]/index.html
+    EOF
+:::
+
+If the URL has a port we can parse it out and use it:
 
 ``` {.python}
 if ":" in host:
