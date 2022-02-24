@@ -61,7 +61,7 @@ new value.
 Let's go ahead and add that feature. We'll need to register a setter on
 the `style` attribute of `Node` in the JavaScript runtime:
 
-```
+``` {.javascript file=runtime}
 Object.defineProperty(Node.prototype, 'style', {
     set: function(s) {
         call_python("style_set", this.handle, s.toString());
