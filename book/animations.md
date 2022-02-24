@@ -16,8 +16,8 @@ Modern browsers have APIs that enable animating the styles of DOM elements.
 To implement these APIs, behind the scenes a new technology is
 needed to make those animations smooth and fast.
 
-Animations in CSS
-=================
+Opacity animations
+==================
 
 In Chapter 12 we [implemented](scheduling.md#animating-frames) the
 `requestAnimationFrame` API, and built a demo that modifies the `innerHTML`
@@ -28,9 +28,64 @@ render some content into layout objects, then apply various kinds of
 animations to it, such as *transform* (moving it around, growing or
 shrinking it) or *opacity* (fading pixels in or out).
 
-It's pretty easy to imagine how this might work for opacity. We added this
+It's straightforward to imagine how this might work for opacity. We added this
 feature to our browser in [Chapter 11](visual-effects.md#opacity-and-alpha);
-opacity is represented by a `SaveLayer` display 
+opacity is represented by a `SaveLayer` display list command that applies
+transparency to a stacking context. To animate opacity from one value to
+another, you could animate the `opacity` CSS property in JavaScript smoothly
+from one value to another, with code like this code, which animates from
+opacity 1 to 0 in 100 steps:
+
+``` {.html file=examplehtml}
+<script src="example13.js"></script>
+<div>Test</div>
+```
+
+``` {.javascript file=examplejs}
+var end_opacity = 0;
+var num_animation_frames = 100;
+function animate() {
+    if (num_animation_frames == 0) return;
+    var div = document.querySelectorAll("div")[0];
+    div.style = "opacity:" + (num_animation_frames / 100);
+    requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+```
+
+This example uses a new feature we haven't added to our browser yet: modifying
+the inline style of an element with JavaScript. In this case, setting
+`myElement.style.opacity` changes the value of the `style` HTML attribute to a
+new value.
+
+Let's go ahead and add that feature. We'll need to register a setter on
+the `style` attribute of `Node` in the JavaScript runtime:
+
+```
+Object.defineProperty(Node.prototype, 'style', {
+    set: function(s) {
+        call_python("style_set", this.handle, s.toString());
+    }
+});
+```
+
+And some simple Python code:
+
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        self.interp.export_function("style_set", self.style_set)
+
+     def style_set(self, handle, s):
+        elt = self.handle_to_node[handle]
+        elt.attributes["style"] = s;
+        self.tab.set_needs_render()
+```
+
+
+
+Transform animations
+====================
 
 GPU acceleration
 ================
