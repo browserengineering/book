@@ -2,7 +2,7 @@
 title: Scheduling Tasks and Threads
 chapter: 12
 prev: visual-effects
-next: skipped
+next: animations
 ...
 
 Modern browsers must run sophisticated applications while staying
