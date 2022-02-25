@@ -370,12 +370,21 @@ class CSSParser:
         assert self.i > start
         return self.s[start:self.i]
 
+    def until_semicolon(self):
+        start = self.i
+        while self.i < len(self.s):
+            cur = self.s[self.i]
+            if cur == ";":
+                break
+            self.i += 1
+        return self.s[start:self.i]
+
     def pair(self):
         prop = self.word()
         self.whitespace()
         self.literal(":")
         self.whitespace()
-        val = self.word()
+        val = self.until_semicolon()
         return prop.lower(), val
 
     def ignore_until(self, chars):
@@ -448,7 +457,7 @@ class BlockLayout:
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous)
+                next = InlineLayout(child, self, previous)gr
             else:
                 next = BlockLayout(child, self, previous)
             self.children.append(next)
@@ -944,11 +953,14 @@ def animate_style(node, old_style, new_style, tab):
     if transform_animation:
         tab.animations[node].append(transform_animation)
 
-ANIMATION_FRAME_COUNT = 60
+ANIMATION_FRAME_COUNT = 120
 
 def has_transition(property_value, style):
     transition_items = style["transition"].split(",")
-    return property_value in transition_items
+    for item in transition_items:
+        if property_value == item.split(" ")[0]:
+            return True
+    return False
 
 def try_transform_animation(node, old_style, new_style, tab):
     if not has_transition("transform", old_style) or \
@@ -1656,7 +1668,7 @@ class Browser:
         self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
         self.skia_context = skia.GrDirectContext.MakeGL()
 
-        print("OpenGL initialied: vendor={}, renderer={}".format(
+        print("OpenGL initialized: vendor={}, renderer={}".format(
             GL.glGetString(GL.GL_VENDOR), GL.glGetString(GL.GL_RENDERER)))
 
         self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
