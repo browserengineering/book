@@ -254,18 +254,20 @@ CSS transitions
 ===============
 
 But why do we need JavaScript just to smoothly interpolate `opacity` or `width`?
-Well, that's what[CSS transitions[css-transitions] are. `transition` CSS
-property is for. The CSS rule
+Well, that's what [CSS transitions][css-transitions] are for. The `transition` CSS
+property works like this:
 
 	transition: opacity 2s;
 
-means that, whenever the `opacity` property of the element changes---for any
-reason, including mutating its style attribute or loading a style sheet---then
-the browser should smoothly interpolate 
+This means that, whenever the `opacity` property of the element changes---for
+any reason, including mutating its style attribute or loading a style
+sheet---then the browser should smoothly interpolate between the old and new
+value, in basically the same way the `requestAnimationFrame` loop did id.
+This is much more convenient than writing a bunch of JavaScript, and also
+doesn't force you to remember each and every way in which the styles can
+change.
 
 [css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
-Transform animations
-====================
 
 GPU acceleration
 ================
@@ -277,6 +279,11 @@ Compositing
 
 Show how to provide independent textures for animated content to avoid expensive
 raster costs.
+
+Transform animations
+====================
+
+Motivated by overlap in compositing.
 
 Composited animations
 =====================
