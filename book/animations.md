@@ -5,15 +5,15 @@ prev: visual-effects
 next: skipped
 ...
 
-The UI of a complex web application these days is not just fast to load,
-visually interesting and responsive to input and scrolling. It also needs to
-support smooth *animations* when transitioning between DOM states. These
-transitions improve usability of web applications by helping users understand
-what changed through visual movement from one state to another, and improve
-visual polish by replacing sudden visual jumps with smooth interpolations.
+The UI of a complex web application these days requires not just fast loading,
+visually interesting rendering, and beingresponsive to input and scrolling. It
+also needs to support smooth *animations* when transitioning between DOM
+states. These transitions improve usability of web applications by helping
+users understand what changed, and improve visual polish by replacing sudden
+jumps with smooth interpolations.
 
 Modern browsers have APIs that enable animating the styles of DOM elements.
-To implement these APIs, behind the scenes a new technology is
+To implement these APIs performantly, behind the scenes new technology is
 needed to make those animations smooth and fast.
 
 Visual effect animations
@@ -48,7 +48,7 @@ or counters.
 
 In this chapter we'll focus on the first and second categories.[^excuse]
 
-[^excuse]: We'll get to images in Chapter 14 and touch a bit on canvas; video is
+[^excuse]: We'll get to images and a bit of canvas in Chapter 14; video is
 a fascinating topic unto itself, but is beyond the scope of this book. Arguably,
 canvas is a bit different than the other two, since it's implemented by
 developer scripts. And of course a canvas can have animations within
@@ -64,18 +64,18 @@ The distinction is important for two reasons: animation quality and performance.
 In general, layout-inducing animations often have undesirable
 quality---animating `width` can lead to text jumping around as line breaking
 changes---and performance implication (the name says it all: these animations
-require main thread `render` calls.^[Sometimes it's a better user experience to
+require main thread `render` calls).^[Sometimes it's a better user experience to
 animate layout-inducing properties. The best example of this is resizing a
 browser window via a mouse gesture, where it's very useful for the user to see
 the new layout as they animate. Modern browsers are fast enough to do this,
-but it used to be that instead they would leave a visual "gutter"
+but it used to be that instead they would leave a visual *gutter*
 (a gap between content and the edge of the window) during the animation, to
 avoid updating layout on every animation frame.]
 
 This means we're in luck though! Visual effect animations can almost always
 be run on the browser thread, and also GPU-accelerated. But I'm getting ahead
-of myself---let's now take a tour through DOM animations and how to achieve
-them, before showing how to accelerate them.
+of myself---let's first take a tour through DOM animations and how to achieve
+them, before figuring how to accelerate them.
 
 Opacity animations
 ==================
@@ -83,19 +83,15 @@ Opacity animations
 In Chapter 12 we [implemented](scheduling.md#animating-frames) the
 `requestAnimationFrame` API, and built a demo that modifies the `innerHTML`
 of a DOM element on each frame. That is indeed an animation---a
-*JavaScript-driven* animation---but this is generally not how high-quality
-animations are done on the web. Instead, it almost always makes sense to first
-render some content into layout objects, then apply various kinds of
-animations to it, such as *transform* (moving it around, growing or
-shrinking it) or *opacity* (fading pixels in or out).
+*JavaScript-driven* animation---but `innerHTML` is generally not how
+high-quality animations are done on the web. Instead, it almost always makes
+sense to first render some content into layout objects, then apply a DOM
+animation to the layout tree.
 
-It's straightforward to imagine how this might work for opacity. We added this
-feature to our browser in [Chapter 11](visual-effects.md#opacity-and-alpha);
-opacity is represented by a `SaveLayer` display list command that applies
-transparency to a stacking context. To animate opacity from one value to
-another, you could animate the `opacity` CSS property in JavaScript smoothly
-from one value to another, with code like this code, which animates from
-opacity 1 to 0 in 100 steps:
+It's straightforward to imagine how this might work for opacity: define
+some HTML that you want to animate, then interpolate the `opacity` CSS property
+in JavaScript smoothly from one value to another. Here's an example that
+animates from 1 to 0.1, over 120 frames (about two seconds).
 
 ``` {.html file=example-opacity-html}
 <div>Test</div>
@@ -119,10 +115,12 @@ function animate() {
 requestAnimationFrame(animate);
 ```
 
+(click <a href="examples/example13-opacity.html">here</a> to load the example in
+your browser)
+
 This example uses a new feature we haven't added to our browser yet: modifying
-the inline style of an element with JavaScript. In this case, setting
-`myElement.style.opacity` changes the value of the `style` HTML attribute to a
-new value.
+the inline style of an element with JavaScript. Doing so has the same effect as
+having specified the new `style` attribute value in HTML.
 
 Let's go ahead and add that feature. We'll need to register a setter on
 the `style` attribute of `Node` in the JavaScript runtime:
@@ -148,18 +146,7 @@ class JSContext:
         self.tab.set_needs_render()
 ```
 
-Load up the example, and observe text fading to white! But why do we need
-JavaScript just to smoothly interpolate opacity? Well, that's what
-[CSS transitions[css-transitions] are. `transition` CSS property is for. The
-CSS rule
-
-	transition: opacity 2s;
-
-means that, whenver the `opacity` property of the element changes---for any
-reason, including mutating its style attribute or loading a style sheet---then
-the browser should smoothly interpolate 
-
-[css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
+Load up the example, and observe text fading to white!
 
 Width/height animations
 =======================
@@ -185,11 +172,11 @@ descendant content will lay out as it if has an infinite width.
 
 Implementing `width` and `height` turns out to be pretty easy. Instead
 of setting the width of a layout object to the widest it can be before recursing,
-use the specified width instead. Then, descendants will use that width their
+use the specified width instead. Then, descendants will use that width for their
 sizing automatically.
 
 Start by implementing a `style_length` helper method that applies a
-restricted length(either in the horizontal or vertical dimension) if it's
+restricted length (either in the horizontal or vertical dimension) if it's
 specified in the object's style. For example,
 
 	style_length(node, "width", 300)
@@ -233,7 +220,7 @@ class BlockLayout:
             sum([child.height for child in self.children]))
 ```
 
-Here is a simple animation of `width`. As the width animates from
+Here is a simple animation of `width`. As the width of the `div` animates from
 `400px` to `100px`, its height will automatically increase to contain the
 text as it flows into multiple lines.
 
@@ -241,6 +228,9 @@ text as it flows into multiple lines.
 <div style="background-color:lightblue;width:100px">
 	This is a test line of text for a width animation</div>
 ```
+
+(click <a href="examples/example13-width.html">here</a> to load the example in
+your browser)
 
 ``` {.javascript file=example-width-js}
 var start_value = 400;
@@ -260,7 +250,21 @@ function animate() {
 requestAnimationFrame(animate);
 ```
 
-pTransform animations
+CSS transitions
+===============
+
+But why do we need JavaScript just to smoothly interpolate `opacity` or `width`?
+Well, that's what[CSS transitions[css-transitions] are. `transition` CSS
+property is for. The CSS rule
+
+	transition: opacity 2s;
+
+means that, whenever the `opacity` property of the element changes---for any
+reason, including mutating its style attribute or loading a style sheet---then
+the browser should smoothly interpolate 
+
+[css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
+Transform animations
 ====================
 
 GPU acceleration
@@ -289,6 +293,10 @@ animation.
 
 Exercises
 =========
+
+*Background-color*: implement animations of the `background-color` CSS property.
+You'll have to define a new kind of interpolation that applies to all the
+color channels.
 
 *Easing functions*: our browser only implements a linear interpolation between
  start and end values, but there are many other [easing functions][easing] 

@@ -1,11 +1,14 @@
-.PHONY: book blog draft widgets publish clean download wc lint
+.PHONY: book blog draft widgets publish clean download wc lint examples
 
 FLAGS=
 
 CHAPTERS=$(patsubst book/%.md,%,$(wildcard book/*.md))
 WIDGET_LAB_CODE=lab1 lab2 lab3 lab4 lab5 lab7
 
-book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets
+EXAMPLE_HTML=$(patsubst src/example%.html,%,$(wildcard src/example*.html))
+EXAMPLE_JS=$(patsubst src/example%.js,%,$(wildcard src/example*.js))
+
+book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets examples
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
 widgets: $(patsubst lab%,www/widgets/lab%-browser.html,$(WIDGET_LAB_CODE)) $(patsubst lab%,www/widgets/lab%.js,$(WIDGET_LAB_CODE))
@@ -33,6 +36,14 @@ www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 
 www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json www/widgets/lab%.js
 	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/index.md -o $@
+
+examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) $(patsubst %,www/examples/example%.js,$(EXAMPLE_JS))
+
+www/examples/%.html:
+	cp src/$*.html www/examples
+
+www/examples/%.js:
+	cp src/$*.js www/examples
 
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
