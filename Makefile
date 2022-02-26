@@ -39,7 +39,7 @@ www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua co
 
 examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) $(patsubst %,www/examples/example%.js,$(EXAMPLE_JS))
 
-www/examples/%.html:
+www/examples/%.html: src/%.html
 	cp src/$*.html www/examples
 
 www/examples/%.js:

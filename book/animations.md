@@ -6,8 +6,8 @@ next: skipped
 ...
 
 The UI of a complex web application these days requires not just fast loading,
-visually interesting rendering, and beingresponsive to input and scrolling. It
-also needs to support smooth *animations* when transitioning between DOM
+visually interesting rendering, and responsiveness to input and scrolling. It
+also needs smooth *animations* when transitioning between DOM
 states. These transitions improve usability of web applications by helping
 users understand what changed, and improve visual polish by replacing sudden
 jumps with smooth interpolations.
@@ -62,8 +62,8 @@ chapter. Otherwise the animation is visual, such as animations of `opacity` or
 
 The distinction is important for two reasons: animation quality and performance.
 In general, layout-inducing animations often have undesirable
-quality---animating `width` can lead to text jumping around as line breaking
-changes---and performance implication (the name says it all: these animations
+qualities---animating `width` can lead to text jumping around as line breaking
+changes---and performance implications (the name says it all: these animations
 require main thread `render` calls).^[Sometimes it's a better user experience to
 animate layout-inducing properties. The best example of this is resizing a
 browser window via a mouse gesture, where it's very useful for the user to see
@@ -158,7 +158,7 @@ CSS properties do pretty much what they say: force the width or height of
 a layout object to be the specified value in pixels, as opposed to the default
 behavior that sizes a block to contain block and inline descendants. If
 as a result the descendants don't fit, they will *overflow* in a natural
-way. This generally means overflowing the bottom edge of the block
+way. This usually means overflowing the bottom edge of the block
 ancestor, because we'll use `width` to determine the area for line
 breaking.[^overflow]
 
@@ -168,7 +168,8 @@ the parent layout object. We discussed overflow to some extent in
 `overflow:clip`, which instead clips the overflowing content at the box
 boundary. Other values include `scroll`, which clips it but allows the user
 to see it via scrolling. And if scroll is specified in the x direction, the
-descendant content will lay out as it if has an infinite width.
+descendant content will lay out as it if has an infinite width. Extra long
+words can also cause horizontal overflow.
 
 Implementing `width` and `height` turns out to be pretty easy. Instead
 of setting the width of a layout object to the widest it can be before recursing,
@@ -182,7 +183,8 @@ specified in the object's style. For example,
 	style_length(node, "width", 300)
 
 would return 300 if the `width` CSS property was not set
-on `node`, and the `width` value otherwise.^[Interesting side note: pixel
+on `node`, and the `width` value otherwise. Floating-point values for `width`
+need to be rounded to an integer.^[Interesting side note: pixel
 values specified in CSS can be floating-point numbers, but computer monitors
 have discrete pixels, so browsers need to apply some method of converting to
 integers. This process is called pixel-snapping, and in real browsers it's much
@@ -222,11 +224,14 @@ class BlockLayout:
 
 Here is a simple animation of `width`. As the width of the `div` animates from
 `400px` to `100px`, its height will automatically increase to contain the
-text as it flows into multiple lines.
+text as it flows into multiple lines.^[And if automic increase was not desired,
+`height` coupld specified to a fixed value. But that would of course cause
+overflow, which needs to be dealt with in one way or another.]
 
 ``` {.html file=example-width-html}
 <div style="background-color:lightblue;width:100px">
-	This is a test line of text for a width animation</div>
+	This is a test line of text for a width animation.
+</div>
 ```
 
 (click <a href="examples/example13-width.html">here</a> to load the example in
