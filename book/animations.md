@@ -26,52 +26,56 @@ logical to a person.
 
 [^general-movement]: Here movement should be defined broadly to encompass all of
 the kinds of visual changes humans are used to seeing and good at
-recognizing---not just movement from side to side, but growning, shrinking,
+recognizing---not just movement from side to side, but growing, shrinking,
 rotating, fading, blurring, nad sharpening.
 
 [animation]: https://en.wikipedia.org/wiki/Animation
 
 On web pages, there are several broad categories of common animations:
 
-* DOM: movement of elements on the screen, by changing CSS properties of
-elements.[^innerHTML]
+* DOM: movement of elements on the screen, by interpolating CSS properties of
+elements such as color, opacity or sizing.[^innerHTML]
 
-* Input-linked: scrolling, page resizing, pinch-zoom, drawers and similar
-effects
+* Input-driven: scrolling, page resizing, pinch-zoom, draggable menus and similar
+effects.
 
-* Video-like: videos, animated images, and animated canvases
+* Video-like: videos, animated images, and animated canvases.
 
 [^innerHTML]: Animating by setting `innerHTML` is not very common, mostly
 since its performance and developer ergonomics are poor. An exception is
 animating the text content of leaf nodes of the DOM, such as in stock tickers
 or counters.
 
-In this chapter we'll focus on the first and second category.[^excuse]
+In this chapter we'll focus on the first and second categories.[^excuse]
 
 [^excuse]: We'll get to images in Chapter 14 and touch a bit on canvas; video is
-a fascinating topic unto itself, but is beyond the scope of this book.
+a fascinating topic unto itself, but is beyond the scope of this book. Arguably,
+canvas is a bit different than the other two, since it's implemented by
+developer scripts. And of course a canvas can have animations within
+it that look about the same as some DOM animations.
 
-The DOM category can be sub-categorized into *layout-inducing* and *visual*.
-A DOM animation is layout-inducing if the changing CSS property is an input
-to layout; `width` is one example that we'll encounter in this chapter.
-Otherwise the animation is visual, such as animations of `opacity` or
+DOM and input-driven animations can be sub-categorized into *layout-inducing*
+and *visual*. An animation is layout-inducing if the changing CSS property
+is an input to layout; `width` is one example that we'll encounter in this
+chapter. Otherwise the animation is visual, such as animations of `opacity` or
 `background-color`.
 
 The distinction is important for two reasons: animation quality and performance.
-In general, layout-inducing animations often have undesirable quality
-(animationg `width` can lead to text jumping around as line breaking changes)
-and performance implication (the name says it all: these animations require
-main thread `render` calls).
+In general, layout-inducing animations often have undesirable
+quality---animating `width` can lead to text jumping around as line breaking
+changes---and performance implication (the name says it all: these animations
+require main thread `render` calls.^[Sometimes it's a better user experience to
+animate layout-inducing properties. The best example of this is resizing a
+browser window via a mouse gesture, where it's very useful for the user to see
+the new layout as they animate. Modern browsers are fast enough to do this,
+but it used to be that instead they would leave a visual "gutter"
+(a gap between content and the edge of the window) during the animation, to
+avoid updating layout on every animation frame.]
 
 This means we're in luck though! Visual effect animations can almost always
-be run on the browser thread, and also GPU accelerated. But I'm getting ahead
+be run on the browser thread, and also GPU-accelerated. But I'm getting ahead
 of myself---let's now take a tour through DOM animations and how to achieve
 them, before showing how to accelerate them.
-
-Width/height animations
-=======================
-
-todo
 
 Opacity animations
 ==================
@@ -105,7 +109,8 @@ var frames_remaining = num_animation_frames;
 function animate() {
     if (frames_remaining == 0) return;
     var div = document.querySelectorAll("div")[0];
-    div.style = "opacity:" + (frames_remaining / num_animation_frames);
+    div.style = "opacity:" +
+    		(frames_remaining / num_animation_frames);
     frames_remaining--;
     requestAnimationFrame(animate);
 }
@@ -153,6 +158,68 @@ reason, including mutating its style attribute or loading a style sheet---then
 the browser should smoothly interpolate 
 
 [css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
+
+Width/height animations
+=======================
+
+What about layout-inducing DOM animations? At the moment, our browser doesn't
+support any layout-inducing CSS properties that would be useful to animate,
+so let's add support for `width` and `height`, then animate them. These
+CSS properties do pretty much what they say: force the width or height of
+a layout object to be the specified value in pixels, as opposed to the default
+behavior that sizes a block to contain block and inline descendants. If
+as a result the descendants don't fit, they will *overflow* in a natural
+way. This generally means overflowing the bottom edge of the block
+ancestor, because we'll use `width` to determine the area for line
+breaking.[^overflow]
+
+[^overflow]: By default, overflowing content draws outside the bounds of
+the parent layout object. We discussed overflow to some extent in
+[Chapter 11](visual-effects.md#clipping-and-masking), and implemented
+`overflow:clip`, which instead clips the overflowing content at the box
+boundary. Other values include `scroll`, which clips it but allows the user
+to see it via scrolling. And if scroll is specified in the x direction, the
+descendant content will lay out as it if has an infinite width.
+
+Implementing `width` and `height` turns out to be pretty easy. Instead
+of setting the width of a layout object to the widest it can be before recursing,
+use the specified width instead. Then, descendants will use that width their
+sizing automatically.
+
+Start by implementing a `style_length` helper method that applies a
+restricted length(either in the horizontal or vertical dimension) if it's
+specified in the object's style. For example,
+
+	style_length(node, "width", 300)
+
+would return 300 if the `width` CSS property was not set
+on `node`, and the `width` value otherwise.
+
+``` {.python}
+def style_length(node, style_name, default_value):
+    style_val = node.style.get(style_name)
+    if style_val:
+        return int(style_val[:-2])
+    else:
+        return default_value
+```
+
+With that in hand, the changes to `BlockLayout`, `InlineLayout` and
+`InputLayout` are satisfyingly small. Here is `BlockLayout`; the other
+two are basically the same so I'll omit the edits here, but don't forget to
+update them.
+
+``` {.python}
+class BlockLayout:
+	def layout(self):
+		# ...
+        self.width = style_length(
+            self.node, "width", self.parent.width)
+		# ...
+        self.height = style_length(
+            self.node, "height",
+            sum([child.height for child in self.children]))
+```p
 
 Transform animations
 ====================

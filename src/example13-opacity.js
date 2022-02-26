@@ -4,7 +4,8 @@ var frames_remaining = num_animation_frames;
 function animate() {
     if (frames_remaining == 0) return;
     var div = document.querySelectorAll("div")[0];
-    div.style = "opacity:" + (frames_remaining / num_animation_frames);
+    div.style = "opacity:" +
+        (frames_remaining / num_animation_frames);
     frames_remaining--;
     requestAnimationFrame(animate);
 }

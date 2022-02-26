@@ -457,7 +457,7 @@ class BlockLayout:
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous)gr
+                next = InlineLayout(child, self, previous)
             else:
                 next = BlockLayout(child, self, previous)
             self.children.append(next)
