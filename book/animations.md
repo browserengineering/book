@@ -97,12 +97,11 @@ another, you could animate the `opacity` CSS property in JavaScript smoothly
 from one value to another, with code like this code, which animates from
 opacity 1 to 0 in 100 steps:
 
-``` {.html file=examplehtml}
-<script src="example13.js"></script>
+``` {.html file=example-opacity-html}
 <div>Test</div>
 ```
 
-``` {.javascript file=examplejs}
+``` {.javascript file=example-opacity-js}
 var end_opacity = 0;
 var num_animation_frames = 120;
 var frames_remaining = num_animation_frames;
@@ -219,7 +218,7 @@ class BlockLayout:
         self.height = style_length(
             self.node, "height",
             sum([child.height for child in self.children]))
-```p
+```
 
 Transform animations
 ====================
