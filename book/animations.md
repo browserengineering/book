@@ -102,14 +102,17 @@ opacity 1 to 0 in 100 steps:
 ```
 
 ``` {.javascript file=example-opacity-js}
-var end_opacity = 0;
+var start_value = 1;
+var end_value = 0.1;
 var num_animation_frames = 120;
 var frames_remaining = num_animation_frames;
 function animate() {
     if (frames_remaining == 0) return;
     var div = document.querySelectorAll("div")[0];
+    var percent_remaining = frames_remaining / num_animation_frames;
     div.style = "opacity:" +
-    		(frames_remaining / num_animation_frames);
+        (percent_remaining * start_value +
+        (1 - percent_remaining) * end_value);
     frames_remaining--;
     requestAnimationFrame(animate);
 }
@@ -192,13 +195,23 @@ specified in the object's style. For example,
 	style_length(node, "width", 300)
 
 would return 300 if the `width` CSS property was not set
-on `node`, and the `width` value otherwise.
+on `node`, and the `width` value otherwise.^[Interesting side note: pixel
+values specified in CSS can be floating-point numbers, but computer monitors
+have discrete pixels, so browsers need to apply some method of converting to
+integers. This process is called pixel-snapping, and in real browsers it's much
+more complicated than just a call to `math.floor`. [This article][pixel-canvas]
+touches on some of the complexities as they apply to canvases, but it's just
+as complex for DOM elements. For example, if two block elements touch
+and have fractional widths, it's important to round in such a way that there
+is not a gap introduced between them.]
+
+[pixel-canvas]: https://web.dev/device-pixel-content-box/#pixel-snapping
 
 ``` {.python}
 def style_length(node, style_name, default_value):
     style_val = node.style.get(style_name)
     if style_val:
-        return int(style_val[:-2])
+        return int(math.floor(float(style_val[:-2])))
     else:
         return default_value
 ```
@@ -220,7 +233,34 @@ class BlockLayout:
             sum([child.height for child in self.children]))
 ```
 
-Transform animations
+Here is a simple animation of `width`. As the width animates from
+`400px` to `100px`, its height will automatically increase to contain the
+text as it flows into multiple lines.
+
+``` {.html file=example-width-html}
+<div style="background-color:lightblue;width:100px">
+	This is a test line of text for a width animation</div>
+```
+
+``` {.javascript file=example-width-js}
+var start_value = 400;
+var end_value = 100;
+var num_animation_frames = 120;
+var frames_remaining = num_animation_frames;
+function animate() {
+    if (frames_remaining == 0) return;
+    var div = document.querySelectorAll("div")[0];
+    var percent_remaining = frames_remaining / num_animation_frames;
+    div.style = "background-color:lightblue;width:" +
+        (percent_remaining * start_value +
+        (1 - percent_remaining) * end_value) + "px";
+    frames_remaining--;
+    requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+```
+
+pTransform animations
 ====================
 
 GPU acceleration

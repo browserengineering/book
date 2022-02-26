@@ -24,7 +24,9 @@
             "lab": "lab13.py",
             "runtime": "runtime13.js",
             "example-opacity-html": "example13-opacity.html",
-            "example-opacity-js": "example13-opacity.js" },
+            "example-opacity-js": "example13-opacity.js",
+            "example-width-html": "example13-width.html",
+            "example-width-js": "example13-width.js" },
 
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },

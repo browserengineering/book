@@ -780,7 +780,7 @@ class InputLayout:
 def style_length(node, style_name, default_value):
     style_val = node.style.get(style_name)
     if style_val:
-        return int(style_val[:-2])
+        return int(math.floor(float(style_val[:-2])))
     else:
         return default_value
 
