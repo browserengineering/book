@@ -16,8 +16,8 @@ Modern browsers have APIs that enable animating the styles of DOM elements.
 To implement these APIs performantly, behind the scenes new technology is
 needed to make those animations smooth and fast.
 
-Visual effect animations
-========================
+Types of animations
+===================
 
 Defined broadly, an [animation] is a sequence of pictures shown in quick
 succession, leading to the illusion of *movement* to the human
@@ -262,6 +262,8 @@ But why do we need JavaScript just to smoothly interpolate `opacity` or `width`?
 Well, that's what [CSS transitions][css-transitions] are for. The `transition` CSS
 property works like this:
 
+[css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
+
 	transition: opacity 2s;
 
 This means that, whenever the `opacity` property of the element changes---for
@@ -272,7 +274,45 @@ This is much more convenient than writing a bunch of JavaScript, and also
 doesn't force you to remember each and every way in which the styles can
 change.
 
-[css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
+Implementating CSS transitions consists of two main parts: detecting style
+changes, and executing the animation. Both have some details that are important
+to get right, but are conceptually straightforward:
+
+* In the `style` function, when a DOM node changes its style, check to see
+if one or more of the properties with registered transitions are changed;
+if so, start a new animation and add it to the `animations` dictionary on the
+`Tab`. The logic to decide this and start the animation will be called
+`animate_style`, and be called just after the style for `node` is complete:
+
+``` {.python}
+def style(node, rules, tab):
+    # ...
+
+    animate_style(node, old_style, node.style, tab)
+
+```
+
+* In `run_animation_frame` on the `Tab`, each animation in `animations` is
+updated just after running `requestAnimationFrame` callbacks and before calling
+`render`. The basics are:
+
+``` {.python expected=False}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.animations = {}
+
+    def run_animation_frame(self, scroll):
+        # ...
+        self.js.interp.evaljs("__runRAFHandlers()")
+        # ...
+        for node in self.animations:
+            for animation in self.animations[node]:
+                animation.animate()
+        # ...
+        self.render()
+```
+
 
 GPU acceleration
 ================

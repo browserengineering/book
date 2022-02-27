@@ -1014,6 +1014,7 @@ def style(node, rules, tab):
             node.style[property] = computed_value
 
     animate_style(node, old_style, node.style, tab)
+
     for child in node.children:
         style(child, rules, tab)
 
@@ -1264,11 +1265,11 @@ class Tab:
 
         to_delete = []
         needs_another_animation_frame = False
-        for animation_key in self.animations:
+        for node in self.animations:
             index = 0
-            for animation in self.animations[animation_key]:
+            for animation in self.animations[node]:
                 if not animation.animate():
-                    to_delete.append((animation_key, index))
+                    to_delete.append((node, index))
                 else:
                     needs_another_animation_frame = True
                 index += 1
