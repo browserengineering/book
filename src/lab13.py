@@ -939,16 +939,22 @@ def animate_style(node, old_style, new_style, tab):
         return
 
     opacity_animation = \
-        try_opacity_animation(node, old_style, new_style, tab)
+        try_numeric_animation(node, "opacity", False, old_style, new_style, tab)
+
+    width_animation = \
+        try_numeric_animation(node, "width", True, old_style, new_style, tab)
 
     transform_animation = \
         try_transform_animation(node, old_style, new_style, tab)
 
-    if opacity_animation or transform_animation:
+    if opacity_animation or width_animation or transform_animation:
         tab.animations[node] = []
 
     if opacity_animation:
         tab.animations[node].append(opacity_animation)
+
+    if width_animation:
+        tab.animations[node].append(width_animation)
 
     if transform_animation:
         tab.animations[node].append(transform_animation)
@@ -978,17 +984,23 @@ def try_transform_animation(node, old_style, new_style, tab):
     change_per_frame = (new_rotation - old_rotation) / ANIMATION_FRAME_COUNT
     return RotationAnimation(node, old_rotation, change_per_frame, new_style, tab)
 
-def try_opacity_animation(node, old_style, new_style, tab):
-    if not has_transition("opacity", old_style) or \
-        not has_transition("opacity", new_style):
+def try_numeric_animation(node, name, is_px, old_style, new_style, tab):
+    if not has_transition(name, old_style) or \
+        not has_transition(name, new_style):
         return None
 
-    if old_style["opacity"] == new_style["opacity"]:
+    if old_style[name] == new_style[name]:
         return None
-    old_opacity = float(old_style["opacity"])
-    new_opacity = float(new_style["opacity"])
-    change_per_frame = (new_opacity - old_opacity) / ANIMATION_FRAME_COUNT
-    return NumericAnimation(node, "opacity", old_opacity, change_per_frame, new_style, tab)
+    if is_px:
+        old_value = float(old_style[name][:-2])
+        new_value = float(new_style[name][:-2])
+    else:
+        old_value = float(old_style[name])
+        new_value = float(new_style[name])
+
+    change_per_frame = (new_value - old_value) / ANIMATION_FRAME_COUNT
+    return NumericAnimation(
+        node, name, is_px, old_value, change_per_frame, new_style, tab)
 
 def style(node, rules, tab):
     old_style = None
@@ -1039,9 +1051,11 @@ class RotationAnimation:
 
 class NumericAnimation:
     def __init__(
-        self, node, property_name, old_value, change_per_frame, computed_style, tab):
+        self, node, property_name, is_px, old_value, change_per_frame,
+        computed_style, tab):
         self.node = node
         self.property_name = property_name
+        self.is_px = is_px
         self.old_value = old_value
         self.change_per_frame = change_per_frame
         self.computed_style = computed_style
@@ -1051,10 +1065,13 @@ class NumericAnimation:
 
     def animate(self):
         self.frame_count += 1
-        self.computed_style[self.property_name] = \
-            self.old_value + self.change_per_frame * self.frame_count
+        updated_value = self.old_value + self.change_per_frame * self.frame_count
+        if self.is_px:
+            self.computed_style[self.property_name] = "{}px".format(updated_value)
+        else:
+            self.computed_style[self.property_name] = "{}".format(updated_value)
         self.tab.set_needs_animation(self.node, self.property_name,
-            self.property_name in ["opacity", "transform"])
+            self.property_name == "opacity")
         return self.frame_count < ANIMATION_FRAME_COUNT
 
 SHOW_COMPOSITED_LAYER_BORDERS = False
