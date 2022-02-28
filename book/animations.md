@@ -274,21 +274,27 @@ This is much more convenient for website authors than writing a bunch of
 JavaScript, and also doesn't force them to account for each and every way in
 which the styles can change.
 
-Implement this CSS property. Start with a quick helper method that returns true
-if `transition` was set for a particular property This requires parsing the
-comma-separated `transition` syntax.^[Unfortunately, setting up animations
-tends to have a lot of boilerplate code, so get ready for more code than usual.
-The good news though is that it's all pretty simple to understand.]
+Implement this CSS property. Start with a quick helper method that returns the
+duration of a transition if it was set, and `None` otherwise. This requires
+parsing the comma-separated `transition` syntax.^[Unfortunately, setting up
+animations tends to have a lot of boilerplate code, so get ready for more code
+than usual. The good news though is that it's all pretty simple to
+understand.]
 
 ``` {.python}
-def has_transition(property_value, style):
+def get_transition(property_value, style):
     if not "transition" in style:
-        return False
+        return None
     transition_items = style["transition"].split(",")
+    found = False
     for item in transition_items:
         if property_value == item.split(" ")[0]:
-            return True
-    return False
+            found = True
+            break
+    if not found:
+        return None   
+    duration_secs = float(item.split(" ")[1][:-1])
+    return duration_secs / REFRESH_RATE_SEC 
 ```
 
 Next let's add some code that detects if a transition should start, by comparing
@@ -301,8 +307,11 @@ difference will be handled by an `is_px` parameter indicating which it is.
 ``` {.python}
 def try_numeric_animation(node, name,
     old_style, new_style, tab, is_px):
-    if not has_transition(name, old_style) or \
-        not has_transition(name, new_style):
+    if not get_transition(name, old_style):
+        return None
+    
+    num_frames = get_transition(name, new_style)
+    if num_frames == None:
         return None
 
     if old_style[name] == new_style[name]:
@@ -315,12 +324,12 @@ def try_numeric_animation(node, name,
         old_value = float(old_style[name])
         new_value = float(new_style[name])
 
-    change_per_frame = (new_value - old_value) / ANIMATION_FRAME_COUNT
+    change_per_frame = (new_value - old_value) / num_frames
 
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value, change_per_frame, tab)
+        node, name, is_px, old_value, num_frames, change_per_frame, tab)
 ```
 
 [^more-units]: In a real browsers, there are a [lot more][units] units to
@@ -338,11 +347,12 @@ returns `False` if the animation has ended.
 class NumericAnimation:
     def __init__(
         self, node, property_name, is_px,
-        old_value, change_per_frame, tab):
+        old_value, num_frames, change_per_frame, tab):
         self.node = node
         self.property_name = property_name
         self.is_px = is_px
         self.old_value = old_value
+        self.num_frames = num_frames
         self.change_per_frame = change_per_frame
         self.tab = tab
         self.frame_count = 0
@@ -350,7 +360,7 @@ class NumericAnimation:
 
     def animate(self):
         self.frame_count += 1
-        if self.frame_count >= ANIMATION_FRAME_COUNT: return False
+        if self.frame_count >= self.num_frames: return False
         updated_value = self.old_value + \
             self.change_per_frame * self.frame_count
         if self.is_px:
@@ -402,7 +412,6 @@ def animate_style(node, old_style, new_style, tab):
         old_style, new_style, tab, is_px=False)
     try_numeric_animation(node, "width",
         old_style, new_style, tab, is_px=True)
-    try_transform_animation(node, old_style, new_style, tab)
 ```
 
 Second; in `run_animation_frame` on the `Tab`, each animation in `animations`

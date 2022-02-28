@@ -941,20 +941,26 @@ def animate_style(node, old_style, new_style, tab):
         old_style, new_style, tab, is_px=True)
     try_transform_animation(node, old_style, new_style, tab)
 
-ANIMATION_FRAME_COUNT = 120
-
-def has_transition(property_value, style):
+def get_transition(property_value, style):
     if not "transition" in style:
-        return False
+        return None
     transition_items = style["transition"].split(",")
+    found = False
     for item in transition_items:
         if property_value == item.split(" ")[0]:
-            return True
-    return False
+            found = True
+            break
+    if not found:
+        return None   
+    duration_secs = float(item.split(" ")[1][:-1])
+    return duration_secs / REFRESH_RATE_SEC 
 
 def try_transform_animation(node, old_style, new_style, tab):
-    if not has_transition("transform", old_style) or \
-        not has_transition("transform", new_style):
+    if not get_transition("transform", old_style):
+        return None
+
+    num_frames = get_transition("transform", new_style)
+    if num_frames == None:
         return None
 
     if old_style["transform"] == new_style["transform"]:
@@ -965,17 +971,20 @@ def try_transform_animation(node, old_style, new_style, tab):
     if old_rotation == None or new_rotation == None:
         return None
 
-    change_per_frame = (new_rotation - old_rotation) / ANIMATION_FRAME_COUNT
+    change_per_frame = (new_rotation - old_rotation) / num_frames
 
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node]["trransform"] = RotationAnimation(
-        node, old_rotation, change_per_frame, tab)
+        node, old_rotation, num_frames, change_per_frame, tab)
 
 def try_numeric_animation(node, name,
     old_style, new_style, tab, is_px):
-    if not has_transition(name, old_style) or \
-        not has_transition(name, new_style):
+    if not get_transition(name, old_style):
+        return None
+    
+    num_frames = get_transition(name, new_style)
+    if num_frames == None:
         return None
 
     if old_style[name] == new_style[name]:
@@ -988,12 +997,12 @@ def try_numeric_animation(node, name,
         old_value = float(old_style[name])
         new_value = float(new_style[name])
 
-    change_per_frame = (new_value - old_value) / ANIMATION_FRAME_COUNT
+    change_per_frame = (new_value - old_value) / num_frames
 
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value, change_per_frame, tab)
+        node, name, is_px, old_value, num_frames, change_per_frame, tab)
 
 def style(node, rules, tab):
     old_style = None
@@ -1025,9 +1034,10 @@ def style(node, rules, tab):
 
 class RotationAnimation:
     def __init__(
-        self, node, old_rotation, change_per_frame, tab):
+        self, node, old_rotation, num_frames, change_per_frame, tab):
         self.node = node
         self.old_rotation = old_rotation
+        self.num_frames = num_frames
         self.change_per_frame = change_per_frame
         self.tab = tab
         self.frame_count = 0
@@ -1035,7 +1045,7 @@ class RotationAnimation:
 
     def animate(self):
         self.frame_count += 1
-        if self.frame_count >= ANIMATION_FRAME_COUNT: return False
+        if self.frame_count >= self.num_frames: return False
         self.node.style["transform"] = \
             "rotate({}deg)".format(
                 self.old_rotation + self.change_per_frame * self.frame_count)
@@ -1045,11 +1055,12 @@ class RotationAnimation:
 class NumericAnimation:
     def __init__(
         self, node, property_name, is_px,
-        old_value, change_per_frame, tab):
+        old_value, num_frames, change_per_frame, tab):
         self.node = node
         self.property_name = property_name
         self.is_px = is_px
         self.old_value = old_value
+        self.num_frames = num_frames
         self.change_per_frame = change_per_frame
         self.tab = tab
         self.frame_count = 0
@@ -1057,7 +1068,7 @@ class NumericAnimation:
 
     def animate(self):
         self.frame_count += 1
-        if self.frame_count >= ANIMATION_FRAME_COUNT: return False
+        if self.frame_count >= self.num_frames: return False
         updated_value = self.old_value + \
             self.change_per_frame * self.frame_count
         if self.is_px:
