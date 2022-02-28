@@ -16,8 +16,8 @@ Modern browsers have APIs that enable animating the styles of DOM elements.
 To implement these APIs performantly, behind the scenes new technology is
 needed to make those animations smooth and fast.
 
-Visual effect animations
-========================
+Types of animations
+===================
 
 Defined broadly, an [animation] is a sequence of pictures shown in quick
 succession, leading to the illusion of *movement* to the human
@@ -262,17 +262,192 @@ But why do we need JavaScript just to smoothly interpolate `opacity` or `width`?
 Well, that's what [CSS transitions][css-transitions] are for. The `transition` CSS
 property works like this:
 
-	transition: opacity 2s;
-
-This means that, whenever the `opacity` property of the element changes---for
-any reason, including mutating its style attribute or loading a style
-sheet---then the browser should smoothly interpolate between the old and new
-value, in basically the same way the `requestAnimationFrame` loop did id.
-This is much more convenient than writing a bunch of JavaScript, and also
-doesn't force you to remember each and every way in which the styles can
-change.
-
 [css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
+
+	transition: opacity 2s,width 2s;
+
+This means that, whenever the `opacity` or `width` propertes of the element
+change---for any reason, including mutating its style attribute or loading a
+style sheet---then the browser should smoothly interpolate between the old and
+new values, in basically the same way the `requestAnimationFrame` loop did it.
+This is much more convenient for website authors than writing a bunch of
+JavaScript, and also doesn't force them to account for each and every way in
+which the styles can change.
+
+Implement this CSS property. Start with a quick helper method that returns true
+if `transition` was set for a particular property This requires parsing the
+comma-separated `transition` syntax.^[Unfortunately, setting up animations
+tends to have a lot of boilerplate code, so get ready for more code than usual.
+The good news though is that it's all pretty simple to understand.]
+
+``` {.python}
+def has_transition(property_value, style):
+    if not "transition" in style:
+        return False
+    transition_items = style["transition"].split(",")
+    for item in transition_items:
+        if property_value == item.split(" ")[0]:
+            return True
+    return False
+```
+
+Next let's add some code that detects if a transition should start, by comparing
+two style objects---the ones before and after a style update for a DOM node. It
+will add a `NumericAnimation` to `tab` if the transition was found. Both
+`opacity` and `width` are *numeric* animations, but with different
+units---unitless floating-point between 0 and 1, respectively.[^more-units] The
+difference will be handled by an `is_px` parameter indicating which it is.
+
+``` {.python}
+def try_numeric_animation(node, name,
+    old_style, new_style, tab, is_px):
+    if not has_transition(name, old_style) or \
+        not has_transition(name, new_style):
+        return None
+
+    if old_style[name] == new_style[name]:
+        return None
+
+    if is_px:
+        old_value = float(old_style[name][:-2])
+        new_value = float(new_style[name][:-2])
+    else:
+        old_value = float(old_style[name])
+        new_value = float(new_style[name])
+
+    change_per_frame = (new_value - old_value) / ANIMATION_FRAME_COUNT
+
+    if not node in tab.animations:
+        tab.animations[node] = {}
+    tab.animations[node][name] = NumericAnimation(
+        node, name, is_px, old_value, change_per_frame, tab)
+```
+
+[^more-units]: In a real browsers, there are a [lot more][units] units to
+contend with. I also didn't bother clamping opacity to a value between 0 and 1.
+
+[units]: https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Values_and_units
+
+Next, implement `NumericAnimation`. This class just encapsulates a bunch
+of parameters, and has a single `animate` method. `animate` is in charge of
+advancing the animation by one frame. It's the equivalent of the
+`requestAnimationFrame` callback in a JavaScript-driven animation; it also
+returns `False` if the animation has ended.
+
+``` {.python expected=False}
+class NumericAnimation:
+    def __init__(
+        self, node, property_name, is_px,
+        old_value, change_per_frame, tab):
+        self.node = node
+        self.property_name = property_name
+        self.is_px = is_px
+        self.old_value = old_value
+        self.change_per_frame = change_per_frame
+        self.tab = tab
+        self.frame_count = 0
+        self.animate()
+
+    def animate(self):
+        self.frame_count += 1
+        if self.frame_count >= ANIMATION_FRAME_COUNT: return False
+        updated_value = self.old_value + \
+            self.change_per_frame * self.frame_count
+        if self.is_px:
+            self.node.style[self.property_name] = \
+                "{}px".format(updated_value)
+        else:
+            self.node.style[self.property_name] = \
+                "{}".format(updated_value)
+        self.tab.set_needs_render()
+        return True
+```
+
+Now for integrating this code into rendering. It has main parts: detecting style
+changes, and executing the animation. Both have some details that are important
+to get right, but are conceptually straightforward:
+
+First, in the `style` function, when a DOM node changes its style, check to see
+if one or more of the properties with registered transitions are changed; if
+so, start a new animation and add it to the `animations` dictionary on the
+`Tab`. This logic will be in a new function called `animate_style`, which is
+called just after the style update for `node` is complete:
+
+``` {.python}
+def style(node, rules, tab):
+    old_style = None
+    if hasattr(node, 'style'):
+        old_style = node.style
+
+    # ...
+
+    animate_style(node, old_style, node.style, tab)
+```
+
+And `animate_style` just has some pretty simple business logic to find
+animations and start them. First, bail if there is not an old style. Then look
+for `opacity` and `width` animations, and add them to the `animations` object
+if so.[^corner-cases]
+
+[^corner-cases]: Note that this code doesn't handle some corner cases
+correctly, such as re-starting a transition if the node's style changes during
+an animation.
+
+``` {.python}
+def animate_style(node, old_style, new_style, tab):
+    if not old_style:
+        return
+
+    try_numeric_animation(node, "opacity",
+        old_style, new_style, tab, is_px=False)
+    try_numeric_animation(node, "width",
+        old_style, new_style, tab, is_px=True)
+    try_transform_animation(node, old_style, new_style, tab)
+```
+
+Second; in `run_animation_frame` on the `Tab`, each animation in `animations`
+should be updated just after running `requestAnimationFrame` callbacks and
+before calling `render`. It's basically: loop over all animations, and call
+`animate`; if `animate` returns `True`, that means it animated a new frame by
+changing the node's style; if it returns `False`, it has completed and can be
+removed from `animations`.[^delete-complicated]
+
+[^delete-complicated]: Because we're iterating over a dictionary, we can't
+delete entries right then. Instead, we have to save off a list of entries
+to delete and then loop again to delete them. That's why there are two loops
+and the `to_be_deleted` list.
+
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.animations = {}
+
+    def run_animation_frame(self, scroll):
+        # ...
+        self.js.interp.evaljs("__runRAFHandlers()")
+        # ...
+        to_delete = []
+        for node in self.animations:
+            for (property_name, animation) in \
+                self.animations[node].items():
+                if not animation.animate():
+                    to_delete.append((node, property_name))
+
+        for (node, property_name) in to_delete:
+            del self.animations[key][property_name]
+        # ...
+        self.render()
+```
+
+Our browser now supports animations with just CSS! That's much more convenient
+for website authors. It's also a bit faster, but not a whole lot (recall that
+our [profiling in Chapter 12][profiling] showed rendering was almost all of the
+time spent). That's not really acceptable, so let's turn our attention to how
+to dramatically speed up renderng for these animations.
+
+[profiling]: http://localhost:8001/scheduling.html#profiling-rendering
 
 GPU acceleration
 ================
