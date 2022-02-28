@@ -935,8 +935,10 @@ def animate_style(node, old_style, new_style, tab):
     if not old_style:
         return
 
-    try_numeric_animation(node, "opacity", False, old_style, new_style, tab)
-    try_numeric_animation(node, "width", True, old_style, new_style, tab)
+    try_numeric_animation(node, "opacity",
+        old_style, new_style, tab, is_px=False)
+    try_numeric_animation(node, "width",
+        old_style, new_style, tab, is_px=True)
     try_transform_animation(node, old_style, new_style, tab)
 
 ANIMATION_FRAME_COUNT = 120
@@ -970,7 +972,8 @@ def try_transform_animation(node, old_style, new_style, tab):
     tab.animations[node]["trransform"] = RotationAnimation(
         node, old_rotation, change_per_frame, new_style, tab)
 
-def try_numeric_animation(node, name, is_px, old_style, new_style, tab):
+def try_numeric_animation(node, name,
+    old_style, new_style, tab, is_px):
     if not has_transition(name, old_style) or \
         not has_transition(name, new_style):
         return None
@@ -990,7 +993,8 @@ def try_numeric_animation(node, name, is_px, old_style, new_style, tab):
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value, change_per_frame, new_style, tab)
+        node, name, is_px,
+        old_value, change_per_frame, new_style, tab)
 
 def style(node, rules, tab):
     old_style = None
@@ -1042,8 +1046,8 @@ class RotationAnimation:
 
 class NumericAnimation:
     def __init__(
-        self, node, property_name, is_px, old_value, change_per_frame,
-        computed_style, tab):
+        self, node, property_name, is_px,
+        old_value, change_per_frame, computed_style, tab):
         self.node = node
         self.property_name = property_name
         self.is_px = is_px
@@ -1057,11 +1061,14 @@ class NumericAnimation:
     def animate(self):
         self.frame_count += 1
         if self.frame_count >= ANIMATION_FRAME_COUNT: return False
-        updated_value = self.old_value + self.change_per_frame * self.frame_count
+        updated_value = self.old_value + \
+            self.change_per_frame * self.frame_count
         if self.is_px:
-            self.computed_style[self.property_name] = "{}px".format(updated_value)
+            self.computed_style[self.property_name] = \
+                "{}px".format(updated_value)
         else:
-            self.computed_style[self.property_name] = "{}".format(updated_value)
+            self.computed_style[self.property_name] = \
+                "{}".format(updated_value)
         self.tab.set_needs_animation(self.node, self.property_name,
             self.property_name == "opacity")
         return True
@@ -1274,7 +1281,8 @@ class Tab:
 
         to_delete = []
         for node in self.animations:
-            for (property_name, animation) in self.animations[node].items():
+            for (property_name, animation) in \
+                self.animations[node].items():
                 if not animation.animate():
                     to_delete.append((node, property_name))
 
@@ -1313,8 +1321,9 @@ class Tab:
             needs_composite=needs_composite
         )
         self.display_list = None
-        self.browser.commit(self, commit_data)
         self.scroll_changed_in_tab = False
+
+        self.browser.commit(self, commit_data)
 
     def render(self):
         if not self.needs_render and not self.needs_paint: return
