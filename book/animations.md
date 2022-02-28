@@ -264,37 +264,155 @@ property works like this:
 
 [css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
 
-	transition: opacity 2s;
+	transition: opacity 2s,width 2s;
 
-This means that, whenever the `opacity` property of the element changes---for
-any reason, including mutating its style attribute or loading a style
-sheet---then the browser should smoothly interpolate between the old and new
-value, in basically the same way the `requestAnimationFrame` loop did id.
+This means that, whenever the `opacity` or `width` propertes of the element
+change---for any reason, including mutating its style attribute or loading a
+style sheet---then the browser should smoothly interpolate between the old and
+new values, in basically the same way the `requestAnimationFrame` loop did id.
 This is much more convenient than writing a bunch of JavaScript, and also
 doesn't force you to remember each and every way in which the styles can
 change.
 
-Implementating CSS transitions consists of two main parts: detecting style
+Implement this CSS property. Start with a quick helper method that returns
+true if `transition` was set set for a particular property. (Unfortunately,
+setting up animations tends to have a lot of boilerplate code, but it's all
+pretty simple to understand.)
+
+```
+def has_transition(property_value, style):
+    if not "transition" in style:
+        return False
+    transition_items = style["transition"].split(",")
+    for item in transition_items:
+        if property_value == item.split(" ")[0]:
+            return True
+    return False
+```
+
+Next let's add some code that detects if a transition should start, by comparing
+two style objects---the ones before and after a style update for a DOM node. It
+will return a `NumericAnimation` object that handles the animation if so, and
+otherwise `None.` Both `opacity` and `width` are *numeric* animations, but with
+different units---unitless floating-point between 0 and 1, respectively.
+[^more-units] The difference will be handled by an `is_px` parameter indicating
+which it is.
+
+``` {.python}
+def try_numeric_animation(node, name, is_px, old_style, new_style, tab):
+    if not has_transition(name, old_style) or \
+        not has_transition(name, new_style):
+        return None
+
+    if old_style[name] == new_style[name]:
+        return None
+
+    if is_px:
+        old_value = float(old_style[name][:-2])
+        new_value = float(new_style[name][:-2])
+    else:
+        old_value = float(old_style[name])
+        new_value = float(new_style[name])
+
+    change_per_frame = (new_value - old_value) / ANIMATION_FRAME_COUNT
+    return NumericAnimation(
+        node, name, is_px, old_value, change_per_frame, new_style, tab)
+```
+
+[^more-units]: In a real browsers, there are a [lot more][units] units to
+contend with.
+
+[units]: https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Values_and_units
+
+Now for implementing `NumericAnimation`. This class just encapsulates a bunch
+of parameters, and has a single `animate` method. `animate` is in charge of
+advancing the animation by one frame; it's the equivalent of the
+`requestAnimationFrame` callback in a JavaScript-driven animation. It also
+returns `False` if the animation has ended.
+
+``` {.python}
+class NumericAnimation:
+    def __init__(
+        self, node, property_name, is_px, old_value, change_per_frame,
+        computed_style, tab):
+        self.node = node
+        self.property_name = property_name
+        self.is_px = is_px
+        self.old_value = old_value
+        self.change_per_frame = change_per_frame
+        self.computed_style = computed_style
+        self.tab = tab
+        self.frame_count = 0
+        self.animate()
+
+    def animate(self):
+        self.frame_count += 1
+        updated_value = self.old_value + self.change_per_frame * self.frame_count
+        if self.is_px:
+            self.computed_style[self.property_name] = "{}px".format(updated_value)
+        else:
+            self.computed_style[self.property_name] = "{}".format(updated_value)
+        self.tab.set_needs_render()
+        return self.frame_count < ANIMATION_FRAME_COUNT
+```
+
+Now for integrating this code into rendering. It has main parts: detecting style
 changes, and executing the animation. Both have some details that are important
 to get right, but are conceptually straightforward:
 
-* In the `style` function, when a DOM node changes its style, check to see
-if one or more of the properties with registered transitions are changed;
-if so, start a new animation and add it to the `animations` dictionary on the
-`Tab`. The logic to decide this and start the animation will be called
-`animate_style`, and be called just after the style for `node` is complete:
+* In the `style` function, when a DOM node changes its style, check to see if
+  one or more of the properties with registered transitions are changed; if so,
+  start a new animation and add it to the `animations` dictionary on the `Tab`.
+  This logic will be in a new function called `animate_style`, which is called
+  just after the style update for `node` is complete:
 
 ``` {.python}
 def style(node, rules, tab):
+    old_style = None
+    if hasattr(node, 'style'):
+        old_style = node.style
+
     # ...
 
     animate_style(node, old_style, node.style, tab)
+```
 
+And `animate_style` just has some pretty simple business logic to
+find animations and start them. First, bail if there is not an old style,
+new style. Then look for `opacity` and `width` animations, and add them
+to the `animations` object if so.[^corner-cases]
+
+[^corner-cases]: Note that this code doesn't handle some corner cases
+correctly, such as re-starting a transition if the node's style changes during
+an animation.
+
+``` {.python}
+def animate_style(node, old_style, new_style, tab):
+    if not old_style:
+        return
+
+    opacity_animation = \
+        try_numeric_animation(node, "opacity", False, old_style, new_style, tab)
+    width_animation = \
+        try_numeric_animation(node, "width", True, old_style, new_style, tab)
+
+    if opacity_animation or width_animation:
+        tab.animations[node] = []
+
+    if opacity_animation:
+        tab.animations[node].append(opacity_animation)
+    if width_animation:
+        tab.animations[node].append(width_animation)
 ```
 
 * In `run_animation_frame` on the `Tab`, each animation in `animations` is
-updated just after running `requestAnimationFrame` callbacks and before calling
-`render`. The basics are:
+  updated just after running `requestAnimationFrame` callbacks and before
+  calling `render`. The basics are: loop over all animations, and all
+  `animate`, which will modify the node's style and call `set_needs_render`.
+  The call to `set_needs_render` will cause the call to `render` to update
+  rendering with the new style. It will *also* call `set_needs_animation_frame`
+  on the `Browser`. This causes yet another call to `run_animation_frame` to
+  happen 16ms in the future.
 
 ``` {.python expected=False}
 class Tab:
@@ -313,6 +431,9 @@ class Tab:
         self.render()
 ```
 
+But there is one more detail missing that we need to add: we haven't
+figured out what happens at the end of an animation. When that happens,
+we should remove the animation from `animations`. This will be tricky, because
 
 GPU acceleration
 ================
