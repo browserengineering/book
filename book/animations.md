@@ -299,8 +299,8 @@ units---unitless floating-point between 0 and 1, respectively.[^more-units] The
 difference will be handled by an `is_px` parameter indicating which it is.
 
 ``` {.python}
-def try_numeric_animation(node, name, is_px,
-    old_style, new_style, tab):
+def try_numeric_animation(node, name,
+    old_style, new_style, tab, is_px):
     if not has_transition(name, old_style) or \
         not has_transition(name, new_style):
         return None
@@ -335,7 +335,7 @@ advancing the animation by one frame. It's the equivalent of the
 `requestAnimationFrame` callback in a JavaScript-driven animation; it also
 returns `False` if the animation has ended.
 
-``` {.python}
+``` {.python expected=False}
 class NumericAnimation:
     def __init__(
         self, node, property_name, is_px,
@@ -400,10 +400,11 @@ def animate_style(node, old_style, new_style, tab):
     if not old_style:
         return
 
-    try_numeric_animation(node, "opacity", is_px=False,
-        old_style, new_style, tab)
-    try_numeric_animation(node, "width", is_px=True,
-        old_style, new_style, tab)
+    try_numeric_animation(node, "opacity",
+        old_style, new_style, tab, is_px=False)
+    try_numeric_animation(node, "width",
+        old_style, new_style, tab, is_px=True)
+    try_transform_animation(node, old_style, new_style, tab)
 ```
 
 * In `run_animation_frame` on the `Tab`, each animation in `animations` should
@@ -419,7 +420,7 @@ to delete and then loop again to delete them. That's why there are two loops
 and the `to_be_deleted` list.
 
 
-``` {.python expected=False}
+``` {.python}
 class Tab:
     def __init__(self, browser):
         # ...
