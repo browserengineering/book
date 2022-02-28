@@ -275,7 +275,7 @@ JavaScript, and also doesn't force them to remember each and every way in which
 the styles can change.
 
 Implement this CSS property. Start with a quick helper method that returns true
-if `transition` was set set for a particular property This requires parsing the
+if `transition` was set for a particular property This requires parsing the
 comma-separated `transition` syntax.^[Unfortunately, setting up animations
 tends to have a lot of boilerplate code, so get ready for more code than usual.
 The good news though is that it's all pretty simple to understand.]
@@ -325,7 +325,7 @@ def try_numeric_animation(node, name, is_px,
 ```
 
 [^more-units]: In a real browsers, there are a [lot more][units] units to
-contend with.
+contend with. I also didn't bother clamping opacity to a value between 0 and 1.
 
 [units]: https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Values_and_units
 
@@ -352,6 +352,7 @@ class NumericAnimation:
 
     def animate(self):
         self.frame_count += 1
+        if self.frame_count >= ANIMATION_FRAME_COUNT: return False
         updated_value = self.old_value + \
             self.change_per_frame * self.frame_count
         if self.is_px:
@@ -360,7 +361,8 @@ class NumericAnimation:
         else:
             self.computed_style[self.property_name] = \
                 "{}".format(updated_value)
-        return self.frame_count < ANIMATION_FRAME_COUNT
+        self.tab.set_needs_render()
+        return True
 ```
 
 Now for integrating this code into rendering. It has main parts: detecting style
@@ -439,6 +441,14 @@ class Tab:
         # ...
         self.render()
 ```
+
+Now animations can be done with just CSS and no JavaScript. That's much more
+convenient for website authors. It's also a bit faster, but not a whole lot
+(recall that our [profiling in Chapter 12][profiling] showed rendering was
+almost all of the time spent). That's not really acceptable, so let's turn our
+attention to how to dramatically speed up renderng for these animations.
+
+[profiling]: http://localhost:8001/scheduling.html#profiling-rendering
 
 GPU acceleration
 ================
