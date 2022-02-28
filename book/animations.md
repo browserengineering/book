@@ -280,7 +280,7 @@ comma-separated `transition` syntax.^[Unfortunately, setting up animations
 tends to have a lot of boilerplate code, so get ready for more code than usual.
 The good news though is that it's all pretty simple to understand.]
 
-```
+``` {.python}
 def has_transition(property_value, style):
     if not "transition" in style:
         return False
