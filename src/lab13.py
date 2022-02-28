@@ -970,7 +970,7 @@ def try_transform_animation(node, old_style, new_style, tab):
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node]["trransform"] = RotationAnimation(
-        node, old_rotation, change_per_frame, new_style, tab)
+        node, old_rotation, change_per_frame, tab)
 
 def try_numeric_animation(node, name,
     old_style, new_style, tab, is_px):
@@ -993,8 +993,7 @@ def try_numeric_animation(node, name,
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node][name] = NumericAnimation(
-        node, name, is_px,
-        old_value, change_per_frame, new_style, tab)
+        node, name, is_px, old_value, change_per_frame, tab)
 
 def style(node, rules, tab):
     old_style = None
@@ -1026,11 +1025,10 @@ def style(node, rules, tab):
 
 class RotationAnimation:
     def __init__(
-        self, node, old_rotation, change_per_frame, computed_style, tab):
+        self, node, old_rotation, change_per_frame, tab):
         self.node = node
         self.old_rotation = old_rotation
         self.change_per_frame = change_per_frame
-        self.computed_style = computed_style
         self.tab = tab
         self.frame_count = 0
         self.animate()
@@ -1038,7 +1036,7 @@ class RotationAnimation:
     def animate(self):
         self.frame_count += 1
         if self.frame_count >= ANIMATION_FRAME_COUNT: return False
-        self.computed_style["transform"] = \
+        self.node.style["transform"] = \
             "rotate({}deg)".format(
                 self.old_rotation + self.change_per_frame * self.frame_count)
         self.tab.set_needs_animation(self.node, "transform", True)
@@ -1047,13 +1045,12 @@ class RotationAnimation:
 class NumericAnimation:
     def __init__(
         self, node, property_name, is_px,
-        old_value, change_per_frame, computed_style, tab):
+        old_value, change_per_frame, tab):
         self.node = node
         self.property_name = property_name
         self.is_px = is_px
         self.old_value = old_value
         self.change_per_frame = change_per_frame
-        self.computed_style = computed_style
         self.tab = tab
         self.frame_count = 0
         self.animate()
@@ -1064,10 +1061,10 @@ class NumericAnimation:
         updated_value = self.old_value + \
             self.change_per_frame * self.frame_count
         if self.is_px:
-            self.computed_style[self.property_name] = \
+            self.node.style[self.property_name] = \
                 "{}px".format(updated_value)
         else:
-            self.computed_style[self.property_name] = \
+            self.node.style[self.property_name] = \
                 "{}".format(updated_value)
         self.tab.set_needs_animation(self.node, self.property_name,
             self.property_name == "opacity")
