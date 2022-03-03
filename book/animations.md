@@ -462,12 +462,12 @@ GPU acceleration
 ================
 
 The first order of business in making these animations smoother is to
-move raster and draw to the [GPU][gpu]. Because both SDL and SKia support
+move raster and draw to the [GPU][gpu]. Because both SDL and Skia support
 these modes, the code to do so looks a lot like some configuration changes,
 and doesn't really give any direct insight into why it's all-of-a-sudden
 faster.
 
-There are lots of resources online about how GPUs work and how to prgram them;
+There are lots of resources online about how GPUs work and how to program them;
 we won't generally be writing shaders or other types of GPU programs in this
 book. Instead, let's focus on the basics of GPU technologies and how they
 map to browsers. A GPU is essentially a hyper-specialized computer that is
@@ -476,8 +476,7 @@ simple data structures into pixels. These programs are so simple that the
 GPU can run one of them *in parallel* for each pixel, and this parallelism is
 why GPU raster is usually much faster than CPU raster.
 
-At a high level, the steps to raster and draw using the GPU are
-generally:[^gpu-variations]
+At a high level, the steps to raster and draw using the GPU are:[^gpu-variations]
 
 [^gpu-variations]: These steps vary a bit in the details by GPU architecture.
 
@@ -506,13 +505,17 @@ children. The root of the tree is the framebuffer texture.
 surfaces that draw into other surfaces, forming a tree. Skia internally does
 this based on various triggers such as blend modes. 
 
-The time to run GPU raster is then the sum of the time for these four steps.
-Usually, the *execute* step is very fast, and total time is instead dominated
-by one or more of the other three steps. The larger the display list, the
-longer the upload; the more complexity and variety of display list
-commands, the longer the compile; the deeper the the nesting of surfaces
-in the web page, the longer the draw. Without care, these steps can
+The time to run GPU raster is then the roughly sum of the time for these four
+steps.[^optimize] Usually, the *execute* step is very fast, and total time is
+instead dominated by one or more of the other three steps. The larger the
+display list, the longer the upload; the more complexity and variety of display
+list commands, the longer the compile; the deeper the the nesting of surfaces
+in the web page, the longer the draw. Without care, these steps can sometimes
 add up to be longer than the time to just raster on the CPU.
+
+[^optimize]: It's not necessary to compile GPU programs on every raster, so
+this part can be optimized. Parts of the other steps can as well, such as
+by caching font data in the GPU.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
 
