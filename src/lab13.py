@@ -9,7 +9,6 @@ import dukpy
 import io
 import math
 import sdl2
-import sdl2.ext as sdl2ext
 import skia
 import socket
 import ssl
@@ -1679,12 +1678,14 @@ class Browser:
     def __init__(self):
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-            WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
+            WIDTH, HEIGHT,
+            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
         self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
-        self.skia_context = skia.GrDirectContext.MakeGL()
-
         print("OpenGL initialized: vendor={}, renderer={}".format(
-            GL.glGetString(GL.GL_VENDOR), GL.glGetString(GL.GL_RENDERER)))
+            GL.glGetString(GL.GL_VENDOR),
+            GL.glGetString(GL.GL_RENDERER)))
+
+        self.skia_context = skia.GrDirectContext.MakeGL()
 
         self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
             self.skia_context,
@@ -1700,6 +1701,7 @@ class Browser:
         self.chrome_surface =  skia.Surface.MakeRenderTarget(
                 self.skia_context, skia.Budgeted.kNo,
                 skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+        assert self.chrome_surface is not None
 
         self.tabs = []
         self.active_tab = None
@@ -1973,7 +1975,6 @@ class Browser:
 
         self.root_surface.flushAndSubmit()
         sdl2.SDL_GL_SwapWindow(self.sdl_window)
-        return
 
     def handle_quit(self):
         print(self.measure_composite_raster_and_draw.text())

@@ -9,7 +9,6 @@ import dukpy
 import io
 import math
 import sdl2
-import sdl2.ext as sdl2ext
 import skia
 import socket
 import ssl

@@ -461,11 +461,13 @@ to dramatically speed up rendering for these animations.
 GPU acceleration
 ================
 
-The first order of business in making these animations smoother is to
-move raster and draw to the [GPU][gpu]. Because both SDL and Skia support
-these modes, the code to do so looks a lot like some configuration changes,
-and doesn't really give any direct insight into why it's all-of-a-sudden
-faster.
+The first order of business in making these animations smoother is to move
+raster and draw to the [GPU][gpu]. Because both SDL and Skia support these
+modes, the code to do so looks a lot like some configuration changes, and
+doesn't really give any direct insight into why it's all-of-a-sudden faster. So
+before showing the code let's discuss briefly how GPUs work and the four
+(again, internal implementation detail to Skia and SDL) steps of running GPU
+raster and draw.
 
 There are lots of resources online about how GPUs work and how to program them;
 we won't generally be writing shaders or other types of GPU programs in this
@@ -511,13 +513,129 @@ instead dominated by one or more of the other three steps. The larger the
 display list, the longer the upload; the more complexity and variety of display
 list commands, the longer the compile; the deeper the the nesting of surfaces
 in the web page, the longer the draw. Without care, these steps can sometimes
-add up to be longer than the time to just raster on the CPU.
+add up to be longer than the time to just raster on the CPU. All of these 
+slowdown situations can and do happen in real browsers for some kinds of
+hard-to-draw content.
 
 [^optimize]: It's not necessary to compile GPU programs on every raster, so
 this part can be optimized. Parts of the other steps can as well, such as
 by caching font data in the GPU.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
+
+Ok, now for the code. First you'll need to import code for OpenGL (just for
+one constant actually):
+
+``` {.python}
+from OpenGL import GL
+```
+
+Then we'll need to configure `sdl_window` and start/stop a
+[GL context][glcontext] at the
+beginning/end of the program; for our purposes consider it API
+boilerplate.^[Starting a GL context is just OpenGL's way
+of saying "set up the surface into which subsequent GL drawing commands will
+draw". After doing so you can execute OpenGL commands manually, to
+draw polygons or other objects on the screen, without using Skia at all.
+[Try it][pyopengl] if you're interested!]
+
+[glcontext]: https://www.khronos.org/opengl/wiki/OpenGL_Context
+
+[pyopengl]: http://pyopengl.sourceforge.net/
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT,
+            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
+        self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
+        print("OpenGL initialized: vendor={}, renderer={}".format(
+            GL.glGetString(GL.GL_VENDOR),
+            GL.glGetString(GL.GL_RENDERER)))
+
+    def handle_quit(self):
+        # ...
+        sdl2.SDL_GL_DeleteContext(self.gl_context)
+        sdl2.SDL_DestroyWindow(self.sdl_window)
+
+```
+
+I've also added code above to print out the vendor and renderer of the GPU your
+computer is using; this will help you verify that it's actually using the GPU
+properly. I'm using a Chromebook to write this chapter, so for me it
+says:[^virgl]
+
+    OpenGL initialized: vendor=b'Red Hat', renderer=b'virgl'
+
+[^virgl]: In this case, `virgl` stands for "virtual GL", a way of
+hardware-accelerating the Linux subsystem of ChromeOS that works with the
+ChromeOS Linux sandbox.
+
+The root Skia surface will need to be connected directly to the *framebuffer*
+(the screen) associated with the SDL window. The incantation for that is:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        #. ...
+        self.skia_context = skia.GrDirectContext.MakeGL()
+
+        self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
+            self.skia_context,
+            skia.GrBackendRenderTarget(
+                WIDTH, HEIGHT,
+                0,  # sampleCnt
+                0,  # stencilBits
+                skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
+                skia.kBottomLeft_GrSurfaceOrigin,
+                skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
+        assert self.root_surface is not None
+
+```
+
+Note that this code never seems to reference `gl_context` or `sdl_window`
+directly, but draws to the window anyway. That's because OpenGL is a strange
+API that uses hidden global states; the `MakeGL` Skia method just binds to the
+existing GL context.
+
+The `chrome_surface` incantation is a bit different, because it's creating
+a GPU texture, but one that is independent of the framebuffer:
+
+``` {.python}
+    self.chrome_surface =  skia.Surface.MakeRenderTarget(
+            self.skia_context, skia.Budgeted.kNo,
+            skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+    assert self.chrome_surface is not None
+```
+
+The difference from the old way of doing surfaces was that it's associated
+explicitly with the `skia_context` and uses a different color space that is
+required for GPU mode. `tab_surface` should get exactly the same treatment
+(but with different width and height arguments, of course).
+
+The final change to make is that `draw` is now simpler, because `root_surface`
+need not blit into the SDL surface, because they share a GPU framebuffer
+backing.(There are no changes at all required to raster). All you have to do
+is *flush* the Skia surface and call `SDL_GL_SwapWindow` to activate the new
+framebuffer (because of OpenGL [double-buffering][double]).
+
+[double]: https://wiki.libsdl.org/SDL_GL_SwapWindow
+
+``` {python}
+    def draw(self):
+        canvas = self.root_surface.getCanvas()
+
+        # ...
+
+        self.root_surface.flushAndSubmit()
+        sdl2.SDL_GL_SwapWindow(self.sdl_window)
+```
+
+With this change, on my computer raster and draw are about three times as fast
+as before. If you're on a computer with a non-virtualized GL driver you will
+probably see even more speedup than that.
 
 Compositing
 ===========
