@@ -269,33 +269,59 @@ the `task_runner` at a time.
 
 [race-condition]: https://en.wikipedia.org/wiki/Race_condition
 
-To do so we use a `Lock` object, which can only held by one thread at
-a time. Each thread will try to acquire the lock before reading or
-writing to the `task_runner`, avoiding simultaneous access:^[The
-`blocking` parameter to `acquire` indicates whether the thread should
-wait for the lock to be available before continuing; in this chapter
-you'll always set it to `True`. (When the thread is waiting, it's said
-to be *blocked*.)]
+To do so we use a [`Condition`][condition-variable] object, which can only held
+by one thread at a time. Each thread will try to acquire `condition` before
+reading or writing to the `task_runner`, avoiding simultaneous
+access:^[The `blocking` parameter to `acquire` indicates whether the thread
+should wait for the lock to be available before continuing; in this chapter
+you'll always set it to `True`. (When the thread is waiting, it's said to be
+*blocked*.)]
+
+The `Condition` class is actually a [`Lock`][lock-class], plus
+functionality to be able to *wait* until a state condition occurs. The way it
+works is that, if you have no more work to do right now, acquire `condition`
+and then call `wait`. This will cause the thread to stop at that line of code.
+When more work comes in to do, such as in `schedule_task`, a call to
+`notify_all` will wake up the thread that called `wait`.
+
+It's important to call `wait` at the end of the `run` loop if there is nothing
+left to do. Otherwise that thread will tend to use up a lot of the CPU,
+plus constantly be acquiring and releasing `condition`. This busywork not only
+slows down the computer, but also causes the callbacks from the `Timer` to
+happen at erratic times, because the two threads are competing for the
+lock.[^try-it]
+
+[condition-variable]: https://docs.python.org/3/library/threading.html#threading.Condition
+
+[lock-class]: https://docs.python.org/3/library/threading.html#threading.Lock
+
+[^try-it]: Try removing this code and observe. The timers will become quite
+erratic.
 
 ``` {.python expected=False}
 class TaskRunner:
     def __init__(self):
         # ...
-        self.lock = threading.Lock()
+        self.condition = threading.Condition()
 
     def schedule_task(self, task):
-        self.lock.acquire(blocking=True)
+        self.condition.acquire(blocking=True)
         self.tasks.add_task(task)
-        self.lock.release()
+        self.condition.release()
 
     def run(self):
-        self.lock.acquire(blocking=True)
+        self.condition.acquire(blocking=True)
         task = None
         if len(self.tasks) > 0:
             task = self.tasks.pop(0)
-        self.lock.release()
+        self.condition.release()
         if task:
             task.run()
+
+        self.condition.acquire(blocking=True)
+        if len(self.tasks) == 0:
+            self.condition.wait()
+        self.condition.release()
 ```
 
 When using locks, it's super important to remember to release the lock
@@ -1144,23 +1170,14 @@ class TaskRunner:
 ```
 
 Remove the call to `run` from the top-level `while True` loop, since
-that loop is now going to be running in the browser thread.
-
-Each iteration of the `run` loop will pick which scheduled task to run
-next. I'll stick with first-in first-out:
+that loop is now going to be running in the browser thread. `run` will
+have its own loop:
 
 ``` {.python}
 class TaskRunner:
     def run(self):
         while True:
             # ...
-            task = None
-            self.lock.acquire(blocking=True)
-            if len(self.tasks) > 0:
-                task = self.tasks.pop(0)
-            self.lock.release()
-            if task:
-                task.run()
 ```
 
 Because this loop runs forever, the main thread will live on
@@ -1366,9 +1383,7 @@ class Browser:
 In `schedule_animation_frame` you'll need to do it both inside and
 outside the callback:
 
-<!-- TODO: I'm not sure why this lint fails. -->
-
-``` {.python expected=False}
+``` {.python}
 class Browser:
     def schedule_animation_frame(self):
         def callback():

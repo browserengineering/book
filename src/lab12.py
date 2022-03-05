@@ -414,21 +414,23 @@ class CommitForRaster:
 
 class TaskRunner:
     def __init__(self, tab):
-        self.lock = threading.Lock()
+        self.condition = threading.Condition()
         self.tab = tab
         self.tasks = []
         self.main_thread = threading.Thread(target=self.run)
         self.needs_quit = False
 
     def schedule_task(self, task):
-        self.lock.acquire(blocking=True)
+        self.condition.acquire(blocking=True)
         self.tasks.append(task)
-        self.lock.release()
+        self.condition.notify_all()
+        self.condition.release()
 
     def set_needs_quit(self):
-        self.lock.acquire(blocking=True)
+        self.condition.acquire(blocking=True)
         self.needs_quit = True
-        self.lock.release()
+        self.condition.notify_all()
+        self.condition.release()
 
     def clear_pending_tasks(self):
         self.tasks.clear()
@@ -439,20 +441,26 @@ class TaskRunner:
 
     def run(self):
         while True:
-            self.lock.acquire(blocking=True)
+            self.condition.acquire(blocking=True)
             needs_quit = self.needs_quit
-            self.lock.release()
+            self.condition.release()
             if needs_quit:
                 self.handle_quit()
                 return
 
             task = None
-            self.lock.acquire(blocking=True)
+            self.condition.acquire(blocking=True)
             if len(self.tasks) > 0:
                 task = self.tasks.pop(0)
-            self.lock.release()
+            self.condition.release()
             if task:
                 task.run()
+
+            self.condition.acquire(blocking=True)
+            if len(self.tasks) == 0:
+                self.condition.wait()
+            self.condition.release()
+
 
     def handle_quit(self):
         print(self.tab.measure_render.text())
