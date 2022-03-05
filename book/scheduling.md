@@ -1170,7 +1170,7 @@ class TaskRunner:
 ```
 
 Remove the call to `run` from the top-level `while True` loop, since
-that loop is now going to be running in the browser thread. `run` will
+that loop is now going to be running in the browser thread. And `run` will
 have its own loop:
 
 ``` {.python}
