@@ -1849,20 +1849,6 @@ Add separate dirty bits for raster and draw stages.[^layout-dirty]
 needs to be run, but be careful to think very carefully about all the
 ways this dirty bit might need to end up being set.
 
-*Condition variables*: the main thread's event loop will spin in a
-loop if there are no tasks available. This wastes CPU
-time.[^browser-thread-burn] Use a *condition variable* to put the main
-thread to sleep until there is a task to run. In Python, you need the
-`threading` module's [`Condition`][condition] class: call `wait` on a
-condition variable to stop the calling thread, and call `notify_all`
-on a condition variable to wake all threads waiting on it.
-
-[condition]: https://docs.python.org/3/library/threading.html#condition-objects
-
-[^browser-thread-burn]: The browser thread's `while True` loop, which
-asks SDL for new events, is also wasteful. Unfortunately, I couldn't
-find a way to avoid this in SDL.
-
 *Optimized scheduling*: On a complicated web page, the browser may not
 be able to keep up with the desired cadence. Instead of constantly
 pegging the CPU in a futile attempt to keep up, implement a *frame
