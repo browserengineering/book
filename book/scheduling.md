@@ -277,12 +277,12 @@ should wait for the lock to be available before continuing; in this chapter
 you'll always set it to `True`. (When the thread is waiting, it's said to be
 *blocked*.)]
 
-The `Condition` class is actually a [`Lock`][lock-class], plus
-functionality to be able to *wait* until a state condition occurs. The way it
-works is that, if you have no more work to do right now, acquire `condition`
-and then call `wait`. This will cause the thread to stop at that line of code.
-When more work comes in to do, such as in `schedule_task`, a call to
-`notify_all` will wake up the thread that called `wait`.
+The `Condition` class is actually a [`Lock`][lock-class], plus functionality to
+be able to *wait* until a state condition occurs. If you have no more work to
+do right now, acquire `condition` and then call `wait`. This will cause the
+thread to stop at that line of code. When more work comes in to do, such as in
+`schedule_task`, a call to `notify_all` will wake up the thread that called
+`wait`.
 
 It's important to call `wait` at the end of the `run` loop if there is nothing
 left to do. Otherwise that thread will tend to use up a lot of the CPU,
