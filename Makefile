@@ -7,6 +7,7 @@ WIDGET_LAB_CODE=lab1 lab2 lab3 lab4 lab5 lab7
 
 EXAMPLE_HTML=$(patsubst src/example%.html,%,$(wildcard src/example*.html))
 EXAMPLE_JS=$(patsubst src/example%.js,%,$(wildcard src/example*.js))
+EXAMPLE_CSS=$(patsubst src/example%.css,%,$(wildcard src/example*.css))
 
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets examples
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
@@ -37,13 +38,16 @@ www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json www/widgets/lab%.js
 	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/index.md -o $@
 
-examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) $(patsubst %,www/examples/example%.js,$(EXAMPLE_JS))
+examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) $(patsubst %,www/examples/example%.js,$(EXAMPLE_JS)) $(patsubst %,www/examples/example%.css,$(EXAMPLE_CSS))
 
 www/examples/%.html: src/%.html
 	cp src/$*.html www/examples
 
 www/examples/%.js:
 	cp src/$*.js www/examples
+
+www/examples/%.css:
+	cp src/$*.css www/examples
 
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
