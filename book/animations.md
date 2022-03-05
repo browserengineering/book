@@ -115,7 +115,7 @@ function animate() {
 requestAnimationFrame(animate);
 ```
 
-(click <a href="examples/example13-opacity-raf.html">here</a> to load the example in
+(click [here](examples/example13-opacity-raf.html) to load the example in
 your browser)
 
 This example uses a new feature we haven't added to our browser yet: modifying
@@ -234,7 +234,7 @@ overflow, which needs to be dealt with in one way or another.]
 </div>
 ```
 
-(click <a href="examples/example13-width-raf.html">here</a> to load the example in
+(click [here](examples/example13-width-raf.html) to load the example in
 your browser)
 
 ``` {.javascript file=example-width-js}
@@ -273,6 +273,10 @@ new values, in basically the same way the `requestAnimationFrame` loop did it.
 This is much more convenient for website authors than writing a bunch of
 JavaScript, and also doesn't force them to account for each and every way in
 which the styles can change.
+
+Click [here](examples/example13-opacity-transition.html) to see the `opacity`
+example with a CSS transition, or
+[here](examples/example13-width-transition.html) for the `width` example.
 
 Implement this CSS property. Start with a quick helper method that returns the
 duration of a transition if it was set, and `None` otherwise. This requires
@@ -329,7 +333,8 @@ def try_numeric_animation(node, name,
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value, num_frames, change_per_frame, tab)
+        node, name, is_px, old_value,
+        num_frames, change_per_frame, tab)
 ```
 
 [^more-units]: In a real browsers, there are a [lot more][units] units to
@@ -636,6 +641,26 @@ framebuffer (because of OpenGL [double-buffering][double]).
 With this change, on my computer raster and draw are about three times as fast
 as before. If you're on a computer with a non-virtualized GL driver you will
 probably see even more speedup than that.
+
+Let's go back and test the `opacity` and `width` animations, to see how much GPU
+acceleration helped. The results on my computer are:[^same-perf]
+
+    Without GPU:
+
+    Time in raster-and-draw on average: 22ms
+    Time in render on average: 1ms
+
+    With GPU:
+
+    Time in raster-and-draw on average: 8ms
+    Time in render on average: 1ms
+
+[^same-perf]: It turns out the cost is about the same for both threads in this
+case, because the size of the DOM is so small.
+
+So GPU acceleration yields something like a 60% reduction in browser thread
+time. This is a great improvement, but still 8ms is a lot for such a simple
+example. Can we do better? Yes we can, by using compositing.
 
 Compositing
 ===========

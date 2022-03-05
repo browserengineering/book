@@ -1,4 +1,4 @@
-"""
+f"""
 This file compiles the code in Web Browser Engineering,
 up to and including Chapter 13 (Animations and Compositing),
 without exercises.
@@ -986,6 +986,10 @@ def try_numeric_animation(node, name,
     if num_frames == None:
         return None
 
+    if name not in old_style or name not in new_style:
+        print('hmm')
+        return None
+
     if old_style[name] == new_style[name]:
         return None
 
@@ -1001,7 +1005,8 @@ def try_numeric_animation(node, name,
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value, num_frames, change_per_frame, tab)
+        node, name, is_px, old_value,
+        num_frames, change_per_frame, tab)
 
 def style(node, rules, tab):
     old_style = None
@@ -1077,7 +1082,7 @@ class NumericAnimation:
             self.node.style[self.property_name] = \
                 "{}".format(updated_value)
         self.tab.set_needs_animation(self.node, self.property_name,
-            self.property_name == "opacity")
+            self.property_name == "opacity" and USE_COMPOSITING)
         return True
 
 SHOW_COMPOSITED_LAYER_BORDERS = False
