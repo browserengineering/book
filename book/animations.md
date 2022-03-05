@@ -445,7 +445,7 @@ class Tab:
                     to_delete.append((node, property_name))
 
         for (node, property_name) in to_delete:
-            del self.animations[key][property_name]
+            del self.animations[node][property_name]
         # ...
         self.render()
 ```
