@@ -1297,7 +1297,7 @@ class Tab:
                     to_delete.append((node, property_name))
 
         for (node, property_name) in to_delete:
-            del self.animations[key][property_name]
+            del self.animations[node][property_name]
 
         needs_composite = self.needs_render
 
@@ -1478,15 +1478,18 @@ class TaskRunner:
         self.tasks = []
         self.main_thread = threading.Thread(target=self.run)
         self.needs_quit = False
+        self.condition = threading.Condition(self.lock)
 
     def schedule_task(self, task):
         self.lock.acquire(blocking=True)
         self.tasks.append(task)
+        self.condition.notify_all()
         self.lock.release()
 
     def set_needs_quit(self):
         self.lock.acquire(blocking=True)
         self.needs_quit = True
+        self.condition.notify_all()
         self.lock.release()
 
     def clear_pending_tasks(self):
@@ -1512,6 +1515,12 @@ class TaskRunner:
             self.lock.release()
             if task:
                 task.run()
+
+            self.condition.acquire(blocking=True)
+            if len(self.tasks) == 0:
+                self.condition.wait()
+            self.condition.release()
+
 
     def handle_quit(self):
         print(self.tab.measure_render.text())
