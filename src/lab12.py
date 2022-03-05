@@ -530,8 +530,10 @@ class Browser:
         self.needs_animation_frame = True
 
     def raster_and_draw(self):
-        if not self.needs_raster_and_draw: return
         self.lock.acquire(blocking=True)
+        if not self.needs_raster_and_draw:
+            self.lock.release()
+            return
         self.measure_raster_and_draw.start()
         self.raster_chrome()
         self.raster_tab()

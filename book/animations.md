@@ -543,7 +543,7 @@ draw polygons or other objects on the screen, without using Skia at all.
 
 [pyopengl]: http://pyopengl.sourceforge.net/
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def __init__(self):
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -576,7 +576,7 @@ ChromeOS Linux sandbox.
 The root Skia surface will need to be connected directly to the *framebuffer*
 (the screen) associated with the SDL window. The incantation for that is:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def __init__(self):
         #. ...
