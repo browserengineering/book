@@ -274,9 +274,9 @@ This is much more convenient for website authors than writing a bunch of
 JavaScript, and also doesn't force them to account for each and every way in
 which the styles can change.
 
-Click [here][examples/example13-opacity-transition.html] to see the `opacity`
+Click [here](examples/example13-opacity-transition.html) to see the `opacity`
 example with a CSS transition, or
-[here][[examples/example13-opacity-transition.html] for the `width` example.
+[here](examples/example13-width-transition.html) for the `width` example.
 
 Implement this CSS property. Start with a quick helper method that returns the
 duration of a transition if it was set, and `None` otherwise. This requires
@@ -333,7 +333,8 @@ def try_numeric_animation(node, name,
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value, num_frames, change_per_frame, tab)
+        node, name, is_px, old_value,
+        num_frames, change_per_frame, tab)
 ```
 
 [^more-units]: In a real browsers, there are a [lot more][units] units to
@@ -642,8 +643,7 @@ as before. If you're on a computer with a non-virtualized GL driver you will
 probably see even more speedup than that.
 
 Let's go back and test the `opacity` and `width` animations, to see how much GPU
-acceleration helped. Without the GPU, the results on my computer for the
-`opacity` and `width` examples is:[^same-perf]
+acceleration helped. The results on my computer are:[^same-perf]
 
     Without GPU:
 
@@ -655,8 +655,8 @@ acceleration helped. Without the GPU, the results on my computer for the
     Time in raster-and-draw on average: 8ms
     Time in render on average: 1ms
 
-[^same-perf]: It turns out the render cost is about the same in this case,
-because the size of the DOM is so small.
+[^same-perf]: It turns out the cost is about the same for both threads in this
+case, because the size of the DOM is so small.
 
 So GPU acceleration yields something like a 60% reduction in browser thread
 time. This is a great improvement, but still 8ms is a lot for such a simple
