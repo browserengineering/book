@@ -115,7 +115,7 @@ function animate() {
 requestAnimationFrame(animate);
 ```
 
-(click <a href="examples/example13-opacity.html">here</a> to load the example in
+(click <a href="examples/example13-opacity-raf.html">here</a> to load the example in
 your browser)
 
 This example uses a new feature we haven't added to our browser yet: modifying
@@ -234,7 +234,7 @@ overflow, which needs to be dealt with in one way or another.]
 </div>
 ```
 
-(click <a href="examples/example13-width.html">here</a> to load the example in
+(click <a href="examples/example13-width-raf.html">here</a> to load the example in
 your browser)
 
 ``` {.javascript file=example-width-js}
@@ -445,7 +445,7 @@ class Tab:
                     to_delete.append((node, property_name))
 
         for (node, property_name) in to_delete:
-            del self.animations[key][property_name]
+            del self.animations[node][property_name]
         # ...
         self.render()
 ```
