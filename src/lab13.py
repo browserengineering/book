@@ -1148,11 +1148,14 @@ class CompositedLayer:
             return
         irect = bounds.roundOut()
         if not self.surface:
-            self.surface = skia.Surface.MakeRenderTarget(
-                self.skia_context, skia.Budgeted.kNo,
-                skia.ImageInfo.MakeN32Premul(
-                    irect.width(), irect.height()))
-            assert self.surface is not None
+            if USE_GPU:
+                self.surface = skia.Surface.MakeRenderTarget(
+                    self.skia_context, skia.Budgeted.kNo,
+                    skia.ImageInfo.MakeN32Premul(
+                        irect.width(), irect.height()))
+                assert self.surface is not None
+            else:
+                self.surface = skia.Surface(irect.width(), irect.height())
 
         canvas = self.surface.getCanvas()
 
@@ -1676,32 +1679,44 @@ def do_compositing(display_list, skia_context, current_composited_layers):
 
 class Browser:
     def __init__(self):
-        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-            WIDTH, HEIGHT,
-            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
-        self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
-        print("OpenGL initialized: vendor={}, renderer={}".format(
-            GL.glGetString(GL.GL_VENDOR),
-            GL.glGetString(GL.GL_RENDERER)))
-
-        self.skia_context = skia.GrDirectContext.MakeGL()
-
-        self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
-            self.skia_context,
-            skia.GrBackendRenderTarget(
+        if USE_GPU:
+            self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+                sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
                 WIDTH, HEIGHT,
-                0,  # sampleCnt
-                0,  # stencilBits
-                skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
-                skia.kBottomLeft_GrSurfaceOrigin,
-                skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
-        assert self.root_surface is not None
+                sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
+            self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
+            print("OpenGL initialized: vendor={}, renderer={}".format(
+                GL.glGetString(GL.GL_VENDOR),
+                GL.glGetString(GL.GL_RENDERER)))
 
-        self.chrome_surface =  skia.Surface.MakeRenderTarget(
-                self.skia_context, skia.Budgeted.kNo,
-                skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
-        assert self.chrome_surface is not None
+            self.skia_context = skia.GrDirectContext.MakeGL()
+
+            self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
+                self.skia_context,
+                skia.GrBackendRenderTarget(
+                    WIDTH, HEIGHT,
+                    0,  # sampleCnt
+                    0,  # stencilBits
+                    skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
+                    skia.kBottomLeft_GrSurfaceOrigin,
+                    skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
+            assert self.root_surface is not None
+
+            self.chrome_surface =  skia.Surface.MakeRenderTarget(
+                    self.skia_context, skia.Budgeted.kNo,
+                    skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+            assert self.chrome_surface is not None
+        else:
+            self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
+            self.root_surface = skia.Surface.MakeRaster(
+                skia.ImageInfo.Make(
+                WIDTH, HEIGHT,
+                ct=skia.kRGBA_8888_ColorType,
+                at=skia.kUnpremul_AlphaType))
+            self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
+            self.skia_context = None
 
         self.tabs = []
         self.active_tab = None
@@ -1805,7 +1820,13 @@ class Browser:
 
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)
+        if not self.needs_composite and len(self.composited_updates) == 0 \
+            and not self.needs_raster and not self.needs_draw:
+            self.lock.release()
+            return
+
         self.measure_composite_raster_and_draw.start()
+        start_time = time.time()
         if self.needs_composite or len(self.composited_updates) > 0:
             self.composite()
         if self.needs_raster:
@@ -1973,13 +1994,33 @@ class Browser:
         self.chrome_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        self.root_surface.flushAndSubmit()
-        sdl2.SDL_GL_SwapWindow(self.sdl_window)
+        if USE_GPU:
+            self.root_surface.flushAndSubmit()
+            sdl2.SDL_GL_SwapWindow(self.sdl_window)
+        else:
+            # This makes an image interface to the Skia surface, but
+            # doesn't actually copy anything yet.
+            skia_image = self.root_surface.makeImageSnapshot()
+            skia_bytes = skia_image.tobytes()
+
+            depth = 32 # Bits per pixel
+            pitch = 4 * WIDTH # Bytes per row
+            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+                skia_bytes, WIDTH, HEIGHT, depth, pitch,
+                self.RED_MASK, self.GREEN_MASK,
+                self.BLUE_MASK, self.ALPHA_MASK)
+
+            rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
+            window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
+            # SDL_BlitSurface is what actually does the copy.
+            sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
+            sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
         print(self.measure_composite_raster_and_draw.text())
         self.tabs[self.active_tab].task_runner.set_needs_quit()
-        sdl2.SDL_GL_DeleteContext(self.gl_context)
+        if USE_GPU:
+            sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
@@ -1992,12 +2033,15 @@ if __name__ == "__main__":
         help='Whether to run the browser without a browser thread')
     parser.add_argument('--disable_compositing', action="store_true",
         default=False, help='Whether to composite some elements')
+    parser.add_argument('--disable_gpu', action='store_true',
+        default=False, help='Whether to disable use of the GPU')
     parser.add_argument('--show_composited_layer_borders', action="store_true",
         default=False, help='Whether to visually indicate composited layer borders')
     args = parser.parse_args()
 
     USE_BROWSER_THREAD = not args.single_threaded
-    USE_COMPOSITING = not args.disable_compositing
+    USE_GPU = not args.disable_gpu
+    USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
     SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)

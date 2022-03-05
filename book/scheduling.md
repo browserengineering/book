@@ -666,7 +666,8 @@ class Browser:
         self.needs_raster_and_draw = True
 
     def raster_and_draw(self):
-        if not self.needs_raster_and_draw: return
+        if not self.needs_raster_and_draw:
+            return
         # ...
         self.needs_raster_and_draw = False
 ```
@@ -1002,7 +1003,8 @@ class Browser:
         self.measure_raster_and_draw = MeasureTime("raster-and-draw")
 
     def raster_and_draw(self):
-        if not self.needs_raster_and_draw: return
+        if not self.needs_raster_and_draw:
+            return
         self.measure_raster_and_draw.start()
         # ...
         self.measure_raster_and_draw.stop()
