@@ -987,7 +987,6 @@ def try_numeric_animation(node, name,
         return None
 
     if name not in old_style or name not in new_style:
-        print('hmm')
         return None
 
     if old_style[name] == new_style[name]:
