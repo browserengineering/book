@@ -1,0 +1,4 @@
+div {
+	width: 400px;
+	transition: width 2s;
+}
