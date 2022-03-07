@@ -620,7 +620,8 @@ works when zoomed in.
     in part to avoid trails (performance and application isolation are
     additional reasons). Even while using compositing, applications
     must redraw their window contents to change what is
-    displayed. [Chapter 12](visual-effects.md) will discuss compositing in more detail.
+    displayed. [Chapter 13](animations.md) will discuss compositing in more
+    detail.
 
 [^4]: The library is called Tk, and it was originally written for a
     different language called Tcl. Python contains an interface to it,

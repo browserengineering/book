@@ -660,18 +660,98 @@ case, because the size of the DOM is so small.
 
 So GPU acceleration yields something like a 60% reduction in browser thread
 time. This is a great improvement, but still 8ms is a lot for such a simple
-example. Can we do better? Yes we can, by using compositing.
+example, and also requires a main-thread task that might be slowed down by
+JavaScript. Can we do better? Yes we can, by using compositing.
 
-Compositing
-===========
+Why Compositing
+===============
 
-Show how to provide independent textures for animated content to avoid expensive
-raster costs.
+The term [*compositing*][compositing] means to combine multiple images together
+into a final output. As it relates to browsers, it usually means the
+performance optimization technique of caching rastered GPU textures that are
+the inputs to animated[visual effects](visual-effects.md).
+
+[compositing]: https://en.wikipedia.org/wiki/Compositing
+
+Let's unpack that into simpler terms with an example. Opacity is one kind of
+visual effect. When we're animating it, the opacity is changing, but the
+"DOM content"[^more-precise] underneath it
+is not. So let's stop re-rastering that content on every frame of the
+animation, and instead cache it in a GPU texture. This *should* directly
+reduce raster-and-draw work because less raster work will be needed on each
+animation frame.
+
+[^more-precise]: We'll be precise about what exactly is cached in a moment;
+suffice it to say that it's *not* "rendering only some DOM elements".
+
+But there's actually another benefit that is just as important: we can run the
+animation entirely off the main thread. That's because the browser thread can
+play tricks to save off intermediate GPU textures from a display list.[^not-dom]
+I'll show you one way how.^[Since you already learned in chapter 11
+that Skia often creates GPU textures for [various intermediate
+surfaces](visual-effects.html#blending-and-stacking), it is hopefully clear
+that it *should* be possible to do this.]
+
+[^not-dom]: On the other hand, the browser thread does *not* have the ability
+to do something with the DOM or JavaScript.
+
+You might think that Skia has ways to say "please cache this surface". And there
+is---the way is for the user of Skia to keep around a `skia.Surface` across
+multiple raster-and-draw executions.^[Skia will keep alive the rastered content
+associated with the surface] In other words, we'll need to do the caching
+ourselves, and this feature is not built into Skia itself in a simple-to-use
+form.
+
+The main difficulty with implementing compositing turns out to be dealing
+with its *side-effects for overlapping content*. To understand the concept,
+consider this simple example of a blue square overlapped by an green one.
+
+<div style="width:200px;height:200px;background-color:lightblue"></div>
+<div style="width:200px;height:200px;
+            background-color:lightgreen;position:relative;
+            top:-100px;left:100px;"></div>
+
+Suppose we want to animate opacity on the blue square, and so allocate a
+`skia.Surface` and GPU texture for it. But we don't want to animate the green
+square, so it is supposed to draw to the screen without opacity change.
+But how can that work? How can we make it paint on top of this new surface?
+Two things we could do are: start painting the green
+square *before* the blue one, or re-raster the green square into the
+root surface on every frame, after drawing the blue square.
+
+The former is obviously not ok, because we can't just ignore the website
+developer's wishes and paint in the wrong order. The latter is *also* not ok,
+because it negates the first benefit of compositing (avoiding raster).
+
+So we have to choose a third option: allocating a `skia.Surface` for the
+green rectangle as well. This is called an *overlap reason* for compositing.
+Overlap makes compositing algorithms signficantly more complicated, because
+when allocating a surface for animated content, we'll have to check the
+remainder of the display list for potential overlaps.
+
+We're now ready to start digging into the compositing algorithm and how to
+implement it, except for one thing: there is no way in our current browser
+for content to overlap! The example in this section used `position:relative`,
+`top` and `left`, CSS properties our browser doesn't have. So to investigate
+overlap, we *could* just add those properties. But overlap can also be
+caused by CSS transform, and in fact transforms are a very common form of
+visual effect animation on websites. So let's implement that and then come
+back to implementing compositing.
+
+::: {.further}
+TODO: describe the problem of layer explosion. Explain how this can actually
+lead to compositing slowing down a web page rather than speeding it up.
+:::
 
 Transform animations
 ====================
 
 Motivated by overlap in compositing.
+
+Implementing compositing
+========================
+
+Implement the compositing algorithm.
 
 Composited animations
 =====================
