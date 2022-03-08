@@ -118,14 +118,14 @@ class DisplayItem:
                 noop=(" <no-op>" if self.is_noop() else ""))
 
 class Transform(DisplayItem):
-    def __init__(self, translation, rotation_degrees, rect, node, cmds):
-        self.rotation_degrees = rotation_degrees
+    def __init__(self, translation, rotation_degrees,
+        rect, node, cmds):
         self.translation = translation
-        (self.center_x, self.center_y) = center_point(rect)
+        self.rotation_degrees = rotation_degrees
         assert translation == None or rotation_degrees == None
         should_transform = translation != None or rotation_degrees != None
+        self.self_rect = rect
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
-        rect = rect
 
         super().__init__(
             rect=my_bounds, needs_compositing=should_transform, cmds=cmds,
@@ -141,11 +141,11 @@ class Transform(DisplayItem):
             op()
             canvas.restore()
         else:
-            rotation_x = self.center_x
-            rotation_y = self.center_y
+            (center_x, center_y) = center_point(self.self_rect)
             canvas.save()
             canvas.rotate(
-                degrees=self.rotation_degrees, px=rotation_x, py=rotation_y)
+                degrees=self.rotation_degrees,
+                px=center_x, py=center_y)
             op()
             canvas.restore()
 
@@ -160,8 +160,9 @@ class Transform(DisplayItem):
             (x, y) = self.translation
             matrix.setTranslate(x, y)
         else:
+            (center_x, center_y) = center_point(self.self_rect)
             matrix.setRotate(
-                self.rotation_degrees, self.center_x, self.center_y)
+                self.rotation_degrees, center_x, center_y)
         return matrix.mapRect(rect)
 
     def compute_bounds(self, rect, cmds, should_transform):
@@ -786,7 +787,8 @@ def style_length(node, style_name, default_value):
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
     blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
-    (translation, rotation) = parse_transform(node.style.get("transform", ""))
+    (translation, rotation) = parse_transform(
+        node.style.get("transform", ""))
 
     border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
@@ -804,7 +806,8 @@ def paint_visual_effects(node, cmds, rect):
                 should_clip=needs_clip),
         ], should_save=needs_blend_isolation)
 
-    transform = Transform(translation, rotation, rect, node, [save_layer])
+    transform = Transform(
+        translation, rotation, rect, node, [save_layer])
 
     if transform.needs_compositing() or save_layer.needs_compositing:
         node.transform = transform
@@ -954,16 +957,27 @@ def get_transition(property_value, style):
     duration_secs = float(item.split(" ")[1][:-1])
     return duration_secs / REFRESH_RATE_SEC 
 
-def try_transform_animation(node, old_style, new_style, tab):
-    if not get_transition("transform", old_style):
+def try_transition(name, node, old_style, new_style):
+    if not get_transition(name, old_style):
         return None
 
-    num_frames = get_transition("transform", new_style)
+    num_frames = get_transition(name, new_style)
     if num_frames == None:
         return None
 
-    if old_style["transform"] == new_style["transform"]:
+    if name not in old_style or name not in new_style:
         return None
+
+    if old_style[name] == new_style[name]:
+        return None
+
+    return num_frames
+
+def try_transform_animation(node, old_style, new_style, tab):
+    num_frames = try_transition("transform", node, old_style, new_style)
+    if num_frames == None:
+        return None;
+
     (old_translation, old_rotation) = parse_transform(old_style["transform"])
     (new_translation, new_rotation) = parse_transform(new_style["transform"])
 
@@ -979,18 +993,9 @@ def try_transform_animation(node, old_style, new_style, tab):
 
 def try_numeric_animation(node, name,
     old_style, new_style, tab, is_px):
-    if not get_transition(name, old_style):
-        return None
-    
-    num_frames = get_transition(name, new_style)
+    num_frames = try_transition(name, node, old_style, new_style)
     if num_frames == None:
-        return None
-
-    if name not in old_style or name not in new_style:
-        return None
-
-    if old_style[name] == new_style[name]:
-        return None
+        return None;
 
     if is_px:
         old_value = float(old_style[name][:-2])
@@ -1477,11 +1482,11 @@ class CommitForRaster:
 
 class TaskRunner:
     def __init__(self, tab):
-        self.condition = threading.Condition()
         self.tab = tab
         self.tasks = []
         self.main_thread = threading.Thread(target=self.run)
         self.needs_quit = False
+        self.condition = threading.Condition()
 
     def schedule_task(self, task):
         self.condition.acquire(blocking=True)
