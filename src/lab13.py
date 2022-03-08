@@ -1482,11 +1482,11 @@ class CommitForRaster:
 
 class TaskRunner:
     def __init__(self, tab):
+        self.condition = threading.Condition()
         self.tab = tab
         self.tasks = []
         self.main_thread = threading.Thread(target=self.run)
         self.needs_quit = False
-        self.condition = threading.Condition()
 
     def schedule_task(self, task):
         self.condition.acquire(blocking=True)
