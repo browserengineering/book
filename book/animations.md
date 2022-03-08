@@ -309,17 +309,27 @@ units---unitless floating-point between 0 and 1, respectively.[^more-units] The
 difference will be handled by an `is_px` parameter indicating which it is.
 
 ``` {.python}
-def try_numeric_animation(node, name,
-    old_style, new_style, tab, is_px):
+def try_transition(name, node, old_style, new_style):
     if not get_transition(name, old_style):
         return None
-    
+
     num_frames = get_transition(name, new_style)
     if num_frames == None:
         return None
 
+    if name not in old_style or name not in new_style:
+        return None
+
     if old_style[name] == new_style[name]:
         return None
+
+    return num_frames
+
+def try_numeric_animation(node, name,
+    old_style, new_style, tab, is_px):
+    num_frames = try_transition(name, node, old_style, new_style)
+    if num_frames == None:
+        return None;
 
     if is_px:
         old_value = float(old_style[name][:-2])
@@ -746,7 +756,149 @@ lead to compositing slowing down a web page rather than speeding it up.
 Transform animations
 ====================
 
-Motivated by overlap in compositing.
+The `transform` CSS property lets you apply linear transform visual
+effects to an element.[^not-always-visual] In general, you can apply
+[any linear transform][transform-def] in 3D space, but I'll just cover really
+basic  2D rotations and translations. Here's an example of rotation:
+
+[^not-always-visual]: Technically it's not always just a visual effect. In
+real browsers, transformed element positions contribute to scrolling overflow.
+
+[transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
+
+    <div style="width:200px;height:200px;background:lightblue;
+                transform:rotate(10deg)">
+        Rotated ten<br>degrees clockwise
+    </div>
+
+That renders like this:
+
+<div style="width:200px;height:200px;background:lightblue;transform:rotate(10deg)">
+Rotated ten<br>degrees clockwise
+</div>
+
+The origin of the rotation is the middle-point of the layout box of the element.
+
+And here's an example of translation:
+
+    <div style="width:200px;height:200px;background:lightblue;
+                transform:translate(150px, 0px)">
+        Translated 150px horizontally
+    </div>
+
+That renders like this:
+
+<div style="width:200px;height:200px;background:lightblue;transform:translate(150px, 0px)">
+Translated 150px horizontally
+</div>
+
+Adding in support for rendering `rotate` and `translate` is not too hard: first
+just parse it:[^space-separated]
+
+[^space-separated]: The CSS transform syntax allows multiple transforms in a
+space-separated sequence; the end result is the composition of the transform.
+I won't implement that.
+
+``` {.python}
+def parse_rotation_transform(transform_str):
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find('deg)')
+    return float(transform_str[left_paren + 1:right_paren])
+
+def parse_translate_transform(transform_str):
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find(')')
+    (x_px, y_px) = \
+        transform_str[left_paren + 1:right_paren].split(",")
+    return (float(x_px[:-2]), float(y_px[:-2]))
+
+def parse_transform(transform_str):
+    if transform_str.find('translate') >= 0:
+        return (parse_translate_transform(transform_str), None)
+    elif transform_str.find('rotate') >= 0:
+        return (None, parse_rotation_transform(transform_str))
+    else:
+        return (None, None)
+```
+
+And add some code to `paint_visual_effects`:
+
+``` {.python}
+def paint_visual_effects(node, cmds, rect):
+    # ...
+    (translation, rotation) = parse_transform(
+        node.style.get("transform", ""))
+    # ...
+    save_layer = \
+    # ...
+
+    transform = Transform(
+        translation, rotation, rect, node, [save_layer])
+    # ...
+    return [transform]
+```
+TODO:verify that translation does indeed come after blending.
+
+The `Transform` display list command is pretty straightforward as well: it calls
+either the `rotate` or `translate` Skia canvas method, which are conveniently
+built-in.
+
+``` {.python expected=False}
+class Transform(DisplayItem):
+    def __init__(self, translation, rotation_degrees,
+        rect, node, cmds):
+        self.translation = translation
+        self.rotation_degrees = rotation_degrees
+        self.self_rect = rect
+        self.cmds = cmds
+
+    def draw(self, canvas, op):
+        if self.translation:
+            (x, y) = self.translation
+            canvas.save()
+            canvas.translate(x, y)
+            for cmd in self.cmds:
+                cmd.execute(canvas)
+            canvas.restore()
+        elif self.rotation_degrees != None:
+            (center_x, center_y) = center_point(self.self_rect)
+            rotation_x = self.center_x
+            rotation_y = self.center_y
+            canvas.save()
+            canvas.rotate(
+                degrees=self.rotation_degrees,
+                px=rotation_x, py=rotation_y)
+            for cmd in self.cmds:
+                cmd.execute(canvas)
+            canvas.restore()
+        else:
+            for cmd in self.cmds:
+                cmd.execute(canvas)
+```
+
+Now that we can render transforms, we also need to animate them. Similar
+to `try_numeric_animation`, add a `try_transform_animation` method:
+
+``` {.python}
+def try_transform_animation(node, old_style, new_style, tab):
+    num_frames = try_transition("transform", node, old_style, new_style)
+    if num_frames == None:
+        return None;
+
+    (old_translation, old_rotation) = parse_transform(old_style["transform"])
+    (new_translation, new_rotation) = parse_transform(new_style["transform"])
+
+    if old_rotation == None or new_rotation == None:
+        return None
+
+    change_per_frame = (new_rotation - old_rotation) / num_frames
+
+    if not node in tab.animations:
+        tab.animations[node] = {}
+    tab.animations[node]["trransform"] = RotationAnimation(
+        node, old_rotation, num_frames, change_per_frame, tab)
+
+```
 
 Implementing compositing
 ========================
