@@ -8,7 +8,7 @@ www/widgets/lab*-browser.html
 www/widgets/rt-module.js
 www/rss.xml
 www/examples/*
-www/examples/*
+!www/examples/.gitkeep
 .DS_Store
 slides
 class/
