@@ -835,7 +835,8 @@ to `try_numeric_animation`, add a `try_transform_animation` method:
 
 ``` {.python}
 def try_transform_animation(node, old_style, new_style, tab):
-    num_frames = try_transition("transform", node, old_style, new_style)
+    num_frames = try_transition("transform", node,
+    old_style, new_style)
     if num_frames == None:
         return None;
 
@@ -857,7 +858,8 @@ And `TranslateAnimation`:
 ``` {.python expected=False}
 class TranslateAnimation:
     def __init__(
-        self, node, old_translation, new_translation, num_frames, tab):
+        self, node, old_translation, new_translation,
+        num_frames, tab):
         self.node = node
         (self.old_x, self.old_y) = old_translation
         (new_x, new_y) = new_translation
@@ -873,8 +875,10 @@ class TranslateAnimation:
         if self.frame_count >= self.num_frames: return False
         self.node.style["transform"] = \
             "translate({}px,{}px)".format(
-                self.old_x + self.change_per_frame_x * self.frame_count,
-                self.old_y + self.change_per_frame_y * self.frame_count)
+                self.old_x +
+                self.change_per_frame_x * self.frame_count,
+                self.old_y +
+                self.change_per_frame_y * self.frame_count)
         self.tab.set_needs_render()
         return True
 ```
