@@ -850,7 +850,7 @@ def try_transform_animation(node, old_style, new_style, tab):
 And `TranslateAnimation`:
 
 
-``` {.python}
+``` {.python expected=False}
 class TranslateAnimation:
     def __init__(
         self, node, old_translation, new_translation, num_frames, tab):
