@@ -490,6 +490,7 @@ class InlineLayout:
     def layout(self):
         self.width = style_length(
             self.node, "width", self.parent.width)
+
         self.x = self.parent.x
 
         if self.previous:
