@@ -490,7 +490,6 @@ class InlineLayout:
     def layout(self):
         self.width = style_length(
             self.node, "width", self.parent.width)
-
         self.x = self.parent.x
 
         if self.previous:
@@ -1663,6 +1662,8 @@ def do_compositing(display_list, skia_context, current_composited_layers):
             composited_layers.append(layer)
 
     return composited_layers
+
+USE_GPU = True
 
 class Browser:
     def __init__(self):

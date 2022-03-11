@@ -1,4 +1,4 @@
-Tests for WBE Chapter 11
+Tests for WBE Chapter 12
 ========================
 
 This file contains tests for Chapter 12 (Scheduling and Threading).
