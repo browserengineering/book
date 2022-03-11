@@ -338,13 +338,11 @@ def try_numeric_animation(node, name,
         old_value = float(old_style[name])
         new_value = float(new_style[name])
 
-    change_per_frame = (new_value - old_value) / num_frames
-
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value,
-        num_frames, change_per_frame, tab)
+        node, name, is_px, old_value, new_value,
+        num_frames, tab)
 ```
 
 [^more-units]: In a real browsers, there are a [lot more][units] units to
@@ -362,13 +360,13 @@ returns `False` if the animation has ended.
 class NumericAnimation:
     def __init__(
         self, node, property_name, is_px,
-        old_value, num_frames, change_per_frame, tab):
+        old_value, new_value, num_frames, tab):
         self.node = node
         self.property_name = property_name
         self.is_px = is_px
         self.old_value = old_value
         self.num_frames = num_frames
-        self.change_per_frame = change_per_frame
+        self.change_per_frame = (new_value - old_value) / num_frames
         self.tab = tab
         self.frame_count = 0
         self.animate()
@@ -717,9 +715,7 @@ with its *side-effects for overlapping content*. To understand the concept,
 consider this simple example of a blue square overlapped by an green one.
 
 <div style="width:200px;height:200px;background-color:lightblue"></div>
-<div style="width:200px;height:200px;
-            background-color:lightgreen;position:relative;
-            top:-100px;left:100px;"></div>
+<div style="width:200px;height:200px;background-color:lightgreen;transform:translate(100px, -100px"></div>
 
 Suppose we want to animate opacity on the blue square, and so allocate a
 `skia.Surface` and GPU texture for it. But we don't want to animate the green
@@ -740,13 +736,11 @@ when allocating a surface for animated content, we'll have to check the
 remainder of the display list for potential overlaps.
 
 We're now ready to start digging into the compositing algorithm and how to
-implement it, except for one thing: there is no way in our current browser
-for content to overlap! The example in this section used `position:relative`,
-`top` and `left`, CSS properties our browser doesn't have. So to investigate
-overlap, we *could* just add those properties. But overlap can also be
-caused by CSS transform, and in fact transforms are a very common form of
-visual effect animation on websites. So let's implement that and then come
-back to implementing compositing.
+implement it, except for one thing: there is no way in our current browser for
+content to overlap! The example in this section used the `transform` CSS
+property, which is not yet present in our browser. Because of that, and also
+because transforms are a common visual effect animation on websites, let's
+implement that and then come back to implementing compositing.
 
 ::: {.further}
 TODO: describe the problem of layer explosion. Explain how this can actually
@@ -759,66 +753,37 @@ Transform animations
 The `transform` CSS property lets you apply linear transform visual
 effects to an element.[^not-always-visual] In general, you can apply
 [any linear transform][transform-def] in 3D space, but I'll just cover really
-basic  2D rotations and translations. Here's an example of rotation:
+basic 2D translations. Here's HTML for the overlap example mentioned in the
+last section:
 
 [^not-always-visual]: Technically it's not always just a visual effect. In
 real browsers, transformed element positions contribute to scrolling overflow.
 
 [transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
-    <div style="width:200px;height:200px;background:lightblue;
-                transform:rotate(10deg)">
-        Rotated ten<br>degrees clockwise
-    </div>
+    <div style="width:200px;height:200px;
+                background-color:lightblue"></div>
+    <div style="width:200px;height:200px;
+                background-color:lightgreen;
+                transform:translate(100px, -100px"></div>
 
-That renders like this:
-
-<div style="width:200px;height:200px;background:lightblue;transform:rotate(10deg)">
-Rotated ten<br>degrees clockwise
-</div>
-
-The origin of the rotation is the middle-point of the layout box of the element.
-
-And here's an example of translation:
-
-    <div style="width:200px;height:200px;background:lightblue;
-                transform:translate(150px, 0px)">
-        Translated 150px horizontally
-    </div>
-
-That renders like this:
-
-<div style="width:200px;height:200px;background:lightblue;transform:translate(150px, 0px)">
-Translated 150px horizontally
-</div>
-
-Adding in support for rendering `rotate` and `translate` is not too hard: first
+Adding in support for this kind of transform is not too hard: first
 just parse it:[^space-separated]
 
 [^space-separated]: The CSS transform syntax allows multiple transforms in a
 space-separated sequence; the end result is the composition of the transform.
-I won't implement that.
+I won't implement that, just like I didn't implement many other parts of the
+standardized transform syntax.
 
 ``` {.python}
-def parse_rotation_transform(transform_str):
-    left_paren = transform_str.find('(')
-    right_paren = transform_str.find('deg)')
-    return float(transform_str[left_paren + 1:right_paren])
-
-def parse_translate_transform(transform_str):
+def parse_transform(transform_str):
+    if transform_str.find('translate') < 0:
+        return None
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
     (x_px, y_px) = \
         transform_str[left_paren + 1:right_paren].split(",")
     return (float(x_px[:-2]), float(y_px[:-2]))
-
-def parse_transform(transform_str):
-    if transform_str.find('translate') >= 0:
-        return (parse_translate_transform(transform_str), None)
-    elif transform_str.find('rotate') >= 0:
-        return (None, parse_rotation_transform(transform_str))
-    else:
-        return (None, None)
 ```
 
 And add some code to `paint_visual_effects`:
@@ -826,29 +791,25 @@ And add some code to `paint_visual_effects`:
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    (translation, rotation) = parse_transform(
-        node.style.get("transform", ""))
+    translation = parse_transform(node.style.get("transform", ""))
     # ...
     save_layer = \
     # ...
 
-    transform = Transform(
-        translation, rotation, rect, node, [save_layer])
+    transform = Transform(translation, rect, node, [save_layer])
     # ...
     return [transform]
 ```
 TODO:verify that translation does indeed come after blending.
 
 The `Transform` display list command is pretty straightforward as well: it calls
-either the `rotate` or `translate` Skia canvas method, which are conveniently
-built-in.
+the `translate` Skia canvas method, which s conveniently built-in.
 
 ``` {.python expected=False}
 class Transform(DisplayItem):
     def __init__(self, translation, rotation_degrees,
         rect, node, cmds):
         self.translation = translation
-        self.rotation_degrees = rotation_degrees
         self.self_rect = rect
         self.cmds = cmds
 
@@ -857,17 +818,6 @@ class Transform(DisplayItem):
             (x, y) = self.translation
             canvas.save()
             canvas.translate(x, y)
-            for cmd in self.cmds:
-                cmd.execute(canvas)
-            canvas.restore()
-        elif self.rotation_degrees != None:
-            (center_x, center_y) = center_point(self.self_rect)
-            rotation_x = self.center_x
-            rotation_y = self.center_y
-            canvas.save()
-            canvas.rotate(
-                degrees=self.rotation_degrees,
-                px=rotation_x, py=rotation_y)
             for cmd in self.cmds:
                 cmd.execute(canvas)
             canvas.restore()
@@ -885,19 +835,44 @@ def try_transform_animation(node, old_style, new_style, tab):
     if num_frames == None:
         return None;
 
-    (old_translation, old_rotation) = parse_transform(old_style["transform"])
-    (new_translation, new_rotation) = parse_transform(new_style["transform"])
+    old_translation = parse_transform(old_style["transform"])
+    new_translation = parse_transform(new_style["transform"])
 
-    if old_rotation == None or new_rotation == None:
+    if old_translation == None or new_translation == None:
         return None
-
-    change_per_frame = (new_rotation - old_rotation) / num_frames
 
     if not node in tab.animations:
         tab.animations[node] = {}
-    tab.animations[node]["trransform"] = RotationAnimation(
-        node, old_rotation, num_frames, change_per_frame, tab)
+    tab.animations[node]["transform"] = TranslateAnimation(
+        node, old_translation, new_translation, num_frames, tab)
+```
 
+And `TranslateAnimation`:
+
+
+``` {.python expected=False}
+class TranslateAnimation:
+    def __init__(
+        self, node, old_translation, new_translation, num_frames, tab):
+        self.node = node
+        (self.old_x, self.old_y) = old_translation
+        (new_x, new_y) = new_translation
+        self.change_per_frame_x = (new_x - self.old_x) / num_frames
+        self.change_per_frame_y = (new_y - self.old_y) / num_frames
+        self.num_frames = num_frames
+        self.tab = tab
+        self.frame_count = 0
+        self.animate()
+
+    def animate(self):
+        self.frame_count += 1
+        if self.frame_count >= self.num_frames: return False
+        self.node.style["transform"] = \
+            "translate({}px,{}px)".format(
+                self.old_x + self.change_per_frame_x * self.frame_count,
+                self.old_y + self.change_per_frame_y * self.frame_count)
+        self.tab.set_needs_render()
+        return True
 ```
 
 Implementing compositing

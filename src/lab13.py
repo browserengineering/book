@@ -118,12 +118,10 @@ class DisplayItem:
                 noop=(" <no-op>" if self.is_noop() else ""))
 
 class Transform(DisplayItem):
-    def __init__(self, translation, rotation_degrees,
+    def __init__(self, translation,
         rect, node, cmds):
         self.translation = translation
-        self.rotation_degrees = rotation_degrees
-        assert translation == None or rotation_degrees == None
-        should_transform = translation != None or rotation_degrees != None
+        should_transform = translation != None
         self.self_rect = rect
         my_bounds = self.compute_bounds(rect, cmds, should_transform)
 
@@ -134,18 +132,11 @@ class Transform(DisplayItem):
     def draw(self, canvas, op):
         if self.is_noop():
             op()
-        elif self.translation:
+        else:
+            assert self.translation
             (x, y) = self.translation
             canvas.save()
             canvas.translate(x, y)
-            op()
-            canvas.restore()
-        else:
-            (center_x, center_y) = center_point(self.self_rect)
-            canvas.save()
-            canvas.rotate(
-                degrees=self.rotation_degrees,
-                px=center_x, py=center_y)
             op()
             canvas.restore()
 
@@ -159,10 +150,6 @@ class Transform(DisplayItem):
         if self.translation:
             (x, y) = self.translation
             matrix.setTranslate(x, y)
-        else:
-            (center_x, center_y) = center_point(self.self_rect)
-            matrix.setRotate(
-                self.rotation_degrees, center_x, center_y)
         return matrix.mapRect(rect)
 
     def compute_bounds(self, rect, cmds, should_transform):
@@ -173,17 +160,14 @@ class Transform(DisplayItem):
     def copy(self, other):
         assert other.item_type == self.item_type
         self.translation = other.translation
-        self.rotation_degrees = other.rotation_degrees
-        should_transform = self.translation != None or self.rotation_degrees != None
+        should_transform = self.translation != None
         self.rect = self.compute_bounds(self.rect, self.get_cmds(), should_transform)
 
     def __repr__(self):
         if self.is_noop():
             return "Transform(<no-op>)"
-        elif self.translation:
-            return "Transform(translate({}, {}))".format(self.translation)
         else:
-            return "Transform(rotate({}))".format(self.rotation_degrees)
+            return "Transform(translate({}, {}))".format(self.translation)
 
 class DrawRRect(DisplayItem):
     def __init__(self, rect, radius, color):
@@ -320,25 +304,14 @@ class SaveLayer(DisplayItem):
         else:
             return "SaveLayer(alpha={})".format(self.sk_paint.getAlphaf())
 
-def parse_rotation_transform(transform_str):
-    left_paren = transform_str.find('(')
-    right_paren = transform_str.find('deg)')
-    return float(transform_str[left_paren + 1:right_paren])
-
-def parse_translate_transform(transform_str):
+def parse_transform(transform_str):
+    if transform_str.find('translate') < 0:
+        return None
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
     (x_px, y_px) = \
         transform_str[left_paren + 1:right_paren].split(",")
     return (float(x_px[:-2]), float(y_px[:-2]))
-
-def parse_transform(transform_str):
-    if transform_str.find('translate') >= 0:
-        return (parse_translate_transform(transform_str), None)
-    elif transform_str.find('rotate') >= 0:
-        return (None, parse_rotation_transform(transform_str))
-    else:
-        return (None, None)
 
 USE_COMPOSITING = True
 
@@ -787,8 +760,7 @@ def style_length(node, style_name, default_value):
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
     blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
-    (translation, rotation) = parse_transform(
-        node.style.get("transform", ""))
+    translation = parse_transform(node.style.get("transform", ""))
 
     border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
@@ -806,8 +778,7 @@ def paint_visual_effects(node, cmds, rect):
                 should_clip=needs_clip),
         ], should_save=needs_blend_isolation)
 
-    transform = Transform(
-        translation, rotation, rect, node, [save_layer])
+    transform = Transform(translation, rect, node, [save_layer])
 
     if transform.needs_compositing() or save_layer.needs_compositing:
         node.transform = transform
@@ -978,18 +949,16 @@ def try_transform_animation(node, old_style, new_style, tab):
     if num_frames == None:
         return None;
 
-    (old_translation, old_rotation) = parse_transform(old_style["transform"])
-    (new_translation, new_rotation) = parse_transform(new_style["transform"])
+    old_translation = parse_transform(old_style["transform"])
+    new_translation = parse_transform(new_style["transform"])
 
-    if old_rotation == None or new_rotation == None:
+    if old_translation == None or new_translation == None:
         return None
-
-    change_per_frame = (new_rotation - old_rotation) / num_frames
 
     if not node in tab.animations:
         tab.animations[node] = {}
-    tab.animations[node]["trransform"] = RotationAnimation(
-        node, old_rotation, num_frames, change_per_frame, tab)
+    tab.animations[node]["transform"] = TranslateAnimation(
+        node, old_translation, new_translation, num_frames, tab)
 
 def try_numeric_animation(node, name,
     old_style, new_style, tab, is_px):
@@ -1004,13 +973,11 @@ def try_numeric_animation(node, name,
         old_value = float(old_style[name])
         new_value = float(new_style[name])
 
-    change_per_frame = (new_value - old_value) / num_frames
-
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value,
-        num_frames, change_per_frame, tab)
+        node, name, is_px, old_value, new_value,
+        num_frames, tab)
 
 def style(node, rules, tab):
     old_style = None
@@ -1040,13 +1007,15 @@ def style(node, rules, tab):
     for child in node.children:
         style(child, rules, tab)
 
-class RotationAnimation:
+class TranslateAnimation:
     def __init__(
-        self, node, old_rotation, num_frames, change_per_frame, tab):
+        self, node, old_translation, new_translation, num_frames, tab):
         self.node = node
-        self.old_rotation = old_rotation
+        (self.old_x, self.old_y) = old_translation
+        (new_x, new_y) = new_translation
+        self.change_per_frame_x = (new_x - self.old_x) / num_frames
+        self.change_per_frame_y = (new_y - self.old_y) / num_frames
         self.num_frames = num_frames
-        self.change_per_frame = change_per_frame
         self.tab = tab
         self.frame_count = 0
         self.animate()
@@ -1055,21 +1024,22 @@ class RotationAnimation:
         self.frame_count += 1
         if self.frame_count >= self.num_frames: return False
         self.node.style["transform"] = \
-            "rotate({}deg)".format(
-                self.old_rotation + self.change_per_frame * self.frame_count)
+            "translate({}px,{}px)".format(
+                self.old_x + self.change_per_frame_x * self.frame_count,
+                self.old_y + self.change_per_frame_y * self.frame_count)
         self.tab.set_needs_animation(self.node, "transform", True)
         return True
 
 class NumericAnimation:
     def __init__(
         self, node, property_name, is_px,
-        old_value, num_frames, change_per_frame, tab):
+        old_value, new_value, num_frames, tab):
         self.node = node
         self.property_name = property_name
         self.is_px = is_px
         self.old_value = old_value
         self.num_frames = num_frames
-        self.change_per_frame = change_per_frame
+        self.change_per_frame = (new_value - old_value) / num_frames
         self.tab = tab
         self.frame_count = 0
         self.animate()
