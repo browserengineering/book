@@ -715,9 +715,7 @@ with its *side-effects for overlapping content*. To understand the concept,
 consider this simple example of a blue square overlapped by an green one.
 
 <div style="width:200px;height:200px;background-color:lightblue"></div>
-<div style="width:200px;height:200px;
-            background-color:lightgreen;position:relative;
-            top:-100px;left:100px;"></div>
+<div style="width:200px;height:200px;background-color:lightgreen;transform:translate(100px, -100px"></div>
 
 Suppose we want to animate opacity on the blue square, and so allocate a
 `skia.Surface` and GPU texture for it. But we don't want to animate the green
@@ -740,9 +738,9 @@ remainder of the display list for potential overlaps.
 We're now ready to start digging into the compositing algorithm and how to
 implement it, except for one thing: there is no way in our current browser for
 content to overlap! The example in this section used the `transform` CSS
-property, which is not yet present in our browser. Not only that, but
-transforms are a common visual effect animation on websites. So let's implement
-that and then come back to implementing compositing.
+property, which is not yet present in our browser. Because of that, and also
+because transforms are a common visual effect animation on websites, let's
+implement that and then come back to implementing compositing.
 
 ::: {.further}
 TODO: describe the problem of layer explosion. Explain how this can actually
