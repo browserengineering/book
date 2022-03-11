@@ -537,7 +537,11 @@ by caching font data in the GPU.
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
 
 Ok, now for the code. First you'll need to import code for OpenGL (just for
-one constant actually):
+one constant actually). Install the library:
+
+    pip3 install PyOpenGL
+
+and then import it:
 
 ``` {.python}
 from OpenGL import GL

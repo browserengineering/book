@@ -1664,6 +1664,8 @@ def do_compositing(display_list, skia_context, current_composited_layers):
 
     return composited_layers
 
+USE_GPU = True
+
 class Browser:
     def __init__(self):
         if USE_GPU:
