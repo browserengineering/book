@@ -738,7 +738,7 @@ with its *side-effects for overlapping content*. To understand the concept,
 consider this simple example of a blue square overlapped by an green one.
 
 <div style="width:200px;height:200px;background-color:lightblue"></div>
-<div style="width:200px;height:200px;background-color:lightgreen;transform:translate(100px, -100px"></div>
+<div style="width:200px;height:200px;background-color:lightgreen;transform:translate(100px, -100px)"></div>
 
 Suppose we want to animate opacity on the blue square, and so allocate a
 `skia.Surface` and GPU texture for it. But we don't want to animate the green
@@ -788,7 +788,7 @@ real browsers, transformed element positions contribute to scrolling overflow.
                 background-color:lightblue"></div>
     <div style="width:200px;height:200px;
                 background-color:lightgreen;
-                transform:translate(100px, -100px"></div>
+                transform:translate(100px, -100px)"></div>
 
 Adding in support for this kind of transform is not too hard: first
 just parse it:[^space-separated]
@@ -901,6 +901,14 @@ class TranslateAnimation:
         self.tab.set_needs_render()
         return True
 ```
+
+You should now be able to create this animation with your browser:
+
+<iframe src="examples/example13-transform-transition.html" style="width:350px;height:450px">
+</iframe>
+(click [here](examples/example13-transform-transition.html) to load the example in
+your browser)
+
 
 Implementing compositing
 ========================
