@@ -1004,13 +1004,11 @@ def try_numeric_animation(node, name,
         old_value = float(old_style[name])
         new_value = float(new_style[name])
 
-    change_per_frame = (new_value - old_value) / num_frames
-
     if not node in tab.animations:
         tab.animations[node] = {}
     tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value,
-        num_frames, change_per_frame, tab)
+        node, name, is_px, old_value, new_value,
+        num_frames, tab)
 
 def style(node, rules, tab):
     old_style = None
@@ -1063,13 +1061,13 @@ class RotationAnimation:
 class NumericAnimation:
     def __init__(
         self, node, property_name, is_px,
-        old_value, num_frames, change_per_frame, tab):
+        old_value, new_value, num_frames, tab):
         self.node = node
         self.property_name = property_name
         self.is_px = is_px
         self.old_value = old_value
         self.num_frames = num_frames
-        self.change_per_frame = change_per_frame
+        self.change_per_frame = (new_value - old_value) / num_frames
         self.tab = tab
         self.frame_count = 0
         self.animate()
