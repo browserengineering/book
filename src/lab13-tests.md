@@ -40,7 +40,7 @@ parameter otherwise.
     >>> lab13.style_length(body, "height", 12)
     12
 
-The div in this example has "width" and `height` set to `30px` and `40px`
+The div in this example has `width` and `height` set to `30px` and `40px`
 respectively.
 
     >>> lab13.style_length(div, "width", 13)
