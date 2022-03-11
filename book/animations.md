@@ -91,7 +91,8 @@ animation to the layout tree.
 It's straightforward to imagine how this might work for opacity: define
 some HTML that you want to animate, then interpolate the `opacity` CSS property
 in JavaScript smoothly from one value to another. Here's an example that
-animates from 1 to 0.1, over 120 frames (about two seconds).
+animates from 1 to 0.1, over 120 frames (about two seconds), then back up
+to 1 for 120 more frames, and repeats.
 
 ``` {.html file=example-opacity-html}
 <div>Test</div>
@@ -102,19 +103,32 @@ var start_value = 1;
 var end_value = 0.1;
 var num_animation_frames = 120;
 var frames_remaining = num_animation_frames;
+var go_down = true;
 function animate() {
-    if (frames_remaining == 0) return;
     var div = document.querySelectorAll("div")[0];
     var percent_remaining = frames_remaining / num_animation_frames;
-    div.style = "opacity:" +
-        (percent_remaining * start_value +
-        (1 - percent_remaining) * end_value);
+    if (go_down) {
+        div.style = "opacity:" +
+            (percent_remaining * start_value +
+                (1 - percent_remaining) * end_value);
+    } else {
+        div.style = "opacity:" +
+            ((1-percent_remaining) * start_value +
+                percent_remaining * end_value);
+    }
     frames_remaining--;
+    if (frames_remaining < 0) {
+        frames_remaining = num_animation_frames;
+        go_down = !go_down;
+    }
     requestAnimationFrame(animate);
 }
 requestAnimationFrame(animate);
 ```
 
+Here's how it renders:
+
+<iframe src="examples/example13-opacity-raf.html"></iframe>
 (click [here](examples/example13-opacity-raf.html) to load the example in
 your browser)
 
@@ -233,7 +247,7 @@ overflow, which needs to be dealt with in one way or another.]
 	This is a test line of text for a width animation.
 </div>
 ```
-
+<iframe src="examples/example13-width-raf.html" style="width: 450px"></iframe>
 (click [here](examples/example13-width-raf.html) to load the example in
 your browser)
 
@@ -242,14 +256,24 @@ var start_value = 400;
 var end_value = 100;
 var num_animation_frames = 120;
 var frames_remaining = num_animation_frames;
+var go_down = true;
 function animate() {
-    if (frames_remaining == 0) return;
     var div = document.querySelectorAll("div")[0];
     var percent_remaining = frames_remaining / num_animation_frames;
-    div.style = "background-color:lightblue;width:" +
-        (percent_remaining * start_value +
-        (1 - percent_remaining) * end_value) + "px";
+    if (go_down) {
+        div.style = "background-color:lightblue;width:" +
+            (percent_remaining * start_value +
+            (1 - percent_remaining) * end_value) + "px";
+    } else {
+        div.style = "background-color:lightblue;width:" +
+            ((1 - percent_remaining) * start_value +
+             percent_remaining * end_value) + "px";
+    }
     frames_remaining--;
+    if (frames_remaining < 0) {
+        frames_remaining = num_animation_frames;
+        go_down = !go_down;
+    }
     requestAnimationFrame(animate);
 }
 requestAnimationFrame(animate);
@@ -274,9 +298,10 @@ This is much more convenient for website authors than writing a bunch of
 JavaScript, and also doesn't force them to account for each and every way in
 which the styles can change.
 
-Click [here](examples/example13-opacity-transition.html) to see the `opacity`
-example with a CSS transition, or
-[here](examples/example13-width-transition.html) for the `width` example.
+<iframe src="examples/example13-opacity-transition.html"></iframe>
+(click [here](examples/example13-opacity-raf.html) to load the example in
+your browser; [here](examples/example13-width-transition.html) is the width
+animation example)
 
 Implement this CSS property. Start with a quick helper method that returns the
 duration of a transition if it was set, and `None` otherwise. This requires
@@ -354,7 +379,11 @@ Next, implement `NumericAnimation`. This class just encapsulates a bunch
 of parameters, and has a single `animate` method. `animate` is in charge of
 advancing the animation by one frame. It's the equivalent of the
 `requestAnimationFrame` callback in a JavaScript-driven animation; it also
-returns `False` if the animation has ended.
+returns `False` if the animation has ended.[^animation-curve]
+
+[^animation-curve]: Note that this class implements a linear animation
+interpretation (also called an *easing function*. By default, real browsers
+use a non-linear easing function, so your demo will not look quite the same.
 
 ``` {.python expected=False}
 class NumericAnimation:
@@ -470,6 +499,10 @@ time spent). That's not really acceptable, so let's turn our attention to how
 to dramatically speed up rendering for these animations.
 
 [profiling]: http://localhost:8001/scheduling.html#profiling-rendering
+
+::: {.further}
+TODO: explain css animations, which allow js at all if you want.
+:::
 
 GPU acceleration
 ================
@@ -719,7 +752,7 @@ with its *side-effects for overlapping content*. To understand the concept,
 consider this simple example of a blue square overlapped by an green one.
 
 <div style="width:200px;height:200px;background-color:lightblue"></div>
-<div style="width:200px;height:200px;background-color:lightgreen;transform:translate(100px, -100px"></div>
+<div style="width:200px;height:200px;background-color:lightgreen;transform:translate(100px, -100px)"></div>
 
 Suppose we want to animate opacity on the blue square, and so allocate a
 `skia.Surface` and GPU texture for it. But we don't want to animate the green
@@ -769,7 +802,7 @@ real browsers, transformed element positions contribute to scrolling overflow.
                 background-color:lightblue"></div>
     <div style="width:200px;height:200px;
                 background-color:lightgreen;
-                transform:translate(100px, -100px"></div>
+                transform:translate(100px, -100px)"></div>
 
 Adding in support for this kind of transform is not too hard: first
 just parse it:[^space-separated]
@@ -835,7 +868,8 @@ to `try_numeric_animation`, add a `try_transform_animation` method:
 
 ``` {.python}
 def try_transform_animation(node, old_style, new_style, tab):
-    num_frames = try_transition("transform", node, old_style, new_style)
+    num_frames = try_transition("transform", node,
+    old_style, new_style)
     if num_frames == None:
         return None;
 
@@ -857,7 +891,8 @@ And `TranslateAnimation`:
 ``` {.python expected=False}
 class TranslateAnimation:
     def __init__(
-        self, node, old_translation, new_translation, num_frames, tab):
+        self, node, old_translation, new_translation,
+        num_frames, tab):
         self.node = node
         (self.old_x, self.old_y) = old_translation
         (new_x, new_y) = new_translation
@@ -873,11 +908,21 @@ class TranslateAnimation:
         if self.frame_count >= self.num_frames: return False
         self.node.style["transform"] = \
             "translate({}px,{}px)".format(
-                self.old_x + self.change_per_frame_x * self.frame_count,
-                self.old_y + self.change_per_frame_y * self.frame_count)
+                self.old_x +
+                self.change_per_frame_x * self.frame_count,
+                self.old_y +
+                self.change_per_frame_y * self.frame_count)
         self.tab.set_needs_render()
         return True
 ```
+
+You should now be able to create this animation with your browser:
+
+<iframe src="examples/example13-transform-transition.html" style="width:350px;height:450px">
+</iframe>
+(click [here](examples/example13-transform-transition.html) to load the example in
+your browser)
+
 
 Implementing compositing
 ========================
