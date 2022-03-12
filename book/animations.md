@@ -939,7 +939,7 @@ to that class; here's `SaveLayer` for example:
 [^debug]: This code will also be very useful to you while debugging your
 compositing implementation.
 
-``` {.python}
+``` {.python expected=False}
 class SaveLayer:
     def __init__(self, sk_paint, node, cmds,
         should_save=True, should_paint_cmds=True):
@@ -949,7 +949,7 @@ class SaveLayer:
 
 Then add a `repr_recursive` method to `DisplayItem`:
 
-``` {.python}
+``` {.python expected=False}
 class DisplayItem:
     def __init__(cmds):
         self.cmds = cmds
