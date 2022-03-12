@@ -13,11 +13,10 @@ var go_down = false;
 var div = document.querySelectorAll("div")[0];
 function go() {
 	go_down = !go_down;
-	console.log(go_down);
 	if (go_down)
 		div.style = "background-color:lightblue;width:100px";
 	else
 		div.style = "background-color:lightblue;width:400px";
-	setTimeout(go, 2000);
+	setTimeout(go, 2100);
 }
 

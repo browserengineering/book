@@ -13,6 +13,9 @@ book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets examples
 blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
 widgets: $(patsubst lab%,www/widgets/lab%-browser.html,$(WIDGET_LAB_CODE)) $(patsubst lab%,www/widgets/lab%.js,$(WIDGET_LAB_CODE))
+examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) \
+	$(patsubst %,www/examples/example%.js,$(EXAMPLE_JS)) \
+	$(patsubst %,www/examples/example%.css,$(EXAMPLE_CSS))
 
 lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json
@@ -38,16 +41,14 @@ www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json www/widgets/lab%.js
 	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/index.md -o $@
 
-examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) $(patsubst %,www/examples/example%.js,$(EXAMPLE_JS)) $(patsubst %,www/examples/example%.css,$(EXAMPLE_CSS))
-
 www/examples/%.html: src/%.html
-	cp src/$*.html www/examples
+	cp $< www/examples
 
-www/examples/%.js:
-	cp src/$*.js www/examples
+www/examples/%.js: src/%.js
+	cp $< www/examples
 
-www/examples/%.css:
-	cp src/$*.css www/examples
+www/examples/%.css: src/%.css
+	cp $< www/examples
 
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@

@@ -61,6 +61,8 @@ def parse_color(color):
         return skia.ColorBLUE
     elif color == "gray":
         return skia.ColorGRAY
+    elif color == "lightgreen":
+        return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
     else:
         return skia.ColorBLACK
 
