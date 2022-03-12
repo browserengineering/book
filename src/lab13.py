@@ -1642,7 +1642,8 @@ def get_composited_layer(
     layer.init(chunk)
     return (layer, current_index)
 
-def do_compositing(display_list, skia_context, current_composited_layers):
+def do_compositing(display_list, skia_context,
+    current_composited_layers):
     chunks = display_list_to_paint_chunks(display_list)
     composited_layers = []
     current_index = 0
