@@ -103,7 +103,7 @@ class DisplayItem:
             if self.cmds:
                 for cmd in self.cmds:
                    inner += cmd.repr_recursive(indent, include_noop)
-                return inner
+            return inner
         else:
             if self.cmds:
                 for cmd in self.cmds:
