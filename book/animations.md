@@ -987,7 +987,7 @@ both opacity *and* a transform.
 Putting the `DrawText` into its own surface sounds simple enough: just make
 a surface and raster that sub-piece of the display list into it, then
 draw that surface into its "parent" surface. In this example, the resulting
-code to draw the child surface into its parent should end up being something like this:
+code to draw the child surface should be something like this:
 
     def draw_into_parent(parent_canvas, child_surface, sk_paint,
         surface_offset_x, surface_offset_y):
@@ -1000,9 +1000,10 @@ code to draw the child surface into its parent should end up being something lik
 Let's unpack what is going on in this code. First we create a new conceptual
 "surface" on the Skia stack via `saveLayer`, then draw the `child_surface`
 we've created and stored, then finally `restore`. Observe how this is
-*identical* to the way we described how it conceptually works *within* Skia
+*exactly* the way we described how it conceptually works *within* Skia
 in [Chapter 11](visual-effects.html#blending-and-stacking). The only
-difference is that here it's explicit that there is a `skia.Surface`.
+difference is that here it's explicit that there is a `skia.Surface` between
+the `saveLayer` and the `restore`.
 Note also how we are using the `draw` method on `skia.Surface`, the very same
 method we already use in `Browser.draw` to draw the surface to the screen. In
 another part of [Chapter 11](visual-effects.html#browser-compositing) we called
@@ -1012,40 +1013,85 @@ situations.
 
 To summarize another way: what we're trying to implement is a way to (a)
 make explicit surfaces under `SaveLayer` calls, and (b) generalize the
-approach that creates `tab_surface` and `chrome_surface` into a list of
+`tab_surface`/`chrome_surface`  to a list of
 potentially many surfaces. Let's do that. But to get there I'll have to
 introduce multiple new concepts that are tricky to understand. Before we
 get into the ins and outs of them, let's first go through what they are and
 how they will be used.
 
 * `PaintChunk`: this will be a new class that represents a contiguous slice
-of the display list. Ths purpose of this class is to group together a bunch
-of `DisplayItem`s that don't need composited animations, and can therefore
-raster into the same surface. Each `DisplayItem` is in exactly one
-`PaintChunk`. We'll do the overlap testing mentioned a couple of sections back
-on `PaintChunk`s.
+  of the display list.Each `DisplayItem` is in exactly one `PaintChunk`. We'll
+  do the overlap testing
+  mentioned a couple of sections back on `PaintChunk`s, and the overlap testing
+  will be done in *absolute space*.
+  *Viewport space* is the coordinate space of `tab_surface`^[In other words, the
+  (0, 0) position of this space is the top-left pixel of `tab_surface`(which may
+  be offscreen due to scrolling.] To support overlpa testing, each `PaintChunk`
+  will have a `screen_bounds` method.
 
-TODO: can we optimize away PaintLayer to simplify the code?
+  Ths purpose of this class is twofold:
+    1. Group together a bunch of `DisplayItem`s that don't need composited
+    animations, and can therefore raster into the same surface.
+
+    2. *Flatten* the recursive hierarchy of the display list into a single
+    list. This is very ipmortant in terms of making the compositing algorithm
+    simple to implement and understand.
 
 * `CompositedLayer`: a class that encapsulates a `skia.Surface` into which some
   of the display list will raster, plus some parameters indicating how to draw
   them to the screen. You can see from the example above that we'll often need
   a `skia.Paint` and x/y offset; in fact we may need a whole sequence of paints
   and offsets, if the `CompositedLayer` represents content underneath multiple
-  visual effects.
+  nested visual effects.
 
 The sequence of actions for the browser thread will be:
 
-1. Convert the display list to a *list* of `PaintChunk`s (sorted by the order
-they draw to the screen, just like the display list.
+1. Convert the display list to a *list* of `PaintChunk`s (and sorted by the
+order they draw to the screen, just like the display list).
 
 2. Determine the list of `CompositedLayers` from the paint chunks, creating
 one `CompositedLayer` for each animating visual effect and one for each
-time a `PaintChunks` overlaps an earlier `CompositedLayer` that is animating.
+time a `PaintChunk` overlaps an earlier `CompositedLayer` that is animating.
 Multiple `PaintChunk`s can be present in a single `CompositedLayer`.
 The list of `CompositedLayer`s will also be in order of drawing to the screen,
 and each will have a `draw` method that executes the visual effects for that
 `CompositedLayer` (including any visual effect that is animating).
+
+Here is the algorithm we'll use. It loops over the list of paint chunks and
+allocates a new `CompositedLayer` if it is animating a visual effect, or if
+it overlaps another layer that is doing so. The `can_merge` method on a
+`CompositedLayer` just checks whether the layer is *not* animating
+animating anything^[i.e., it is only a `CompositedLayer` because of overlap
+with something earlier] *and* the chunk does not require animation.
+
+``` {.python}
+def do_compositing(display_list, skia_context,
+    current_composited_layers):
+    chunks = display_list_to_paint_chunks(display_list)
+    composited_layers = []
+    current_index = 0
+    for chunk in chunks:
+        placed = False
+        for layer in reversed(composited_layers):
+            if layer.can_merge(chunk):
+                layer.append(chunk)
+                placed = True
+                break
+            elif layer.overlaps(chunk.screen_bounds()):
+                (layer, current_index) = get_composited_layer(
+                    chunk, current_composited_layers, current_index,
+                    skia_context)
+                composited_layers.append(layer)
+                placed = True
+                break
+        if not placed:
+            (layer, current_index) = get_composited_layer(
+                chunk, current_composited_layers, current_index,
+                skia_context)
+            composited_layers.append(layer)
+
+    return composited_layers
+```
 
 3. Draw the `CompositedLayer`s to the screen. This step will be very easy,
 since steps 1 and 2 do all the heavy lifting. To prove it, here is the code
@@ -1063,6 +1109,43 @@ class Browser:
             for composited_layer in self.composited_layers:
                 composited_layer.draw(canvas, draw_offset)
 ```
+
+::: {.further}
+Why is it that flattening a recursive display list into `PaintChunks` is
+possible? After all, visual effects in the DOM really are nested.
+
+The answer is that the `PaintChunk` concept is indeed sound for the purpose
+of overlap testing, but the implementation of `Browser.draw` in this section is
+incorrect for the case of nested visual effects (such as if there is a
+composited animation on a DOM element underneath another one). To fix it
+requires determining the necessary "draw hierarchy" of `CompositedLayer`s into
+a tree based on their visual effect nesting, and allocating intermediate
+GPU textures called *render surfaces* for each interal node of this tree.
+
+A naive implementation of this tree (allocating one node for each visual effect)
+is not too hard to implement, but each additional render surface requires a
+*lot* more memory and slows down draw a bit more (this might a good time to
+ re-read the start of the [GPU acceleration](#gpu-acceleration) section). So
+ real browsers analyze the visual effect tree to determine which ones really
+ need render surfaces, and which don't. Opacity, for example, often doesn't
+ need a render surface, but opacity with at least two descendant
+ `CompositedLayer`s does.[^only-overlapping] The reason is that opacity has to
+ be applied *atomically* to all of the content under it; if it was applied
+ separately to each of the child `CompositedLayer`s, the blending result on the
+ screen would be incorrect.
+
+[^only-overlapping]: Actually, only if there are at least two children *and*
+some of them overlap each other. Can you see why we can avoid the render surface
+if there is no overlap?
+
+For more details and informatiom on how Chromium implements these concepts
+see [here][renderingng-dl] and [here][rendersurface]; other browsers
+do something similar.
+
+[renderingng-dl]: https://developer.chrome.com/blog/renderingng-data-structures/#display-lists-and-paint-chunks
+[rendersurface]: https://developer.chrome.com/blog/renderingng-data-structures/#compositor-frames-surfaces-render-surfaces-and-gpu-texture-tiles
+
+:::
 
 Paint Chunks & Display Items
 ============================
@@ -1101,3 +1184,9 @@ color channels.
  function, and one or two others.
 
  [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
+
+*Render surfaces*: as described in the go-further block at the end of
+ [this section](#implementing-compositing), our browser doesn't currently draw
+ nested, composited visual effects correctly. Fix this by building a "draw
+ tree" for all of the `CompositedLayer`s and allocating a `skia.Surface` for
+ each internal node.

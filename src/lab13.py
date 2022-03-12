@@ -1087,10 +1087,10 @@ class CompositedLayer:
             retval.join(chunk.composited_bounds())
         return retval
 
-    def screen_bounds(self):
+    def absolute_bounds(self):
         retval = skia.Rect.MakeEmpty()
         for chunk in self.chunks:
-            retval.join(chunk.screen_bounds())
+            retval.join(chunk.absolute_bounds())
         return retval
 
     def composited_item(self):
@@ -1104,7 +1104,7 @@ class CompositedLayer:
         self.chunks.append(chunk)
 
     def overlaps(self, rect):
-        return skia.Rect.Intersects(self.screen_bounds(), rect)
+        return skia.Rect.Intersects(self.absolute_bounds(), rect)
 
     def draw(self, canvas, draw_offset):
         if not self.surface:
@@ -1156,8 +1156,8 @@ class CompositedLayer:
 
     def __repr__(self):
         return ("layer: composited_bounds={} " +
-            "screen_bounds={} first_chunk={}").format(
-            self.composited_bounds(), self.screen_bounds(),
+            "absolute_bounds={} first_chunk={}").format(
+            self.composited_bounds(), self.absolute_bounds(),
             self.chunks[0] if len(self.chunks) > 0 else 'None')
 
 def raster(display_list, canvas):
@@ -1525,7 +1525,7 @@ class PaintChunk:
     def equals(self, other_chunk):
         return self.chunk_items[0].node == other_chunk.chunk_items[0].node
 
-    def screen_bounds(self):
+    def absolute_bounds(self):
         return self.bounds_internal(True)
 
     def composited_bounds(self):
@@ -1653,7 +1653,7 @@ def do_compositing(display_list, skia_context, current_composited_layers):
                 layer.append(chunk)
                 placed = True
                 break
-            elif layer.overlaps(chunk.screen_bounds()):
+            elif layer.overlaps(chunk.absolute_bounds()):
                 (layer, current_index) = get_composited_layer(
                     chunk, current_composited_layers, current_index,
                     skia_context)
@@ -1796,7 +1796,7 @@ class Browser:
             self.active_tab_height = 0
             for layer in self.composited_layers:
                 self.active_tab_height = \
-                    max(self.active_tab_height, layer.screen_bounds().bottom())
+                    max(self.active_tab_height, layer.absolute_bounds().bottom())
         else:
             for (node, transform, save_layer) in self.composited_updates:
                 success = False
