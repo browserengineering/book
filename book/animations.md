@@ -980,26 +980,25 @@ begun, it should print something like:
 Now that we can see the example, it seems pretty clear that we should make
 a surface for the contents of the opacity `SaveLayer`, in this case containing
 only a `DrawText`. Note that this is *not* the same as "cache the display
-list stuff for a DOM element subtree"!. To see why, consider that a single
+list for a DOM element subtree"!. To see why, consider that a single
 DOM element can result in more than one `SaveLayer`, such as when it has
 both opacity *and* a transform.
 
-Putting the `DrawText` into its own surface sounds simple enough: just make
-a surface and raster that sub-piece of the display list into it, then
-draw that surface into its "parent" surface. In this example, the resulting
-code to draw the child surface should be something like this:
+Putting the `DrawText` into its own surface sounds simple enough: just make a
+surface and raster that sub-piece of the display list into it, then draw that
+surface into its "parent" surface. In this example, the resulting code to draw
+the child surface should ultimately boil down to something like this:
 
-    def draw_into_parent(parent_canvas, child_surface, sk_paint,
-        surface_offset_x, surface_offset_y):
-        parent_canvas.saveLayer(paint=sk_paint)
-        child_surface.draw(canvas, surface_offset_x, surface_offset_y)
-        parent_canvas.restore()
-    # ...
-    draw_into_parent(parent_canvas, child_surface, skia.Paint(Alphaf=1.0))
+    opacity_surface = skia.Surface(...)
+    draw_text.execute(opacity_surface.getCanvas())
+    tab_canvas.saveLayer(paint=sk_paint)
+    opacity_surface.draw(tab_canvas, text_offset_x, text_offset_y)
+    tab_canvas.restore()
 
-Let's unpack what is going on in this code. First we create a new conceptual
-"surface" on the Skia stack via `saveLayer`, then draw the `child_surface`
-we've created and stored, then finally `restore`. Observe how this is
+Let's unpack what is going on in this code. First, raster `opacity_surface`.
+Then create a new conceptual
+"surface" on the Skia stack via `saveLayer`, then draw `opacity_surface`,
+and finally `restore`. Observe how this is
 *exactly* the way we described how it conceptually works *within* Skia
 in [Chapter 11](visual-effects.html#blending-and-stacking). The only
 difference is that here it's explicit that there is a `skia.Surface` between
@@ -1014,19 +1013,19 @@ situations.
 To summarize another way: what we're trying to implement is a way to (a)
 make explicit surfaces under `SaveLayer` calls, and (b) generalize the
 `tab_surface`/`chrome_surface`  to a list of
-potentially many surfaces. Let's do that. But to get there I'll have to
+potentially many surfaces. Let's implement that. But to get there I'll have to
 introduce multiple new concepts that are tricky to understand. Before we
 get into the ins and outs of them, let's first go through what they are and
 how they will be used.
 
 * `PaintChunk`: this will be a new class that represents a contiguous slice
-  of the display list.Each `DisplayItem` is in exactly one `PaintChunk`. We'll
+  of the display list. Each `DisplayItem` is in exactly one `PaintChunk`. We'll
   do the overlap testing
   mentioned a couple of sections back on `PaintChunk`s, and the overlap testing
   will be done in *absolute space*.
-  *Viewport space* is the coordinate space of `tab_surface`^[In other words, the
+  Absolute space is the coordinate space of `tab_surface`^[In other words, the
   (0, 0) position of this space is the top-left pixel of `tab_surface`(which may
-  be offscreen due to scrolling.] To support overlpa testing, each `PaintChunk`
+  be offscreen due to scrolling.] To support overlap testing, each `PaintChunk`
   will have an `absolute_bounds` method.
 
   Ths purpose of this class is twofold:
@@ -1034,7 +1033,7 @@ how they will be used.
     animations, and can therefore raster into the same surface.
 
     2. *Flatten* the recursive hierarchy of the display list into a single
-    list. This is very ipmortant in terms of making the compositing algorithm
+    list. This is very important in terms of making the compositing algorithm
     simple to implement and understand.
 
 * `CompositedLayer`: a class that encapsulates a `skia.Surface` into which some
@@ -1046,8 +1045,9 @@ how they will be used.
 
 The sequence of actions for the browser thread will be:
 
-1. Convert the display list to a *list* of `PaintChunk`s (and sorted by the
-order they draw to the screen, just like the display list).
+1. Convert the (recursive) display list to a *flat list* of `PaintChunk`s.
+^[Note that this flat list is sorted by the order they draw to the screen,
+just like the display list.]
 
 2. Determine the list of `CompositedLayers` from the paint chunks, creating
 one `CompositedLayer` for each animating visual effect and one for each
@@ -1062,7 +1062,7 @@ allocates a new `CompositedLayer` if it is animating a visual effect, or if
 it overlaps another layer that is doing so. The `can_merge` method on a
 `CompositedLayer` just checks whether the layer is *not* animating
 animating anything^[i.e., it is only a `CompositedLayer` because of overlap
-with something earlier] *and* the chunk does not require animation.
+with something earlier.] *and* the chunk does not require animation.
 
 ``` {.python}
 def do_compositing(display_list, skia_context,
@@ -1094,9 +1094,7 @@ def do_compositing(display_list, skia_context,
 ```
 
 3. Draw the `CompositedLayer`s to the screen. This step will be very easy,
-since steps 1 and 2 do all the heavy lifting. To prove it, here is the code
-(though you can't add it to your browser until you've implemented the other
-steps):
+since steps 1 and 2 do all the heavy lifting. Here is the code:
 
 ``` {.python}
 class Browser:
@@ -1120,7 +1118,7 @@ incorrect for the case of nested visual effects (such as if there is a
 composited animation on a DOM element underneath another one). To fix it
 requires determining the necessary "draw hierarchy" of `CompositedLayer`s into
 a tree based on their visual effect nesting, and allocating intermediate
-GPU textures called *render surfaces* for each interal node of this tree.
+GPU textures called *render surfaces* for each internal node of this tree.
 
 A naive implementation of this tree (allocating one node for each visual effect)
 is not too hard to implement, but each additional render surface requires a
@@ -1132,13 +1130,13 @@ is not too hard to implement, but each additional render surface requires a
  `CompositedLayer`s does.[^only-overlapping] The reason is that opacity has to
  be applied *atomically* to all of the content under it; if it was applied
  separately to each of the child `CompositedLayer`s, the blending result on the
- screen would be incorrect.
+ screen would be potentially incorrect.
 
 [^only-overlapping]: Actually, only if there are at least two children *and*
 some of them overlap each other. Can you see why we can avoid the render surface
-if there is no overlap?
+for opacity if there is no overlap?
 
-For more details and informatiom on how Chromium implements these concepts
+For more details and information on how Chromium implements these concepts
 see [here][renderingng-dl] and [here][rendersurface]; other browsers
 do something similar.
 
