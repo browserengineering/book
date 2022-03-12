@@ -1027,7 +1027,7 @@ how they will be used.
   *Viewport space* is the coordinate space of `tab_surface`^[In other words, the
   (0, 0) position of this space is the top-left pixel of `tab_surface`(which may
   be offscreen due to scrolling.] To support overlpa testing, each `PaintChunk`
-  will have a `screen_bounds` method.
+  will have an `absolute_bounds` method.
 
   Ths purpose of this class is twofold:
     1. Group together a bunch of `DisplayItem`s that don't need composited
@@ -1077,7 +1077,7 @@ def do_compositing(display_list, skia_context,
                 layer.append(chunk)
                 placed = True
                 break
-            elif layer.overlaps(chunk.screen_bounds()):
+            elif layer.overlaps(chunk.absolute_bounds()):
                 (layer, current_index) = get_composited_layer(
                     chunk, current_composited_layers, current_index,
                     skia_context)
