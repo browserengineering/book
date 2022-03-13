@@ -1176,6 +1176,7 @@ class Tab:
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
         self.needs_render = False
+        self.needs_layout = False
         self.needs_paint = False
         self.browser = browser
         if USE_BROWSER_THREAD:
@@ -1252,6 +1253,12 @@ class Tab:
 
     def set_needs_render(self):
         self.needs_render = True
+        self.needs_layout = True
+        self.needs_paint = True
+        self.browser.set_needs_animation_frame(self)
+
+    def set_needs_layout(self):
+        self.needs_layout = True
         self.needs_paint = True
         self.browser.set_needs_animation_frame(self)
 
@@ -1265,7 +1272,7 @@ class Tab:
             self.composited_animation_updates.append(node)
             self.browser.set_needs_animation_frame(self)
         else:
-            self.set_needs_render()
+            self.set_needs_layout()
 
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
@@ -1282,7 +1289,7 @@ class Tab:
         for (node, property_name) in to_delete:
             del self.animations[node][property_name]
 
-        needs_composite = self.needs_render
+        needs_composite = self.needs_render or self.needs_layout
 
         self.render()
 
@@ -1319,13 +1326,18 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        if not self.needs_render and not self.needs_paint: return
+        if not self.needs_render \
+            and not self.needs_layout \
+            and not self.needs_paint:
+            return
 
         self.measure_render.start()
 
         if self.needs_render:
             style(self.nodes, sorted(self.rules,
                 key=cascade_priority), self)
+
+        if self.needs_layout:
             self.document = DocumentLayout(self.nodes)
             self.document.layout()
         
@@ -1342,7 +1354,8 @@ class Tab:
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
         self.needs_render = False
-        self.needs_paint = False;
+        self.needs_layout = False
+        self.needs_paint = False
 
         self.measure_render.stop()
 

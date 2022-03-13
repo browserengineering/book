@@ -749,10 +749,11 @@ form.
 
 The main difficulty with implementing compositing turns out to be dealing
 with its *side-effects for overlapping content*. To understand the concept,
-consider this simple example of a blue square overlapped by an green one.
+consider this simple example of a green square overlapped by an blue one,
+except that the blue one is *earlier* in the DOM painting order.
 
-<div style="width:200px;height:200px;background-color:lightblue"></div>
-<div style="width:200px;height:200px;background-color:lightgreen;transform:translate(100px, -100px)"></div>
+<div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
+<div style="width:200px;height:200px;background-color:lightgreen"></div>
 
 Suppose we want to animate opacity on the blue square, and so allocate a
 `skia.Surface` and GPU texture for it. But we don't want to animate the green
