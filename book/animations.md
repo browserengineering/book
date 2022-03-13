@@ -411,9 +411,43 @@ class NumericAnimation:
         else:
             self.node.style[self.property_name] = \
                 "{}".format(updated_value)
-        self.tab.set_needs_render()
+        self.tab.set_needs_layout()
         return True
 ```
+
+Note that I called a new method `set_needs_layout` rather than
+`set_needs_render`. This is to cause layout and the rest of rendering, but
+*not* style recalc. Otherwise style recalc will re-create the
+`NumericAnimation` on every single frame.[^even-more]
+
+
+``` {.python expected=False}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self. needs_layout = False
+    
+    def set_needs_layout(self):
+        self.needs_layout = True
+
+    def render(self):
+        if not self.needs_render \
+            and not self.needs_layout:
+            return
+
+        if self.needs_render:
+            style(self.nodes, sorted(self.rules,
+                key=cascade_priority), self)
+
+        # ...
+
+        self.needs_layout = False
+```
+
+[^even-more] This is not good enough for a real browser, but is a reasonable
+expedient to make basic transition animations work. For exmaple, it doesn't
+correctly handle cases where styles changed on elements unrelated to the
+animation---that shouldn't re-start the animation either.
 
 Now for integrating this code into rendering. It has main parts: detecting style
 changes, and executing the animation. Both have some details that are important
