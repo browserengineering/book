@@ -1010,31 +1010,37 @@ this technique *browser compositing*. So really, creating these extra surfaces
 for animated affects is just applying the browser compositing technique in more
 situations.
 
-To summarize another way: what we're trying to implement is a way to (a)
-make explicit surfaces under `SaveLayer` calls, and (b) generalize the
-`tab_surface`/`chrome_surface`  to a list of
-potentially many surfaces. Let's implement that. But to get there I'll have to
-introduce multiple new concepts that are tricky to understand. Before we
-get into the ins and outs of them, let's first go through what they are and
-how they will be used.
+To summarize another way: what we're trying to implement is a way to (a) make
+explicit surfaces under `SaveLayer` calls, and (b) generalize the
+`tab_surface`/`chrome_surface`  to a list of potentially many surfaces. Let's
+implement that. But to get there I'll have to introduce multiple new concepts
+that are tricky to understand. Before we get into the ins and outs of how to
+implement, let's start with what they are and how they will be used:
 
-* `PaintChunk`: this will be a new class that represents a contiguous slice
-  of the display list. Each `DisplayItem` is in exactly one `PaintChunk`. We'll
-  do the overlap testing
-  mentioned a couple of sections back on `PaintChunk`s, and the overlap testing
-  will be done in *absolute space*.
-  Absolute space is the coordinate space of `tab_surface`^[In other words, the
-  (0, 0) position of this space is the top-left pixel of `tab_surface`(which may
-  be offscreen due to scrolling.] To support overlap testing, each `PaintChunk`
-  will have an `absolute_bounds` method.
+* `PaintChunk`: a class that represents a contiguous, flattened
+  slice of the display list. This is really important, because it lets us
+avoid the complicated (and super confusing) nested structure
+  of the display list and DOM, when figuring out which `DisplayItem`s overlap
+  other ones.
 
-  Ths purpose of this class is twofold:
-    1. Group together a bunch of `DisplayItem`s that don't need composited
-    animations, and can therefore raster into the same surface.
+  Recall that the display list is actually a tree. The internal nodes of this
+  tree are visual effects, and the leaves are "atomic" raster commands like
+  `DrawText`. The leaves can be viewed as a list when enumerated in paint
+  order. A `PaintChunk` is a contiguous slice of this list, and each leaf
+  `DisplayItem` belongs to exactly one `PaintChunk`.
 
-    2. *Flatten* the recursive hierarchy of the display list into a single
-    list. This is very important in terms of making the compositing algorithm
-    simple to implement and understand.
+  We'll do overlap testing on `PaintChunks` This makes sense, since only the
+  leaf `DisplayItems` raster any DOM content; the visual effect nodes "merely"
+  move around or grow/shrink the raster area of the leaves. So we'll track
+  the *absolute space* bounding rect of each `PaintChunk`---i.e. the rectangular
+  area of pixels in `tab_surface`[^abs-space] that are affected by
+  `DisplayItem`s in that chunk, taking into account visual effects like
+  transforms that might move them around on screen. This rectangle is what
+  `PaintChunk.absolute_bounds` returns. If one `PaintChunk`'s `absolute_bounds`
+  intersects another's, then they overlap.
+
+[^abs-space]: In other words, the (0, 0) position of this space is the top-left
+pixel of `tab_surface` (which may be offscreen due to scrolling).
 
 * `CompositedLayer`: a class that encapsulates a `skia.Surface` into which some
   of the display list will raster, plus some parameters indicating how to draw
@@ -1045,15 +1051,13 @@ how they will be used.
 
 The sequence of actions for the browser thread will be:
 
-1. Convert the (recursive) display list to a *flat list* of `PaintChunk`s.
-^[Note that this flat list is sorted by the order they draw to the screen,
-just like the display list.]
+1. Convert the (recursive) display list to a list of `PaintChunk`s.
 
 2. Determine the list of `CompositedLayers` from the paint chunks, creating
 one `CompositedLayer` for each animating visual effect and one for each
 time a `PaintChunk` overlaps an earlier `CompositedLayer` that is animating.
 Multiple `PaintChunk`s can be present in a single `CompositedLayer`.
-The list of `CompositedLayer`s will also be in order of drawing to the screen,
+The list of `CompositedLayer`s will be in order of drawing to the screen,
 and each will have a `draw` method that executes the visual effects for that
 `CompositedLayer` (including any visual effect that is animating).
 
@@ -1061,7 +1065,7 @@ Here is the algorithm we'll use. It loops over the list of paint chunks and
 allocates a new `CompositedLayer` if it is animating a visual effect, or if
 it overlaps another layer that is doing so. The `can_merge` method on a
 `CompositedLayer` just checks whether the layer is *not* animating
-animating anything^[i.e., it is only a `CompositedLayer` because of overlap
+anything^[i.e., it is only a `CompositedLayer` because of overlap
 with something earlier.] *and* the chunk does not require animation.
 
 ``` {.python}
@@ -1136,12 +1140,18 @@ is not too hard to implement, but each additional render surface requires a
 some of them overlap each other. Can you see why we can avoid the render surface
 for opacity if there is no overlap?
 
-For more details and information on how Chromium implements these concepts
-see [here][renderingng-dl] and [here][rendersurface]; other browsers
-do something similar.
+For more details and information on how Chromium implements these concepts see
+[here][renderingng-dl] and [here][rendersurface]; other browsers do something
+similar.
+
+Chromium's implementation of the "visual effect nesting" data structure
+is called [property trees][prop-trees]. The name is plural because there is
+more than one tree, due to the complex containing block structure of scrolling
+and clipping.
 
 [renderingng-dl]: https://developer.chrome.com/blog/renderingng-data-structures/#display-lists-and-paint-chunks
 [rendersurface]: https://developer.chrome.com/blog/renderingng-data-structures/#compositor-frames-surfaces-render-surfaces-and-gpu-texture-tiles
+[prop-trees]: https://developer.chrome.com/blog/renderingng-data-structures/#property-trees
 
 :::
 
