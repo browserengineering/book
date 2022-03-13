@@ -10,13 +10,13 @@ function frame() {
 }
 requestAnimationFrame(frame);
 
-var go_down = false;
-var div = document.querySelectorAll("div")[1];
+var go_up = false;
+var div = document.querySelectorAll("div")[0];
 function go() {
-	go_down = !go_down;
-	if (go_down)
-		div.style = "background-color:lightgreen;transform:translate(0px,0px)";
+	go_up = !go_up;
+	if (go_up)
+		div.style = "background-color:lightblue;transform:translate(0px,0px)";
 	else
-		div.style = "background-color:lightgreen;transform:translate(100px,-100px)";
-	setTimeout(go, 2000);
+		div.style = "background-color:lightblue;transform:translate(50px,50px)";
+	setTimeout(go, 16*120);
 }

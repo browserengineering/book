@@ -17,6 +17,6 @@ function go() {
 		div.style = "background-color:lightblue;width:100px";
 	else
 		div.style = "background-color:lightblue;width:400px";
-	setTimeout(go, 2100);
+	setTimeout(go, 16*120);
 }
 

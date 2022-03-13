@@ -17,5 +17,5 @@ function go() {
 		div.style = "opacity:0.1";
 	else
 		div.style = "opacity:1.0";
-	setTimeout(go, 2000);
+	setTimeout(go, 16*120);
 }

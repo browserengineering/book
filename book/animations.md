@@ -411,9 +411,43 @@ class NumericAnimation:
         else:
             self.node.style[self.property_name] = \
                 "{}".format(updated_value)
-        self.tab.set_needs_render()
+        self.tab.set_needs_layout()
         return True
 ```
+
+Note that I called a new method `set_needs_layout` rather than
+`set_needs_render`. This is to cause layout and the rest of rendering, but
+*not* style recalc. Otherwise style recalc will re-create the
+`NumericAnimation` on every single frame.[^even-more]
+
+
+``` {.python expected=False}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self. needs_layout = False
+    
+    def set_needs_layout(self):
+        self.needs_layout = True
+
+    def render(self):
+        if not self.needs_render \
+            and not self.needs_layout:
+            return
+
+        if self.needs_render:
+            style(self.nodes, sorted(self.rules,
+                key=cascade_priority), self)
+
+        # ...
+
+        self.needs_layout = False
+```
+
+[^even-more] This is not good enough for a real browser, but is a reasonable
+expedient to make basic transition animations work. For exmaple, it doesn't
+correctly handle cases where styles changed on elements unrelated to the
+animation---that shouldn't re-start the animation either.
 
 Now for integrating this code into rendering. It has main parts: detecting style
 changes, and executing the animation. Both have some details that are important
@@ -749,10 +783,11 @@ form.
 
 The main difficulty with implementing compositing turns out to be dealing
 with its *side-effects for overlapping content*. To understand the concept,
-consider this simple example of a blue square overlapped by an green one.
+consider this simple example of a green square overlapped by an blue one,
+except that the blue one is *earlier* in the DOM painting order.
 
-<div style="width:200px;height:200px;background-color:lightblue"></div>
-<div style="width:200px;height:200px;background-color:lightgreen;transform:translate(100px, -100px)"></div>
+<div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
+<div style="width:200px;height:200px;background-color:lightgreen"></div>
 
 Suppose we want to animate opacity on the blue square, and so allocate a
 `skia.Surface` and GPU texture for it. But we don't want to animate the green
