@@ -1523,20 +1523,20 @@ class TaskRunner:
 REFRESH_RATE_SEC = 0.016 # 16ms
 
 class PaintChunk:
-    def __init__(self, ancestor_effects):
+    def __init__(self, ancestor_effects, display_item):
         self.ancestor_effects = ancestor_effects
-        self.chunk_items = []
+        self.display_item = display_item
 
         self.composited_ancestor_index = -1
         count = len(ancestor_effects) - 1
-        for display_item in reversed(ancestor_effects):
-            if display_item.needs_compositing():
+        for ancestor_item in reversed(ancestor_effects):
+            if ancestor_item.needs_compositing():
                 self.composited_ancestor_index = count
                 break
             count -= 1
 
     def equals(self, other_chunk):
-        return self.chunk_items[0].node == other_chunk.chunk_items[0].node
+        return self.display_item.node == other_chunk.display_item.node
 
     def absolute_bounds(self):
         return self.bounds_internal(True)
@@ -1545,17 +1545,12 @@ class PaintChunk:
         return self.bounds_internal(False)
 
     def bounds_internal(self, include_composited):
-        retval = skia.Rect.MakeEmpty()
-        for item in self.chunk_items:
-            retval.join(item.bounds())
-        for display_item in reversed(self.ancestor_effects):
-            if display_item.needs_compositing() and not include_composited:
+        retval = self.display_item.bounds()
+        for ancestor_item in reversed(self.ancestor_effects):
+            if ancestor_item.needs_compositing() and not include_composited:
                 break
-            retval = display_item.transform(retval)
+            retval = ancestor_item.transform(retval)
         return retval
-
-    def append(self, display_item):
-        self.chunk_items.append(display_item)
 
     def needs_compositing(self):
         return self.composited_ancestor_index >= 0
@@ -1572,23 +1567,19 @@ class PaintChunk:
                 items.append(item)
         return items
 
-    def display_list(self):
-        return self.chunk_items
-
     def raster(self, canvas):
         def op():
-            for display_item in self.chunk_items:
-                display_item.execute(canvas)
+            self.display_item.execute(canvas)
         self.draw_internal(canvas, op, self.composited_ancestor_index + 1)
 
     def draw_internal(self, canvas, op, index):
         if index == len(self.ancestor_effects):
             op()
         else:
-            display_item = self.ancestor_effects[index]
+            ancestor_item = self.ancestor_effects[index]
             def recurse_op():
                 self.draw_internal(canvas, op, index + 1)
-            display_item.draw(canvas, recurse_op)
+            ancestor_item.draw(canvas, recurse_op)
 
     def draw(self, canvas, op):
         if self.composited_ancestor_index >= 0:
@@ -1602,27 +1593,23 @@ class PaintChunk:
             composited_item = \
                 self.ancestor_effects[self.composited_ancestor_index]
         return "Chunk: first_item={} composited_item=".format(
-            self.chunk_items[0], composited_item)
+            self.display_item, composited_item)
 
 def display_list_to_paint_chunks_internal(
     display_list, chunks, ancestor_effects):
-    current_chunk = None
     for display_item in display_list:
         if display_item.get_cmds() != None:
-            display_list_to_paint_chunks_internal(display_item.get_cmds(), chunks,
+            display_list_to_paint_chunks_internal(
+                display_item.get_cmds(), chunks,
                 ancestor_effects + [display_item])
         else:
-            if not current_chunk:
-                current_chunk = PaintChunk(ancestor_effects)
-                chunks.append(current_chunk)
-            current_chunk.append(display_item)
+            chunks.append(PaintChunk(ancestor_effects, display_item))
 
 def print_chunks(chunks):
     for chunk in chunks:
         print('chunks:')
         print("  chunk display items:")
-        for display_item in chunk.chunk_items:
-            print(" " * 4 + str(display_item))
+        print(" " * 4 + str(chunk.display_item))
         print("  chunk ancestor visual effect (skipping no-ops):")
         count = 4
         for display_item in chunk.ancestor_effects:
