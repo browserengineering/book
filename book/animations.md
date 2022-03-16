@@ -969,7 +969,8 @@ the web page should we cache in the surface? To answer that, let's revisit the
 structure of our display lists. We'll need a way to print out the (recursive)
 display list in a useful form.[^debug] Add a base class called `DisplayItem` and
 make all display list commands inherit from it, and move the `cmds` field
-to that class; here's `SaveLayer` for example:
+to that class (or pass nothing if they don't have any, like `DrawText`);
+here's `SaveLayer` for example:
 
 [^debug]: This code will also be very useful to you while debugging your
 compositing implementation.
@@ -979,14 +980,14 @@ class SaveLayer:
     def __init__(self, sk_paint, node, cmds,
         should_save=True, should_paint_cmds=True):
         # ...
-        super().__init__(cmds)
+        super().__init__(cmds=cmds)
 ```
 
 Then add a `repr_recursive` method to `DisplayItem`:
 
 ``` {.python expected=False}
 class DisplayItem:
-    def __init__(cmds):
+    def __init__(cmds=None):
         self.cmds = cmds
 
     def repr_recursive(self, indent=0):
@@ -1052,37 +1053,33 @@ implement that. But to get there I'll have to introduce multiple new concepts
 that are tricky to understand. Before we get into the ins and outs of how to
 implement, let's start with what they are and how they will be used:
 
-* `PaintChunk`: a class that represents a contiguous, flattened
-  slice of the display list. This is really important, because it lets us
-avoid the complicated (and super confusing) nested structure
-  of the display list and DOM, when figuring out which `DisplayItem`s overlap
-  other ones.
+* `PaintChunk`: a class that represents a single[^leaf-chromium] leaf
+  `DisplayItem`, plus the visual effects necessary to display it on the screen.
+  We'll compute a list of `PaintChunks` in paint order by "flattening" the
+  recursive display list, like so:
 
-  Recall that the display list is actually a tree. The internal nodes of this
-  tree are visual effects, and the leaves are "atomic" raster commands like
-  `DrawText`. The leaves can be viewed as a list when enumerated in paint
-  order. A `PaintChunk` is a contiguous slice of this list, and each leaf
-  `DisplayItem` belongs to exactly one `PaintChunk`.
+``` {.python}
+def display_list_to_paint_chunks_internal(
+    display_list, chunks, ancestor_effects):
+    for display_item in display_list:
+        if display_item.get_cmds() != None:
+            display_list_to_paint_chunks_internal(
+                display_item.get_cmds(), chunks,
+                ancestor_effects + [display_item])
+        else:
+            chunks.append(PaintChunk(ancestor_effects, display_item))
+```
 
-  We'll do overlap testing on `PaintChunks` This makes sense, since only the
-  leaf `DisplayItems` raster any DOM content; the visual effect nodes "merely"
-  move around or grow/shrink the raster area of the leaves. So we'll track
-  the *absolute space* bounding rect of each `PaintChunk`---i.e. the rectangular
-  area of pixels in `tab_surface`[^abs-space] that are affected by
-  `DisplayItem`s in that chunk, taking into account visual effects like
-  transforms that might move them around on screen. This rectangle is what
-  `PaintChunk.absolute_bounds` returns. If one `PaintChunk`'s `absolute_bounds`
-  intersects another's, then they overlap.
+[^leaf-chromium]: In Chromium, the same name refers to a maximal contiguous
+subsequence of such leaves, but the concept is the exactly the same; the
+subsequence is just an optimized form that minimizes chunk count.
 
-[^abs-space]: In other words, the (0, 0) position of this space is the top-left
-pixel of `tab_surface` (which may be offscreen due to scrolling).
+* `CompositedLayer`: a class representing a grouping of compatible
+  `PaintChunk`s, plus a `skia.Surface` sized to raster them fully.
 
-* `CompositedLayer`: a class that encapsulates a `skia.Surface` into which some
-  of the display list will raster, plus some parameters indicating how to draw
-  them to the screen. You can see from the example above that we'll often need
-  a `skia.Paint` and x/y offset; in fact we may need a whole sequence of paints
-  and offsets, if the `CompositedLayer` represents content underneath multiple
-  nested visual effects.
+We'll do overlap testing on `PaintChunk`s This makes sense, since only the leaf
+`DisplayItems` raster any DOM content; the visual effect nodes "merely" move
+around or grow/shrink the raster area of the leaves.
 
 The sequence of actions for the browser thread will be:
 
@@ -1190,10 +1187,37 @@ and clipping.
 
 :::
 
-Paint Chunks & Display Items
-============================
+Composited display items
+========================
 
-TODO
+We'll also need a way to signal that a visual effect `DisplayItem` "needs
+compositing", meaning that it is animating and so its contents should
+be cached in a GPU texture. Let's indicate that with a new constructor
+parameter on `DisplayItem`:
+
+``` {.python expected=False}
+class DisplayItem:
+    def __init__(self, needs_compositing=False, cmds=None):
+        self.composited = needs_compositing
+```
+
+Todo...
+
+
+Implementing PaintChunk
+=======================
+
+So we'll track
+the *absolute space* bounding rect of each `PaintChunk`---i.e. the rectangular
+area of pixels in `tab_surface`[^abs-space] that are affected by `DisplayItem`s
+in that chunk, taking into account visual effects like transforms that might
+move them around on screen. This rectangle is what `PaintChunk.absolute_bounds`
+returns. If one `PaintChunk`'s `absolute_bounds` intersects another's, then
+they overlap.
+
+[^abs-space]: In other words, the (0, 0) position of this space is the top-left
+pixel of `tab_surface` (which may be offscreen due to scrolling).
+
 
 Composited Layers and the Compositing Algorithm
 ===============================================
