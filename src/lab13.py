@@ -59,13 +59,22 @@ def center_point(rect):
 
 class DisplayItem:
     def __init__(self, rect, cmds=None, is_noop=False, node=None):
-        self.rect = rect if rect else skia.Rect.MakeEmpty()
+        self.rect = rect
         self.cmds = cmds
         self.noop = is_noop
         self.node = node
 
-    def bounds(self):
-        return self.rect
+    def composited_bounds(self):
+        rect = skia.Rect.MakeEmpty()
+        self.composited_bounds_internal(rect)
+        return rect
+
+    def composited_bounds_internal(self, rect):
+        rect.join(self.rect)
+        if self.cmds:
+            for cmd in self.cmds:
+                if not cmd.needs_compositing():
+                    cmd.composited_bounds_internal(rect)
 
     def needs_compositing(self):
         if not USE_COMPOSITING:
@@ -112,19 +121,17 @@ class DisplayItem:
                 "needs_compositing={needs_compositing}{noop}\n{inner} ").format(
                 indentation=" " * indent,
                 repr=self.__repr__(),
-                bounds=self.bounds(),
+                composited_bounds=self.composited_bounds(),
                 needs_compositing=self.needs_compositing(),
                 inner=inner,
                 noop=(" <no-op>" if self.is_noop() else ""))
 
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, cmds):
-        self.translation = translation
-        my_bounds = self.compute_bounds(rect, cmds)
-
         super().__init__(
-            rect=my_bounds, cmds=cmds,
+            rect=rect, cmds=cmds,
             is_noop=translation == None, node=node)
+        self.translation = translation
 
     def draw(self, canvas, op):
         if self.is_noop():
@@ -146,15 +153,10 @@ class Transform(DisplayItem):
             matrix.setTranslate(x, y)
         return matrix.mapRect(rect)
 
-    def compute_bounds(self, rect, cmds):
-        for cmd in cmds:
-            rect.join(cmd.bounds())
-        return rect
-
     def copy(self, other):
         assert type(other) == type(self)
         self.translation = other.translation
-        self.rect = self.compute_bounds(self.rect, self.get_cmds())
+        self.rect = other.rect
 
     def __repr__(self):
         if self.is_noop():
@@ -165,9 +167,9 @@ class Transform(DisplayItem):
 
 class DrawRRect(DisplayItem):
     def __init__(self, rect, radius, color):
+        super().__init__(rect=rect)
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.color = color
-        super().__init__(rect=rect)
 
     def draw(self, canvas):
         sk_color = parse_color(self.color)
@@ -187,7 +189,6 @@ class DrawText(DisplayItem):
         self.top = y1
         self.right = x1 + font.measureText(text)
         self.bottom = y1 - font.getMetrics().fAscent + font.getMetrics().fDescent
-        self.rect = \
         self.font = font
         self.text = text
         self.color = color
@@ -215,12 +216,12 @@ def draw_rect(
 
 class DrawRect(DisplayItem):
     def __init__(self, x1, y1, x2, y2, color):
+        super().__init__(rect=skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.top = y1
         self.left = x1
         self.bottom = y2
         self.right = x2
         self.color = color
-        super().__init__(rect=skia.Rect.MakeLTRB(x1, y1, x2, y2))
 
     def draw(self, canvas, *args):
         draw_rect(canvas,
@@ -234,10 +235,8 @@ class DrawRect(DisplayItem):
 
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, cmds, should_clip=True):
+        super().__init__(rect=rect, cmds=cmds, is_noop=not should_clip)
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        super().__init__(
-            rect=ClipRRect.compute_bounds(rect, cmds),
-            cmds=cmds, is_noop=not should_clip)
 
     def draw(self, canvas, op):
         if not self.is_noop():
@@ -247,11 +246,6 @@ class ClipRRect(DisplayItem):
         if not self.is_noop():
             canvas.restore()
 
-    def compute_bounds(rect, cmds):
-        for cmd in cmds:
-            rect.join(cmd.bounds())
-        return rect
-
     def __repr__(self):
         if self.is_noop():
             return "ClipRRect(<no-op>)"
@@ -260,11 +254,11 @@ class ClipRRect(DisplayItem):
 
 class DrawLine(DisplayItem):
     def __init__(self, x1, y1, x2, y2):
+        super().__init__(rect=skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.x1 = x1
         self.y1 = y1
         self.x2 = x2
         self.y2 = y2
-        super().__init__(rect=skia.Rect.MakeLTRB(x1, y1, x2, y2))
 
     def draw(self, canvas, *args):
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
@@ -272,14 +266,10 @@ class DrawLine(DisplayItem):
 class SaveLayer(DisplayItem):
     def __init__(self, sk_paint, node, cmds,
             should_save=True, should_paint_cmds=True):
+        super().__init__(rect=skia.Rect.MakeEmpty(), cmds=cmds,
+            is_noop=not should_save, node=node)
         self.should_paint_cmds = should_paint_cmds
         self.sk_paint = sk_paint
-        rect = skia.Rect.MakeEmpty()
-        for cmd in cmds:
-            rect.join(cmd.rect)
-        super().__init__(
-            rect=rect, cmds=cmds,
-            is_noop=not should_save, node=node)
 
     def draw(self, canvas, op):
         if not self.is_noop():
@@ -1540,7 +1530,7 @@ class PaintChunk:
         return self.bounds_internal(False)
 
     def bounds_internal(self, include_composited):
-        retval = self.display_item.bounds()
+        retval = self.display_item.composited_bounds()
         for ancestor_item in reversed(self.ancestor_effects):
             if ancestor_item.needs_compositing() and not include_composited:
                 break
