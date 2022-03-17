@@ -1283,6 +1283,10 @@ pixel-sensitive raster technologies like sub-pixel positioning for fonts, image
 resize filter algorithms, and anti-aliasing, this isn't always possible.
 "Pre-compositing" the content avoid visual jumps on the page when compositing
 starts.
+
+(A third reason is that having to deal with all of the permutations of
+composited and non-composited objects requires a lot of attention to detail
+and extra code to get right, so I omitted it from this book's code.)
 :::
 
 

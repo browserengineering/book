@@ -123,7 +123,7 @@ class Transform(DisplayItem):
         self.translation = translation
         should_transform = translation != None
         self.self_rect = rect
-        my_bounds = self.compute_bounds(rect, cmds, should_transform)
+        my_bounds = self.compute_bounds(rect, cmds)
 
         super().__init__(
             rect=my_bounds, cmds=cmds,
@@ -141,10 +141,7 @@ class Transform(DisplayItem):
             canvas.restore()
 
     def transform(self, rect):
-        return self.transform_internal(rect, not self.is_noop())
-
-    def transform_internal(self, rect, should_transform):
-        if not should_transform:
+        if not self.translation:
             return rect
         matrix = skia.Matrix()
         if self.translation:
@@ -152,16 +149,16 @@ class Transform(DisplayItem):
             matrix.setTranslate(x, y)
         return matrix.mapRect(rect)
 
-    def compute_bounds(self, rect, cmds, should_transform):
+    def compute_bounds(self, rect, cmds):
         for cmd in cmds:
             rect.join(cmd.bounds())
-        return self.transform_internal(rect, should_transform)
+        return rect
 
     def copy(self, other):
         assert type(other) == type(self)
         self.translation = other.translation
         should_transform = self.translation != None
-        self.rect = self.compute_bounds(self.rect, self.get_cmds(), should_transform)
+        self.rect = self.compute_bounds(self.rect, self.get_cmds())
 
     def __repr__(self):
         if self.is_noop():
@@ -1033,7 +1030,7 @@ class TranslateAnimation:
                 self.change_per_frame_x * self.frame_count,
                 self.old_y +
                 self.change_per_frame_y * self.frame_count)
-        self.tab.set_needs_animation(self.node, "transform", True)
+        self.tab.set_needs_animation(self.node, "transform", USE_COMPOSITING)
         return True
 
 class NumericAnimation:
