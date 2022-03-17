@@ -58,10 +58,8 @@ def center_point(rect):
         rect.top() + (rect.bottom() - rect.top()) / 2)
 
 class DisplayItem:
-    def __init__(self, rect, cmds=None,
-        is_noop=False, node=None):
+    def __init__(self, rect, cmds=None, is_noop=False, node=None):
         self.rect = rect if rect else skia.Rect.MakeEmpty()
-        self.composited=not is_noop and (type(self) is Transform or type(self) is SaveLayer)
         self.cmds = cmds
         self.noop = is_noop
         self.node = node
@@ -70,7 +68,10 @@ class DisplayItem:
         return self.rect
 
     def needs_compositing(self):
-        return USE_COMPOSITING and self.composited
+        if not USE_COMPOSITING:
+            return False
+        return not self.is_noop() and \
+            (type(self) is Transform or type(self) is SaveLayer)
 
     def get_cmds(self):
         return self.cmds

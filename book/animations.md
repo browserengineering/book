@@ -1200,52 +1200,36 @@ Composited display items
 ========================
 
 We'll also need a way to signal that a visual effect `DisplayItem` "needs
-compositing", meaning that it is animating and so its contents should
-be cached in a GPU texture. Let's indicate that with a new constructor
-parameter on `DisplayItem`. And while we're at it, add yet another parameter
-indicating the `node` that the `DisplayItem` belongs to (the one that painted
-it); this will be useful when keeping track of mappinges betwen `DisplayItem`s
-and GPU textures.[^cache-key]
+compositing", meaning that it is animating and so its contents should be cached
+in a GPU texture. Let's indicate that with a new `needs_compositing` method on
+`DisplayItem`. Since we'll only implemenet composited animations of opacity and
+transform, always composite transform and opacity (but only when they actually
+do something that isn't a no-op).
+
+And while we're at it, add yet another parameter indicating the
+`node` that the `DisplayItem` belongs to (the one that painted it); this will
+be useful when keeping track of mappinges betwen `DisplayItem`s and GPU
+textures.[^cache-key]
 
 [^cache-key]: Remember that these compositing GPU textures are simply
 a form of cache (albiet a somewhat atypical one!, and every cache needs a
-stable cache key to be useful. It's used in real browser also.
+stable cache key to be useful. It's also used in real browsers.
 
-``` {.python expected=False}
+``` {.python}
 class DisplayItem:
-    def __init__(self, needs_compositing=False, cmds=None, is_noop=False,
-        node=None):
+    def __init__(self, cmds=None, is_noop=False, node=None):
         # ...
-        self.composited = needs_compositing
         self.node = node
 
     def needs_compositing(self):
-        return self.composited
+        return not self.is_noop() and \
+            (type(self) is Transform or type(self) is SaveLayer)
 ```
 
-Since we'll only implmenet composited animations of opacity and transform,
-always composite transform and opacity (but only when they actually do
-something that isn't a no-op):
-
-``` {.python expected=False}
-class Transform(DisplayItem):
-    def __init__(self, translation, rect, node, cmds):
-        # ...
-        should_transform = translation != None
-        super().__init__(needs_compositing=needs_transform, cmds=cmds,
-            is_noop=not should_transform)
-
-class SaveLayer(DisplayItem):
-    def __init__(self, sk_paint, node, cmds,
-            should_save=True, should_paint_cmds=True):
-        super().__init__(
-            rect=rect, needs_compositing=should_save, cmds=cmds,
-            is_noop=not should_save)
-```
-
-Next we'll need to be able to get the `bounds` of a `DisplayItem` and
-`transform` a rect by the visual effect of the `DisplayItem`. These methods
-will be needed for determing the absolute bounds of a `PaintChunk`.
+Next we'll need to be able to get the `bounds` of a `DisplayItem`. These methods
+will be needed to determine the absolute bounds of a `PaintChunk`. This
+is pretty easy---there is already a `rect` field stored on the various
+subclasses, so just pass them to the superclass instead:
 
 ``` {.python expected=False}
 class DisplayItem:
@@ -1257,7 +1241,17 @@ class DisplayItem:
 
     def transform(self):
         return rect
+
+class DrawText:
+    def __init__(self, x1, y1, text, font, color):
+        super().__init__(
+            rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
 ```
+
+The other classes are basically the same, except for `Transform`.
+
+ and
+`transform` a rect by the visual effect of the `DisplayItem`
 
 `Transform` will override the `transform` method, of course:
 
