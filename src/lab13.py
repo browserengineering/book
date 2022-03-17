@@ -276,7 +276,7 @@ class DrawLine(DisplayItem):
 
 class SaveLayer(DisplayItem):
     def __init__(self, sk_paint, node, cmds,
-            should_save=True, should_paint_cmds=True, needs_animation=False):
+            should_save=True, should_paint_cmds=True):
         self.should_paint_cmds = should_paint_cmds
         self.sk_paint = sk_paint
         rect = skia.Rect.MakeEmpty()
