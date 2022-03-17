@@ -1215,7 +1215,7 @@ textures.[^cache-key]
 a form of cache (albiet a somewhat atypical one!, and every cache needs a
 stable cache key to be useful. It's also used in real browsers.
 
-``` {.python}
+``` {.python expected=False}
 class DisplayItem:
     def __init__(self, cmds=None, is_noop=False, node=None):
         # ...
@@ -1226,35 +1226,48 @@ class DisplayItem:
             (type(self) is Transform or type(self) is SaveLayer)
 ```
 
-Next we'll need to be able to get the `bounds` of a `DisplayItem`. These methods
-will be needed to determine the absolute bounds of a `PaintChunk`. This
-is pretty easy---there is already a `rect` field stored on the various
-subclasses, so just pass them to the superclass instead:
+Next we'll need to be able to get the *composited bounds* of a `DisplayItem`.
+It's composited bounds is the union of its painting rectangle and all
+descendants that are not themselves composited. This will be needed to
+determine the absolute bounds of a `PaintChunk`. This is pretty easy---there is
+already a `rect` field stored on the various subclasses, so just pass them to
+the superclass instead:
 
-``` {.python expected=False}
+``` {.python}
 class DisplayItem:
-    def __init__(self, rect, needs_compositing=False, cmds=None):
-        self.rect = rect if rect else skia.Rect.MakeEmpty()
+    def __init__(self, rect, cmds=None, is_noop=False, node=None):
+        self.rect = rect
     # ...
-    def bounds(self):
-        return self.rect
-
-    def transform(self):
+    def composited_bounds(self):
+        rect = skia.Rect.MakeEmpty()
+        self.composited_bounds_internal(rect)
         return rect
 
-class DrawText:
+    def composited_bounds_internal(self, rect):
+        rect.join(self.rect)
+        if self.cmds:
+            for cmd in self.cmds:
+                if not cmd.needs_compositing():
+                    cmd.composited_bounds_internal(rect)
+```
+
+The rect passed is the usual one; here's `DrawText`:
+
+``` {.python}
+class DrawText(DisplayItem):
     def __init__(self, x1, y1, text, font, color):
+        # ...
         super().__init__(
             rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
 ```
 
 The other classes are basically the same, including `SaveLayer` and `transform`.
 
-
- and
-`transform` a rect by the visual effect of the `DisplayItem`
-
-`Transform` will override the `transform` method, of course:
+And finally, the `Transform` class is special: it is the only subclass of
+`DisplayItem` that can *move pixels*---cause other `DisplayItem`s to draw in
+some new location other than its bounding rectangle. For this reason, we
+will need a method on it to determine the new rectangle after appling the
+translation transform:
 
 ``` {.python expected=False}
 class Transform:

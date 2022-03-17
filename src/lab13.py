@@ -100,9 +100,6 @@ class DisplayItem:
     def draw(self, canvas, op):
         pass
 
-    def transform(self, rect):
-        return rect
-
     def copy(self, display_item):
         assert False
 
@@ -192,7 +189,8 @@ class DrawText(DisplayItem):
         self.font = font
         self.text = text
         self.color = color
-        super().__init__(rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
+        super().__init__(
+            rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
 
     def draw(self, canvas, **args):
         draw_text(canvas, self.left, self.top,
@@ -1534,7 +1532,8 @@ class PaintChunk:
         for ancestor_item in reversed(self.ancestor_effects):
             if ancestor_item.needs_compositing() and not include_composited:
                 break
-            retval = ancestor_item.transform(retval)
+            if type(ancestor_item) is Transform:
+                retval = ancestor_item.transform(retval)
         return retval
 
     def needs_compositing(self):
