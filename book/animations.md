@@ -1199,9 +1199,76 @@ parameter on `DisplayItem`:
 class DisplayItem:
     def __init__(self, needs_compositing=False, cmds=None):
         self.composited = needs_compositing
+
+    def needs_compositing(self):
+        return self.composited
 ```
 
-Todo...
+To prepare for animations, et's always composite transform and opacity (but only
+when they actually do something that isn't a no-op:
+
+``` {.python expected=False}
+class Transform(DisplayItem):
+    def __init__(self, translation, rect, node, cmds):
+        # ...
+        should_transform = translation != None
+        super().__init__(needs_compositing=needs_transform, cmds=cmds)
+
+class SaveLayer(DisplayItem):
+    def __init__(self, sk_paint, node, cmds,
+            should_save=True, should_paint_cmds=True):
+        super().__init__(
+            rect=rect, needs_compositing=should_save, cmds=cmds,
+            is_noop=not should_save, node=node, item_type="save_layer")
+```
+
+Next we'll need to be able to get the `bounds` of a `DisplayItem` and
+`transform` a rect by the visual effect of the `DisplayItem`. These methods
+will be needed for determing the absolute bounds of a `PaintChunk`.
+
+``` {.python expected=False}
+class DisplayItem:
+    def __init__(self, rect, needs_compositing=False, cmds=None):
+        self.rect = rect if rect else skia.Rect.MakeEmpty()
+    # ...
+    def bounds(self):
+        return self.rect
+
+    def transform(self):
+        return rect
+```
+
+`Transform` will override the `transform` method, of course:
+
+``` {.python expected=False}
+class Transform:
+    # ...
+    def transform(self, rect):
+        if not self.translation:
+            return rect
+        matrix = skia.Matrix()
+        if self.translation:
+            (x, y) = self.translation
+            matrix.setTranslate(x, y)
+        return matrix.mapRect(rect)
+```
+
+::: {.further}
+But why composite always, and not just when the property is animating? It's
+for two reasons.
+
+First, we'll be able to start the animation quicker,
+since raster won't have to happen first. (Note that whenever we change the 
+compositing reasons or display list, we might have to re-raster a number of 
+surfaces.)
+
+Second, compositing sometimes has visual side-effects. Ideally, composited
+textures would look exactly the same on the screen. But due to the details of
+pixel-sensitive raster technologies like sub-pixel positioning for fonts, image
+resize filter algorithms, and anti-aliasing, this isn't always possible.
+"Pre-compositing" the content avoid visual jumps on the page when compositing
+starts.
+:::
 
 
 Implementing PaintChunk
