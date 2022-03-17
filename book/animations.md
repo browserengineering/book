@@ -1248,7 +1248,8 @@ class DrawText:
             rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
 ```
 
-The other classes are basically the same, except for `Transform`.
+The other classes are basically the same, including `SaveLayer` and `transform`.
+
 
  and
 `transform` a rect by the visual effect of the `DisplayItem`

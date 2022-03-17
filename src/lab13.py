@@ -118,16 +118,13 @@ class DisplayItem:
                 noop=(" <no-op>" if self.is_noop() else ""))
 
 class Transform(DisplayItem):
-    def __init__(self, translation,
-        rect, node, cmds):
+    def __init__(self, translation, rect, node, cmds):
         self.translation = translation
-        should_transform = translation != None
-        self.self_rect = rect
         my_bounds = self.compute_bounds(rect, cmds)
 
         super().__init__(
             rect=my_bounds, cmds=cmds,
-            is_noop=not should_transform, node=node)
+            is_noop=translation == None, node=node)
 
     def draw(self, canvas, op):
         if self.is_noop():
@@ -157,7 +154,6 @@ class Transform(DisplayItem):
     def copy(self, other):
         assert type(other) == type(self)
         self.translation = other.translation
-        should_transform = self.translation != None
         self.rect = self.compute_bounds(self.rect, self.get_cmds())
 
     def __repr__(self):
@@ -270,7 +266,7 @@ class DrawLine(DisplayItem):
         self.y2 = y2
         super().__init__(rect=skia.Rect.MakeLTRB(x1, y1, x2, y2))
 
-    def execute(self, canvas, *args):
+    def draw(self, canvas, *args):
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 class SaveLayer(DisplayItem):
