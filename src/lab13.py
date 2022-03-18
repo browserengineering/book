@@ -1060,7 +1060,7 @@ class CompositedLayer:
 
     def can_merge(self, chunk):
         if len(self.chunks) == 0:
-            return not chunk.needs_compositing()
+            return len(chunk.composited_items()) == 0
         return  \
             self.chunks[0].composited_item() == chunk.composited_item()
 
@@ -1506,9 +1506,9 @@ class TaskRunner:
 REFRESH_RATE_SEC = 0.016 # 16ms
 
 class PaintChunk:
-    def __init__(self, ancestor_effects, display_item):
-        self.ancestor_effects = ancestor_effects
+    def __init__(self, display_item, ancestor_effects):
         self.display_item = display_item
+        self.ancestor_effects = ancestor_effects
 
         self.composited_ancestor_index = -1
         count = len(ancestor_effects) - 1
@@ -1517,15 +1517,6 @@ class PaintChunk:
                 self.composited_ancestor_index = count
                 break
             count -= 1
-
-    def equals(self, other_chunk):
-        return self.display_item.node == other_chunk.display_item.node
-
-    def absolute_bounds(self):
-        return self.bounds_internal(True)
-
-    def composited_bounds(self):
-        return self.bounds_internal(False)
 
     def bounds_internal(self, include_composited):
         retval = self.display_item.composited_bounds()
@@ -1536,11 +1527,14 @@ class PaintChunk:
                 retval = ancestor_item.transform(retval)
         return retval
 
-    def needs_compositing(self):
-        return self.composited_ancestor_index >= 0
+    def absolute_bounds(self):
+        return self.bounds_internal(True)
+
+    def composited_bounds(self):
+        return self.bounds_internal(False)
 
     def composited_item(self):
-        if not self.needs_compositing():
+        if self.composited_ancestor_index < 0:
             return None
         return self.ancestor_effects[self.composited_ancestor_index]
 
@@ -1551,23 +1545,26 @@ class PaintChunk:
                 items.append(item)
         return items
 
+    def draw_internal(self, canvas, op, start, end):
+        if start == end:
+            op()
+        else:
+            ancestor_item = self.ancestor_effects[start]
+            def recurse_op():
+                self.draw_internal(canvas, op, start + 1, end)
+            ancestor_item.draw(canvas, recurse_op)
+
     def raster(self, canvas):
         def op():
             self.display_item.execute(canvas)
-        self.draw_internal(canvas, op, self.composited_ancestor_index + 1)
-
-    def draw_internal(self, canvas, op, index):
-        if index == len(self.ancestor_effects):
-            op()
-        else:
-            ancestor_item = self.ancestor_effects[index]
-            def recurse_op():
-                self.draw_internal(canvas, op, index + 1)
-            ancestor_item.draw(canvas, recurse_op)
+        self.draw_internal(
+            canvas, op, self.composited_ancestor_index + 1,
+            len(self.ancestor_effects))
 
     def draw(self, canvas, op):
         if self.composited_ancestor_index >= 0:
-            self.draw_internal(canvas, op, 0)
+            self.draw_internal(
+                canvas, op, 0, self.composited_ancestor_index + 1)
         else:
             op()
 
@@ -1587,7 +1584,7 @@ def display_list_to_paint_chunks_internal(
                 display_item.get_cmds(), chunks,
                 ancestor_effects + [display_item])
         else:
-            chunks.append(PaintChunk(ancestor_effects, display_item))
+            chunks.append(PaintChunk(display_item, ancestor_effects))
 
 def print_chunks(chunks):
     for chunk in chunks:
@@ -1615,7 +1612,9 @@ def get_composited_layer(
     chunk, current_composited_layers, current_index, skia_context):
     layer = None
     if current_index < len(current_composited_layers):
-        if current_composited_layers[current_index].chunks[0].equals(chunk):
+        if current_composited_layers[
+            current_index].chunks[0].display_item.node == \
+            chunk.display_item.node:
             layer = current_composited_layers[current_index]
             current_index += 1
 
