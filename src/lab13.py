@@ -1049,20 +1049,20 @@ class NumericAnimation:
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
 class CompositedLayer:
-    def __init__(self, first_chunk, skia_context):
-        self.surface = None
+    def __init__(self, skia_context):
         self.skia_context = skia_context
+        self.surface = None
         self.chunks = []
 
-    def init(self, first_chunk):
-        self.chunks = []
-        self.chunks.append(first_chunk)
+    def add_chunk(self, chunk):
+        self.chunks.append(chunk)
 
     def can_merge(self, chunk):
         if len(self.chunks) == 0:
-            return len(chunk.composited_items()) == 0
+            return True
         return  \
-            self.chunks[0].composited_item() == chunk.composited_item()
+            self.chunks[0].composited_item() == \
+                chunk.composited_item()
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
@@ -1082,37 +1082,12 @@ class CompositedLayer:
     def composited_items(self):
         return self.chunks[0].composited_items()
 
-    def append(self, chunk):
-        assert self.can_merge(chunk)
-        self.chunks.append(chunk)
-
-    def overlaps(self, rect):
-        return skia.Rect.Intersects(self.absolute_bounds(), rect)
-
-    def draw(self, canvas, draw_offset):
-        if not self.surface:
-            return
-
-        assert len(self.chunks) > 0
-
-        def op():
-            bounds = self.composited_bounds()
-            surface_offset_x = bounds.left()
-            surface_offset_y = bounds.top()
-            self.surface.draw(canvas, surface_offset_x, surface_offset_y)
-
-        (draw_offset_x, draw_offset_y) = draw_offset
-
-        canvas.save()
-        canvas.translate(draw_offset_x, draw_offset_y)
-        self.chunks[0].draw(canvas, op)
-        canvas.restore()
-
     def raster(self):
         bounds = self.composited_bounds()
         if bounds.isEmpty():
             return
         irect = bounds.roundOut()
+
         if not self.surface:
             if USE_GPU:
                 self.surface = skia.Surface.MakeRenderTarget(
@@ -1136,6 +1111,21 @@ class CompositedLayer:
             draw_rect(
                 canvas, 0, 0, irect.width() - 1, irect.height() - 1,
                 border_color="red")
+
+    def draw(self, canvas, draw_offset):
+        if not self.surface: return
+        def op():
+            bounds = self.composited_bounds()
+            surface_offset_x = bounds.left()
+            surface_offset_y = bounds.top()
+            self.surface.draw(canvas, surface_offset_x, surface_offset_y)
+
+        (draw_offset_x, draw_offset_y) = draw_offset
+
+        canvas.save()
+        canvas.translate(draw_offset_x, draw_offset_y)
+        self.chunks[0].draw(canvas, op)
+        canvas.restore()
 
     def __repr__(self):
         return ("layer: composited_bounds={} " +
@@ -1619,35 +1609,33 @@ def get_composited_layer(
             current_index += 1
 
     if not layer:
-        layer = CompositedLayer(chunk, skia_context)
+        layer = CompositedLayer(skia_context)
         current_index = len(current_composited_layers)
 
+    layer.clear()
     layer.init(chunk)
     return (layer, current_index)
 
-def do_compositing(display_list, skia_context,
-    current_composited_layers):
+def do_compositing(display_list, skia_context):
     chunks = display_list_to_paint_chunks(display_list)
     composited_layers = []
-    current_index = 0
     for chunk in chunks:
         placed = False
         for layer in reversed(composited_layers):
             if layer.can_merge(chunk):
-                layer.append(chunk)
+                layer.add_chunk(chunk)
                 placed = True
                 break
-            elif layer.overlaps(chunk.absolute_bounds()):
-                (layer, current_index) = get_composited_layer(
-                    chunk, current_composited_layers, current_index,
-                    skia_context)
+            elif skia.Rect.Intersects(
+                layer.absolute_bounds(), chunk.absolute_bounds()):
+                layer = CompositedLayer(skia_context)
+                layer.add_chunk(chunk)
                 composited_layers.append(layer)
                 placed = True
                 break
         if not placed:
-            (layer, current_index) = get_composited_layer(
-                chunk, current_composited_layers, current_index,
-                skia_context)
+            layer = CompositedLayer(skia_context)
+            layer.add_chunk(chunk)
             composited_layers.append(layer)
 
     return composited_layers
@@ -1774,8 +1762,7 @@ class Browser:
     def composite(self):
         if self.needs_composite:
             self.composited_layers = do_compositing(
-                self.active_tab_display_list, self.skia_context,
-                self.composited_layers)
+                self.active_tab_display_list, self.skia_context)
 
             self.active_tab_height = 0
             for layer in self.composited_layers:

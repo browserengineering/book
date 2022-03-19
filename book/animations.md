@@ -1109,23 +1109,27 @@ method on a `CompositedLayer` just checks whether the layer is *not* animating
 anything^[i.e., it is only a `CompositedLayer` because of overlap with
 something earlier.] *and* the chunk does not require animation.
 
-``` {.python expected=False}
+``` {.python}
 def do_compositing(display_list, skia_context):
     chunks = display_list_to_paint_chunks(display_list)
     composited_layers = []
-    current_index = 0
     for chunk in chunks:
         placed = False
         for layer in reversed(composited_layers):
             if layer.can_merge(chunk):
-                layer.append(chunk)
+                layer.add_chunk(chunk)
                 placed = True
                 break
-            elif layer.overlaps(chunk.absolute_bounds()):
+            elif skia.Rect.Intersects(
+                layer.absolute_bounds(), chunk.absolute_bounds()):
+                layer = CompositedLayer(skia_context)
+                layer.add_chunk(chunk)
                 composited_layers.append(layer)
                 placed = True
                 break
         if not placed:
+            layer = CompositedLayer(skia_context)
+            layer.add_chunk(chunk)
             composited_layers.append(layer)
 
     return composited_layers
@@ -1483,17 +1487,182 @@ Skia surface.
             op()
 ```
 
+Composited Layers
+=================
 
-Composited Layers and the Compositing Algorithm
-===============================================
+The final piece is to implement the `CompositedLayer` class. A
+`CompositedLayer` is a container for one or more `PaintChunk`s, plus it
+owns a `skia.Surface` into which to raster. The browser thread builds up and
+maintains a list of `CompositedLayer`s.
 
-TODO
+``` {.python}
+class CompositedLayer:
+    def __init__(self, skia_context):
+        self.skia_context = skia_context
+        self.surface = None
+        self.chunks = []
+```
+
+* `add_chunk`: adds a chunk.
+
+``` {.python}
+    def add_chunk(self, chunk):
+        self.chunks.append(chunk)
+```
+
+The class will have the following methods:
+
+* `can_merge`: returns whether the `chunk` passed as a parameter is compatible
+  with being drawn into the same `CompositedLayer`. This will be true if it has
+  the same `composited_item` as the existing chunks---i.e. it's animating the
+  same visual effect, or none in the `CompositedLayer` are 
+  animating.[^not-animating]
+
+``` {.python}
+    def can_merge(self, chunk):
+        if len(self.chunks) == 0:
+            return True
+        return  \
+            self.chunks[0].composited_item() == \
+                chunk.composited_item()
+```
+
+    def overlaps(self, rect):
+        return skia.Rect.Intersects(self.absolute_bounds(), rect)
+
+
+[^not-animating]: Recall that there are two types of `CompositedLayer`s that
+aren't animating: the root layer (what used to be called `tab_surface`), or
+one that is created just because of overlap.
+
+* `composited_bounds`: returns the union of the `composited_bounds`of all
+  chunks.
+
+``` {.python}
+    def composited_bounds(self):
+        retval = skia.Rect.MakeEmpty()
+        for chunk in self.chunks:
+            retval.join(chunk.composited_bounds())
+        return retval
+```
+
+* `absolute_bounds`: returns the union of the `absolute_bounds` of all chunks.
+
+``` {.python}
+    def absolute_bounds(self):
+        retval = skia.Rect.MakeEmpty()
+        for chunk in self.chunks:
+            retval.join(chunk.absolute_bounds())
+        return retval
+```
+
+* `composited_item`: returns the `composited_item` of the chunks (note that
+it will always be the same for all chunks).
+
+``` {.python}
+    def composited_item(self):
+        return self.chunks[0].composited_item()
+```
+
+* `composited_items`: returns the `composited_items` of the chunks (note that
+it will always be the same for all chunks).
+
+
+``` {.python}
+    def composited_items(self):
+        return self.chunks[0].composited_items()
+```
+
+* `raster`: rasters the chunks into `self.surface`. Note that there is no
+  parameter to this method, because raster of a `CompositdLayer` is
+  self-contained. Note that we first translate by the `top` and `left` of the
+  composited bounds. That's because we should allocate a surface exactly sized
+  to the width and height of the bounds; its top/left is just a positioning
+  offset. (It will be taken into acocunt in `draw`; see below.)
+
+``` {.python expeted=False}
+    def raster(self):
+        bounds = self.composited_bounds()
+        if bounds.isEmpty():
+            return
+        irect = bounds.roundOut()
+
+        self.surface = skia.Surface.MakeRenderTarget(
+            self.skia_context, skia.Budgeted.kNo,
+            skia.ImageInfo.MakeN32Premul(
+                irect.width(), irect.height()))
+        assert self.surface is not None
+
+        canvas = self.surface.getCanvas()
+
+        canvas.clear(skia.ColorTRANSPARENT)
+        canvas.save()
+        canvas.translate(-bounds.left(), -bounds.top())
+        for chunk in self.chunks:
+            chunk.raster(canvas)
+        canvas.restore()
+```
+
+* `draw`: draws `self.surface` to the screen, taking into account the visual
+  effects applied to each chunk. (Note that because of the definition of
+  `can_merge`, all the chunks will have the same visual effects, which is why
+  we can do this to the surface and not each chunk individually.)
+
+  This method is where we'll use the special `op` parameter we defined for
+  `PaintChunk`s. `op` simply calls `draw` on the surface with the top/left
+  parameters we omitted from `raster`.
+
+
+``` {.python}
+    def draw(self, canvas, draw_offset):
+        if not self.surface: return
+        def op():
+            bounds = self.composited_bounds()
+            surface_offset_x = bounds.left()
+            surface_offset_y = bounds.top()
+            self.surface.draw(canvas, surface_offset_x,
+                surface_offset_y)
+
+        (draw_offset_x, draw_offset_y) = draw_offset
+
+        canvas.save()
+        canvas.translate(draw_offset_x, draw_offset_y)
+        self.chunks[0].draw(canvas, op)
+        canvas.restore()
+```
+
+The last bit to make the code work end-to-end is a new `Browser.composite`
+method, and to generalize to `composite_raster_and_draw` (plus renaming the
+corresponding dirty bit and renaming at all callsites), and everything should
+work end-to-end.
+
+``` {.python expected=False}
+    def composite_raster_and_draw(self):
+        self.lock.acquire(blocking=True)
+        if not self.needs_composite_raster_draw:
+            self.lock.release()
+            return
+
+        self.measure_composite_raster_and_draw.start()
+        start_time = time.time()
+        if self.needs_composite or len(self.composited_updates) > 0:
+            self.composite()
+        if self.needs_raster:
+            self.raster_chrome()
+            self.raster_tab()
+        if self.needs_draw:
+            self.draw()
+        self.measure_composite_raster_and_draw.stop()
+        self.needs_composite_raster_draw = False
+        self.lock.release()
+```
 
 Composited animations
 =====================
 
-Show how to run the animations only on the compositor thread, to isolate
-from main-thread jank.
+Compositing now works, but it doesn't yet achieve the goal of avoiding raster
+during animations. Let's now implement code to avoid re-compositing on every
+frame.
 
 Accelerated scrolling
 =====================
