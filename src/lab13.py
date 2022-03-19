@@ -1118,7 +1118,8 @@ class CompositedLayer:
             bounds = self.composited_bounds()
             surface_offset_x = bounds.left()
             surface_offset_y = bounds.top()
-            self.surface.draw(canvas, surface_offset_x, surface_offset_y)
+            self.surface.draw(canvas, surface_offset_x,
+                surface_offset_y)
 
         (draw_offset_x, draw_offset_y) = draw_offset
 
