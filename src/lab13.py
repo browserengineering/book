@@ -1060,7 +1060,8 @@ def composited_ancestor_index(ancestor_effects):
 def bounds(display_item, ancestor_effects, include_composited=False):
     retval = display_item.composited_bounds()
     for ancestor_item in reversed(ancestor_effects):
-        if ancestor_item.needs_compositing() and not include_composited:
+        if ancestor_item.needs_compositing() and \
+            not include_composited:
             break
         if type(ancestor_item) is Transform:
             retval = ancestor_item.transform(retval)
