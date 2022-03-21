@@ -1062,21 +1062,22 @@ implement that. But to get there I'll have to introduce multiple new concepts
 that are tricky to understand. Before we get into the ins and outs of how to
 implement, let's start with what they are and how they will be used:
 
-* `PaintChunk`: a class that represents a single[^leaf-chromium] leaf
-  `DisplayItem`, plus the visual effects necessary to display it on the screen.
-  We'll compute a list of `PaintChunks` in paint order by "flattening" the
-  recursive display list, like so:
+* *Paint chunk*: a tuple of `(display_item, ancestor_effects)` where
+   `display_item` is a single[^leaf-chromium] leaf `DisplayItem`, and
+   `ancestor_effects` is a list of the visual effects necessary to display the
+   display item on the screen. We'll compute a list of `PaintChunks` in paint
+   order by "flattening" the recursive display list, like so:
 
 ``` {.python}
-def display_list_to_paint_chunks_internal(
-    display_list, chunks, ancestor_effects):
+def display_list_to_paint_chunks(
+    display_list, ancestor_effects, chunks):
     for display_item in display_list:
         if display_item.get_cmds() != None:
-            display_list_to_paint_chunks_internal(
-                display_item.get_cmds(), chunks,
-                ancestor_effects + [display_item])
+            display_list_to_paint_chunks(
+                display_item.get_cmds(),
+                ancestor_effects + [display_item], chunks)
         else:
-            chunks.append(PaintChunk(display_item, ancestor_effects))
+            chunks.append((display_item, ancestor_effects))
 ```
 
 [^leaf-chromium]: In Chromium, the same name refers to a maximal contiguous
@@ -1084,20 +1085,21 @@ subsequence of such leaves, but the concept is the exactly the same; the
 subsequence is just an optimized form that minimizes chunk count.
 
 * `CompositedLayer`: a class representing a grouping of compatible
-  `PaintChunk`s, plus a `skia.Surface` sized to raster them fully.
+  paint chunks, plus a `skia.Surface` sized to raster them fully.
 
-We'll do overlap testing on `PaintChunk`s This makes sense, since only the leaf
-`DisplayItems` raster any DOM content; the visual effect nodes "merely" move
-around or grow/shrink the raster area of the leaves.
+We'll do overlap testing on the absolute bounds of paint chunks. This
+makes sense, since only the leaf `DisplayItems` raster any DOM content; the
+visual effect nodes "merely" move around or grow/shrink the raster area of the
+leaves.
 
 The sequence of actions for the browser thread will be:
 
-1. Convert the (recursive) display list to a list of `PaintChunk`s.
+1. Convert the (recursive) display list to a list of paint chunks.
 
 2. Determine the list of `CompositedLayers` from the paint chunks, creating
 one `CompositedLayer` for each animating visual effect and one for each
-time a `PaintChunk` overlaps an earlier `CompositedLayer` that is animating.
-Multiple `PaintChunk`s can be present in a single `CompositedLayer`.
+time a paint chunk overlaps an earlier `CompositedLayer` that is animating.
+Multiple paint chunks can be present in a single `CompositedLayer`.
 The list of `CompositedLayer`s will be in order of drawing to the screen,
 and each will have a `draw` method that executes the visual effects for that
 `CompositedLayer` (including any visual effect that is animating).
@@ -1111,25 +1113,28 @@ something earlier.] *and* the chunk does not require animation.
 
 ``` {.python}
 def do_compositing(display_list, skia_context):
-    chunks = display_list_to_paint_chunks(display_list)
+    chunks = []
+    display_list_to_paint_chunks(display_list, [], chunks)
     composited_layers = []
-    for chunk in chunks:
+    for (display_item, ancestor_effects) in chunks:
         placed = False
         for layer in reversed(composited_layers):
-            if layer.can_merge(chunk):
-                layer.add_chunk(chunk)
+            if layer.can_merge(display_item, ancestor_effects):
+                layer.add_display_item(display_item, ancestor_effects)
                 placed = True
                 break
             elif skia.Rect.Intersects(
-                layer.absolute_bounds(), chunk.absolute_bounds()):
+                layer.absolute_bounds(),
+                bounds(display_item,
+                    ancestor_effects, include_composited=True)):
                 layer = CompositedLayer(skia_context)
-                layer.add_chunk(chunk)
+                layer.add_display_item(display_item, ancestor_effects)
                 composited_layers.append(layer)
                 placed = True
                 break
         if not placed:
             layer = CompositedLayer(skia_context)
-            layer.add_chunk(chunk)
+            layer.add_display_item(display_item, ancestor_effects)
             composited_layers.append(layer)
 
     return composited_layers
@@ -1151,10 +1156,10 @@ class Browser:
 ```
 
 ::: {.further}
-Why is it that flattening a recursive display list into `PaintChunks` is
+Why is it that flattening a recursive display list into paint chunks is
 possible? After all, visual effects in the DOM really are nested.
 
-The answer is that the `PaintChunk` concept is indeed sound for the purpose
+The answer is that the paint chunk concept is indeed sound for the purpose
 of overlap testing, but the implementation of `Browser.draw` in this section is
 incorrect for the case of nested visual effects (such as if there is a
 composited animation on a DOM element underneath another one). To fix it
@@ -1199,7 +1204,7 @@ Composited display items
 We'll also need a way to signal that a visual effect `DisplayItem` "needs
 compositing", meaning that it is animating and so its contents should be cached
 in a GPU texture. Let's indicate that with a new `needs_compositing` method on
-`DisplayItem`. Since we'll only implemenet composited animations of opacity and
+`DisplayItem`. Since we'll only implement composited animations of opacity and
 transform, always composite transform and opacity (but only when they actually
 do something that isn't a no-op).
 
@@ -1226,7 +1231,7 @@ class DisplayItem:
 Next we'll need to be able to get the *composited bounds* of a `DisplayItem`.
 It's composited bounds is the union of its painting rectangle and all
 descendants that are not themselves composited. This will be needed to
-determine the absolute bounds of a `PaintChunk`. This is pretty easy---there is
+determine the absolute bounds of a `CompositedLayer`. This is pretty easy---there is
 already a `rect` field stored on the various subclasses, so just pass them to
 the superclass instead:
 
@@ -1344,95 +1349,123 @@ composited and non-composited objects requires a lot of attention to detail
 and extra code to get right, so I omitted it from this book's code.)
 :::
 
+Composited Layers
+=================
 
-Implementing PaintChunk
-=======================
-
-Let's implement `PaintChunk` step-by-step. This class represents a single
-`DisplayItem` and its (non-composited) descendants---represented by the
-`display_item` constructor parameter---plus information to draw it to the
-screen---represented by `ancestor_effects`. `ancestor_effects` is an array of
-visual effect `DisplayItem`s in top-down order that need to be applied in
-order to draw `display_item` to the screen.
+The final piece is to implement the `CompositedLayer` class. A
+`CompositedLayer` is a container for one or more leaf `DisplayItem`s, plus it
+owns a `skia.Surface` into which to raster. The browser thread builds up and
+maintains a list of `CompositedLayer`s. Each one will have one or more
+`DisplayItems`, all with the same `ancestor_effects`.
 
 ``` {.python}
-class PaintChunk:
-    def __init__(self, display_item, ancestor_effects):
-        self.display_item = display_item
-        self.ancestor_effects = ancestor_effects
-```
-
-The `PaintChunk` class will have the following methods:
-
-* `absolute_bounds`: returns the *absolute space* bounding rect of the
-  `PaintChunk`---i.e. the rectangular area of pixels in
-  `tab_surface`[^abs-space] that are affected by `displa`y_item, taking into
-  account visual effects like transforms that might move them around on screen.
-  This rectangle is what `PaintChunk.absolute_bounds` returns. If one
-  `PaintChunk`'s `absolute_bounds` intersects another's, then they overlap.
-
-[^abs-space]: In other words, the (0, 0) position of this space is the top-left
-pixel of `tab_surface` (which may be offscreen due to scrolling).
-
-``` {.python}
-    def bounds_internal(self, include_composited):
-        retval = self.display_item.composited_bounds()
-        for ancestor_item in reversed(self.ancestor_effects):
-            if ancestor_item.needs_compositing() and not include_composited:
-                break
-            if type(ancestor_item) is Transform:
-                retval = ancestor_item.transform(retval)
-        return retval
-
-    def absolute_bounds(self):
-        return self.bounds_internal(True)
-```
-
-
-* `composited_bounds`: returns the bounds of `display_item` and its
-  non-composited descendants. This is used for overlap testing and to size
-  surfaces ithe `PaintChunk` draws into.
-
-``` {.python}
-    def composited_bounds(self):
-        return self.bounds_internal(False)
-```
-
-* `composited_item`: returns the nearest visual effect above `display_item` that
-  needs compositng, or `None` otherwise.
-
-``` {.python}
-    def composited_item(self):
-        if self.composited_ancestor_index < 0:
-            return None
-        return self.ancestor_effects[self.composited_ancestor_index]
-
-```
-
-* `composited_item`: returns the visual effect in `ancestor_effects` that is
-  closest to the end. For this, it's convenient to compute
-  `composited_ancestor_index` (the index of `composited_item` in
-  `ancestor_effects`), because' we'll have use for it in other methods.
-
-``` {.python}
-    def __init__(self, display_item, ancestor_effects):
+class CompositedLayer:
+    def __init__(self, skia_context):
+        self.skia_context = skia_context
+        self.surface = None
+        self.display_items = []
+        self.ancestor_effects = None
         self.composited_ancestor_index = -1
-        count = len(ancestor_effects) - 1
-        for ancestor_item in reversed(ancestor_effects):
-            if ancestor_item.needs_compositing():
-                self.composited_ancestor_index = count
-                break
-            count -= 1
+```
 
+The class will have the following methods:
+
+* `add_display_item`: adds a display_item. The first one being added will
+initialize the `composited_ancestor_index` of the `CompositedLayer`, which
+is the index into `ancestor_effects` that is the "lowest" ancestor which 
+needs compositing, or -1 otherwise.
+
+``` {.python}
+def composited_ancestor_index(ancestor_effects):
+    count = len(ancestor_effects) - 1
+    for ancestor_item in reversed(ancestor_effects):
+        if ancestor_item.needs_compositing():
+            return count
+            break
+        count -= 1
+    return -1
+
+class CompositedLayer:
+    # ...
+    def add_display_item(self, display_item, ancestor_effects):
+        if len(self.display_items) == 0:
+            self.composited_ancestor_index = \
+                composited_ancestor_index(ancestor_effects)
+            self.ancestor_effects = ancestor_effects
+        self.display_items.append(display_item)
+```
+
+* `can_merge`: returns whether the `display_item` plus `ancestor_effects` passed
+  as parameters are compatible with being drawn into the same
+  `CompositedLayer`. This will be true if they has the same `composited_item`
+  as the existing `DisplayItems`---i.e. it's animating the same visual effect,
+  or none in the `CompositedLayer` are animating.[^not-animating]
+
+``` {.python}
+    def can_merge(self, display_item, ancestor_effects):
+        if len(self.display_items) == 0:
+            return True
+        return  \
+            self.composited_ancestor_index == \
+            composited_ancestor_index(ancestor_effects)
+```
+
+[^not-animating]: Recall that there are two types of `CompositedLayer`s that
+aren't animating: the root layer (what used to be called `tab_surface`), or
+one that is created just because of overlap.
+
+* `composited_bounds`: returns the union of the composited bounds of all
+  `DisplayItem`s. The composited bounds of a `DisplayItem` is its bounds,
+  plus all non-composited ancestor visual effects.
+
+``` {.python}
+def bounds(display_item, ancestor_effects, include_composited=False):
+    retval = display_item.composited_bounds()
+    for ancestor_item in reversed(ancestor_effects):
+        if ancestor_item.needs_compositing() and \
+            not include_composited:
+            break
+        if type(ancestor_item) is Transform:
+            retval = ancestor_item.transform(retval)
+    return retval
+
+class CompositedLayer:
+    # ...
+    def composited_bounds(self):
+        retval = skia.Rect.MakeEmpty()
+        for item in self.display_items:
+            retval.join(bounds(item, self.ancestor_effects,
+                include_composited=False))
+        return retval
+```
+
+* `absolute_bounds`: returns the union of the absolute bounds of all
+`DisplayItems`. This is like `composited_bounds`, except that all ancestor
+visual effects are applied. So these bounds are the bounds relative
+to the top-left point of `tab_surface`.
+
+``` {.python}
+    def absolute_bounds(self):
+        retval = skia.Rect.MakeEmpty()
+        for item in self.display_items:
+            retval.join(bounds(item, self.ancestor_effects,
+                include_composited=True))
+        return retval
+```
+
+* `composited_item`: returns the ancestor effect that is composited, or `None`
+if none is.
+
+``` {.python}
     def composited_item(self):
         if self.composited_ancestor_index < 0:
             return None
         return self.ancestor_effects[self.composited_ancestor_index]
 ```
 
+* `composited_items`: returns a list of all ancestor visual effects that are
+  composited.
 
-* `composited_items` returns the list of composited visual effects above
-  `display_item`.
 
 ``` {.python}
     def composited_items(self):
@@ -1443,15 +1476,12 @@ pixel of `tab_surface` (which may be offscreen due to scrolling).
         return items
 ```
 
-* `raster`: rasters `display_item` into the given canvas. This one is written
-in a recursive way, but it really it just does the equivalent of
-
-    self.ancestor_effects[self.composited_ancestor_index + 1].execute(canvas)
-
-except that instead of running the entire sequence of recursive display items
-(like `execute` by itself would do), it bottoms out at `display_item` (which
-is a leaf, recall), and doesn't execute any other leaves. This utilizes
-the `draw` method on `DisplayItem` we added in the previous section.
+* `raster`: rasters the chunks into `self.surface`. Note that there is no
+  parameter to this method, because raster of a `CompositdLayer` is
+  self-contained. Note that we first translate by the `top` and `left` of the
+  composited bounds. That's because we should allocate a surface exactly sized
+  to the width and height of the bounds; its top/left is just a positioning
+  offset. (It will be taken into acocunt in `draw`; see below.)
 
 ``` {.python}
     def draw_internal(self, canvas, op, start, end):
@@ -1463,154 +1493,37 @@ the `draw` method on `DisplayItem` we added in the previous section.
                 self.draw_internal(canvas, op, start + 1, end)
             ancestor_item.draw(canvas, recurse_op)
 
-    def raster(self, canvas):
-        def op():
-            self.display_item.execute(canvas)
-        self.draw_internal(
-            canvas, op, self.composited_ancestor_index + 1,
-            len(self.ancestor_effects))
-```
-
-* `draw`: *draws* `op` and then the `ancestor_effects` visual effects into the
-given canvas. It looks a lot like raster, except that it does all the 
-"composited" visual effects (the ones before
-`self.composited_ancestor_index + 1`), and injects a special "leaf" display
-item passed in by parameter. We'll use this later to inject an already-rastered
-Skia surface.
-
-``` {.python}
-    def draw(self, canvas, op):
-        if self.composited_ancestor_index >= 0:
-            self.draw_internal(
-                canvas, op, 0, self.composited_ancestor_index + 1)
-        else:
-            op()
-```
-
-Composited Layers
-=================
-
-The final piece is to implement the `CompositedLayer` class. A
-`CompositedLayer` is a container for one or more `PaintChunk`s, plus it
-owns a `skia.Surface` into which to raster. The browser thread builds up and
-maintains a list of `CompositedLayer`s.
-
-``` {.python}
-class CompositedLayer:
-    def __init__(self, skia_context):
-        self.skia_context = skia_context
-        self.surface = None
-        self.chunks = []
-```
-
-* `add_chunk`: adds a chunk.
-
-``` {.python}
-    def add_chunk(self, chunk):
-        self.chunks.append(chunk)
-```
-
-The class will have the following methods:
-
-* `can_merge`: returns whether the `chunk` passed as a parameter is compatible
-  with being drawn into the same `CompositedLayer`. This will be true if it has
-  the same `composited_item` as the existing chunks---i.e. it's animating the
-  same visual effect, or none in the `CompositedLayer` are 
-  animating.[^not-animating]
-
-``` {.python}
-    def can_merge(self, chunk):
-        if len(self.chunks) == 0:
-            return True
-        return  \
-            self.chunks[0].composited_item() == \
-                chunk.composited_item()
-```
-
-    def overlaps(self, rect):
-        return skia.Rect.Intersects(self.absolute_bounds(), rect)
-
-
-[^not-animating]: Recall that there are two types of `CompositedLayer`s that
-aren't animating: the root layer (what used to be called `tab_surface`), or
-one that is created just because of overlap.
-
-* `composited_bounds`: returns the union of the `composited_bounds`of all
-  chunks.
-
-``` {.python}
-    def composited_bounds(self):
-        retval = skia.Rect.MakeEmpty()
-        for chunk in self.chunks:
-            retval.join(chunk.composited_bounds())
-        return retval
-```
-
-* `absolute_bounds`: returns the union of the `absolute_bounds` of all chunks.
-
-``` {.python}
-    def absolute_bounds(self):
-        retval = skia.Rect.MakeEmpty()
-        for chunk in self.chunks:
-            retval.join(chunk.absolute_bounds())
-        return retval
-```
-
-* `composited_item`: returns the `composited_item` of the chunks (note that
-it will always be the same for all chunks).
-
-``` {.python}
-    def composited_item(self):
-        return self.chunks[0].composited_item()
-```
-
-* `composited_items`: returns the `composited_items` of the chunks (note that
-it will always be the same for all chunks).
-
-
-``` {.python}
-    def composited_items(self):
-        return self.chunks[0].composited_items()
-```
-
-* `raster`: rasters the chunks into `self.surface`. Note that there is no
-  parameter to this method, because raster of a `CompositdLayer` is
-  self-contained. Note that we first translate by the `top` and `left` of the
-  composited bounds. That's because we should allocate a surface exactly sized
-  to the width and height of the bounds; its top/left is just a positioning
-  offset. (It will be taken into acocunt in `draw`; see below.)
-
-``` {.python expeted=False}
     def raster(self):
         bounds = self.composited_bounds()
         if bounds.isEmpty():
             return
         irect = bounds.roundOut()
 
-        self.surface = skia.Surface.MakeRenderTarget(
-            self.skia_context, skia.Budgeted.kNo,
-            skia.ImageInfo.MakeN32Premul(
-                irect.width(), irect.height()))
-        assert self.surface is not None
+        if not self.surface:
+            self.surface = skia.Surface.MakeRenderTarget(
+                self.skia_context, skia.Budgeted.kNo,
+                skia.ImageInfo.MakeN32Premul(
+                    irect.width(), irect.height()))
+            assert self.surface is not None
 
         canvas = self.surface.getCanvas()
 
         canvas.clear(skia.ColorTRANSPARENT)
         canvas.save()
         canvas.translate(-bounds.left(), -bounds.top())
-        for chunk in self.chunks:
-            chunk.raster(canvas)
+        for item in self.display_items:
+            def op():
+                item.execute(canvas)
+            self.draw_internal(
+                canvas, op, self.composited_ancestor_index + 1,
+                len(self.ancestor_effects))
         canvas.restore()
 ```
 
 * `draw`: draws `self.surface` to the screen, taking into account the visual
   effects applied to each chunk. (Note that because of the definition of
-  `can_merge`, all the chunks will have the same visual effects, which is why
-  we can do this to the surface and not each chunk individually.)
-
-  This method is where we'll use the special `op` parameter we defined for
-  `PaintChunk`s. `op` simply calls `draw` on the surface with the top/left
-  parameters we omitted from `raster`.
+  `can_merge`, all the `DisplayItem`s will have the same visual effects, which
+  is why we can do this to the surface and not each chunk individually.)
 
 
 ``` {.python}
@@ -1627,7 +1540,11 @@ it will always be the same for all chunks).
 
         canvas.save()
         canvas.translate(draw_offset_x, draw_offset_y)
-        self.chunks[0].draw(canvas, op)
+        if self.composited_ancestor_index >= 0:
+            self.draw_internal(
+                canvas, op, 0, self.composited_ancestor_index + 1)
+        else:
+            op()
         canvas.restore()
 ```
 

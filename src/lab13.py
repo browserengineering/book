@@ -1,4 +1,4 @@
-f"""
+"""
 This file compiles the code in Web Browser Engineering,
 up to and including Chapter 13 (Animations and Compositing),
 without exercises.
@@ -1048,39 +1048,81 @@ class NumericAnimation:
 
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
+def composited_ancestor_index(ancestor_effects):
+    count = len(ancestor_effects) - 1
+    for ancestor_item in reversed(ancestor_effects):
+        if ancestor_item.needs_compositing():
+            return count
+            break
+        count -= 1
+    return -1
+
+def bounds(display_item, ancestor_effects, include_composited=False):
+    retval = display_item.composited_bounds()
+    for ancestor_item in reversed(ancestor_effects):
+        if ancestor_item.needs_compositing() and \
+            not include_composited:
+            break
+        if type(ancestor_item) is Transform:
+            retval = ancestor_item.transform(retval)
+    return retval
+
 class CompositedLayer:
     def __init__(self, skia_context):
         self.skia_context = skia_context
         self.surface = None
-        self.chunks = []
+        self.display_items = []
+        self.ancestor_effects = None
+        self.composited_ancestor_index = -1
 
-    def add_chunk(self, chunk):
-        self.chunks.append(chunk)
+    def add_display_item(self, display_item, ancestor_effects):
+        if len(self.display_items) == 0:
+            self.composited_ancestor_index = \
+            composited_ancestor_index(ancestor_effects)
+            self.ancestor_effects = ancestor_effects
+        self.display_items.append(display_item)
 
-    def can_merge(self, chunk):
-        if len(self.chunks) == 0:
+    def can_merge(self, display_item, ancestor_effects):
+        if len(self.display_items) == 0:
             return True
         return  \
-            self.chunks[0].composited_item() == \
-                chunk.composited_item()
+            self.composited_ancestor_index == \
+            composited_ancestor_index(ancestor_effects)
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for chunk in self.chunks:
-            retval.join(chunk.composited_bounds())
+        for item in self.display_items:
+            retval.join(bounds(item, self.ancestor_effects,
+                include_composited=False))
         return retval
 
     def absolute_bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for chunk in self.chunks:
-            retval.join(chunk.absolute_bounds())
+        for item in self.display_items:
+            retval.join(bounds(item, self.ancestor_effects,
+                include_composited=True))
         return retval
 
     def composited_item(self):
-        return self.chunks[0].composited_item()
+        if self.composited_ancestor_index < 0:
+            return None
+        return self.ancestor_effects[self.composited_ancestor_index]
 
     def composited_items(self):
-        return self.chunks[0].composited_items()
+        items = []
+        for item in reversed(self.ancestor_effects):
+            if item.needs_compositing():
+                items.append(item)
+        return items
+
+    def draw_internal(self, canvas, op, start, end):
+        if start == end:
+            op()
+        else:
+            ancestor_item = self.ancestor_effects[start]
+            def recurse_op():
+                self.draw_internal(canvas, op, start + 1, end)
+            ancestor_item.draw(canvas, recurse_op)
 
     def raster(self):
         bounds = self.composited_bounds()
@@ -1103,8 +1145,12 @@ class CompositedLayer:
         canvas.clear(skia.ColorTRANSPARENT)
         canvas.save()
         canvas.translate(-bounds.left(), -bounds.top())
-        for chunk in self.chunks:
-            chunk.raster(canvas)
+        for item in self.display_items:
+            def op():
+                item.execute(canvas)
+            self.draw_internal(
+                canvas, op, self.composited_ancestor_index + 1,
+                len(self.ancestor_effects))
         canvas.restore()
 
         if SHOW_COMPOSITED_LAYER_BORDERS:
@@ -1125,14 +1171,18 @@ class CompositedLayer:
 
         canvas.save()
         canvas.translate(draw_offset_x, draw_offset_y)
-        self.chunks[0].draw(canvas, op)
+        if self.composited_ancestor_index >= 0:
+            self.draw_internal(
+                canvas, op, 0, self.composited_ancestor_index + 1)
+        else:
+            op()
         canvas.restore()
 
     def __repr__(self):
         return ("layer: composited_bounds={} " +
             "absolute_bounds={} first_chunk={}").format(
             self.composited_bounds(), self.absolute_bounds(),
-            self.chunks[0] if len(self.chunks) > 0 else 'None')
+            self.display_items[0] if len(self.display_items) > 0 else 'None')
 
 def raster(display_list, canvas):
     for cmd in display_list:
@@ -1496,147 +1546,56 @@ class TaskRunner:
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
-class PaintChunk:
-    def __init__(self, display_item, ancestor_effects):
-        self.display_item = display_item
-        self.ancestor_effects = ancestor_effects
-
-        self.composited_ancestor_index = -1
-        count = len(ancestor_effects) - 1
-        for ancestor_item in reversed(ancestor_effects):
-            if ancestor_item.needs_compositing():
-                self.composited_ancestor_index = count
-                break
-            count -= 1
-
-    def bounds_internal(self, include_composited):
-        retval = self.display_item.composited_bounds()
-        for ancestor_item in reversed(self.ancestor_effects):
-            if ancestor_item.needs_compositing() and not include_composited:
-                break
-            if type(ancestor_item) is Transform:
-                retval = ancestor_item.transform(retval)
-        return retval
-
-    def absolute_bounds(self):
-        return self.bounds_internal(True)
-
-    def composited_bounds(self):
-        return self.bounds_internal(False)
-
-    def composited_item(self):
-        if self.composited_ancestor_index < 0:
-            return None
-        return self.ancestor_effects[self.composited_ancestor_index]
-
-    def composited_items(self):
-        items = []
-        for item in reversed(self.ancestor_effects):
-            if item.needs_compositing():
-                items.append(item)
-        return items
-
-    def draw_internal(self, canvas, op, start, end):
-        if start == end:
-            op()
-        else:
-            ancestor_item = self.ancestor_effects[start]
-            def recurse_op():
-                self.draw_internal(canvas, op, start + 1, end)
-            ancestor_item.draw(canvas, recurse_op)
-
-    def raster(self, canvas):
-        def op():
-            self.display_item.execute(canvas)
-        self.draw_internal(
-            canvas, op, self.composited_ancestor_index + 1,
-            len(self.ancestor_effects))
-
-    def draw(self, canvas, op):
-        if self.composited_ancestor_index >= 0:
-            self.draw_internal(
-                canvas, op, 0, self.composited_ancestor_index + 1)
-        else:
-            op()
-
-    def __repr__(self):
-        composited_item = None
-        if self.composited_ancestor_index >= 0:
-            composited_item = \
-                self.ancestor_effects[self.composited_ancestor_index]
-        return "Chunk: first_item={} composited_item=".format(
-            self.display_item, composited_item)
-
-def display_list_to_paint_chunks_internal(
-    display_list, chunks, ancestor_effects):
-    for display_item in display_list:
-        if display_item.get_cmds() != None:
-            display_list_to_paint_chunks_internal(
-                display_item.get_cmds(), chunks,
-                ancestor_effects + [display_item])
-        else:
-            chunks.append(PaintChunk(display_item, ancestor_effects))
-
 def print_chunks(chunks):
-    for chunk in chunks:
+    for (display_item, ancestor_effects) in chunks:
         print('chunks:')
         print("  chunk display items:")
-        print(" " * 4 + str(chunk.display_item))
+        print(" " * 4 + str(display_item))
         print("  chunk ancestor visual effect (skipping no-ops):")
         count = 4
-        for display_item in chunk.ancestor_effects:
+        for display_item in ancestor_effects:
             if not display_item.is_noop():
                 print(" " * count + str(display_item))
                 count += 2
-
-def display_list_to_paint_chunks(display_list):
-    chunks = []
-    display_list_to_paint_chunks_internal(display_list, chunks, [])
-    return chunks
 
 def print_composited_layers(composited_layers):
     print("Composited layers:")
     for layer in composited_layers:
         print("  " * 4 + str(layer))
 
-def get_composited_layer(
-    chunk, current_composited_layers, current_index, skia_context):
-    layer = None
-    if current_index < len(current_composited_layers):
-        if current_composited_layers[
-            current_index].chunks[0].display_item.node == \
-            chunk.display_item.node:
-            layer = current_composited_layers[current_index]
-            current_index += 1
-
-    if not layer:
-        layer = CompositedLayer(skia_context)
-        current_index = len(current_composited_layers)
-
-    layer.clear()
-    layer.init(chunk)
-    return (layer, current_index)
+def display_list_to_paint_chunks(
+    display_list, ancestor_effects, chunks):
+    for display_item in display_list:
+        if display_item.get_cmds() != None:
+            display_list_to_paint_chunks(
+                display_item.get_cmds(),
+                ancestor_effects + [display_item], chunks)
+        else:
+            chunks.append((display_item, ancestor_effects))
 
 def do_compositing(display_list, skia_context):
-    chunks = display_list_to_paint_chunks(display_list)
+    chunks = []
+    display_list_to_paint_chunks(display_list, [], chunks)
     composited_layers = []
-    for chunk in chunks:
+    for (display_item, ancestor_effects) in chunks:
         placed = False
         for layer in reversed(composited_layers):
-            if layer.can_merge(chunk):
-                layer.add_chunk(chunk)
+            if layer.can_merge(display_item, ancestor_effects):
+                layer.add_display_item(display_item, ancestor_effects)
                 placed = True
                 break
             elif skia.Rect.Intersects(
-                layer.absolute_bounds(), chunk.absolute_bounds()):
+                layer.absolute_bounds(),
+                bounds(display_item,
+                    ancestor_effects, include_composited=True)):
                 layer = CompositedLayer(skia_context)
-                layer.add_chunk(chunk)
+                layer.add_display_item(display_item, ancestor_effects)
                 composited_layers.append(layer)
                 placed = True
                 break
         if not placed:
             layer = CompositedLayer(skia_context)
-            layer.add_chunk(chunk)
+            layer.add_display_item(display_item, ancestor_effects)
             composited_layers.append(layer)
 
     return composited_layers
