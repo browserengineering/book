@@ -1,4 +1,4 @@
-f"""
+"""
 This file compiles the code in Web Browser Engineering,
 up to and including Chapter 13 (Animations and Compositing),
 without exercises.
