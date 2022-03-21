@@ -1204,7 +1204,7 @@ Composited display items
 We'll also need a way to signal that a visual effect `DisplayItem` "needs
 compositing", meaning that it is animating and so its contents should be cached
 in a GPU texture. Let's indicate that with a new `needs_compositing` method on
-`DisplayItem`. Since we'll only implemenet composited animations of opacity and
+`DisplayItem`. Since we'll only implement composited animations of opacity and
 transform, always composite transform and opacity (but only when they actually
 do something that isn't a no-op).
 
@@ -1389,7 +1389,8 @@ class CompositedLayer:
     # ...
     def add_display_item(self, display_item, ancestor_effects):
         if len(self.display_items) == 0:
-            self.composited_ancestor_index = composited_ancestor_index(ancestor_effects)
+            self.composited_ancestor_index = \
+                composited_ancestor_index(ancestor_effects)
             self.ancestor_effects = ancestor_effects
         self.display_items.append(display_item)
 ```
@@ -1405,7 +1406,8 @@ class CompositedLayer:
         if len(self.display_items) == 0:
             return True
         return  \
-            self.composited_ancestor_index == composited_ancestor_index(ancestor_effects)
+            self.composited_ancestor_index == \
+            composited_ancestor_index(ancestor_effects)
 ```
 
 [^not-animating]: Recall that there are two types of `CompositedLayer`s that
@@ -1420,7 +1422,8 @@ one that is created just because of overlap.
 def bounds(display_item, ancestor_effects, include_composited=False):
     retval = display_item.composited_bounds()
     for ancestor_item in reversed(ancestor_effects):
-        if ancestor_item.needs_compositing() and not include_composited:
+        if ancestor_item.needs_compositing() and \
+            not include_composited:
             break
         if type(ancestor_item) is Transform:
             retval = ancestor_item.transform(retval)

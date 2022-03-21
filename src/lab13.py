@@ -1076,7 +1076,8 @@ class CompositedLayer:
 
     def add_display_item(self, display_item, ancestor_effects):
         if len(self.display_items) == 0:
-            self.composited_ancestor_index = composited_ancestor_index(ancestor_effects)
+            self.composited_ancestor_index = \
+            composited_ancestor_index(ancestor_effects)
             self.ancestor_effects = ancestor_effects
         self.display_items.append(display_item)
 
@@ -1084,7 +1085,8 @@ class CompositedLayer:
         if len(self.display_items) == 0:
             return True
         return  \
-            self.composited_ancestor_index == composited_ancestor_index(ancestor_effects)
+            self.composited_ancestor_index == \
+            composited_ancestor_index(ancestor_effects)
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
