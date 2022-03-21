@@ -1066,7 +1066,6 @@ def bounds(display_item, ancestor_effects, include_composited=False):
             retval = ancestor_item.transform(retval)
     return retval
 
-
 class CompositedLayer:
     def __init__(self, skia_context):
         self.skia_context = skia_context
@@ -1556,28 +1555,24 @@ def print_chunks(chunks):
                 print(" " * count + str(display_item))
                 count += 2
 
-def display_list_to_paint_chunks_internal(
-    display_list, chunks, ancestor_effects):
-    for display_item in display_list:
-        if display_item.get_cmds() != None:
-            display_list_to_paint_chunks_internal(
-                display_item.get_cmds(), chunks,
-                ancestor_effects + [display_item])
-        else:
-            chunks.append((display_item, ancestor_effects))
-
-def display_list_to_paint_chunks(display_list):
-    chunks = []
-    display_list_to_paint_chunks_internal(display_list, chunks, [])
-    return chunks
-
 def print_composited_layers(composited_layers):
     print("Composited layers:")
     for layer in composited_layers:
         print("  " * 4 + str(layer))
 
+def display_list_to_paint_chunks(
+    display_list, ancestor_effects, chunks):
+    for display_item in display_list:
+        if display_item.get_cmds() != None:
+            display_list_to_paint_chunks(
+                display_item.get_cmds(),
+                ancestor_effects + [display_item], chunks)
+        else:
+            chunks.append((display_item, ancestor_effects))
+
 def do_compositing(display_list, skia_context):
-    chunks = display_list_to_paint_chunks(display_list)
+    chunks = []
+    display_list_to_paint_chunks(display_list, [], chunks)
     composited_layers = []
     for (display_item, ancestor_effects) in chunks:
         placed = False
