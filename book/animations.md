@@ -1590,9 +1590,10 @@ during animations. In fact, at the moment it's *slower* than before, because
 the compositing algorithm---and use of the GPU---is not free, if you have
 to constantly re-upload display lists and re-raster all the time.
 
-Avoiding compositing is relatively simple in concept: keep track of what is
-animating, and re-run `draw` with different visual effect transform or opacity
-parameters on the `CompositedLayer`s that are animating.
+Avoiding raster (and also the compositing algorithm) is relatively simple in
+concept: keep track of what is animating, and re-run `draw` with different
+visual effect transform or opacity parameters on the `CompositedLayer`s that
+are animating.
 
 Let's accomplish that. It will have multiple parts, starting with the main
 thread.
