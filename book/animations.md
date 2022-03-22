@@ -429,6 +429,7 @@ class Tab:
     
     def set_needs_layout(self):
         self.needs_layout = True
+        self.browser.set_needs_animation_frame(self)
 
     def render(self):
         if not self.needs_render \
@@ -1554,6 +1555,16 @@ corresponding dirty bit and renaming at all callsites), and everything should
 work end-to-end.
 
 ``` {.python expected=False}
+    def composite(self):
+        self.composited_layers = do_compositing(
+            self.active_tab_display_list, self.skia_context)
+
+        self.active_tab_height = 0
+        for layer in self.composited_layers:
+            self.active_tab_height = \
+                max(self.active_tab_height,
+                    layer.absolute_bounds().bottom())
+
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)
         if not self.needs_composite_raster_draw:
@@ -1562,13 +1573,10 @@ work end-to-end.
 
         self.measure_composite_raster_and_draw.start()
         start_time = time.time()
-        if self.needs_composite or len(self.composited_updates) > 0:
-            self.composite()
-        if self.needs_raster:
-            self.raster_chrome()
-            self.raster_tab()
-        if self.needs_draw:
-            self.draw()
+        self.composite()
+        self.raster_chrome()
+        self.raster_tab()
+        self.draw()
         self.measure_composite_raster_and_draw.stop()
         self.needs_composite_raster_draw = False
         self.lock.release()
@@ -1578,8 +1586,236 @@ Composited animations
 =====================
 
 Compositing now works, but it doesn't yet achieve the goal of avoiding raster
-during animations. Let's now implement code to avoid re-compositing on every
-frame.
+during animations. In fact, at the moment it's *slower* than before, because
+the compositing algorithm---and use of the GPU---is not free, if you have
+to constantly re-upload display lists and re-raster all the time.
+
+Avoiding compositing is relatively simple in concept: keep track of what is
+animating, and re-run `draw` with different visual effect transform or opacity
+parameters on the `CompositedLayer`s that are animating.
+
+Let's accomplish that. It will have multiple parts, starting with the main
+thread.
+
+* If an animation is running, and it's the only thing happening to the DOM, then
+  only re-do `paint` (in order to update the animated `DisplayItem`s). For
+  this, add a `needs_paint` dirty bit (`needs_layout` will also need to set
+  `needs_paint`):
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        self.needs_paint = False
+
+    def set_needs_layout(self):
+        self.needs_layout = True
+        self.needs_paint = True
+        self.browser.set_needs_animation_frame(self)
+
+    def render(self):
+        if not self.needs_render \
+            and not self.needs_layout \
+            and not self.needs_paint:
+            return
+
+        self.measure_render.start()
+
+        if self.needs_render:
+            style(self.nodes, sorted(self.rules,
+                key=cascade_priority), self)
+
+        if self.needs_layout:
+            # ...
+            self.document.layout()
+        
+        if self.needs_paint:
+            self.display_list = []
+
+            self.document.paint(self.display_list)
+            # ...
+        self.needs_layout = False
+        self.needs_paint = False
+
+        self.measure_render.stop()
+```
+
+and a method that sets it:
+
+``` {.python}
+class Tab:
+   def set_needs_animation(self, node, property_name, is_composited):
+        if is_composited:
+            self.needs_paint = True
+            # ...
+            self.browser.set_needs_animation_frame(self)
+        else:
+            self.set_needs_layout()
+```
+
+and to call `set_needs_animation` from animation instead of `set_needs_render`:
+
+``` {.python expected=False}
+class NumericAnimation:
+    # ...
+    def animate(self):
+        # ...
+        self.tab.set_needs_animation(self.node, self.property_name,
+            self.property_name == "opacity")
+
+class TranslationAnimation:
+    # ...
+    def animate(self):
+        # ...
+        self.tab.set_needs_animation(self.node, "transform", True)
+```
+
+* Save off each `Element` that updates its composited animation, in a new
+array called `composited_animation_updates`:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.composited_animation_updates = []
+
+    def set_needs_animation(self, node, property_name, is_composited):
+        if is_composited:
+            # ...
+            self.composited_animation_updates.append(node)
+```
+
+* When running animation frames, if only `needs_paint` is true, then compositing
+is not needed, and each animation in `composited_animation_updates` can be
+committed across to the browser thread:
+
+``` {.python}
+
+    def run_animation_frame(self, scroll):
+        # ...
+        needs_composite = self.needs_render or self.needs_layout
+
+        self.render()
+
+        composited_updates = []
+        if not needs_composite:
+            for node in self.composited_animation_updates:
+                composited_updates.append(
+                    (node, node.transform, node.save_layer))
+        self.composited_animation_updates.clear()
+
+        commit_data = CommitForRaster(
+            # ...
+            composited_updates=composited_updates
+        )
+```
+
+* Add `needs_composite`, `needs_raster` and `needs_draw` dirty bits and
+  correspondiing `set_needs_composite`, `set_needs_raster`, and
+  `set_needs_draw` methods (and remove the old
+  `needs_raster_and_draw` dirty bit):
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.needs_composite = False
+        self.needs_raster = False
+
+    def set_needs_raster(self):
+        self.needs_raster = True
+        self.needs_draw = True
+        self.needs_animation_frame = True
+
+    def set_needs_composite(self):
+        self.needs_composite = True
+        self.needs_raster = True
+        self.needs_draw = True
+
+    def composite_raster_and_draw(self):
+        if not self.needs_composite and \
+            len(self.composited_updates) == 0 \
+            and not self.needs_raster and not self.needs_draw:
+            self.lock.release()
+            return
+        
+        if self.needs_composite or len(self.composited_updates) > 0:
+            self.composite()
+        if self.needs_raster:
+            self.raster_chrome()
+            self.raster_tab()
+        if self.needs_draw:
+            self.draw()
+```
+
+* Call `set_needs_raster` from the places that
+  currently call `set_needs_raster_and_draw`, such as `handle_down`:
+
+``` {.python}
+    def handle_down(self):
+        # ...
+        self.set_needs_raster()
+```
+
+* Use the passed data in `commit` to decide wheter to  call
+  `set_needs_composite` or `set_needs_draw`, and store off the updates in
+  `compostited_upates`:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.needs_composite = False
+        # ...
+        self.composited_updates = []
+
+    def commit(self, tab, data):
+        # ...
+        if tab == self.tabs[self.active_tab]:
+            # ...
+            self.composited_updates = data.composited_updates
+            if len(self.composited_layers) == 0:
+                self.set_needs_composite()
+            else:
+                self.set_needs_draw()
+```
+
+* Now for the actual animation updates: if `needs_composite` is false, loop over
+  each `CompositedLayer`'s `composited_items`, and update each one that matches
+  the animation (by comparing the `Element` pointers for the animation's DOM
+  node).
+
+``` {.python}
+    def composite(self):
+        if self.needs_composite:
+            # ...
+        else:
+            for (node, transform,
+                save_layer) in self.composited_updates:
+                success = False
+                for layer in self.composited_layers:
+                    composited_items = layer.composited_items()
+                    for composited_item in composited_items:
+                        if type(composited_item) is Transform:
+                            composited_item.copy(transform)
+                            success = True
+                        elif type(composited_item) is SaveLayer:
+                            composited_item.copy(save_layer)
+                            success = True
+                assert success
+```
+
+The result will be automatically drawn to the screen, because the `draw` method
+on each `CompositedLayer` will iterate through its `composited_items` and
+execute them.
+
+Now check out the result---animations that only update the draw step, and
+not everything else!
+
+::: {.further}
+Threaded animations (exercise).
+
+Rastering only some content, partial raster, partial draw.
+:::
 
 Accelerated scrolling
 =====================

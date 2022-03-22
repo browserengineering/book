@@ -1341,8 +1341,7 @@ class Tab:
             scroll=scroll,
             height=document_height,
             display_list=self.display_list,
-            composited_updates=composited_updates,
-            needs_composite=needs_composite
+            composited_updates=composited_updates
         )
         self.display_list = None
         self.scroll_changed_in_tab = False
@@ -1482,14 +1481,12 @@ class SingleThreadedTaskRunner:
         pass
 
 class CommitForRaster:
-    def __init__(self, url, scroll, height, display_list, composited_updates,
-        needs_composite):
+    def __init__(self, url, scroll, height, display_list, composited_updates):
         self.url = url
         self.scroll = scroll
         self.height = height
         self.display_list = display_list
         self.composited_updates = composited_updates
-        self.needs_composite = needs_composite
 
 class TaskRunner:
     def __init__(self, tab):
@@ -1667,9 +1664,9 @@ class Browser:
         self.animation_timer = None
 
         self.needs_animation_frame = False
+        self.needs_composite = False
         self.needs_raster = False
         self.needs_draw = False
-        self.needs_composite = False
 
         self.active_tab_height = 0
         self.active_tab_display_list = None
@@ -1691,10 +1688,11 @@ class Browser:
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
-            self.composited_updates = data.composited_updates
 
             self.animation_timer = None
-            if data.needs_composite or len(self.composited_layers) == 0:
+
+            self.composited_updates = data.composited_updates
+            if len(self.composited_layers) == 0:
                 self.set_needs_composite()
             else:
                 self.set_needs_draw()
@@ -1706,7 +1704,7 @@ class Browser:
             self.needs_animation_frame = True
         self.lock.release()
 
-    def set_needs_raster_and_draw(self):
+    def set_needs_raster(self):
         self.needs_raster = True
         self.needs_draw = True
         self.needs_animation_frame = True
@@ -1727,9 +1725,11 @@ class Browser:
             self.active_tab_height = 0
             for layer in self.composited_layers:
                 self.active_tab_height = \
-                    max(self.active_tab_height, layer.absolute_bounds().bottom())
+                    max(self.active_tab_height,
+                        layer.absolute_bounds().bottom())
         else:
-            for (node, transform, save_layer) in self.composited_updates:
+            for (node, transform,
+                save_layer) in self.composited_updates:
                 success = False
                 for layer in self.composited_layers:
                     composited_items = layer.composited_items()
@@ -1744,7 +1744,8 @@ class Browser:
 
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)
-        if not self.needs_composite and len(self.composited_updates) == 0 \
+        if not self.needs_composite and \
+            len(self.composited_updates) == 0 \
             and not self.needs_raster and not self.needs_draw:
             self.lock.release()
             return
@@ -1790,7 +1791,7 @@ class Browser:
             self.scroll + SCROLL_STEP,
             self.active_tab_height)
         self.scroll = scroll
-        self.set_needs_raster_and_draw()
+        self.set_needs_raster()
         self.lock.release()
 
     def clear_data(self):
@@ -1820,7 +1821,7 @@ class Browser:
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
-            self.set_needs_raster_and_draw()
+            self.set_needs_raster()
         else:
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
@@ -1833,7 +1834,7 @@ class Browser:
         if not (0x20 <= ord(char) < 0x7f): return
         if self.focus == "address bar":
             self.address_bar += char
-            self.set_needs_raster_and_draw()
+            self.set_needs_raster()
         elif self.focus == "content":
             active_tab = self.tabs[self.active_tab]
             task = Task(active_tab.keypress, char)
@@ -1851,7 +1852,7 @@ class Browser:
             self.schedule_load(self.address_bar)
             self.url = self.address_bar
             self.focus = None
-            self.set_needs_raster_and_draw()
+            self.set_needs_raster()
         self.lock.release()
 
     def load(self, url):
