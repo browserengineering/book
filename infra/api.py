@@ -122,29 +122,34 @@ def comment():
 @bottle.get("/thanks")
 @bottle.view("thanks.view")
 def thanks():
-    names = [name for name, email in DATA.contributors()]
+    author_names = {
+        "Pavel Panchekha",
+        "Chris Harrelson"
+    }
+
+    feedback_names = {name for name, email in DATA.contributors() if name}
 
     # The list below comes from running
     #
     #   git log --format='%aN' | sort -u`
     #
     # And deleting the authors' names.
-    extra_names = [
+    gh_names = {
         "Abram Himmer",
         "Anthony",
         "BO41",
         "Ian Briggs",
         "Shuhei Kagawa",
-    ]
-
-    all_names = {
-        name
-        for name in names + extra_names
-        if name
-        and name not in ["Pavel Panchekha", "Chris Harrelson"]
     }
 
-    return { "names": list(all_names) }
+    patreon_names = {
+        "[list goes here]"
+    }
+
+    return {
+        "patreon": list(patreon_names - author_names),
+        "contribute": list((feedback_names | gh_names) - author_names),
+    }
 
 def splitword(text):
     out = [[]]

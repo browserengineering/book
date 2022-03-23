@@ -27,13 +27,18 @@
 We want to thank our
 <a href="https://patreon.com/browserengineering">Patreon</a>
 <em>subscribers</em>, who support this book financially:
-[list here].
+{{", ".join(patreon[:-1])}}, and {{patreon[-1]}}.
 </p>
 
 <p>
 Moreover, we thank <em>contributors</em> who submitted typo fixes,
 questions, and comments through the book's built-in feedback tools:
-{{", ".join(names[:-1])}}, and {{names[-1]}}.
+{{", ".join(contribute[:-1])}}, and {{contribute[-1]}}.
+</p>
+
+<p>
+We are grateful to <em>students</em> of <a href="classes.html">classes
+using this book</a>, who often read drafts and gave valuable feedback.
 </p>
 
 <p>
