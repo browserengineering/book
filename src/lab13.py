@@ -1046,6 +1046,28 @@ class NumericAnimation:
             self.property_name == "opacity" and USE_COMPOSITING)
         return True
 
+class ScrollAnimation:
+    def __init__(
+        self, old_scroll, new_scroll, tab):
+        self.old_scroll = old_scroll
+        self.new_scroll = new_scroll
+        self.num_frames = 30
+        self.change_per_frame = \
+            (new_scroll - old_scroll) / self.num_frames
+        self.tab = tab
+        self.frame_count = 0
+        self.animate()
+
+    def animate(self):
+        self.frame_count += 1
+        if self.frame_count >= self.num_frames: return False
+        updated_value = self.old_scroll + \
+            self.change_per_frame * self.frame_count
+        self.tab.scroll = updated_value
+        self.tab.scroll_changed_in_tab = True
+        self.tab.browser.set_needs_animation_frame(self)
+        return True
+
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
 def composited_ancestor_index(ancestor_effects):
@@ -1213,6 +1235,8 @@ class Tab:
 
         self.animations = {}
         self.composited_animation_updates = []
+        self.scroll_behavior = 'auto'
+        self.scroll_animation = None
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -1300,7 +1324,12 @@ class Tab:
 
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
-            self.scroll = scroll
+            if scroll != self.scroll and not self.scroll_animation:
+                if self.scroll_behavior == 'smooth':
+                    self.scroll_animation = ScrollAnimation(
+                        self.scroll, scroll, self)
+                else:
+                    self.scroll = scroll
         self.js.interp.evaljs("__runRAFHandlers()")
 
         to_delete = []
@@ -1312,6 +1341,10 @@ class Tab:
 
         for (node, property_name) in to_delete:
             del self.animations[node][property_name]
+
+        if self.scroll_animation:
+            if not self.scroll_animation.animate():
+                self.scroll_animation = None
 
         needs_composite = self.needs_render or self.needs_layout
 
@@ -1336,12 +1369,13 @@ class Tab:
                     (node, node.transform, node.save_layer))
         self.composited_animation_updates.clear()
 
-        commit_data = CommitForRaster(
+        commit_data = CommitData(
             url=self.url,
             scroll=scroll,
             height=document_height,
             display_list=self.display_list,
-            composited_updates=composited_updates
+            composited_updates=composited_updates,
+            scroll_behavior=self.scroll_behavior
         )
         self.display_list = None
         self.scroll_changed_in_tab = False
@@ -1359,6 +1393,13 @@ class Tab:
         if self.needs_render:
             style(self.nodes, sorted(self.rules,
                 key=cascade_priority), self)
+
+            if self.nodes.children[0].tag == "body":
+                body = self.nodes.children[0]
+            else:
+                body = self.nodes.children[1]
+            if 'scroll-behavior' in body.style:
+                self.scroll_behavior = body.style['scroll-behavior']
 
         if self.needs_layout:
             self.document = DocumentLayout(self.nodes)
@@ -1480,13 +1521,15 @@ class SingleThreadedTaskRunner:
     def run(self):
         pass
 
-class CommitForRaster:
-    def __init__(self, url, scroll, height, display_list, composited_updates):
+class CommitData:
+    def __init__(self, url, scroll, height,
+        display_list, composited_updates, scroll_behavior):
         self.url = url
         self.scroll = scroll
         self.height = height
         self.display_list = display_list
         self.composited_updates = composited_updates
+        self.scroll_behavior = scroll_behavior
 
 class TaskRunner:
     def __init__(self, tab):
@@ -1674,6 +1717,8 @@ class Browser:
         self.composited_updates = []
         self.composited_layers = []
 
+        self.scroll_behavior = 'auto'
+
     def render(self):
         assert not USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
@@ -1688,10 +1733,9 @@ class Browser:
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
-
             self.animation_timer = None
-
             self.composited_updates = data.composited_updates
+            self.scroll_behavior = data.scroll_behavior
             if len(self.composited_layers) == 0:
                 self.set_needs_composite()
             else:
@@ -1790,8 +1834,12 @@ class Browser:
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height)
-        self.scroll = scroll
-        self.set_needs_raster()
+        if self.scroll_behavior == 'smooth':
+            active_tab.task_runner.schedule_task(
+                Task(active_tab.run_animation_frame, scroll))
+        else:
+            self.scroll = scroll
+        self.set_needs_draw()
         self.lock.release()
 
     def clear_data(self):
@@ -1908,7 +1956,7 @@ class Browser:
         canvas = self.root_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         
-        draw_offset=(0, CHROME_PX - self.tabs[self.active_tab].scroll)
+        draw_offset=(0, CHROME_PX - self.scroll)
         if self.composited_layers:
             for composited_layer in self.composited_layers:
                 composited_layer.draw(canvas, draw_offset)
