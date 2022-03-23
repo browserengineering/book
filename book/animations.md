@@ -1707,7 +1707,7 @@ committed across to the browser thread. Also, rename `CommitForRaster` to
 
         commit_data = CommitData(
             # ...
-            composited_updates=composited_updates
+            composited_updates=composited_updates,
         )
 ```
 
@@ -1898,7 +1898,9 @@ class CommitData:
         display_list, composited_updates, scroll_behavior):
         # ...
         self.scroll_behavior = scroll_behavior
-    
+```
+
+``` {.python}
 class Tab:
     # ...
     def run_animation_frame(self, scroll):
@@ -1906,7 +1908,9 @@ class Tab:
             # ...
             scroll_behavior=self.scroll_behavior
         )
+```
 
+``` {.python}
 class Browser:
     def __init__(self):
         # ...
