@@ -135,15 +135,27 @@ def thanks():
     #
     # And deleting the authors' names.
     gh_names = {
-        "Abram Himmer",
-        "Anthony",
-        "BO41",
-        "Ian Briggs",
-        "Shuhei Kagawa",
+        "Yuanhang Xie",
+        "Rishi Chopra",
+        "Swav Rybak",
+        "Adam Gutglick",
+        "Alexandru Nedel",
+        "Jonas Treub",
+        "Zach Tatlock",
+        "Min Lee",
+        "Randy Naar"
     }
 
     patreon_names = {
-        "[list goes here]"
+        "Yuanhang Xie",
+        "Rishi Chopra",
+        "Swav Rybak",
+        "Adam Gutglick",
+        "Alexandru Nedel",
+        "Jonas Treub",
+        "Zach Tatlock",
+        "Min Lee",
+        "Randy Naar"
     }
 
     return {
