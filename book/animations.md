@@ -1987,6 +1987,33 @@ super smooth animation performance!
 parallax, scroll-linked effects
 :::
 
+Summary
+=======
+
+This chapter introduced the concept of animations. The key takeaways should be:
+
+- Animations come in DOM-based, input-driven and video-like varieties
+
+- Animations can be *layout-inducing* or *visual effect only*, and the
+  difference has important performance and animation quality implications
+
+- GPU acceleration is necessary for smooth animations
+
+- Compositing is necessary for smooth visual effect animations
+
+We then proceed to implement GPU acceleration and composited animations.
+
+Finally, we briefly touched on *input-driven* animations, and showed how to
+implement smooth scrolling.
+
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+TODO
+
 Exercises
 =========
 
