@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en-US" xml:lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes" />
+  <link rel="stylesheet" href="/book.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn%7CLora&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn:400i%7CLora:400i&display=swap" />
+  <title>Contributors | Web Browser Engineering</title>
+</head>
+<body>
+
+<header>
+  <h1 class="title">Contributors</h1>
+  <a href="https://twitter.com/browserbook">Twitter</a> · <a href="/blog/">Blog</a> ·
+  <a href="https://patreon.com/browserengineering">Patreon</a> ·
+  <a href="https://github.com/browserengineering/book/discussions">Discussions</a>
+</header>
+
+<nav class="links">
+  Contributors to <a href="index.html" title="Table of Contents">Web Browser Engineering</a>.
+  <a rel="prev" title="Previous chapter" href="about.html">&lt;</a>
+  <a rel="next" title="Next chapter" href="classes.html">&gt;</a>
+</nav>
+
+<p>
+We want to thank our
+<a href="https://patreon.com/browserengineering">Patreon</a>
+<em>subscribers</em>, who support this book financially:
+{{", ".join(patreon[:-1])}}, and {{patreon[-1]}}.
+</p>
+
+<p>
+Moreover, we thank <em>contributors</em> who submitted typo fixes,
+questions, and comments through the book's built-in feedback tools:
+{{", ".join(contribute[:-1])}}, and {{contribute[-1]}}.
+</p>
+
+<p>
+We are grateful to <em>students</em> of <a href="classes.html">classes
+using this book</a>, who often read drafts and gave valuable feedback.
+</p>
+
+<p>
+Finally, we thank all <em>readers</em> of Web Browser Engineering, for
+whom we wrote the book.
+</p>
+
+</body>
+

@@ -87,6 +87,14 @@ class Data:
     def status(self, i):
         return self.data[i]["status"]
 
+    def contributors(self):
+        return {
+            (entry['name'], entry.get('email'))
+            for entry in self.data
+            if 'name' in entry and 'status' in entry
+            if entry["status"] in ["saved", "archived"]
+        }
+
     def set_status(self, i, status):
         self.data[i]['status'] = status
         self.save()
@@ -110,6 +118,38 @@ def text_comment():
 def comment():
     data = json.load(bottle.request.body)
     DATA.chapter_comment(**data)
+    
+@bottle.get("/thanks")
+@bottle.view("thanks.view")
+def thanks():
+    author_names = {
+        "Pavel Panchekha",
+        "Chris Harrelson"
+    }
+
+    feedback_names = {name for name, email in DATA.contributors() if name}
+
+    # The list below comes from running
+    #
+    #   git log --format='%aN' | sort -u`
+    #
+    # And deleting the authors' names.
+    gh_names = {
+        "Abram Himmer",
+        "Anthony",
+        "BO41",
+        "Ian Briggs",
+        "Shuhei Kagawa",
+    }
+
+    patreon_names = {
+        "[list goes here]"
+    }
+
+    return {
+        "patreon": list(patreon_names - author_names),
+        "contribute": list((feedback_names | gh_names) - author_names),
+    }
 
 def splitword(text):
     out = [[]]
