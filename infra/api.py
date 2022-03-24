@@ -143,7 +143,15 @@ def thanks():
     }
 
     patreon_names = {
-        "[list goes here]"
+        "Yuanhang Xie",
+        "Rishi Chopra",
+        "Swav Rybak",
+        "Adam Gutglick",
+        "Alexandru Nedel",
+        "Jonas Treub",
+        "Zach Tatlock",
+        "Min Lee",
+        "Randy Naar"
     }
 
     return {
