@@ -2001,7 +2001,9 @@ This chapter introduced the concept of animations. The key takeaways should be:
 
 - Compositing is necessary for smooth visual effect animations
 
-And then we briefly touched on *input-driven* animations, and showed how to
+We then proceed to implement GPU acceleration and composited animations.
+
+Finally, we briefly touched on *input-driven* animations, and showed how to
 implement smooth scrolling.
 
 Outline
@@ -2010,9 +2012,7 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-::: {.cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab13.py
-:::
+TODO
 
 Exercises
 =========
