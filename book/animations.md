@@ -99,7 +99,7 @@ to 1 for 120 more frames, and repeats.
 ```
 
 ``` {.javascript file=example-opacity-js}
-var start_value = 1;
+var start_value = 0.999;
 var end_value = 0.1;
 var num_animation_frames = 120;
 var frames_remaining = num_animation_frames;
