@@ -446,7 +446,7 @@ class Tab:
 ```
 
 [^even-more]: This is not good enough for a real browser, but is a reasonable
-expedient to make basic transition animations work. For examaple, it doesn't
+expedient to make basic transition animations work. For example, it doesn't
 correctly handle cases where styles changed on elements unrelated to the
 animation---that situation shouldn't re-start the animation either.
 
