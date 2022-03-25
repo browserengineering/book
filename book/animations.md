@@ -20,9 +20,9 @@ Types of animations
 ===================
 
 Defined broadly, an [animation] is a sequence of pictures shown in quick
-succession, leading to the illusion of *movement* to the human
-eye.[^general-movement] So it's not arbitrary changes, but ones that seem
-logical to a person.
+succession that create the illusion of *movement* to the human
+eye.[^general-movement] The pixel changes are *not* arbitrary, they are ones
+that feel logical to a human mind trained by experience in the real world.
 
 [^general-movement]: Here movement should be defined broadly to encompass all of
 the kinds of visual changes humans are used to seeing and good at
@@ -64,13 +64,13 @@ The distinction is important for two reasons: animation quality and performance.
 In general, layout-inducing animations often have undesirable
 qualities---animating `width` can lead to text jumping around as line breaking
 changes---and performance implications (the name says it all: these animations
-require main thread `render` calls).^[Sometimes it's a better user experience to
-animate layout-inducing properties. The best example of this is resizing a
-browser window via a mouse gesture, where it's very useful for the user to see
-the new layout as they animate. Modern browsers are fast enough to do this,
-but it used to be that instead they would leave a visual *gutter*
-(a gap between content and the edge of the window) during the animation, to
-avoid updating layout on every animation frame.]
+require main thread `render` calls). Most of the time, layout-inducing
+animations are not a good idea for these reasons.^[One exception is a
+layout-inducing animation when resizing a browser window via a mouse gesture;
+in this case it's very useful for theuser to see the new layout as they animate.
+Modern browsers are fast enough to do this, but it used to be that instead they
+would leave a visual *gutter* (a gap between content and the edge of the window)
+during the animation, to avoid updating layout on every animation frame.]
 
 This means we're in luck though! Visual effect animations can almost always
 be run on the browser thread, and also GPU-accelerated. But I'm getting ahead
@@ -382,7 +382,7 @@ advancing the animation by one frame. It's the equivalent of the
 returns `False` if the animation has ended.[^animation-curve]
 
 [^animation-curve]: Note that this class implements a linear animation
-interpretation (also called an *easing function*. By default, real browsers
+interpretation (or *easing function*). By default, real browsers
 use a non-linear easing function, so your demo will not look quite the same.
 
 ``` {.python expected=False}
@@ -445,29 +445,24 @@ class Tab:
         self.needs_layout = False
 ```
 
-[^even-more] This is not good enough for a real browser, but is a reasonable
-expedient to make basic transition animations work. For exmaple, it doesn't
+[^even-more]: This is not good enough for a real browser, but is a reasonable
+expedient to make basic transition animations work. For examaple, it doesn't
 correctly handle cases where styles changed on elements unrelated to the
-animation---that shouldn't re-start the animation either.
+animation---that situation shouldn't re-start the animation either.
 
-Now for integrating this code into rendering. It has main parts: detecting style
-changes, and executing the animation. Both have some details that are important
-to get right, but are conceptually straightforward:
+Now for integrating this code into rendering. It has two main parts: detecting
+style changes, and executing the animation. Both have some details that are
+important to get right, but are conceptually straightforward:
 
 First, in the `style` function, when a DOM node changes its style, check to see
 if one or more of the properties with registered transitions are changed; if
-so, start a new animation and add it to the `animations` dictionary on the
-`Tab`. This logic will be in a new function called `animate_style`, which is
-called just after the style update for `node` is complete:
+so, start a new animation and add it to the `animations` dictionary on `tab`.
+This logic will be in a new function called `animate_style`, which is called
+just after the style update for `node` is complete:
 
 ``` {.python}
 def style(node, rules, tab):
-    old_style = None
-    if hasattr(node, 'style'):
-        old_style = node.style
-
     # ...
-
     animate_style(node, old_style, node.style, tab)
 ```
 
@@ -491,7 +486,7 @@ def animate_style(node, old_style, new_style, tab):
         old_style, new_style, tab, is_px=True)
 ```
 
-Second; in `run_animation_frame` on the `Tab`, each animation in `animations`
+Second, in `run_animation_frame` on `tab`, each animation in `animations`
 should be updated just after running `requestAnimationFrame` callbacks and
 before calling `render`. It's basically: loop over all animations, and call
 `animate`; if `animate` returns `True`, that means it animated a new frame by
@@ -536,7 +531,7 @@ to dramatically speed up rendering for these animations.
 [profiling]: http://localhost:8001/scheduling.html#profiling-rendering
 
 ::: {.further}
-TODO: explain css animations, which allow js at all if you want.
+TODO: explain css animations, which avoid having any js at all.
 :::
 
 GPU acceleration
