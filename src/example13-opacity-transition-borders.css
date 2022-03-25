@@ -1,0 +1,7 @@
+#parent {
+  border: 1px solid red;
+}
+#child {
+	opacity: 0.999;
+	transition: opacity 2s;
+}
