@@ -299,7 +299,7 @@ JavaScript, and also doesn't force them to account for each and every way in
 which the styles can change.
 
 <iframe src="examples/example13-opacity-transition.html"></iframe>
-(click [here](examples/example13-opacity-raf.html) to load the example in
+(click [here](examples/example13-opacity-transition.html) to load the example in
 your browser; [here](examples/example13-width-transition.html) is the width
 animation example)
 
@@ -720,8 +720,9 @@ is *flush* the Skia surface (Skia surfaces draw lazily) and call
         sdl2.SDL_GL_SwapWindow(self.sdl_window)
 ```
 
-Let's go back and test the `opacity` animation, to see how much GPU
-acceleration helped. The results on my computer are:
+Let's go back and test the
+[`opacity` animation](examples/example13-opacity-transition.html), to see how
+much GPU acceleration helped. The results on my computer are:
 
     Without GPU:
 
@@ -759,32 +760,39 @@ but the term is usually overloaded to refer to OS compositing as well.
 
 Let's unpack that into simpler terms with an example. Opacity is one kind of
 visual effect. When we're animating it, the opacity is changing, but the
-"DOM content"[^more-precise] underneath it
-is not. So let's stop re-rastering that content on every frame of the
-animation, and instead cache it in a GPU texture. This *should* directly
-reduce raster-and-draw work because less raster work will be needed on each
-animation frame.
+"DOM content" underneath it is not. So let's stop re-rastering that content on
+ every frame of the animation, and instead cache it in a GPU texture.
+ This *should* directly reduce raster-and-draw work because less raster work
+ will be needed on each animation frame.
 
-[^more-precise]: We'll be precise about what exactly is cached in a moment;
-suffice it to say that it's *not* "rendering only some DOM elements".
+Below is the `opacity` animation with a red border "around" the surface that is
+cached. Notice how it's sized to the width and height of the `<div>`, which
+is as wide as the viewport and as tall as the text "Test".[^chrome]
+
+ <iframe src="http://localhost:8001/examples/example13-opacity-transition-borders.html">
+ </iframe>
+
+[^chrome]: You can see the same thing if you load the example when running
+Chrome with the `--show-composited-layer-borders` command-line flag; there
+is also a DevTools feature for it.
 
 But there's actually another benefit that is just as important: we can run the
 animation entirely off the main thread. That's because the browser thread can
 play tricks to save off intermediate GPU textures from a display list.[^not-dom]
-I'll show you one way how.^[Since you already learned in chapter 11
-that Skia often creates GPU textures for [various intermediate
-surfaces](visual-effects.html#blending-and-stacking), it is hopefully clear
-that it *should* be possible to do this.]
+I'll show you one way how.
 
 [^not-dom]: On the other hand, the browser thread does *not* have the ability
-to do something with the DOM or JavaScript.
+to do something with the DOM or JavaScript, because as mentioned in Chapter
+12, the DOM and JavaScript are not multi-threaded.
 
-You might think that Skia has ways to say "please cache this surface". And there
-is---the way is for the user of Skia to keep around a `skia.Surface` across
-multiple raster-and-draw executions.^[Skia will keep alive the rastered content
-associated with the surface] In other words, we'll need to do the caching
-ourselves, and this feature is not built into Skia itself in a simple-to-use
-form.
+As I explained in [Chapter 11](visual-effects.md#browser-compositing), Skia
+sometimes caches surfaces internally. So you might think that Skia has a way to
+say "please cache this surface". And there is---the way is for the user of Skia
+to keep around a `skia.Surface` across multiple raster-and-draw
+executions.^[Skia will keep alive the rastered content associated with the
+`Surface` object until it's garbage collected].
+In other words, we'll need to do the caching ourselves, and this feature is
+not built into Skia itself in a simple-to-use form.
 
 The main difficulty with implementing compositing turns out to be dealing
 with its *side-effects for overlapping content*. To understand the concept,

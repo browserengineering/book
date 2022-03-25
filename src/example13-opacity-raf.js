@@ -1,4 +1,4 @@
-var start_value = 1;
+var start_value = 0.999;
 var end_value = 0.1;
 var num_animation_frames = 120;
 var frames_remaining = num_animation_frames;
