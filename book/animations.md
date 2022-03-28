@@ -787,20 +787,16 @@ In other words, we'll need to do the caching ourselves, and this feature is
 not built into Skia itself in a simple-to-use form.
 
 We're now ready to start digging into the compositing algorithm and how to
-implement it.
-
-Implementing compositing
-========================
-
-The goal of compositing is to allocate a new `skia.Surface` for an animating
-visual effect, in order to avoid the cost of re-rastering it on every animation
-frame. But what does that mean exactly? If opacity is animating, which parts of
-the web page should we cache in the surface? To answer that, let's revisit the
-structure of our display lists. We'll need a way to print out the
-(recursive, tree-like) display list in a useful form.[^debug] Add a base class
-called `DisplayItem` and make all display list commands inherit from it, and
-move the `cmds` field to that class (or pass nothing if they don't have any,
-like `DrawText`); here's `SaveLayer` for example:
+implement it. The goal of compositing is to allocate a new `skia.Surface` for
+an animating visual effect, in order to avoid the cost of re-rastering it on
+every animation frame. But what does that mean exactly? If opacity is
+animating, which parts of the web page should we cache in the surface? To
+answer that, let's revisit the structure of our display lists. We'll need a way
+to print out the(recursive, tree-like) display list in a useful form.
+[^debug] Add a base class called `DisplayItem` and make all display list
+commands inherit from it, and move the `cmds` field to that class (or pass
+nothing if they don't have any, like `DrawText`); here's `SaveLayer` for
+example:
 
 [^debug]: This code will also be very useful to you while debugging your
 compositing implementation.
@@ -1024,7 +1020,7 @@ Composited display items
 
 We'll also need a way to signal that a visual effect `DisplayItem` "needs
 compositing", meaning that it is animating and so its contents should be cached
-in a GPU texture. Let's indicate that with a new `needs_compositing` method on
+in a GPU texture. Le  indicate that with a new `needs_compositing` method on
 `DisplayItem`. Since we'll only implement composited animations of opacity and
 transform, always composite transform and opacity (but only when they actually
 do something that isn't a no-op).
@@ -1048,43 +1044,6 @@ class DisplayItem:
         return not self.is_noop() and \
             (type(self) is Transform or type(self) is SaveLayer)
 ```
-
-Next we'll need to be able to get the *composited bounds* of a `DisplayItem`.
-It's composited bounds is the union of its painting rectangle and all
-descendants that are not themselves composited. This will be needed to
-determine the absolute bounds of a `CompositedLayer`. This is pretty easy---there is
-already a `rect` field stored on the various subclasses, so just pass them to
-the superclass instead:
-
-``` {.python}
-class DisplayItem:
-    def __init__(self, rect, cmds=None, is_noop=False, node=None):
-        self.rect = rect
-    # ...
-    def composited_bounds(self):
-        rect = skia.Rect.MakeEmpty()
-        self.composited_bounds_internal(rect)
-        return rect
-
-    def composited_bounds_internal(self, rect):
-        rect.join(self.rect)
-        if self.cmds:
-            for cmd in self.cmds:
-                if not cmd.needs_compositing():
-                    cmd.composited_bounds_internal(rect)
-```
-
-The rect passed is the usual one; here's `DrawText`:
-
-``` {.python}
-class DrawText(DisplayItem):
-    def __init__(self, x1, y1, text, font, color):
-        # ...
-        super().__init__(
-            rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
-```
-
-The other classes are basically the same, including `SaveLayer` and `transform`.
 
 One additional method we need is `draw`. This only does something for
 visual effect subclasses:
@@ -1130,24 +1089,6 @@ class DisplayItem:
 
 ```
 
-And finally, the `Transform` class is special: it is the only subclass of
-`DisplayItem` that can *move pixels*---cause other `DisplayItem`s to draw in
-some new location other than its bounding rectangle. For this reason, we
-will need a method on it to determine the new rectangle after appling the
-translation transform:
-
-``` {.python expected=False}
-class Transform:
-    # ...
-    def transform(self, rect):
-        if not self.translation:
-            return rect
-        matrix = skia.Matrix()
-        if self.translation:
-            (x, y) = self.translation
-            matrix.setTranslate(x, y)
-        return matrix.mapRect(rect)
-```
 
 ::: {.further}
 But why composite always, and not just when the property is animating? It's
@@ -1260,10 +1201,13 @@ class CompositedLayer:
         return retval
 ```
 
+On the `CompositedLayer` class we'll need:
+
 * `absolute_bounds`: returns the union of the absolute bounds of all
 `DisplayItems`. This is like `composited_bounds`, except that all ancestor
 visual effects are applied. So these bounds are the bounds relative
-to the top-left point of `tab_surface`.
+to the top-left point of `tab_surface`. This will help us know the scroll height
+of the web page.
 
 ``` {.python}
     def absolute_bounds(self):
@@ -1793,7 +1737,7 @@ consider this simple example of a green square overlapped by an blue one,
 except that the blue one is *earlier* in the DOM painting order.
 
 <div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
-<div style="width:200px;height:200px;background-color:lightgreen"></div>
+<div style="width:200px;height:200px;background-color:lightgreen; transform:translate(0px,0px)"></div>
 
 Suppose we want to animate opacity on the blue square, and so allocate a
 `skia.Surface` and GPU texture for it. But we don't want to animate the green
@@ -1813,8 +1757,64 @@ Overlap makes compositing algorithms signficantly more complicated, because
 when allocating a surface for animated content, we'll have to check the
 remainder of the display list for potential overlaps.
 
+Next we'll need to be able to get the *composited bounds* of a `DisplayItem`.
+Its composited bounds is the union of its painting rectangle and all
+descendants that are not themselves composited. This will be needed to
+determine the absolute bounds of a `CompositedLayer`. This is pretty easy---there is
+already a `rect` field stored on the various subclasses, so just pass them to
+the superclass instead:
 
+``` {.python}
+class DisplayItem:
+    def __init__(self, rect, cmds=None, is_noop=False, node=None):
+        self.rect = rect
+    # ...
+    def composited_bounds(self):
+        rect = skia.Rect.MakeEmpty()
+        self.composited_bounds_internal(rect)
+        return rect
 
+    def composited_bounds_internal(self, rect):
+        rect.join(self.rect)
+        if self.cmds:
+            for cmd in self.cmds:
+                if not cmd.needs_compositing():
+                    cmd.composited_bounds_internal(rect)
+```
+
+The rect passed is the usual one; here's `DrawText`:
+
+``` {.python}
+class DrawText(DisplayItem):
+    def __init__(self, x1, y1, text, font, color):
+        # ...
+        super().__init__(
+            rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
+```
+
+The other classes are basically the same, including `SaveLayer` and `transform`.
+
+The `Transform` class is special: it is the only subclass of
+`DisplayItem` that can *move pixels*---cause other `DisplayItem`s to draw in
+some new location other than its bounding rectangle. For this reason, we
+will need a method on it to determine the new rectangle after appling the
+translation transform:
+
+``` {.python expected=False}
+class Transform:
+    # ...
+    def transform(self, rect):
+        if not self.translation:
+            return rect
+        matrix = skia.Matrix()
+        if self.translation:
+            (x, y) = self.translation
+            matrix.setTranslate(x, y)
+        return matrix.mapRect(rect)
+```
+
+TODO: implement abs bounds for a transform animation that takes into account
+the path traveled.
 
 ::: {.further}
 TODO: describe the problem of layer explosion. Explain how this can actually
@@ -2014,7 +2014,9 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-TODO
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab11.py
+:::
 
 Exercises
 =========
