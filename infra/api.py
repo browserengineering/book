@@ -147,7 +147,7 @@ def thanks():
         "Adam Gutglick",
         "Shuhei Kagawa"
         "Min Lee",
-        "Randy Naar"
+        "Randy Naar",
         "Alexandru Nedel",
         "Swav Rybak",
         "Zach Tatlock",
