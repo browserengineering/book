@@ -750,11 +750,12 @@ surfaces from animation frame to animation frame, so we can avoid that work;
 it's only draw that is re-done (and animated with different
 parameters).[^compositing-def]
 
-[^compositing-def]: The term [*compositing*][compositing] means to combine
-multiple images together into a final output. As it relates to browsers, it
-usually means the performance optimization technique of caching rastered GPU
-textures that are the inputs to animated [visual effects](visual-effects.md),
-but the term is usually overloaded to refer to OS compositing as well.
+[^compositing-def]: The term [*compositing*][compositing] at its root means to
+combine multiple images together into a final output. As it relates to
+browsers, it usually means the performance optimization technique of caching
+rastered GPU textures that are the inputs to animated [visual effects]
+(visual-effects.md), but the term is usually overloaded to refer to OS
+compositing as well.
 
 [compositing]: https://en.wikipedia.org/wiki/Compositing
 
@@ -776,15 +777,6 @@ is as wide as the viewport and as tall as the text "Test".[^chrome]
 Chrome with the `--show-composited-layer-borders` command-line flag; there
 is also a DevTools feature for it.
 
-But there's actually another benefit that is just as important: we can run the
-animation entirely off the main thread. That's because the browser thread can
-play tricks to save off intermediate GPU textures from a display list.[^not-dom]
-I'll show you one way how.
-
-[^not-dom]: On the other hand, the browser thread does *not* have the ability
-to do something with the DOM or JavaScript, because as mentioned in Chapter
-12, the DOM and JavaScript are not multi-threaded.
-
 As I explained in [Chapter 11](visual-effects.md#browser-compositing), Skia
 sometimes caches surfaces internally. So you might think that Skia has a way to
 say "please cache this surface". And there is---the way is for the user of Skia
@@ -794,196 +786,17 @@ executions.^[Skia will keep alive the rastered content associated with the
 In other words, we'll need to do the caching ourselves, and this feature is
 not built into Skia itself in a simple-to-use form.
 
-The main difficulty with implementing compositing turns out to be dealing
-with its *side-effects for overlapping content*. To understand the concept,
-consider this simple example of a green square overlapped by an blue one,
-except that the blue one is *earlier* in the DOM painting order.
-
-<div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
-<div style="width:200px;height:200px;background-color:lightgreen"></div>
-
-Suppose we want to animate opacity on the blue square, and so allocate a
-`skia.Surface` and GPU texture for it. But we don't want to animate the green
-square, so it is supposed to draw to the screen without opacity change.
-But how can that work? How can we make it paint on top of this new surface?
-Two things we could do are: start painting the green
-square *before* the blue one, or re-raster the green square into the
-root surface on every frame, after drawing the blue square.
-
-The former is obviously not ok, because we can't just ignore the website
-developer's wishes and paint in the wrong order. The latter is *also* not ok,
-because it negates the first benefit of compositing (avoiding raster).
-
-So we have to choose a third option: allocating a `skia.Surface` for the
-green rectangle as well. This is called an *overlap reason* for compositing.
-Overlap makes compositing algorithms signficantly more complicated, because
-when allocating a surface for animated content, we'll have to check the
-remainder of the display list for potential overlaps.
-
 We're now ready to start digging into the compositing algorithm and how to
-implement it, except for one thing: there is no way in our current browser for
-content to overlap! The example in this section used the `transform` CSS
-property, which is not yet present in our browser. Because of that, and also
-because transforms are a common visual effect animation on websites, let's
-implement that and then come back to implementing compositing.
-
-::: {.further}
-TODO: describe the problem of layer explosion. Explain how this can actually
-lead to compositing slowing down a web page rather than speeding it up.
-:::
-
-Transform animations
-====================
-
-The `transform` CSS property lets you apply linear transform visual
-effects to an element.[^not-always-visual] In general, you can apply
-[any linear transform][transform-def] in 3D space, but I'll just cover really
-basic 2D translations. Here's HTML for the overlap example mentioned in the
-last section:
-
-[^not-always-visual]: Technically it's not always just a visual effect. In
-real browsers, transformed element positions contribute to scrolling overflow.
-
-[transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
-
-    <div style="width:200px;height:200px;
-                background-color:lightblue"></div>
-    <div style="width:200px;height:200px;
-                background-color:lightgreen;
-                transform:translate(100px, -100px)"></div>
-
-Adding in support for this kind of transform is not too hard: first
-just parse it:[^space-separated]
-
-[^space-separated]: The CSS transform syntax allows multiple transforms in a
-space-separated sequence; the end result is the composition of the transform.
-I won't implement that, just like I didn't implement many other parts of the
-standardized transform syntax.
-
-``` {.python}
-def parse_transform(transform_str):
-    if transform_str.find('translate') < 0:
-        return None
-    left_paren = transform_str.find('(')
-    right_paren = transform_str.find(')')
-    (x_px, y_px) = \
-        transform_str[left_paren + 1:right_paren].split(",")
-    return (float(x_px[:-2]), float(y_px[:-2]))
-```
-
-And add some code to `paint_visual_effects`:
-
-``` {.python}
-def paint_visual_effects(node, cmds, rect):
-    # ...
-    translation = parse_transform(node.style.get("transform", ""))
-    # ...
-    save_layer = \
-    # ...
-
-    transform = Transform(translation, rect, node, [save_layer])
-    # ...
-    return [transform]
-```
-TODO:verify that translation does indeed come after blending.
-
-The `Transform` display list command is pretty straightforward as well: it calls
-the `translate` Skia canvas method, which s conveniently built-in.
-
-``` {.python expected=False}
-class Transform(DisplayItem):
-    def __init__(self, translation, rotation_degrees,
-        rect, node, cmds):
-        self.translation = translation
-        self.self_rect = rect
-        self.cmds = cmds
-
-    def draw(self, canvas, op):
-        if self.translation:
-            (x, y) = self.translation
-            canvas.save()
-            canvas.translate(x, y)
-            for cmd in self.cmds:
-                cmd.execute(canvas)
-            canvas.restore()
-        else:
-            for cmd in self.cmds:
-                cmd.execute(canvas)
-```
-
-Now that we can render transforms, we also need to animate them. Similar
-to `try_numeric_animation`, add a `try_transform_animation` method:
-
-``` {.python}
-def try_transform_animation(node, old_style, new_style, tab):
-    num_frames = try_transition("transform", node,
-    old_style, new_style)
-    if num_frames == None:
-        return None;
-
-    old_translation = parse_transform(old_style["transform"])
-    new_translation = parse_transform(new_style["transform"])
-
-    if old_translation == None or new_translation == None:
-        return None
-
-    if not node in tab.animations:
-        tab.animations[node] = {}
-    tab.animations[node]["transform"] = TranslateAnimation(
-        node, old_translation, new_translation, num_frames, tab)
-```
-
-And `TranslateAnimation`:
-
-
-``` {.python expected=False}
-class TranslateAnimation:
-    def __init__(
-        self, node, old_translation, new_translation,
-        num_frames, tab):
-        self.node = node
-        (self.old_x, self.old_y) = old_translation
-        (new_x, new_y) = new_translation
-        self.change_per_frame_x = (new_x - self.old_x) / num_frames
-        self.change_per_frame_y = (new_y - self.old_y) / num_frames
-        self.num_frames = num_frames
-        self.tab = tab
-        self.frame_count = 0
-        self.animate()
-
-    def animate(self):
-        self.frame_count += 1
-        if self.frame_count >= self.num_frames: return False
-        self.node.style["transform"] = \
-            "translate({}px,{}px)".format(
-                self.old_x +
-                self.change_per_frame_x * self.frame_count,
-                self.old_y +
-                self.change_per_frame_y * self.frame_count)
-        self.tab.set_needs_render()
-        return True
-```
-
-You should now be able to create this animation with your browser:
-
-<iframe src="examples/example13-transform-transition.html" style="width:350px;height:450px">
-</iframe>
-(click [here](examples/example13-transform-transition.html) to load the example in
-your browser)
-
-
-Implementing compositing
-========================
-
-The goal of compositing is to allocate a new `skia.Surface` for an animating
-visual effect, in order to avoid the cost of re-rastering it on every animation
-frame. But what does that mean exactly? If opacity is animating, which parts of
-the web page should we cache in the surface? To answer that, let's revisit the
-structure of our display lists. We'll need a way to print out the (recursive)
-display list in a useful form.[^debug] Add a base class called `DisplayItem` and
-make all display list commands inherit from it, and move the `cmds` field
-to that class (or pass nothing if they don't have any, like `DrawText`);
-here's `SaveLayer` for example:
+implement it. The goal of compositing is to allocate a new `skia.Surface` for
+an animating visual effect, in order to avoid the cost of re-rastering it on
+every animation frame. But what does that mean exactly? If opacity is
+animating, which parts of the web page should we cache in the surface? To
+answer that, let's revisit the structure of our display lists. We'll need a way
+to print out the(recursive, tree-like) display list in a useful form.
+[^debug] Add a base class called `DisplayItem` and make all display list
+commands inherit from it, and move the `cmds` field to that class (or pass
+nothing if they don't have any, like `DrawText`); here's `SaveLayer` for
+example:
 
 [^debug]: This code will also be very useful to you while debugging your
 compositing implementation.
@@ -1037,10 +850,10 @@ begun, it should print something like:
 
 Now that we can see the example, it seems pretty clear that we should make
 a surface for the contents of the opacity `SaveLayer`, in this case containing
-only a `DrawText`. Note that this is *not* the same as "cache the display
+only a `DrawText`.^[Note that this is *not* the same as "cache the display
 list for a DOM element subtree"!. To see why, consider that a single
 DOM element can result in more than one `SaveLayer`, such as when it has
-both opacity *and* a transform.
+both opacity *and* a transform.]
 
 Putting the `DrawText` into its own surface sounds simple enough: just make a
 surface and raster that sub-piece of the display list into it, then draw that
@@ -1062,24 +875,26 @@ in [Chapter 11](visual-effects.html#blending-and-stacking). The only
 difference is that here it's explicit that there is a `skia.Surface` between
 the `saveLayer` and the `restore`.
 Note also how we are using the `draw` method on `skia.Surface`, the very same
-method we already use in `Browser.draw` to draw the surface to the screen. In
-another part of [Chapter 11](visual-effects.html#browser-compositing) we called
-this technique *browser compositing*. So really, creating these extra surfaces
-for animated affects is just applying the browser compositing technique in more
-situations.
+method we already use in `Browser.draw` to draw the surface to the screen.
+In essence, we've moved a `saveLayer` command from the `raster` stage
+to the `draw` stage of the pipeline.
 
-To summarize another way: what we're trying to implement is a way to (a) make
-explicit surfaces under `SaveLayer` calls, and (b) generalize the
-`tab_surface`/`chrome_surface`  to a list of potentially many surfaces. Let's
-implement that. But to get there I'll have to introduce multiple new concepts
-that are tricky to understand. Before we get into the ins and outs of how to
-implement, let's start with what they are and how they will be used:
+So we're sort of implementing a way to "subtrees of the display list" into
+different surfaces. But it's not quite just subtrees, because multiple nested
+DOM nodes could be simultaneously animating, and we can't put the same subtree
+in two different surfaces. Instead, we think of the display list as a flat list
+of "leaf" *paint commands* like `DrawText`, but arranged into groups by a tree
+of visual effects. Our task will be to figure out a way to put each paint
+command into exactly one surface, such that every animated visual effect
+happens during `draw` and not `raster`, while at the same time minimizing
+the number of such surfaces. (Multiple paint commands will be put in the same
+surface if possible.)
 
-* *Paint chunk*: a tuple of `(display_item, ancestor_effects)` where
-   `display_item` is a single[^leaf-chromium] leaf `DisplayItem`, and
-   `ancestor_effects` is a list of the visual effects necessary to display the
-   display item on the screen. We'll compute a list of `PaintChunks` in paint
-   order by "flattening" the recursive display list, like so:
+Each paint command can be drawn to the screen by executing it and the series
+of *ancestor [visual] effects* on it. Thus the tuple `(paint command, ancestor
+effects)` suffices to describe that paint command in isolation. We'll call
+this tuple a *paint chunk*. Here is how to generate all the paint chunks
+from a display list:
 
 ``` {.python}
 def display_list_to_paint_chunks(
@@ -1093,26 +908,26 @@ def display_list_to_paint_chunks(
             chunks.append((display_item, ancestor_effects))
 ```
 
-[^leaf-chromium]: In Chromium, the same name refers to a maximal contiguous
-subsequence of such leaves, but the concept is the exactly the same; the
-subsequence is just an optimized form that minimizes chunk count.
+A sequence of paint chunks in the flat list can be put into the same surface if
+they are:
 
-* `CompositedLayer`: a class representing a grouping of compatible
-  paint chunks, plus a `skia.Surface` sized to raster them fully.
+* adjacent in paint order (otherwise, overlapping content wouldn't draw
+correctly), and
 
-We'll do overlap testing on the absolute bounds of paint chunks. This
-makes sense, since only the leaf `DisplayItems` raster any DOM content; the
-visual effect nodes "merely" move around or grow/shrink the raster area of the
-leaves.
+* have the exact same set of animating ancestor effects (otherwise the
+  animations would end up applying to the wrong paint commands)
 
-The sequence of actions for the browser thread will be:
+Multiple paint chunks when combined together form a *composited layer*,
+represented by the `CompositedLayer` class. This class will own a
+`skia.Surface` that rasters its content, and also know how to draw
+the result to the screen by applying an appropriate sequence of visual effects.
+
+To perform compositing, the sequence of actions for the browser thread will be:
 
 1. Convert the (recursive) display list to a list of paint chunks.
 
 2. Determine the list of `CompositedLayers` from the paint chunks, creating
-one `CompositedLayer` for each animating visual effect and one for each
-time a paint chunk overlaps an earlier `CompositedLayer` that is animating.
-Multiple paint chunks can be present in a single `CompositedLayer`.
+one `CompositedLayer` for each animating visual effect.
 The list of `CompositedLayer`s will be in order of drawing to the screen,
 and each will have a `draw` method that executes the visual effects for that
 `CompositedLayer` (including any visual effect that is animating).
@@ -1120,9 +935,8 @@ and each will have a `draw` method that executes the visual effects for that
 Here are the basics of the algorithm we'll use. It loops over the list of paint
 chunks and allocates a new `CompositedLayer` if it is animating a visual
 effect, or if it overlaps another layer that is doing so. The `can_merge`
-method on a `CompositedLayer` just checks whether the layer is *not* animating
-anything^[i.e., it is only a `CompositedLayer` because of overlap with
-something earlier.] *and* the chunk does not require animation.
+method on a `CompositedLayer` checks compatibility of animating animating
+ancestor effects.
 
 ``` {.python}
 def do_compositing(display_list, skia_context):
@@ -1134,15 +948,6 @@ def do_compositing(display_list, skia_context):
         for layer in reversed(composited_layers):
             if layer.can_merge(display_item, ancestor_effects):
                 layer.add_display_item(display_item, ancestor_effects)
-                placed = True
-                break
-            elif skia.Rect.Intersects(
-                layer.absolute_bounds(),
-                bounds(display_item,
-                    ancestor_effects, include_composited=True)):
-                layer = CompositedLayer(skia_context)
-                layer.add_display_item(display_item, ancestor_effects)
-                composited_layers.append(layer)
                 placed = True
                 break
         if not placed:
@@ -1172,8 +977,7 @@ class Browser:
 Why is it that flattening a recursive display list into paint chunks is
 possible? After all, visual effects in the DOM really are nested.
 
-The answer is that the paint chunk concept is indeed sound for the purpose
-of overlap testing, but the implementation of `Browser.draw` in this section is
+In fact, the implementation of `Browser.draw` in this section is
 incorrect for the case of nested visual effects (such as if there is a
 composited animation on a DOM element underneath another one). To fix it
 requires determining the necessary "draw hierarchy" of `CompositedLayer`s into
@@ -1193,8 +997,8 @@ is not too hard to implement, but each additional render surface requires a
  screen would be potentially incorrect.
 
 [^only-overlapping]: Actually, only if there are at least two children *and*
-some of them overlap each other. Can you see why we can avoid the render surface
-for opacity if there is no overlap?
+some of them overlap each other visually. Can you see why we can avoid the
+render surface for opacity if there is no overlap?
 
 For more details and information on how Chromium implements these concepts see
 [here][renderingng-dl] and [here][rendersurface]; other browsers do something
@@ -1216,7 +1020,7 @@ Composited display items
 
 We'll also need a way to signal that a visual effect `DisplayItem` "needs
 compositing", meaning that it is animating and so its contents should be cached
-in a GPU texture. Let's indicate that with a new `needs_compositing` method on
+in a GPU texture. Le  indicate that with a new `needs_compositing` method on
 `DisplayItem`. Since we'll only implement composited animations of opacity and
 transform, always composite transform and opacity (but only when they actually
 do something that isn't a no-op).
@@ -1240,43 +1044,6 @@ class DisplayItem:
         return not self.is_noop() and \
             (type(self) is Transform or type(self) is SaveLayer)
 ```
-
-Next we'll need to be able to get the *composited bounds* of a `DisplayItem`.
-It's composited bounds is the union of its painting rectangle and all
-descendants that are not themselves composited. This will be needed to
-determine the absolute bounds of a `CompositedLayer`. This is pretty easy---there is
-already a `rect` field stored on the various subclasses, so just pass them to
-the superclass instead:
-
-``` {.python}
-class DisplayItem:
-    def __init__(self, rect, cmds=None, is_noop=False, node=None):
-        self.rect = rect
-    # ...
-    def composited_bounds(self):
-        rect = skia.Rect.MakeEmpty()
-        self.composited_bounds_internal(rect)
-        return rect
-
-    def composited_bounds_internal(self, rect):
-        rect.join(self.rect)
-        if self.cmds:
-            for cmd in self.cmds:
-                if not cmd.needs_compositing():
-                    cmd.composited_bounds_internal(rect)
-```
-
-The rect passed is the usual one; here's `DrawText`:
-
-``` {.python}
-class DrawText(DisplayItem):
-    def __init__(self, x1, y1, text, font, color):
-        # ...
-        super().__init__(
-            rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
-```
-
-The other classes are basically the same, including `SaveLayer` and `transform`.
 
 One additional method we need is `draw`. This only does something for
 visual effect subclasses:
@@ -1322,24 +1089,6 @@ class DisplayItem:
 
 ```
 
-And finally, the `Transform` class is special: it is the only subclass of
-`DisplayItem` that can *move pixels*---cause other `DisplayItem`s to draw in
-some new location other than its bounding rectangle. For this reason, we
-will need a method on it to determine the new rectangle after appling the
-translation transform:
-
-``` {.python expected=False}
-class Transform:
-    # ...
-    def transform(self, rect):
-        if not self.translation:
-            return rect
-        matrix = skia.Matrix()
-        if self.translation:
-            (x, y) = self.translation
-            matrix.setTranslate(x, y)
-        return matrix.mapRect(rect)
-```
 
 ::: {.further}
 But why composite always, and not just when the property is animating? It's
@@ -1452,10 +1201,13 @@ class CompositedLayer:
         return retval
 ```
 
+On the `CompositedLayer` class we'll need:
+
 * `absolute_bounds`: returns the union of the absolute bounds of all
 `DisplayItems`. This is like `composited_bounds`, except that all ancestor
 visual effects are applied. So these bounds are the bounds relative
-to the top-left point of `tab_surface`.
+to the top-left point of `tab_surface`. This will help us know the scroll height
+of the web page.
 
 ``` {.python}
     def absolute_bounds(self):
@@ -1831,6 +1583,244 @@ Threaded animations (exercise).
 Rastering only some content, partial raster, partial draw.
 :::
 
+Transform animations
+====================
+
+The `transform` CSS property lets you apply linear transform visual
+effects to an element.[^not-always-visual] In general, you can apply
+[any linear transform][transform-def] in 3D space, but I'll just cover really
+basic 2D translations. Here's HTML for the overlap example mentioned in the
+last section:
+
+[^not-always-visual]: Technically it's not always just a visual effect. In
+real browsers, transformed element positions contribute to scrolling overflow.
+
+[transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
+
+    <div style="width:200px;height:200px;
+                background-color:lightblue;
+                transform:translate(50px, 50px)"></div>
+    <div style="width:200px;height:200px;
+                background-color:lightgreen;
+                transform:translate(0px, 0px)"></div>
+
+Adding in support for this kind of transform is not too hard: first
+just parse it:[^space-separated]
+
+[^space-separated]: The CSS transform syntax allows multiple transforms in a
+space-separated sequence; the end result is the composition of the transform.
+I won't implement that, just like I didn't implement many other parts of the
+standardized transform syntax.
+
+``` {.python}
+def parse_transform(transform_str):
+    if transform_str.find('translate') < 0:
+        return None
+    left_paren = transform_str.find('(')
+    right_paren = transform_str.find(')')
+    (x_px, y_px) = \
+        transform_str[left_paren + 1:right_paren].split(",")
+    return (float(x_px[:-2]), float(y_px[:-2]))
+```
+
+And add some code to `paint_visual_effects`:
+
+``` {.python}
+def paint_visual_effects(node, cmds, rect):
+    # ...
+    translation = parse_transform(node.style.get("transform", ""))
+    # ...
+    save_layer = \
+    # ...
+
+    transform = Transform(translation, rect, node, [save_layer])
+    # ...
+    return [transform]
+```
+TODO:verify that translation does indeed come after blending.
+
+The `Transform` display list command is pretty straightforward as well: it calls
+the `translate` Skia canvas method, which s conveniently built-in.
+
+``` {.python expected=False}
+class Transform(DisplayItem):
+    def __init__(self, translation, rotation_degrees,
+        rect, node, cmds):
+        self.translation = translation
+        self.self_rect = rect
+        self.cmds = cmds
+
+    def draw(self, canvas, op):
+        if self.translation:
+            (x, y) = self.translation
+            canvas.save()
+            canvas.translate(x, y)
+            for cmd in self.cmds:
+                cmd.execute(canvas)
+            canvas.restore()
+        else:
+            for cmd in self.cmds:
+                cmd.execute(canvas)
+```
+
+Now that we can render transforms, we also need to animate them. Similar
+to `try_numeric_animation`, add a `try_transform_animation` method:
+
+``` {.python}
+def try_transform_animation(node, old_style, new_style, tab):
+    num_frames = try_transition("transform", node,
+    old_style, new_style)
+    if num_frames == None:
+        return None;
+
+    old_translation = parse_transform(old_style["transform"])
+    new_translation = parse_transform(new_style["transform"])
+
+    if old_translation == None or new_translation == None:
+        return None
+
+    if not node in tab.animations:
+        tab.animations[node] = {}
+    tab.animations[node]["transform"] = TranslateAnimation(
+        node, old_translation, new_translation, num_frames, tab)
+```
+
+And `TranslateAnimation`:
+
+
+``` {.python expected=False}
+class TranslateAnimation:
+    def __init__(
+        self, node, old_translation, new_translation,
+        num_frames, tab):
+        self.node = node
+        (self.old_x, self.old_y) = old_translation
+        (new_x, new_y) = new_translation
+        self.change_per_frame_x = (new_x - self.old_x) / num_frames
+        self.change_per_frame_y = (new_y - self.old_y) / num_frames
+        self.num_frames = num_frames
+        self.tab = tab
+        self.frame_count = 0
+        self.animate()
+
+    def animate(self):
+        self.frame_count += 1
+        if self.frame_count >= self.num_frames: return False
+        self.node.style["transform"] = \
+            "translate({}px,{}px)".format(
+                self.old_x +
+                self.change_per_frame_x * self.frame_count,
+                self.old_y +
+                self.change_per_frame_y * self.frame_count)
+        self.tab.set_needs_render()
+        return True
+```
+
+You should now be able to create this animation with your browser:
+
+<iframe src="examples/example13-transform-transition.html" style="width:350px;height:450px">
+</iframe>
+(click [here](examples/example13-transform-transition.html) to load the example in
+your browser)
+
+But if you try it, you'll find that the animation looks wrong---the blue
+rectangle is supposed to be *under* the green one, but now it's on top. That's
+because it is drawn into its own surface that is then drawn on top of the
+other surface. To fix that requires yet more surfaces, plus overlap testing.
+
+Overlap testing
+===============
+
+The main difficulty with implementing compositing turns out to be dealing
+with its *side-effects for overlapping content*. To understand the concept,
+consider this simple example of a green square overlapped by an blue one,
+except that the blue one is *earlier* in the DOM painting order.
+
+<div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
+<div style="width:200px;height:200px;background-color:lightgreen; transform:translate(0px,0px)"></div>
+
+Suppose we want to animate opacity on the blue square, and so allocate a
+`skia.Surface` and GPU texture for it. But we don't want to animate the green
+square, so it is supposed to draw to the screen without opacity change.
+But how can that work? How can we make it paint on top of this new surface?
+Two things we could do are: start painting the green
+square *before* the blue one, or re-raster the green square into the
+root surface on every frame, after drawing the blue square.
+
+The former is obviously not ok, because we can't just ignore the website
+developer's wishes and paint in the wrong order. The latter is *also* not ok,
+because it negates the first benefit of compositing (avoiding raster).
+
+So we have to choose a third option: allocating a `skia.Surface` for the
+green rectangle as well. This is called an *overlap reason* for compositing.
+Overlap makes compositing algorithms signficantly more complicated, because
+when allocating a surface for animated content, we'll have to check the
+remainder of the display list for potential overlaps.
+
+Next we'll need to be able to get the *composited bounds* of a `DisplayItem`.
+Its composited bounds is the union of its painting rectangle and all
+descendants that are not themselves composited. This will be needed to
+determine the absolute bounds of a `CompositedLayer`. This is pretty easy---there is
+already a `rect` field stored on the various subclasses, so just pass them to
+the superclass instead:
+
+``` {.python}
+class DisplayItem:
+    def __init__(self, rect, cmds=None, is_noop=False, node=None):
+        self.rect = rect
+    # ...
+    def composited_bounds(self):
+        rect = skia.Rect.MakeEmpty()
+        self.composited_bounds_internal(rect)
+        return rect
+
+    def composited_bounds_internal(self, rect):
+        rect.join(self.rect)
+        if self.cmds:
+            for cmd in self.cmds:
+                if not cmd.needs_compositing():
+                    cmd.composited_bounds_internal(rect)
+```
+
+The rect passed is the usual one; here's `DrawText`:
+
+``` {.python}
+class DrawText(DisplayItem):
+    def __init__(self, x1, y1, text, font, color):
+        # ...
+        super().__init__(
+            rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
+```
+
+The other classes are basically the same, including `SaveLayer` and `transform`.
+
+The `Transform` class is special: it is the only subclass of
+`DisplayItem` that can *move pixels*---cause other `DisplayItem`s to draw in
+some new location other than its bounding rectangle. For this reason, we
+will need a method on it to determine the new rectangle after appling the
+translation transform:
+
+``` {.python expected=False}
+class Transform:
+    # ...
+    def transform(self, rect):
+        if not self.translation:
+            return rect
+        matrix = skia.Matrix()
+        if self.translation:
+            (x, y) = self.translation
+            matrix.setTranslate(x, y)
+        return matrix.mapRect(rect)
+```
+
+TODO: implement abs bounds for a transform animation that takes into account
+the path traveled.
+
+::: {.further}
+TODO: describe the problem of layer explosion. Explain how this can actually
+lead to compositing slowing down a web page rather than speeding it up.
+:::
+
 Composited scrolling
 ====================
 
@@ -2024,7 +2014,9 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-TODO
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab11.py
+:::
 
 Exercises
 =========
