@@ -607,7 +607,7 @@ one constant and one debugging method, actually). Install the library:
 and then import it:
 
 ``` {.python}
-from OpenGL import GL
+import OpenGL.GL as GL
 ```
 
 Then we'll need to configure `sdl_window` and start/stop a
