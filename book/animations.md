@@ -2024,7 +2024,9 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-TODO
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab13.py
+:::
 
 Exercises
 =========
