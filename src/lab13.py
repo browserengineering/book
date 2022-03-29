@@ -89,13 +89,11 @@ class DisplayItem:
         return self.noop
 
     def execute(self, canvas):
-        if self.cmds:
-            def op():
-                for cmd in self.get_cmds():
-                    cmd.execute(canvas)
-            self.draw(canvas, op)
-        else:
-            self.draw(canvas)
+        assert self.cmds
+        def op():
+            for cmd in self.get_cmds():
+                cmd.execute(canvas)
+        self.draw(canvas, op)
 
     def draw(self, canvas, op):
         pass
@@ -168,7 +166,7 @@ class DrawRRect(DisplayItem):
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.color = color
 
-    def draw(self, canvas):
+    def execute(self, canvas):
         sk_color = parse_color(self.color)
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=sk_color))
@@ -192,7 +190,7 @@ class DrawText(DisplayItem):
         super().__init__(
             rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
 
-    def draw(self, canvas, **args):
+    def execute(self, canvas):
         draw_text(canvas, self.left, self.top,
             self.text, self.font, self.color)
 
@@ -221,7 +219,7 @@ class DrawRect(DisplayItem):
         self.right = x2
         self.color = color
 
-    def draw(self, canvas, *args):
+    def execute(self, canvas):
         draw_rect(canvas,
             self.left, self.top,
             self.right, self.bottom,
@@ -258,7 +256,7 @@ class DrawLine(DisplayItem):
         self.x2 = x2
         self.y2 = y2
 
-    def draw(self, canvas, *args):
+    def execute(self, canvas):
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 class SaveLayer(DisplayItem):

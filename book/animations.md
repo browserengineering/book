@@ -1081,37 +1081,35 @@ class DisplayItem:
 ```
 
 But for those it is like `execute`, except that it has a parameterized `op`
-parameter. Here's `Transform`:
+parameter. Here's `SaveLayer`:
 
 ``` {.python}
-class Transform(DisplayItem):
+class SaveLayer(DisplayItem):
     # ...
     def draw(self, canvas, op):
-        if self.is_noop():
+        if not self.is_noop():
+            canvas.saveLayer(paint=self.sk_paint)
+        if self.should_paint_cmds:
             op()
-        else:
-            assert self.translation
-            (x, y) = self.translation
-            canvas.save()
-            canvas.translate(x, y)
-            op()
+        if not self.is_noop():
             canvas.restore()
 ```
 
-We can then redefine `execute` in terms of draw:
+For visual effects, we can then redefine `execute` in terms of draw; remove the
+existing `execute` methods on those classes.
 
 ``` {.python}
 class DisplayItem:
     def execute(self, canvas):
-        if self.cmds:
-            def op():
-                for cmd in self.get_cmds():
-                    cmd.execute(canvas, True, False)
-            self.draw(canvas, op, True)
-        else:
-            self.draw(canvas)
+        assert self.cmds
+        def op():
+            for cmd in self.get_cmds():
+                cmd.execute(canvas, True, False)
+        self.draw(canvas, op, True)
 ```
 
+The paint command subclasses like `DrawText` already define `execute`, which
+will override this definition.
 
 ::: {.further}
 But why composite always, and not just when the property is animating? It's
@@ -1137,11 +1135,9 @@ and extra code to get right, so I omitted it from this book's code.)
 Composited Layers
 =================
 
-The final piece is to implement the `CompositedLayer` class. A
-`CompositedLayer` is a container for one or more leaf `DisplayItem`s, plus it
-owns a `skia.Surface` into which to raster. The browser thread builds up and
-maintains a list of `CompositedLayer`s. Each one will have one or more
-`DisplayItems`, all with the same `ancestor_effects`.
+We're now ready to implement the `CompositedLayer` class. Start by defining
+its member variables: a Skia context, surface, list of display items, ancestor
+effects, and the "composited ancestor index".
 
 ``` {.python}
 class CompositedLayer:
