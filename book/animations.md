@@ -942,14 +942,14 @@ list. If one is found, the paint chunk is added to it; if not, a new
 The `can_merge` method on a `CompositedLayer` checks compatibility of the paint
 chunk's animating ancestor effects with the ones already on it.
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def __init__(self):
         # ...
         self.composited_layers = []
 
     def composite(self):
-        self.display_list = []
+        self.composited_layers = []
         chunks = []
         display_list_to_paint_chunks(
             self.active_tab_display_list, [], chunks)
@@ -1104,8 +1104,8 @@ class DisplayItem:
         assert self.cmds
         def op():
             for cmd in self.get_cmds():
-                cmd.execute(canvas, True, False)
-        self.draw(canvas, op, True)
+                cmd.execute(canvas)
+        self.draw(canvas, op)
 ```
 
 The paint command subclasses like `DrawText` already define `execute`, which
@@ -1332,22 +1332,11 @@ if none is.
         canvas.restore()
 ```
 
-The last bit to make the code work end-to-end is a new `Browser.composite`
-method, and to generalize to `composite_raster_and_draw` (plus renaming the
-corresponding dirty bit and renaming at all callsites), and everything should
-work end-to-end.
+The last bit to make the code work end-to-end is to generalize to
+`composite_raster_and_draw` (plus renaming the corresponding dirty bit and
+renaming at all callsites), and everything should work end-to-end.
 
 ``` {.python expected=False}
-    def composite(self):
-        self.composited_layers = do_compositing(
-            self.active_tab_display_list, self.skia_context)
-
-        self.active_tab_height = 0
-        for layer in self.composited_layers:
-            self.active_tab_height = \
-                max(self.active_tab_height,
-                    layer.absolute_bounds().bottom())
-
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)
         if not self.needs_composite_raster_draw:
