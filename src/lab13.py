@@ -30,7 +30,7 @@ from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import draw_line, draw_text, get_font, linespace, \
     parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
-from OpenGL import GL
+import OpenGL.GL as GL
 
 class MeasureTime:
     def __init__(self, name):

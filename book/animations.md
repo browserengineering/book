@@ -607,7 +607,7 @@ one constant and one debugging method, actually). Install the library:
 and then import it:
 
 ``` {.python}
-from OpenGL import GL
+import OpenGL.GL as GL
 ```
 
 Then we'll need to configure `sdl_window` and start/stop a
@@ -2015,7 +2015,7 @@ The complete set of functions, classes, and methods in our browser
 should now look something like this:
 
 ::: {.cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab11.py
+    python3 infra/outlines.py --html src/lab13.py
 :::
 
 Exercises
