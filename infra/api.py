@@ -143,15 +143,16 @@ def thanks():
     }
 
     patreon_names = {
-        "Yuanhang Xie",
         "Rishi Chopra",
-        "Swav Rybak",
         "Adam Gutglick",
-        "Alexandru Nedel",
-        "Jonas Treub",
-        "Zach Tatlock",
+        "Shuhei Kagawa"
         "Min Lee",
-        "Randy Naar"
+        "Randy Naar",
+        "Alexandru Nedel",
+        "Swav Rybak",
+        "Zach Tatlock",
+        "Jonas Treub",
+        "Yuanhang Xie",
     }
 
     return {
