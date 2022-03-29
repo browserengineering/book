@@ -1049,7 +1049,7 @@ in a GPU texture. Indicate that with a new `needs_compositing` method on
 (but only when they actually do something that isn't a no-op), regardless of
 whether they are animating.
 
-``` {.python expected=False}
+``` {.python}
 class DisplayItem:
     def needs_compositing(self):
         return not self.is_noop() and \
