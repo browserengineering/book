@@ -89,13 +89,11 @@ class DisplayItem:
         return self.noop
 
     def execute(self, canvas):
-        if self.cmds:
-            def op():
-                for cmd in self.get_cmds():
-                    cmd.execute(canvas, True, False)
-            self.draw(canvas, op, True)
-        else:
-            self.draw(canvas)
+        assert self.cmds
+        def op():
+            for cmd in self.get_cmds():
+                cmd.execute(canvas)
+        self.draw(canvas, op)
 
     def draw(self, canvas, op):
         pass
@@ -168,7 +166,7 @@ class DrawRRect(DisplayItem):
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.color = color
 
-    def draw(self, canvas):
+    def execute(self, canvas):
         sk_color = parse_color(self.color)
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=sk_color))
@@ -192,7 +190,7 @@ class DrawText(DisplayItem):
         super().__init__(
             rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
 
-    def draw(self, canvas, **args):
+    def execute(self, canvas):
         draw_text(canvas, self.left, self.top,
             self.text, self.font, self.color)
 
@@ -221,7 +219,7 @@ class DrawRect(DisplayItem):
         self.right = x2
         self.color = color
 
-    def draw(self, canvas, *args):
+    def execute(self, canvas):
         draw_rect(canvas,
             self.left, self.top,
             self.right, self.bottom,
@@ -258,7 +256,7 @@ class DrawLine(DisplayItem):
         self.x2 = x2
         self.y2 = y2
 
-    def draw(self, canvas, *args):
+    def execute(self, canvas):
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 class SaveLayer(DisplayItem):
@@ -1613,33 +1611,6 @@ def display_list_to_paint_chunks(
         else:
             chunks.append((display_item, ancestor_effects))
 
-def do_compositing(display_list, skia_context):
-    chunks = []
-    display_list_to_paint_chunks(display_list, [], chunks)
-    composited_layers = []
-    for (display_item, ancestor_effects) in chunks:
-        placed = False
-        for layer in reversed(composited_layers):
-            if layer.can_merge(display_item, ancestor_effects):
-                layer.add_display_item(display_item, ancestor_effects)
-                placed = True
-                break
-            elif skia.Rect.Intersects(
-                layer.absolute_bounds(),
-                bounds(display_item,
-                    ancestor_effects, include_composited=True)):
-                layer = CompositedLayer(skia_context)
-                layer.add_display_item(display_item, ancestor_effects)
-                composited_layers.append(layer)
-                placed = True
-                break
-        if not placed:
-            layer = CompositedLayer(skia_context)
-            layer.add_display_item(display_item, ancestor_effects)
-            composited_layers.append(layer)
-
-    return composited_layers
-
 USE_GPU = True
 
 class Browser:
@@ -1763,8 +1734,30 @@ class Browser:
 
     def composite(self):
         if self.needs_composite:
-            self.composited_layers = do_compositing(
-                self.active_tab_display_list, self.skia_context)
+            self.composited_layers = []
+            chunks = []
+            display_list_to_paint_chunks(
+                self.active_tab_display_list, [], chunks)
+            for (display_item, ancestor_effects) in chunks:
+                placed = False
+                for layer in reversed(self.composited_layers):
+                    if layer.can_merge(display_item, ancestor_effects):
+                        layer.add_display_item(display_item, ancestor_effects)
+                        placed = True
+                        break
+                    elif skia.Rect.Intersects(
+                        layer.absolute_bounds(),
+                        bounds(display_item,
+                            ancestor_effects, include_composited=True)):
+                        layer = CompositedLayer(self.skia_context)
+                        layer.add_display_item(display_item, ancestor_effects)
+                        self.composited_layers.append(layer)
+                        placed = True
+                        break
+                if not placed:
+                    layer = CompositedLayer(self.skia_context)
+                    layer.add_display_item(display_item, ancestor_effects)
+                    self.composited_layers.append(layer)
 
             self.active_tab_height = 0
             for layer in self.composited_layers:
