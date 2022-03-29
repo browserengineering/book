@@ -92,8 +92,8 @@ class DisplayItem:
         if self.cmds:
             def op():
                 for cmd in self.get_cmds():
-                    cmd.execute(canvas, True, False)
-            self.draw(canvas, op, True)
+                    cmd.execute(canvas)
+            self.draw(canvas, op)
         else:
             self.draw(canvas)
 

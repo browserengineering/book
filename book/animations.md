@@ -886,8 +886,9 @@ DOM nodes could be simultaneously animating, and we can't put the same subtree
 in two different surfaces. We *could* potentially handle cases like this by
 making a tree of `skia.Surface` object. But it turns out that that approach
 pgets quite complicated when you get into the details.^[We'll cover one of these
-details---overlap testing---later in the chapter. There are many more in a
-real browser.]
+details---overlap testing---later in the chapter. Another is that there may be
+multiple "child" pieces of content, only some of which may be animating. There
+even more in a real browser.]
 
 Instead, think of the display list as a flat list of "leaf" *paint commands*
 like `DrawText`.^[The tree of visual effects is applied to some of those paint
@@ -947,33 +948,35 @@ class Browser:
         # ...
         self.composited_layers = []
 
-    def composite():
+    def composite(self):
         self.display_list = []
         chunks = []
-        display_list_to_paint_chunks(self.display_list, [], chunks)
+        display_list_to_paint_chunks(
+            self.active_tab_display_list, [], chunks)
         for (display_item, ancestor_effects) in chunks:
             placed = False
             for layer in reversed(composited_layers):
                 if layer.can_merge(display_item, ancestor_effects):
-                    layer.add_display_item(display_item, ancestor_effects)
+                    layer.add_display_item(
+                        display_item, ancestor_effects)
                     placed = True
                     break
             if not placed:
                 layer = CompositedLayer(skia_context)
                 layer.add_display_item(display_item, ancestor_effects)
                 composited_layers.append(layer)
-
-        return composited_layers
-
-class Browser:
-    # ...
-    def composite
 ```
 
-Rastering the `CompositedLayer`s will work 
+Once there is a list of `CompositedLayer`s, rastering the `CompositedLayer`s
+will be look like this:
 
-Once there is a list of `CompositedLayer`s, drawing them to the screen will be
-very easy, since steps 1 and 2 do all the heavy lifting. Here is the code:
+``` {.python}
+    def raster_tab(self):
+        for composited_layer in self.composited_layers:
+            composited_layer.raster()
+```
+
+And drawing them to the screen will be like this:
 
 ``` {.python}
     def draw(self):
@@ -986,14 +989,15 @@ very easy, since steps 1 and 2 do all the heavy lifting. Here is the code:
                 composited_layer.draw(canvas, draw_offset)
 ```
 
-In the next section I'll show how to ipmlement `can_merge`.
+This is the overall structure. Now I'll show how to implement `can_merge`,
+`raster` and `draw` on a `CompositedLayer`.
 
 ::: {.further}
 Why is it that flattening a recursive display list into paint chunks is
 possible? After all, visual effects in the DOM really are nested.
 
-In fact, the implementation of `Browser.draw` in this section is
-incorrect for the case of nested visual effects (such as if there is a
+The implementation of `Browser.draw` in this section is
+indeed incorrect for the case of nested visual effects (such as if there is a
 composited animation on a DOM element underneath another one). To fix it
 requires determining the necessary "draw hierarchy" of `CompositedLayer`s into
 a tree based on their visual effect nesting, and allocating intermediate
@@ -1010,6 +1014,11 @@ is not too hard to implement, but each additional render surface requires a
  be applied *atomically* to all of the content under it; if it was applied
  separately to each of the child `CompositedLayer`s, the blending result on the
  screen would be potentially incorrect.
+
+You might think that all this means I chose badly with my flattening
+algorithm in the first place, but that is not the case. Render surface
+optimizations are just as necessary (and complicated to get right!) even with
+a "layer tree" approach, because it's so important to optimize GPU memory.
 
 [^only-overlapping]: Actually, only if there are at least two children *and*
 some of them overlap each other visually. Can you see why we can avoid the
@@ -1033,35 +1042,37 @@ and clipping.
 Composited display items
 ========================
 
-We'll also need a way to signal that a visual effect `DisplayItem` "needs
+The first thing we'll need is a way to signal that a visual effect "needs
 compositing", meaning that it is animating and so its contents should be cached
-in a GPU texture. Le  indicate that with a new `needs_compositing` method on
-`DisplayItem`. Since we'll only implement composited animations of opacity and
-transform, always composite transform and opacity (but only when they actually
-do something that isn't a no-op).
+in a GPU texture. Indicate that with a new `needs_compositing` method on
+`DisplayItem`. As a heuristic, we'll always composite transform and opacity
+(but only when they actually do something that isn't a no-op), regardless of
+whether they are animating.
 
-And while we're at it, add yet another parameter indicating the
-`node` that the `DisplayItem` belongs to (the one that painted it); this will
-be useful when keeping track of mappinges betwen `DisplayItem`s and GPU
-textures.[^cache-key]
+``` {.python expected=False}
+class DisplayItem:
+    def needs_compositing(self):
+        return not self.is_noop() and \
+            (type(self) is Transform or type(self) is SaveLayer)
+```
 
-[^cache-key]: Remember that these compositing GPU textures are simply
-a form of cache (albiet a somewhat atypical one!, and every cache needs a
-stable cache key to be useful. It's also used in real browsers.
+And while we're at it, add another `DisplayItem` constructor parameter
+indicating the `node` that the `DisplayItem` belongs to (the one that painted
+it); this will be useful when keeping track of mappinges betwen `DisplayItem`s
+and GPU textures.[^cache-key]
+
+[^cache-key]: Remember that these compositing GPU textures are simply a form of
+cache, and every cache needs a stable cache key to be useful.
 
 ``` {.python expected=False}
 class DisplayItem:
     def __init__(self, cmds=None, is_noop=False, node=None):
         # ...
         self.node = node
-
-    def needs_compositing(self):
-        return not self.is_noop() and \
-            (type(self) is Transform or type(self) is SaveLayer)
 ```
 
-One additional method we need is `draw`. This only does something for
-visual effect subclasses:
+Next we need a `draw` draw. This only does something for visual effect
+subclasses:
 
 ``` {.python}
 class DisplayItem:
@@ -1089,8 +1100,6 @@ class Transform(DisplayItem):
 
 We can then redefine `execute` in terms of draw:
 
-TODO: explain more
-
 ``` {.python}
 class DisplayItem:
     def execute(self, canvas):
@@ -1101,7 +1110,6 @@ class DisplayItem:
             self.draw(canvas, op, True)
         else:
             self.draw(canvas)
-
 ```
 
 
