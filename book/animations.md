@@ -745,30 +745,29 @@ using compositing.
 Compositing
 ===========
 
-*Compositing* is the technique of caching some of the output of rastered
-surfaces from animation frame to animation frame, so we can avoid that work;
-it's only draw that is re-done (and animated with different
-parameters).[^compositing-def]
+*Compositing* is the technique that lets us avoid raster costs during visual
+ effect animations; on the browser thread, only draw is needed for each
+ animation frame (with different parameters each time).[^compositing-def]
 
 [^compositing-def]: The term [*compositing*][compositing] at its root means to
 combine multiple images together into a final output. As it relates to
 browsers, it usually means the performance optimization technique of caching
-rastered GPU textures that are the inputs to animated [visual effects]
-(visual-effects.md), but the term is usually overloaded to refer to OS
-compositing as well.
+rastered GPU textures that are the inputs to animated visual effects, but the
+term is usually overloaded to refer to OS and browser-level compositing
+and multi-threaded rendering.
 
 [compositing]: https://en.wikipedia.org/wiki/Compositing
 
-Let's unpack that into simpler terms with an example. Opacity is one kind of
-visual effect. When we're animating it, the opacity is changing, but the
-"DOM content" underneath it is not. So let's stop re-rastering that content on
+Let's consider the opacity animation example from this chapter. When we're
+animating, the opacity is changing, but the
+"Test" text underneath it is not. So let's stop re-rastering that content on
  every frame of the animation, and instead cache it in a GPU texture.
- This *should* directly reduce raster-and-draw work because less raster work
+ This should directly reduce browser thread work, because no raster work
  will be needed on each animation frame.
 
-Below is the `opacity` animation with a red border "around" the surface that is
-cached. Notice how it's sized to the width and height of the `<div>`, which
-is as wide as the viewport and as tall as the text "Test".[^chrome]
+Below is the opacity animation with a red border "around" the surface that we
+want to cache. Notice how it's sized to the width and height of the `<div>`,
+which is as wide as the viewport and as tall as the text "Test".[^chrome]
 
  <iframe src="http://localhost:8001/examples/example13-opacity-transition-borders.html">
  </iframe>
@@ -779,24 +778,25 @@ is also a DevTools feature for it.
 
 As I explained in [Chapter 11](visual-effects.md#browser-compositing), Skia
 sometimes caches surfaces internally. So you might think that Skia has a way to
-say "please cache this surface". And there is---the way is for the user of Skia
-to keep around a `skia.Surface` across multiple raster-and-draw
-executions.^[Skia will keep alive the rastered content associated with the
-`Surface` object until it's garbage collected].
-In other words, we'll need to do the caching ourselves, and this feature is
-not built into Skia itself in a simple-to-use form.
+say "please cache this surface". And there is---keep around a `skia.Surface`
+object across multiple raster-and-draw executions and use the `draw` method on
+the surface to draw it into the canvas.^[Skia will keep alive the rastered
+content associated with the `Surface` object until it's garbage collected.] In
+other words, we'll need to do the caching ourselves. This feature is not
+built into Skia itself in a trivial-to-use form.
 
-We're now ready to start digging into the compositing algorithm and how to
-implement it. The goal of compositing is to allocate a new `skia.Surface` for
-an animating visual effect, in order to avoid the cost of re-rastering it on
-every animation frame. But what does that mean exactly? If opacity is
-animating, which parts of the web page should we cache in the surface? To
-answer that, let's revisit the structure of our display lists. We'll need a way
-to print out the(recursive, tree-like) display list in a useful form.
-[^debug] Add a base class called `DisplayItem` and make all display list
-commands inherit from it, and move the `cmds` field to that class (or pass
-nothing if they don't have any, like `DrawText`); here's `SaveLayer` for
-example:
+Let's start digging into the compositing algorithm and how to implement it. The
+plan is to cache the "contents" of an animating visual effect in a new
+`skia.Surface` and store it somewhere. But what does "contents" mean exactly?
+If opacity is animating, which parts of the web page should we cache in the
+surface? To answer that, let's revisit the \structure of our display
+lists.
+
+It'll be helpful to be able to print out the (recursive, tree-like) display list
+in a useful form.[^debug] Add a base class called `DisplayItem` and make all
+display list commands inherit from it, and move the `cmds` field to that class
+(or pass nothing if they don't have any, like `DrawText`); here's `SaveLayer`
+for example:
 
 [^debug]: This code will also be very useful to you while debugging your
 compositing implementation.
@@ -845,13 +845,14 @@ When run on the [opacity transition
 example](examples/example13-opacity-transition.html) before the animation has
 begun, it should print something like:
 
-    SaveLayer(alpha=1.0): bounds=Rect(13, 18, 787, 40.3438)
+    SaveLayer(alpha=0.999): bounds=Rect(13, 18, 787, 40.3438)
         DrawText(text=Test): bounds=Rect(13, 21.6211, 44, 39.4961)
 
 Now that we can see the example, it seems pretty clear that we should make
 a surface for the contents of the opacity `SaveLayer`, in this case containing
-only a `DrawText`.^[Note that this is *not* the same as "cache the display
-list for a DOM element subtree"!. To see why, consider that a single
+only a `DrawText`. In more complicated examples, it could have any number of
+display list commands.^[Note that this is *not* the same as "cache the display
+list for a DOM element subtree". To see why, consider that a single
 DOM element can result in more than one `SaveLayer`, such as when it has
 both opacity *and* a transform.]
 
@@ -879,22 +880,24 @@ method we already use in `Browser.draw` to draw the surface to the screen.
 In essence, we've moved a `saveLayer` command from the `raster` stage
 to the `draw` stage of the pipeline.
 
-So we're sort of implementing a way to "subtrees of the display list" into
+In a way, we're implementing a way to put "subtrees of the display list" into
 different surfaces. But it's not quite just subtrees, because multiple nested
 DOM nodes could be simultaneously animating, and we can't put the same subtree
-in two different surfaces. Instead, we think of the display list as a flat list
-of "leaf" *paint commands* like `DrawText`, but arranged into groups by a tree
-of visual effects. Our task will be to figure out a way to put each paint
-command into exactly one surface, such that every animated visual effect
-happens during `draw` and not `raster`, while at the same time minimizing
-the number of such surfaces. (Multiple paint commands will be put in the same
-surface if possible.)
+in two different surfaces. We *could* potentially handle cases like this by
+making a tree of `skia.Surface` object. But it turns out that that approach
+pgets quite complicated when you get into the details.^[We'll cover one of these
+details---overlap testing---later in the chapter. There are many more in a
+real browser.]
 
-Each paint command can be drawn to the screen by executing it and the series
-of *ancestor [visual] effects* on it. Thus the tuple `(paint command, ancestor
-effects)` suffices to describe that paint command in isolation. We'll call
-this tuple a *paint chunk*. Here is how to generate all the paint chunks
-from a display list:
+Instead, think of the display list as a flat list of "leaf" *paint commands*
+like `DrawText`.^[The tree of visual effects is applied to some of those paint
+commands, but ignore that for now and focus on the paint commands.] Each paint
+command can be (individually) drawn to the screen by executing it and the
+series of *ancestor [visual] effects* on it. Thus the tuple `(paint command,
+ancestor effects)` suffices to describe that paint command in isolation.
+
+We'll call this tuple a *paint chunk*. Here is how to generate all the paint
+chunks from a display list:
 
 ``` {.python}
 def display_list_to_paint_chunks(
@@ -908,61 +911,71 @@ def display_list_to_paint_chunks(
             chunks.append((display_item, ancestor_effects))
 ```
 
-A sequence of paint chunks in the flat list can be put into the same surface if
-they are:
-
-* adjacent in paint order (otherwise, overlapping content wouldn't draw
-correctly), and
-
-* have the exact same set of animating ancestor effects (otherwise the
-  animations would end up applying to the wrong paint commands)
-
-Multiple paint chunks when combined together form a *composited layer*,
+When combined together, multiple paint chunks form a *composited layer*,
 represented by the `CompositedLayer` class. This class will own a
 `skia.Surface` that rasters its content, and also know how to draw
 the result to the screen by applying an appropriate sequence of visual effects.
 
-To perform compositing, the sequence of actions for the browser thread will be:
+Two paint chunks in the flat list can be put into the same composited layer if
+they are:
 
-1. Convert the (recursive) display list to a list of paint chunks.
+* adjacent in paint order,^[otherwise, overlapping content wouldn't draw
+correctly] and
 
-2. Determine the list of `CompositedLayers` from the paint chunks, creating
-one `CompositedLayer` for each animating visual effect.
-The list of `CompositedLayer`s will be in order of drawing to the screen,
-and each will have a `draw` method that executes the visual effects for that
-`CompositedLayer` (including any visual effect that is animating).
+* have the exact same set of animating ancestor effects.^[otherwise the
+  animations would end up applying to the wrong paint commands]
 
-Here are the basics of the algorithm we'll use. It loops over the list of paint
-chunks and allocates a new `CompositedLayer` if it is animating a visual
-effect, or if it overlaps another layer that is doing so. The `can_merge`
-method on a `CompositedLayer` checks compatibility of animating animating
-ancestor effects.
+Notice that, to satisfy these constraints, we could just put each paint command
+in its own composited layer. But of course, that would result in a huge number
+of surfaces, and most likely exhaust the computer's GPU memory. So the goal of
+the *compositing algorithm* is to come up with a way to pack paint chunks into
+only a small number of composited layers.^[There are many possible compositing
+algorithms, with their own tradeoffs of memory, time and code complexity. I'll
+present the one used by Chromium.]
 
-``` {.python}
-def do_compositing(display_list, skia_context):
-    chunks = []
-    display_list_to_paint_chunks(display_list, [], chunks)
-    composited_layers = []
-    for (display_item, ancestor_effects) in chunks:
-        placed = False
-        for layer in reversed(composited_layers):
-            if layer.can_merge(display_item, ancestor_effects):
-                layer.add_display_item(display_item, ancestor_effects)
-                placed = True
-                break
-        if not placed:
-            layer = CompositedLayer(skia_context)
-            layer.add_display_item(display_item, ancestor_effects)
-            composited_layers.append(layer)
-
-    return composited_layers
-```
-
-3. Draw the `CompositedLayer`s to the screen. This step will be very easy,
-since steps 1 and 2 do all the heavy lifting. Here is the code:
+Below is the algorithm we'll use; as you can see it's not very complicated. It
+loops over the list of paint chunks; for each paint chunk it tries to reuse an
+existing `CompositedLayer` by walking *backwards* through the `CompositedLayer`
+list. If one is found, the paint chunk is added to it; if not, a new
+`CompositedLayer` is added with that paint chunk to start.
+The `can_merge` method on a `CompositedLayer` checks compatibility of the paint
+chunk's animating ancestor effects with the ones already on it.
 
 ``` {.python}
 class Browser:
+    def __init__(self):
+        # ...
+        self.composited_layers = []
+
+    def composite():
+        self.display_list = []
+        chunks = []
+        display_list_to_paint_chunks(self.display_list, [], chunks)
+        for (display_item, ancestor_effects) in chunks:
+            placed = False
+            for layer in reversed(composited_layers):
+                if layer.can_merge(display_item, ancestor_effects):
+                    layer.add_display_item(display_item, ancestor_effects)
+                    placed = True
+                    break
+            if not placed:
+                layer = CompositedLayer(skia_context)
+                layer.add_display_item(display_item, ancestor_effects)
+                composited_layers.append(layer)
+
+        return composited_layers
+
+class Browser:
+    # ...
+    def composite
+```
+
+Rastering the `CompositedLayer`s will work 
+
+Once there is a list of `CompositedLayer`s, drawing them to the screen will be
+very easy, since steps 1 and 2 do all the heavy lifting. Here is the code:
+
+``` {.python}
     def draw(self):
         canvas = self.root_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
@@ -972,6 +985,8 @@ class Browser:
             for composited_layer in self.composited_layers:
                 composited_layer.draw(canvas, draw_offset)
 ```
+
+In the next section I'll show how to ipmlement `can_merge`.
 
 ::: {.further}
 Why is it that flattening a recursive display list into paint chunks is
