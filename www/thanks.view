@@ -32,7 +32,8 @@ We want to thank our
 
 <p>
 Moreover, we thank <em>contributors</em> who submitted typo fixes,
-questions, and comments through the book's built-in feedback tools:
+questions, and comments through the book's built-in feedback tools,
+or through Github:
 {{", ".join(contribute[:-1])}}, and {{contribute[-1]}}.
 </p>
 
@@ -47,4 +48,4 @@ whom we wrote the book.
 </p>
 
 </body>
-
+</html>
