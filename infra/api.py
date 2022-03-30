@@ -133,13 +133,22 @@ def thanks():
     #
     #   git log --format='%aN' | sort -u`
     #
-    # And deleting the authors' names.
+    # And searching the Github issues and pull requests.
+    # List below current as of 30 Mar 2022.
     gh_names = {
         "Abram Himmer",
-        "Anthony",
         "BO41",
         "Ian Briggs",
         "Shuhei Kagawa",
+        "Anthony Geoghegan",
+        "Thomas Lovett",
+        "Pranav Shridhar",
+        "Sujal Singh",
+        "Michal Čaplygin",
+        "metamas",
+        "Bruno P. Kinoshita",
+        "Daniel Rosenwasser",
+        "some now-deleted users",
     }
 
     patreon_names = {
