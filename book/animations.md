@@ -1110,6 +1110,43 @@ class DisplayItem:
 The paint command subclasses like `DrawText` already define `execute`, which
 will override this definition.
 
+Finally, we'll need to be able to get the *composited bounds* of a
+`DisplayItem`. Its composited bounds is the union of its painting rectangle and
+all descendants that are not themselves composited. This will be needed to
+determine the absolute bounds of a `CompositedLayer`. This is pretty
+easy---there is already a `rect` field stored on the various subclasses, so
+just pass them to the superclass instead:
+
+``` {.python}
+class DisplayItem:
+    def __init__(self, rect, cmds=None, is_noop=False, node=None):
+        self.rect = rect
+    # ...
+    def composited_bounds(self):
+        rect = skia.Rect.MakeEmpty()
+        self.composited_bounds_internal(rect)
+        return rect
+
+    def composited_bounds_internal(self, rect):
+        rect.join(self.rect)
+        if self.cmds:
+            for cmd in self.cmds:
+                if not cmd.needs_compositing():
+                    cmd.composited_bounds_internal(rect)
+```
+
+The rect passed is the usual one; here's `DrawText`:
+
+``` {.python}
+class DrawText(DisplayItem):
+    def __init__(self, x1, y1, text, font, color):
+        # ...
+        super().__init__(
+            rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
+```
+
+The other classes are basically the same, including visual effects.
+
 ::: {.further}
 But why composite always, and not just when the property is animating? It's
 for two reasons.
@@ -1136,12 +1173,21 @@ Composited Layers
 
 We're now ready to implement the `CompositedLayer` class. Start by defining its
 member variables: a Skia context, surface, list of paint chunks,
-and the "composited ancestor index".
+and the *composited ancestor index*.
 
-Only paint chunks that have the same nearest composited ancestor will be allowed
-to be in the same `CompositedLayer`, so all paint chunks will share the same
-composited ancestor index. However, they need not have exactly the same
-ancestor effects (some may be below a `ClipRRect`, for example).
+Only paint chunks that have the same *nearest composited visual effect ancestor*
+will be allowed to be in the same `CompositedLayer`.[^simpler] The composited
+ancestor index is the index into the top-down array of ancestor effects
+refering to this ancestor. (If there is no composited ancestor, the index is
+-1.)
+
+So all paint chunks will share the same composited ancestor index. However, they
+need not have exactly the same ancestor effects array---there could be
+additional non-composited visual effects at the bottom (below a `ClipRRect`,
+for example).
+
+[^simpler]: Intuitively, this just means "part of the same composited
+animation".
 
 ``` {.python}
 class CompositedLayer:
@@ -1154,10 +1200,8 @@ class CompositedLayer:
 
 The class will have the following methods:
 
-* `add_display_item`: adds a display_item. The first one being added will
-initialize the `composited_ancestor_index` of the `CompositedLayer`, which
-is the index into `ancestor_effects` that is the "lowest" ancestor which 
-needs compositing, or -1 otherwise.
+* `add_paint_chunk`: adds a new paint chunk. The first one being added will
+initialize the `composited_ancestor_index` of the `CompositedLayer`.
 
 ``` {.python}
 def composited_ancestor_index(ancestor_effects):
@@ -1171,18 +1215,16 @@ def composited_ancestor_index(ancestor_effects):
 
 class CompositedLayer:
     # ...
-    def add_display_item(self, display_item, ancestor_effects):
+    def add_paint_chunk(self, display_item, ancestor_effects):
         if len(self.paint_chunks) == 0:
             self.composited_ancestor_index = \
             composited_ancestor_index(ancestor_effects)
         self.paint_chunks.append((display_item, ancestor_effects))
 ```
 
-* `can_merge`: returns whether the `display_item` plus `ancestor_effects` passed
-  as parameters are compatible with being drawn into the same
-  `CompositedLayer`. This will be true if they has the same `composited_item`
-  as the existing `DisplayItems`---i.e. it's animating the same visual effect,
-  or none in the `CompositedLayer` are animating.[^not-animating]
+* `can_merge`: returns whether the paint chunk is compatible with being drawn
+  into the same `CompositedLayer`. This will be true if they has the same
+  composited ancestor index.
 
 ``` {.python}
     def can_merge(self, display_item, ancestor_effects):
@@ -1193,75 +1235,18 @@ class CompositedLayer:
             composited_ancestor_index(ancestor_effects)
 ```
 
-[^not-animating]: Recall that there are two types of `CompositedLayer`s that
-aren't animating: the root layer (what used to be called `tab_surface`), or
-one that is created just because of overlap.
-
 * `composited_bounds`: returns the union of the composited bounds of all
-  `DisplayItem`s. The composited bounds of a `DisplayItem` is its bounds,
-  plus all non-composited ancestor visual effects.
+  paint chunks. The composited bounds of a paint chunk is its display item's
+  composited bounds.
 
-``` {.python}
-def bounds(display_item, ancestor_effects, include_composited=False):
-    retval = display_item.composited_bounds()
-    for ancestor_item in reversed(ancestor_effects):
-        if ancestor_item.needs_compositing() and \
-            not include_composited:
-            break
-        if type(ancestor_item) is Transform:
-            retval = ancestor_item.transform(retval)
-    return retval
-
+``` {.python expected=False}
 class CompositedLayer:
     # ...
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
         for (item, ancestor_effects) in self.paint_chunks:
-            retval.join(bounds(item, ancestor_effects,
-                include_composited=False))
+            retval.join(display_item.composited_bounds())
         return retval
-```
-
-On the `CompositedLayer` class we'll need:
-
-* `absolute_bounds`: returns the union of the absolute bounds of all
-`DisplayItems`. This is like `composited_bounds`, except that all ancestor
-visual effects are applied. So these bounds are the bounds relative
-to the top-left point of `tab_surface`. This will help us know the scroll height
-of the web page.
-
-``` {.python}
-    def absolute_bounds(self):
-        retval = skia.Rect.MakeEmpty()
-        for (item, ancestor_effects) in self.paint_chunks:
-            retval.join(bounds(item, ancestor_effects,
-                include_composited=True))
-        return retval
-```
-
-* `composited_item`: returns the ancestor effect that is composited, or `None`
-if none is.
-
-``` {.python}
-    def composited_item(self):
-        if self.composited_ancestor_index < 0:
-            return None
-        (item, ancestor_effects) = self.paint_chunks[0]
-        return ancestor_effects[self.composited_ancestor_index]
-```
-
-* `composited_items`: returns a list of all ancestor visual effects that are
-  composited.
-
-
-``` {.python}
-    def composited_items(self):
-        items = []
-        (item, ancestor_effects) = self.paint_chunks[0]
-        for item in reversed(ancestor_effects):
-            if item.needs_compositing():
-                items.append(item)
-        return items
 ```
 
 * `raster`: rasters the chunks into `self.surface`. Note that there is no
@@ -1560,6 +1545,34 @@ class Browser:
                 self.set_needs_draw()
 ```
 
+Add two new methods to `CompositedLayer`:
+
+* `composited_item`: returns the ancestor effect that is composited, or `None`
+if none is.
+
+``` {.python}
+    def composited_item(self):
+        if self.composited_ancestor_index < 0:
+            return None
+        (item, ancestor_effects) = self.paint_chunks[0]
+        return ancestor_effects[self.composited_ancestor_index]
+```
+
+* `composited_items`: returns a list of all ancestor visual effects that are
+  composited.
+
+
+``` {.python}
+    def composited_items(self):
+        items = []
+        (item, ancestor_effects) = self.paint_chunks[0]
+        for item in reversed(ancestor_effects):
+            if item.needs_compositing():
+                items.append(item)
+        return items
+```
+
+
 * Now for the actual animation updates: if `needs_composite` is false, loop over
   each `CompositedLayer`'s `composited_items`, and update each one that matches
   the animation (by comparing the `Element` pointers for the animation's DOM
@@ -1771,43 +1784,6 @@ green rectangle as well. This is called an *overlap reason* for compositing.
 Overlap makes compositing algorithms signficantly more complicated, because
 when allocating a surface for animated content, we'll have to check the
 remainder of the display list for potential overlaps.
-
-Next we'll need to be able to get the *composited bounds* of a `DisplayItem`.
-Its composited bounds is the union of its painting rectangle and all
-descendants that are not themselves composited. This will be needed to
-determine the absolute bounds of a `CompositedLayer`. This is pretty easy---there is
-already a `rect` field stored on the various subclasses, so just pass them to
-the superclass instead:
-
-``` {.python}
-class DisplayItem:
-    def __init__(self, rect, cmds=None, is_noop=False, node=None):
-        self.rect = rect
-    # ...
-    def composited_bounds(self):
-        rect = skia.Rect.MakeEmpty()
-        self.composited_bounds_internal(rect)
-        return rect
-
-    def composited_bounds_internal(self, rect):
-        rect.join(self.rect)
-        if self.cmds:
-            for cmd in self.cmds:
-                if not cmd.needs_compositing():
-                    cmd.composited_bounds_internal(rect)
-```
-
-The rect passed is the usual one; here's `DrawText`:
-
-``` {.python}
-class DrawText(DisplayItem):
-    def __init__(self, x1, y1, text, font, color):
-        # ...
-        super().__init__(
-            rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
-```
-
-The other classes are basically the same, including `SaveLayer` and `transform`.
 
 The `Transform` class is special: it is the only subclass of
 `DisplayItem` that can *move pixels*---cause other `DisplayItem`s to draw in

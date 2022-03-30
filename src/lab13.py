@@ -1094,7 +1094,7 @@ class CompositedLayer:
         self.paint_chunks = []
         self.composited_ancestor_index = -1
 
-    def add_display_item(self, display_item, ancestor_effects):
+    def add_paint_chunk(self, display_item, ancestor_effects):
         if len(self.paint_chunks) == 0:
             self.composited_ancestor_index = \
             composited_ancestor_index(ancestor_effects)
@@ -1746,7 +1746,7 @@ class Browser:
                 placed = False
                 for layer in reversed(self.composited_layers):
                     if layer.can_merge(display_item, ancestor_effects):
-                        layer.add_display_item(display_item, ancestor_effects)
+                        layer.add_paint_chunk(display_item, ancestor_effects)
                         placed = True
                         break
                     elif skia.Rect.Intersects(
@@ -1754,13 +1754,13 @@ class Browser:
                         bounds(display_item,
                             ancestor_effects, include_composited=True)):
                         layer = CompositedLayer(self.skia_context)
-                        layer.add_display_item(display_item, ancestor_effects)
+                        layer.add_paint_chunk(display_item, ancestor_effects)
                         self.composited_layers.append(layer)
                         placed = True
                         break
                 if not placed:
                     layer = CompositedLayer(self.skia_context)
-                    layer.add_display_item(display_item, ancestor_effects)
+                    layer.add_paint_chunk(display_item, ancestor_effects)
                     self.composited_layers.append(layer)
 
             self.active_tab_height = 0
