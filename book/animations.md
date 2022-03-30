@@ -1045,15 +1045,14 @@ Composited display items
 The first thing we'll need is a way to signal that a visual effect "needs
 compositing", meaning that it is animating and so its contents should be cached
 in a GPU texture. Indicate that with a new `needs_compositing` method on
-`DisplayItem`. As a heuristic, we'll always composite transform and opacity
+`DisplayItem`. As a heuristic, we'll always composite `SaveLayer`
 (but only when they actually do something that isn't a no-op), regardless of
 whether they are animating.
 
 ``` {.python}
 class DisplayItem:
     def needs_compositing(self):
-        return not self.is_noop() and \
-            (type(self) is Transform or type(self) is SaveLayer)
+        return not self.is_noop() and type(self) is SaveLayer
 ```
 
 And while we're at it, add another `DisplayItem` constructor parameter
@@ -1071,7 +1070,7 @@ class DisplayItem:
         self.node = node
 ```
 
-Next we need a `draw` draw. This only does something for visual effect
+Next we need a `draw` method. This only does something for visual effect
 subclasses:
 
 ``` {.python}
