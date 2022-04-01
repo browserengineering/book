@@ -868,7 +868,15 @@ class JSContext:
 The `request` function can now check the `top_level_url` argument
 before sending `SameSite` cookies. Remember that `SameSite` cookies
 are only sent for `GET` requests or if the new URL and the top-level
-URL have the same host name:
+URL have the same host name:[^schemeful]
+
+[^schemeful]: At I write this, some browsers also check that the new
+    URL and the top-level URL have the same scheme and some browsers
+    ignore subdomains, so that `www.foo.com` and `login.foo.com` are
+    considered the "same site". If cookies were invented today, they'd
+    probably be specific to URL origins, much like CSP policies, but
+    alas historical contingencies and backwards compatibility force
+    rules that are more complex but easier to deploy.
 
 ``` {.python}
 def request(url, top_level_url, payload=None):
