@@ -1094,18 +1094,18 @@ class CompositedLayer:
         self.paint_chunks = []
         self.composited_ancestor_index = -1
 
+    def can_merge(self, display_item, ancestor_effects):
+        if len(self.paint_chunks) == 0:
+            return True
+        return self.composited_ancestor_index == \
+            composited_ancestor_index(ancestor_effects)
+
     def add_paint_chunk(self, display_item, ancestor_effects):
+        assert self.can_merge(display_item, ancestor_effects)
         if len(self.paint_chunks) == 0:
             self.composited_ancestor_index = \
             composited_ancestor_index(ancestor_effects)
         self.paint_chunks.append((display_item, ancestor_effects))
-
-    def can_merge(self, display_item, ancestor_effects):
-        if len(self.paint_chunks) == 0:
-            return True
-        return  \
-            self.composited_ancestor_index == \
-            composited_ancestor_index(ancestor_effects)
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
@@ -1121,16 +1121,10 @@ class CompositedLayer:
                 include_composited=True))
         return retval
 
-    def composited_item(self):
-        if self.composited_ancestor_index < 0:
-            return None
-        (item, ancestor_effects) = self.paint_chunks[0]
-        return ancestor_effects[self.composited_ancestor_index]
-
     def composited_items(self):
         items = []
         (item, ancestor_effects) = self.paint_chunks[0]
-        for item in reversed(ancestor_effects):
+        for item in ancestor_effects:
             if item.needs_compositing():
                 items.append(item)
         return items
@@ -1754,7 +1748,8 @@ class Browser:
                         bounds(display_item,
                             ancestor_effects, include_composited=True)):
                         layer = CompositedLayer(self.skia_context)
-                        layer.add_paint_chunk(display_item, ancestor_effects)
+                        layer.add_paint_chunk(
+                            display_item, ancestor_effects)
                         self.composited_layers.append(layer)
                         placed = True
                         break
@@ -1771,17 +1766,13 @@ class Browser:
         else:
             for (node, transform,
                 save_layer) in self.composited_updates:
-                success = False
                 for layer in self.composited_layers:
                     composited_items = layer.composited_items()
                     for composited_item in composited_items:
                         if type(composited_item) is Transform:
                             composited_item.copy(transform)
-                            success = True
                         elif type(composited_item) is SaveLayer:
                             composited_item.copy(save_layer)
-                            success = True
-                assert success
 
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)

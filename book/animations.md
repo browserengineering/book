@@ -1042,10 +1042,12 @@ and clipping.
 Composited display items
 ========================
 
+Let's add some more features to display items to help then support compositing.
+
 The first thing we'll need is a way to signal that a visual effect "needs
 compositing", meaning that it is animating and so its contents should be cached
 in a GPU texture. Indicate that with a new `needs_compositing` method on
-`DisplayItem`. As a heuristic, we'll always composite `SaveLayer`
+`DisplayItem`. As a heuristic, we'll always composite `SaveLayer`s
 (but only when they actually do something that isn't a no-op), regardless of
 whether they are animating.
 
@@ -1057,7 +1059,7 @@ class DisplayItem:
 
 And while we're at it, add another `DisplayItem` constructor parameter
 indicating the `node` that the `DisplayItem` belongs to (the one that painted
-it); this will be useful when keeping track of mappinges betwen `DisplayItem`s
+it); this will be useful when keeping track of mappings betwen `DisplayItem`s
 and GPU textures.[^cache-key]
 
 [^cache-key]: Remember that these compositing GPU textures are simply a form of
@@ -1070,8 +1072,11 @@ class DisplayItem:
         self.node = node
 ```
 
-Next we need a `draw` method. This only does something for visual effect
-subclasses:
+Next we need a `draw` method. This will be used to execute the visual effect in
+either draw or raster, depending on the results of the compositing algorithm.
+This only does something for visual effect subclasses. It takes an `op`
+parameter; the `op` later on will be a place to put the draw command on a
+`skia.Surface`.
 
 ``` {.python}
 class DisplayItem:
@@ -1094,8 +1099,9 @@ class SaveLayer(DisplayItem):
             canvas.restore()
 ```
 
-For visual effects, we can then redefine `execute` in terms of draw; remove the
-existing `execute` methods on those classes.
+For visual effects, we can then redefine `execute` in terms of draw and move the
+implementation up to `DisplayItem`; remove the existing `execute` methods on
+those subclasses.
 
 ``` {.python}
 class DisplayItem:
@@ -1111,7 +1117,10 @@ The paint command subclasses like `DrawText` already define `execute`, which
 will override this definition.
 
 Finally, we'll need to be able to get the *composited bounds* of a
-`DisplayItem`. Its composited bounds is the union of its painting rectangle and
+`DisplayItem`. This is necessary to figure out the size of a `skia.Surface` that
+contains the item.
+
+Its composited bounds is the union of its painting rectangle and
 all descendants that are not themselves composited. This will be needed to
 determine the absolute bounds of a `CompositedLayer`. This is pretty
 easy---there is already a `rect` field stored on the various subclasses, so
@@ -1175,20 +1184,6 @@ We're now ready to implement the `CompositedLayer` class. Start by defining its
 member variables: a Skia context, surface, list of paint chunks,
 and the *composited ancestor index*.
 
-Only paint chunks that have the same *nearest composited visual effect ancestor*
-will be allowed to be in the same `CompositedLayer`.[^simpler] The composited
-ancestor index is the index into the top-down array of ancestor effects
-refering to this ancestor. (If there is no composited ancestor, the index is
--1.)
-
-So all paint chunks will share the same composited ancestor index. However, they
-need not have exactly the same ancestor effects array---there could be
-additional non-composited visual effects at the bottom (below a `ClipRRect`,
-for example).
-
-[^simpler]: Intuitively, this just means "part of the same composited
-animation".
-
 ``` {.python}
 class CompositedLayer:
     def __init__(self, skia_context):
@@ -1198,10 +1193,13 @@ class CompositedLayer:
         self.composited_ancestor_index = -1
 ```
 
-The class will have the following methods:
-
-* `add_paint_chunk`: adds a new paint chunk. The first one being added will
-initialize the `composited_ancestor_index` of the `CompositedLayer`.
+Only paint chunks that have the same *nearest composited visual effect ancestor*
+will be allowed to be in the same `CompositedLayer`.[^simpler] The composited
+ancestor index is the index into the top-down array of ancestor effects
+refering to this nearest ancestor. (If there is no composited ancestor, the
+index is -1). Here's how to compute it it. Note how we are walking *up* the
+display list tree (and therefore implicitly up the DOM tree also) via a
+reversed iteration:
 
 ``` {.python}
 def composited_ancestor_index(ancestor_effects):
@@ -1212,27 +1210,41 @@ def composited_ancestor_index(ancestor_effects):
             break
         count -= 1
     return -1
-
-class CompositedLayer:
-    # ...
-    def add_paint_chunk(self, display_item, ancestor_effects):
-        if len(self.paint_chunks) == 0:
-            self.composited_ancestor_index = \
-            composited_ancestor_index(ancestor_effects)
-        self.paint_chunks.append((display_item, ancestor_effects))
 ```
 
-* `can_merge`: returns whether the paint chunk is compatible with being drawn
-  into the same `CompositedLayer`. This will be true if they has the same
-  composited ancestor index.
+So all paint chunks in the same `CompositedLayer` will share the same composited
+ancestor index. However, they need not have exactly the same ancestor effects
+array---there could be additional non-composited visual effects at the bottom.
+
+[^simpler]: Intuitively, this just means "part of the same composited
+animation".
+
+The class will have the following methods:
+
+* `can_merge`: returns whether the given paint chunk is compatible with being
+  drawn into the same `CompositedLayer`. This will be true if they have the
+  same composited ancestor index.
 
 ``` {.python}
     def can_merge(self, display_item, ancestor_effects):
         if len(self.paint_chunks) == 0:
             return True
-        return  \
-            self.composited_ancestor_index == \
+        return self.composited_ancestor_index == \
             composited_ancestor_index(ancestor_effects)
+```
+
+* `add_paint_chunk`: adds a new paint chunk to the `CompositedLayer`. The first
+  one being added will initialize its `composited_ancestor_index`.
+
+``` {.python}
+class CompositedLayer:
+    # ...
+    def add_paint_chunk(self, display_item, ancestor_effects):
+        assert self.can_merge(display_item, ancestor_effects)
+        if len(self.paint_chunks) == 0:
+            self.composited_ancestor_index = \
+            composited_ancestor_index(ancestor_effects)
+        self.paint_chunks.append((display_item, ancestor_effects))
 ```
 
 * `composited_bounds`: returns the union of the composited bounds of all
@@ -1250,11 +1262,17 @@ class CompositedLayer:
 ```
 
 * `raster`: rasters the chunks into `self.surface`. Note that there is no
-  parameter to this method, because raster of a `CompositdLayer` is
+  parameter to this method, because raster of a `CompositedLayer` is
   self-contained. Note that we first translate by the `top` and `left` of the
   composited bounds. That's because we should allocate a surface exactly sized
   to the width and height of the bounds; its top/left is just a positioning
-  offset. (It will be taken into acocunt in `draw`; see below.)
+  offset.^[This will be taken into acocunt in `draw`; see below.]
+
+  Also factor a central part of `raster` into a private helper method
+  `draw_internal`; this method recursively iterates over `ancestor_effects`
+  from the start ot the end, drawing each visual effect on the canvas. This
+  method also makes use of the `op` trick we added to `DisplayItem`; in this
+  case `op` is a wrapper around the `execute` method.
 
 ``` {.python}
     def draw_internal(self, canvas, op, start, end, ancestor_effects):
@@ -1294,10 +1312,9 @@ class CompositedLayer:
 ```
 
 * `draw`: draws `self.surface` to the screen, taking into account the visual
-  effects applied to each chunk. (Note that because of the definition of
-  `can_merge`, all the `DisplayItem`s will have the same visual effects, which
-  is why we can do this to the surface and not each chunk individually.)
-
+  effects applied to each chunk. in ths case, `op` is a call to `draw` on the
+  `skia.Surface`, but it's recursively surrounded by a stack of visual effects
+  that take effect on the surface.
 
 ``` {.python}
     def draw(self, canvas, draw_offset):
@@ -1324,7 +1341,8 @@ class CompositedLayer:
         canvas.restore()
 ```
 
-The last bit to make the code work end-to-end is to generalize to
+We've now got enough code to make the browser composite!
+The last bit is just to wire it up by generalizing `raster_and_draw` into
 `composite_raster_and_draw` (plus renaming the corresponding dirty bit and
 renaming at all callsites), and everything should work end-to-end.
 
@@ -1350,14 +1368,14 @@ Composited animations
 =====================
 
 Compositing now works, but it doesn't yet achieve the goal of avoiding raster
-during animations. In fact, at the moment it's *slower* than before, because
-the compositing algorithm---and use of the GPU---is not free, if you have
-to constantly re-upload display lists and re-raster all the time.
+during animations. In fact, at the moment it might be *slower* than before,
+because the compositing algorithm takes time to run, and using the GPU is not
+free: you have to constantly re-upload display lists and re-raster all the
+time. Let's now add code to avoid all this work.
 
-Avoiding raster (and also the compositing algorithm) is relatively simple in
-concept: keep track of what is animating, and re-run `draw` with different
-visual effect transform or opacity parameters on the `CompositedLayer`s that
-are animating.
+Avoiding raster and the compositing algorithm is simple in concept: keep track
+of what is animating, and re-run `draw` with different opacity parameters on
+the `CompositedLayer`s that are animating.
 
 Let's accomplish that. It will have multiple parts, starting with the main
 thread.
@@ -1382,29 +1400,19 @@ class Tab:
             and not self.needs_layout \
             and not self.needs_paint:
             return
-
-        self.measure_render.start()
-
-        if self.needs_render:
-            style(self.nodes, sorted(self.rules,
-                key=cascade_priority), self)
-
-        if self.needs_layout:
-            # ...
-            self.document.layout()
-        
+        # ...        
         if self.needs_paint:
             self.display_list = []
 
             self.document.paint(self.display_list)
             # ...
-        self.needs_layout = False
+
         self.needs_paint = False
 
         self.measure_render.stop()
 ```
 
-and a method that sets it:
+and a method that sets it if the animation is composited:
 
 ``` {.python}
 class Tab:
@@ -1426,12 +1434,6 @@ class NumericAnimation:
         # ...
         self.tab.set_needs_animation(self.node, self.property_name,
             self.property_name == "opacity")
-
-class TranslationAnimation:
-    # ...
-    def animate(self):
-        # ...
-        self.tab.set_needs_animation(self.node, "transform", True)
 ```
 
 * Save off each `Element` that updates its composited animation, in a new
@@ -1450,12 +1452,35 @@ class Tab:
 ```
 
 * When running animation frames, if only `needs_paint` is true, then compositing
-is not needed, and each animation in `composited_animation_updates` can be
-committed across to the browser thread. Also, rename `CommitForRaster` to
-`CommitData`, because raster is not necessarily going to happen:
+  is not needed, and each animation in `composited_animation_updates` can be
+  committed across to the browser thread. The data to be sent across for each
+  animation update will be a DOM `Element` and a `SaveLayer` pointer.
+
+  To accomplish this we'll need several steps. First, when painting a
+  `SaveLayer`, record it on the `Element` if it was composited:
+
+``` {.python expected=False}
+def paint_visual_effects(node, cmds, rect):
+    # ...
+    if save_layer.needs_compositing():
+        node.save_layer = save_layer
+```
+
+  Next rename `CommitForRaster` to `CommitData` and add a list of composited
+  updates (each of which will contain the `Element` and `SaveLayer` pointers).
 
 ``` {.python}
+class CommitData:
+    def __init__(self, url, scroll, height,
+        display_list, composited_updates, scroll_behavior):
+        # ...
+        self.composited_updates = composited_updates
+````
 
+  And finally, commit the new information:
+
+``` {.python expected=False}
+class Tab:
     def run_animation_frame(self, scroll):
         # ...
         needs_composite = self.needs_render or self.needs_layout
@@ -1466,7 +1491,7 @@ committed across to the browser thread. Also, rename `CommitForRaster` to
         if not needs_composite:
             for node in self.composited_animation_updates:
                 composited_updates.append(
-                    (node, node.transform, node.save_layer))
+                    (node, node.save_layer))
         self.composited_animation_updates.clear()
 
         commit_data = CommitData(
@@ -1474,6 +1499,8 @@ committed across to the browser thread. Also, rename `CommitForRaster` to
             composited_updates=composited_updates,
         )
 ```
+
+Now for the browser thread.
 
 * Add `needs_composite`, `needs_raster` and `needs_draw` dirty bits and
   correspondiing `set_needs_composite`, `set_needs_raster`, and
@@ -1545,62 +1572,49 @@ class Browser:
                 self.set_needs_draw()
 ```
 
-Add two new methods to `CompositedLayer`:
-
-* `composited_item`: returns the ancestor effect that is composited, or `None`
-if none is.
-
-``` {.python}
-    def composited_item(self):
-        if self.composited_ancestor_index < 0:
-            return None
-        (item, ancestor_effects) = self.paint_chunks[0]
-        return ancestor_effects[self.composited_ancestor_index]
-```
-
-* `composited_items`: returns a list of all ancestor visual effects that are
-  composited.
-
+Add a new method to `CompositedLayer` that returns the ancestor effects which
+need compositing. (In this case, we need look only at the first paint chunk;
+remember that all paint chunks in a `CompositedLayer` have the same composited
+ancestors.)
 
 ``` {.python}
     def composited_items(self):
         items = []
         (item, ancestor_effects) = self.paint_chunks[0]
-        for item in reversed(ancestor_effects):
+        for item in ancestor_effects:
             if item.needs_compositing():
                 items.append(item)
         return items
 ```
 
 
-* Now for the actual animation updates: if `needs_composite` is false, loop over
-  each `CompositedLayer`'s `composited_items`, and update each one that matches
-  the animation (by comparing the `Element` pointers for the animation's DOM
-  node).
+* Now for the actual animation updates on the browser thread: if
+  `needs_composite` is false, loop over each `CompositedLayer`'s
+  `composited_items`, and update each one that matches the
+  animation.[^ptrcompare]
 
-``` {.python}
+[^ptrcompare]: This is done by comparing equality of `Element` object
+references. Note that we are only using these objects for
+pointer comparison, since otherwise it would not be thread-safe.
+
+``` {.python expected=False}
     def composite(self):
         if self.needs_composite:
             # ...
         else:
-            for (node, transform,
-                save_layer) in self.composited_updates:
-                success = False
+            for (node, save_layer) in self.composited_updates:
                 for layer in self.composited_layers:
                     composited_items = layer.composited_items()
                     for composited_item in composited_items:
-                        if type(composited_item) is Transform:
-                            composited_item.copy(transform)
-                            success = True
-                        elif type(composited_item) is SaveLayer:
+                        if type(composited_item) is SaveLayer:
                             composited_item.copy(save_layer)
-                            success = True
-                assert success
 ```
 
 The result will be automatically drawn to the screen, because the `draw` method
-on each `CompositedLayer` will iterate through its `composited_items` and
-execute them.
+on each `CompositedLayer` will iterate through its `ancestor_effects` and
+execute them. (This might sound fancy, but all we did was mutate some 
+of the inputs to `draw` in-place.)
+
 
 Now check out the result---animations that only update the draw step, and
 not everything else!
@@ -1610,6 +1624,80 @@ Threaded animations (exercise).
 
 Rastering only some content, partial raster, partial draw.
 :::
+
+Overlap testing
+===============
+
+The compositing algorithm our browser implemented works great in many cases.
+Unfortunately, it doesn't work correctly for display list commands
+that *overlap* each other. The easiest way to explain why it is by example.
+
+Consider this content, which is a light blue square overlapped by a light green
+one:
+
+<div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
+<div style="width:200px;height:200px;background-color:lightgreen; transform:translate(0px,0px)"></div>
+
+Now suppose we want to animate opacity on the blue square, and so allocate a
+`skia.Surface` and GPU texture for it. But we don't want to animate the green
+square, so it draws into the root surface (and not receive a change of opacity
+of course).
+
+To fix it, we'll have to put the green rectangle into its own `skia.Surface`,
+whether we like it or not. This situation is called an *overlap reason* for
+compositing, and is a major complication (and potential source of extra memory
+use and slowdown) faced by all real browsers.
+
+Let's fix the compositing algorithm to take into account overlap. The change
+to `composite` will be only a few lines code an an `elif` to cehck if
+the current paint chunk overlaps another `CompositedLayer` in the list that
+needs to be animated.
+
+``` {.python}
+    def composite(self):
+        if self.needs_composite:
+            # ...
+            for (display_item, ancestor_effects) in chunks:
+                placed = False
+                for layer in reversed(self.composited_layers):
+                    if layer.can_merge(display_item, ancestor_effects):
+                        # ...
+                    elif skia.Rect.Intersects(
+                        layer.absolute_bounds(),
+                        bounds(display_item,
+                            ancestor_effects, include_composited=True)):
+                        layer = CompositedLayer(self.skia_context)
+                        layer.add_paint_chunk(
+                            display_item, ancestor_effects)
+                        self.composited_layers.append(layer)
+                        placed = True
+                        break
+                # ...
+```
+
+And then implement some of the geometry routines like `absolute_bounds` and
+`bounds` in the code above.
+
+But before we jump to doing that, there's one "small" problem: our browser
+doesn't even support enough features to cause the green-overlapping-blue
+situation described in this section![^only-overflow] In real browsers, there
+are number of features that provide ways to achieve this.
+
+One of the ways is via the `transform` CSS property. Let's implement that in
+order to make overlap testing more interesting. But there's another very good
+reason to implement this property: `transform` is a very common way to
+animate content on the web, and since it's a visual effect, we'll be able
+to accelerate these animations as well.
+
+[^only-overflow]: There is, however, a way to create overlap with our current
+browser: by setting the `width` and `height` of elements such that it causes
+text to overflow on top of siblings further down the page.
+
+::: {.further}
+TODO: describe the problem of layer explosion. Explain how this can actually
+lead to compositing slowing down a web page rather than speeding it up.
+:::
+
 
 Transform animations
 ====================
@@ -1755,62 +1843,6 @@ But if you try it, you'll find that the animation looks wrong---the blue
 rectangle is supposed to be *under* the green one, but now it's on top. That's
 because it is drawn into its own surface that is then drawn on top of the
 other surface. To fix that requires yet more surfaces, plus overlap testing.
-
-Overlap testing
-===============
-
-The main difficulty with implementing compositing turns out to be dealing
-with its *side-effects for overlapping content*. To understand the concept,
-consider this simple example of a green square overlapped by an blue one,
-except that the blue one is *earlier* in the DOM painting order.
-
-<div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
-<div style="width:200px;height:200px;background-color:lightgreen; transform:translate(0px,0px)"></div>
-
-Suppose we want to animate opacity on the blue square, and so allocate a
-`skia.Surface` and GPU texture for it. But we don't want to animate the green
-square, so it is supposed to draw to the screen without opacity change.
-But how can that work? How can we make it paint on top of this new surface?
-Two things we could do are: start painting the green
-square *before* the blue one, or re-raster the green square into the
-root surface on every frame, after drawing the blue square.
-
-The former is obviously not ok, because we can't just ignore the website
-developer's wishes and paint in the wrong order. The latter is *also* not ok,
-because it negates the first benefit of compositing (avoiding raster).
-
-So we have to choose a third option: allocating a `skia.Surface` for the
-green rectangle as well. This is called an *overlap reason* for compositing.
-Overlap makes compositing algorithms signficantly more complicated, because
-when allocating a surface for animated content, we'll have to check the
-remainder of the display list for potential overlaps.
-
-The `Transform` class is special: it is the only subclass of
-`DisplayItem` that can *move pixels*---cause other `DisplayItem`s to draw in
-some new location other than its bounding rectangle. For this reason, we
-will need a method on it to determine the new rectangle after appling the
-translation transform:
-
-``` {.python expected=False}
-class Transform:
-    # ...
-    def transform(self, rect):
-        if not self.translation:
-            return rect
-        matrix = skia.Matrix()
-        if self.translation:
-            (x, y) = self.translation
-            matrix.setTranslate(x, y)
-        return matrix.mapRect(rect)
-```
-
-TODO: implement abs bounds for a transform animation that takes into account
-the path traveled.
-
-::: {.further}
-TODO: describe the problem of layer explosion. Explain how this can actually
-lead to compositing slowing down a web page rather than speeding it up.
-:::
 
 Composited scrolling
 ====================
