@@ -167,7 +167,7 @@ def thanks():
     patreon_names = [ 
         "Rishi Chopra",
         "Adam Gutglick",
-        "Shuhei Kagawa"
+        "Shuhei Kagawa",
         "Min Lee",
         "Randy Naar",
         "Alexandru Nedel",
