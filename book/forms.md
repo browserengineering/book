@@ -27,7 +27,7 @@ form might look like this:
     multi-line inputs.
 
 ``` {.html}
-<form action="/submit">
+<form action="/submit" method="post">
     <p>Name: <input name=name value=1></p>
     <p>Comment: <input name=comment value=2></p>
     <p><button>Submit!</button></p>
@@ -38,9 +38,10 @@ This form contains two text entry boxes called `name` and `comment`.
 When the user goes to this page, they can click on those boxes to edit
 their values. Then, when they click the button at the end of the form,
 the browser collects all of the name/value pairs and bundles them into
-an HTTP `POST` request, sent to the URL given by the `form` element's
-`action` attribute, with the usual rules of relative URLs---so in this
-case, `/submit`. The `POST` request looks like this:
+an HTTP `POST` request (as indicated by the `method` attribute), sent
+to the URL given by the `form` element's `action` attribute, with the
+usual rules of relative URLs---so in this case, `/submit`. The `POST`
+request looks like this:
 
 ``` {.example}
 POST /submit HTTP/1.0
