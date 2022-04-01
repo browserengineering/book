@@ -28,6 +28,8 @@ Undergraduate-level course taught by [James R. Wilcox](https://jamesrwilcox.com)
 > implementing features in your browser. Previous experience with web
 > technologies is not required.
 
+[Website](https://courses.cs.washington.edu/courses/cse490x/22sp/) available.
+
 # CS 4962, Web Browser Internals, University of Utah, Fall 2021
 
 Undergraduate-level course taught by [Pavel
