@@ -69,6 +69,8 @@ def request(url, top_level_url, payload=None):
         allow_cookie = True
         if top_level_url and params.get("samesite", "none") == "lax":
             _, _, top_level_host, _ = top_level_url.split("/", 3)
+            if ":" in top_level_host:
+                top_level_host, _ = top_level_host.split(":", 1)
             allow_cookie = (host == top_level_host or method == "GET")
         if allow_cookie:
             body += "Cookie: {}\r\n".format(cookie)
