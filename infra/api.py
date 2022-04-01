@@ -118,6 +118,18 @@ def text_comment():
 def comment():
     data = json.load(bottle.request.body)
     DATA.chapter_comment(**data)
+
+def name_key(name):
+    parts = name.split()
+    if name == "some now-deleted users":
+        # This should go last
+        return ("ZZZZZZZZZZZZZZ", name.casefold())
+    elif len(parts) == 1:
+        # Put github usernames last
+        return ("ZZZZZZZ", parts[0].casefold())
+    else:
+        # Very low-effort attempt at "last name"
+        return (parts[-1].casefold(), [n.casefold() for n in parts[:-1]])
     
 @bottle.get("/thanks")
 @bottle.view("thanks.view")
@@ -148,10 +160,11 @@ def thanks():
         "metamas",
         "Bruno P. Kinoshita",
         "Daniel Rosenwasser",
-        "some now-deleted users",
     }
 
-    patreon_names = {
+    # These should be in order of sponsorship, oldest first.
+    # Do not add authors to this.
+    patreon_names = [ 
         "Rishi Chopra",
         "Adam Gutglick",
         "Shuhei Kagawa"
@@ -162,12 +175,12 @@ def thanks():
         "Zach Tatlock",
         "Jonas Treub",
         "Yuanhang Xie",
-    }
+    ]
+    
+    contributor_names = sorted((feedback_names | gh_names) - author_names, key=name_key) + \
+        ["some now-deleted users"]
 
-    return {
-        "patreon": list(patreon_names - author_names),
-        "contribute": list((feedback_names | gh_names) - author_names),
-    }
+    return {"patreon": patreon_names, "contribute": contributor_names,}
 
 def splitword(text):
     out = [[]]
