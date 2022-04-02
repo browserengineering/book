@@ -1012,7 +1012,7 @@ class TranslateAnimation:
                 self.change_per_frame_x * self.frame_count,
                 self.old_y +
                 self.change_per_frame_y * self.frame_count)
-        self.tab.set_needs_animation(self.node, "transform", USE_COMPOSITING)
+        self.tab.set_needs_animation(self.node, USE_COMPOSITING)
         return True
 
 class NumericAnimation:
@@ -1040,7 +1040,7 @@ class NumericAnimation:
         else:
             self.node.style[self.property_name] = \
                 "{}".format(updated_value)
-        self.tab.set_needs_animation(self.node, self.property_name,
+        self.tab.set_needs_animation(self.node,
             self.property_name == "opacity" and USE_COMPOSITING)
         return True
 
@@ -1305,7 +1305,7 @@ class Tab:
         self.needs_raf_callbacks = True
         self.browser.set_needs_animation_frame(self)
 
-    def set_needs_animation(self, node, property_name, is_composited):
+    def set_needs_animation(self, node, is_composited):
         if is_composited:
             self.needs_paint = True
             self.composited_animation_updates.append(node)

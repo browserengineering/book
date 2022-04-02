@@ -1416,7 +1416,7 @@ and a method that sets it if the animation is composited:
 
 ``` {.python}
 class Tab:
-   def set_needs_animation(self, node, property_name, is_composited):
+   def set_needs_animation(self, node, is_composited):
         if is_composited:
             self.needs_paint = True
             # ...
@@ -1432,7 +1432,7 @@ class NumericAnimation:
     # ...
     def animate(self):
         # ...
-        self.tab.set_needs_animation(self.node, self.property_name,
+        self.tab.set_needs_animation(self.node,
             self.property_name == "opacity")
 ```
 
@@ -1445,7 +1445,7 @@ class Tab:
         # ...
         self.composited_animation_updates = []
 
-    def set_needs_animation(self, node, property_name, is_composited):
+    def set_needs_animation(self, node, is_composited):
         if is_composited:
             # ...
             self.composited_animation_updates.append(node)
@@ -1640,16 +1640,17 @@ one:
 
 Now suppose we want to animate opacity on the blue square, and so allocate a
 `skia.Surface` and GPU texture for it. But we don't want to animate the green
-square, so it draws into the root surface (and not receive a change of opacity
-of course).
+square, so it draws into the root surface (and does not receive a change of
+opacity, of course). Which will cause the blue to draw on top of the green.
+Oops.
 
-To fix it, we'll have to put the green rectangle into its own `skia.Surface`,
-whether we like it or not. This situation is called an *overlap reason* for
-compositing, and is a major complication (and potential source of extra memory
-use and slowdown) faced by all real browsers.
+To fix this bug, we'll have to put the green rectangle into its own
+`skia.Surface`, whether we like it or not. This situation is called an *overlap
+reason* for compositing, and is a major complication (and potential source of
+extra memory use and slowdown) faced by all real browsers.
 
 Let's fix the compositing algorithm to take into account overlap. The change
-to `composite` will be only a few lines code an an `elif` to cehck if
+to `composite` will be only a few lines code an an `elif` to check if
 the current paint chunk overlaps another `CompositedLayer` in the list that
 needs to be animated.
 
@@ -1812,8 +1813,7 @@ def animate_style(node, old_style, new_style, tab):
 
 And `TranslateAnimation`:
 
-
-``` {.python expected=False}
+``` {.python replace=True)/USE_COMPOSITING)}
 class TranslateAnimation:
     def __init__(
         self, node, old_translation, new_translation,
@@ -1837,7 +1837,7 @@ class TranslateAnimation:
                 self.change_per_frame_x * self.frame_count,
                 self.old_y +
                 self.change_per_frame_y * self.frame_count)
-        self.tab.set_needs_render()
+        self.tab.set_needs_animation(self.node, True)
         return True
 ```
 
@@ -1848,9 +1848,9 @@ You should now be able to create this animation with your browser:
 (click [here](examples/example13-transform-transition.html) to load the example in
 your browser)
 
-And just lke opacity, there is more work to make it composited. Doing so is
-not hard, it just requires edits to the code to handle transform in all the
-same places opacity was, in particular:
+And just like opacity, there is more work to make it composited. Doing so is not
+hard, it just requires edits to the code to handle transform in all the same
+places opacity was, in particular:
 
 * In `DisplayList.needs_compositing`
 
@@ -1864,22 +1864,21 @@ Each of these changes should be pretty straightforward and repetitive once
 opacity is already implemented, so I'll skip showing the code. Once updated,
 our browser should now have fast, composited transform animations.
 
-But if you try it on the example above, you'll find that the animation looks
-wrong---the blue rectangle is supposed to be *under* the green one, but now
-it's on top. Which is of course becanse of the lack of overlap testing,
+But if you try it on the example above, you'll find that the animation
+looks wrong---the blue rectangle is supposed to be *under* the green one, but
+now it's on top. Which is of course becanse of the lack of overlap testing,
 which we should now complete.
 
-Let's first add the implementation of `bounds`. This will be a factored-out
-version of `composited_bounds` that can either compute the composited
-bounds or the *absolute bounds*. The absolute bounds are the bounds in the
-space of the root surface^[Where the 0, 0 point is the top-left of the web
-page, which may be offscreen due to scrolling.]. Before we added support for
-`transform`, this was the same as the union of the rects of each paint command.
+Let's first add the implementation of a new `absolute_bounds` function. The
+*absolute bounds* of a paint chunk or `CompositedLayer` are the bounds in the
+ space of the root surface^[Where the 0, 0 point is the top-left of the web
+ page, which may be offscreen due to scrolling.].
 
-But now we need to account for a transforom moving content around on screen.
-Let's accomplish that with a new `map` method on `Transform` that takes a
-rect in the coordinate space of the "contents"of the transform and outputs
-a rect in post-transform space:
+ Before we added support for `transform`, this was the same as the union of the
+ rects of each paint command. But now we need to account for a transform moving
+ content around on screen. The first step in accomplishing that is with a new
+ `map` method on `Transform` that takes a rect in the coordinate space of
+ the "contents" of the transform and outputs a rect in post-transform space:
 
 ``` {.python}
 class Transform(DisplayItem):
@@ -1922,7 +1921,8 @@ square underneath the green one.
 
 ::: {.further}
 
-Add composited layer border code
+Add composited layer border code. USE_COMPOSITING disabled mode. USE_GPU
+disabled mode.
 
 :::
 
