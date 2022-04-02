@@ -1251,13 +1251,13 @@ class CompositedLayer:
   paint chunks. The composited bounds of a paint chunk is its display item's
   composited bounds.
 
-``` {.python expected=False}
+``` {.python}
 class CompositedLayer:
     # ...
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
         for (item, ancestor_effects) in self.paint_chunks:
-            retval.join(display_item.composited_bounds())
+            retval.join(item.composited_bounds())
         return retval
 ```
 
@@ -1660,12 +1660,13 @@ needs to be animated.
             for (display_item, ancestor_effects) in chunks:
                 placed = False
                 for layer in reversed(self.composited_layers):
-                    if layer.can_merge(display_item, ancestor_effects):
+                    if layer.can_merge(
+                        display_item, ancestor_effects):
                         # ...
                     elif skia.Rect.Intersects(
                         layer.absolute_bounds(),
-                        bounds(display_item,
-                            ancestor_effects, include_composited=True)):
+                        absolute_bounds(display_item,
+                            ancestor_effects)):
                         layer = CompositedLayer(self.skia_context)
                         layer.add_paint_chunk(
                             display_item, ancestor_effects)
@@ -1675,8 +1676,8 @@ needs to be animated.
                 # ...
 ```
 
-And then implement some of the geometry routines like `absolute_bounds` and
-`bounds` in the code above.
+And then implement some of the geometry routines like `absolute_bounds` in the
+code above.
 
 But before we jump to doing that, there's one "small" problem: our browser
 doesn't even support enough features to cause the green-overlapping-blue
@@ -1710,6 +1711,8 @@ last section:
 
 [^not-always-visual]: Technically it's not always just a visual effect. In
 real browsers, transformed element positions contribute to scrolling overflow.
+Real browsers mostly do this correctly, but sometimes cut corners to avoid
+slowing down transform animations.
 
 [transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
@@ -1756,7 +1759,7 @@ def paint_visual_effects(node, cmds, rect):
 TODO:verify that translation does indeed come after blending.
 
 The `Transform` display list command is pretty straightforward as well: it calls
-the `translate` Skia canvas method, which s conveniently built-in.
+the `translate` Skia canvas method, which is conveniently built-in.
 
 ``` {.python expected=False}
 class Transform(DisplayItem):
@@ -1801,6 +1804,12 @@ def try_transform_animation(node, old_style, new_style, tab):
         node, old_translation, new_translation, num_frames, tab)
 ```
 
+``` {.python}
+def animate_style(node, old_style, new_style, tab):
+    # ...
+    try_transform_animation(node, old_style, new_style, tab)
+```
+
 And `TranslateAnimation`:
 
 
@@ -1839,10 +1848,83 @@ You should now be able to create this animation with your browser:
 (click [here](examples/example13-transform-transition.html) to load the example in
 your browser)
 
-But if you try it, you'll find that the animation looks wrong---the blue
-rectangle is supposed to be *under* the green one, but now it's on top. That's
-because it is drawn into its own surface that is then drawn on top of the
-other surface. To fix that requires yet more surfaces, plus overlap testing.
+And just lke opacity, there is more work to make it composited. Doing so is
+not hard, it just requires edits to the code to handle transform in all the
+same places opacity was, in particular:
+
+* In `DisplayList.needs_compositing`
+
+* Setting `node.transform` in `paint_visual_effects` just like `save_layer`
+
+* Adding `transform` to each `composited_updates` field of `CommitData`.
+
+* Considering transform during the fast-path update in `Browser.Composite`.
+
+Each of these changes should be pretty straightforward and repetitive once
+opacity is already implemented, so I'll skip showing the code. Once updated,
+our browser should now have fast, composited transform animations.
+
+But if you try it on the example above, you'll find that the animation looks
+wrong---the blue rectangle is supposed to be *under* the green one, but now
+it's on top. Which is of course becanse of the lack of overlap testing,
+which we should now complete.
+
+Let's first add the implementation of `bounds`. This will be a factored-out
+version of `composited_bounds` that can either compute the composited
+bounds or the *absolute bounds*. The absolute bounds are the bounds in the
+space of the root surface^[Where the 0, 0 point is the top-left of the web
+page, which may be offscreen due to scrolling.]. Before we added support for
+`transform`, this was the same as the union of the rects of each paint command.
+
+But now we need to account for a transforom moving content around on screen.
+Let's accomplish that with a new `map` method on `Transform` that takes a
+rect in the coordinate space of the "contents"of the transform and outputs
+a rect in post-transform space:
+
+``` {.python}
+class Transform(DisplayItem):
+    def map(self, rect):
+        if not self.translation:
+            return rect
+        matrix = skia.Matrix()
+        if self.translation:
+            (x, y) = self.translation
+            matrix.setTranslate(x, y)
+        return matrix.mapRect(rect)
+```
+
+We can use `map` to implement a new `absolute_bounds` function that determines
+the absolute bounds of a paint chunk:
+
+``` {.python}
+def absolute_bounds(display_item, ancestor_effects):
+    retval = display_item.composited_bounds()
+    for ancestor_item in reversed(ancestor_effects):
+        if type(ancestor_item) is Transform:
+            retval = ancestor_item.map(retval)
+    return retval
+```
+
+Which is then already used in the `Browser.composite` method.
+In `CompositedLayer:`
+
+``` {.python}
+class CompositedLayer:
+    def absolute_bounds(self):
+        retval = skia.Rect.MakeEmpty()
+        for (item, ancestor_effects) in self.paint_chunks:
+            retval.join(absolute_bounds(item, ancestor_effects))
+        return retval
+```
+
+Overlap testing is now complete. Your animation should animate the blue
+square underneath the green one.
+
+::: {.further}
+
+Add composited layer border code
+
+:::
 
 Composited scrolling
 ====================

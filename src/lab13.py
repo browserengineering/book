@@ -139,7 +139,7 @@ class Transform(DisplayItem):
             op()
             canvas.restore()
 
-    def transform(self, rect):
+    def map(self, rect):
         if not self.translation:
             return rect
         matrix = skia.Matrix()
@@ -1077,14 +1077,11 @@ def composited_ancestor_index(ancestor_effects):
         count -= 1
     return -1
 
-def bounds(display_item, ancestor_effects, include_composited=False):
+def absolute_bounds(display_item, ancestor_effects):
     retval = display_item.composited_bounds()
     for ancestor_item in reversed(ancestor_effects):
-        if ancestor_item.needs_compositing() and \
-            not include_composited:
-            break
         if type(ancestor_item) is Transform:
-            retval = ancestor_item.transform(retval)
+            retval = ancestor_item.map(retval)
     return retval
 
 class CompositedLayer:
@@ -1110,15 +1107,13 @@ class CompositedLayer:
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
         for (item, ancestor_effects) in self.paint_chunks:
-            retval.join(bounds(item, ancestor_effects,
-                include_composited=False))
+            retval.join(item.composited_bounds())
         return retval
 
     def absolute_bounds(self):
         retval = skia.Rect.MakeEmpty()
         for (item, ancestor_effects) in self.paint_chunks:
-            retval.join(bounds(item, ancestor_effects,
-                include_composited=True))
+            retval.join(absolute_bounds(item, ancestor_effects))
         return retval
 
     def composited_items(self):
@@ -1739,14 +1734,15 @@ class Browser:
             for (display_item, ancestor_effects) in chunks:
                 placed = False
                 for layer in reversed(self.composited_layers):
-                    if layer.can_merge(display_item, ancestor_effects):
+                    if layer.can_merge(
+                        display_item, ancestor_effects):
                         layer.add_paint_chunk(display_item, ancestor_effects)
                         placed = True
                         break
                     elif skia.Rect.Intersects(
                         layer.absolute_bounds(),
-                        bounds(display_item,
-                            ancestor_effects, include_composited=True)):
+                        absolute_bounds(display_item,
+                            ancestor_effects)):
                         layer = CompositedLayer(self.skia_context)
                         layer.add_paint_chunk(
                             display_item, ancestor_effects)
