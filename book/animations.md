@@ -1416,7 +1416,7 @@ and a method that sets it if the animation is composited:
 
 ``` {.python}
 class Tab:
-   def set_needs_animation(self, node, property_name, is_composited):
+   def set_needs_animation(self, node, is_composited):
         if is_composited:
             self.needs_paint = True
             # ...
@@ -1432,7 +1432,7 @@ class NumericAnimation:
     # ...
     def animate(self):
         # ...
-        self.tab.set_needs_animation(self.node, self.property_name,
+        self.tab.set_needs_animation(self.node,
             self.property_name == "opacity")
 ```
 
@@ -1445,7 +1445,7 @@ class Tab:
         # ...
         self.composited_animation_updates = []
 
-    def set_needs_animation(self, node, property_name, is_composited):
+    def set_needs_animation(self, node, is_composited):
         if is_composited:
             # ...
             self.composited_animation_updates.append(node)
@@ -1812,8 +1812,7 @@ def animate_style(node, old_style, new_style, tab):
 
 And `TranslateAnimation`:
 
-
-``` {.python expected=False}
+``` {.python replace=True)/USE_COMPOSITING)}
 class TranslateAnimation:
     def __init__(
         self, node, old_translation, new_translation,
@@ -1837,7 +1836,7 @@ class TranslateAnimation:
                 self.change_per_frame_x * self.frame_count,
                 self.old_y +
                 self.change_per_frame_y * self.frame_count)
-        self.tab.set_needs_render()
+        self.tab.set_needs_animation(self.node, True)
         return True
 ```
 
@@ -1922,7 +1921,8 @@ square underneath the green one.
 
 ::: {.further}
 
-Add composited layer border code
+Add composited layer border code. USE_COMPOSITING disabled mode. USE_GPU
+disabled mode.
 
 :::
 
