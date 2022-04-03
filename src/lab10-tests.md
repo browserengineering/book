@@ -169,6 +169,16 @@ case the cookie is *not* sent:
     >>> tab.load(url3, body="who=me")
     >>> test.socket.last_request(url3)
     b'POST /add HTTP/1.0\r\nHost: test.test\r\nContent-Length: 6\r\n\r\nwho=me'
+    
+The same-site check should ignore ports, so if the hosts are the same
+but the ports differ, the cookie should be sent:
+
+    >>> tab.load(url)
+    >>> url5 = "http://test.test:8000/test"
+    >>> test.socket.respond(url5, b"HTTP/1.0 200 OK\r\n\r\nHi!", method="POST")
+    >>> tab.load(url5, body="who=me")
+    >>> test.socket.last_request(url5)
+    b'POST /test HTTP/1.0\r\nHost: test.test\r\nCookie: bar=baz\r\nContent-Length: 6\r\n\r\nwho=me'
 
 Testing Content-Security-Policy
 ===============================
