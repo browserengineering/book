@@ -1223,14 +1223,20 @@ The class will have the following methods:
 
 * `can_merge`: returns whether the given paint chunk is compatible with being
   drawn into the same `CompositedLayer`. This will be true if they have the
-  same composited ancestor index.
-
+  same nearest composited ancestor (or both have none).
+ 
 ``` {.python}
     def can_merge(self, display_item, ancestor_effects):
         if len(self.paint_chunks) == 0:
             return True
-        return self.composited_ancestor_index == \
-            composited_ancestor_index(ancestor_effects)
+        (item, self_ancestor_effects) = self.paint_chunks[0]
+        other_composited_ancestor_index = composited_ancestor_index(ancestor_effects)
+        if self.composited_ancestor_index != other_composited_ancestor_index:
+            return False
+        if self.composited_ancestor_index == -1:
+            return True
+        return self_ancestor_effects[self.composited_ancestor_index] == \
+            ancestor_effects[other_composited_ancestor_index]
 ```
 
 * `add_paint_chunk`: adds a new paint chunk to the `CompositedLayer`. The first
@@ -1641,16 +1647,20 @@ one:
 Now suppose we want to animate opacity on the blue square, and so allocate a
 `skia.Surface` and GPU texture for it. But we don't want to animate the green
 square, so it draws into the root surface (and does not receive a change of
-opacity, of course). Which will cause the blue to draw on top of the green.
-Oops.
+opacity, of course). Which will cause the blue to draw on top of the
+green, because the blue-square surface draws after the root surface. Oops!
 
 To fix this bug, we'll have to put the green rectangle into its own
-`skia.Surface`, whether we like it or not. This situation is called an *overlap
+`skia.Surface` (whether we like it or not). This situation is called an *overlap
 reason* for compositing, and is a major complication (and potential source of
 extra memory use and slowdown) faced by all real browsers.
 
-Let's fix the compositing algorithm to take into account overlap. The change
-to `composite` will be only a few lines code an an `elif` to check if
+Let's fix the compositing algorithm to take into account overlap. It turns out
+to be not that hard---when considering where to put a paint chunk, check if it
+overlaps with an animated `CompositedLayer`. If so, start a new
+`CompositedLayer` that has an overlap reason for compositing.
+
+The change to `composite` will be only a few lines code an an `elif` to check if
 the current paint chunk overlaps another `CompositedLayer` in the list that
 needs to be animated.
 
@@ -1677,19 +1687,24 @@ needs to be animated.
                 # ...
 ```
 
-And then implement some of the geometry routines like `absolute_bounds` in the
-code above.
+And then implementing the `absolute_bounds` method used in the code above.
 
 But before we jump to doing that, there's one "small" problem: our browser
 doesn't even support enough features to cause the green-overlapping-blue
 situation described in this section![^only-overflow] In real browsers, there
-are number of features that provide ways to achieve this.
+are number of features that provide ways to achieve this. One of the ways is
+via the `transform` CSS property. Let's implement that in order to make overlap
+testing more interesting.[^simple-overlap]
 
-One of the ways is via the `transform` CSS property. Let's implement that in
-order to make overlap testing more interesting. But there's another very good
-reason to implement this property: `transform` is a very common way to
-animate content on the web, and since it's a visual effect, we'll be able
-to accelerate these animations as well.
+But there's *another* good reason to implement this property: `transform` is in
+fact a very common way to animate content on the web. Not only that, but since
+it's a visual effect, we'll be able to accelerate these animations as
+well.^[Third reason: without transforms, we wouldn't have implemented
+animations that cause movement, which would be pretty boring.]
+
+[^simple-overlap]: In fact, if there were no transforms, `absolute_bounds`
+would return the same thing as `composited_bounds`, and we could just
+edit the code above to write `composited_bounds` and call it a day.
 
 [^only-overflow]: There is, however, a way to create overlap with our current
 browser: by setting the `width` and `height` of elements such that it causes
@@ -1783,8 +1798,8 @@ class Transform(DisplayItem):
                 cmd.execute(canvas)
 ```
 
-Now that we can render transforms, we also need to animate them. Similar
-to `try_numeric_animation`, add a `try_transform_animation` method:
+Now that we can render transforms, we also need to animate them. Just like
+we did with opacity, add a `try_transform_animation` method:
 
 ``` {.python}
 def try_transform_animation(node, old_style, new_style, tab):
@@ -1848,9 +1863,10 @@ You should now be able to create this animation with your browser:
 (click [here](examples/example13-transform-transition.html) to load the example in
 your browser)
 
-And just like opacity, there is more work to make it composited. Doing so is not
-hard, it just requires edits to the code to handle transform in all the same
-places opacity was, in particular:
+Finally, there is a bit more work to do to make transform visual effects animate
+without re-raster on  every frame. Doing so is not hard, it just requires edits
+to the code to handle transform in all the same places opacity was, in
+particular:
 
 * In `DisplayList.needs_compositing`
 
@@ -1860,9 +1876,9 @@ places opacity was, in particular:
 
 * Considering transform during the fast-path update in `Browser.Composite`.
 
-Each of these changes should be pretty straightforward and repetitive once
-opacity is already implemented, so I'll skip showing the code. Once updated,
-our browser should now have fast, composited transform animations.
+Each of these changes should be pretty straightforward and repetitive on top of
+opacity, so I'll skip showing the code. Once updated, our browser should now
+have fast, composited transform animations.
 
 But if you try it on the example above, you'll find that the animation
 looks wrong---the blue rectangle is supposed to be *under* the green one, but
@@ -1871,8 +1887,8 @@ which we should now complete.
 
 Let's first add the implementation of a new `absolute_bounds` function. The
 *absolute bounds* of a paint chunk or `CompositedLayer` are the bounds in the
- space of the root surface^[Where the 0, 0 point is the top-left of the web
- page, which may be offscreen due to scrolling.].
+ space of the root surface.^[Where the 0, 0 point is the top-left of the web
+ page, which may be offscreen due to scrolling.]
 
  Before we added support for `transform`, this was the same as the union of the
  rects of each paint command. But now we need to account for a transform moving
@@ -1904,8 +1920,8 @@ def absolute_bounds(display_item, ancestor_effects):
     return retval
 ```
 
-Which is then already used in the `Browser.composite` method.
-In `CompositedLayer:`
+And add a method union all of the absoloute bounds of the paint chunks in 
+a `CompositedLayer`:
 
 ``` {.python}
 class CompositedLayer:
@@ -1915,6 +1931,9 @@ class CompositedLayer:
             retval.join(absolute_bounds(item, ancestor_effects))
         return retval
 ```
+
+All this `absolute_bounds` code is already used in the `Browser.composite`
+method I outlined in the previous section; don't forget to update that method.
 
 Overlap testing is now complete. Your animation should animate the blue
 square underneath the green one.
