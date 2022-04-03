@@ -1094,8 +1094,14 @@ class CompositedLayer:
     def can_merge(self, display_item, ancestor_effects):
         if len(self.paint_chunks) == 0:
             return True
-        return self.composited_ancestor_index == \
-            composited_ancestor_index(ancestor_effects)
+        (item, self_ancestor_effects) = self.paint_chunks[0]
+        other_composited_ancestor_index = composited_ancestor_index(ancestor_effects)
+        if self.composited_ancestor_index != other_composited_ancestor_index:
+            return False
+        if self.composited_ancestor_index == -1:
+            return True
+        return self_ancestor_effects[self.composited_ancestor_index] == \
+            ancestor_effects[other_composited_ancestor_index]
 
     def add_paint_chunk(self, display_item, ancestor_effects):
         assert self.can_merge(display_item, ancestor_effects)
