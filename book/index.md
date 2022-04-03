@@ -82,7 +82,6 @@ Conclusion
 ==========
 
 1. [What Wasn't Covered](skipped.md)
-
 2. [A Changing Landscape](change.md)
 
 Appendix
