@@ -327,9 +327,9 @@ will have more on this topic.
 Our browser will have the same split. Right now `load` both computes
 the position of each character and draws it: layout and rendering.
 Let's have a `layout` function to compute and store the position of
-each character, and a separate `render` function to then draw each
+each character, and a separate `draw` function to then draw each
 character based on the stored position. This way, `layout` can operate
-with page coordinates and only `render` needs to think about screen
+with page coordinates and only `draw` needs to think about screen
 coordinates.
 
 Let's start with `layout`. Instead of calling `canvas.create_text` on
@@ -468,7 +468,7 @@ pixels on the screen are always correct).
 Real browsers incorporate a lot of quite tricky optimizations to this
 process, but for this toy browser let's limit ourselves to a simple
 improvement: on a long page most characters are outside the viewing
-window, and we can skip drawing them in `render`:
+window, and we can skip drawing them in `draw`:
 
 ``` {.python}
 for x, y, c in self.display_list:
