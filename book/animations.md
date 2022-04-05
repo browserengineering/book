@@ -1951,21 +1951,21 @@ Composited scrolling
 The last category of animations we haven't covered is the *input-driven* ones,
 such as scrolling. I introduced this category of animations earlier, but didn't
 really explain in much detail why it makes sense to categorize scrolling as
-an *animation*. In my mind, there are two key reasons:
+an *animation*. To my mind, there are two key reasons:
 
 * Scrolling often continues after the input is done. For example, most browsers
   animate scroll in a smooth way when scrolling by keyboard or scrollbar
   clicks. Another example is that in a touch-driven scroll, browsers interpret
   the touch movement as a gesture with velocity, and therefore continue the
-  scroll according to a physics-based model (with friction slowing it down).
+  scroll (a "fling") according to a physics-based model (with friction slowing
+  it down).
 
 * Touch or mouse drag-based scrolling is very performance sensitive. This is
   because humans are much more sensitive to things keeping up with the movement
   of their hand than they are to the latency of responding to a click. For
   example, a scrolling hiccup for even one frame, even for only a few tens of
-  milliseconds, is easily noticeable and jarring to= a person, but most people
-  do not able to perceive click input delays of about to 100ms or so in a
-  negative way.
+  milliseconds, is easily noticeable and jarring to a person, but most people
+  do not notice click input delays of about to 100ms or so.
 
 Let's add composited scrolling to our browser, and then smooth scrolling on
 keyboard events.
@@ -1983,11 +1983,13 @@ class Browser:
         self.set_needs_draw() 
 ```
 
-Smooth scrolling will have a few steps. First we'll have to parse the new CSS
-property that applies to scrolling of the `<body>` element[^body], plumb it to
-the browser thread, and then animate in `Browser.handle_down`. The animation
-will run an `ScrollAnimation` that is very similar on the main
-thread. [^threaded]
+Smooth scrolling will have a few steps. First we'll have to parse the new 
+[scroll-behavior] CSS property that applies to scrolling of the `<body>` element,
+[^body] plumb it to the browser thread, and the trigger a
+(main-thread) animation in `Browser.handle_down`. The animation will run a
+`ScrollAnimation` that is very similar to a `NumericAnimation`.[^threaded]
+
+[scroll-behavior]: https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior
 
 [^body]: The difference between the `<body>` and `<html>` tag for scrolling is a
 [little complicated][scrollingelement], and I won't get into it here.
@@ -1996,6 +1998,8 @@ thread. [^threaded]
 
 [^threaded]: And with some more work, the animation could run on the browser
 thread and avoid main-thread delay. I'll leave that to an exercise.
+
+The concrete steps are:
 
 * Parsing in `Tab` (there's some complication in finding the `<body>` element,
   because the `<head>` may or may not be present):
@@ -2104,10 +2108,17 @@ class ScrollAnimation:
         return True
 ```
 
-Yay, smooth scrolling! You can try it on
-[this example](examples/example13-transform-transition.html), which combines
-a smooth scroll and transform animation at the same time. And it's got
-super smooth animation performance!
+Yay, smooth scrolling! You can try it on[this example]
+(examples/example13-transform-transition.html), which combines a smooth scroll
+and transform animation at the same time. And it's got super smooth animation
+performance.
+
+On top of that, notice how once we have an animation framework implemented,
+adding new features to it becomes easier and easier. This is a pattern I hope
+you've noticed through many parts of this book. It's yet another reason to know
+how browsers work on the inside---this knowledge will help you know what they
+might be capable of in the future, and how to propose new features that are
+easy enough to implement.
 
 ::: {.further}
 parallax, scroll-linked effects
@@ -2116,7 +2127,8 @@ parallax, scroll-linked effects
 Summary
 =======
 
-This chapter introduced the concept of animations. The key takeaways should be:
+This chapter introduced the concept of animations. The key takeaways you should
+remember are:
 
 - Animations come in DOM-based, input-driven and video-like varieties
 
@@ -2125,12 +2137,12 @@ This chapter introduced the concept of animations. The key takeaways should be:
 
 - GPU acceleration is necessary for smooth animations
 
-- Compositing is necessary for smooth visual effect animations
+- Compositing is necessary for smooth visual effect animations, and generally
+  not feasible (at least at present) for layout-inducing animations
 
-We then proceed to implement GPU acceleration and composited animations.
+- Input-driven animations have tight performance constraints, and so must
+  generally bge composited to behave well
 
-Finally, we briefly touched on *input-driven* animations, and showed how to
-implement smooth scrolling.
 
 Outline
 =======
@@ -2162,3 +2174,14 @@ color channels.
  nested, composited visual effects correctly. Fix this by building a "draw
  tree" for all of the `CompositedLayer`s and allocating a `skia.Surface` for
  each internal node.
+
+*Threaded animations*: despite Chapter 12 being all about threading, we didn't
+ actually implement threaded animations in this chapter---they are all driven
+ by code running on the main thread. But just like scrolling, in a real browser
+ this is not acceptable, since there could be many main-thread tasks slowing
+ things down. Add support for threaded animations. Doing so will require
+ replicating some event loop code from the main thread, but if you're careful
+ you should be able to reuse all of the animation classes. (Don't worry
+ too much about how to synchronize these animations with the main thread, except
+ to cause them to stop after the next commit when DOM changes occur. Real
+ browsers encounter a lot of complications in this area.)
