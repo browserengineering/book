@@ -1965,7 +1965,7 @@ an *animation*. To my mind, there are two key reasons:
   of their hand than they are to the latency of responding to a click. For
   example, a scrolling hiccup for even one frame, even for only a few tens of
   milliseconds, is easily noticeable and jarring to a person, but most people
-  do not notice click input delays of about to 100ms or so.
+  do not notice click input delays of up to 100ms or so.
 
 Let's add composited scrolling to our browser, and then smooth scrolling on
 keyboard events.
