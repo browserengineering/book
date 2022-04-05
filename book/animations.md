@@ -1985,7 +1985,7 @@ class Browser:
 
 Smooth scrolling will have a few steps. First we'll have to parse the new 
 [scroll-behavior] CSS property that applies to scrolling of the `<body>` element,
-[^body] plumb it to the browser thread, and the trigger a
+[^body] plumb it to the browser thread, and then trigger a
 (main-thread) animation in `Browser.handle_down`. The animation will run a
 `ScrollAnimation` that is very similar to a `NumericAnimation`.[^threaded]
 
