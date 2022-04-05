@@ -5,16 +5,16 @@ prev: visual-effects
 next: skipped
 ...
 
-The UI of a complex web application these days requires not just fast loading,
-visually interesting rendering, and responsiveness to input and scrolling. It
-also needs smooth *animations* when transitioning between DOM
-states. These transitions improve usability of web applications by helping
-users understand what changed, and improve visual polish by replacing sudden
-jumps with smooth interpolations.
+The UI of a complex web application requires not just fast loading, visually
+interesting rendering, and responsiveness to input and scrolling. It also needs
+smooth *animations* when transitioning between DOM states. These transitions
+ijmprove usability of the web application by helping users understand what
+changed, and improve visual polish by replacing sudden jumps with smooth
+interpolations.
 
-Modern browsers have APIs that enable animating the styles of DOM elements.
-To implement these APIs performantly, behind the scenes new technology is
-needed to make those animations smooth and fast.
+Modern browsers have APIs that enable animating the styles of DOM elements. To
+implement these APIs performantly, behind the scenes GPU acceleration is needed
+to make those animations smooth and fast.
 
 Types of animations
 ===================
