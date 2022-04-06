@@ -149,7 +149,6 @@ class Transform(DisplayItem):
         return matrix.mapRect(rect)
 
     def copy(self, other):
-        assert type(other) == type(self)
         self.translation = other.translation
         self.rect = other.rect
 
@@ -276,7 +275,6 @@ class SaveLayer(DisplayItem):
             canvas.restore()
 
     def copy(self, other):
-        assert type(other) == type(self)
         self.sk_paint = other.sk_paint
 
     def __repr__(self):
@@ -1095,13 +1093,17 @@ class CompositedLayer:
         if len(self.paint_chunks) == 0:
             return True
         (item, self_ancestor_effects) = self.paint_chunks[0]
-        other_composited_ancestor_index = composited_ancestor_index(ancestor_effects)
-        if self.composited_ancestor_index != other_composited_ancestor_index:
+        other_composited_ancestor_index = \
+            composited_ancestor_index(ancestor_effects)
+        if self.composited_ancestor_index != \
+            other_composited_ancestor_index:
             return False
         if self.composited_ancestor_index == -1:
             return True
-        return self_ancestor_effects[self.composited_ancestor_index] == \
-            ancestor_effects[other_composited_ancestor_index]
+        return self_ancestor_effects[
+            self.composited_ancestor_index] == \
+            ancestor_effects[
+            other_composited_ancestor_index]
 
     def add_paint_chunk(self, display_item, ancestor_effects):
         assert self.can_merge(display_item, ancestor_effects)

@@ -5,16 +5,16 @@ prev: visual-effects
 next: skipped
 ...
 
-The UI of a complex web application these days requires not just fast loading,
-visually interesting rendering, and responsiveness to input and scrolling. It
-also needs smooth *animations* when transitioning between DOM
-states. These transitions improve usability of web applications by helping
-users understand what changed, and improve visual polish by replacing sudden
-jumps with smooth interpolations.
+The UI of a complex web application requires not just fast loading, visually
+interesting rendering, and responsiveness to input and scrolling. It also needs
+smooth *animations* when transitioning between DOM states. These transitions
+ijmprove usability of the web application by helping users understand what
+changed, and improve visual polish by replacing sudden jumps with smooth
+interpolations.
 
-Modern browsers have APIs that enable animating the styles of DOM elements.
-To implement these APIs performantly, behind the scenes new technology is
-needed to make those animations smooth and fast.
+Modern browsers have APIs that enable animating the styles of DOM elements. To
+implement these APIs performantly, behind the scenes GPU acceleration is needed
+to make those animations smooth and fast.
 
 Types of animations
 ===================
@@ -33,8 +33,9 @@ rotating, fading, blurring, nad sharpening.
 
 On web pages, there are several broad categories of common animations:
 
-* DOM: movement of elements on the screen, by interpolating CSS properties of
-elements such as color, opacity or sizing.[^innerHTML]
+* DOM: movement or visual effect change of elements on the screen, by
+  interpolating CSS properties of elements such as color, opacity or sizing.
+  [^innerHTML]
 
 * Input-driven: scrolling, page resizing, pinch-zoom, draggable menus and similar
 effects.
@@ -64,10 +65,10 @@ The distinction is important for two reasons: animation quality and performance.
 In general, layout-inducing animations often have undesirable
 qualities---animating `width` can lead to text jumping around as line breaking
 changes---and performance implications (the name says it all: these animations
-require main thread `render` calls). Most of the time, layout-inducing
+require (main-thread) layout). Most of the time, layout-inducing
 animations are not a good idea for these reasons.^[One exception is a
 layout-inducing animation when resizing a browser window via a mouse gesture;
-in this case it's very useful for theuser to see the new layout as they animate.
+in this case it's very useful for the user to see the new layout as they animate.
 Modern browsers are fast enough to do this, but it used to be that instead they
 would leave a visual *gutter* (a gap between content and the edge of the window)
 during the animation, to avoid updating layout on every animation frame.]
@@ -88,11 +89,18 @@ high-quality animations are done on the web. Instead, it almost always makes
 sense to first render some content into layout objects, then apply a DOM
 animation to the layout tree.
 
-It's straightforward to imagine how this might work for opacity: define
-some HTML that you want to animate, then interpolate the `opacity` CSS property
-in JavaScript smoothly from one value to another. Here's an example that
-animates from 1 to 0.1, over 120 frames (about two seconds), then back up
-to 1 for 120 more frames, and repeats.
+It's straightforward to imagine how this might work for opacity: define some
+HTML that you want to animate, then interpolate the `opacity` CSS property in
+JavaScript smoothly from one value to another. Here's an example that animates
+from 0.999[^why-not-one] to 0.1, over 120 frames (about two seconds), then back
+up to 1 for 120 more frames, and repeats.
+
+[^why-not-one]: The animation starts below 1 because most real browsers optimize
+away internal animation optimizations when opacity is 1, and so it's easier to
+dig into the performnace of this example on a real browser with 0.999. Starting
+animations at 0.999 is also a common trick used on web sites that want to
+avoid visual popping of the content as it goes in and out of GPU-accelerated
+mode.
 
 ``` {.html file=example-opacity-html}
 <div>Test</div>
@@ -166,15 +174,14 @@ Width/height animations
 =======================
 
 What about layout-inducing DOM animations? At the moment, our browser doesn't
-support any layout-inducing CSS properties that would be useful to animate,
-so let's add support for `width` and `height`, then animate them. These
-CSS properties do pretty much what they say: force the width or height of
-a layout object to be the specified value in pixels, as opposed to the default
-behavior that sizes a block to contain block and inline descendants. If
-as a result the descendants don't fit, they will *overflow* in a natural
-way. This usually means overflowing the bottom edge of the block
-ancestor, because we'll use `width` to determine the area for line
-breaking.[^overflow]
+support any layout-inducing CSS properties that would be useful to animate, so
+let's add support for `width` and `height`, then animate them. These CSS
+properties do pretty much what they say: force the width or height of a layout
+object to be the specified value in pixels, as opposed to the default behavior
+that sizes an element to contain block and inline descendants. If as a result
+the descendants don't fit, they will *overflow* in a natural way. This usually
+means overflowing the bottom edge of the block ancestor, because we'll use
+`width` to determine the area for line breaking.[^overflow]
 
 [^overflow]: By default, overflowing content draws outside the bounds of
 the parent layout object. We discussed overflow to some extent in
@@ -185,10 +192,10 @@ to see it via scrolling. And if scroll is specified in the x direction, the
 descendant content will lay out as it if has an infinite width. Extra long
 words can also cause horizontal overflow.
 
-Implementing `width` and `height` turns out to be pretty easy. Instead
-of setting the width of a layout object to the widest it can be before recursing,
-use the specified width instead. Then, descendants will use that width for their
-sizing automatically.
+Implementing `width` and `height` turns out to be pretty easy. Instead of
+setting the width of a layout object to the widest it can be before recursing,
+use the specified width instead. And likewise for `height`. Then, descendants
+will use that width for their sizing automatically.
 
 Start by implementing a `style_length` helper method that applies a
 restricted length (either in the horizontal or vertical dimension) if it's
@@ -206,7 +213,7 @@ more complicated than just a call to `math.floor`. [This article][pixel-canvas]
 touches on some of the complexities as they apply to canvases, but it's just
 as complex for DOM elements. For example, if two block elements touch
 and have fractional widths, it's important to round in such a way that there
-is not a gap introduced between them.]
+is not a visual gap introduced between them.]
 
 [pixel-canvas]: https://web.dev/device-pixel-content-box/#pixel-snapping
 
@@ -239,7 +246,7 @@ class BlockLayout:
 Here is a simple animation of `width`. As the width of the `div` animates from
 `400px` to `100px`, its height will automatically increase to contain the
 text as it flows into multiple lines.^[And if automic increase was not desired,
-`height` coupld specified to a fixed value. But that would of course cause
+`height` could be specified to a fixed value. But that would of course cause
 overflow, which needs to be dealt with in one way or another.]
 
 ``` {.html file=example-width-html}
@@ -330,8 +337,9 @@ Next let's add some code that detects if a transition should start, by comparing
 two style objects---the ones before and after a style update for a DOM node. It
 will add a `NumericAnimation` to `tab` if the transition was found. Both
 `opacity` and `width` are *numeric* animations, but with different
-units---unitless floating-point between 0 and 1, respectively.[^more-units] The
-difference will be handled by an `is_px` parameter indicating which it is.
+units---unitless floating-point between 0 and 1 and pixels,
+respectively.[^more-units] The difference will be handled by an `is_px`
+parameter indicating which it is.
 
 ``` {.python}
 def try_transition(name, node, old_style, new_style):
@@ -382,8 +390,9 @@ advancing the animation by one frame. It's the equivalent of the
 returns `False` if the animation has ended.[^animation-curve]
 
 [^animation-curve]: Note that this class implements a linear animation
-interpretation (or *easing function*). By default, real browsers
-use a non-linear easing function, so your demo will not look quite the same.
+interpretation (or *easing function*). By default, real browsers use a
+non-linear easing function, so the demos from this chapter  will not look quite
+the same in your browser.
 
 ``` {.python expected=False}
 class NumericAnimation:
@@ -541,18 +550,18 @@ The first order of business in making these animations smoother is to move
 raster and draw to the [GPU][gpu]. Because both SDL and Skia support these
 modes, the code to do so looks a lot like some configuration changes, and
 doesn't really give any direct insight into why it's all-of-a-sudden faster. So
-before showing the code let's discuss briefly how GPUs work and the
-four---again, internal implementation detail to Skia and SDL---steps of running
+before showing the code I'll briefly explain how GPUs work and the
+four (internal implementation detail to Skia and SDL) steps of running
 GPU raster and draw.
 
 There are lots of resources online about how GPUs work and how to program them.
 But we won't generally be writing shaders or other types of GPU programs in
 this book. Instead, let's focus on the basics of GPU technologies and how they
-map to browsers. A GPU is essentially a hyper-specialized computer that is good
-at running very simple computer programs that specialize in turning simple data
-structures into pixels. These programs are so simple that the GPU can run one
-of them *in parallel* for each pixel, and this parallelism is why GPU raster is
-usually much faster than CPU raster.
+map to browsers. A GPU is essentially a computer chip that is good at running
+very simple computer programs that specialize in turning simple data structures
+into pixels. These programs are so simple that the GPU can run one of them *in
+parallel* for each pixel, and this parallelism is why GPU raster is usually
+much faster than CPU raster.
 
 At a high level, the steps to raster and draw using the GPU are:[^gpu-variations]
 
@@ -581,7 +590,7 @@ children. The root of the tree is the framebuffer texture.
 
 [^gpu-texture]: Recall from [Chapter 11](visual-effects.md) that there can be
 surfaces that draw into other surfaces, forming a tree. Skia internally does
-this based on various triggers such as blend modes. 
+this sometimes, based on various triggers such as blend modes. 
 
 The time to run GPU raster is then the roughly sum of the time for these four
 steps.[^optimize] Usually, the *execute* step is very fast, and total time is
@@ -615,7 +624,7 @@ Then we'll need to configure `sdl_window` and start/stop a
 beginning/end of the program; for our purposes consider it API
 boilerplate.^[Starting a GL context is just OpenGL's way
 of saying "set up the surface into which subsequent GL drawing commands will
-draw". After doing so you can execute OpenGL commands manually, to
+draw". After doing so you can even execute OpenGL commands manually, to
 draw polygons or other objects on the screen, without using Skia at all.
 [Try it][pyopengl] if you're interested!]
 
@@ -806,7 +815,7 @@ class SaveLayer:
     def __init__(self, sk_paint, node, cmds,
         should_save=True, should_paint_cmds=True):
         # ...
-        super().__init__(cmds=cmds)
+        super().__init__(cmds=cmds, is_noop=not should_save)
 ```
 
 Then add a `repr_recursive` method to `DisplayItem`. Also add an `is_noop`
@@ -863,6 +872,7 @@ the child surface should ultimately boil down to something like this:
 
     opacity_surface = skia.Surface(...)
     draw_text.execute(opacity_surface.getCanvas())
+    sk_paint = skia.Paint(AlphaF=0.999)
     tab_canvas.saveLayer(paint=sk_paint)
     opacity_surface.draw(tab_canvas, text_offset_x, text_offset_y)
     tab_canvas.restore()
@@ -888,14 +898,14 @@ making a tree of `skia.Surface` object. But it turns out that that approach
 pgets quite complicated when you get into the details.^[We'll cover one of these
 details---overlap testing---later in the chapter. Another is that there may be
 multiple "child" pieces of content, only some of which may be animating. There
-even more in a real browser.]
+are even more in a real browser.]
 
 Instead, think of the display list as a flat list of "leaf" *paint commands*
 like `DrawText`.^[The tree of visual effects is applied to some of those paint
 commands, but ignore that for now and focus on the paint commands.] Each paint
 command can be (individually) drawn to the screen by executing it and the
-series of *ancestor [visual] effects* on it. Thus the tuple `(paint command,
-ancestor effects)` suffices to describe that paint command in isolation.
+series of *ancestor [visual] effects* on it. Thus the tuple (paint command,
+ancestor effects) suffices to describe that paint command in isolation.
 
 We'll call this tuple a *paint chunk*. Here is how to generate all the paint
 chunks from a display list:
@@ -920,11 +930,11 @@ the result to the screen by applying an appropriate sequence of visual effects.
 Two paint chunks in the flat list can be put into the same composited layer if
 they are:
 
-* adjacent in paint order,^[otherwise, overlapping content wouldn't draw
-correctly] and
+* adjacent in paint order,^[Otherwise, overlapping content wouldn't draw
+correctly.] and
 
-* have the exact same set of animating ancestor effects.^[otherwise the
-  animations would end up applying to the wrong paint commands]
+* have the exact same set of animating ancestor effects.^[Otherwise the
+  animations would end up applying to the wrong paint commands.]
 
 Notice that, to satisfy these constraints, we could just put each paint command
 in its own composited layer. But of course, that would result in a huge number
@@ -932,15 +942,17 @@ of surfaces, and most likely exhaust the computer's GPU memory. So the goal of
 the *compositing algorithm* is to come up with a way to pack paint chunks into
 only a small number of composited layers.^[There are many possible compositing
 algorithms, with their own tradeoffs of memory, time and code complexity. I'll
-present the one used by Chromium.]
+present a simplified version of the one used by Chromium.]
 
 Below is the algorithm we'll use; as you can see it's not very complicated. It
-loops over the list of paint chunks; for each paint chunk it tries to reuse an
-existing `CompositedLayer` by walking *backwards* through the `CompositedLayer`
-list. If one is found, the paint chunk is added to it; if not, a new
-`CompositedLayer` is added with that paint chunk to start.
-The `can_merge` method on a `CompositedLayer` checks compatibility of the paint
-chunk's animating ancestor effects with the ones already on it.
+loops over the list of paint chunks; for each paint chunk it tries to add it to
+an existing `CompositedLayer` by walking *backwards* through the
+`CompositedLayer` list.[^why-backwards] If one is found, the paint chunk is
+added to it; if not, a new `CompositedLayer` is added with that paint chunk to
+start. The `can_merge` method on a `CompositedLayer` checks compatibility of
+the paint chunk's animating ancestor effects with the ones already on it.
+
+[^why-backwards]: Backwards, because we can't draw things in the wrong order.
 
 ``` {.python expected=False}
 class Browser:
@@ -1005,11 +1017,10 @@ GPU textures called *render surfaces* for each internal node of this tree.
 
 A naive implementation of this tree (allocating one node for each visual effect)
 is not too hard to implement, but each additional render surface requires a
-*lot* more memory and slows down draw a bit more (this might a good time to
- re-read the start of the [GPU acceleration](#gpu-acceleration) section). So
+*lot* more memory and slows down draw a bit more. So
  real browsers analyze the visual effect tree to determine which ones really
  need render surfaces, and which don't. Opacity, for example, often doesn't
- need a render surface, but opacity with at least two descendant
+ need a render surface, but opacity with at least two "descendant"
  `CompositedLayer`s does.[^only-overlapping] The reason is that opacity has to
  be applied *atomically* to all of the content under it; if it was applied
  separately to each of the child `CompositedLayer`s, the blending result on the
@@ -1028,10 +1039,12 @@ For more details and information on how Chromium implements these concepts see
 [here][renderingng-dl] and [here][rendersurface]; other browsers do something
 similar.
 
-Chromium's implementation of the "visual effect nesting" data structure
-is called [property trees][prop-trees]. The name is plural because there is
-more than one tree, due to the complex containing block structure of scrolling
+Chromium's implementation of the "visual effect nesting" data structure is
+called [property trees][prop-trees]. The name is plural because there is more
+than one tree, due to the complex [containing block][cb] structure of scrolling
 and clipping.
+
+[cb]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
 [renderingng-dl]: https://developer.chrome.com/blog/renderingng-data-structures/#display-lists-and-paint-chunks
 [rendersurface]: https://developer.chrome.com/blog/renderingng-data-structures/#compositor-frames-surfaces-render-surfaces-and-gpu-texture-tiles
@@ -1047,7 +1060,7 @@ Let's add some more features to display items to help then support compositing.
 The first thing we'll need is a way to signal that a visual effect "needs
 compositing", meaning that it is animating and so its contents should be cached
 in a GPU texture. Indicate that with a new `needs_compositing` method on
-`DisplayItem`. As a heuristic, we'll always composite `SaveLayer`s
+`DisplayItem`. As a simple heuristic, we'll always composite `SaveLayer`s
 (but only when they actually do something that isn't a no-op), regardless of
 whether they are animating.
 
@@ -1074,9 +1087,10 @@ class DisplayItem:
 
 Next we need a `draw` method. This will be used to execute the visual effect in
 either draw or raster, depending on the results of the compositing algorithm.
-This only does something for visual effect subclasses. It takes an `op`
-parameter; the `op` later on will be a place to put the draw command on a
-`skia.Surface`.
+It takes an `op` parameter; the `op` later on will be a place to put the draw
+or raster commands.
+
+This only does something for visual effect subclasses:
 
 ``` {.python}
 class DisplayItem:
@@ -1120,11 +1134,11 @@ Finally, we'll need to be able to get the *composited bounds* of a
 `DisplayItem`. This is necessary to figure out the size of a `skia.Surface` that
 contains the item.
 
-Its composited bounds is the union of its painting rectangle and
-all descendants that are not themselves composited. This will be needed to
-determine the absolute bounds of a `CompositedLayer`. This is pretty
-easy---there is already a `rect` field stored on the various subclasses, so
-just pass them to the superclass instead:
+Its composited bounds is the union of its painting rectangle and all descendants
+that are not themselves composited. This will be needed to determine the
+absolute bounds of a `CompositedLayer`'s surface. This is pretty easy---there
+is already a `rect` field stored on the various subclasses, so just pass them
+to the superclass instead:
 
 ``` {.python}
 class DisplayItem:
@@ -1157,8 +1171,8 @@ class DrawText(DisplayItem):
 The other classes are basically the same, including visual effects.
 
 ::: {.further}
-But why composite always, and not just when the property is animating? It's
-for two reasons.
+There are more reasons to always composite certain visual effects, and not just
+when the property is animating.
 
 First, we'll be able to start the animation quicker,
 since raster won't have to happen first. (Note that whenever we change the 
@@ -1169,12 +1183,18 @@ Second, compositing sometimes has visual side-effects. Ideally, composited
 textures would look exactly the same on the screen. But due to the details of
 pixel-sensitive raster technologies like sub-pixel positioning for fonts, image
 resize filter algorithms, and anti-aliasing, this isn't always possible.
-"Pre-compositing" the content avoid visual jumps on the page when compositing
+"Pre-compositing" the content avoids visual jumps on the page when compositing
 starts.
 
 (A third reason is that having to deal with all of the permutations of
-composited and non-composited objects requires a lot of attention to detail
-and extra code to get right, so I omitted it from this book's code.)
+composited and non-composited content requires a lot of attention to detail
+and extra code to get right.)
+
+Real browsers support the [`will-change`][will-change] CSS property for the
+purpose of signalling pre-compositing.
+
+[will-change]: https://developer.mozilla.org/en-US/docs/Web/CSS/will-change
+
 :::
 
 Composited Layers
@@ -1195,7 +1215,7 @@ class CompositedLayer:
 
 Only paint chunks that have the same *nearest composited visual effect ancestor*
 will be allowed to be in the same `CompositedLayer`.[^simpler] The composited
-ancestor index is the index into the top-down array of ancestor effects
+ancestor index is the index into the top-down list of ancestor effects
 refering to this nearest ancestor. (If there is no composited ancestor, the
 index is -1). Here's how to compute it it. Note how we are walking *up* the
 display list tree (and therefore implicitly up the DOM tree also) via a
@@ -1219,7 +1239,7 @@ array---there could be additional non-composited visual effects at the bottom.
 [^simpler]: Intuitively, this just means "part of the same composited
 animation".
 
-The class will have the following methods:
+The `CompositedLayer` class will have the following methods:
 
 * `can_merge`: returns whether the given paint chunk is compatible with being
   drawn into the same `CompositedLayer`. This will be true if they have the
@@ -1230,13 +1250,17 @@ The class will have the following methods:
         if len(self.paint_chunks) == 0:
             return True
         (item, self_ancestor_effects) = self.paint_chunks[0]
-        other_composited_ancestor_index = composited_ancestor_index(ancestor_effects)
-        if self.composited_ancestor_index != other_composited_ancestor_index:
+        other_composited_ancestor_index = \
+            composited_ancestor_index(ancestor_effects)
+        if self.composited_ancestor_index != \
+            other_composited_ancestor_index:
             return False
         if self.composited_ancestor_index == -1:
             return True
-        return self_ancestor_effects[self.composited_ancestor_index] == \
-            ancestor_effects[other_composited_ancestor_index]
+        return self_ancestor_effects[
+            self.composited_ancestor_index] == \
+            ancestor_effects[
+                other_composited_ancestor_index]
 ```
 
 * `add_paint_chunk`: adds a new paint chunk to the `CompositedLayer`. The first
@@ -1274,23 +1298,7 @@ class CompositedLayer:
   to the width and height of the bounds; its top/left is just a positioning
   offset.^[This will be taken into acocunt in `draw`; see below.]
 
-  Also factor a central part of `raster` into a private helper method
-  `draw_internal`; this method recursively iterates over `ancestor_effects`
-  from the start ot the end, drawing each visual effect on the canvas. This
-  method also makes use of the `op` trick we added to `DisplayItem`; in this
-  case `op` is a wrapper around the `execute` method.
-
 ``` {.python}
-    def draw_internal(self, canvas, op, start, end, ancestor_effects):
-        if start == end:
-            op()
-        else:
-            ancestor_item = ancestor_effects[start]
-            def recurse_op():
-                self.draw_internal(canvas, op, start + 1, end,
-                    ancestor_effects)
-            ancestor_item.draw(canvas, recurse_op)
-
     def raster(self):
         bounds = self.composited_bounds()
         if bounds.isEmpty():
@@ -1315,6 +1323,24 @@ class CompositedLayer:
                 canvas, op, self.composited_ancestor_index + 1,
                 len(ancestor_effects), ancestor_effects)
         canvas.restore()
+```
+
+  Also factor a central part of `raster` into a private helper method
+  `draw_internal`; this method recursively iterates over `ancestor_effects`
+  from the start ot the end, drawing each visual effect on the canvas. This
+  method also makes use of the `op` trick we added to `DisplayItem`; in this
+  case `op` is a wrapper around the `execute` method.
+
+``` {.python}
+    def draw_internal(self, canvas, op, start, end, ancestor_effects):
+        if start == end:
+            op()
+        else:
+            ancestor_item = ancestor_effects[start]
+            def recurse_op():
+                self.draw_internal(canvas, op, start + 1, end,
+                    ancestor_effects)
+            ancestor_item.draw(canvas, recurse_op)
 ```
 
 * `draw`: draws `self.surface` to the screen, taking into account the visual
@@ -1352,32 +1378,25 @@ The last bit is just to wire it up by generalizing `raster_and_draw` into
 `composite_raster_and_draw` (plus renaming the corresponding dirty bit and
 renaming at all callsites), and everything should work end-to-end.
 
-``` {.python expected=False}
+``` {.python}
     def composite_raster_and_draw(self):
-        self.lock.acquire(blocking=True)
-        if not self.needs_composite_raster_draw:
-            self.lock.release()
-            return
-
-        self.measure_composite_raster_and_draw.start()
-        start_time = time.time()
+        # ...
         self.composite()
         self.raster_chrome()
         self.raster_tab()
         self.draw()
-        self.measure_composite_raster_and_draw.stop()
-        self.needs_composite_raster_draw = False
-        self.lock.release()
+        # ...
 ```
 
 Composited animations
 =====================
 
 Compositing now works, but it doesn't yet achieve the goal of avoiding raster
-during animations. In fact, at the moment it might be *slower* than before,
-because the compositing algorithm takes time to run, and using the GPU is not
-free: you have to constantly re-upload display lists and re-raster all the
-time. Let's now add code to avoid all this work.
+during animations (because `composite` is constantly re-running). In fact, at
+the moment it might be *slower* than before, because the compositing algorithm
+takes time to run, and using the GPU is not free: you have to constantly
+re-upload display lists and re-raster all the time. Let's now add code to avoid
+all this work.
 
 Avoiding raster and the compositing algorithm is simple in concept: keep track
 of what is animating, and re-run `draw` with different opacity parameters on
@@ -1563,8 +1582,6 @@ class Browser:
 class Browser:
     def __init__(self):
         # ...
-        self.needs_composite = False
-        # ...
         self.composited_updates = []
 
     def commit(self, tab, data):
@@ -1597,7 +1614,16 @@ ancestors.)
 * Now for the actual animation updates on the browser thread: if
   `needs_composite` is false, loop over each `CompositedLayer`'s
   `composited_items`, and update each one that matches the
-  animation.[^ptrcompare]
+  animation.[^ptrcompare] The update is accomplised by calling `copy`  on the
+  `SaveLayer`, defined as:
+
+
+``` {.python}
+class SaveLayer(DisplayItem):
+    def copy(self, other):
+        self.sk_paint = other.sk_paint
+
+```
 
 [^ptrcompare]: This is done by comparing equality of `Element` object
 references. Note that we are only using these objects for
@@ -1618,11 +1644,9 @@ pointer comparison, since otherwise it would not be thread-safe.
 
 The result will be automatically drawn to the screen, because the `draw` method
 on each `CompositedLayer` will iterate through its `ancestor_effects` and
-execute them. (This might sound fancy, but all we did was mutate some 
-of the inputs to `draw` in-place.)
+execute them.
 
-
-Now check out the result---animations that only update the draw step, and
+Check out the result---animations that only update the draw step, and
 not everything else!
 
 ::: {.further}
@@ -1650,7 +1674,7 @@ square, so it draws into the root surface (and does not receive a change of
 opacity, of course). Which will cause the blue to draw on top of the
 green, because the blue-square surface draws after the root surface. Oops!
 
-To fix this bug, we'll have to put the green rectangle into its own
+To fix this bug, we'll have to put the green square into its own
 `skia.Surface` (whether we like it or not). This situation is called an *overlap
 reason* for compositing, and is a major complication (and potential source of
 extra memory use and slowdown) faced by all real browsers.
@@ -1687,7 +1711,7 @@ needs to be animated.
                 # ...
 ```
 
-And then implementing the `absolute_bounds` method used in the code above.
+And then implementing the `absolute_bounds` methods used in the code above.
 
 But before we jump to doing that, there's one "small" problem: our browser
 doesn't even support enough features to cause the green-overlapping-blue
@@ -1723,7 +1747,13 @@ The `transform` CSS property lets you apply linear transform visual
 effects to an element.[^not-always-visual] In general, you can apply
 [any linear transform][transform-def] in 3D space, but I'll just cover really
 basic 2D translations. Here's HTML for the overlap example mentioned in the
-last section:
+last section:[^why-zero]
+
+[^why-zero]: The green square has a `transform` property also so that paint
+order doesn't change when you try the demo in a real browser. I won't get into
+it, but there are various rules for painting, and "positioned" elements(such as
+with `transform`) are supposed to paint after regular(non-positioned) elements.
+This particular rule is purely a historical artifact.
 
 [^not-always-visual]: Technically it's not always just a visual effect. In
 real browsers, transformed element positions contribute to scrolling overflow.
@@ -1796,6 +1826,10 @@ class Transform(DisplayItem):
         else:
             for cmd in self.cmds:
                 cmd.execute(canvas)
+
+    def copy(self, other):
+        self.translation = other.translation
+        self.rect = other.rect
 ```
 
 Now that we can render transforms, we also need to animate them. Just like
@@ -1868,9 +1902,9 @@ without re-raster on  every frame. Doing so is not hard, it just requires edits
 to the code to handle transform in all the same places opacity was, in
 particular:
 
-* In `DisplayList.needs_compositing`
+* In `DisplayList.needs_compositing`.
 
-* Setting `node.transform` in `paint_visual_effects` just like `save_layer`
+* Setting `node.transform` in `paint_visual_effects` just like `save_layer`.
 
 * Adding `transform` to each `composited_updates` field of `CommitData`.
 
@@ -1880,15 +1914,16 @@ Each of these changes should be pretty straightforward and repetitive on top of
 opacity, so I'll skip showing the code. Once updated, our browser should now
 have fast, composited transform animations.
 
-But if you try it on the example above, you'll find that the animation
-looks wrong---the blue rectangle is supposed to be *under* the green one, but
+But if you try it on the example above, you'll find that the animation still
+looks wrong---the blue square is supposed to be *under* the green one, but
 now it's on top. Which is of course becanse of the lack of overlap testing,
 which we should now complete.
 
 Let's first add the implementation of a new `absolute_bounds` function. The
 *absolute bounds* of a paint chunk or `CompositedLayer` are the bounds in the
  space of the root surface.^[Where the 0, 0 point is the top-left of the web
- page, which may be offscreen due to scrolling.]
+ page. This point is *not* screen coordinates; for example, the 0, 0 point may
+ be offscreen due to scrolling.]
 
  Before we added support for `transform`, this was the same as the union of the
  rects of each paint command. But now we need to account for a transform moving
@@ -1933,7 +1968,8 @@ class CompositedLayer:
 ```
 
 All this `absolute_bounds` code is already used in the `Browser.composite`
-method I outlined in the previous section; don't forget to update that method.
+method I outlined in the previous section; don't forget to update that method
+according to the code I outlined.
 
 Overlap testing is now complete. Your animation should animate the blue
 square underneath the green one.
@@ -1965,7 +2001,9 @@ an *animation*. To my mind, there are two key reasons:
   of their hand than they are to the latency of responding to a click. For
   example, a scrolling hiccup for even one frame, even for only a few tens of
   milliseconds, is easily noticeable and jarring to a person, but most people
-  do not notice click input delays of up to 100ms or so.
+  do not notice click input delays of up to 100ms or so. Therefore such
+  gestures benefit greatly from the same GPU+compositing technology I introduced
+  in this chapter.
 
 Let's add composited scrolling to our browser, and then smooth scrolling on
 keyboard events.
@@ -2108,10 +2146,10 @@ class ScrollAnimation:
         return True
 ```
 
-Yay, smooth scrolling! You can try it on[this example]
-(examples/example13-transform-transition.html), which combines a smooth scroll
-and transform animation at the same time. And it's got super smooth animation
-performance.
+Yay, smooth scrolling! You can try it on
+[this example](examples/example13-transform-transition.html), which combines a
+smooth scroll and transform animation at the same time. And it's got super
+smooth animation performance.
 
 On top of that, notice how once we have an animation framework implemented,
 adding new features to it becomes easier and easier. This is a pattern I hope
@@ -2130,18 +2168,18 @@ Summary
 This chapter introduced the concept of animations. The key takeaways you should
 remember are:
 
-- Animations come in DOM-based, input-driven and video-like varieties
+- Animations come in DOM-based, input-driven and video-like varieties.
 
 - Animations can be *layout-inducing* or *visual effect only*, and the
-  difference has important performance and animation quality implications
+  difference has important performance and animation quality implications.
 
-- GPU acceleration is necessary for smooth animations
+- GPU acceleration is necessary for smooth animations.
 
 - Compositing is necessary for smooth visual effect animations, and generally
-  not feasible (at least at present) for layout-inducing animations
+  not feasible (at least at present) for layout-inducing animations.
 
 - Input-driven animations have tight performance constraints, and so must
-  generally bge composited to behave well
+  generally bge composited to behave well.
 
 
 Outline
