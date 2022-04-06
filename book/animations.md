@@ -1378,7 +1378,7 @@ The last bit is just to wire it up by generalizing `raster_and_draw` into
 `composite_raster_and_draw` (plus renaming the corresponding dirty bit and
 renaming at all callsites), and everything should work end-to-end.
 
-``` {.python expected=False}
+``` {.python}
     def composite_raster_and_draw(self):
         # ...
         self.composite()
