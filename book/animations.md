@@ -1070,8 +1070,8 @@ Composited display items
 Let's add some more features to display items to help then support compositing.
 
 The first thing we'll need is a way to signal that a visual effect "needs
-compositing", meaning that it is animating and so its contents should be cached
-in a GPU texture. Indicate that with a new `needs_compositing` method on
+compositing", meaning that it may be animating and so its contents should be
+cached in a GPU texture. Indicate that with a new `needs_compositing` method on
 `DisplayItem`. As a simple heuristic, we'll always composite `SaveLayer`s
 (but only when they actually do something that isn't a no-op), regardless of
 whether they are animating.
@@ -1099,8 +1099,8 @@ class DisplayItem:
 
 Next we need a `draw` method. This will be used to execute the visual effect in
 either draw or raster, depending on the results of the compositing algorithm.
-It takes an `op` parameter; the `op` later on will be a place to put the draw
-or raster commands.
+It takes an `op` function parameter; we'll use it later on for nested draw or
+raster work within the visual effect.
 
 This only does something for visual effect subclasses:
 
@@ -1110,8 +1110,8 @@ class DisplayItem:
         pass
 ```
 
-But for those it is like `execute`, except that it has a parameterized `op`
-parameter. Here's `SaveLayer`:
+But for those it is like `execute` (except for the `op` parameter). Here's
+`SaveLayer`:
 
 ``` {.python}
 class SaveLayer(DisplayItem):
@@ -1125,9 +1125,9 @@ class SaveLayer(DisplayItem):
             canvas.restore()
 ```
 
-For visual effects, we can then redefine `execute` in terms of draw and move the
+For visual effects, redefine `execute` in terms of draw and move the
 implementation up to `DisplayItem`; remove the existing `execute` methods on
-those subclasses.
+those subclasses. Also note the use of the `op` parameter for recursion.
 
 ``` {.python}
 class DisplayItem:
@@ -1146,11 +1146,12 @@ Finally, we'll need to be able to get the *composited bounds* of a
 `DisplayItem`. This is necessary to figure out the size of a `skia.Surface` that
 contains the item.
 
-Its composited bounds is the union of its painting rectangle and all descendants
-that are not themselves composited. This will be needed to determine the
-absolute bounds of a `CompositedLayer`'s surface. This is pretty easy---there
-is already a `rect` field stored on the various subclasses, so just pass them
-to the superclass instead:
+A display item's composited bounds is the union of its painting rectangle and
+all descendants that are not themselves composited. This will be needed to
+determine the absolute bounds of a `CompositedLayer`'s surface. This is pretty
+easy---there is already a `rect` field indicating the bounds, and  stored on
+the various subclasses. So just pass them to the superclass instead and define
+`composited_bounds` there:
 
 ``` {.python}
 class DisplayItem:
@@ -1183,24 +1184,22 @@ class DrawText(DisplayItem):
 The other classes are basically the same, including visual effects.
 
 ::: {.further}
-There are more reasons to always composite certain visual effects, and not just
-when the property is animating.
+
+Mostly for simplicity, our browser composites `SaveLayer` visual effects,
+regardless of whether they are animating. But in fact, there are some good
+reasons to always composite certain visual effects.
 
 First, we'll be able to start the animation quicker,
 since raster won't have to happen first. (Note that whenever we change the 
 compositing reasons or display list, we might have to re-raster a number of 
-surfaces.)
+surfaces. And also re-do compositing.)
 
 Second, compositing sometimes has visual side-effects. Ideally, composited
 textures would look exactly the same on the screen. But due to the details of
 pixel-sensitive raster technologies like sub-pixel positioning for fonts, image
-resize filter algorithms, and anti-aliasing, this isn't always possible.
-"Pre-compositing" the content avoids visual jumps on the page when compositing
-starts.
-
-(A third reason is that having to deal with all of the permutations of
-composited and non-composited content requires a lot of attention to detail
-and extra code to get right.)
+resize filter algorithms, blending and anti-aliasing, this isn't always
+possible. "Pre-compositing" the content avoids visual jumps on the page when
+compositing starts.
 
 Real browsers support the [`will-change`][will-change] CSS property for the
 purpose of signalling pre-compositing.
@@ -1303,12 +1302,12 @@ class CompositedLayer:
         return retval
 ```
 
-* `raster`: rasters the chunks into `self.surface`. Note that there is no
-  parameter to this method, because raster of a `CompositedLayer` is
-  self-contained. Note that we first translate by the `top` and `left` of the
-  composited bounds. That's because we should allocate a surface exactly sized
-  to the width and height of the bounds; its top/left is just a positioning
-  offset.^[This will be taken into acocunt in `draw`; see below.]
+* `raster`: rasters the chunks into `self.surface`. When rastering, we first
+  translate by the `top` and `left` of the composited bounds. That's because we
+  should allocate a surface exactly sized to the width and height of the
+  bounds; its top/left is just a positioning offset.^[This will be taken into
+  acocunt in `draw`; see below.] Also, notice the second example of of the `op`
+  parameter for executing the paint command.
 
 ``` {.python}
     def raster(self):
@@ -1337,11 +1336,9 @@ class CompositedLayer:
         canvas.restore()
 ```
 
-  Also factor a central part of `raster` into a private helper method
-  `draw_internal`; this method recursively iterates over `ancestor_effects`
-  from the start ot the end, drawing each visual effect on the canvas. This
-  method also makes use of the `op` trick we added to `DisplayItem`; in this
-  case `op` is a wrapper around the `execute` method.
+  The above code depeds on a helper method `draw_internal`. This method
+  recursively iterates over `ancestor_effects` from the start to the end,
+  drawing each visual effect on the canvas.
 
 ``` {.python}
     def draw_internal(self, canvas, op, start, end, ancestor_effects):
@@ -1356,9 +1353,8 @@ class CompositedLayer:
 ```
 
 * `draw`: draws `self.surface` to the screen, taking into account the visual
-  effects applied to each chunk. in ths case, `op` is a call to `draw` on the
-  `skia.Surface`, but it's recursively surrounded by a stack of visual effects
-  that take effect on the surface.
+  effects applied to each chunk. In ths case, `op` is a call to `draw` on the
+  `skia.Surface`.
 
 ``` {.python}
     def draw(self, canvas, draw_offset):
@@ -1814,7 +1810,6 @@ def paint_visual_effects(node, cmds, rect):
     # ...
     return [transform]
 ```
-TODO:verify that translation does indeed come after blending.
 
 The `Transform` display list command is pretty straightforward as well: it calls
 the `translate` Skia canvas method, which is conveniently built-in.
