@@ -540,7 +540,27 @@ to dramatically speed up rendering for these animations.
 [profiling]: http://localhost:8001/scheduling.html#profiling-rendering
 
 ::: {.further}
-TODO: explain css animations, which avoid having any js at all.
+CSS transitions are great for adding animations triggered by DOM updates from
+JavaScript. But what about animations that are just part of an ongoing animation
+on the page, or want to run forever? In fact, the opacity and width animations
+we've been working with are not really connected to DOM transitions at all,
+and are instead infinitely repeating animations. This can be expressed directly
+in CSS without any JavaScript via a [CSS animation][css-animations].
+
+[css-animations]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Animations/Using_CSS_animations
+
+You can see the CSS animation variant of the opacity
+[here](examples/example13-opacity-animation.html), and width
+[here](examples/example13-width-animation.html). Implementing this feature
+requires parsing a new `@keyframes` syntax and the `animation` CSS property.
+Notice how we can make the animation alternate infinitely because we've
+defined the start and end of the animation, and therefore going backward just
+reverses the two.
+
+There is also a way to create, start and stop such animations using JavaScript,
+using the [Web Animations API][web-animations].
+
+[web-animations]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Animations_API
 :::
 
 GPU acceleration
@@ -1396,6 +1416,21 @@ renaming at all callsites), and everything should work end-to-end.
         # ...
 ```
 
+::: {.further}
+
+Interestingly enough, as of the time of writing this section, Chromium and
+WebKit both peform the `compositing` step on the main thread. This is the only
+way in which our browser is actually ahead of real browsers! The reason
+compositing doesn't (yet) happen on another thread in Chromium is that to get
+there took re-architecting the entire algorithm for compositing. Fixing this
+turned out to be extremely difficult, because the old algorithm was deeply
+intertwined into nearly every aspect of the rendering engine. The
+re-architecture only [recently
+completed](https://developer.chrome.com/blog/renderingng/#compositeafterpaint),
+so perhaps sometime soon this work will be threaded in Chromium.
+
+:::
+
 Composited animations
 =====================
 
@@ -1743,8 +1778,26 @@ browser: by setting the `width` and `height` of elements such that it causes
 text to overflow on top of siblings further down the page.
 
 ::: {.further}
-TODO: describe the problem of layer explosion. Explain how this can actually
-lead to compositing slowing down a web page rather than speeding it up.
+
+Overlap reasons for compositing not only create complications in the code, but
+without care from the browser and web developer can lead to a huge amount
+of GPU memory usage, as well as page slowdown to manage all of the additional
+composited layers. One way this could happen is that an additional composited
+layer results from one element overlapping another, and then a third because it
+overlaps the second, and so on. Our browser's algorithm avoids this
+problem most of the time because it is able to merge multiple paint chunks
+together as long as they have compatible ancestor effects, but in practice
+there are many very complicated situations where it's hard to make content
+merge efficiently.
+
+The general problem of extra GPU memory due to knock-on effects of compositing
+is called *layer explosion*. In addition to overlap, there are other reasons:
+for example, suppose we wanted to *turn off* composited scrolling in certain
+situations, such as on a machine without a lot of memory, but still use
+compositing for visual effect animations. But what if the animation is on
+content underneath a scroller? In practice, it is very difficulty to implement
+this situation correctly without just giving up and compositing the scroller.
+
 :::
 
 
@@ -1978,14 +2031,44 @@ All this `absolute_bounds` code is already used in the `Browser.composite`
 method I outlined in the previous section; don't forget to update that method
 according to the code I outlined.
 
-Overlap testing is now complete. Your animation should animate the blue
-square underneath the green one.
+Overlap testing is now complete.[^not-really] Your animation should animate the
+blue square underneath the green one.
+
+[^not-really]: Actually, even the current code is not correct now that we have
+transforms. Since a transform animtion moves content around, it also affects
+whether content overlaps. I conveniently chose a demo that starts out
+overlapping, but if it didn't start out overlapping our browser would not
+correctly notice when overlap starts happening during the animation. I've
+left solving this to an exercise.
 
 ::: {.further}
 
-Add composited layer border code. USE_COMPOSITING disabled mode. USE_GPU
-disabled mode.
+At this point, the compositing algorithm and its effect on content is getting
+pretty complicated. It will be very useful to you to add in more visual
+debugging to help understand what is going on. One good way to do this is
+to add a flag to our browser that draws a red border around `CompositedLayer`
+content. This is a very simple addition to `CompositedLayer.raster`:
 
+``` {.python}
+class CompositedLayer:
+    def raster(self):
+        # ...
+            draw_rect(
+                canvas, 0, 0, irect.width() - 1,
+                irect.height() - 1,
+                border_color="red")
+  
+```
+
+You should see three red squares for the transform animation demob:
+one for the blue square, one for the green square, and one for the root surface.
+
+I also recommend you add a mode to your browser that disables compositing
+(i.e. return `False` from `needs_compositing` for every `DisplayItem`), and
+disables use of the GPU (i.e. go back to the old way of making Skia surfaces).
+Everything should still work (albiet more slowly) in all of the modes, and you
+can use these additional modes to debug your browser more fully and benchmark
+its performance.
 :::
 
 Composited scrolling
@@ -2000,8 +2083,8 @@ an *animation*. To my mind, there are two key reasons:
   animate scroll in a smooth way when scrolling by keyboard or scrollbar
   clicks. Another example is that in a touch-driven scroll, browsers interpret
   the touch movement as a gesture with velocity, and therefore continue the
-  scroll (a "fling") according to a physics-based model (with friction slowing
-  it down).
+  scroll---a "fling" gesture---according to a physics-based model(with friction
+  slowing it down).
 
 * Touch or mouse drag-based scrolling is very performance sensitive. This is
   because humans are much more sensitive to things keeping up with the movement
@@ -2028,7 +2111,7 @@ class Browser:
         self.set_needs_draw() 
 ```
 
-Smooth scrolling will have a few steps. First we'll have to parse the new 
+Smooth scrolling will have a few steps. First we'll have to parse a new 
 [scroll-behavior] CSS property that applies to scrolling of the `<body>` element,
 [^body] plumb it to the browser thread, and then trigger a
 (main-thread) animation in `Browser.handle_down`. The animation will run a
@@ -2127,7 +2210,11 @@ class Tab:
                 self.scroll_animation = None
 ```
 
-* Implementing `ScrollAnimation`:
+* Implementing `ScrollAnimation`:[^thirty]
+
+[^thirty]: The chioce of a half-second animation---30 animation frames---is an
+arbitrary choice that is intentionally left up to the browser in the definition
+of the `scroll-behavior` CSS property.
 
 ``` {.python}
 class ScrollAnimation:
@@ -2155,7 +2242,7 @@ class ScrollAnimation:
 
 Yay, smooth scrolling! You can try it on
 [this example](examples/example13-transform-transition.html), which combines a
-smooth scroll and transform animation at the same time. And it's got super
+smooth scroll and transform animation *at the same time*. And it's got super
 smooth animation performance.
 
 On top of that, notice how once we have an animation framework implemented,
@@ -2166,7 +2253,35 @@ might be capable of in the future, and how to propose new features that are
 easy enough to implement.
 
 ::: {.further}
-parallax, scroll-linked effects
+
+These days, many websites implement a number of *scroll-linked* animation
+effects. One common one is *parallax*. In real life, parallax is the phenomenon
+that objects further away appear to move slower than closer-in objects (due to
+the angle of light changing less quickly). For example, when riding a train,
+the trees nearby move faster across your field of view than the hills in the
+distance. The same mathematical result can be applied to web contents by way of
+the the [`perspective`][perspective] CSS property.
+[This article][parallax] explains how, and [this one][csstricks-perspective]
+gives a much deeper dive into perspective in CSS generally.
+
+[parallax]: https://developer.chrome.com/blog/performant-parallaxing/
+[perspective]: https://developer.mozilla.org/en-US/docs/Web/CSS/perspective
+[csstricks-perspective]: https://css-tricks.com/how-css-perspective-works/
+
+There are also animations that are tied to scroll offset but are not, strictly
+speaking, part of the scroll. An example is a rotation or opacity fade on an
+element that advances as the user scrolls down the page (and reverses as they
+scroll back up). Or there are *scroll-triggered* animations that start once an
+element has reached a certain point on the page, or when scroll changes
+direction. An example of that is animation of a top-bar onto the page when the
+user starts to change scroll direction.
+
+Scroll-linked animations implemented in JavaScript work ok most of the time, but
+suffer from the problem that they cannot perfectly sync with real browsers'
+threaded scrolling architectures. This will be solved by the upcoming
+[scroll-linked animations][scroll-linked] specification.
+
+[scroll-linked]: https://drafts.csswg.org/scroll-animations-1/
 :::
 
 Summary
@@ -2202,6 +2317,11 @@ should now look something like this:
 Exercises
 =========
 
+*Multiple animations*: create some demos of animations of transform and opacity
+ at the same time, and combinations of nested transform and opacity. They
+ should still work of course, but these situations usually uncover bugs. If
+ you find bugs, fix them!
+
 *Background-color*: implement animations of the `background-color` CSS property.
 You'll have to define a new kind of interpolation that applies to all the
 color channels.
@@ -2230,3 +2350,54 @@ color channels.
  too much about how to synchronize these animations with the main thread, except
  to cause them to stop after the next commit when DOM changes occur. Real
  browsers encounter a lot of complications in this area.)
+
+*Threaded scrolling*: once you've completed the threaded animations exercise,
+ you should be able to add threaded scrolling (i.e., scrolling that doesn't
+ ever block on main-thread tasks) without much work.
+
+*CSS animations*: implement the basics of the
+[CSS animations][css-animations] API, in particular enough of the `animation`
+CSS property and parsing of `@keyframe` to implement the demos
+ [here](examples/example13-opacity-animation.html) and
+ [here](examples/example13-width-animation.html).
+
+*Overlap testing w/transform animations*: as mentioned in one of the Go Further
+ blocks, our browser currently does not overlap test correctly in the presence
+ of transform animations. First create a demo that exhibits the bug, and then
+ fix it. One way to fix it is to enter "assume overlap mode" whenever an
+ animated transform paint chunk is encountered. This means that every
+ subsequent paint chunk is assumed to overlap the animating one, and therefore
+ can't merge into any `CompositedLayer` earlier in the list than the animating
+ one. Another way is to run overlap testing on every animation frame in the
+ browser thread, and if the results differ from the prior frame, re-do
+ compositing and raster.[^css-animation-transform]
+
+[^css-animation-transform]: And if you've done the CSS animations exercise,
+and an animation is defined in terms of a CSS animation, you can analytically
+determine the bounding box of the animation, and use that for overlap instead.
+
+*Avoiding sparse composited layers*: our browser's algorithm currently always
+ merges paint chunks that have compatible ancestor effects. But this can lead
+ to inefficient situations, where two paint chunks that are visually very far
+ away on the web page (e.g. one at the very top and one thousands of pixels
+ lower down) end up in the same `CompositedLayer`. That can be very bad,
+ because it results in a huge `skia.Surface` that is mostly wasted GPU memory.
+ One way to reduce that problem is to stop merging paint chunks that would make
+ the total area of the `skia.Surface` larger than some fixed value. Implement
+ that.[^tiling-helps]
+
+ [^tiling-helps]: Another way is via surface tiling (this technique was briefly
+ discussed in a Go Further block in Chapter 11).
+
+ *Short display lists*: it's relatively common in real browsers to encounter
+  `CompositedLayer`s that are only a single solid color, or only one a few
+  simple paint commands.[^real-browser-simple] Implement an optimization that
+  skips storing a `skia.Surface` on a `CompositedLayer` with less than a fixed
+  number (3, say) of paint commands, and instead execute them directly. In
+  other words, `raster` on these `CompositedLayer`s will be a no-op and `draw`
+  will execute the paint commands instead.
+
+[^real-browser-simple]: A real browser would use as its criterion whether the
+time to raster the provided paint commands is low enough to not justify a GPU
+texture. This will be true for solid color rectangles, but probably not complex
+shapes or text.

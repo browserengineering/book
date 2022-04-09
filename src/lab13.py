@@ -1173,7 +1173,8 @@ class CompositedLayer:
 
         if SHOW_COMPOSITED_LAYER_BORDERS:
             draw_rect(
-                canvas, 0, 0, irect.width() - 1, irect.height() - 1,
+                canvas, 0, 0, irect.width() - 1,
+                irect.height() - 1,
                 border_color="red")
 
     def draw(self, canvas, draw_offset):
