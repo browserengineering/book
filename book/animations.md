@@ -8,7 +8,7 @@ next: skipped
 The UI of a complex web application requires not just fast loading, visually
 interesting rendering, and responsiveness to input and scrolling. It also needs
 smooth *animations* when transitioning between DOM states. These transitions
-ijmprove usability of the web application by helping users understand what
+improve usability of the web application by helping users understand what
 changed, and improve visual polish by replacing sudden jumps with smooth
 interpolations.
 
@@ -19,37 +19,31 @@ to make those animations smooth and fast.
 Types of animations
 ===================
 
-Defined broadly, an [animation] is a sequence of pictures shown in quick
-succession that create the illusion of *movement* to the human
-eye.[^general-movement] The pixel changes are *not* arbitrary, they are ones
-that feel logical to a human mind trained by experience in the real world.
+An [animation] is a sequence of pictures shown in quick succession that create
+an illusion of *movement* to the human eye.[^general-movement] The pixel
+changes in an animation are *not* arbitrary; they are ones that feel logical to
+a human mind trained by experience in the real world.
 
-[^general-movement]: Here movement should be defined broadly to encompass all of
-the kinds of visual changes humans are used to seeing and good at
+[^general-movement]: Here *movement* should be construed broadly to encompass
+all of the kinds of visual changes humans are used to seeing and good at
 recognizing---not just movement from side to side, but growing, shrinking,
 rotating, fading, blurring, nad sharpening.
 
 [animation]: https://en.wikipedia.org/wiki/Animation
 
-On web pages, there are several broad categories of common animations:
+On web pages, there are several categories of common animations:
 
 * DOM: movement or visual effect change of elements on the screen, by
   interpolating CSS properties of elements such as color, opacity or sizing.
-  [^innerHTML]
 
 * Input-driven: scrolling, page resizing, pinch-zoom, draggable menus and similar
 effects.
 
 * Video-like: videos, animated images, and animated canvases.
 
-[^innerHTML]: Animating by setting `innerHTML` is not very common, mostly
-since its performance and developer ergonomics are poor. An exception is
-animating the text content of leaf nodes of the DOM, such as in stock tickers
-or counters.
-
 In this chapter we'll focus on the first and second categories.[^excuse]
 
-[^excuse]: We'll get to images and a bit of canvas in Chapter 14; video is
+[^excuse]: We'll get to images and a bit of canvas in a later chapter. Video is
 a fascinating topic unto itself, but is beyond the scope of this book. Arguably,
 canvas is a bit different than the other two, since it's implemented by
 developer scripts. And of course a canvas can have animations within
@@ -65,42 +59,44 @@ The distinction is important for two reasons: animation quality and performance.
 In general, layout-inducing animations often have undesirable
 qualities---animating `width` can lead to text jumping around as line breaking
 changes---and performance implications (the name says it all: these animations
-require (main-thread) layout). Most of the time, layout-inducing
-animations are not a good idea for these reasons.^[One exception is a
-layout-inducing animation when resizing a browser window via a mouse gesture;
-in this case it's very useful for the user to see the new layout as they animate.
+require (main-thread) layout). Most of the time, layout-inducing animations are
+not a good idea for these reasons.^[One exception is a layout-inducing
+animation when resizing a browser window via a mouse gesture; in this case it's
+very useful for the user to see the new layout as the window size changes.
 Modern browsers are fast enough to do this, but it used to be that instead they
-would leave a visual *gutter* (a gap between content and the edge of the window)
-during the animation, to avoid updating layout on every animation frame.]
+would leave a visual *gutter* (a gap between content and the edge of the
+window) during the animation, to avoid updating layout on every animation
+frame.]
 
 This means we're in luck though! Visual effect animations can almost always
 be run on the browser thread, and also GPU-accelerated. But I'm getting ahead
-of myself---let's first take a tour through DOM animations and how to achieve
-them, before figuring how to accelerate them.
+of myself---let's first take a tour through DOM animations and how to implement
+their APIs in our browser, before figuring how to accelerate them.
 
 Opacity animations
 ==================
 
 In Chapter 12 we [implemented](scheduling.md#animating-frames) the
-`requestAnimationFrame` API, and built a demo that modifies the `innerHTML`
+`requestAnimationFrame` API and built a demo that modifies the `innerHTML`
 of a DOM element on each frame. That is indeed an animation---a
 *JavaScript-driven* animation---but `innerHTML` is generally not how
 high-quality animations are done on the web. Instead, it almost always makes
 sense to first render some content into layout objects, then apply a DOM
 animation to the layout tree.
 
-It's straightforward to imagine how this might work for opacity: define some
+It's straightforward to see how this works for opacity: define some
 HTML that you want to animate, then interpolate the `opacity` CSS property in
 JavaScript smoothly from one value to another. Here's an example that animates
 from 0.999[^why-not-one] to 0.1, over 120 frames (about two seconds), then back
-up to 1 for 120 more frames, and repeats.
+up to 0.999 for 120 more frames, and repeats.
 
-[^why-not-one]: The animation starts below 1 because most real browsers optimize
-away internal animation optimizations when opacity is 1, and so it's easier to
-dig into the performnace of this example on a real browser with 0.999. Starting
-animations at 0.999 is also a common trick used on web sites that want to
-avoid visual popping of the content as it goes in and out of GPU-accelerated
-mode.
+[^why-not-one]: The animation starts below 1 because most real browsers remove
+certain animation-related optimizations when opacity is exactly 1. So it's
+easier to dig into the performance of this example on a real browser with 0.999
+opacity. Starting animations at 0.999 is also a common trick used on web sites
+that want to avoid visual popping of the content as it goes in and out of
+GPU-accelerated mode. I chose 0.999 instead of 0.9 because the visual
+difference from 1.0 is inperceptible.
 
 ``` {.html file=example-opacity-html}
 <div>Test</div>
@@ -189,7 +185,7 @@ the parent layout object. We discussed overflow to some extent in
 `overflow:clip`, which instead clips the overflowing content at the box
 boundary. Other values include `scroll`, which clips it but allows the user
 to see it via scrolling. And if scroll is specified in the x direction, the
-descendant content will lay out as it if has an infinite width. Extra long
+descendant content will lay out as it if has an infinite width. Extra-long
 words can also cause horizontal overflow.
 
 Implementing `width` and `height` turns out to be pretty easy. Instead of
@@ -291,7 +287,7 @@ CSS transitions
 
 But why do we need JavaScript just to smoothly interpolate `opacity` or `width`?
 Well, that's what [CSS transitions][css-transitions] are for. The `transition` CSS
-property works like this:
+property looks like this:
 
 [css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
 
@@ -305,26 +301,51 @@ This is much more convenient for website authors than writing a bunch of
 JavaScript, and also doesn't force them to account for each and every way in
 which the styles can change.
 
+This is the opacity example, but using a CSS transition and JavaScript to
+trigger it once every 2 seconds:
+
 <iframe src="examples/example13-opacity-transition.html"></iframe>
 (click [here](examples/example13-opacity-transition.html) to load the example in
 your browser; [here](examples/example13-width-transition.html) is the width
 animation example)
 
-Implement this CSS property. Start with a quick helper method that returns the
-duration of a transition if it was set, and `None` otherwise. This requires
+Implement this CSS property. The strategy will be to add code in `style` that
+checks whether animations should start when a property changes, and update
+running animations at the start of `Tab.run_animation_frame`.
+
+``` {.python}
+def style(node, rules, tab):
+    old_style = None
+    if hasattr(node, 'style'):
+        old_style = node.style
+
+    # ...
+
+    if old_style:
+        try_numeric_animation(node, "opacity",
+            old_style, node.style, tab, is_px=False)
+        try_numeric_animation(node, "width",
+            old_style, node.style, tab, is_px=True)
+```
+
+Implement the `try_numeric_animation` function. It will compare the
+values of a CSS property in the old and new style. If they are different *and*
+there is a CSS transition defined for those properties, an animation will
+begin. Start with a helper method that returns the duration (in units of animation
+frame count) of a transition if it was set, and `None` otherwise. This requires
 parsing the comma-separated `transition` syntax.^[Unfortunately, setting up
 animations tends to have a lot of boilerplate code, so get ready for more code
 than usual. The good news though is that it's all pretty simple to
 understand.]
 
 ``` {.python}
-def get_transition(property_value, style):
+def get_transition(property_name, style):
     if not "transition" in style:
         return None
     transition_items = style["transition"].split(",")
     found = False
     for item in transition_items:
-        if property_value == item.split(" ")[0]:
+        if property_name == item.split(" ")[0]:
             found = True
             break
     if not found:
@@ -333,48 +354,56 @@ def get_transition(property_value, style):
     return duration_secs / REFRESH_RATE_SEC 
 ```
 
-Next let's add some code that detects if a transition should start, by comparing
-two style objects---the ones before and after a style update for a DOM node. It
-will add a `NumericAnimation` to `tab` if the transition was found. Both
-`opacity` and `width` are *numeric* animations, but with different
-units---unitless floating-point between 0 and 1 and pixels,
-respectively.[^more-units] The difference will be handled by an `is_px`
-parameter indicating which it is.
+Add some code that detects if a transition remains across a style
+recalc, by comparing two style objects---the ones before and after a style
+update for a DOM node:
 
 ``` {.python}
-def try_transition(name, node, old_style, new_style):
-    if not get_transition(name, old_style):
+def try_transition(property_name, node, old_style, new_style):
+    if not get_transition(property_name, old_style):
         return None
 
-    num_frames = get_transition(name, new_style)
+    num_frames = get_transition(property_name, new_style)
     if num_frames == None:
         return None
 
-    if name not in old_style or name not in new_style:
+    if property_name not in old_style or \
+        property_name not in new_style:
         return None
 
-    if old_style[name] == new_style[name]:
+    if old_style[property_name] == new_style[property_name]:
         return None
 
     return num_frames
+```
 
-def try_numeric_animation(node, name,
+Now for `try_numeric_animation` itself. It will start an animation (using a new
+`NumericAnimation` class we'll define in a moment). The animations will be
+stored in a new dictionary on the `Tab` class, keyed by CSS property name. Both
+`opacity` and `width` are specified in numeric values, but with different
+units---unitless floating-point between 0 and 1 and pixels, respectively.
+[^more-units] The difference is handled by an `is_px` parameter.
+
+``` {.python}
+def try_numeric_animation(node, property_name,
     old_style, new_style, tab, is_px):
-    num_frames = try_transition(name, node, old_style, new_style)
+    num_frames = try_transition(
+        property_name, node, old_style, new_style)
     if num_frames == None:
-        return None;
+        return None
 
     if is_px:
-        old_value = float(old_style[name][:-2])
-        new_value = float(new_style[name][:-2])
+        old_value = float(old_style[property_name][:-2])
+        new_value = float(new_style[property_name][:-2])
     else:
-        old_value = float(old_style[name])
-        new_value = float(new_style[name])
+        old_value = float(old_style[property_name])
+        new_value = float(new_style[property_name])
 
     if not node in tab.animations:
         tab.animations[node] = {}
-    tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value, new_value,
+
+    tab.animations[node][property_name] = NumericAnimation(
+        node, property_name, is_px, old_value, new_value,
         num_frames, tab)
 ```
 
@@ -383,7 +412,7 @@ contend with. I also didn't bother clamping opacity to a value between 0 and 1.
 
 [units]: https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Values_and_units
 
-Next, implement `NumericAnimation`. This class just encapsulates a bunch
+Next implement `NumericAnimation`. This class just encapsulates a bunch
 of parameters, and has a single `animate` method. `animate` is in charge of
 advancing the animation by one frame. It's the equivalent of the
 `requestAnimationFrame` callback in a JavaScript-driven animation; it also
@@ -429,7 +458,6 @@ Note that I called a new method `set_needs_layout` rather than
 *not* style recalc. Otherwise style recalc will re-create the
 `NumericAnimation` on every single frame.[^even-more]
 
-
 ``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
@@ -459,43 +487,7 @@ expedient to make basic transition animations work. For example, it doesn't
 correctly handle cases where styles changed on elements unrelated to the
 animation---that situation shouldn't re-start the animation either.
 
-Now for integrating this code into rendering. It has two main parts: detecting
-style changes, and executing the animation. Both have some details that are
-important to get right, but are conceptually straightforward:
-
-First, in the `style` function, when a DOM node changes its style, check to see
-if one or more of the properties with registered transitions are changed; if
-so, start a new animation and add it to the `animations` dictionary on `tab`.
-This logic will be in a new function called `animate_style`, which is called
-just after the style update for `node` is complete:
-
-``` {.python}
-def style(node, rules, tab):
-    # ...
-    animate_style(node, old_style, node.style, tab)
-```
-
-And `animate_style` just has some pretty simple business logic to find
-animations and start them. First, bail if there is not an old style. Then look
-for `opacity` and `width` animations, and add them to the `animations` object
-if so.[^corner-cases]
-
-[^corner-cases]: Note that this code doesn't handle some corner cases
-correctly, such as re-starting a transition if the node's style changes during
-an animation.
-
-``` {.python}
-def animate_style(node, old_style, new_style, tab):
-    if not old_style:
-        return
-
-    try_numeric_animation(node, "opacity",
-        old_style, new_style, tab, is_px=False)
-    try_numeric_animation(node, "width",
-        old_style, new_style, tab, is_px=True)
-```
-
-Second, in `run_animation_frame` on `tab`, each animation in `animations`
+In `run_animation_frame` on `tab`, each animation in `animations`
 should be updated just after running `requestAnimationFrame` callbacks and
 before calling `render`. It's basically: loop over all animations, and call
 `animate`; if `animate` returns `True`, that means it animated a new frame by
@@ -534,31 +526,34 @@ class Tab:
 Our browser now supports animations with just CSS! That's much more convenient
 for website authors. It's also a bit faster, but not a whole lot (recall that
 our [profiling in Chapter 12][profiling] showed rendering was almost all of the
-time spent). That's not really acceptable, so let's turn our attention to how
-to dramatically speed up rendering for these animations.
+time spent, in cases where JavaScript isn't doing much). That's not really
+acceptable, so let's turn our attention to how to dramatically speed up
+rendering for these animations.
 
 [profiling]: http://localhost:8001/scheduling.html#profiling-rendering
 
 ::: {.further}
+
 CSS transitions are great for adding animations triggered by DOM updates from
-JavaScript. But what about animations that are just part of an ongoing animation
-on the page, or want to run forever? In fact, the opacity and width animations
-we've been working with are not really connected to DOM transitions at all,
-and are instead infinitely repeating animations. This can be expressed directly
-in CSS without any JavaScript via a [CSS animation][css-animations].
+JavaScript. But what about animations that are just part of a page's UI, and
+not connected to a visual transition? (For example, a pulse opacity
+animation on a button or cursor.) In fact, the opacity and width animations
+we've been working with are not really connected to DOM transitions at all, and
+are instead infinitely repeating animations. This can be expressed directly in
+CSS without any JavaScript via a [CSS animation][css-animations].
 
 [css-animations]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Animations/Using_CSS_animations
 
-You can see the CSS animation variant of the opacity
-[here](examples/example13-opacity-animation.html), and width
+You can see the CSS animation variant of the opacity demo
+[here](examples/example13-opacity-animation.html), and width one
 [here](examples/example13-width-animation.html). Implementing this feature
 requires parsing a new `@keyframes` syntax and the `animation` CSS property.
-Notice how we can make the animation alternate infinitely because we've
-defined the start and end of the animation, and therefore going backward just
-reverses the two.
+Notice how `@keyframes` defines the start and end point declaratively, which
+allows us to make the animation alternate infinitely
+because a reverse is just going backward among the keyframes.
 
-There is also a way to create, start and stop such animations using JavaScript,
-using the [Web Animations API][web-animations].
+There is also the [Web Animations API][web-animations], which allows creation
+and management of animations via JavaScript.
 
 [web-animations]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Animations_API
 :::
@@ -568,20 +563,22 @@ GPU acceleration
 
 The first order of business in making these animations smoother is to move
 raster and draw to the [GPU][gpu]. Because both SDL and Skia support these
-modes, the code to do so looks a lot like some configuration changes, and
-doesn't really give any direct insight into why it's all-of-a-sudden faster. So
-before showing the code I'll briefly explain how GPUs work and the
-four (internal implementation detail to Skia and SDL) steps of running
-GPU raster and draw.
+modes, turning it on is just a matter of passing the right configuration
+parameters. But that doesn't give us any direct insight into why it's
+all-of-a-sudden faster. So before showing the code I'll briefly explain how
+GPUs work and the four (internal implementation detail to Skia and SDL) steps
+of running GPU raster and draw.
 
-There are lots of resources online about how GPUs work and how to program them.
-But we won't generally be writing shaders or other types of GPU programs in
-this book. Instead, let's focus on the basics of GPU technologies and how they
-map to browsers. A GPU is essentially a computer chip that is good at running
-very simple computer programs that specialize in turning simple data structures
-into pixels. These programs are so simple that the GPU can run one of them *in
-parallel* for each pixel, and this parallelism is why GPU raster is usually
-much faster than CPU raster.
+There are lots of resources online about how GPUs work and how to program them
+via GL shaders and so on. But we won't be writing shaders or other
+types of GPU programs in this book. Instead, let's focus on the basics of GPU
+technologies and how they map to browsers. A GPU is essentially a computer chip
+that is good at running very simple computer programs that specialize in
+turning simple data structures into pixels. These programs are so simple that
+the GPU can run one of them *in parallel* for each pixel, and this parallelism
+is why GPU raster is usually much faster than CPU raster. GPU draw is also
+much faster, because "copying" from one piece of GPU memory to another also
+happens in parallel.
 
 At a high level, the steps to raster and draw using the GPU are:[^gpu-variations]
 
@@ -593,7 +590,7 @@ At a high level, the steps to raster and draw using the GPU are:[^gpu-variations
 * *Compile* GPU programs to run on the data structures.[^compiled-gpu]
 
 [^compiled-gpu]: That's right, GPU programs are dynamically compiled! This
-allows the programs to be portable across a wide variety of GPU implementations
+allows GPU programs to be portable across a wide variety of implementations
 that may have very different instruction sets or acceleration tactics.
 
 * *Execute* the raster into GPU textures.[^texture]
@@ -610,7 +607,8 @@ children. The root of the tree is the framebuffer texture.
 
 [^gpu-texture]: Recall from [Chapter 11](visual-effects.md) that there can be
 surfaces that draw into other surfaces, forming a tree. Skia internally does
-this sometimes, based on various triggers such as blend modes. 
+this sometimes, based on various triggers such as blend modes. The internal
+nodes draw into intermediate textures.
 
 The time to run GPU raster is then the roughly sum of the time for these four
 steps.[^optimize] Usually, the *execute* step is very fast, and total time is
@@ -1915,9 +1913,12 @@ def try_transform_animation(node, old_style, new_style, tab):
 ```
 
 ``` {.python}
-def animate_style(node, old_style, new_style, tab):
+def style(node, rules, tab):
     # ...
-    try_transform_animation(node, old_style, new_style, tab)
+    if old_style:
+        # ...
+        try_transform_animation(node, old_style,
+            node.style, tab)
 ```
 
 And `TranslateAnimation`:

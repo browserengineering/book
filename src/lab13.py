@@ -883,23 +883,13 @@ class JSContext:
 
 USE_BROWSER_THREAD = True
 
-def animate_style(node, old_style, new_style, tab):
-    if not old_style:
-        return
-
-    try_numeric_animation(node, "opacity",
-        old_style, new_style, tab, is_px=False)
-    try_numeric_animation(node, "width",
-        old_style, new_style, tab, is_px=True)
-    try_transform_animation(node, old_style, new_style, tab)
-
-def get_transition(property_value, style):
+def get_transition(property_name, style):
     if not "transition" in style:
         return None
     transition_items = style["transition"].split(",")
     found = False
     for item in transition_items:
-        if property_value == item.split(" ")[0]:
+        if property_name == item.split(" ")[0]:
             found = True
             break
     if not found:
@@ -907,18 +897,19 @@ def get_transition(property_value, style):
     duration_secs = float(item.split(" ")[1][:-1])
     return duration_secs / REFRESH_RATE_SEC 
 
-def try_transition(name, node, old_style, new_style):
-    if not get_transition(name, old_style):
+def try_transition(property_name, node, old_style, new_style):
+    if not get_transition(property_name, old_style):
         return None
 
-    num_frames = get_transition(name, new_style)
+    num_frames = get_transition(property_name, new_style)
     if num_frames == None:
         return None
 
-    if name not in old_style or name not in new_style:
+    if property_name not in old_style or \
+        property_name not in new_style:
         return None
 
-    if old_style[name] == new_style[name]:
+    if old_style[property_name] == new_style[property_name]:
         return None
 
     return num_frames
@@ -940,23 +931,24 @@ def try_transform_animation(node, old_style, new_style, tab):
     tab.animations[node]["transform"] = TranslateAnimation(
         node, old_translation, new_translation, num_frames, tab)
 
-def try_numeric_animation(node, name,
+def try_numeric_animation(node, property_name,
     old_style, new_style, tab, is_px):
-    num_frames = try_transition(name, node, old_style, new_style)
+    num_frames = try_transition(
+        property_name, node, old_style, new_style)
     if num_frames == None:
-        return None;
+        return None
 
     if is_px:
-        old_value = float(old_style[name][:-2])
-        new_value = float(new_style[name][:-2])
+        old_value = float(old_style[property_name][:-2])
+        new_value = float(new_style[property_name][:-2])
     else:
-        old_value = float(old_style[name])
-        new_value = float(new_style[name])
+        old_value = float(old_style[property_name])
+        new_value = float(new_style[property_name])
 
     if not node in tab.animations:
         tab.animations[node] = {}
-    tab.animations[node][name] = NumericAnimation(
-        node, name, is_px, old_value, new_value,
+    tab.animations[node][property_name] = NumericAnimation(
+        node, property_name, is_px, old_value, new_value,
         num_frames, tab)
 
 def style(node, rules, tab):
@@ -982,7 +974,13 @@ def style(node, rules, tab):
             computed_value = compute_style(node, property, value)
             node.style[property] = computed_value
 
-    animate_style(node, old_style, node.style, tab)
+    if old_style:
+        try_numeric_animation(node, "opacity",
+            old_style, node.style, tab, is_px=False)
+        try_numeric_animation(node, "width",
+            old_style, node.style, tab, is_px=True)
+        try_transform_animation(node, old_style,
+            node.style, tab)
 
     for child in node.children:
         style(child, rules, tab)
