@@ -419,7 +419,21 @@ I normalize them to lower case. Also, white-space is insignificant in
 HTTP header values, so I strip off extra whitespace at the beginning
 and end.
 
-Finally, the body is everything else the server sent us:
+Headers can describe all sorts of information, but a couple of headers
+are especially important because they tell us that the data we're
+trying to access is being sent in an unusual way. Let's make sure none
+of those are present:[^if-te]
+
+[^if-te]: The "compression" exercise at the end of this chapter
+    describes how your browser should handle these headers if they are
+    present.
+
+``` {.python}
+assert "transfer-encoding" not in headers
+assert "content-encoding" not in headers
+```
+
+The usual way to send the data, then, is everything after the headers:
 
 ``` {.python}
 body = response.read()
@@ -439,12 +453,14 @@ def request(url):
 Now let's display the text in the body.
 
 ::: {.further}
-With the `Accept-Encoding` request header, a browser can
-request a [compressed
-response](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding).
-Large, text-heavy web pages compress well, and as a result the page
-loads faster.
+The `Transfer-Encoding` and `Content-Encoding` headers are used to
+compress web pages before sending them. Large, text-heavy web pages
+compress well, and as a result the page loads faster. To use them, the
+browser typically sends an [`Accept-Encoding` header][ae-header] in
+its request, and the server then compresses the data if it can.
 :::
+
+[ae-header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding
 
 Displaying the HTML
 ===================
@@ -710,17 +726,17 @@ adjusts the input to `show()` when in view-source mode, like this:
 Your browser must send the `Accept-Encoding` header with the value
 `gzip`. If the server supports compression, its response will have a
 `Content-Encoding` header with value `gzip`. The body is then
-compressed. To decompress it, you can use the `decompress` method in
-the `gzip` module. Calling `makefile` with the `encoding` argument
-will no longer work, because compressed data is not `utf8`-encoded.
-You can change the first argument `"rb"` to work with raw bytes
-instead of encoded text.[^te]
+compressed. Add support for this case. To decompress the data, you can
+use the `decompress` method in the `gzip` module. Calling `makefile`
+with the `encoding` argument will no longer work, because compressed
+data is not `utf8`-encoded. You can change the first argument `"rb"`
+to work with raw bytes instead of encoded text.[^te]
 
 [negotiate]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
 
-[^te]: Most web servers that support compressed data use a
-`Transfer-Encoding` called [`chunked`][chunked]. You'll need to add
-support for it as well to access most web servers.
+[^te]: Most web servers send compressed data in a `Transfer-Encoding`
+called [`chunked`][chunked]. You'll need to add support for it too to
+access most web servers that support compressed data.
 
 [chunked]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
 
@@ -777,12 +793,6 @@ to cache the response.
     basically standardized. In Python, the flags we pass are defaults,
     so you can actually call `socket.socket()`; I'm keeping the flags
     here in case you're following along in another language.
-
-[^18]: Well, to be more precise, you need to call `encode` and then tell
-    it the *character encoding* that your string should use. This is a
-    complicated topic. I'm using `utf8` here, which is a common
-    character encoding and will work on many pages, but in the real
-    world you would need to be more careful.
 
 [^19]: If you're in another language, you might only have `socket.read`
     available. You'll need to write the loop, checking the socket
