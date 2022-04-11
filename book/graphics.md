@@ -565,7 +565,7 @@ with the mouse wheel.[^laptop-mousewheel] The associated event object
 has an `event.delta` value which tells you how far and in what
 direction to scroll. Unfortunately, Mac and Windows give the
 `event.delta` objects opposite sign and different scales, and on
-Linux, scrolling instead uses the `<Mouse-4>` and `<Mouse-5>`
+Linux, scrolling instead uses the `<Button-4>` and `<Button-5>`
 events.[^more-mousewheel]
 
 [^why-only-top]: It's harder to stop scrolling past the bottom of the
