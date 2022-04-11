@@ -1,7 +1,7 @@
 ---
 title: Animations and Compositing
 chapter: 13
-prev: visual-effects
+prev: scheduling
 next: skipped
 ...
 
