@@ -58,6 +58,25 @@ Then we request the URL and test both request and response:
     >>> headers
     {'header1': 'Value1'}
 
+With an unusual `Transfer-Encoding` the request should fail:
+
+    
+    >>> url = 'http://test.test/te'
+    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"Transfer-Encoding: chunked\r\n\r\n" +
+    ... b"0\r\n\r\n")
+    >>> test.errors(lab1.request, url)
+    True
+
+Likewise with `Content-Encoding`:
+    
+    >>> url = 'http://test.test/ce'
+    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"Content-Encoding: gzip\r\n\r\n" +
+    ... b"\x00\r\n\r\n")
+    >>> test.errors(lab1.request, url)
+    True
+
 Testing SSL support
 -------------------
 

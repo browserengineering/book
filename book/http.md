@@ -296,7 +296,7 @@ Once you have a socket, you need to tell it to connect to the other
 computer. For that, you need the host and a *port*. The port depends
 on the type of server you're connecting to; for now it should be 80.
 
-``` {.python}
+``` {.python replace=80/port}
 s.connect((host, 80))
 ```
 

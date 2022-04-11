@@ -50,6 +50,9 @@ def request(url):
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
 
+    assert "transfer-encoding" not in headers
+    assert "content-encoding" not in headers
+
     body = response.read()
     s.close()
 
