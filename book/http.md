@@ -296,8 +296,8 @@ Once you have a socket, you need to tell it to connect to the other
 computer. For that, you need the host and a *port*. The port depends
 on the type of server you're connecting to; for now it should be 80.
 
-``` {.python expected=False}
-s.connect(("example.org", 80))
+``` {.python}
+s.connect((host, 80))
 ```
 
 This talks to `example.org` to set up the connection and ready both
@@ -328,43 +328,48 @@ Now that we have a connection, we make a request to the other server.
 To do so, we send it some data using the `send` method:
 
 ``` {.python expected=False}
-s.send(b"GET /index.html HTTP/1.0\r\n" + 
-       b"Host: example.org\r\n\r\n")
+s.send("GET {} HTTP/1.0\r\n".format(path).encode("utf8") + 
+       "Host: {}\r\n\r\n".format(host).encode("utf8"))
 ```
 
-There are a few things to be careful of here. First, it's important to
-have the letter "b" before the string. Next, it's very important to
-use `\r\n` instead of `\n` for newlines. And finally, it's essential
-that you put *two* newlines `\r\n` at the end, so that you send that
-blank line at the end of the request. If you forget that, the other
-computer will keep waiting on you to send that newline, and you'll
-keep waiting on its response. Computers are dumb.
+There are a few things to be careful of here. First, it's very
+important to use `\r\n` instead of `\n` for newlines. It's also
+essential that you put *two* newlines `\r\n` at the end, so that you
+send that blank line at the end of the request. If you forget that,
+the other computer will keep waiting on you to send that newline, and
+you'll keep waiting on its response.[^literal]
 
-::: {.quirk}
-Time for a Python quirk. When you send data, it's important to
-remember that you are sending raw bits and bytes; they could form text
-or an image or video. That's why here I have a letter `b` in front of
-the string of data: that tells Python that I mean the bits and bytes
-that represent the text I typed in, not the text itself. You can
-also see this in the type changing from `str` to  `bytes`:
+[^literal]: Computers are endlessly literal-minded.
+
+And finally, note the `encode` call. When you send data, it's
+important to remember that you are sending raw bits and bytes; they
+could form text or an image or video. But a Python string is
+specifically for representing text. The `encode` method converts text
+into bytes, and there's a corresponding `decode` method that goes the
+other way.[^charset] Python reminds you to be careful by giving
+different types to text and to bytes:
+
+[^charset]: When you call `encode` and `decode` you need to tell the
+    computer what *character encoding* you want it to use. This is a
+    complicated topic. I'm using `utf8` here, which is a common
+    character encoding and will work on many pages, but in the real
+    world you would need to be more careful.
 
 ``` {.python .example}
->>> type("asdf")
+>>> type("text")
 <class 'str'>
->>> type(b"asdf")
+>>> type("text".encode("utf8")
 <class 'bytes'>
 ```
 
-If you forget that letter `b`, you will get some error about `str`
-versus `bytes`. You can turn a `str` into `bytes` by calling its
-`encode("utf8")` method, and go the other way with
-`decode("utf8")`.[^18]
-:::
+If you see an error about `str` versus `bytes`, it's because you
+forgot to call `encode` or `decode` somewhere.
 
-You'll notice that the `send` call returns a number, in this case `47`.
-That tells you how many bytes of data you sent to the other computer;
-if, say, your network connection failed midway through sending the data,
-you might want to know how much you sent before the connection failed.
+If you run this, you'll notice that the `send` call returns a number,
+in this case `47`. That tells you how many bytes of data you sent to
+the other computer; if, say, your network connection failed midway
+through sending the data, you might want to know how much you sent
+before the connection failed.
 
 To read the response, you'd generally use the `read` function on
 sockets, which gives whatever bits of the response have already
