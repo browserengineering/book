@@ -1630,7 +1630,7 @@ class Browser:
         if tab == self.tabs[self.active_tab]:
             # ...
             self.composited_updates = data.composited_updates
-            if len(self.composited_layers) == 0:
+            if len(self.composited_updates) == 0:
                 self.set_needs_composite()
             else:
                 self.set_needs_draw()
