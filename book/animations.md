@@ -1154,11 +1154,11 @@ Finally, we'll need to be able to get the *composited bounds* of a
 contains the item.
 
 A display item's composited bounds is the union of its painting rectangle and
-all descendants that are not themselves composited. This will be needed to
-determine the absolute bounds of a `CompositedLayer`'s surface. This is pretty
-easy---there is already a `rect` field indicating the bounds, and  stored on
-the various subclasses. So just pass them to the superclass instead and define
-`composited_bounds` there:
+all descendants that are not themselves composited. This value be needed to
+determine the absolute bounds of a `CompositedLayer`'s surface. Computing
+composited bounds is pretty easy---there is already a `rect` field indicating
+the bounds, stored on the various subclasses. So just pass them to the
+superclass instead and define `composited_bounds` there:
 
 ``` {.python}
 class DisplayItem:
@@ -1196,21 +1196,21 @@ Mostly for simplicity, our browser composites `SaveLayer` visual effects,
 regardless of whether they are animating. But in fact, there are some good
 reasons to always composite certain visual effects.
 
-First, we'll be able to start the animation quicker,
-since raster won't have to happen first. (Note that whenever we change the 
-compositing reasons or display list, we might have to re-raster a number of 
-surfaces. And also re-do compositing.)
+First, we'll be able to start the animation quicker, since raster won't have to
+happen first. That's because wWhenever we change the compositing reasons , we
+might have to re-raster a number of surfaces. And also re-do compositing.
 
 Second, compositing sometimes has visual side-effects. Ideally, composited
-textures would look exactly the same on the screen. But due to the details of
-pixel-sensitive raster technologies like sub-pixel positioning for fonts, image
-resize filter algorithms, blending and anti-aliasing, this isn't always
-possible. "Pre-compositing" the content avoids visual jumps on the page when
-compositing starts.
+textures would look exactly the same on the screen as non-composited ones. But
+due to the details of pixel-sensitive raster technologies like [sub-pixel
+rendering][subpixel] image resize filter algorithms, blending and
+anti-aliasing, this isn't always possible. "Pre-compositing" the content avoids
+visual jumps on the page when compositing starts.
 
 Real browsers support the [`will-change`][will-change] CSS property for the
 purpose of signalling pre-compositing.
 
+[subpixel]: https://en.wikipedia.org/wiki/Subpixel_rendering
 [will-change]: https://developer.mozilla.org/en-US/docs/Web/CSS/will-change
 
 :::
@@ -1260,8 +1260,8 @@ animation".
 The `CompositedLayer` class will have the following methods:
 
 * `can_merge`: returns whether the given paint chunk is compatible with being
-  drawn into the same `CompositedLayer`. This will be true if they have the
-  same nearest composited ancestor (or both have none).
+  drawn into the same `CompositedLayer` as the existing ones. This will be true
+  if they have the same nearest composited ancestor (or both have none).
  
 ``` {.python}
     def can_merge(self, display_item, ancestor_effects):
@@ -1313,8 +1313,8 @@ class CompositedLayer:
   translate by the `top` and `left` of the composited bounds. That's because we
   should allocate a surface exactly sized to the width and height of the
   bounds; its top/left is just a positioning offset.^[This will be taken into
-  acocunt in `draw`; see below.] Also, notice the second example of of the `op`
-  parameter for executing the paint command.
+  acocunt in `draw` as well; see below.] Also, notice the second example of of
+  the `op` parameter for executing the paint command.
 
 ``` {.python}
     def raster(self):
@@ -1409,11 +1409,11 @@ Interestingly enough, as of the time of writing this section, Chromium and
 WebKit both peform the `compositing` step on the main thread. This is the only
 way in which our browser is actually ahead of real browsers! The reason
 compositing doesn't (yet) happen on another thread in Chromium is that to get
-there took re-architecting the entire algorithm for compositing. Fixing this
-turned out to be extremely difficult, because the old algorithm was deeply
-intertwined into nearly every aspect of the rendering engine. The
-re-architecture only [recently
-completed](https://developer.chrome.com/blog/renderingng/#compositeafterpaint),
+there took re-architecting the entire algorithm for compositing. The
+re-architecture turned out to be extremely difficult, because the old one
+was deeply intertwined with nearly every aspect of the rendering engine. The
+re-architecture  project only
+[recently completed](https://developer.chrome.com/blog/renderingng/#compositeafterpaint),
 so perhaps sometime soon this work will be threaded in Chromium.
 
 :::
