@@ -1707,7 +1707,7 @@ class Browser:
             self.animation_timer = None
             self.composited_updates = data.composited_updates
             self.scroll_behavior = data.scroll_behavior
-            if len(self.composited_layers) == 0:
+            if len(self.composited_updates) == 0:
                 self.set_needs_composite()
             else:
                 self.set_needs_draw()

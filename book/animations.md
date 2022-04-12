@@ -692,9 +692,7 @@ class Browser:
         self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
             self.skia_context,
             skia.GrBackendRenderTarget(
-                WIDTH, HEIGHT,
-                0,  # sampleCnt
-                0,  # stencilBits
+                WIDTH, HEIGHT, 0, 0,
                 skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
                 skia.kBottomLeft_GrSurfaceOrigin,
                 skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
@@ -702,7 +700,7 @@ class Browser:
 
 ```
 
-Note that this code never seems to reference `gl_context` or `sdl_window`
+Note: this code never seems to reference `gl_context` or `sdl_window`
 directly, but draws to the window anyway. That's because OpenGL is a strange
 API that uses hidden global states; the `MakeGL` Skia method just binds to the
 existing GL context.
@@ -717,26 +715,23 @@ a GPU texture, but one that is independent of the framebuffer:
     assert self.chrome_surface is not None
 ```
 
-The difference from the old way of doing surfaces was that it's associated
-explicitly with the `skia_context` and uses a different color space that is
-required for GPU mode. `tab_surface` should get exactly the same treatment
-(but with different width and height arguments, of course).
+As compared with Chapter 11 surfaces, this surface is associated explicitly with
+the `skia_context` and uses a different color space that is required for GPU
+mode. `tab_surface` should get exactly the same treatment (but with different
+width and height arguments, of course).
 
-The final change to make is that `draw` is now simpler, because `root_surface`
-need not blit into the SDL surface, because they share a GPU framebuffer
-backing. (There are no changes at all required to raster.) All you have to do
-is *flush* the Skia surface (Skia surfaces draw lazily) and call
-`SDL_GL_SwapWindow` to activate the new framebuffer (because of OpenGL
-[double-buffering][double]).
+Finally, `draw` is much simpler: `root_surface` need not blit into the
+SDL surface, because they share a GPU framebuffer backing. (There are no
+changes at all required to raster.) All it has to do is *flush* the Skia
+surface (Skia surfaces draw lazily) and call `SDL_GL_SwapWindow` to activate
+the new framebuffer (because of OpenGL [double-buffering][double]).
 
 [double]: https://wiki.libsdl.org/SDL_GL_SwapWindow
 
 ``` {python}
     def draw(self):
         canvas = self.root_surface.getCanvas()
-
         # ...
-
         chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
         canvas.save()
         canvas.clipRect(chrome_rect)
@@ -772,29 +767,28 @@ using compositing.
 Compositing
 ===========
 
-*Compositing* is the technique that lets us avoid raster costs during visual
- effect animations; on the browser thread, only draw is needed for each
- animation frame (with different parameters each time).[^compositing-def]
+*Compositing* is a technique to avoid raster during visual effect animations by
+ caching it instead in the GPU. So only `draw` is needed for each animation
+ frame (with different parameters each time).[^compositing-def]
 
-[^compositing-def]: The term [*compositing*][compositing] at its root means to
+[^compositing-def]: The term [*compositing*][compositing] originally meant to
 combine multiple images together into a final output. As it relates to
-browsers, it usually means the performance optimization technique of caching
-rastered GPU textures that are the inputs to animated visual effects, but the
-term is usually overloaded to refer to OS and browser-level compositing
-and multi-threaded rendering.
+browsers, it usually means the performance optimization technique described
+here, but the term is usually overloaded to refer to OS and browser-level
+compositing and multi-threaded rendering.
 
 [compositing]: https://en.wikipedia.org/wiki/Compositing
 
 Let's consider the opacity animation example from this chapter. When we're
-animating, the opacity is changing, but the
-"Test" text underneath it is not. So let's stop re-rastering that content on
- every frame of the animation, and instead cache it in a GPU texture.
- This should directly reduce browser thread work, because no raster work
- will be needed on each animation frame.
+animating, opacity is changing, but the "Test" text underneath it is not. So
+let's stop re-rastering that content on every frame of the animation, and
+instead cache it in a GPU texture. This should directly reduce browser thread
+work, because no raster work will be needed on each animation frame.
 
 Below is the opacity animation with a red border "around" the surface that we
 want to cache. Notice how it's sized to the width and height of the `<div>`,
-which is as wide as the viewport and as tall as the text "Test".[^chrome]
+which is as wide as the viewport and as tall as the text "Test".[^chrome] That's
+because the surface will cache the raster output of the `DrawText` command.
 
  <iframe src="http://localhost:8001/examples/example13-opacity-transition-borders.html">
  </iframe>
@@ -807,16 +801,16 @@ As I explained in [Chapter 11](visual-effects.md#browser-compositing), Skia
 sometimes caches surfaces internally. So you might think that Skia has a way to
 say "please cache this surface". And there is---keep around a `skia.Surface`
 object across multiple raster-and-draw executions and use the `draw` method on
-the surface to draw it into the canvas.^[Skia will keep alive the rastered
+the surface to draw it into another canvas.^[Skia will keep alive the rastered
 content associated with the `Surface` object until it's garbage collected.] In
 other words, we'll need to do the caching ourselves. This feature is not
 built into Skia itself in a trivial-to-use form.
 
-Let's start digging into the compositing algorithm and how to implement it. The
+Let's start digging into an implementation of compositing. The
 plan is to cache the "contents" of an animating visual effect in a new
 `skia.Surface` and store it somewhere. But what does "contents" mean exactly?
 If opacity is animating, which parts of the web page should we cache in the
-surface? To answer that, let's revisit the \structure of our display
+surface? To answer that, let's revisit the structure of our display
 lists.
 
 It'll be helpful to be able to print out the (recursive, tree-like) display list
@@ -836,12 +830,12 @@ class SaveLayer:
         super().__init__(cmds=cmds, is_noop=not should_save)
 ```
 
-Then add a `repr_recursive` method to `DisplayItem`. Also add an `is_noop`
-parameter that indicates whether the `DisplayItem` has no effect.^[Recall that
-most of the time, the visual effect `DisplayItem`s generated by
-`paint_visual_effects` don't do anything, because most elements don't have
-a transform, oapcity or blend mode.] That way, printing out the display list
-will skip irrelevant visual effects.
+Then add a `repr_recursive` method to `DisplayItem` for debugging. Also add an
+`is_noop` parameter that indicates whether the `DisplayItem` has no
+effect.^[Recall that most of the time, the visual effect `DisplayItem`s
+generated by `paint_visual_effects` don't do anything, because most elements
+don't have a transform, opacity or blend mode.] That way, printing out the
+display list will skip irrelevant visual effects.
 
 ``` {.python expected=False}
 class DisplayItem:
@@ -882,13 +876,12 @@ begun, it should print something like:
     SaveLayer(alpha=0.999): bounds=Rect(13, 18, 787, 40.3438)
         DrawText(text=Test): bounds=Rect(13, 21.6211, 44, 39.4961)
 
-Now that we can see the example, it seems pretty clear that we should make
-a surface for the contents of the opacity `SaveLayer`, in this case containing
-only a `DrawText`. In more complicated examples, it could have any number of
-display list commands.^[Note that this is *not* the same as "cache the display
-list for a DOM element subtree". To see why, consider that a single
-DOM element can result in more than one `SaveLayer`, such as when it has
-both opacity *and* a transform.]
+Let's make a surface for the contents of the opacity `SaveLayer`, in this case
+containing only a `DrawText`. In more complicated examples, it could have any
+number of display list commands.^[Note that this is *not* the same as "cache
+the display list for a DOM element subtree". To see why, consider that a single
+DOM element can result in more than one `SaveLayer`, such as when it has both
+opacity *and* a transform.]
 
 Putting the `DrawText` into its own surface sounds simple enough: just make a
 surface and raster that sub-piece of the display list into it, then draw that
@@ -903,8 +896,8 @@ the child surface should ultimately boil down to something like this:
 
 Let's unpack what is going on in this code. First, raster `opacity_surface`.
 Then create a new conceptual
-"surface" on the Skia stack via `saveLayer`, then draw `opacity_surface`,
-and finally `restore`. Observe how this is
+"surface" on the Skia stack via `saveLayer`, draw `opacity_surface`,
+and finally call `restore`. Observe how this is
 *exactly* the way we described how it conceptually works *within* Skia
 in [Chapter 11](visual-effects.html#blending-and-stacking). The only
 difference is that here it's explicit that there is a `skia.Surface` between
@@ -918,20 +911,21 @@ In a way, we're implementing a way to put "subtrees of the display list" into
 different surfaces. But it's not quite just subtrees, because multiple nested
 DOM nodes could be simultaneously animating, and we can't put the same subtree
 in two different surfaces. We *could* potentially handle cases like this by
-making a tree of `skia.Surface` object. But it turns out that that approach
+making a tree of `skia.Surface` objects. But it turns out that that approach
 becomes quite complicated when you get into the details.^[We'll cover one of
 these details---overlap testing---later in the chapter. Another is that there
 may be multiple "child" pieces of content, only some of which may be animating.
 There are even more in a real browser.]
 
 Instead, think of the display list as a flat list of "leaf" *paint commands*
+(display list commands that don't have any `cmds`)
 like `DrawText`.^[The tree of visual effects is applied to some of those paint
 commands, but ignore that for now and focus on the paint commands.] Each paint
 command can be (individually) drawn to the screen by executing it and the
 series of *ancestor [visual] effects* on it. Thus the tuple (paint command,
 ancestor effects) suffices to describe that paint command in isolation.
 
-We'll call this tuple a *paint chunk*. Here is how to generate all the paint
+This tuple is called a *paint chunk*. Here is how to generate all the paint
 chunks from a display list:
 
 ``` {.python}
@@ -949,7 +943,7 @@ def display_list_to_paint_chunks(
 In the opacity example, there is one paint chunk with one ancestor effect
 (opacity):
 
-    (DrawText, [SaveLayer])
+    (DrawText("Text"), [SaveLayer(opacity=0.999)])
 
 
 When combined together, multiple paint chunks form a *composited layer*,
@@ -958,15 +952,10 @@ represented by the `CompositedLayer` class. This class will own a
 the result to the screen by applying an appropriate sequence of visual effects.
 
 Two paint chunks in the flat list can be put into the same composited layer if
-they are:
+they have the exact same set of animating ancestor effects. (Otherwise the
+animations would end up applying to the wrong paint commands.)
 
-* adjacent in paint order,^[Otherwise, overlapping content wouldn't draw
-correctly.] and
-
-* have the exact same set of animating ancestor effects.^[Otherwise the
-  animations would end up applying to the wrong paint commands.]
-
-Notice that, to satisfy these constraints, we could just put each paint command
+To satisfy this constraint, we *could* just put each paint command
 in its own composited layer. But of course, that would result in a huge number
 of surfaces, and most likely exhaust the computer's GPU memory. So the goal of
 the *compositing algorithm* is to come up with a way to pack paint chunks into
@@ -1630,7 +1619,7 @@ class Browser:
         if tab == self.tabs[self.active_tab]:
             # ...
             self.composited_updates = data.composited_updates
-            if len(self.composited_layers) == 0:
+            if len(self.composited_updates) == 0:
                 self.set_needs_composite()
             else:
                 self.set_needs_draw()
