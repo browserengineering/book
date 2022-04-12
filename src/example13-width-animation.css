@@ -1,0 +1,14 @@
+div {
+  width: 400px;
+	animation: 2s infinite alternate narrow;
+}
+
+@keyframes narrow {
+  from {
+  	width:  400px;
+  }
+
+  to {
+  	width: 100px;
+  }
+}

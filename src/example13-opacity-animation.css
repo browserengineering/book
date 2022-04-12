@@ -1,0 +1,14 @@
+div {
+	opacity: 0.999;
+	animation: 2s infinite alternate fade;
+}
+
+@keyframes fade {
+  from {
+  	opacity: 0.999;
+  }
+
+  to {
+  	opacity: 0.1;
+  }
+}
