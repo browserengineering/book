@@ -72,11 +72,12 @@ be run on the browser thread, and also GPU-accelerated. But I'm getting ahead
 of myself---let's first take a tour through DOM animations and how to implement
 their APIs in our browser, before figuring how to accelerate them.
 
-Let's start by exploring some example animations, starting with opacity and
-then width & height. The simplest way to implement them is with some JavaScript
-and a few tiny extensions to our browser's APIs. Then we can explore how to move
-more and more of the work the JavaScript is doing into the browser itself,
-in the process making animations easier to express and much faster.
+Let's start by exploring some example animations, starting with opacity and then
+width & height. The simplest way to implement them is with some JavaScript and
+a few tiny extensions to our browser's APIs, so we'll start there. Then we can
+explore how to move more and more of the work the JavaScript is doing into the
+browser itself, in the process making animations easier to express and much
+faster.
 
 Opacity animations
 ==================
