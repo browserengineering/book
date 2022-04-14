@@ -31,17 +31,16 @@ rotating, fading, blurring, nad sharpening.
 
 [animation]: https://en.wikipedia.org/wiki/Animation
 
-On web pages, there are several categories of common animations:
+On web pages, there are several categories of common animations: DOM,
+input-driven and video-like. A DOM animation is a movement or visual effect
+change of DOM elements on the screen, achieved by interpolating CSS properties
+of elements such as color, opacity or sizing. Innput-driven animations involve
+input of course: scrolling, page resizing, pinch-zoom, draggable menus and
+similar effects.[^video-anim]  In this chapter we'll focus mostly on DOM
+animations, with a bit of input-driven animations a bit at the end.[^excuse]
 
-* DOM: movement or visual effect change of elements on the screen, by
-  interpolating CSS properties of elements such as color, opacity or sizing.
-
-* Input-driven: scrolling, page resizing, pinch-zoom, draggable menus and similar
-effects.
-
-* Video-like: videos, animated images, and animated canvases.
-
-In this chapter we'll focus on the first and second categories.[^excuse]
+[^video-anim]: And video-like animations include videos, animated images, and
+animated canvases.
 
 [^excuse]: We'll get to images and a bit of canvas in a later chapter. Video is
 a fascinating topic unto itself, but is beyond the scope of this book. Arguably,
@@ -72,6 +71,12 @@ This means we're in luck though! Visual effect animations can almost always
 be run on the browser thread, and also GPU-accelerated. But I'm getting ahead
 of myself---let's first take a tour through DOM animations and how to implement
 their APIs in our browser, before figuring how to accelerate them.
+
+Let's start by exploring some example animations, starting with opacity and
+then width & height. The simplest way to implement them is with some JavaScript
+and a few tiny extensions to our browser's APIs. Then we can explore how to move
+more and more of the work the JavaScript is doing into the browser itself,
+in the process making animations easier to express and much faster.
 
 Opacity animations
 ==================
