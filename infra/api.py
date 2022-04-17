@@ -175,6 +175,7 @@ def thanks():
         "Zach Tatlock",
         "Jonas Treub",
         "Yuanhang Xie",
+        "Vitor Roriz"
     ]
     
     contributor_names = sorted((feedback_names | gh_names) - author_names, key=name_key) + \
