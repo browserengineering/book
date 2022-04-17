@@ -512,8 +512,9 @@ Well, that's what [CSS transitions][css-transitions] are for. But they're not
 just a convenience for developers: they also allow the browser to optimize
 performance. Animating `opacity`, for example, doesn't require re-running
 layout, but because JavaScript is setting the `style` property, it can be
-hard to for the browser to figure that out. CSS transitions make it easy
-and avoid mistakes.[^browser-detect-diff]
+hard for the browser to figure that out. CSS transitions make it easy to
+express an animation in a way browsers can easily
+optimize.[^browser-detect-diff]
 
 [^browser-detect-diff]: When DOM styles change, real browsers do in fact attempt
 to figure out what changed and minimize recomputation. Chromium, for example,
