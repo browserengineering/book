@@ -49,9 +49,9 @@ developer scripts. And of course a canvas can have animations within
 it that look about the same as some DOM animations.
 
 DOM and input-driven animations can be sub-categorized into *layout-inducing*
-and *visual*. An animation is layout-inducing if the changing CSS property
-is an input to layout; `width` is one example that we'll encounter in this
-chapter. Otherwise the animation is visual, such as animations of `opacity` or
+and *visual*. An animation is layout-inducing if it changes an input to layout;
+animating `width` is one example that we'll encounter in this chapter.
+Otherwise the animation is visual, such as animations of `opacity` or
 `background-color`.
 
 The distinction is important for two reasons: animation quality and performance.
@@ -68,26 +68,50 @@ window) during the animation, to avoid updating layout on every animation
 frame.] This means we're in luck though! Visual effect animations can almost
 always be run on the browser thread, and also GPU-accelerated.
 
-Let's start by exploring some example animations, starting with opacity and then
-width & height. The simplest way to implement them is with some JavaScript and
-a few tiny extensions to our browser's APIs, so we'll start there. As you'll
-see, with those extensions plus `requestAnimationFrame`, any animation you
-like can in principle be implemented in this way.
+The animation loop
+==================
+
+Let's start by exploring some example animations. The simplest way to implement
+them in our current browser is with some JavaScript and a few tiny extensions
+to our browser's APIs, so we'll start there. Almost any animation
+can in principle be implemented this way.
+
+In Chapter 12 we [implemented](scheduling.md#animating-frames) the
+`requestAnimationFrame` API and built a demo that modifies the `innerHTML`
+of a DOM element on each frame. That is indeed an animation---a
+*JavaScript-driven* animation. These animations all have the following
+structure:
+
+``` {.javascript file=example-opacity-js}
+function run_animation_frame() {
+    if (animate())
+        requestAnimationFrame(run_animation_frame);
+}
+requestAnimationFrame(run_animation_frame);
+```
+
+where `animate` is a (custom-to-each-animation) function that updates the
+animation from one frame to the next, and returns `true` as long as it needs to
+keep animating. For example, the Chapter 12 equivalent of this method sets the
+`innerHTML` of an element to increase a counter. The animation examples in this
+chapter will modify CSS properties instead.
 
 As you might guess, there are huge performance, complexity and architectural
 advantages[^advantages] to moving this work from JavaScript into the browser's
-Python code. So the rest of the chapter will be about how to go about doing
+Python code. So a big chunk of this chapter will be about how to go about doing
 that, and exploring all of these advantages. But it's important to keep in mind
 that the way the browser will implement these animations is at its root
 *exactly the same*: run an animation loop at 60Hz and advance the animation
- frame-by-frame. Keeping this core point in mind while reading the rest of this
- chapter should help to avoid confusion. Indeed, the implementation turns out
- to be complicated, but all we're really doing is optimizing animations run
- with the same basic technique.
+ frame-by-frame.
 
 [^advantages]: Advantages such as optimizing which parts of the rendering
 pipeline have to be re-run on each animation frame, and running animations
 entirely on the browser thread.
+
+The browser implementation turns out to be complicated, and it's easy to lose
+track of where we're headed. So you should keep this mind while reading the rest
+of this chapter: it's just ways top optimize animations by building them
+directly into the browser.
 
 GPU acceleration
 ================
@@ -97,12 +121,51 @@ chapters 11 and 12 that there is no way to animate reliably at 60Hz if
 raster-and-draw takes
 [66ms or more per frame](scheduling.md#profiling-rendering).
 
-So first order of business is to move raster and draw to the [GPU][gpu]. Because
-both SDL and Skia support these modes, turning it on is just a matter of
-passing the right configuration parameters. But that doesn't give us any direct
-insight into why it's all-of-a-sudden faster. So before showing the code I'll
-briefly explain how GPUs work and the four (internal implementation detail to
-Skia and SDL) steps of running GPU raster and draw.
+So the first order of business is to move raster and draw to the
+[GPU][gpu]. Because both SDL and Skia support these modes, turning it on is
+just a matter of passing the right configuration parameters. First you'll need
+to import code for OpenGL. Install the library:
+
+    pip3 install PyOpenGL
+
+and then import it:
+
+``` {.python}
+import OpenGL.GL as GL
+```
+
+Then configure `sdl_window` and start/stop a
+[GL context][glcontext] at the
+beginning/end of the program; for our purposes consider it API
+boilerplate.^[Starting a GL context is just OpenGL's way
+of saying "set up the surface into which subsequent GL drawing commands will
+draw". After doing so you can even execute OpenGL commands manually, to
+draw polygons or other objects on the screen, without using Skia at all.
+[Try it][pyopengl] if you're interested!]
+
+[glcontext]: https://www.khronos.org/opengl/wiki/OpenGL_Context
+
+[pyopengl]: http://pyopengl.sourceforge.net/
+
+``` {.python expected=False}
+class Browser:
+    def __init__(self):
+        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT,
+            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
+        self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
+        print("OpenGL initialized: vendor={}, renderer={}".format(
+            GL.glGetString(GL.GL_VENDOR),
+            GL.glGetString(GL.GL_RENDERER)))
+
+    def handle_quit(self):
+        # ...
+        sdl2.SDL_GL_DeleteContext(self.gl_context)
+        sdl2.SDL_DestroyWindow(self.sdl_window)
+
+```
+
 
 There are lots of resources online about how GPUs work and how to program them
 via GL shaders and so on. But we won't be writing shaders or other
@@ -160,49 +223,6 @@ this part can be optimized. Parts of the other steps can as well, such as
 by caching font data in the GPU.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
-
-Ok, now for the code. First you'll need to import code for OpenGL (just for
-one constant and one debugging method, actually). Install the library:
-
-    pip3 install PyOpenGL
-
-and then import it:
-
-``` {.python}
-import OpenGL.GL as GL
-```
-
-Then we'll need to configure `sdl_window` and start/stop a
-[GL context][glcontext] at the
-beginning/end of the program; for our purposes consider it API
-boilerplate.^[Starting a GL context is just OpenGL's way
-of saying "set up the surface into which subsequent GL drawing commands will
-draw". After doing so you can even execute OpenGL commands manually, to
-draw polygons or other objects on the screen, without using Skia at all.
-[Try it][pyopengl] if you're interested!]
-
-[glcontext]: https://www.khronos.org/opengl/wiki/OpenGL_Context
-
-[pyopengl]: http://pyopengl.sourceforge.net/
-
-``` {.python expected=False}
-class Browser:
-    def __init__(self):
-        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-            WIDTH, HEIGHT,
-            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
-        self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
-        print("OpenGL initialized: vendor={}, renderer={}".format(
-            GL.glGetString(GL.GL_VENDOR),
-            GL.glGetString(GL.GL_RENDERER)))
-
-    def handle_quit(self):
-        # ...
-        sdl2.SDL_GL_DeleteContext(self.gl_context)
-        sdl2.SDL_DestroyWindow(self.sdl_window)
-
-```
 
 I've also added code above to print out the vendor and renderer of the GPU your
 computer is using; this will help you verify that it's actually using the GPU
@@ -277,27 +297,22 @@ the new framebuffer (because of OpenGL [double-buffering][double]).
         sdl2.SDL_GL_SwapWindow(self.sdl_window)
 ```
 
-Let's go back and test the
-[`opacity` animation](examples/example13-opacity-transition.html), to see how
-much GPU acceleration helped. The results on my computer are:
+Let's go back and test the [counter example](scheduling.md#animating-frames)
+from Chapter 12. The results are:
 
     Without GPU:
 
-    Time in raster-and-draw on average: 22ms
-    Time in render on average: 1ms
+    Time in raster-and-draw on average: 66ms
+    Time in render on average: 23ms
 
     With GPU:
 
-    Time in raster-and-draw on average: 8ms
-    Time in render on average: 1ms
+    Time in raster-and-draw on average: 24ms
+    Time in render on average: 24ms
 
-
-So GPU acceleration yields something like a 65% reduction in browser thread
-time.  (If you're on a computer with a non-virtualized GL driver you will
-probably see even more speedup than that.) This is a great improvement, but
-still 8ms is a lot for such a simple example, and also requires a main-thread
-task that might be slowed down by JavaScript. Can we do better? Yes we can, by
-using compositing.
+So GPU acceleration speeds up raster-and-draw by more than 60%. (If you're on a
+computer with a non-virtualized GL driver you will probably see even more
+speedup than that.)
 
 
 Opacity animations
@@ -329,24 +344,23 @@ difference from 1.0 is inperceptible.
 <div>Test</div>
 ```
 
+And here is the `animate` implementation for this example:
 ``` {.javascript file=example-opacity-js}
-var end_value = 0.1;
 var frames_remaining = 120;
 var go_down = true;
+var div = document.querySelectorAll("div")[0];
 function animate() {
-    var div = document.querySelectorAll("div")[0];
     var percent_remaining = frames_remaining / 120;
     if (!go_down) percent_remaining = 1 - percent_remaining;
     div.style = "opacity:" +
         (percent_remaining * 0.999 +
             (1 - percent_remaining) * 0.1);
     if (frames_remaining-- == 0) {
+        go_down = !go_down
         frames_remaining = 120;
-        go_down = !go_down;
     }
-    requestAnimationFrame(animate);
+    return true;
 }
-requestAnimationFrame(animate);
 ```
 
 Here's how it renders:
@@ -382,8 +396,6 @@ class JSContext:
         elt.attributes["style"] = s;
         self.tab.set_needs_render()
 ```
-
-Load up the example, and observe text fading to white!
 
 Width/height animations
 =======================
@@ -473,10 +485,12 @@ overflow, which needs to be dealt with in one way or another.]
 (click [here](examples/example13-width-raf.html) to load the example in
 your browser)
 
+And `animate` looks like this:
 ``` {.javascript file=example-width-js}
+var frames_remaining = 120;
 var go_down = true;
+var div = document.querySelectorAll("div")[0];
 function animate() {
-    var div = document.querySelectorAll("div")[0];
     var percent_remaining = frames_remaining / 120;
     if (!go_down) percent_remaining = 1 - percent_remaining;
     div.style = "background-color:lightblue;width:" +
@@ -486,17 +500,33 @@ function animate() {
         frames_remaining = 120;
         go_down = !go_down;
     }
-    requestAnimationFrame(animate);
+    return true;
 }
-requestAnimationFrame(animate);
 ```
 
 CSS transitions
 ===============
 
 But why do we need JavaScript just to smoothly interpolate `opacity` or `width`?
-Well, that's what [CSS transitions][css-transitions] are for. The `transition` CSS
-property looks like this:
+Well, that's what [CSS transitions][css-transitions] are for. But they're not
+just a convenience for developers: they also allow the browser to optimize
+performance. Animating `opacity`, for example, doesn't require re-running
+layout, but because JavaScript is setting the `style` property, it can be
+hard for the browser to figure that out. CSS transitions make it easy to
+express an animation in a way browsers can easily
+optimize.[^browser-detect-diff]
+
+[^browser-detect-diff]: When DOM styles change, real browsers do in fact attempt
+to figure out what changed and minimize recomputation. Chromium, for example,
+has a bunch of code that tries to [diff][chromium-diff] the old and new styles,
+and reduce work in situations such as changing only opacity. But this approach
+will always be somewhat brittle and incomplete, because the browser has to
+trade off time spent diffing two styles with the rendering work avoided and
+added code complexity.
+
+[chromium-diff]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/style/style_difference.h
+
+The `transition` CSS property looks like this:
 
 [css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
 
