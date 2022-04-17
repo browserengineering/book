@@ -1,5 +1,5 @@
 var frames_remaining = 120;
-var go_down = false;
+var go_down = true;
 var div = document.querySelectorAll("div")[0];
 function animate() {
     var percent_remaining = frames_remaining / 120;
@@ -9,7 +9,7 @@ function animate() {
             (1 - percent_remaining) * 0.1);
     if (frames_remaining-- == 0) {
         go_down = !go_down
-        frame_remaining = 120;
+        frames_remaining = 120;
     }
     return true;
 }

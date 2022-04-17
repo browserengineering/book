@@ -108,10 +108,10 @@ that the way the browser will implement these animations is at its root
 pipeline have to be re-run on each animation frame, and running animations
 entirely on the browser thread.
 
-The browser implementation turns out to be complicated and it's easy to lose
-track of where we're headed. So keep in mind while reading the rest of this
-chapter: it's all about ways top optimize animations by building them directly
-into the browser. Now let's get to some real examples.
+The browser implementation turns out to be complicated, and it's easy to lose
+track of where we're headed. So you should keep this mind while reading the rest
+of this chapter: it's just ways top optimize animations by building them
+directly into the browser.
 
 GPU acceleration
 ================
@@ -121,12 +121,51 @@ chapters 11 and 12 that there is no way to animate reliably at 60Hz if
 raster-and-draw takes
 [66ms or more per frame](scheduling.md#profiling-rendering).
 
-So first order of business is to move raster and draw to the [GPU][gpu]. Because
-both SDL and Skia support these modes, turning it on is just a matter of
-passing the right configuration parameters. But that doesn't give us any direct
-insight into why it's all-of-a-sudden faster. So before showing the code I'll
-briefly explain how GPUs work and the four (internal implementation detail to
-Skia and SDL) steps of running GPU raster and draw.
+So the first order of business is to move raster and draw to the
+[GPU][gpu]. Because both SDL and Skia support these modes, turning it on is
+just a matter of passing the right configuration parameters. First you'll need
+to import code for OpenGL. Install the library:
+
+    pip3 install PyOpenGL
+
+and then import it:
+
+``` {.python}
+import OpenGL.GL as GL
+```
+
+Then configure `sdl_window` and start/stop a
+[GL context][glcontext] at the
+beginning/end of the program; for our purposes consider it API
+boilerplate.^[Starting a GL context is just OpenGL's way
+of saying "set up the surface into which subsequent GL drawing commands will
+draw". After doing so you can even execute OpenGL commands manually, to
+draw polygons or other objects on the screen, without using Skia at all.
+[Try it][pyopengl] if you're interested!]
+
+[glcontext]: https://www.khronos.org/opengl/wiki/OpenGL_Context
+
+[pyopengl]: http://pyopengl.sourceforge.net/
+
+``` {.python expected=False}
+class Browser:
+    def __init__(self):
+        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT,
+            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
+        self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
+        print("OpenGL initialized: vendor={}, renderer={}".format(
+            GL.glGetString(GL.GL_VENDOR),
+            GL.glGetString(GL.GL_RENDERER)))
+
+    def handle_quit(self):
+        # ...
+        sdl2.SDL_GL_DeleteContext(self.gl_context)
+        sdl2.SDL_DestroyWindow(self.sdl_window)
+
+```
+
 
 There are lots of resources online about how GPUs work and how to program them
 via GL shaders and so on. But we won't be writing shaders or other
@@ -184,49 +223,6 @@ this part can be optimized. Parts of the other steps can as well, such as
 by caching font data in the GPU.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
-
-Ok, now for the code. First you'll need to import code for OpenGL (just for
-one constant and one debugging method, actually). Install the library:
-
-    pip3 install PyOpenGL
-
-and then import it:
-
-``` {.python}
-import OpenGL.GL as GL
-```
-
-Then we'll need to configure `sdl_window` and start/stop a
-[GL context][glcontext] at the
-beginning/end of the program; for our purposes consider it API
-boilerplate.^[Starting a GL context is just OpenGL's way
-of saying "set up the surface into which subsequent GL drawing commands will
-draw". After doing so you can even execute OpenGL commands manually, to
-draw polygons or other objects on the screen, without using Skia at all.
-[Try it][pyopengl] if you're interested!]
-
-[glcontext]: https://www.khronos.org/opengl/wiki/OpenGL_Context
-
-[pyopengl]: http://pyopengl.sourceforge.net/
-
-``` {.python expected=False}
-class Browser:
-    def __init__(self):
-        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-            WIDTH, HEIGHT,
-            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
-        self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
-        print("OpenGL initialized: vendor={}, renderer={}".format(
-            GL.glGetString(GL.GL_VENDOR),
-            GL.glGetString(GL.GL_RENDERER)))
-
-    def handle_quit(self):
-        # ...
-        sdl2.SDL_GL_DeleteContext(self.gl_context)
-        sdl2.SDL_DestroyWindow(self.sdl_window)
-
-```
 
 I've also added code above to print out the vendor and renderer of the GPU your
 computer is using; this will help you verify that it's actually using the GPU
@@ -301,27 +297,22 @@ the new framebuffer (because of OpenGL [double-buffering][double]).
         sdl2.SDL_GL_SwapWindow(self.sdl_window)
 ```
 
-Let's go back and test the
-[`opacity` animation](examples/example13-opacity-transition.html), to see how
-much GPU acceleration helped. The results on my computer are:
+Let's go back and test the [counter example](scheduling.md#animating-frames)
+from Chapter 12. The results are:
 
     Without GPU:
 
-    Time in raster-and-draw on average: 22ms
-    Time in render on average: 1ms
+    Time in raster-and-draw on average: 66ms
+    Time in render on average: 23ms
 
     With GPU:
 
-    Time in raster-and-draw on average: 8ms
-    Time in render on average: 1ms
+    Time in raster-and-draw on average: 24ms
+    Time in render on average: 24ms
 
-
-So GPU acceleration yields something like a 65% reduction in browser thread
-time.  (If you're on a computer with a non-virtualized GL driver you will
-probably see even more speedup than that.) This is a great improvement, but
-still 8ms is a lot for such a simple example, and also requires a main-thread
-task that might be slowed down by JavaScript. Can we do better? Yes we can, by
-using compositing.
+So GPU acceleration speeds up raster-and-draw by more than 60%. (If you're on a
+computer with a non-virtualized GL driver you will probably see even more
+speedup than that.)
 
 
 Opacity animations
@@ -370,7 +361,6 @@ function animate() {
     }
     return true;
 }
-requestAnimationFrame(animate);
 ```
 
 Here's how it renders:
@@ -406,8 +396,6 @@ class JSContext:
         elt.attributes["style"] = s;
         self.tab.set_needs_render()
 ```
-
-Load up the example, and observe text fading to white!
 
 Width/height animations
 =======================
@@ -520,8 +508,24 @@ CSS transitions
 ===============
 
 But why do we need JavaScript just to smoothly interpolate `opacity` or `width`?
-Well, that's what [CSS transitions][css-transitions] are for. The `transition` CSS
-property looks like this:
+Well, that's what [CSS transitions][css-transitions] are for. But they're not
+just a convenience for developers: they also allow the browser to optimize
+performance. Animating `opacity`, for example, doesn't require re-running
+layout, but because JavaScript is setting the `style` property, it can be
+hard to for the browser to figure that out. CSS transitions make it easy
+and avoid mistakes.[^browser-detect-diff]
+
+[^browser-detect-diff]: When DOM styles change, real browsers do in fact attempt
+to figure out what changed and minimize recomputation. Chromium, for example,
+has a bunch of code that tries to [diff][chromium-diff] the old and new styles,
+and reduce work in situations such as changing only opacity. But this approach
+will always be somewhat brittle and incomplete, because the browser has to
+trade off time spent diffing two styles with the rendering work avoided and
+added code complexity.
+
+[chromium-diff]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/style/style_difference.h
+
+The `transition` CSS property looks like this:
 
 [css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
 
