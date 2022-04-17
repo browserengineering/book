@@ -49,9 +49,9 @@ developer scripts. And of course a canvas can have animations within
 it that look about the same as some DOM animations.
 
 DOM and input-driven animations can be sub-categorized into *layout-inducing*
-and *visual*. An animation is layout-inducing if the changing CSS property
-is an input to layout; `width` is one example that we'll encounter in this
-chapter. Otherwise the animation is visual, such as animations of `opacity` or
+and *visual*. An animation is layout-inducing if it changes an input to layout;
+animating `width` is one example that we'll encounter in this chapter.
+Otherwise the animation is visual, such as animations of `opacity` or
 `background-color`.
 
 The distinction is important for two reasons: animation quality and performance.
@@ -68,26 +68,50 @@ window) during the animation, to avoid updating layout on every animation
 frame.] This means we're in luck though! Visual effect animations can almost
 always be run on the browser thread, and also GPU-accelerated.
 
-Let's start by exploring some example animations, starting with opacity and then
-width & height. The simplest way to implement them is with some JavaScript and
-a few tiny extensions to our browser's APIs, so we'll start there. As you'll
-see, with those extensions plus `requestAnimationFrame`, any animation you
-like can in principle be implemented in this way.
+The animation loop
+==================
+
+Let's start by exploring some example animations. The simplest way to implement
+them in our current browser is with some JavaScript and a few tiny extensions
+to our browser's APIs, so we'll start there. Almost any animation
+can in principle be implemented this way.
+
+In Chapter 12 we [implemented](scheduling.md#animating-frames) the
+`requestAnimationFrame` API and built a demo that modifies the `innerHTML`
+of a DOM element on each frame. That is indeed an animation---a
+*JavaScript-driven* animation. These animations all have the following
+structure:
+
+``` {.python}
+function run_animation_frame() {
+    if (animate())
+        requestAnimationFrame(run_animation_frame);
+}
+requestAnimationFrame(run_animation_frame);
+```
+
+where `animate` is a (custom-to-each-animation) function that updates the
+animation from one frame to the next, and returns `true` as long as it needs to
+keep animating. For example, the Chapter 12 equivalent of this method sets the
+`innerHTML` of an element to increase a counter. The animation examples in this
+chapter will modify CSS properties instead.
 
 As you might guess, there are huge performance, complexity and architectural
 advantages[^advantages] to moving this work from JavaScript into the browser's
-Python code. So the rest of the chapter will be about how to go about doing
+Python code. So a big chunk of this chapter will be about how to go about doing
 that, and exploring all of these advantages. But it's important to keep in mind
 that the way the browser will implement these animations is at its root
 *exactly the same*: run an animation loop at 60Hz and advance the animation
- frame-by-frame. Keeping this core point in mind while reading the rest of this
- chapter should help to avoid confusion. Indeed, the implementation turns out
- to be complicated, but all we're really doing is optimizing animations run
- with the same basic technique.
+ frame-by-frame.
 
 [^advantages]: Advantages such as optimizing which parts of the rendering
 pipeline have to be re-run on each animation frame, and running animations
 entirely on the browser thread.
+
+The browser implementation turns out to be complicated and it's easy to lose
+track of where we're headed. So keep in mind while reading the rest of this
+chapter: it's all about ways top optimize animations by building them directly
+into the browser. Now let's get to some real examples.
 
 GPU acceleration
 ================
@@ -329,22 +353,22 @@ difference from 1.0 is inperceptible.
 <div>Test</div>
 ```
 
+And here is the `animate` implementation for this example:
 ``` {.javascript file=example-opacity-js}
-var end_value = 0.1;
 var frames_remaining = 120;
-var go_down = true;
+var go_down = false;
+var div = document.querySelectorAll("div")[0];
 function animate() {
-    var div = document.querySelectorAll("div")[0];
     var percent_remaining = frames_remaining / 120;
     if (!go_down) percent_remaining = 1 - percent_remaining;
     div.style = "opacity:" +
         (percent_remaining * 0.999 +
             (1 - percent_remaining) * 0.1);
     if (frames_remaining-- == 0) {
-        frames_remaining = 120;
-        go_down = !go_down;
+        go_down = !go_down
+        frame_remaining = 120;
     }
-    requestAnimationFrame(animate);
+    return true;
 }
 requestAnimationFrame(animate);
 ```
@@ -473,10 +497,12 @@ overflow, which needs to be dealt with in one way or another.]
 (click [here](examples/example13-width-raf.html) to load the example in
 your browser)
 
+And `animate` looks like this:
 ``` {.javascript file=example-width-js}
+var frames_remaining = 120;
 var go_down = true;
+var div = document.querySelectorAll("div")[0];
 function animate() {
-    var div = document.querySelectorAll("div")[0];
     var percent_remaining = frames_remaining / 120;
     if (!go_down) percent_remaining = 1 - percent_remaining;
     div.style = "background-color:lightblue;width:" +
@@ -486,9 +512,8 @@ function animate() {
         frames_remaining = 120;
         go_down = !go_down;
     }
-    requestAnimationFrame(animate);
+    return true;
 }
-requestAnimationFrame(animate);
 ```
 
 CSS transitions
