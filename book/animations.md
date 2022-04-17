@@ -82,7 +82,7 @@ of a DOM element on each frame. That is indeed an animation---a
 *JavaScript-driven* animation. These animations all have the following
 structure:
 
-``` {.python}
+``` {.javascript file=example-opacity-js}
 function run_animation_frame() {
     if (animate())
         requestAnimationFrame(run_animation_frame);
@@ -347,7 +347,7 @@ difference from 1.0 is inperceptible.
 And here is the `animate` implementation for this example:
 ``` {.javascript file=example-opacity-js}
 var frames_remaining = 120;
-var go_down = false;
+var go_down = true;
 var div = document.querySelectorAll("div")[0];
 function animate() {
     var percent_remaining = frames_remaining / 120;
@@ -357,7 +357,7 @@ function animate() {
             (1 - percent_remaining) * 0.1);
     if (frames_remaining-- == 0) {
         go_down = !go_down
-        frame_remaining = 120;
+        frames_remaining = 120;
     }
     return true;
 }
