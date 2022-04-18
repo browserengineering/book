@@ -453,13 +453,17 @@ def request(url):
 Now let's display the text in the body.
 
 ::: {.further}
-The `Transfer-Encoding` and `Content-Encoding` headers are used to
-compress web pages before sending them. Large, text-heavy web pages
-compress well, and as a result the page loads faster. To use them, the
-browser typically sends an [`Accept-Encoding` header][ae-header] in
-its request, and the server then compresses the data if it can.
+The [`Content-Encoding`][ce-header] header lets the server compress
+web pages before sending them. Large, text-heavy web pages compress
+well, and as a result the page loads faster. The browser needs to send
+an [`Accept-Encoding` header][ae-header] in its request to list
+compression algorithms it supports. [`Transfer-Encoding`][te-header]
+is similar and also allows the data to be "chunked", which many
+servers seem to use together with compression.
 :::
 
+[ce-header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
+[te-header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
 [ae-header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding
 
 Displaying the HTML
