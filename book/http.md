@@ -358,7 +358,7 @@ different types to text and to bytes:
 ``` {.python .example}
 >>> type("text")
 <class 'str'>
->>> type("text".encode("utf8")
+>>> type("text".encode("utf8"))
 <class 'bytes'>
 ```
 
