@@ -104,6 +104,9 @@ def request(url, top_level_url, payload=None):
             cookie = headers["set-cookie"]
         COOKIE_JAR[host] = (cookie, params)
 
+    assert "transfer-encoding" not in headers
+    assert "content-encoding" not in headers
+
     body = response.read()
     s.close()
 

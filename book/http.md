@@ -296,8 +296,8 @@ Once you have a socket, you need to tell it to connect to the other
 computer. For that, you need the host and a *port*. The port depends
 on the type of server you're connecting to; for now it should be 80.
 
-``` {.python expected=False}
-s.connect(("example.org", 80))
+``` {.python replace=80/port}
+s.connect((host, 80))
 ```
 
 This talks to `example.org` to set up the connection and ready both
@@ -328,43 +328,48 @@ Now that we have a connection, we make a request to the other server.
 To do so, we send it some data using the `send` method:
 
 ``` {.python expected=False}
-s.send(b"GET /index.html HTTP/1.0\r\n" + 
-       b"Host: example.org\r\n\r\n")
+s.send("GET {} HTTP/1.0\r\n".format(path).encode("utf8") + 
+       "Host: {}\r\n\r\n".format(host).encode("utf8"))
 ```
 
-There are a few things to be careful of here. First, it's important to
-have the letter "b" before the string. Next, it's very important to
-use `\r\n` instead of `\n` for newlines. And finally, it's essential
-that you put *two* newlines `\r\n` at the end, so that you send that
-blank line at the end of the request. If you forget that, the other
-computer will keep waiting on you to send that newline, and you'll
-keep waiting on its response. Computers are dumb.
+There are a few things to be careful of here. First, it's very
+important to use `\r\n` instead of `\n` for newlines. It's also
+essential that you put *two* newlines `\r\n` at the end, so that you
+send that blank line at the end of the request. If you forget that,
+the other computer will keep waiting on you to send that newline, and
+you'll keep waiting on its response.[^literal]
 
-::: {.quirk}
-Time for a Python quirk. When you send data, it's important to
-remember that you are sending raw bits and bytes; they could form text
-or an image or video. That's why here I have a letter `b` in front of
-the string of data: that tells Python that I mean the bits and bytes
-that represent the text I typed in, not the text itself. You can
-also see this in the type changing from `str` to  `bytes`:
+[^literal]: Computers are endlessly literal-minded.
+
+And finally, note the `encode` call. When you send data, it's
+important to remember that you are sending raw bits and bytes; they
+could form text or an image or video. But a Python string is
+specifically for representing text. The `encode` method converts text
+into bytes, and there's a corresponding `decode` method that goes the
+other way.[^charset] Python reminds you to be careful by giving
+different types to text and to bytes:
+
+[^charset]: When you call `encode` and `decode` you need to tell the
+    computer what *character encoding* you want it to use. This is a
+    complicated topic. I'm using `utf8` here, which is a common
+    character encoding and will work on many pages, but in the real
+    world you would need to be more careful.
 
 ``` {.python .example}
->>> type("asdf")
+>>> type("text")
 <class 'str'>
->>> type(b"asdf")
+>>> type("text".encode("utf8"))
 <class 'bytes'>
 ```
 
-If you forget that letter `b`, you will get some error about `str`
-versus `bytes`. You can turn a `str` into `bytes` by calling its
-`encode("utf8")` method, and go the other way with
-`decode("utf8")`.[^18]
-:::
+If you see an error about `str` versus `bytes`, it's because you
+forgot to call `encode` or `decode` somewhere.
 
-You'll notice that the `send` call returns a number, in this case `47`.
-That tells you how many bytes of data you sent to the other computer;
-if, say, your network connection failed midway through sending the data,
-you might want to know how much you sent before the connection failed.
+If you run this, you'll notice that the `send` call returns a number,
+in this case `47`. That tells you how many bytes of data you sent to
+the other computer; if, say, your network connection failed midway
+through sending the data, you might want to know how much you sent
+before the connection failed.
 
 To read the response, you'd generally use the `read` function on
 sockets, which gives whatever bits of the response have already
@@ -414,7 +419,21 @@ I normalize them to lower case. Also, white-space is insignificant in
 HTTP header values, so I strip off extra whitespace at the beginning
 and end.
 
-Finally, the body is everything else the server sent us:
+Headers can describe all sorts of information, but a couple of headers
+are especially important because they tell us that the data we're
+trying to access is being sent in an unusual way. Let's make sure none
+of those are present:[^if-te]
+
+[^if-te]: The "compression" exercise at the end of this chapter
+    describes how your browser should handle these headers if they are
+    present.
+
+``` {.python}
+assert "transfer-encoding" not in headers
+assert "content-encoding" not in headers
+```
+
+The usual way to send the data, then, is everything after the headers:
 
 ``` {.python}
 body = response.read()
@@ -434,12 +453,18 @@ def request(url):
 Now let's display the text in the body.
 
 ::: {.further}
-With the `Accept-Encoding` request header, a browser can
-request a [compressed
-response](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding).
-Large, text-heavy web pages compress well, and as a result the page
-loads faster.
+The [`Content-Encoding`][ce-header] header lets the server compress
+web pages before sending them. Large, text-heavy web pages compress
+well, and as a result the page loads faster. The browser needs to send
+an [`Accept-Encoding` header][ae-header] in its request to list
+compression algorithms it supports. [`Transfer-Encoding`][te-header]
+is similar and also allows the data to be "chunked", which many
+servers seem to use together with compression.
 :::
+
+[ce-header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
+[te-header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
+[ae-header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding
 
 Displaying the HTML
 ===================
@@ -705,17 +730,17 @@ adjusts the input to `show()` when in view-source mode, like this:
 Your browser must send the `Accept-Encoding` header with the value
 `gzip`. If the server supports compression, its response will have a
 `Content-Encoding` header with value `gzip`. The body is then
-compressed. To decompress it, you can use the `decompress` method in
-the `gzip` module. Calling `makefile` with the `encoding` argument
-will no longer work, because compressed data is not `utf8`-encoded.
-You can change the first argument `"rb"` to work with raw bytes
-instead of encoded text.[^te]
+compressed. Add support for this case. To decompress the data, you can
+use the `decompress` method in the `gzip` module. Calling `makefile`
+with the `encoding` argument will no longer work, because compressed
+data is not `utf8`-encoded. You can change the first argument `"rb"`
+to work with raw bytes instead of encoded text.[^te]
 
 [negotiate]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
 
-[^te]: Most web servers that support compressed data use a
-`Transfer-Encoding` called [`chunked`][chunked]. You'll need to add
-support for it as well to access most web servers.
+[^te]: Most web servers send compressed data in a `Transfer-Encoding`
+called [`chunked`][chunked]. You'll need to add support for it too to
+access most web servers that support compressed data.
 
 [chunked]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
 
@@ -772,12 +797,6 @@ to cache the response.
     basically standardized. In Python, the flags we pass are defaults,
     so you can actually call `socket.socket()`; I'm keeping the flags
     here in case you're following along in another language.
-
-[^18]: Well, to be more precise, you need to call `encode` and then tell
-    it the *character encoding* that your string should use. This is a
-    complicated topic. I'm using `utf8` here, which is a common
-    character encoding and will work on many pages, but in the real
-    world you would need to be more careful.
 
 [^19]: If you're in another language, you might only have `socket.read`
     available. You'll need to write the loop, checking the socket
