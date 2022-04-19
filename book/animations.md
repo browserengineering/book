@@ -13,8 +13,8 @@ changed, and improve visual polish by replacing sudden jumps with smooth
 interpolations.
 
 Modern browsers have APIs that enable animating the styles of DOM elements. To
-implement these APIs performantly, behind the scenes GPU acceleration is needed
-to make those animations smooth and fast.
+implement these APIs performantly, behind the scenes GPU acceleration and
+compositing is needed to make those animations smooth and fast.
 
 Types of animations
 ===================
@@ -27,14 +27,14 @@ a human mind trained by experience in the real world.
 [^general-movement]: Here *movement* should be construed broadly to encompass
 all of the kinds of visual changes humans are used to seeing and good at
 recognizing---not just movement from side to side, but growing, shrinking,
-rotating, fading, blurring, nad sharpening.
+rotating, fading, blurring, and sharpening.
 
 [animation]: https://en.wikipedia.org/wiki/Animation
 
 On web pages, there are several categories of common animations: DOM,
 input-driven and video-like. A DOM animation is a movement or visual effect
 change of DOM elements on the screen, achieved by interpolating CSS properties
-of elements such as color, opacity or sizing. Innput-driven animations involve
+of elements such as color, opacity or sizing. Input-driven animations involve
 input of course: scrolling, page resizing, pinch-zoom, draggable menus and
 similar effects.[^video-anim]  In this chapter we'll focus mostly on DOM
 animations, with a bit of input-driven animations a bit at the end.[^excuse]
@@ -65,8 +65,7 @@ very useful for the user to see the new layout as the window size changes.
 Modern browsers are fast enough to do this, but it used to be that instead they
 would leave a visual *gutter* (a gap between content and the edge of the
 window) during the animation, to avoid updating layout on every animation
-frame.] This means we're in luck though! Visual effect animations can almost
-always be run on the browser thread, and also GPU-accelerated.
+frame.]
 
 The animation loop
 ==================
@@ -110,8 +109,8 @@ entirely on the browser thread.
 
 The browser implementation turns out to be complicated, and it's easy to lose
 track of where we're headed. So you should keep this mind while reading the rest
-of this chapter: it's just ways top optimize animations by building them
-directly into the browser.
+of this chapter: it's just optimizing animations by building them
+directly into the rendering pipeline.
 
 GPU acceleration
 ================
@@ -119,7 +118,7 @@ GPU acceleration
 However, even before trying out any examples, it should be very clear from
 chapters 11 and 12 that there is no way to animate reliably at 60Hz if
 raster-and-draw takes
-[66ms or more per frame](scheduling.md#profiling-rendering).
+[66ms or more per frame](scheduling.md#profiling-rendering) on simple examples.
 
 So the first order of business is to move raster and draw to the
 [GPU][gpu]. Because both SDL and Skia support these modes, turning it on is
@@ -176,7 +175,7 @@ turning simple data structures into pixels. These programs are so simple that
 the GPU can run one of them *in parallel* for each pixel, and this parallelism
 is why GPU raster is usually much faster than CPU raster. GPU draw is also
 much faster, because "copying" from one piece of GPU memory to another also
-happens in parallel.
+happens in parallel for each pixel.
 
 At a high level, the steps to raster and draw using the GPU are:[^gpu-variations]
 
@@ -308,7 +307,7 @@ from Chapter 12. The results are:
     With GPU:
 
     Time in raster-and-draw on average: 24ms
-    Time in render on average: 24ms
+    Time in render on average: 23ms
 
 So GPU acceleration speeds up raster-and-draw by more than 60%. (If you're on a
 computer with a non-virtualized GL driver you will probably see even more
@@ -338,7 +337,7 @@ easier to dig into the performance of this example on a real browser with 0.999
 opacity. Starting animations at 0.999 is also a common trick used on web sites
 that want to avoid visual popping of the content as it goes in and out of
 GPU-accelerated mode. I chose 0.999 instead of 0.9 because the visual
-difference from 1.0 is inperceptible.
+difference from 1.0 is imperceptible.
 
 ``` {.html file=example-opacity-html}
 <div>Test</div>
@@ -400,15 +399,22 @@ class JSContext:
 Width/height animations
 =======================
 
-What about layout-inducing DOM animations? At the moment, our browser doesn't
-support any layout-inducing CSS properties that would be useful to animate, so
-let's add support for `width` and `height`, then animate them. These CSS
-properties do pretty much what they say: force the width or height of a layout
-object to be the specified value in pixels, as opposed to the default behavior
-that sizes an element to contain block and inline descendants. If as a result
-the descendants don't fit, they will *overflow* in a natural way. This usually
-means overflowing the bottom edge of the block ancestor, because we'll use
-`width` to determine the area for line breaking.[^overflow]
+What about layout-inducing DOM animations? As I explained earlier in the
+chapter, these animations are usually not advisable because of the way text
+layout jumps, but do make sense for some input-based resize animations---think
+browser window resizing, or resizing the input area in a text input field, via
+a mouse gesture. But as always, it's a good exercise to try it out and see how
+it looks and performs for yourself. Let's do that.
+
+ At the moment, our browser doesn't support any layout-inducing CSS properties
+ that would be useful to animate, so let's add support for `width` and
+ `height`, then animate them. These CSS properties do pretty much what they
+ say: force the width or height of a layout object to be the specified value in
+ pixels, as opposed to the default behavior that sizes an element to contain
+ block and inline descendants. If as a result the descendants don't fit, they
+ will *overflow* in a natural way. This usually means overflowing the bottom
+ edge of the block ancestor, because we'll use `width` to determine the area
+ for line breaking.[^overflow]
 
 [^overflow]: By default, overflowing content draws outside the bounds of
 the parent layout object. We discussed overflow to some extent in
@@ -471,10 +477,12 @@ class BlockLayout:
 ```
 
 Here is a simple animation of `width`. As the width of the `div` animates from
-`400px` to `100px`, its height will automatically increase to contain the
-text as it flows into multiple lines.^[And if automic increase was not desired,
+`400px` to `100px`, its height will automatically increase to contain the text
+as it flows into multiple lines.^[And if automatic increase was not desired,
 `height` could be specified to a fixed value. But that would of course cause
-overflow, which needs to be dealt with in one way or another.]
+overflow, which needs to be dealt with in one way or another.] Notice how the
+text flows during the animation. It makes sense when resizing, but is otherwise
+confusing and jarring to look at, not to mention hard to read.
 
 ``` {.html file=example-width-html}
 <div style="background-color:lightblue;width:100px">
@@ -485,7 +493,7 @@ overflow, which needs to be dealt with in one way or another.]
 (click [here](examples/example13-width-raf.html) to load the example in
 your browser)
 
-And `animate` looks like this:
+And `animate` looks like this (almost the same as the opacity example!):
 ``` {.javascript file=example-width-js}
 var frames_remaining = 120;
 var go_down = true;
@@ -517,7 +525,7 @@ express an animation in a way browsers can easily
 optimize.[^browser-detect-diff]
 
 [^browser-detect-diff]: When DOM styles change, real browsers do in fact attempt
-to figure out what changed and minimize recomputation. Chromium, for example,
+to figure out what changed and minimize re-computation. Chromium, for example,
 has a bunch of code that tries to [diff][chromium-diff] the old and new styles,
 and reduce work in situations such as changing only opacity. But this approach
 will always be somewhat brittle and incomplete, because the browser has to
@@ -532,7 +540,7 @@ The `transition` CSS property looks like this:
 
 	transition: opacity 2s,width 2s;
 
-This means that, whenever the `opacity` or `width` propertes of the element
+This means that, whenever the `opacity` or `width` properties of the element
 change---for any reason, including mutating its style attribute or loading a
 style sheet---then the browser should smoothly interpolate between the old and
 new values, in basically the same way the `requestAnimationFrame` loop did it.
@@ -548,9 +556,45 @@ trigger it once every 2 seconds:
 your browser; [here](examples/example13-width-transition.html) is the width
 animation example)
 
-Implement this CSS property. The strategy will be to add code in `style` that
-checks whether animations should start when a property changes, and update
-running animations at the start of `Tab.run_animation_frame`.
+Implement this CSS property. The strategy will be almost the same as in
+JavaScript: define an object on which we can call `animate` on each
+animation frame, causing the animation to advance one frame. And when it's
+done, remove it. There can be more than one CSS transition, so store them
+in a 2D `animations` dictionary keyed by node and CSS property
+name.[^delete-complicated]
+
+[^delete-complicated]: And because we're iterating over a dictionary, we can't
+delete entries right then. Instead, we have to save off a list of entries to
+delete and then loop again to delete them. That's why there are two loops and
+the `to_be_deleted` list.
+
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.animations = {}
+
+    def run_animation_frame(self, scroll):
+        # ...
+        self.js.interp.evaljs("__runRAFHandlers()")
+        # ...
+        to_delete = []
+        for node in self.animations:
+            for (property_name, animation) in \
+                self.animations[node].items():
+                if not animation.animate():
+                    to_delete.append((node, property_name))
+
+        for (node, property_name) in to_delete:
+            del self.animations[node][property_name]
+        # ...
+        self.render()
+```
+
+Animations will be started by diffing the old and new `style` of a node when
+computing its style and checking whether it has the `transition` CSS property
+and that its value matches the style property updated.
 
 ``` {.python}
 def style(node, rules, tab):
@@ -620,7 +664,7 @@ Now for `try_numeric_animation` itself. It will start an animation (using a new
 `NumericAnimation` class we'll define in a moment). The animations will be
 stored in a new dictionary on the `Tab` class, keyed by CSS property name. Both
 `opacity` and `width` are specified in numeric values, but with different
-units---unitless floating-point between 0 and 1 and pixels, respectively.
+units---unit-less floating-point between 0 and 1 and pixels, respectively.
 [^more-units] The difference is handled by an `is_px` parameter.
 
 ``` {.python}
@@ -725,42 +769,6 @@ class Tab:
 expedient to make basic transition animations work. For example, it doesn't
 correctly handle cases where styles changed on elements unrelated to the
 animation---that situation shouldn't re-start the animation either.
-
-In `run_animation_frame` on `tab`, each animation in `animations`
-should be updated just after running `requestAnimationFrame` callbacks and
-before calling `render`. It's basically: loop over all animations, and call
-`animate`; if `animate` returns `True`, that means it animated a new frame by
-changing the node's style; if it returns `False`, it has completed and can be
-removed from `animations`.[^delete-complicated]
-
-[^delete-complicated]: Because we're iterating over a dictionary, we can't
-delete entries right then. Instead, we have to save off a list of entries
-to delete and then loop again to delete them. That's why there are two loops
-and the `to_be_deleted` list.
-
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        self.animations = {}
-
-    def run_animation_frame(self, scroll):
-        # ...
-        self.js.interp.evaljs("__runRAFHandlers()")
-        # ...
-        to_delete = []
-        for node in self.animations:
-            for (property_name, animation) in \
-                self.animations[node].items():
-                if not animation.animate():
-                    to_delete.append((node, property_name))
-
-        for (node, property_name) in to_delete:
-            del self.animations[node][property_name]
-        # ...
-        self.render()
-```
 
 Our browser now supports animations with just CSS! That's much more convenient
 for website authors. It's also a bit faster, but not a whole lot (recall that
@@ -1124,7 +1132,7 @@ class DisplayItem:
 
 And while we're at it, add another `DisplayItem` constructor parameter
 indicating the `node` that the `DisplayItem` belongs to (the one that painted
-it); this will be useful when keeping track of mappings betwen `DisplayItem`s
+it); this will be useful when keeping track of mappings between `DisplayItem`s
 and GPU textures.[^cache-key]
 
 [^cache-key]: Remember that these compositing GPU textures are simply a form of
@@ -1230,7 +1238,7 @@ regardless of whether they are animating. But in fact, there are some good
 reasons to always composite certain visual effects.
 
 First, we'll be able to start the animation quicker, since raster won't have to
-happen first. That's because wWhenever we change the compositing reasons , we
+happen first. That's because whenever we change the compositing reasons , we
 might have to re-raster a number of surfaces. And also re-do compositing.
 
 Second, compositing sometimes has visual side-effects. Ideally, composited
@@ -1241,7 +1249,7 @@ anti-aliasing, this isn't always possible. "Pre-compositing" the content avoids
 visual jumps on the page when compositing starts.
 
 Real browsers support the [`will-change`][will-change] CSS property for the
-purpose of signalling pre-compositing.
+purpose of signaling pre-compositing.
 
 [subpixel]: https://en.wikipedia.org/wiki/Subpixel_rendering
 [will-change]: https://developer.mozilla.org/en-US/docs/Web/CSS/will-change
@@ -1267,7 +1275,7 @@ class CompositedLayer:
 Only paint chunks that have the same *nearest composited visual effect ancestor*
 will be allowed to be in the same `CompositedLayer`.[^simpler] The composited
 ancestor index is the index into the top-down list of ancestor effects
-refering to this nearest ancestor. (If there is no composited ancestor, the
+referring to this nearest ancestor. (If there is no composited ancestor, the
 index is -1). Here's how to compute it it. Note how we are walking *up* the
 display list tree (and therefore implicitly up the DOM tree also) via a
 reversed iteration:
@@ -1346,7 +1354,7 @@ class CompositedLayer:
   translate by the `top` and `left` of the composited bounds. That's because we
   should allocate a surface exactly sized to the width and height of the
   bounds; its top/left is just a positioning offset.^[This will be taken into
-  acocunt in `draw` as well; see below.] Also, notice the second example of of
+  account in `draw` as well; see below.] Also, notice the second example of of
   the `op` parameter for executing the paint command.
 
 ``` {.python}
@@ -1376,7 +1384,7 @@ class CompositedLayer:
         canvas.restore()
 ```
 
-  The above code depeds on a helper method `draw_internal`. This method
+  The above code depends on a helper method `draw_internal`. This method
   recursively iterates over `ancestor_effects` from the start to the end,
   drawing each visual effect on the canvas.
 
@@ -1393,7 +1401,7 @@ class CompositedLayer:
 ```
 
 * `draw`: draws `self.surface` to the screen, taking into account the visual
-  effects applied to each chunk. In ths case, `op` is a call to `draw` on the
+  effects applied to each chunk. In this case, `op` is a call to `draw` on the
   `skia.Surface`.
 
 ``` {.python}
@@ -1439,7 +1447,7 @@ renaming at all callsites), and everything should work end-to-end.
 ::: {.further}
 
 Interestingly enough, as of the time of writing this section, Chromium and
-WebKit both peform the `compositing` step on the main thread. This is the only
+WebKit both perform the `compositing` step on the main thread. This is the only
 way in which our browser is actually ahead of real browsers! The reason
 compositing doesn't (yet) happen on another thread in Chromium is that to get
 there took re-architecting the entire algorithm for compositing. The
@@ -1591,7 +1599,7 @@ class Tab:
 Now for the browser thread.
 
 * Add `needs_composite`, `needs_raster` and `needs_draw` dirty bits and
-  correspondiing `set_needs_composite`, `set_needs_raster`, and
+  corresponding `set_needs_composite`, `set_needs_raster`, and
   `set_needs_draw` methods (and remove the old
   `needs_raster_and_draw` dirty bit):
 
@@ -1637,9 +1645,9 @@ class Browser:
         self.set_needs_raster()
 ```
 
-* Use the passed data in `commit` to decide wheter to  call
+* Use the passed data in `commit` to decide whether to  call
   `set_needs_composite` or `set_needs_draw`, and store off the updates in
-  `compostited_upates`:
+  `composited_updates`:
 
 ``` {.python}
 class Browser:
@@ -1677,7 +1685,7 @@ ancestors.)
 * Now for the actual animation updates on the browser thread: if
   `needs_composite` is false, loop over each `CompositedLayer`'s
   `composited_items`, and update each one that matches the
-  animation.[^ptrcompare] The update is accomplised by calling `copy`  on the
+  animation.[^ptrcompare] The update is accomplished by calling `copy`  on the
   `SaveLayer`, defined as:
 
 
@@ -1999,7 +2007,7 @@ have fast, composited transform animations.
 
 But if you try it on the example above, you'll find that the animation still
 looks wrong---the blue square is supposed to be *under* the green one, but
-now it's on top. Which is of course becanse of the lack of overlap testing,
+now it's on top. Which is of course because of the lack of overlap testing,
 which we should now complete.
 
 Let's first add the implementation of a new `absolute_bounds` function. The
@@ -2038,7 +2046,7 @@ def absolute_bounds(display_item, ancestor_effects):
     return retval
 ```
 
-And add a method union all of the absoloute bounds of the paint chunks in 
+And add a method union all of the absolute bounds of the paint chunks in 
 a `CompositedLayer`:
 
 ``` {.python}
@@ -2058,7 +2066,7 @@ Overlap testing is now complete.[^not-really] Your animation should animate the
 blue square underneath the green one.
 
 [^not-really]: Actually, even the current code is not correct now that we have
-transforms. Since a transform animtion moves content around, it also affects
+transforms. Since a transform animation moves content around, it also affects
 whether content overlaps. I conveniently chose a demo that starts out
 overlapping, but if it didn't start out overlapping our browser would not
 correctly notice when overlap starts happening during the animation. I've
@@ -2083,13 +2091,13 @@ class CompositedLayer:
   
 ```
 
-You should see three red squares for the transform animation demob:
+You should see three red squares for the transform animation demo:
 one for the blue square, one for the green square, and one for the root surface.
 
 I also recommend you add a mode to your browser that disables compositing
 (i.e. return `False` from `needs_compositing` for every `DisplayItem`), and
 disables use of the GPU (i.e. go back to the old way of making Skia surfaces).
-Everything should still work (albiet more slowly) in all of the modes, and you
+Everything should still work (albeit more slowly) in all of the modes, and you
 can use these additional modes to debug your browser more fully and benchmark
 its performance.
 :::
@@ -2202,7 +2210,7 @@ class Browser:
             self.scroll_behavior = data.scroll_behavior
 ```
 
-* Initiating smoooth scroll from the browser thread:
+* Initiating smooth scroll from the browser thread:
 
 ``` {.python}
     def handle_down(self):
@@ -2235,7 +2243,7 @@ class Tab:
 
 * Implementing `ScrollAnimation`:[^thirty]
 
-[^thirty]: The chioce of a half-second animation---30 animation frames---is an
+[^thirty]: The choice of a half-second animation---30 animation frames---is an
 arbitrary choice that is intentionally left up to the browser in the definition
 of the `scroll-behavior` CSS property.
 
@@ -2324,7 +2332,7 @@ remember are:
   not feasible (at least at present) for layout-inducing animations.
 
 - Input-driven animations have tight performance constraints, and so must
-  generally bge composited to behave well.
+  generally be composited to behave well.
 
 
 Outline
