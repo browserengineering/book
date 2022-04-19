@@ -557,7 +557,7 @@ your browser; [here](examples/example13-width-transition.html) is the width
 animation example)
 
 Implement this CSS property. The strategy will be almost the same as in
-Javascript: define an object on which we can call `animate` on each
+JavaScript: define an object on which we can call `animate` on each
 animation frame, causing the animation to advance one frame. And when it's
 done, remove it. There can be more than one CSS transition, so store them
 in a 2D `animations` dictionary keyed by node and CSS property
@@ -592,7 +592,7 @@ class Tab:
         self.render()
 ```
 
-Animations will be started by diffing the old nad new  `style` of a node when
+Animations will be started by diffing the old and new `style` of a node when
 computing its style and checking whether it has the `transition` CSS property
 and that its value matches the style property updated.
 
