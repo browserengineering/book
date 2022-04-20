@@ -2019,7 +2019,7 @@ Let's first add the implementation of a new `absolute_bounds` function. The
  content around on screen. The first step in accomplishing that is with a new
  `map` method on `Transform` that takes a rect in the coordinate space of
  the "contents" of the transform and outputs a rect in post-transform space.
- For example, if the transform was `translate(20px, 0px)` then the  output of
+ For example, if the transform was `translate(20px, 0px)` then the output of
  calling `map` on a rect would return a new rect with the x coordinate of all
  four corners increased by 20.
 
