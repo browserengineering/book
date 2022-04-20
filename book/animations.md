@@ -809,14 +809,14 @@ Compositing
 ===========
 
 *Compositing* is a technique to avoid raster during visual effect animations by
- caching it instead in the GPU. So only `draw` is needed for each animation
- frame (with different parameters each time).[^compositing-def]
+ caching raster results in GPU textures. So only `draw` is needed for each
+ animation frame (with different parameters each time of course).[^compositing-def]
 
 [^compositing-def]: The term [*compositing*][compositing] originally meant to
 combine multiple images together into a final output. As it relates to
 browsers, it usually means the performance optimization technique described
-here, but the term is usually overloaded to refer to OS and browser-level
-compositing and multi-threaded rendering.
+here, but the term is often overloaded to refer to OS and browser-level
+compositing, and multi-threaded rendering.
 
 [compositing]: https://en.wikipedia.org/wiki/Compositing
 
@@ -829,7 +829,8 @@ work, because no raster work will be needed on each animation frame.
 Below is the opacity animation with a red border "around" the surface that we
 want to cache. Notice how it's sized to the width and height of the `<div>`,
 which is as wide as the viewport and as tall as the text "Test".[^chrome] That's
-because the surface will cache the raster output of the `DrawText` command.
+because the surface will cache the raster output of the `DrawText` command,
+and those are its bounds.
 
  <iframe src="http://localhost:8001/examples/example13-opacity-transition-borders.html">
  </iframe>
@@ -843,7 +844,7 @@ sometimes caches surfaces internally. So you might think that Skia has a way to
 say "please cache this surface". And there is---keep around a `skia.Surface`
 object across multiple raster-and-draw executions and use the `draw` method on
 the surface to draw it into another canvas.^[Skia will keep alive the rastered
-content associated with the `Surface` object until it's garbage collected.] In
+content associated with a `Surface` object until it's garbage collected.] In
 other words, we'll need to do the caching ourselves. This feature is not
 built into Skia itself in a trivial-to-use form.
 
@@ -959,9 +960,7 @@ may be multiple "child" pieces of content, only some of which may be animating.
 There are even more in a real browser.]
 
 Instead, think of the display list as a flat list of "leaf" *paint commands*
-(display list commands that don't have any `cmds`)
-like `DrawText`.^[The tree of visual effects is applied to some of those paint
-commands, but ignore that for now and focus on the paint commands.] Each paint
+(display list commands that don't have any `cmds`) like `DrawText`. Each paint
 command can be (individually) drawn to the screen by executing it and the
 series of *ancestor [visual] effects* on it. Thus the tuple (paint command,
 ancestor effects) suffices to describe that paint command in isolation.
@@ -996,13 +995,14 @@ Two paint chunks in the flat list can be put into the same composited layer if
 they have the exact same set of animating ancestor effects. (Otherwise the
 animations would end up applying to the wrong paint commands.)
 
-To satisfy this constraint, we *could* just put each paint command
-in its own composited layer. But of course, that would result in a huge number
-of surfaces, and most likely exhaust the computer's GPU memory. So the goal of
-the *compositing algorithm* is to come up with a way to pack paint chunks into
-only a small number of composited layers.^[There are many possible compositing
-algorithms, with their own tradeoffs of memory, time and code complexity. I'll
-present a simplified version of the one used by Chromium.]
+To satisfy this constraint, we *could* just put each paint command in its own
+composited layer. But of course, for examples more complex than just one
+`DrawText` that woould result in a huge number of surfaces, and most likely
+exhaust the computer's GPU memory. So the goal of the *compositing algorithm*
+is to come up with a way to pack paint chunks into only a small number of
+composited layers.^[There are many possible compositing algorithms, with their
+own tradeoffs of memory, time and code complexity. I'll present a simplified
+version of the one used by Chromium.]
 
 Below is the algorithm we'll use; as you can see it's not very complicated. It
 loops over the list of paint chunks; for each paint chunk it tries to add it to
@@ -1195,11 +1195,10 @@ Finally, we'll need to be able to get the *composited bounds* of a
 contains the item.
 
 A display item's composited bounds is the union of its painting rectangle and
-all descendants that are not themselves composited. This value be needed to
-determine the absolute bounds of a `CompositedLayer`'s surface. Computing
-composited bounds is pretty easy---there is already a `rect` field indicating
-the bounds, stored on the various subclasses. So just pass them to the
-superclass instead and define `composited_bounds` there:
+all descendants that are not themselves composited. Computing composited bounds
+is pretty easy---there is already a `rect` field indicating the bounds, stored
+on the various subclasses. So just pass them to the superclass instead and
+define `composited_bounds` there:
 
 ``` {.python}
 class DisplayItem:
@@ -1463,11 +1462,10 @@ Composited animations
 =====================
 
 Compositing now works, but it doesn't yet achieve the goal of avoiding raster
-during animations (because `composite` is constantly re-running). In fact, at
-the moment it might be *slower* than before, because the compositing algorithm
-takes time to run, and using the GPU is not free: you have to constantly
-re-upload display lists and re-raster all the time. Let's now add code to avoid
-all this work.
+during animations. That's because `composite` is constantly re-running on every
+frame and kesps throwing away and re-creating the composited layers. In fact,
+at the moment it's probably *slower* than before, because the compositing
+algorithm takes time to run. Let's now add code to avoid all this work.
 
 Avoiding raster and the compositing algorithm is simple in concept: keep track
 of what is animating, and re-run `draw` with different opacity parameters on
@@ -1801,7 +1799,7 @@ animations that cause movement, which would be pretty boring.]
 would return the same thing as `composited_bounds`, and we could just
 edit the code above to write `composited_bounds` and call it a day.
 
-[^only-overflow]: There is, however, a way to create overlap with our current
+[^only-overflow]: There technically is a way to create overlap with our current
 browser: by setting the `width` and `height` of elements such that it causes
 text to overflow on top of siblings further down the page.
 
@@ -1840,8 +1838,8 @@ last section:[^why-zero]
 
 [^why-zero]: The green square has a `transform` property also so that paint
 order doesn't change when you try the demo in a real browser. I won't get into
-it, but there are various rules for painting, and "positioned" elements(such as
-with `transform`) are supposed to paint after regular(non-positioned) elements.
+it, but there are various rules for painting, and "positioned" elements (such as
+with `transform`) are supposed to paint after regular (non-positioned) elements.
 This particular rule is purely a historical artifact.
 
 [^not-always-visual]: Technically it's not always just a visual effect. In
@@ -2020,7 +2018,10 @@ Let's first add the implementation of a new `absolute_bounds` function. The
  rects of each paint command. But now we need to account for a transform moving
  content around on screen. The first step in accomplishing that is with a new
  `map` method on `Transform` that takes a rect in the coordinate space of
- the "contents" of the transform and outputs a rect in post-transform space:
+ the "contents" of the transform and outputs a rect in post-transform space.
+ For example, if the transform was `translate(20px, 0px)` then the output of
+ calling `map` on a rect would return a new rect with the x coordinate of all
+ four corners increased by 20.
 
 ``` {.python}
 class Transform(DisplayItem):
@@ -2114,7 +2115,7 @@ an *animation*. To my mind, there are two key reasons:
   animate scroll in a smooth way when scrolling by keyboard or scrollbar
   clicks. Another example is that in a touch-driven scroll, browsers interpret
   the touch movement as a gesture with velocity, and therefore continue the
-  scroll---a "fling" gesture---according to a physics-based model(with friction
+  scroll---a "fling" gesture---according to a physics-based model (with friction
   slowing it down).
 
 * Touch or mouse drag-based scrolling is very performance sensitive. This is
@@ -2274,7 +2275,8 @@ class ScrollAnimation:
 Yay, smooth scrolling! You can try it on
 [this example](examples/example13-transform-transition.html), which combines a
 smooth scroll and transform animation *at the same time*. And it's got super
-smooth animation performance.
+smooth animation performance. That's quite satisfying, and I hope makes the hard
+slog of this chapter worth it!
 
 On top of that, notice how once we have an animation framework implemented,
 adding new features to it becomes easier and easier. This is a pattern I hope
