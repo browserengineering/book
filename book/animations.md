@@ -1780,28 +1780,47 @@ needs to be animated.
                 # ...
 ```
 
-And then implementing the `absolute_bounds` methods used in the code above.
+And then implementing the `absolute_bounds` methods used in the code above. As
+it stands, this might as well be equivalent to `composited_bounds` because
+there is no visual effect that can grow the bounding rect of paint
+commands.[^grow] So by just defining `absolute_bounds` to be
+`composited_bounds`, everything will work correctly:
 
-But before we jump to doing that, there's one "small" problem: our browser
-doesn't even support enough features to cause the green-overlapping-blue
-situation described in this section![^only-overflow] In real browsers, there
-are number of features that provide ways to achieve this. One of the ways is
-via the `transform` CSS property. Let's implement that in order to make overlap
-testing more interesting.[^simple-overlap]
+``` {.python expected=False}
+    def absolute_bounds(self, rect):
+        return self.composited_bounds(rect)
+```
 
-But there's *another* good reason to implement this property: `transform` is in
-fact a very common way to animate content on the web. Not only that, but since
-it's a visual effect, we'll be able to accelerate these animations as
-well.^[Third reason: without transforms, we wouldn't have implemented
-animations that cause movement, which would be pretty boring.]
+[^grow]: By grow, I mean that the pixel bounding rect of the visual effect
+when drawn to the screen is *larger* than the pixel bounding rect of a paint
+command within it like `DrawText`. After all, blending, compositing, and
+opacity all change the colors of pixels, but don't expand the set of affected
+pixels. And clips and masking decrease rather than increase the set of pixels,
+so they can't cause additional overlap either (though they might cause less
+overlap).
 
-[^simple-overlap]: In fact, if there were no transforms, `absolute_bounds`
-would return the same thing as `composited_bounds`, and we could just
-edit the code above to write `composited_bounds` and call it a day.
+But this is both unsatisfying and boring, because in fact there *are* visual
+effects that can cause additional overlap. The most important is *transforms*,
+which are a mechanism to move around the painted output of a DOM element
+anywhere on the screen.[^blur-filter] In addition, transforms are one of the
+most popular visual effects in browsers, because they allow you to move around
+content efficiently on the GPU and the browser thread. That's because
+transforms merely apply a linear transformation matrix to each pixel, which is
+one of the things GPUs are good at doing efficiently.[^overlap-example]
 
-[^only-overflow]: There technically is a way to create overlap with our current
-browser: by setting the `width` and `height` of elements such that it causes
-text to overflow on top of siblings further down the page.
+[^blur-filter]: Certain [CSS filters][cssfilter], such as blurs, can also expand
+pixel rects.
+
+[cssfilter]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
+
+[^overlap-example]: In addition, it's not possible to create the overlapping
+squares example of this section without something like transforms. Real
+browsers have many other methods, such as [position]. In fact, it's a a bit
+difficult to cause overlap at all in our current browser, though one way is to
+set the `width` and `height` of elements such that it causes text to overflow
+on top of siblings further down the page.
+
+[position]: https://developer.mozilla.org/en-US/docs/Web/CSS/position
 
 ::: {.further}
 
