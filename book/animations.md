@@ -1793,10 +1793,10 @@ commands.[^grow] So by just defining `absolute_bounds` to be
 
 [^grow]: By grow, I mean that the pixel bounding rect of the visual effect
 when drawn to the screen is *larger* than the pixel bounding rect of a paint
-command within it like `DrawText`. After all, blending, compositing, and
+command like `DrawText` within it. After all, blending, compositing, and
 opacity all change the colors of pixels, but don't expand the set of affected
 pixels. And clips and masking decrease rather than increase the set of pixels,
-so they can't cause additional overlap either (though they might cause less
+so they can't cause additional overlap either (though they might cause *less*
 overlap).
 
 But this is both unsatisfying and boring, because in fact there *are* visual
