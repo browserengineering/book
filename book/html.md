@@ -74,7 +74,7 @@ next.
 Since the parser reads the HTML file from left to right, these
 unfinished tags are always in a certain part of the tree. The
 unfinished tags have always been *opened* but not yet closed; they are
-always the *to the right* of the finished nodes; and they are always
+always *to the right* of the finished nodes; and they are always
 *children of other unfinished tags*. To leverage these facts, let's
 represent an incomplete tree by storing a list of unfinished tags,
 ordered with parents before children. The first node in the list is
