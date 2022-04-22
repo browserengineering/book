@@ -313,6 +313,33 @@ So GPU acceleration speeds up raster-and-draw by more than 60%. (If you're on a
 computer with a non-virtualized GL driver you will probably see even more
 speedup than that.)
 
+::: {.further}
+
+A high-speed, reliable and cross-platform GPU raster path in Skia has only
+existed for a few years.[^timeline-gpu] In the very early days of Chromium,
+there was only CPU raster. Scrolling was implemented much like in the eary
+chapters of this book, by re-rastering content. This was deemed acceptable at
+the time beacuse computers were much slower than today in general, GPUs much
+less reliable, animations much less frequent, and mobile platforms such as
+Android and iOS still emerging. (In fact, the first versions of Android
+also didn't have GPU acceleration.) The same is generally true of Firefox and
+Safari, though Safari was able to accelerate content more easily because it
+only targeted the limited number of GPUs supported by macOS and iOS.
+
+[^timeline-gpu]: You can see a timeline [here][rng-gpu]
+
+[rng-gpu]: https://developer.chrome.com/blog/renderingng/#gpu-acceleration-everywhere
+
+There are *many* challenges to implementing GPU accelerated raster, among them
+working correctly across many GPU architectures, gracefully falling back to CPU
+raster in complex or error scenarios, and difficult-to-efficiently-raster
+content like anti-aliased & complex shapes.
+
+So while you might think it's odd to wait until Chapter 13 to turn on
+GPU acceleration, this also mirrors the evolution timeline of
+browsers.
+
+:::
 
 Opacity animations
 ==================
