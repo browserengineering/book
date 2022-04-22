@@ -590,10 +590,11 @@ done, remove it. There can be more than one CSS transition, so store them
 in a 2D `animations` dictionary keyed by node and CSS property
 name.[^delete-complicated]
 
-[^delete-complicated]: And because we're iterating over a dictionary, we can't
-delete entries right then. Instead, we have to save off a list of entries to
-delete and then loop again to delete them. That's why there are two loops and
-the `to_be_deleted` list.
+[^delete-complicated]: For simplicity, this code leaves animations in
+    the `animations` dictionary even when they're done animating.
+    Removing them would be necessary, however, for really long-running
+    tabs where just looping over all the already-completed animations
+    can take a while.
 
 
 ``` {.python}
@@ -605,18 +606,12 @@ class Tab:
     def run_animation_frame(self, scroll):
         # ...
         self.js.interp.evaljs("__runRAFHandlers()")
-        # ...
-        to_delete = []
-        for node in self.animations:
-            for (property_name, animation) in \
-                self.animations[node].items():
-                if not animation.animate():
-                    to_delete.append((node, property_name))
 
-        for (node, property_name) in to_delete:
-            del self.animations[node][property_name]
+        for node, animations in self.animations.items():
+            for (property_name, animation) in animations.items():
+                animation.animate()
+
         # ...
-        self.render()
 ```
 
 Animations will be started by diffing the old and new `style` of a node when
@@ -1596,7 +1591,7 @@ class CommitData:
         display_list, composited_updates, scroll_behavior):
         # ...
         self.composited_updates = composited_updates
-````
+```
 
   And finally, commit the new information:
 

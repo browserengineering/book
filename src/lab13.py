@@ -1330,15 +1330,9 @@ class Tab:
                     self.scroll = scroll
         self.js.interp.evaljs("__runRAFHandlers()")
 
-        to_delete = []
-        for node in self.animations:
-            for (property_name, animation) in \
-                self.animations[node].items():
-                if not animation.animate():
-                    to_delete.append((node, property_name))
-
-        for (node, property_name) in to_delete:
-            del self.animations[node][property_name]
+        for node, animations in self.animations.items():
+            for (property_name, animation) in animations.items():
+                animation.animate()
 
         if self.scroll_animation:
             if not self.scroll_animation.animate():
