@@ -1719,10 +1719,37 @@ Check out the result---animations that only update the draw step, and
 not everything else!
 
 ::: {.further}
-Threaded animations (exercise).
 
-Rastering only some content, partial raster, partial draw.
+While visual effect animations in our browser are now efficient
+and *composited*, they are not *threaded* in the sense of
+[Chapter 12][threaded-12]: the animation still ticks on the main thread, and if
+there is a slow JavaScript or other task clogging the task queue, animations
+will stutter. This is a significant problem for real browsers, so almost
+all of them support threaded opacity, transform and filter animations; some
+support certain kinds of clip animations as well. (This chapter is already
+quite complex, so I left adding threaded animations to an exercise.)
+
+It's common to hear people use "composited" and "threaded" as synonyms, however.
+That's because in most browsers, compositing is a *prerequisite* for threading.
+The reason is that if you're going to animate efficiently
+on the GPU, you usually need to composite a texture anyway, and plumbing
+animations on GPU textures is much easier to express in a browser than an
+animation on "part of a display list".
+
+That being said, it's not impossible to animate display lists, and some browsers
+have attempted it. For example, one aim of the [WebRender] project at Mozilla
+is to get rid of cached composited layers entirely, and perform all animations
+by rastering and drawing at 60Hz on the GPU directly from the display list.
+This is called a *direct render* approach. In practice this goal is
+hard to achieve with current GPU technology, because some GPUs are faster
+than others. So browsers are slowly evolving to a hybrid of direct rendering
+and compositing.
+
 :::
+
+[threaded-12]: http://localhost:8001/scheduling.html#threaded-scrolling
+
+[WebRender]: https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-gets-rid-of-jank/
 
 Overlap testing
 ===============
@@ -2405,7 +2432,7 @@ color channels.
 
 *Threaded scrolling*: once you've completed the threaded animations exercise,
  you should be able to add threaded scrolling (i.e., scrolling that doesn't
- ever block on main-thread tasks) without much work.
+ ever block on main-thread tasks) without much more work.
 
 *CSS animations*: implement the basics of the
 [CSS animations][css-animations] API, in particular enough of the `animation`
