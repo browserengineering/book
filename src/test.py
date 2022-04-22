@@ -63,7 +63,7 @@ class socket:
     @classmethod
     def respond_ok(cls, url, response, method="GET", body=None):
         response = ("HTTP/1.0 200 OK\r\n\r\n" + response).encode("utf8")
-        cls.URLs[url] = [method, response, body]
+        cls.respond(url, response, method=method, body=body)
 
     @classmethod
     def made_request(cls, url):
