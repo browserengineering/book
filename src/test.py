@@ -43,7 +43,8 @@ class socket:
                        if name.lower() == "content-length")
 
     def makefile(self, mode, encoding, newline):
-        assert self.connected and self.host and self.port
+        assert self.connected and self.host and self.port, \
+            "You cannot call makefile() on a socket until you call connect() and send()"
         if self.port == 80 and self.scheme == "http":
             url = self.scheme + "://" + self.host + self.path
         elif self.port == 443 and self.scheme == "https":
