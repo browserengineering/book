@@ -17,11 +17,19 @@ class socket:
     def __init__(self, *args, **kwargs):
         self.request = b""
         self.connected = False
+        self.scheme = "http"
+        self.ssl_hostname = None
 
     def connect(self, host_port):
-        self.scheme = "http"
         self.host, self.port = host_port
         self.connected = True
+        self._check_cert()
+
+    def _check_cert(self):
+        if self.connected and self.host and self.ssl_hostname:
+            assert self.host == self.ssl_hostname, "server_hostname does not match the host"
+            if self.host.endswith(".badssl.com"): # Fake badssl.com
+                raise ssl.SSLCertVerificationError()
 
     def send(self, text):
         self.request += text
@@ -79,7 +87,8 @@ class socket:
 
 class ssl:
     def wrap_socket(self, s, server_hostname):
-        assert s.host == server_hostname
+        s.ssl_hostname = server_hostname
+        s._check_cert()
         s.scheme = "https"
         return s
 
