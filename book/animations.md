@@ -1011,7 +1011,7 @@ discussion.
 
 [stack-cont]: visual-effects.md#blending-and-stacking
 
-In fact, compositing can focus only on the leafs of this display list, which
+In fact, compositing can focus only on the leaves of this display list, which
 we'll call *paint commands*.[^drawtext] These are exactly the same display list
 commands that we had *before* Chapter 11 added visual effects. Think of
 the paint commands as forming a flat list---the output of enumerating them in
@@ -1117,7 +1117,7 @@ will be look like this:
 And drawing them to the screen will be like this:[^draw-incorrect]
 
 [^draw-incorrect]: It's worth calling out once again that this is not
-correct in the preseence of nested visual effects; see the Go Further section.
+correct in the presence of nested visual effects; see the Go Further section.
 I've left fixing the problem to an exercise.
 
 ``` {.python}
@@ -1139,11 +1139,12 @@ This is the overall structure. Now I'll show how to implement `can_merge`,
 As discussed earlier, the implementation of `Browser.draw` in this section is
 incorrect for the case of nested visual effects, because it's not correct to
 draw every paint chunk individually or even in groups; visual effects have to
-apply atomically to all the content at once. To fix it requires determining
-the necessary "draw hierarchy" of `CompositedLayer`s into a tree based on their
+apply atomically to all the content at once. To fix it requires determining the
+necessary "draw hierarchy" of `CompositedLayer`s into a tree based on their
 visual effect nesting, and allocating temporary intermediate GPU textures
-called *render surfaces* for each internal node of this tree. Render surface
-textures are generally not cached from frame to frame.
+called *render surfaces* for each internal node of this tree. The render
+surface is a place to put the inputs to an (atomically-applied) visual effect.
+Render surface textures are generally not cached from frame to frame.
 
 A naive implementation of this tree (allocating one node for each visual effect)
 is not too hard to implement, but each additional render surface requires a
