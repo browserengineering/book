@@ -1489,7 +1489,6 @@ class Browser:
         if not self.active_tab_height:
             self.lock.release()
             return
-        active_tab = self.tabs[self.active_tab]
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height)
@@ -1564,7 +1563,6 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
-        self.scroll = scroll
         # ...
 ```
 
