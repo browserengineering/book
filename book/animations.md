@@ -945,12 +945,14 @@ begun, it should print something like:
     SaveLayer(alpha=0.999): bounds=Rect(13, 18, 787, 40.3438)
         DrawText(text=Test): bounds=Rect(13, 21.6211, 44, 39.4961)
 
-Let's make a surface for the contents of the opacity `SaveLayer`, in this case
-containing only a `DrawText`. In more complicated examples, it could have any
-number of display list commands.^[Note that this is *not* the same as "cache
-the display list for a DOM element subtree". To see why, consider that a single
-DOM element can result in more than one `SaveLayer`, such as when it has both
-opacity *and* a transform.]
+It seems logical to make a surface for the contents of the opacity `SaveLayer`,
+in this case containing only a `DrawText`. In more complicated examples, it
+could of course have any number of display list commands.[^command-note]
+
+[^command-note]: Note that this is *not* the same as "cache the display list for
+a DOM element subtree". To see why, consider that a single DOM element can
+result in more than one `SaveLayer`, such as when it has both opacity *and* a
+transform.]
 
 Putting the `DrawText` into its own surface sounds simple enough: just make a
 surface and raster that sub-piece of the display list into it, then draw that
@@ -971,29 +973,66 @@ and finally call `restore`. Observe how this is
 in [Chapter 11](visual-effects.html#blending-and-stacking). The only
 difference is that here it's explicit that there is a `skia.Surface` between
 the `saveLayer` and the `restore`.
-Note also how we are using the `draw` method on `skia.Surface`, the very same
+Note also how we're using the `draw` method on `skia.Surface`, the very same
 method we already use in `Browser.draw` to draw the surface to the screen.
 In essence, we've moved a `saveLayer` command from the `raster` stage
 to the `draw` stage of the pipeline.
 
-In a way, we're implementing a way to put "subtrees of the display list" into
-different surfaces. But it's not quite just subtrees, because multiple nested
-DOM nodes could be simultaneously animating, and we can't put the same subtree
-in two different surfaces. We *could* potentially handle cases like this by
-making a tree of `skia.Surface` objects. But it turns out that that approach
-becomes quite complicated when you get into the details.^[We'll cover one of
-these details---overlap testing---later in the chapter. Another is that there
-may be multiple "child" pieces of content, only some of which may be animating.
-There are even more in a real browser.]
+Composting paint commands
+=========================
 
-Instead, think of the display list as a flat list of "leaf" *paint commands*
-(display list commands that don't have any `cmds`) like `DrawText`. Each paint
-command can be (individually) drawn to the screen by executing it and the
-series of *ancestor [visual] effects* on it. Thus the tuple (paint command,
-ancestor effects) suffices to describe that paint command in isolation.
+The most complex part of compositing and draw is dealing with the hierarchical
+nature of the display list. The most natural algorithm that comes to mind is to
+mark animating visual effects as composited, and raster a `skia.Surface` for
+everything below it. This works fine for the single `DrawText` example we've
+been looking at, but starts to get very complicated when you consider nested
+surfaces. For example, multiple nested DOM nodes could be simultaneously
+animating opacity, and we can't put the same subtree in two different surfaces.
+Do we instead raster some of it in one surface and some in another? Where do we
+put the combined result with all the opacities applied, or the first applied
+but not yet the second?^[We'll cover another complication---overlap
+testing---later in the chapter; see also the Go Further block at the end of
+this section for adidtional discussion of even more complications.]
 
-This tuple is called a *paint chunk*. Here is how to generate all the paint
-chunks from a display list:
+To handle all this complexity, let's break the problem down into two
+pieces: *compositing* the display list into a linear list of `skia.Surface`s,
+and *drawing* those surfaces to the screen. Compositing is in charge of finding
+non-animating subtrees of the display list and putting them into groups that
+raster together. Drawing  is in charge of re-creating a tree hierarchy that
+mirrors the hierarchy of animating visual effects in the display list.
+[^temp-surface]
+
+[^temp-surface]: Nested visual effects will end up causing the need for
+temporary GPU textures to be created during draw, in order to make sure visual
+effects apply atomically to all the content within them. Recall that we
+discussed this issue in [Chapter 11][stack-cont] in the context of stacking
+contexts. See the Go Further block at the end of this section for additional
+discussion.
+
+[stack-cont]: visual-effects.md#blending-and-stacking
+
+In fact, compositing can focus only on the leaves of this display list, which
+we'll call *paint commands*.[^drawtext] These are exactly the same display list
+commands that we had *before* Chapter 11 added visual effects. Think of
+the paint commands as forming a flat list---the output of enumerating them in
+paint order. The distinction between compositing and drawing is exactly
+analogous to how you can think of painting and visual effects as different but
+complementary: painting is drawing some pixels to a canvas, and visual effects
+apply a group operation to them; in the same way, compositing rasters some
+pixels and drawing applies group operations.^[And just as visual effects in our
+browser (except for scrolling) actually happen during paint at the moment,
+non-animating visual effects will end up happening during raster and not draw.
+The point is that either way is correct; choosing one or the other is
+just a matter of which has better performance.]
+
+[^drawtext]: `DrawText`, `DrawRect` etc---the display list commands that
+don't have recursive children in `cmds`.
+
+Notice that each paint command can be (individually) drawn to the screen by
+executing it and the series of *ancestor [visual] effects* on it. Thus the
+tuple (paint command, ancestor effects) suffices to describe that paint command
+in isolation. This tuple is called a *paint chunk*. Here is how to generate all
+the paint chunks from a display list:
 
 ``` {.python}
 def display_list_to_paint_chunks(
@@ -1075,7 +1114,11 @@ will be look like this:
             composited_layer.raster()
 ```
 
-And drawing them to the screen will be like this:
+And drawing them to the screen will be like this:[^draw-incorrect]
+
+[^draw-incorrect]: It's worth calling out once again that this is not
+correct in the presence of nested visual effects; see the Go Further section.
+I've left fixing the problem to an exercise.
 
 ``` {.python}
     def draw(self):
@@ -1092,15 +1135,16 @@ This is the overall structure. Now I'll show how to implement `can_merge`,
 `raster` and `draw` on a `CompositedLayer`.
 
 ::: {.further}
-Why is it that flattening a recursive display list into paint chunks is
-possible? After all, visual effects in the DOM really are nested.
 
-The implementation of `Browser.draw` in this section is
-indeed incorrect for the case of nested visual effects (such as if there is a
-composited animation on a DOM element underneath another one). To fix it
-requires determining the necessary "draw hierarchy" of `CompositedLayer`s into
-a tree based on their visual effect nesting, and allocating intermediate
-GPU textures called *render surfaces* for each internal node of this tree.
+As discussed earlier, the implementation of `Browser.draw` in this section is
+incorrect for the case of nested visual effects, because it's not correct to
+draw every paint chunk individually or even in groups; visual effects have to
+apply atomically to all the content at once. To fix it requires determining the
+necessary "draw hierarchy" of `CompositedLayer`s into a tree based on their
+visual effect nesting, and allocating temporary intermediate GPU textures
+called *render surfaces* for each internal node of this tree. The render
+surface is a place to put the inputs to an (atomically-applied) visual effect.
+Render surface textures are generally not cached from frame to frame.
 
 A naive implementation of this tree (allocating one node for each visual effect)
 is not too hard to implement, but each additional render surface requires a
