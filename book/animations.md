@@ -42,11 +42,10 @@ animations, with a bit of input-driven animations a bit at the end.[^excuse]
 [^video-anim]: And video-like animations include videos, animated images, and
 animated canvases.
 
-[^excuse]: We'll get to images and a bit of canvas in a later chapter. Video is
-a fascinating topic unto itself, but is beyond the scope of this book. Arguably,
-canvas is a bit different than the other two, since it's implemented by
-developer scripts. And of course a canvas can have animations within
-it that look about the same as some DOM animations.
+[^excuse]: Video animations is a topic unto itself, but is beyond the
+scope of this book. Arguably, canvas is a bit different than the other two,
+since it's implemented by developer scripts. And of course a canvas can have
+animations within it that look about the same as some DOM animations.
 
 DOM and input-driven animations can be sub-categorized into *layout-inducing*
 and *visual*. An animation is layout-inducing if it changes an input to layout;
@@ -54,18 +53,24 @@ animating `width` is one example that we'll encounter in this chapter.
 Otherwise the animation is visual, such as animations of `opacity` or
 `background-color`.
 
-The distinction is important for two reasons: animation quality and performance.
-In general, layout-inducing animations often have undesirable
-qualities---animating `width` can lead to text jumping around as line breaking
-changes---and performance implications (the name says it all: these animations
-require (main-thread) layout). Most of the time, layout-inducing animations are
-not a good idea for these reasons.^[One exception is a layout-inducing
-animation when resizing a browser window via a mouse gesture; in this case it's
-very useful for the user to see the new layout as the window size changes.
-Modern browsers are fast enough to do this, but it used to be that instead they
-would leave a visual *gutter* (a gap between content and the edge of the
-window) during the animation, to avoid updating layout on every animation
-frame.]
+
+::: {.further}
+
+The distinction between visual effect and layout animations is important for two
+reasons: animation quality and performance. In general, layout-inducing
+animations often have undesirable qualities---animating `width` can lead to
+text jumping around as line breaking changes---and performance implications
+(the name says it all: these animations require (main-thread) layout). Most of
+the time, layout-inducing animations are not a good idea for these reasons.
+
+One exception is a layout-inducing animation when resizing a browser window via
+a mouse gesture; in this case it's very useful for the user to see the new
+layout as the window size changes. Modern browsers are fast enough to do this,
+but it used to be that instead they would leave a visual *gutter* (a gap
+between content and the edge of the window) during the animation, to avoid
+updating layout on every animation frame.
+
+:::
 
 The animation loop
 ==================
