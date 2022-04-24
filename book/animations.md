@@ -117,6 +117,25 @@ track of where we're headed. So you should keep this mind while reading the rest
 of this chapter: it's just optimizing animations by building them
 directly into the rendering pipeline.
 
+::: {.further}
+
+The animation pattern presented in this section is yet another example
+of the *event loop* first introduced [in Chapter 2][eventloop-ch2]
+and evolved further [in Chapter 12][eventloop-ch12]. What's new in this
+chapter is that we finally have enough tech built up to actually create
+meaningful, practical animnations.
+
+And the same happened with the web. A whole lot of the
+API of proper animations, from the `requestAnimationFrame` API to
+CSS-native animations, came onto the scene only in the
+decade of the [2010s][cssanim-hist].
+
+[eventloop-ch2]: http://localhost:8001/graphics.html#creating-windows
+[eventloop-ch12]: http://localhost:8001/scheduling.html#animating-frames
+[cssanim-hist]: https://en.wikipedia.org/wiki/CSS_animations
+
+:::
+
 GPU acceleration
 ================
 
@@ -428,6 +447,24 @@ class JSContext:
         self.tab.set_needs_render()
 ```
 
+::: {.further}
+
+Opacity is a special kind of CSS filter. And where it makes sense, other filters
+that parameterize on some numeric input (such as [blur]) can also be animated
+just as easily.
+
+Likewise, certain paint-only effects such as color and background-color are also
+possible to animate, since colors are numeric and can be interpolated. (In that
+ase, each color channel is interpolated independently.) According to the
+terminology of this chapter, paint-only effects are not a visual effect, but
+because they don't need layout they can be considered in the same category as
+visual effects, and with some extra effort hardware-accelerated in the same
+ways.
+
+:::
+
+[blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur
+
 Width/height animations
 =======================
 
@@ -543,6 +580,17 @@ function animate() {
     return true;
 }
 ```
+
+::: {.further}
+
+Almost any CSS property with some sort of interpolable number can be animated in
+a similar way. Here is a [list][anim-prop] of all of them. Most of them
+are layout inducing, including some interesting ones that we *could* have
+animated without introducing `width` and `height`, such as `font-size`.
+
+[anim-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_animated_properties
+
+:::
 
 CSS transitions
 ===============
@@ -1528,8 +1576,8 @@ compositing doesn't (yet) happen on another thread in Chromium is that to get
 there took re-architecting the entire algorithm for compositing. The
 re-architecture turned out to be extremely difficult, because the old one
 was deeply intertwined with nearly every aspect of the rendering engine. The
-re-architecture  project only
-[recently completed](https://developer.chrome.com/blog/renderingng/#compositeafterpaint),
+re-architecture project only
+[completed in 2021](https://developer.chrome.com/blog/renderingng/#compositeafterpaint),
 so perhaps sometime soon this work will be threaded in Chromium.
 
 :::
@@ -2489,12 +2537,6 @@ color channels.
 
  [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
 
-*Render surfaces*: as described in the go-further block at the end of
- [this section](#implementing-compositing), our browser doesn't currently draw
- nested, composited visual effects correctly. Fix this by building a "draw
- tree" for all of the `CompositedLayer`s and allocating a `skia.Surface` for
- each internal node.
-
 *Threaded animations*: despite Chapter 12 being all about threading, we didn't
  actually implement threaded animations in this chapter---they are all driven
  by code running on the main thread. But just like scrolling, in a real browser
@@ -2556,3 +2598,9 @@ determine the bounding box of the animation, and use that for overlap instead.
 time to raster the provided paint commands is low enough to not justify a GPU
 texture. This will be true for solid color rectangles, but probably not complex
 shapes or text.
+
+*Render surfaces*: as described in the go-further block at the end of
+ [this section](#implementing-compositing), our browser doesn't currently draw
+ nested, composited visual effects correctly. Fix this by building a "draw
+ tree" for all of the `CompositedLayer`s and allocating a `skia.Surface` for
+ each internal node.
