@@ -10,6 +10,7 @@ This file contains tests for Chapter 13 (Animations and Compositing).
     >>> import lab13
     >>> import time
     >>> import threading
+    >>> import math
     >>> lab13.USE_BROWSER_THREAD = False
     >>> lab13.USE_GPU = False
 		>>> lab13.TaskRunner = test.MockTaskRunner
@@ -192,8 +193,8 @@ As well as the browser:
     >>> browser.scroll
     0
 
-Scrolling is not immediage:
+Scrolling is not immediate, but shows the result after one frame:
 
     >>> browser.handle_down()
-    >>> browser.scroll
-    0
+    >>> math.floor(browser.scroll)
+    6

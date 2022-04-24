@@ -569,8 +569,9 @@ class Browser:
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
-        if not self.active_tab_height: return
-        active_tab = self.tabs[self.active_tab]
+        if not self.active_tab_height:
+            self.lock.release()
+            return
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height)

@@ -1838,18 +1838,19 @@ class Browser:
         self.lock.release()
 
     def handle_down(self):
-        print('hi')
         self.lock.acquire(blocking=True)
-        print(self.active_tab_height)
-        if not self.active_tab_height: return
-        active_tab = self.tabs[self.active_tab]
+        if not self.active_tab_height:
+            self.lock.release()
+            return
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height)
         if self.scroll_behavior == 'smooth':
-            print('new scroll: ' + str(scroll))
+            active_tab = self.tabs[self.active_tab]
+            self.lock.release()
             active_tab.task_runner.schedule_task(
                 Task(active_tab.run_animation_frame, scroll))
+            self.lock.acquire(blocking=True)
         else:
             self.scroll = scroll
         self.set_needs_draw()
