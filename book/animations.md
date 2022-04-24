@@ -123,10 +123,10 @@ The animation pattern presented in this section is yet another example
 of the *event loop* first introduced [in Chapter 2][eventloop-ch2]
 and evolved further [in Chapter 12][eventloop-ch12]. What's new in this
 chapter is that we finally have enough tech built up to actually create
-meaningful, practical animnations.
+meaningful, practical animations.
 
 And the same happened with the web. A whole lot of the
-API of proper animations, from the `requestAnimationFrame` API to
+API set pof proper animations, from the `requestAnimationFrame` API to
 CSS-native animations, came onto the scene only in the
 decade of the [2010s][cssanim-hist].
 
