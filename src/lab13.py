@@ -1011,6 +1011,17 @@ class TranslateAnimation:
         self.tab.set_needs_animation(self.node, USE_COMPOSITING)
         return True
 
+    def __repr__(self):
+        return ("TranslateAnimation(" + \
+            "old_value=({old_x},{old_y}), " + \
+            "change_per_frame=({change_x},{change_y}), " + \
+            "num_frames={num_frames})").format(
+            old_x=self.old_x,
+            old_y = self.old_y,
+            change_x=self.change_per_frame_x,
+            change_y=self.change_per_frame_y,
+            num_frames=self.num_frames)
+
 class NumericAnimation:
     def __init__(
         self, node, property_name, is_px,
@@ -1039,6 +1050,14 @@ class NumericAnimation:
         self.tab.set_needs_animation(self.node,
             self.property_name == "opacity" and USE_COMPOSITING)
         return True
+
+    def __repr__(self):
+        return ("NumericAnimation(property_name={property_name}, " + \
+            "old_value={old_value}, change_per_frame={change_per_frame}, " + \
+            "num_frames={num_frames})").format(
+            property_name=self.property_name, old_value=self.old_value,
+            change_per_frame=self.change_per_frame,
+            num_frames=self.num_frames)
 
 class ScrollAnimation:
     def __init__(
@@ -1827,8 +1846,11 @@ class Browser:
             self.scroll + SCROLL_STEP,
             self.active_tab_height)
         if self.scroll_behavior == 'smooth':
+            active_tab = self.tabs[self.active_tab]
+            self.lock.release()
             active_tab.task_runner.schedule_task(
                 Task(active_tab.run_animation_frame, scroll))
+            self.lock.acquire(blocking=True)
         else:
             self.scroll = scroll
         self.set_needs_draw()
