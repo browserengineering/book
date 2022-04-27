@@ -33,11 +33,12 @@ rotating, fading, blurring, and sharpening.
 
 On web pages, there are several categories of common animations: DOM,
 input-driven and video-like. A DOM animation is a movement or visual effect
-change of DOM elements on the screen, achieved by interpolating CSS properties
-of elements such as color, opacity or sizing. Input-driven animations involve
-input of course: scrolling, page resizing, pinch-zoom, draggable menus and
-similar effects.[^video-anim]  In this chapter we'll focus mostly on DOM
-animations, with a bit of input-driven animations a bit at the end.[^excuse]
+change of elements on the screen, achieved by interpolating CSS properties of
+elements such as color, opacity or sizing, or changes of text content.
+Input-driven animations involve input of course: scrolling, page resizing,
+pinch-zoom, draggable menus and similar effects.[^video-anim]  In this chapter
+we'll focus mostly on DOM animations, with a bit of input-driven animations a
+bit at the end.[^excuse]
 
 [^video-anim]: And video-like animations include videos, animated images, and
 animated canvases.
@@ -63,7 +64,7 @@ text jumping around as line breaking changes---and performance implications
 (the name says it all: these animations require (main-thread) layout). Most of
 the time, layout-inducing animations are not a good idea for these reasons.
 
-One exception is a layout-inducing animation when resizing a browser window via
+An exception is a layout-inducing animation when resizing a browser window via
 a mouse gesture; in this case it's very useful for the user to see the new
 layout as the window size changes. Modern browsers are fast enough to do this,
 but it used to be that instead they would leave a visual *gutter* (a gap
@@ -100,11 +101,12 @@ keep animating. For example, the Chapter 12 equivalent of this method sets the
 `innerHTML` of an element to increase a counter. The animation examples in this
 chapter will modify CSS properties instead.
 
-As you might guess, there are huge performance, complexity and architectural
-advantages[^advantages] to moving this work from JavaScript into the browser's
-Python code. So a big chunk of this chapter will be about how to go about doing
-that, and exploring all of these advantages. But it's important to keep in mind
-that the way the browser will implement these animations is at its root
+Even better would be to run these CSS property animations automatically in the
+browser. As you might guess, there are huge performance, complexity and
+architectural advantages to doing so.[^advantages] And that's what this chapter
+is really about: how to go about doing that, and exploring all of these
+advantages. But it's important to keep in mind that the way the browser will
+implement these animations is at its root
 *exactly the same*: run an animation loop at 60Hz and advance the animation
  frame-by-frame.
 
@@ -112,10 +114,10 @@ that the way the browser will implement these animations is at its root
 pipeline have to be re-run on each animation frame, and running animations
 entirely on the browser thread.
 
-The browser implementation turns out to be complicated, and it's easy to lose
-track of where we're headed. So you should keep this mind while reading the rest
-of this chapter: it's just optimizing animations by building them
-directly into the rendering pipeline.
+The browser implementation ends up quite complicated, and it's easy to lose
+track of where we're headed. So if you start to get lost, just remember: all
+that's going on is optimizing animation loops by building them directly into
+the rendering pipeline.
 
 ::: {.further}
 
@@ -126,7 +128,7 @@ chapter is that we finally have enough tech built up to actually create
 meaningful, practical animations.
 
 And the same happened with the web. A whole lot of the
-API set pof proper animations, from the `requestAnimationFrame` API to
+APIs for proper animations, from the `requestAnimationFrame` API to
 CSS-native animations, came onto the scene only in the
 decade of the [2010s][cssanim-hist].
 
@@ -1031,8 +1033,8 @@ method we already use in `Browser.draw` to draw the surface to the screen.
 In essence, we've moved a `saveLayer` command from the `raster` stage
 to the `draw` stage of the pipeline.
 
-Composting paint commands
-=========================
+Compositing algorithms
+======================
 
 The most complex part of compositing and draw is dealing with the hierarchical
 nature of the display list. The most natural algorithm that comes to mind is to
