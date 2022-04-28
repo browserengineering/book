@@ -179,5 +179,5 @@ if __name__ == "__main__":
                     elif ".js" in value:
                         failure += test_entry(chapter, metadata, key, "javascript", key)
     else:
-        failure = compare_files(args.book, args.code, None, args.file)
+        failure = compare_files(args.book, args.code, "python", args.file)
     sys.exit(failure)

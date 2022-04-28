@@ -285,7 +285,7 @@ class SaveLayer(DisplayItem):
 
 def parse_transform(transform_str):
     if transform_str.find('translate') < 0:
-        return None
+        return (0, 0)
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
     (x_px, y_px) = \
@@ -1253,45 +1253,26 @@ class Tab:
 
     def set_needs_render(self):
         self.needs_style = True
-        self.needs_layout = True
-        self.needs_paint = True
         self.browser.set_needs_animation_frame(self)
 
     def set_needs_layout(self):
         self.needs_layout = True
-        self.needs_paint = True
+        self.browser.set_needs_animation_frame(self)
+
+    def set_needs_layout(self):
+        self.needs_paint = true
         self.browser.set_needs_animation_frame(self)
 
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
         self.browser.set_needs_animation_frame(self)
 
-    def run_animations(self):
-        for node in tree_to_list(self.nodes, []):
-            for (property_name, animation) in node.animations.items():
-                if animation.animate():
-                    node.style[property_name] = animation.value()
-                    if USE_COMPOSITING and property_name == "opacity":
-                        self.needs_paint = True
-                        self.composited_animation_updates.append(node)
-                        self.browser.set_needs_animation_frame(self)
-                    else:
-                        self.set_needs_layout()
-
-        if self.scroll_animation:
-            new_scroll = self.scroll_animation.animate()
-            if new_scroll:
-                self.tab.scroll = updated_value
-                self.tab.scroll_changed_in_tab = True
-                self.tab.browser.set_needs_animation_frame(self)
-            else:
-                self.scroll_animation = None
-
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             if scroll != self.scroll and not self.scroll_animation:
                 if self.scroll_behavior == 'smooth':
-                    self.scroll_animation = ScrollAnimation(self.scroll, scroll)
+                    animation = ScrollAnimation(self.scroll, scroll)
+                    self.scroll_animation = animation
                 else:
                     self.scroll = scroll
         self.js.interp.evaljs("__runRAFHandlers()")
@@ -1331,6 +1312,25 @@ class Tab:
         self.scroll_changed_in_tab = False
 
         self.browser.commit(self, commit_data)
+
+    def run_animations(self):
+        for node in tree_to_list(self.nodes, []):
+            for (property_name, animation) in node.animations.items():
+                if animation.animate():
+                    node.style[property_name] = animation.value()
+                    if USE_COMPOSITING and property_name == "opacity":
+                        self.composited_animation_updates.append(node)
+                        self.set_needs_paint()
+                    else:
+                        self.set_needs_layout()
+
+        if self.scroll_animation:
+            if self.scroll_animation.animate():
+                self.tab.scroll = self.scroll_animation.value()
+                self.tab.scroll_changed_in_tab = True
+                self.tab.browser.set_needs_animation_frame(self)
+            else:
+                self.scroll_animation = None
 
     def render(self):
         self.measure_render.start()

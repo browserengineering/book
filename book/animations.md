@@ -692,7 +692,7 @@ style value changes. We can do that in `style` by diffing the old and
 the new styles of each node:
 
 ``` {.python}
-def style(node, rules, tab):
+def style(node, rules):
     old_style = node.style
 
     # ...
@@ -785,7 +785,7 @@ the document tree to find them:
 ``` {.python}
 class Tab:
     def run_animations(self):
-        for node in tree_to_list(self.nodes):
+        for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in node.animations.items():
                 if animation.animate():
                     node.style[property_name] = animation.value()
@@ -824,10 +824,10 @@ shouldn't re-start the animation. Real browsers will store multiple
 copies of the style---the computed style and the animated style---to
 solve issues like this.
 
-``` {.python replace=set_needs_render/set_needs_layout}
+``` {.python}
 class Tab:
     def run_animations(self):
-        for node in tree_to_list(self.nodes):
+        for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in node.animations.items():
                 if animation.animate():
                     # ...
@@ -856,7 +856,7 @@ But now we can write a `set_needs_layout` method that sets flags for
 the `layout` and `paint` phases, but not the `style` phase:
 
 ``` {.python}
-class Tag:
+class Tab:
     def set_needs_layout(self):
         self.needs_layout = True
         self.browser.set_needs_animation_frame(self)
@@ -868,7 +868,7 @@ Now `render` can check one flag for each phase instead of checking
 `needs_render` at the start:
 
 ``` {.python}
-class Tag:
+class Tab:
     def render(self):
         self.measure_render.start()
 
@@ -1602,75 +1602,36 @@ the `CompositedLayer`s that are animating.
 Let's accomplish that. It will have multiple parts, starting with the main
 thread.
 
-* If an animation is running, and it's the only thing happening to the DOM, then
-  only re-do `paint` (in order to update the animated `DisplayItem`s). For
-  this, add a `needs_paint` dirty bit (`needs_layout` will also need to set
-  `needs_paint`):
+* If a composited animation is running, and it's the only thing
+  happening to the DOM, then only re-do `paint` (in order to update
+  the animated `DisplayItem`s), not `layout`:
 
-``` {.python}
+``` {.python replace=if%20property_name/if%20USE_COMPOSITING%20and%20property_name}
 class Tab:
-    def __init__(self, browser):
-        self.needs_paint = False
-
     def set_needs_layout(self):
-        self.needs_layout = True
-        self.needs_paint = True
+        self.needs_paint = true
         self.browser.set_needs_animation_frame(self)
-
-    def render(self):
-        if not self.needs_render \
-            and not self.needs_layout \
-            and not self.needs_paint:
-            return
-        # ...        
-        if self.needs_paint:
-            self.display_list = []
-
-            self.document.paint(self.display_list)
-            # ...
-
-        self.needs_paint = False
-
-        self.measure_render.stop()
-```
-
-and a method that sets it if the animation is composited:
-
-``` {.python}
-class Tab:
-   def set_needs_animation(self, node, is_composited):
-        if is_composited:
-            self.needs_paint = True
-            # ...
-            self.browser.set_needs_animation_frame(self)
-        else:
-            self.set_needs_layout()
-```
-
-and to call `set_needs_animation` from animation instead of `set_needs_render`:
-
-``` {.python expected=False}
-class NumericAnimation:
-    # ...
-    def animate(self):
-        # ...
-        self.tab.set_needs_animation(self.node,
-            self.property_name == "opacity")
 ```
 
 * Save off each `Element` that updates its composited animation, in a new
 array called `composited_animation_updates`:
 
-``` {.python}
+``` {.python replace=if%20property_name/if%20USE_COMPOSITING%20and%20property_name}
 class Tab:
     def __init__(self, browser):
         # ...
         self.composited_animation_updates = []
 
-    def set_needs_animation(self, node, is_composited):
-        if is_composited:
-            # ...
-            self.composited_animation_updates.append(node)
+    def run_animations(self):
+        for node in tree_to_list(self.nodes, []):
+            for (property_name, animation) in node.animations.items():
+                if animation.animate():
+                    node.style[property_name] = animation.value()
+                    if property_name == "opacity":
+                        self.composited_animation_updates.append(node)
+                        self.set_needs_paint()
+                    else:
+                        self.set_needs_layout()
 ```
 
 * When running animation frames, if only `needs_paint` is true, then compositing
@@ -2041,7 +2002,7 @@ standardized transform syntax.
 ``` {.python}
 def parse_transform(transform_str):
     if transform_str.find('translate') < 0:
-        return None
+        return (0, 0)
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
     (x_px, y_px) = \
@@ -2092,65 +2053,37 @@ class Transform(DisplayItem):
         self.rect = other.rect
 ```
 
-Now that we can render transforms, we also need to animate them. Just like
-we did with opacity, add a `try_transform_animation` method:
-
 ``` {.python}
-def try_transform_animation(node, old_style, new_style, tab):
-    num_frames = try_transition("transform", node,
-    old_style, new_style)
-    if num_frames == None:
-        return None;
-
-    old_translation = parse_transform(old_style["transform"])
-    new_translation = parse_transform(new_style["transform"])
-
-    if old_translation == None or new_translation == None:
-        return None
-
-    if not node in tab.animations:
-        tab.animations[node] = {}
-    tab.animations[node]["transform"] = TranslateAnimation(
-        node, old_translation, new_translation, num_frames, tab)
-```
-
-``` {.python}
-def style(node, rules, tab):
+ANIMATED_PROPERTIES = {
     # ...
-    if old_style:
-        # ...
-        try_transform_animation(node, old_style,
-            node.style, tab)
+    "transform": TranslateAnimation,
+}
 ```
 
 And `TranslateAnimation`:
 
 ``` {.python replace=True)/USE_COMPOSITING)}
 class TranslateAnimation:
-    def __init__(
-        self, node, old_translation, new_translation,
-        num_frames, tab):
-        self.node = node
-        (self.old_x, self.old_y) = old_translation
-        (new_x, new_y) = new_translation
+    def __init__(self, old_value, new_value, num_frames):
+        (self.old_x, self.old_y) = parse_transform(old_translation)
+        (new_x, new_y) = parse_transform(old_translation)
+        self.num_frames = num_frames
+
+        self.frame_count = 0
         self.change_per_frame_x = (new_x - self.old_x) / num_frames
         self.change_per_frame_y = (new_y - self.old_y) / num_frames
-        self.num_frames = num_frames
-        self.tab = tab
-        self.frame_count = 0
         self.animate()
 
     def animate(self):
         self.frame_count += 1
-        if self.frame_count >= self.num_frames: return False
-        self.node.style["transform"] = \
-            "translate({}px,{}px)".format(
+        return self.frame_count < self.num_frames
+
+    def value(self):
+        return "translate({}px,{}px)".format(
                 self.old_x +
                 self.change_per_frame_x * self.frame_count,
                 self.old_y +
                 self.change_per_frame_y * self.frame_count)
-        self.tab.set_needs_animation(self.node, True)
-        return True
 ```
 
 You should now be able to create this animation with your browser:
@@ -2405,14 +2338,18 @@ class Tab:
         if not self.scroll_changed_in_tab:
             if scroll != self.scroll and not self.scroll_animation:
                 if self.scroll_behavior == 'smooth':
-                    self.scroll_animation = ScrollAnimation(
-                        self.scroll, scroll, self)
+                    animation = ScrollAnimation(self.scroll, scroll)
+                    self.scroll_animation = animation
                 else:
                     self.scroll = scroll
-        # ...
 
+    def run_animations(self):
         if self.scroll_animation:
-            if not self.scroll_animation.animate():
+            if self.scroll_animation.animate():
+                self.tab.scroll = self.scroll_animation.value()
+                self.tab.scroll_changed_in_tab = True
+                self.tab.browser.set_needs_animation_frame(self)
+            else:
                 self.scroll_animation = None
 ```
 
@@ -2424,26 +2361,22 @@ of the `scroll-behavior` CSS property.
 
 ``` {.python}
 class ScrollAnimation:
-    def __init__(
-        self, old_scroll, new_scroll, tab):
+    def __init__(self, old_scroll, new_scroll):
         self.old_scroll = old_scroll
         self.new_scroll = new_scroll
         self.num_frames = 30
         self.change_per_frame = \
             (new_scroll - old_scroll) / self.num_frames
-        self.tab = tab
         self.frame_count = 0
-        self.animate()
 
     def animate(self):
         self.frame_count += 1
-        if self.frame_count >= self.num_frames: return False
+        return self.frame_count < self.num_frames
+        
+    def value(self):
         updated_value = self.old_scroll + \
             self.change_per_frame * self.frame_count
-        self.tab.scroll = updated_value
-        self.tab.scroll_changed_in_tab = True
-        self.tab.browser.set_needs_animation_frame(self)
-        return True
+        return updated_value
 ```
 
 Yay, smooth scrolling! You can try it on
