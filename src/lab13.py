@@ -731,10 +731,7 @@ class InputLayout:
 
 def style_length(node, style_name, default_value):
     style_val = node.style.get(style_name)
-    if style_val:
-        return int(math.floor(float(style_val[:-2])))
-    else:
-        return default_value
+    return float(style_val[:-2]) if style_val else default_value
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
@@ -883,78 +880,113 @@ class JSContext:
 
 USE_BROWSER_THREAD = True
 
-def get_transition(property_name, style):
-    if not "transition" in style:
-        return None
-    transition_items = style["transition"].split(",")
-    found = False
-    for item in transition_items:
-        if property_name == item.split(" ")[0]:
-            found = True
-            break
-    if not found:
-        return None   
-    duration_secs = float(item.split(" ")[1][:-1])
-    return duration_secs / REFRESH_RATE_SEC 
+def parse_transition(value):
+    properties = {}
+    if not value: return transitions
+    for item in value.split(","):
+        property, duration = item.split(" ", 1)
+        frames = float(duration[:-1]) / REFRESH_RATE_SEC
+        properties[property] = frames
+    return properties
 
-def try_transition(property_name, node, old_style, new_style):
-    if not get_transition(property_name, old_style):
-        return None
+def diff_styles(old_style, new_style):
+    old_transitions = parse_transition(old_style.get("transition"))
+    new_transitions = parse_transition(new_style.get("transition"))
 
-    num_frames = get_transition(property_name, new_style)
-    if num_frames == None:
-        return None
+    transitions = {}
+    for property in old_transitions:
+        if property not in new_transitions: continue
+        num_frames = new_transitions[property]
+        if property not in old_style: continue
+        if property not in new_style: continue
+        old_value = old_style[property]
+        new_value = new_style[property]
+        if old_value != new_value: continue
+        transitions[property] = (old_value, new_value, num_frames)
 
-    if property_name not in old_style or \
-        property_name not in new_style:
-        return None
+    return transitions
 
-    if old_style[property_name] == new_style[property_name]:
-        return None
+class TranslateAnimation:
+    def __init__(self, old_value, new_value, num_frames):
+        (self.old_x, self.old_y) = parse_transform(old_translation)
+        (new_x, new_y) = parse_transform(old_translation)
+        self.num_frames = num_frames
 
-    return num_frames
+        self.frame_count = 0
+        self.change_per_frame_x = (new_x - self.old_x) / num_frames
+        self.change_per_frame_y = (new_y - self.old_y) / num_frames
+        self.animate()
 
-def try_transform_animation(node, old_style, new_style, tab):
-    num_frames = try_transition("transform", node,
-        old_style, new_style)
-    if num_frames == None:
-        return None;
+    def animate(self):
+        self.frame_count += 1
+        return self.frame_count < self.num_frames
 
-    old_translation = parse_transform(old_style["transform"])
-    new_translation = parse_transform(new_style["transform"])
+    def value(self):
+        return "translate({}px,{}px)".format(
+                self.old_x +
+                self.change_per_frame_x * self.frame_count,
+                self.old_y +
+                self.change_per_frame_y * self.frame_count)
 
-    if old_translation == None or new_translation == None:
-        return None
+class NumericAnimation:
+    def __init__(self, old_value, new_value, num_frames):
+        self.is_px = old_value.endswith("px")
+        if is_px:
+            self.old_value = float(old_value[:-2])
+            self.new_value = float(new_value[:-2])
+        else:
+            self.old_value = float(old_value)
+            self.new_value = float(new_value)
+        self.num_frames = num_frames
 
-    if not node in tab.animations:
-        tab.animations[node] = {}
-    tab.animations[node]["transform"] = TranslateAnimation(
-        node, old_translation, new_translation, num_frames, tab)
+        self.frame_count = 0
+        self.change_per_frame = (new_value - old_value) / num_frames
+        self.animate()
 
-def try_numeric_animation(node, property_name,
-    old_style, new_style, tab, is_px):
-    num_frames = try_transition(
-        property_name, node, old_style, new_style)
-    if num_frames == None:
-        return None
+    def animate(self):
+        self.frame_count += 1
+        return self.frame_count < self.num_frames
 
-    if is_px:
-        old_value = float(old_style[property_name][:-2])
-        new_value = float(new_style[property_name][:-2])
-    else:
-        old_value = float(old_style[property_name])
-        new_value = float(new_style[property_name])
+    def value(self):
+        current_value = self.old_value + \
+            self.change_per_frame * self.frame_count
+        if self.is_px:
+            return "{}px".format(updated_value)
+        else:
+            return "{}".format(updated_value)
 
-    if not node in tab.animations:
-        tab.animations[node] = {}
-    tab.animations[node][property_name] = NumericAnimation(
-        node, property_name, is_px, old_value, new_value,
-        num_frames, tab)
+class ScrollAnimation:
+    def __init__(self, old_scroll, new_scroll):
+        self.old_scroll = old_scroll
+        self.new_scroll = new_scroll
+        self.num_frames = 30
+        self.change_per_frame = \
+            (new_scroll - old_scroll) / self.num_frames
+        self.frame_count = 0
+        self.animate()
 
-def style(node, rules, tab):
-    old_style = None
-    if hasattr(node, 'style'):
-        old_style = node.style
+    def animate(self):
+        self.frame_count += 1
+        return self.frame_count < self.num_frames
+    
+    def value(self):
+        updated_value = self.old_scroll + \
+            self.change_per_frame * self.frame_count
+        return updated_value
+
+    
+ANIMATED_PROPERTIES = {
+    "width": NumericAnimation,
+    "opacity": NumericAnimation,
+    "transform": TranslateAnimation,
+}
+
+def style(node, rules):
+    if not hasattr(node, 'style'):
+        node.style = {}
+    if not hasattr(node, 'animations'):
+        node.animations = {}
+    old_style = node.style
 
     node.style = {}
     for property, default_value in INHERITED_PROPERTIES.items():
@@ -975,92 +1007,15 @@ def style(node, rules, tab):
             node.style[property] = computed_value
 
     if old_style:
-        try_numeric_animation(node, "opacity",
-            old_style, node.style, tab, is_px=False)
-        try_numeric_animation(node, "width",
-            old_style, node.style, tab, is_px=True)
-        try_transform_animation(node, old_style,
-            node.style, tab)
+        transitions = diff_styles(old_style, node.style)
+        for property, (old_value, new_value, num_frames) in transitions:
+            if property in ANIMATED_PROPERTIES:
+                AnimationClass = ANIMATED_PROPERTIES[property]
+                animation = AnimationClass(old_value, new_value, num_frames)
+                node.animations[property] = animation
 
     for child in node.children:
-        style(child, rules, tab)
-
-class TranslateAnimation:
-    def __init__(
-        self, node, old_translation, new_translation,
-        num_frames, tab):
-        self.node = node
-        (self.old_x, self.old_y) = old_translation
-        (new_x, new_y) = new_translation
-        self.change_per_frame_x = (new_x - self.old_x) / num_frames
-        self.change_per_frame_y = (new_y - self.old_y) / num_frames
-        self.num_frames = num_frames
-        self.tab = tab
-        self.frame_count = 0
-        self.animate()
-
-    def animate(self):
-        self.frame_count += 1
-        if self.frame_count >= self.num_frames: return False
-        self.node.style["transform"] = \
-            "translate({}px,{}px)".format(
-                self.old_x +
-                self.change_per_frame_x * self.frame_count,
-                self.old_y +
-                self.change_per_frame_y * self.frame_count)
-        self.tab.set_needs_animation(self.node, USE_COMPOSITING)
-        return True
-
-class NumericAnimation:
-    def __init__(
-        self, node, property_name, is_px,
-        old_value, new_value, num_frames, tab):
-        self.node = node
-        self.property_name = property_name
-        self.is_px = is_px
-        self.old_value = old_value
-        self.num_frames = num_frames
-        self.change_per_frame = (new_value - old_value) / num_frames
-        self.tab = tab
-        self.frame_count = 0
-        self.animate()
-
-    def animate(self):
-        self.frame_count += 1
-        if self.frame_count >= self.num_frames: return False
-        updated_value = self.old_value + \
-            self.change_per_frame * self.frame_count
-        if self.is_px:
-            self.node.style[self.property_name] = \
-                "{}px".format(updated_value)
-        else:
-            self.node.style[self.property_name] = \
-                "{}".format(updated_value)
-        self.tab.set_needs_animation(self.node,
-            self.property_name == "opacity" and USE_COMPOSITING)
-        return True
-
-class ScrollAnimation:
-    def __init__(
-        self, old_scroll, new_scroll, tab):
-        self.old_scroll = old_scroll
-        self.new_scroll = new_scroll
-        self.num_frames = 30
-        self.change_per_frame = \
-            (new_scroll - old_scroll) / self.num_frames
-        self.tab = tab
-        self.frame_count = 0
-        self.animate()
-
-    def animate(self):
-        self.frame_count += 1
-        if self.frame_count >= self.num_frames: return False
-        updated_value = self.old_scroll + \
-            self.change_per_frame * self.frame_count
-        self.tab.scroll = updated_value
-        self.tab.scroll_changed_in_tab = True
-        self.tab.browser.set_needs_animation_frame(self)
-        return True
+        style(child, rules)
 
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
@@ -1219,7 +1174,7 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
-        self.needs_render = False
+        self.needs_style = False
         self.needs_layout = False
         self.needs_paint = False
         self.browser = browser
@@ -1231,7 +1186,6 @@ class Tab:
 
         self.measure_render = MeasureTime("render")
 
-        self.animations = {}
         self.composited_animation_updates = []
         self.scroll_behavior = 'auto'
         self.scroll_animation = None
@@ -1298,7 +1252,7 @@ class Tab:
         self.set_needs_render()
 
     def set_needs_render(self):
-        self.needs_render = True
+        self.needs_style = True
         self.needs_layout = True
         self.needs_paint = True
         self.browser.set_needs_animation_frame(self)
@@ -1312,33 +1266,37 @@ class Tab:
         self.needs_raf_callbacks = True
         self.browser.set_needs_animation_frame(self)
 
-    def set_needs_animation(self, node, is_composited):
-        if is_composited:
-            self.needs_paint = True
-            self.composited_animation_updates.append(node)
-            self.browser.set_needs_animation_frame(self)
-        else:
-            self.set_needs_layout()
+    def run_animations(self):
+        for node in tree_to_list(self.nodes, []):
+            for (property_name, animation) in node.animations.items():
+                if animation.animate():
+                    node.style[property_name] = animation.value()
+                    if USE_COMPOSITING and property_name == "opacity":
+                        self.needs_paint = True
+                        self.composited_animation_updates.append(node)
+                        self.browser.set_needs_animation_frame(self)
+                    else:
+                        self.set_needs_layout()
+
+        if self.scroll_animation:
+            new_scroll = self.scroll_animation.animate()
+            if new_scroll:
+                self.tab.scroll = updated_value
+                self.tab.scroll_changed_in_tab = True
+                self.tab.browser.set_needs_animation_frame(self)
+            else:
+                self.scroll_animation = None
 
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             if scroll != self.scroll and not self.scroll_animation:
                 if self.scroll_behavior == 'smooth':
-                    self.scroll_animation = ScrollAnimation(
-                        self.scroll, scroll, self)
+                    self.scroll_animation = ScrollAnimation(self.scroll, scroll)
                 else:
                     self.scroll = scroll
         self.js.interp.evaljs("__runRAFHandlers()")
 
-        for node, animations in self.animations.items():
-            for (property_name, animation) in animations.items():
-                animation.animate()
-
-        if self.scroll_animation:
-            if not self.scroll_animation.animate():
-                self.scroll_animation = None
-
-        needs_composite = self.needs_render or self.needs_layout
+        needs_composite = self.needs_style or self.needs_layout
 
         self.render()
 
@@ -1375,16 +1333,10 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        if not self.needs_render \
-            and not self.needs_layout \
-            and not self.needs_paint:
-            return
-
         self.measure_render.start()
 
-        if self.needs_render:
-            style(self.nodes, sorted(self.rules,
-                key=cascade_priority), self)
+        if self.needs_style:
+            style(self.nodes, sorted(self.rules, key=cascade_priority))
 
             if self.nodes.children[0].tag == "body":
                 body = self.nodes.children[0]
@@ -1393,9 +1345,12 @@ class Tab:
             if 'scroll-behavior' in body.style:
                 self.scroll_behavior = body.style['scroll-behavior']
 
+        self.run_animations()
+
         if self.needs_layout:
             self.document = DocumentLayout(self.nodes)
             self.document.layout()
+            self.needs_paint = True
         
         if self.needs_paint:
             self.display_list = []
@@ -1409,7 +1364,7 @@ class Tab:
                 y = obj.y
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
-        self.needs_render = False
+        self.needs_style = False
         self.needs_layout = False
         self.needs_paint = False
 

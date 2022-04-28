@@ -44,17 +44,17 @@ The div in this example has `width` and `height` set to `30px` and `40px`
 respectively.
 
     >>> lab13.style_length(div, "width", 13)
-    30
+    30.0
     >>> lab13.style_length(div, "height", 14)
-    40
+    40.0
 
 The actual width and height from layout should match:
 
 	>>> div_obj = tab.document.children[0].children[0].children[0]
 	>>> div_obj.width
-	30
+	30.0
 	>>> div_obj.height
-	40
+	40.0
 
 Testing CSS transtions
 ======================
@@ -80,5 +80,5 @@ Testing CSS transtions
 There is a transition defined for opacity, for a duration of 2 seconds. This is
 about 125 animation frames, so `get_transition` should return 125.
 
-	>>> lab13.get_transition("opacity", div.style)
-	125.0
+	>>> lab13.parse_transition(div.style.get("transition"))
+	{'opacity': 125.0}
