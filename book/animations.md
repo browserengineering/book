@@ -496,7 +496,7 @@ class BlockLayout:
 		# ...
         self.height = style_length(
             self.node, "height",
-            sum([child.height for child in self.children]))
+            sum([line.height for line in self.children]))
 ```
 
 Here is a simple animation of `width`. As the width of the `div` animates from
@@ -779,33 +779,29 @@ we'll create an animation and get ready to run it.
 
 So, let's run the animations! Basically, every frame, we're going to
 want to find all the active animations on the page and call `animate`
-on them. Since the animations are stored on the nodes, we'll traverse
+on them. Since the animations are created by `style`, we want to run
+them right afterwards:
+
+Since the animations are stored on the nodes, we'll traverse
 the document tree to find them:
 
-``` {.python}
+``` {.python replace=style(/%20%20%20%20style(}
 class Tab:
-    def run_animations(self):
+    def render(self):
+        # ...
+        style(self.nodes, sorted(self.rules, key=cascade_priority))
+
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in node.animations.items():
                 if animation.animate():
                     node.style[property_name] = animation.value()
+
+        # ...
 ```
 
 Most of this code is straightforward: iterate over all nodes; loop
 through the animations; animate them; and, if the animation is still
 active, update the relevant property value.
-
-Since the animations are created by `style`, so we want to run them
-afterwards:
-
-``` {.python}
-class Tab:
-    def render(self):
-        # ...
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
-        
-        self.run_animations()
-```
 
 However, there's a bit of a catch. Right now, `render()` exits early
 if `self.needs_render` isn't set. But setting that re-runs `style`,
@@ -826,7 +822,7 @@ solve issues like this.
 
 ``` {.python}
 class Tab:
-    def run_animations(self):
+    def render(self):
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in node.animations.items():
                 if animation.animate():
@@ -862,7 +858,7 @@ class Tab:
         self.browser.set_needs_animation_frame(self)
 ```
 
-Make sure `run_animations` now calls `set_needs_layout()`.
+Make sure the animations loop now calls `set_needs_layout()`.
 
 Now `render` can check one flag for each phase instead of checking
 `needs_render` at the start:
@@ -876,7 +872,8 @@ class Tab:
             # ...
             self.needs_layout = True
         
-        self.run_animations()
+        for node in tree_to_list(self.nodes, []):
+            # ...
 
         if self.needs_layout:
             # ...
@@ -1622,7 +1619,7 @@ class Tab:
         # ...
         self.composited_animation_updates = []
 
-    def run_animations(self):
+    def render(self):
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in node.animations.items():
                 if animation.animate():
@@ -2342,7 +2339,12 @@ class Tab:
                 else:
                     self.scroll = scroll
 
-    def run_animations(self):
+    def render(self):
+        # ...
+
+        for node in tree_to_list(self.nodes, []):
+            # ...
+        
         if self.scroll_animation:
             if self.scroll_animation.animate():
                 self.tab.scroll = self.scroll_animation.value()
@@ -2350,6 +2352,8 @@ class Tab:
                 self.tab.browser.set_needs_animation_frame(self)
             else:
                 self.scroll_animation = None
+    
+        # ...
 ```
 
 * Implementing `ScrollAnimation`:[^thirty]

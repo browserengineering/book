@@ -1310,7 +1310,20 @@ class Tab:
 
         self.browser.commit(self, commit_data)
 
-    def run_animations(self):
+    def render(self):
+        self.measure_render.start()
+
+        if self.needs_style:
+            style(self.nodes, sorted(self.rules, key=cascade_priority))
+
+            if self.nodes.children[0].tag == "body":
+                body = self.nodes.children[0]
+            else:
+                body = self.nodes.children[1]
+            if 'scroll-behavior' in body.style:
+                self.scroll_behavior = body.style['scroll-behavior']
+            self.needs_layout = True
+
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in node.animations.items():
                 if animation.animate():
@@ -1328,21 +1341,6 @@ class Tab:
                 self.tab.browser.set_needs_animation_frame(self)
             else:
                 self.scroll_animation = None
-
-    def render(self):
-        self.measure_render.start()
-
-        if self.needs_style:
-            style(self.nodes, sorted(self.rules, key=cascade_priority))
-
-            if self.nodes.children[0].tag == "body":
-                body = self.nodes.children[0]
-            else:
-                body = self.nodes.children[1]
-            if 'scroll-behavior' in body.style:
-                self.scroll_behavior = body.style['scroll-behavior']
-
-        self.run_animations()
 
         if self.needs_layout:
             self.document = DocumentLayout(self.nodes)

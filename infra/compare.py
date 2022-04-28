@@ -74,8 +74,12 @@ def tangle(file):
     return list(get_blocks(out.stdout.decode("utf8").split("\n")))
 
 def find_block(block, text):
-    differ = difflib.Differ(charjunk=lambda c: c == " ", linejunk=lambda s: "..." in s)
-    d = differ.compare(block.splitlines(keepends=True), text.splitlines(keepends=True))
+    differ = difflib.Differ(charjunk=lambda c: c == " ", linejunk=str.isspace)
+    block_lines = [
+        i for i in block.splitlines(keepends=True)
+        if "..." not in i and not i.isspace()
+    ]
+    d = differ.compare(block_lines, text.splitlines(keepends=True))
     same = []
     last_type = None
     for n, l in enumerate(d):
@@ -93,10 +97,7 @@ def find_block(block, text):
         elif type == " ":
             same.append((False, l))
         elif type == "-":
-            if "..." in l:
-                type = " "
-            else:
-                same.append((True, l))
+            same.append((True, l))
         else:
             raise ValueError("Invalid diff type `" + type + "`")
         last_type = type
