@@ -33,20 +33,20 @@ rotating, fading, blurring, and sharpening.
 
 On web pages, there are several categories of common animations: DOM,
 input-driven and video-like. A DOM animation is a movement or visual effect
-change of DOM elements on the screen, achieved by interpolating CSS properties
-of elements such as color, opacity or sizing. Input-driven animations involve
-input of course: scrolling, page resizing, pinch-zoom, draggable menus and
-similar effects.[^video-anim]  In this chapter we'll focus mostly on DOM
-animations, with a bit of input-driven animations a bit at the end.[^excuse]
+change of elements on the screen, achieved by interpolating CSS properties of
+elements such as color, opacity or sizing, or changes of text content.
+Input-driven animations involve input of course: scrolling, page resizing,
+pinch-zoom, draggable menus and similar effects.[^video-anim]  In this chapter
+we'll focus mostly on DOM animations, with a bit of input-driven animations a
+bit at the end.[^excuse]
 
 [^video-anim]: And video-like animations include videos, animated images, and
 animated canvases.
 
-[^excuse]: We'll get to images and a bit of canvas in a later chapter. Video is
-a fascinating topic unto itself, but is beyond the scope of this book. Arguably,
-canvas is a bit different than the other two, since it's implemented by
-developer scripts. And of course a canvas can have animations within
-it that look about the same as some DOM animations.
+[^excuse]: Video animations is a topic unto itself, but is beyond the
+scope of this book. Arguably, canvas is a bit different than the other two,
+since it's implemented by developer scripts. And of course a canvas can have
+animations within it that look about the same as some DOM animations.
 
 DOM and input-driven animations can be sub-categorized into *layout-inducing*
 and *visual*. An animation is layout-inducing if it changes an input to layout;
@@ -54,18 +54,24 @@ animating `width` is one example that we'll encounter in this chapter.
 Otherwise the animation is visual, such as animations of `opacity` or
 `background-color`.
 
-The distinction is important for two reasons: animation quality and performance.
-In general, layout-inducing animations often have undesirable
-qualities---animating `width` can lead to text jumping around as line breaking
-changes---and performance implications (the name says it all: these animations
-require (main-thread) layout). Most of the time, layout-inducing animations are
-not a good idea for these reasons.^[One exception is a layout-inducing
-animation when resizing a browser window via a mouse gesture; in this case it's
-very useful for the user to see the new layout as the window size changes.
-Modern browsers are fast enough to do this, but it used to be that instead they
-would leave a visual *gutter* (a gap between content and the edge of the
-window) during the animation, to avoid updating layout on every animation
-frame.]
+
+::: {.further}
+
+The distinction between visual effect and layout animations is important for two
+reasons: animation quality and performance. In general, layout-inducing
+animations often have undesirable qualities---animating `width` can lead to
+text jumping around as line breaking changes---and performance implications
+(the name says it all: these animations require (main-thread) layout). Most of
+the time, layout-inducing animations are not a good idea for these reasons.
+
+An exception is a layout-inducing animation when resizing a browser window via
+a mouse gesture; in this case it's very useful for the user to see the new
+layout as the window size changes. Modern browsers are fast enough to do this,
+but it used to be that instead they would leave a visual *gutter* (a gap
+between content and the edge of the window) during the animation, to avoid
+updating layout on every animation frame.
+
+:::
 
 The animation loop
 ==================
@@ -95,11 +101,12 @@ keep animating. For example, the Chapter 12 equivalent of this method sets the
 `innerHTML` of an element to increase a counter. The animation examples in this
 chapter will modify CSS properties instead.
 
-As you might guess, there are huge performance, complexity and architectural
-advantages[^advantages] to moving this work from JavaScript into the browser's
-Python code. So a big chunk of this chapter will be about how to go about doing
-that, and exploring all of these advantages. But it's important to keep in mind
-that the way the browser will implement these animations is at its root
+Even better would be to run these CSS property animations automatically in the
+browser. As you might guess, there are huge performance, complexity and
+architectural advantages to doing so.[^advantages] And that's what this chapter
+is really about: how to go about doing that, and exploring all of these
+advantages. But it's important to keep in mind that the way the browser will
+implement these animations is at its root
 *exactly the same*: run an animation loop at 60Hz and advance the animation
  frame-by-frame.
 
@@ -107,10 +114,29 @@ that the way the browser will implement these animations is at its root
 pipeline have to be re-run on each animation frame, and running animations
 entirely on the browser thread.
 
-The browser implementation turns out to be complicated, and it's easy to lose
-track of where we're headed. So you should keep this mind while reading the rest
-of this chapter: it's just optimizing animations by building them
-directly into the rendering pipeline.
+The browser implementation ends up quite complicated, and it's easy to lose
+track of where we're headed. So if you start to get lost, just remember: all
+that's going on is optimizing animation loops by building them directly into
+the rendering pipeline.
+
+::: {.further}
+
+The animation pattern presented in this section is yet another example
+of the *event loop* first introduced [in Chapter 2][eventloop-ch2]
+and evolved further [in Chapter 12][eventloop-ch12]. What's new in this
+chapter is that we finally have enough tech built up to actually create
+meaningful, practical animations.
+
+And the same happened with the web. A whole lot of the
+APIs for proper animations, from the `requestAnimationFrame` API to
+CSS-native animations, came onto the scene only in the
+decade of the [2010s][cssanim-hist].
+
+[eventloop-ch2]: http://localhost:8001/graphics.html#creating-windows
+[eventloop-ch12]: http://localhost:8001/scheduling.html#animating-frames
+[cssanim-hist]: https://en.wikipedia.org/wiki/CSS_animations
+
+:::
 
 GPU acceleration
 ================
@@ -423,6 +449,24 @@ class JSContext:
         self.tab.set_needs_render()
 ```
 
+::: {.further}
+
+Opacity is a special kind of CSS filter. And where it makes sense, other filters
+that parameterize on some numeric input (such as [blur]) can also be animated
+just as easily.
+
+Likewise, certain paint-only effects such as color and background-color are also
+possible to animate, since colors are numeric and can be interpolated. (In that
+ase, each color channel is interpolated independently.) According to the
+terminology of this chapter, paint-only effects are not a visual effect, but
+because they don't need layout they can be considered in the same category as
+visual effects, and with some extra effort hardware-accelerated in the same
+ways.
+
+:::
+
+[blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur
+
 Width/height animations
 =======================
 
@@ -535,6 +579,17 @@ function animate() {
 }
 ```
 
+::: {.further}
+
+Almost any CSS property with some sort of interpolable number can be animated in
+a similar way. Here is a [list][anim-prop] of all of them. Most of them
+are layout inducing, including some interesting ones that we *could* have
+animated without introducing `width` and `height`, such as `font-size`.
+
+[anim-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_animated_properties
+
+:::
+
 CSS transitions
 ===============
 
@@ -622,7 +677,7 @@ for the animation in frames:
 class NumericAnimation:
     def __init__(self, old_value, new_value, num_frames):
         self.is_px = old_value.endswith("px")
-        if is_px:
+        if self.is_px:
             self.old_value = float(old_value[:-2])
             self.new_value = float(new_value[:-2])
         else:
@@ -671,15 +726,16 @@ chapter will not look quite the same in your browser.
 class NumericAnimation:
     def __init__(self, old_value, new_value, num_frames):
         # ...
-        self.change_per_frame = (new_value - old_value) / num_frames
+        total_change = self.new_value - self.old_value
+        self.change_per_frame = total_change / num_frames
 
     def value(self):
         current_value = self.old_value + \
             self.change_per_frame * self.frame_count
         if self.is_px:
-            return "{}px".format(updated_value)
+            return "{}px".format(current_value)
         else:
-            return "{}".format(updated_value)
+            return "{}".format(current_value)
 ```
 
 Here I've chosen to compute `change_per_frame` in the constructor. Of
@@ -709,7 +765,7 @@ the old and the new style. So first, we're going to have to parse the
 ``` {.python}
 def parse_transition(value):
     properties = {}
-    if not value: return transitions
+    if not value: return properties
     for item in value.split(","):
         property, duration = item.split(" ", 1)
         frames = float(duration[:-1]) / REFRESH_RATE_SEC
@@ -738,7 +794,7 @@ def diff_styles(old_style, new_style):
         if property not in new_style: continue
         old_value = old_style[property]
         new_value = new_style[property]
-        if old_value != new_value: continue
+        if old_value == new_value: continue
         transitions[property] = (old_value, new_value, num_frames)
 
     return transitions
@@ -767,7 +823,7 @@ Now `style` can animate any changed properties listed in
 def style(node, rules):
     if old_style:
         transitions = diff_styles(old_style, node.style)
-        for property, (old_value, new_value, num_frames) in transitions:
+        for property, (old_value, new_value, num_frames) in transitions.items():
             if property in ANIMATED_PROPERTIES:
                 AnimationClass = ANIMATED_PROPERTIES[property]
                 animation = AnimationClass(old_value, new_value, num_frames)
@@ -1043,12 +1099,14 @@ begun, it should print something like:
     SaveLayer(alpha=0.999): bounds=Rect(13, 18, 787, 40.3438)
         DrawText(text=Test): bounds=Rect(13, 21.6211, 44, 39.4961)
 
-Let's make a surface for the contents of the opacity `SaveLayer`, in this case
-containing only a `DrawText`. In more complicated examples, it could have any
-number of display list commands.^[Note that this is *not* the same as "cache
-the display list for a DOM element subtree". To see why, consider that a single
-DOM element can result in more than one `SaveLayer`, such as when it has both
-opacity *and* a transform.]
+It seems logical to make a surface for the contents of the opacity `SaveLayer`,
+in this case containing only a `DrawText`. In more complicated examples, it
+could of course have any number of display list commands.[^command-note]
+
+[^command-note]: Note that this is *not* the same as "cache the display list for
+a DOM element subtree". To see why, consider that a single DOM element can
+result in more than one `SaveLayer`, such as when it has both opacity *and* a
+transform.]
 
 Putting the `DrawText` into its own surface sounds simple enough: just make a
 surface and raster that sub-piece of the display list into it, then draw that
@@ -1069,29 +1127,66 @@ and finally call `restore`. Observe how this is
 in [Chapter 11](visual-effects.html#blending-and-stacking). The only
 difference is that here it's explicit that there is a `skia.Surface` between
 the `saveLayer` and the `restore`.
-Note also how we are using the `draw` method on `skia.Surface`, the very same
+Note also how we're using the `draw` method on `skia.Surface`, the very same
 method we already use in `Browser.draw` to draw the surface to the screen.
 In essence, we've moved a `saveLayer` command from the `raster` stage
 to the `draw` stage of the pipeline.
 
-In a way, we're implementing a way to put "subtrees of the display list" into
-different surfaces. But it's not quite just subtrees, because multiple nested
-DOM nodes could be simultaneously animating, and we can't put the same subtree
-in two different surfaces. We *could* potentially handle cases like this by
-making a tree of `skia.Surface` objects. But it turns out that that approach
-becomes quite complicated when you get into the details.^[We'll cover one of
-these details---overlap testing---later in the chapter. Another is that there
-may be multiple "child" pieces of content, only some of which may be animating.
-There are even more in a real browser.]
+Compositing algorithms
+======================
 
-Instead, think of the display list as a flat list of "leaf" *paint commands*
-(display list commands that don't have any `cmds`) like `DrawText`. Each paint
-command can be (individually) drawn to the screen by executing it and the
-series of *ancestor [visual] effects* on it. Thus the tuple (paint command,
-ancestor effects) suffices to describe that paint command in isolation.
+The most complex part of compositing and draw is dealing with the hierarchical
+nature of the display list. The most natural algorithm that comes to mind is to
+mark animating visual effects as composited, and raster a `skia.Surface` for
+everything below it. This works fine for the single `DrawText` example we've
+been looking at, but starts to get very complicated when you consider nested
+surfaces. For example, multiple nested DOM nodes could be simultaneously
+animating opacity, and we can't put the same subtree in two different surfaces.
+Do we instead raster some of it in one surface and some in another? Where do we
+put the combined result with all the opacities applied, or the first applied
+but not yet the second?^[We'll cover another complication---overlap
+testing---later in the chapter; see also the Go Further block at the end of
+this section for adidtional discussion of even more complications.]
 
-This tuple is called a *paint chunk*. Here is how to generate all the paint
-chunks from a display list:
+To handle all this complexity, let's break the problem down into two
+pieces: *compositing* the display list into a linear list of `skia.Surface`s,
+and *drawing* those surfaces to the screen. Compositing is in charge of finding
+non-animating subtrees of the display list and putting them into groups that
+raster together. Drawing  is in charge of re-creating a tree hierarchy that
+mirrors the hierarchy of animating visual effects in the display list.
+[^temp-surface]
+
+[^temp-surface]: Nested visual effects will end up causing the need for
+temporary GPU textures to be created during draw, in order to make sure visual
+effects apply atomically to all the content within them. Recall that we
+discussed this issue in [Chapter 11][stack-cont] in the context of stacking
+contexts. See the Go Further block at the end of this section for additional
+discussion.
+
+[stack-cont]: visual-effects.md#blending-and-stacking
+
+In fact, compositing can focus only on the leaves of this display list, which
+we'll call *paint commands*.[^drawtext] These are exactly the same display list
+commands that we had *before* Chapter 11 added visual effects. Think of
+the paint commands as forming a flat list---the output of enumerating them in
+paint order. The distinction between compositing and drawing is exactly
+analogous to how you can think of painting and visual effects as different but
+complementary: painting is drawing some pixels to a canvas, and visual effects
+apply a group operation to them; in the same way, compositing rasters some
+pixels and drawing applies group operations.^[And just as visual effects in our
+browser (except for scrolling) actually happen during paint at the moment,
+non-animating visual effects will end up happening during raster and not draw.
+The point is that either way is correct; choosing one or the other is
+just a matter of which has better performance.]
+
+[^drawtext]: `DrawText`, `DrawRect` etc---the display list commands that
+don't have recursive children in `cmds`.
+
+Notice that each paint command can be (individually) drawn to the screen by
+executing it and the series of *ancestor [visual] effects* on it. Thus the
+tuple (paint command, ancestor effects) suffices to describe that paint command
+in isolation. This tuple is called a *paint chunk*. Here is how to generate all
+the paint chunks from a display list:
 
 ``` {.python}
 def display_list_to_paint_chunks(
@@ -1173,7 +1268,11 @@ will be look like this:
             composited_layer.raster()
 ```
 
-And drawing them to the screen will be like this:
+And drawing them to the screen will be like this:[^draw-incorrect]
+
+[^draw-incorrect]: It's worth calling out once again that this is not
+correct in the presence of nested visual effects; see the Go Further section.
+I've left fixing the problem to an exercise.
 
 ``` {.python}
     def draw(self):
@@ -1190,15 +1289,16 @@ This is the overall structure. Now I'll show how to implement `can_merge`,
 `raster` and `draw` on a `CompositedLayer`.
 
 ::: {.further}
-Why is it that flattening a recursive display list into paint chunks is
-possible? After all, visual effects in the DOM really are nested.
 
-The implementation of `Browser.draw` in this section is
-indeed incorrect for the case of nested visual effects (such as if there is a
-composited animation on a DOM element underneath another one). To fix it
-requires determining the necessary "draw hierarchy" of `CompositedLayer`s into
-a tree based on their visual effect nesting, and allocating intermediate
-GPU textures called *render surfaces* for each internal node of this tree.
+As discussed earlier, the implementation of `Browser.draw` in this section is
+incorrect for the case of nested visual effects, because it's not correct to
+draw every paint chunk individually or even in groups; visual effects have to
+apply atomically to all the content at once. To fix it requires determining the
+necessary "draw hierarchy" of `CompositedLayer`s into a tree based on their
+visual effect nesting, and allocating temporary intermediate GPU textures
+called *render surfaces* for each internal node of this tree. The render
+surface is a place to put the inputs to an (atomically-applied) visual effect.
+Render surface textures are generally not cached from frame to frame.
 
 A naive implementation of this tree (allocating one node for each visual effect)
 is not too hard to implement, but each additional render surface requires a
@@ -1577,8 +1677,8 @@ compositing doesn't (yet) happen on another thread in Chromium is that to get
 there took re-architecting the entire algorithm for compositing. The
 re-architecture turned out to be extremely difficult, because the old one
 was deeply intertwined with nearly every aspect of the rendering engine. The
-re-architecture  project only
-[recently completed](https://developer.chrome.com/blog/renderingng/#compositeafterpaint),
+re-architecture project only
+[completed in 2021](https://developer.chrome.com/blog/renderingng/#compositeafterpaint),
 so perhaps sometime soon this work will be threaded in Chromium.
 
 :::
@@ -1605,8 +1705,8 @@ thread.
 
 ``` {.python replace=if%20property_name/if%20USE_COMPOSITING%20and%20property_name}
 class Tab:
-    def set_needs_layout(self):
-        self.needs_paint = true
+    def set_needs_paint(self):
+        self.needs_paint = True
         self.browser.set_needs_animation_frame(self)
 ```
 
@@ -2062,8 +2162,8 @@ And `TranslateAnimation`:
 ``` {.python replace=True)/USE_COMPOSITING)}
 class TranslateAnimation:
     def __init__(self, old_value, new_value, num_frames):
-        (self.old_x, self.old_y) = parse_transform(old_translation)
-        (new_x, new_y) = parse_transform(old_translation)
+        (self.old_x, self.old_y) = parse_transform(old_value)
+        (new_x, new_y) = parse_transform(new_value)
         self.num_frames = num_frames
 
         self.frame_count = 1
@@ -2347,9 +2447,9 @@ class Tab:
         
         if self.scroll_animation:
             if self.scroll_animation.animate():
-                self.tab.scroll = self.scroll_animation.value()
-                self.tab.scroll_changed_in_tab = True
-                self.tab.browser.set_needs_animation_frame(self)
+                self.scroll = self.scroll_animation.value()
+                self.scroll_changed_in_tab = True
+                self.browser.set_needs_animation_frame(self)
             else:
                 self.scroll_animation = None
     
@@ -2477,12 +2577,6 @@ color channels.
 
  [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
 
-*Render surfaces*: as described in the go-further block at the end of
- [this section](#implementing-compositing), our browser doesn't currently draw
- nested, composited visual effects correctly. Fix this by building a "draw
- tree" for all of the `CompositedLayer`s and allocating a `skia.Surface` for
- each internal node.
-
 *Threaded animations*: despite Chapter 12 being all about threading, we didn't
  actually implement threaded animations in this chapter---they are all driven
  by code running on the main thread. But just like scrolling, in a real browser
@@ -2544,3 +2638,9 @@ determine the bounding box of the animation, and use that for overlap instead.
 time to raster the provided paint commands is low enough to not justify a GPU
 texture. This will be true for solid color rectangles, but probably not complex
 shapes or text.
+
+*Render surfaces*: as described in the go-further block at the end of
+ [this section](#implementing-compositing), our browser doesn't currently draw
+ nested, composited visual effects correctly. Fix this by building a "draw
+ tree" for all of the `CompositedLayer`s and allocating a `skia.Surface` for
+ each internal node.

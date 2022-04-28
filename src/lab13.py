@@ -882,7 +882,7 @@ USE_BROWSER_THREAD = True
 
 def parse_transition(value):
     properties = {}
-    if not value: return transitions
+    if not value: return properties
     for item in value.split(","):
         property, duration = item.split(" ", 1)
         frames = float(duration[:-1]) / REFRESH_RATE_SEC
@@ -901,7 +901,7 @@ def diff_styles(old_style, new_style):
         if property not in new_style: continue
         old_value = old_style[property]
         new_value = new_style[property]
-        if old_value != new_value: continue
+        if old_value == new_value: continue
         transitions[property] = (old_value, new_value, num_frames)
 
     return transitions
@@ -909,7 +909,7 @@ def diff_styles(old_style, new_style):
 class NumericAnimation:
     def __init__(self, old_value, new_value, num_frames):
         self.is_px = old_value.endswith("px")
-        if is_px:
+        if self.is_px:
             self.old_value = float(old_value[:-2])
             self.new_value = float(new_value[:-2])
         else:
@@ -918,7 +918,8 @@ class NumericAnimation:
         self.num_frames = num_frames
 
         self.frame_count = 1
-        self.change_per_frame = (new_value - old_value) / num_frames
+        total_change = self.new_value - self.old_value
+        self.change_per_frame = total_change / num_frames
 
     def animate(self):
         self.frame_count += 1
@@ -928,19 +929,38 @@ class NumericAnimation:
         current_value = self.old_value + \
             self.change_per_frame * self.frame_count
         if self.is_px:
-            return "{}px".format(updated_value)
+            return "{}px".format(current_value)
         else:
-            return "{}".format(updated_value)
+            return "{}".format(current_value)
+
+    def __repr__(self):
+        return ("NumericAnimation(" + \
+            "old_value={old_value}, change_per_frame={change_per_frame}, " + \
+            "num_frames={num_frames})").format(
+            old_value=self.old_value,
+            change_per_frame=self.change_per_frame,
+            num_frames=self.num_frames)
 
 class TranslateAnimation:
     def __init__(self, old_value, new_value, num_frames):
-        (self.old_x, self.old_y) = parse_transform(old_translation)
-        (new_x, new_y) = parse_transform(old_translation)
+        (self.old_x, self.old_y) = parse_transform(old_value)
+        (new_x, new_y) = parse_transform(new_value)
         self.num_frames = num_frames
 
         self.frame_count = 1
         self.change_per_frame_x = (new_x - self.old_x) / num_frames
         self.change_per_frame_y = (new_y - self.old_y) / num_frames
+
+    def __repr__(self):
+        return ("TranslateAnimation(" + \
+            "old_value=({old_x},{old_y}), " + \
+            "change_per_frame=({change_x},{change_y}), " + \
+            "num_frames={num_frames})").format(
+            old_x=self.old_x,
+            old_y = self.old_y,
+            change_x=self.change_per_frame_x,
+            change_y=self.change_per_frame_y,
+            num_frames=self.num_frames)
 
     def animate(self):
         self.frame_count += 1
@@ -1005,7 +1025,7 @@ def style(node, rules):
 
     if old_style:
         transitions = diff_styles(old_style, node.style)
-        for property, (old_value, new_value, num_frames) in transitions:
+        for property, (old_value, new_value, num_frames) in transitions.items():
             if property in ANIMATED_PROPERTIES:
                 AnimationClass = ANIMATED_PROPERTIES[property]
                 animation = AnimationClass(old_value, new_value, num_frames)
@@ -1256,8 +1276,8 @@ class Tab:
         self.needs_layout = True
         self.browser.set_needs_animation_frame(self)
 
-    def set_needs_layout(self):
-        self.needs_paint = true
+    def set_needs_paint(self):
+        self.needs_paint = True
         self.browser.set_needs_animation_frame(self)
 
     def request_animation_frame_callback(self):
@@ -1337,9 +1357,9 @@ class Tab:
 
         if self.scroll_animation:
             if self.scroll_animation.animate():
-                self.tab.scroll = self.scroll_animation.value()
-                self.tab.scroll_changed_in_tab = True
-                self.tab.browser.set_needs_animation_frame(self)
+                self.scroll = self.scroll_animation.value()
+                self.scroll_changed_in_tab = True
+                self.browser.set_needs_animation_frame(self)
             else:
                 self.scroll_animation = None
 
@@ -1764,14 +1784,18 @@ class Browser:
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
-        if not self.active_tab_height: return
-        active_tab = self.tabs[self.active_tab]
+        if not self.active_tab_height:
+            self.lock.release()
+            return
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height)
         if self.scroll_behavior == 'smooth':
+            active_tab = self.tabs[self.active_tab]
+            self.lock.release()
             active_tab.task_runner.schedule_task(
                 Task(active_tab.run_animation_frame, scroll))
+            self.lock.acquire(blocking=True)
         else:
             self.scroll = scroll
         self.set_needs_draw()
