@@ -871,6 +871,7 @@ class Tab:
         if self.needs_style:
             # ...
             self.needs_layout = True
+            self.needs_style = False
         
         for node in tree_to_list(self.nodes, []):
             # ...
@@ -878,13 +879,12 @@ class Tab:
         if self.needs_layout:
             # ...
             self.needs_paint = True
+            self.needs_layout = False
     
         if self.needs_paint:
             # ...
+            self.needs_paint = False
 
-        self.needs_style = False
-        self.needs_layout = False
-        self.needs_paint = False
         self.measure_render.stop()
 ```
 

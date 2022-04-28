@@ -1323,6 +1323,7 @@ class Tab:
             if 'scroll-behavior' in body.style:
                 self.scroll_behavior = body.style['scroll-behavior']
             self.needs_layout = True
+            self.needs_style = False
 
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in node.animations.items():
@@ -1346,6 +1347,7 @@ class Tab:
             self.document = DocumentLayout(self.nodes)
             self.document.layout()
             self.needs_paint = True
+            self.needs_layout = False
         
         if self.needs_paint:
             self.display_list = []
@@ -1359,9 +1361,7 @@ class Tab:
                 y = obj.y
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
-        self.needs_style = False
-        self.needs_layout = False
-        self.needs_paint = False
+                self.needs_paint = False
 
         self.measure_render.stop()
 
