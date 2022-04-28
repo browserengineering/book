@@ -906,28 +906,6 @@ def diff_styles(old_style, new_style):
 
     return transitions
 
-class TranslateAnimation:
-    def __init__(self, old_value, new_value, num_frames):
-        (self.old_x, self.old_y) = parse_transform(old_translation)
-        (new_x, new_y) = parse_transform(old_translation)
-        self.num_frames = num_frames
-
-        self.frame_count = 0
-        self.change_per_frame_x = (new_x - self.old_x) / num_frames
-        self.change_per_frame_y = (new_y - self.old_y) / num_frames
-        self.animate()
-
-    def animate(self):
-        self.frame_count += 1
-        return self.frame_count < self.num_frames
-
-    def value(self):
-        return "translate({}px,{}px)".format(
-                self.old_x +
-                self.change_per_frame_x * self.frame_count,
-                self.old_y +
-                self.change_per_frame_y * self.frame_count)
-
 class NumericAnimation:
     def __init__(self, old_value, new_value, num_frames):
         self.is_px = old_value.endswith("px")
@@ -939,9 +917,8 @@ class NumericAnimation:
             self.new_value = float(new_value)
         self.num_frames = num_frames
 
-        self.frame_count = 0
+        self.frame_count = 1
         self.change_per_frame = (new_value - old_value) / num_frames
-        self.animate()
 
     def animate(self):
         self.frame_count += 1
@@ -955,6 +932,27 @@ class NumericAnimation:
         else:
             return "{}".format(updated_value)
 
+class TranslateAnimation:
+    def __init__(self, old_value, new_value, num_frames):
+        (self.old_x, self.old_y) = parse_transform(old_translation)
+        (new_x, new_y) = parse_transform(old_translation)
+        self.num_frames = num_frames
+
+        self.frame_count = 1
+        self.change_per_frame_x = (new_x - self.old_x) / num_frames
+        self.change_per_frame_y = (new_y - self.old_y) / num_frames
+
+    def animate(self):
+        self.frame_count += 1
+        return self.frame_count < self.num_frames
+
+    def value(self):
+        return "translate({}px,{}px)".format(
+                self.old_x +
+                self.change_per_frame_x * self.frame_count,
+                self.old_y +
+                self.change_per_frame_y * self.frame_count)
+
 class ScrollAnimation:
     def __init__(self, old_scroll, new_scroll):
         self.old_scroll = old_scroll
@@ -962,8 +960,7 @@ class ScrollAnimation:
         self.num_frames = 30
         self.change_per_frame = \
             (new_scroll - old_scroll) / self.num_frames
-        self.frame_count = 0
-        self.animate()
+        self.frame_count = 1
 
     def animate(self):
         self.frame_count += 1

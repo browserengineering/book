@@ -648,7 +648,7 @@ Now add a frame count and an `animate` method that increments it:
 class NumericAnimation:
     def __init__(self, old_value, new_value, num_frames):
         # ...
-        self.frame_count = 0
+        self.frame_count = 1
 
     def animate(self):
         self.frame_count += 1
@@ -2069,10 +2069,9 @@ class TranslateAnimation:
         (new_x, new_y) = parse_transform(old_translation)
         self.num_frames = num_frames
 
-        self.frame_count = 0
+        self.frame_count = 1
         self.change_per_frame_x = (new_x - self.old_x) / num_frames
         self.change_per_frame_y = (new_y - self.old_y) / num_frames
-        self.animate()
 
     def animate(self):
         self.frame_count += 1
@@ -2367,7 +2366,7 @@ class ScrollAnimation:
         self.num_frames = 30
         self.change_per_frame = \
             (new_scroll - old_scroll) / self.num_frames
-        self.frame_count = 0
+        self.frame_count = 1
 
     def animate(self):
         self.frame_count += 1
