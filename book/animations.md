@@ -859,14 +859,16 @@ Most of this code is straightforward: iterate over all nodes; loop
 through the animations; animate them; and, if the animation is still
 active, update the relevant property value.
 
-However, there's a bit of a catch. Right now, `render()` exits early
-if `self.needs_render` isn't set. But setting that re-runs `style`,
-which would notice that the animation changed a property value and
-start a *new* animation!
+But if you try it, it won't work. That's because right now, `render()`
+exits early if `needs_render` isn't set. That "dirty bit" is
+supposed to be set if there's rendering work to do, and when an
+animation is active, there is.
 
-They resolution here is that during an animation, we don't want to run
-`style`, but we do want to run `layout` and `paint`, the other two
-parts of `render`:[^even-more]
+It's not as simple as just setting `needs_render` any time an
+animation is active, however. Setting `needs_render` means re-runs
+`style`, which would notice that the animation changed a property
+value and start a *new* animation! During an animation, we want to run
+`layout` and `paint`, but we *don't* want to run `style`:[^even-more]
 
 [^even-more]: While a real browser definitely has an analog of the
 `needs_layout` and `needs_paint` flags, our fix for restarting
