@@ -691,7 +691,7 @@ is given without units,[^more-units] so `NumericAnimation` looks at
 the old value to determine the unit to use, and then stores the old
 and new values parsed.
 
-[^more-units]: In a real browsers, there are a [lot more][units] units
+[^more-units]: In real browsers, there are a [lot more][units] units
 to contend with. And other constraints, too---like the fact that
 opacity should be a value between 0 and 1.
 
