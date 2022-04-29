@@ -1,16 +1,18 @@
 ---
-title: Classes using Web Browser Engineering
+title: Classes Using This Book
 ...
 
-The courses below were or are planned to be taught using [Web Browser
-Engineering](index.md) as a textbook. If you are teaching or planning
-to teach from this book, please [let us know][contact].
+The courses below use [Web Browser Engineering](index.md) as a
+textbook. If you are teaching or planning to teach from this book,
+please [let us know][contact].
 
 [contact]: mailto:author@browser.engineering
 
-# CSE 490, Web Browser Engineering, University of Washington, Spring 2022
+# University of Washington
 
-Undergraduate-level course taught by [James R. Wilcox](https://jamesrwilcox.com).
+CSE 490 Web Browser Engineering is an undergraduate-level course at
+the University of Washington first and most recently taught in
+Spring 2022. The most recent course description reads,
 
 > We live in a world completely permeated by the internet and the web.
 > It's time to think of the web browser as a critical piece of systems
@@ -28,12 +30,14 @@ Undergraduate-level course taught by [James R. Wilcox](https://jamesrwilcox.com)
 > implementing features in your browser. Previous experience with web
 > technologies is not required.
 
-[Website](https://courses.cs.washington.edu/courses/cse490x/22sp/) available.
+In Spring 2022, it was taught by [James R. Wilcox](https://jamesrwilcox.com).
+Course materials can be found [online](https://courses.cs.washington.edu/courses/cse490x/22sp/).
 
-# CS 4962, Web Browser Internals, University of Utah, Fall 2021
+# University of Utah
 
-Undergraduate-level course taught by [Pavel
-Panchekha](https://pavpanchekha.com) assisted by Ian Briggs.
+CS 4560 Web Browser Internals is an undergraduate-level course at the
+University of Utah first taught in Fall 2019 and most recently taught
+in Fall 2021. The most recent course description reads,
 
 > How does a web browser work? This class covers all the major
 > components of a modern web browser, including networking, graphics,
@@ -43,37 +47,18 @@ Panchekha](https://pavpanchekha.com) assisted by Ian Briggs.
 > follows a textbook and is taught in a "flipped" format, allowing a
 > lot of student interaction.
 
+In Fall 2021, it was taught by [Pavel
+Panchekha](https://pavpanchekha.com) assisted by Ian Briggs under
+course number CS 4962.
 [Syllabus](https://pavpanchekha.com/teach/wbe-fa21-syllabus.pdf)
 available. Contact instructor for teaching materials.
 
-
-# CS 6968, Web Browser Internals, University of Utah, Fall 2020
-
-Graduate-level course taught by [Pavel Panchekha](https://pavpanchekha.com).
-
-> While web browsers are ever-present, few have seen the insides of a
-> browser. This course covers all major components of a web browser
-> (including networking, parsing, layout, rendering, chrome,
-> interfacing with JavaScript, security), developing a simplified
-> implementation of each and dissecting implementations in existing
-> browsers. Class follows a textbook and is taught in a "flipped"
-> format, allowing a lot of student interaction.
-
+In Fall 2020, it was taught by [Pavel
+Panchekha](https://pavpanchekha.com) under course number CS 6968.
 [Syllabus](https://pavpanchekha.com/teach/wbe-fa20-syllabus.pdf)
 available. Contact instructor for teaching materials.
 
-# CS 6968, Web Browser Internals, University of Utah, Fall 2019
-
-Graduate-level course taught by [Pavel Panchekha](https://pavpanchekha.com).
-
-> While web browsers are ever-present, few have seen the insides of a
-> browser. This course covers all major components of a web browser
-> (including networking, parsing, layout, rendering, chrome,
-> interfacing with JavaScript, security), developing a simplified
-> implementation of each and dissecting implementations in existing
-> browsers. Students will complete programming assignments and a
-> course project, and read and present recent research papers in the
-> field.
-
+In Fall 2019, it was taught by [Pavel
+Panchekha](https://pavpanchekha.com) under course number CS 6968.
 [Syllabus](https://pavpanchekha.com/teach/wbe-fa19-syllabus.pdf)
 available. Contact instructor for teaching materials.
