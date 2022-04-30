@@ -359,7 +359,7 @@ the display list and draw each character:
 class Browser:
     def draw(self):
         for x, y, c in self.display_list:
-          self.canvas.create_text(x, y, text=c)
+            self.canvas.create_text(x, y, text=c)
 ```
 
 Since `draw` does need access to the canvas, we keep it a method on
