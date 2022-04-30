@@ -191,6 +191,16 @@ class Browser:
 
 ```
 
+I've also added code above to print out the vendor and renderer of the GPU your
+computer is using; this will help you verify that it's actually using the GPU
+properly. I'm using a Chromebook to write this chapter, so for me it
+says:[^virgl]
+
+    OpenGL initialized: vendor=b'Red Hat', renderer=b'virgl'
+
+[^virgl]: In this case, `virgl` stands for "virtual GL", a way of
+hardware-accelerating the Linux subsystem of ChromeOS that works with the
+ChromeOS Linux sandbox.
 
 There are lots of resources online about how GPUs work and how to program them
 via GL shaders and so on. But we won't be writing shaders or other
@@ -216,9 +226,11 @@ At a high level, the steps to raster and draw using the GPU are:[^gpu-variations
 allows GPU programs to be portable across a wide variety of implementations
 that may have very different instruction sets or acceleration tactics.
 
-* *Execute* the raster into GPU textures.[^texture]
+* For each desired surface, *execute* the raster into GPU textures.[^texture]
 
-[^texture]: A surface represented on the GPU is called a *texture*.
+[^texture]: A surface represented on the GPU is called a *texture*. There can be
+more than one surface, and practically speaking they often can't be rastered in
+parallel with each other.
 
 * *Draw* the textures onto the screen.
 
@@ -233,32 +245,21 @@ surfaces that draw into other surfaces, forming a tree. Skia internally does
 this sometimes, based on various triggers such as blend modes. The internal
 nodes draw into intermediate textures.
 
-The time to run GPU raster is then the roughly sum of the time for these four
-steps.[^optimize] Usually, the *execute* step is very fast, and total time is
-instead dominated by one or more of the other three steps. The larger the
-display list, the longer the upload; the more complexity and variety of display
-list commands, the longer the compile; the deeper the the nesting of surfaces
-in the web page, the longer the draw (though each draw is about as fast as
-execute). Without care, these steps can sometimes add up to be longer than the
-time to just raster on the CPU. All of these slowdown situations can and do
-happen in real browsers for some kinds of hard-to-draw content.
+The time to run GPU raster is roughly the sum of the time for these four steps.
+[^optimize] The total time can be dominated by any of the four steps. The
+larger the display list, the longer the upload; the more complexity and variety
+of display list commands, the longer the compile; the more surfaces to raster,
+the longer the execute; the deeper the the nesting of surfaces in the web page,
+the longer the draw. Without care, these steps can sometimes add up to be
+longer than the time to just raster on the CPU. All of these slowdown
+situations can and do happen in real browsers for various kinds of hard-to-draw
+content.
 
 [^optimize]: It's not necessary to compile GPU programs on every raster, so
 this part can be optimized. Parts of the other steps can as well, such as
 by caching font data in the GPU.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
-
-I've also added code above to print out the vendor and renderer of the GPU your
-computer is using; this will help you verify that it's actually using the GPU
-properly. I'm using a Chromebook to write this chapter, so for me it
-says:[^virgl]
-
-    OpenGL initialized: vendor=b'Red Hat', renderer=b'virgl'
-
-[^virgl]: In this case, `virgl` stands for "virtual GL", a way of
-hardware-accelerating the Linux subsystem of ChromeOS that works with the
-ChromeOS Linux sandbox.
 
 The root Skia surface will need to be connected directly to the screen
 framebuffer associated with the SDL window. The incantation for that is:
@@ -280,9 +281,9 @@ class Browser:
 
 ```
 
-Note: this code never seems to reference `gl_context` or `sdl_window`
-directly, but draws to the window anyway. That's because OpenGL is a strange
-API that uses hidden global states; the `MakeGL` Skia method just binds to the
+Note: this code never seems to reference `gl_context` or `sdl_window` directly,
+but draws to the window anyway. That's because OpenGL is a strange API that
+uses hidden global states; the `MakeGL` Skia method implicitly binds to the
 existing GL context.
 
 The `chrome_surface` incantation is a bit different, because it's creating
@@ -345,21 +346,21 @@ A high-speed, reliable and cross-platform GPU raster path in Skia has only
 existed for a few years.[^timeline-gpu] In the very early days of Chromium,
 there was only CPU raster. Scrolling was implemented much like in the eary
 chapters of this book, by re-rastering content. This was deemed acceptable at
-the time beacuse computers were much slower than today in general, GPUs much
+the time because computers were much slower than today in general, GPUs much
 less reliable, animations much less frequent, and mobile platforms such as
 Android and iOS still emerging. (In fact, the first versions of Android
 also didn't have GPU acceleration.) The same is generally true of Firefox and
 Safari, though Safari was able to accelerate content more easily because it
 only targeted the limited number of GPUs supported by macOS and iOS.
 
-[^timeline-gpu]: You can see a timeline [here][rng-gpu]
+[^timeline-gpu]: You can see a timeline [here][rng-gpu].
 
 [rng-gpu]: https://developer.chrome.com/blog/renderingng/#gpu-acceleration-everywhere
 
 There are *many* challenges to implementing GPU accelerated raster, among them
 working correctly across many GPU architectures, gracefully falling back to CPU
-raster in complex or error scenarios, and difficult-to-efficiently-raster
-content like anti-aliased & complex shapes.
+raster in complex or error scenarios, and finding ways to efficiently GPU 
+raster content in difficult situations like anti-aliased & complex shapes.
 
 So while you might think it's odd to wait until Chapter 13 to turn on
 GPU acceleration, this also mirrors the evolution timeline of
@@ -376,7 +377,7 @@ of a DOM element on each frame. That is indeed an animation---a
 *JavaScript-driven* animation---but `innerHTML` is generally not how
 high-quality animations are done on the web. Instead, it almost always makes
 sense to first render some content into layout objects, then apply a DOM
-animation to the layout tree.
+animation to the layout tree by animating CSS properties.
 
 It's straightforward to see how this works for opacity: define some
 HTML that you want to animate, then interpolate the `opacity` CSS property in
@@ -389,8 +390,10 @@ certain animation-related optimizations when opacity is exactly 1. So it's
 easier to dig into the performance of this example on a real browser with 0.999
 opacity. Starting animations at 0.999 is also a common trick used on web sites
 that want to avoid visual popping of the content as it goes in and out of
-GPU-accelerated mode. I chose 0.999 instead of 0.9 because the visual
-difference from 1.0 is imperceptible.
+GPU-accelerated mode. I chose 0.999 because the visual difference from 1.0 is
+imperceptible.
+
+The HTML is:
 
 ``` {.html file=example-opacity-html}
 <div>Test</div>
@@ -453,15 +456,16 @@ class JSContext:
 
 Opacity is a special kind of CSS filter. And where it makes sense, other filters
 that parameterize on some numeric input (such as [blur]) can also be animated
-just as easily.
+just as easily. And as we'll see, all of them can be optimized to avoid raster
+entirely during the animation.
 
 Likewise, certain paint-only effects such as color and background-color are also
 possible to animate, since colors are numeric and can be interpolated. (In that
-ase, each color channel is interpolated independently.) According to the
-terminology of this chapter, paint-only effects are not a visual effect, but
-because they don't need layout they can be considered in the same category as
-visual effects, and with some extra effort hardware-accelerated in the same
-ways.
+ase, each color channel is interpolated independently.) These are also
+visual effects, but not quite of the same character, because background color
+doesn't apply a visual effect to a whole DOM subtree. It's instead a display
+list parameter that happens not to cause layout, but generally still
+needs raster. This makes them harder to optimize.
 
 :::
 
@@ -891,7 +895,8 @@ Compositing
 ===========
 
 *Compositing* is a technique to avoid raster during visual effect animations by
- caching raster results in GPU textures. So only `draw` is needed for each
+ caching raster results in GPU textures. These textures are re-used during
+ the animation, so only `draw` is needed for each
  animation frame (with different parameters each time of course).[^compositing-def]
 
 [^compositing-def]: The term [*compositing*][compositing] originally meant to
@@ -1007,7 +1012,7 @@ could of course have any number of display list commands.[^command-note]
 [^command-note]: Note that this is *not* the same as "cache the display list for
 a DOM element subtree". To see why, consider that a single DOM element can
 result in more than one `SaveLayer`, such as when it has both opacity *and* a
-transform.]
+transform.
 
 Putting the `DrawText` into its own surface sounds simple enough: just make a
 surface and raster that sub-piece of the display list into it, then draw that
@@ -1032,6 +1037,25 @@ Note also how we're using the `draw` method on `skia.Surface`, the very same
 method we already use in `Browser.draw` to draw the surface to the screen.
 In essence, we've moved a `saveLayer` command from the `raster` stage
 to the `draw` stage of the pipeline.
+
+::: {.further}
+
+If you look closely at the example in this section, you'll see that the
+`DrawText` command itself only has a rect with a width of 33 pixels, not the
+width of the viewport. On the other hand, the `SaveLayer` has a width of 774
+pixels. The reason they differ is that the text is only 33 pixels wide, but
+the block element that contains it is 774 pixels wide, and the opacity is placed
+on the block element, not the text.
+
+So does the composited surface need to be 33 pixels wide or 774? In practice you
+could implement either. The algorithm presented in this chapter actually
+chooses 33 pixels, but real browsers sometimes choose 774 depending on their
+algorithm. Also note that if there was any kind of paint command associated
+with the block element itself, such as a background color, then the surface
+would definitely have to be 774 pixels wide. Likewise, if there were multiple
+inline children, the union of their bounds would contribute to the surface size.
+
+:::
 
 Compositing algorithms
 ======================
