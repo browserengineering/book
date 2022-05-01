@@ -1061,7 +1061,7 @@ Compositing algorithms
 ======================
 
 The most complex part of compositing and draw is dealing with the hierarchical
-nature of the display list. The most natural algorithm that comes to mind is to
+nature of the display list. To deal with this, you might try this algoritihm:
 mark animating visual effects as composited, and raster a `skia.Surface` for
 everything below it. This works fine for the single `DrawText` example we've
 been looking at, but starts to get very complicated when you consider nested
@@ -1071,7 +1071,7 @@ Do we instead raster some of it in one surface and some in another? Where do we
 put the combined result with all the opacities applied, or the first applied
 but not yet the second?^[We'll cover another complication---overlap
 testing---later in the chapter; see also the Go Further block at the end of
-this section for adidtional discussion of even more complications.]
+this section for discussion of even more complications.]
 
 To handle all this complexity, let's break the problem down into two
 pieces: *compositing* the display list into a linear list of `skia.Surface`s,
@@ -1092,17 +1092,20 @@ discussion.
 
 In fact, compositing can focus only on the leaves of this display list, which
 we'll call *paint commands*.[^drawtext] These are exactly the same display list
-commands that we had *before* Chapter 11 added visual effects. Think of
-the paint commands as forming a flat list---the output of enumerating them in
-paint order. The distinction between compositing and drawing is exactly
-analogous to how you can think of painting and visual effects as different but
-complementary: painting is drawing some pixels to a canvas, and visual effects
-apply a group operation to them; in the same way, compositing rasters some
-pixels and drawing applies group operations.^[And just as visual effects in our
-browser (except for scrolling) actually happen during paint at the moment,
-non-animating visual effects will end up happening during raster and not draw.
-The point is that either way is correct; choosing one or the other is
-just a matter of which has better performance.]
+commands that we had *before* Chapter 11 added visual effects. You can also
+imagine these paint commands as being in a flat list---the output of
+enumerating them in paint order. From this point of view, the visual
+effects "merely" show how to add visual flourish to the paint commands.
+
+The distinction between compositing and drawing is analogous to how you can
+think of painting and visual effects as different but complementary: painting
+is drawing some pixels to a canvas, and visual effects apply a group operation
+to them; in the same way, compositing rasters some pixels and drawing applies
+group operations.^[And just as visual effects in our browser (except for
+scrolling) actually happen during paint at the moment, non-animating visual
+effects will end up happening during raster and not draw. Either way way is
+correct; choosing one or the other is just a matter of which has better
+performance.]
 
 [^drawtext]: `DrawText`, `DrawRect` etc---the display list commands that
 don't have recursive children in `cmds`.
@@ -1125,7 +1128,7 @@ def display_list_to_paint_chunks(
             chunks.append((display_item, ancestor_effects))
 ```
 
-In the opacity example, there is one paint chunk with one ancestor effect
+In the `DrawText` example, there is one paint chunk with one ancestor effect
 (opacity):
 
     (DrawText("Text"), [SaveLayer(opacity=0.999)])
@@ -1142,7 +1145,7 @@ animations would end up applying to the wrong paint commands.)
 
 To satisfy this constraint, we *could* just put each paint command in its own
 composited layer. But of course, for examples more complex than just one
-`DrawText` that woould result in a huge number of surfaces, and most likely
+`DrawText` that would result in a huge number of surfaces, and most likely
 exhaust the computer's GPU memory. So the goal of the *compositing algorithm*
 is to come up with a way to pack paint chunks into only a small number of
 composited layers.^[There are many possible compositing algorithms, with their
@@ -1157,7 +1160,8 @@ added to it; if not, a new `CompositedLayer` is added with that paint chunk to
 start. The `can_merge` method on a `CompositedLayer` checks compatibility of
 the paint chunk's animating ancestor effects with the ones already on it.
 
-[^why-backwards]: Backwards, because we can't draw things in the wrong order.
+[^why-backwards]: Backwards, because we can't draw things in the wrong
+order. Later items in the display list have to draw later.
 
 ``` {.python expected=False}
 class Browser:
@@ -1197,7 +1201,7 @@ And drawing them to the screen will be like this:[^draw-incorrect]
 
 [^draw-incorrect]: It's worth calling out once again that this is not
 correct in the presence of nested visual effects; see the Go Further section.
-I've left fixing the problem to an exercise.
+I've left fixing the problem described there to an exercise.
 
 ``` {.python}
     def draw(self):
@@ -1265,7 +1269,8 @@ and clipping.
 Composited display items
 ========================
 
-Let's add some more features to display items to help then support compositing.
+Before getting to finishing off `CompositedLayer`, let's add some more features
+to display items to help then support compositing.
 
 The first thing we'll need is a way to signal that a visual effect "needs
 compositing", meaning that it may be animating and so its contents should be
@@ -1387,15 +1392,17 @@ regardless of whether they are animating. But in fact, there are some good
 reasons to always composite certain visual effects.
 
 First, we'll be able to start the animation quicker, since raster won't have to
-happen first. That's because whenever we change the compositing reasons , we
-might have to re-raster a number of surfaces. And also re-do compositing.
+happen first. That's because whenever compositing reasons change, the browser
+has to re-do compositing and re-raster the new surfaces.
 
 Second, compositing sometimes has visual side-effects. Ideally, composited
 textures would look exactly the same on the screen as non-composited ones. But
-due to the details of pixel-sensitive raster technologies like [sub-pixel
-rendering][subpixel] image resize filter algorithms, blending and
-anti-aliasing, this isn't always possible. "Pre-compositing" the content avoids
-visual jumps on the page when compositing starts.
+due to the details of pixel-sensitive raster technologies like
+[sub-pixel rendering][subpixel], image resize filter algorithms, blending and
+anti-aliasing, this isn't always possible. For example, it's common to have
+subtle color differences in some pixels due to floating-point precision
+differences. "Pre-compositing" the content avoids visual jumps on the page when
+compositing starts.
 
 Real browsers support the [`will-change`][will-change] CSS property for the
 purpose of signaling pre-compositing.
@@ -1596,7 +1603,8 @@ renaming at all callsites), and everything should work end-to-end.
 ::: {.further}
 
 Interestingly enough, as of the time of writing this section, Chromium and
-WebKit both perform the `compositing` step on the main thread. This is the only
+WebKit both perform the `compositing` step on the main thread, whereas our
+browser does it on the browser thread. This is the only
 way in which our browser is actually ahead of real browsers! The reason
 compositing doesn't (yet) happen on another thread in Chromium is that to get
 there took re-architecting the entire algorithm for compositing. The
@@ -1613,13 +1621,14 @@ Composited animations
 
 Compositing now works, but it doesn't yet achieve the goal of avoiding raster
 during animations. That's because `composite` is constantly re-running on every
-frame and kesps throwing away and re-creating the composited layers. In fact,
+frame and keeps throwing away and re-creating the composited layers. In fact,
 at the moment it's probably *slower* than before, because the compositing
 algorithm takes time to run. Let's now add code to avoid all this work.
 
 Avoiding raster and the compositing algorithm is simple in concept: keep track
 of what is animating, and re-run `draw` with different opacity parameters on
-the `CompositedLayer`s that are animating.
+the `CompositedLayer`s that are animating. If nothing else changes, then
+we don't need to re-composite or re-raster anything.
 
 Let's accomplish that. It will have multiple parts, starting with the main
 thread.
@@ -1748,8 +1757,7 @@ Now for the browser thread.
 
 * Add `needs_composite`, `needs_raster` and `needs_draw` dirty bits and
   corresponding `set_needs_composite`, `set_needs_raster`, and
-  `set_needs_draw` methods (and remove the old
-  `needs_raster_and_draw` dirty bit):
+  `set_needs_draw` methods (and remove the old dirty bit):
 
 ``` {.python}
 class Browser:
@@ -1757,6 +1765,7 @@ class Browser:
         # ...
         self.needs_composite = False
         self.needs_raster = False
+        self.needs_draw = False
 
     def set_needs_raster(self):
         self.needs_raster = True
@@ -1841,14 +1850,16 @@ ancestors.)
 class SaveLayer(DisplayItem):
     def copy(self, other):
         self.sk_paint = other.sk_paint
-
 ```
 
 [^ptrcompare]: This is done by comparing equality of `Element` object
 references. Note that we are only using these objects for
 pointer comparison, since otherwise it would not be thread-safe.
 
+And here's the code with the loop over `composited_items`:
+
 ``` {.python expected=False}
+class Browser:
     def composite(self):
         if self.needs_composite:
             # ...
@@ -1871,20 +1882,19 @@ not everything else!
 ::: {.further}
 
 While visual effect animations in our browser are now efficient
-and *composited*, they are not *threaded* in the sense of
-[Chapter 12][threaded-12]: the animation still ticks on the main thread, and if
-there is a slow JavaScript or other task clogging the task queue, animations
-will stutter. This is a significant problem for real browsers, so almost
-all of them support threaded opacity, transform and filter animations; some
-support certain kinds of clip animations as well. (This chapter is already
-quite complex, so I left adding threaded animations to an exercise.)
+and *composited*, they are not *threaded* in the sense of[Chapter 12]
+[threaded-12]: the animation still ticks on the main thread, and if there is a
+slow JavaScript or other task clogging the task queue, animations will stutter.
+This is a significant problem for real browsers, so almost all of them support
+threaded opacity, transform and filter animations; some support certain kinds
+of clip animations as well. Adding threaded animations to our browser is
+left as an exercise at the end of this chapter.
 
 It's common to hear people use "composited" and "threaded" as synonyms, however.
 That's because in most browsers, compositing is a *prerequisite* for threading.
-The reason is that if you're going to animate efficiently
-on the GPU, you usually need to composite a texture anyway, and plumbing
-animations on GPU textures is much easier to express in a browser than an
-animation on "part of a display list".
+The reason is that if you're going to animate efficiently, you usually need to
+composite a texture anyway, and plumbing animations on GPU textures is much
+easier to express in a browser than an animation on "part of a display list".
 
 That being said, it's not impossible to animate display lists, and some browsers
 have attempted it. For example, one aim of the [WebRender] project at Mozilla
@@ -1893,7 +1903,7 @@ by rastering and drawing at 60Hz on the GPU directly from the display list.
 This is called a *direct render* approach. In practice this goal is
 hard to achieve with current GPU technology, because some GPUs are faster
 than others. So browsers are slowly evolving to a hybrid of direct rendering
-and compositing.
+and compositing instead.
 
 :::
 
@@ -1926,13 +1936,17 @@ reason* for compositing, and is a major complication (and potential source of
 extra memory use and slowdown) faced by all real browsers.
 
 Let's fix the compositing algorithm to take into account overlap. It turns out
-to be not that hard---when considering where to put a paint chunk, check if it
-overlaps with an animated `CompositedLayer`. If so, start a new
-`CompositedLayer` that has an overlap reason for compositing.
+to be not that hard to do with the flat compositing algorithm we implemented in
+this chapter:[^layer-tree-overlap-hard] when considering where to put a paint
+chunk, simply check if it overlaps with an animated `CompositedLayer`. If so,
+start a new `CompositedLayer` that has an overlap reason for compositing.
 
-The change to `composite` will be only a few lines code an an `elif` to check if
-the current paint chunk overlaps another `CompositedLayer` in the list that
-needs to be animated.
+[^layer-tree-overlap-hard]: On the other hand, it's quite complicated for a
+"layer tree" approach, which is another reason to prefer the flat algorithm.
+
+The change to `composite` will be only a few lines of code and an `elif` to
+check if the current paint chunk overlaps another `CompositedLayer` in the list
+that needs to be animated.
 
 ``` {.python}
     def composite(self):
@@ -1959,7 +1973,7 @@ needs to be animated.
 
 And then implementing the `absolute_bounds` methods used in the code above. As
 it stands, this might as well be equivalent to `composited_bounds` because
-there is no visual effect that can grow the bounding rect of paint
+there is no visual effect that can grow or move the bounding rect of paint
 commands.[^grow] So by just defining `absolute_bounds` to be
 `composited_bounds`, everything will work correctly:
 
@@ -1992,7 +2006,7 @@ pixel rects.
 
 [^overlap-example]: In addition, it's not possible to create the overlapping
 squares example of this section without something like transforms. Real
-browsers have many other methods, such as [position]. In fact, it's a a bit
+browsers have many other methods, such as [position]. In fact, it's a bit
 difficult to cause overlap at all in our current browser, though one way is to
 set the `width` and `height` of elements such that it causes text to overflow
 on top of siblings further down the page.
@@ -2002,23 +2016,23 @@ on top of siblings further down the page.
 ::: {.further}
 
 Overlap reasons for compositing not only create complications in the code, but
-without care from the browser and web developer can lead to a huge amount
-of GPU memory usage, as well as page slowdown to manage all of the additional
+without care from the browser and web developer can lead to a huge amount of
+GPU memory usage, as well as page slowdown to manage all of the additional
 composited layers. One way this could happen is that an additional composited
 layer results from one element overlapping another, and then a third because it
-overlaps the second, and so on. Our browser's algorithm avoids this
-problem most of the time because it is able to merge multiple paint chunks
-together as long as they have compatible ancestor effects, but in practice
-there are many very complicated situations where it's hard to make content
-merge efficiently.
+overlaps the second, and so on. This phenomenon is called *layer explosion*.
+Our browser's algorithm avoids this problem most of the time because it is able
+to merge multiple paint chunks together as long as they have compatible
+ancestor effects, but in practice there are complicated situations where it's
+hard to make content merge efficiently.
 
-The general problem of extra GPU memory due to knock-on effects of compositing
-is called *layer explosion*. In addition to overlap, there are other reasons:
-for example, suppose we wanted to *turn off* composited scrolling in certain
-situations, such as on a machine without a lot of memory, but still use
-compositing for visual effect animations. But what if the animation is on
-content underneath a scroller? In practice, it is very difficulty to implement
-this situation correctly without just giving up and compositing the scroller.
+In addition to overlap, there are other situations where compositing has
+undesired side-effects leading to performance problems. For example, suppose we
+wanted to *turn off* composited scrolling in certain situations, such as on a
+machine without a lot of memory, but still use compositing for visual effect
+animations. But what if the animation is on content underneath a scroller? In
+practice, it is very difficulty to implement this situation correctly without
+just giving up and compositing the scroller.
 
 :::
 
@@ -2038,10 +2052,10 @@ it, but there are various rules for painting, and "positioned" elements (such as
 with `transform`) are supposed to paint after regular (non-positioned) elements.
 This particular rule is purely a historical artifact.
 
-[^not-always-visual]: Technically it's not always just a visual effect. In
-real browsers, transformed element positions contribute to scrolling overflow.
-Real browsers mostly do this correctly, but sometimes cut corners to avoid
-slowing down transform animations.
+[^not-always-visual]: Technically, `transform` is not always just a visual
+effect. In real browsers, transformed element positions contribute to scrolling
+overflow. Real browsers mostly do this correctly, but sometimes cut corners to
+avoid slowing down transform animations.
 
 [transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
@@ -2056,8 +2070,8 @@ Adding in support for this kind of transform is not too hard: first
 just parse it:[^space-separated]
 
 [^space-separated]: The CSS transform syntax allows multiple transforms in a
-space-separated sequence; the end result is the composition of the transform.
-I won't implement that, just like I didn't implement many other parts of the
+space-separated sequence; the end result involves applying each in sequence. I
+won't implement that, just like I didn't implement many other parts of the
 standardized transform syntax.
 
 ``` {.python}
@@ -2175,7 +2189,9 @@ class TranslateAnimation:
         return True
 ```
 
-You should now be able to create this animation with your browser:
+You should now be able to create this animation:^[In this
+example, I added in a simultaneous opacity animation to demonstrate that our
+browser supports it.]
 
 <iframe src="examples/example13-transform-transition.html" style="width:350px;height:450px">
 </iframe>
@@ -2317,19 +2333,19 @@ an *animation*. To my mind, there are two key reasons:
 * Touch or mouse drag-based scrolling is very performance sensitive. This is
   because humans are much more sensitive to things keeping up with the movement
   of their hand than they are to the latency of responding to a click. For
-  example, a scrolling hiccup for even one frame, even for only a few tens of
-  milliseconds, is easily noticeable and jarring to a person, but most people
-  do not notice click input delays of up to 100ms or so. Therefore such
-  gestures benefit greatly from the same GPU+compositing technology I introduced
-  in this chapter.
+  example, a mouse-drag scrolling hiccup for even one frame, even for only a
+  few tens of milliseconds, is easily noticeable and jarring to a person, but
+  most people do not notice click input delays of up to 100ms or so. Therefore
+  such gestures benefit greatly from the same GPU+compositing technology I
+  introduced in this chapter.
 
 Let's add composited scrolling to our browser, and then smooth scrolling on
 keyboard events.
 
-Composited scrolling will be extremely easy, because thanks
-to [Chapter 12](#threaded-scrolling), we have threaded scrolling already,
-and the `scroll` offset is already present on `Browser`.
-All we have to do is replace `set_needs_raster` with `set_needs_draw`:
+Composited scrolling (i.e. scrolling without raster) will be extremely easy,
+because thanks to [Chapter 12](#threaded-scrolling), we have threaded scrolling
+already, and the `scroll` offset is already present on `Browser`. All we have
+to do is replace `set_needs_raster` with `set_needs_draw`:
 
 ``` {.python}
 class Browser:
@@ -2470,9 +2486,9 @@ class ScrollAnimation:
 
 Yay, smooth scrolling! You can try it on
 [this example](examples/example13-transform-transition.html), which combines a
-smooth scroll and transform animation *at the same time*. And it's got super
-smooth animation performance. That's quite satisfying, and I hope makes the hard
-slog of this chapter worth it!
+smooth scroll, opacity and transform animation *at the same time*. And it's got
+super smooth animation performance. That's quite satisfying, and I hope makes
+the hard slog of this chapter worth it!
 
 On top of that, notice how once we have an animation framework implemented,
 adding new features to it becomes easier and easier. This is a pattern I hope
@@ -2521,13 +2537,13 @@ remember are:
 
 - Animations come in DOM-based, input-driven and video-like varieties.
 
-- Animations can be *layout-inducing* or *visual effect only*, and the
+- DOM animations can be *layout-inducing* or *visual effect only*, and the
   difference has important performance and animation quality implications.
 
 - GPU acceleration is necessary for smooth animations.
 
-- Compositing is necessary for smooth visual effect animations, and generally
-  not feasible (at least at present) for layout-inducing animations.
+- Compositing is necessary for smooth and threaded visual effect animations, and
+  generally not feasible (at least at present) for layout-inducing animations.
 
 - Input-driven animations have tight performance constraints, and so must
   generally be composited to behave well.
@@ -2546,10 +2562,9 @@ should now look something like this:
 Exercises
 =========
 
-*Multiple animations*: create some demos of animations of transform and opacity
- at the same time, and combinations of nested transform and opacity. They
- should still work of course, but these situations usually uncover bugs. If
- you find bugs, fix them!
+*Multiple animations*: create some demos of nested transform and opacity
+ animations. They should still work of course, but these situations usually
+ uncover bugs. If you find bugs, fix them!
 
 *Background-color*: implement animations of the `background-color` CSS property.
 You'll have to define a new kind of interpolation that applies to all the
@@ -2569,14 +2584,15 @@ color channels.
  this is not acceptable, since there could be many main-thread tasks slowing
  things down. Add support for threaded animations. Doing so will require
  replicating some event loop code from the main thread, but if you're careful
- you should be able to reuse all of the animation classes. (Don't worry
- too much about how to synchronize these animations with the main thread, except
- to cause them to stop after the next commit when DOM changes occur. Real
- browsers encounter a lot of complications in this area.)
+ you should be able to reuse all of the animation classes. (Don't worry too
+ much about how to synchronize these animations with the main thread, except to
+ cause them to stop after the next commit when DOM changes occur that
+ invalidate the animation. Real browsers encounter a lot of complications in
+ this area.)
 
-*Threaded scrolling*: once you've completed the threaded animations exercise,
- you should be able to add threaded scrolling (i.e., scrolling that doesn't
- ever block on main-thread tasks) without much more work.
+*Threaded smooth scrolling*: once you've completed the threaded animations
+ exercise, you should be able to add threaded smooth scrolling without much
+ more work.
 
 *CSS animations*: implement the basics of the
 [CSS animations][css-animations] API, in particular enough of the `animation`
@@ -2589,15 +2605,17 @@ CSS property and parsing of `@keyframe` to implement the demos
  of transform animations. First create a demo that exhibits the bug, and then
  fix it. One way to fix it is to enter "assume overlap mode" whenever an
  animated transform paint chunk is encountered. This means that every
- subsequent paint chunk is assumed to overlap the animating one, and therefore
- can't merge into any `CompositedLayer` earlier in the list than the animating
- one. Another way is to run overlap testing on every animation frame in the
- browser thread, and if the results differ from the prior frame, re-do
- compositing and raster.[^css-animation-transform]
+ subsequent paint chunk is assumed to overlap the animating one (even if it
+ doesn't at the moment), and therefore can't merge into any `CompositedLayer`
+ earlier in the list than the animating one. Another way is to run overlap
+ testing on every animation frame in the browser thread, and if the results
+ differ from the prior frame, re-do compositing and raster.
+ [^css-animation-transform]
 
-[^css-animation-transform]: And if you've done the CSS animations exercise,
-and an animation is defined in terms of a CSS animation, you can analytically
-determine the bounding box of the animation, and use that for overlap instead.
+[^css-animation-transform]: And if you've done the CSS animations exercise, and
+a transform animation is defined in terms of a CSS animation, you can
+analytically determine the bounding box of the animation, and use that for
+overlap instead.
 
 *Avoiding sparse composited layers*: our browser's algorithm currently always
  merges paint chunks that have compatible ancestor effects. But this can lead
@@ -2613,7 +2631,7 @@ determine the bounding box of the animation, and use that for overlap instead.
  discussed in a Go Further block in Chapter 11).
 
  *Short display lists*: it's relatively common in real browsers to encounter
-  `CompositedLayer`s that are only a single solid color, or only one a few
+  `CompositedLayer`s that are only a single solid color, or only a few
   simple paint commands.[^real-browser-simple] Implement an optimization that
   skips storing a `skia.Surface` on a `CompositedLayer` with less than a fixed
   number (3, say) of paint commands, and instead execute them directly. In
@@ -2629,4 +2647,5 @@ shapes or text.
  [this section](#implementing-compositing), our browser doesn't currently draw
  nested, composited visual effects correctly. Fix this by building a "draw
  tree" for all of the `CompositedLayer`s and allocating a `skia.Surface` for
- each internal node.
+ each internal node. Bonus points for avoiding internal surfaces that are not
+ needed.
