@@ -1398,10 +1398,11 @@ has to re-do compositing and re-raster the new surfaces.
 Second, compositing sometimes has visual side-effects. Ideally, composited
 textures would look exactly the same on the screen as non-composited ones. But
 due to the details of pixel-sensitive raster technologies like
-[sub-pixel rendering][subpixel] image resize filter algorithms, blending and
-anti-aliasing, this isn't always possible. It's common to have subtle color
-differences in some pixels due to compositing. "Pre-compositing" the content
-avoids visual jumps on the page when compositing starts.
+[sub-pixel rendering][subpixel], image resize filter algorithms, blending and
+anti-aliasing, this isn't always possible. For example, it's common to have
+subtle color differences in some pixels due to floating-point precision
+differences. "Pre-compositing" the content avoids visual jumps on the page when
+compositing starts.
 
 Real browsers support the [`will-change`][will-change] CSS property for the
 purpose of signaling pre-compositing.
