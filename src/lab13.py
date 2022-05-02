@@ -923,9 +923,7 @@ class NumericAnimation:
 
     def animate(self):
         self.frame_count += 1
-        return self.frame_count < self.num_frames
-
-    def value(self):
+        if self.frame_count >= self.num_frames: return
         current_value = self.old_value + \
             self.change_per_frame * self.frame_count
         if self.is_px:
@@ -964,9 +962,7 @@ class TranslateAnimation:
 
     def animate(self):
         self.frame_count += 1
-        return self.frame_count < self.num_frames
-
-    def value(self):
+        if self.frame_count >= self.num_frames: return
         return "translate({}px,{}px)".format(
                 self.old_x +
                 self.change_per_frame_x * self.frame_count,
@@ -984,9 +980,7 @@ class ScrollAnimation:
 
     def animate(self):
         self.frame_count += 1
-        return self.frame_count < self.num_frames
-    
-    def value(self):
+        if self.frame_count >= self.num_frames: return
         updated_value = self.old_scroll + \
             self.change_per_frame * self.frame_count
         return updated_value
@@ -1030,6 +1024,7 @@ def style(node, rules):
                 AnimationClass = ANIMATED_PROPERTIES[property]
                 animation = AnimationClass(old_value, new_value, num_frames)
                 node.animations[property] = animation
+                node.style[property] = old_value
 
     for child in node.children:
         style(child, rules)
@@ -1294,8 +1289,18 @@ class Tab:
                     self.scroll = scroll
         self.js.interp.evaljs("__runRAFHandlers()")
 
-        needs_composite = self.needs_style or self.needs_layout
+        for node in tree_to_list(self.nodes, []):
+            for (property_name, animation) in node.animations.items():
+                value = animation.animate()
+                if value:
+                    node.style[property_name] = value
+                    if USE_COMPOSITING and property_name == "opacity":
+                        self.composited_animation_updates.append(node)
+                        self.set_needs_paint()
+                    else:
+                        self.set_needs_layout()
 
+        needs_composite = self.needs_style or self.needs_layout
         self.render()
 
         document_height = math.ceil(self.document.height)
@@ -1345,19 +1350,10 @@ class Tab:
             self.needs_layout = True
             self.needs_style = False
 
-        for node in tree_to_list(self.nodes, []):
-            for (property_name, animation) in node.animations.items():
-                if animation.animate():
-                    node.style[property_name] = animation.value()
-                    if USE_COMPOSITING and property_name == "opacity":
-                        self.composited_animation_updates.append(node)
-                        self.set_needs_paint()
-                    else:
-                        self.set_needs_layout()
-
         if self.scroll_animation:
-            if self.scroll_animation.animate():
-                self.scroll = self.scroll_animation.value()
+            value = self.scroll_animation.animate()
+            if value:
+                self.scroll = value
                 self.scroll_changed_in_tab = True
                 self.browser.set_needs_animation_frame(self)
             else:

@@ -707,15 +707,12 @@ class NumericAnimation:
 
     def animate(self):
         self.frame_count += 1
-        return self.frame_count < self.num_frames
+        if self.frame_count >= self.num_frames: return
 ```
 
-The `animate` method returns a boolean that indicates whether the
-animation is still running. We'll check that before updating the
-actual value of the property being animated.
-
 If the animation is animating, we'll need to compute the new value of
-the property. Let's do that in a `value` method.[^animation-curve]
+the property. Let's return that from the `animate`
+method:[^animation-curve]
 
 [^animation-curve]: Note that this class implements a linear animation
 interpretation (or *easing function*). By default, real browsers use a
@@ -729,7 +726,8 @@ class NumericAnimation:
         total_change = self.new_value - self.old_value
         self.change_per_frame = total_change / num_frames
 
-    def value(self):
+    def animate(self):
+        # ...
         current_value = self.old_value + \
             self.change_per_frame * self.frame_count
         if self.is_px:
@@ -828,43 +826,39 @@ def style(node, rules):
                 AnimationClass = ANIMATED_PROPERTIES[property]
                 animation = AnimationClass(old_value, new_value, num_frames)
                 node.animations[property] = animation
+                node.style[property] = old_value
 ```
 
 Now, any time a property listed in `transition` changes its value,
-we'll create an animation and get ready to run it.
+we'll create an animation and get ready to run it. Note that the
+animation will start running next frame; until then, we want it to
+show the old value.
 
 So, let's run the animations! Basically, every frame, we're going to
 want to find all the active animations on the page and call `animate`
-on them. Since the animations are created by `style`, we want to run
-them right afterwards:
+on them. Since these animations are basically a variation of
+JavaScript animations using `requestAnimationFrame`, let's run
+animations right after handling those callbacks:
 
-Since the animations are stored on the nodes, we'll traverse
-the document tree to find them:
-
-``` {.python replace=style(/%20%20%20%20style(}
+``` {.python}
 class Tab:
-    def render(self):
+    def run_animation_frame(self, scroll):
         # ...
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
-
+        self.js.interp.evaljs("__runRAFHandlers()")
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in node.animations.items():
-                if animation.animate():
-                    node.style[property_name] = animation.value()
-
+                # ...
         # ...
 ```
 
-Most of this code is straightforward: iterate over all nodes; loop
-through the animations; animate them; and, if the animation is still
-active, update the relevant property value.
+The body of this loop needs to do two things. First, it needs to call
+the animation's `animate` method and save the new value to the node's
+`style`. Second, since that changes the web page, we need to set a
+dirty bit; Recall that `render()` exits early if `needs_render` isn't
+set, so that "dirty bit" is supposed to be set if there's rendering
+work to do. When an animation is active, there is.
 
-But if you try it, it won't work. That's because right now, `render()`
-exits early if `needs_render` isn't set. That "dirty bit" is
-supposed to be set if there's rendering work to do, and when an
-animation is active, there is.
-
-It's not as simple as just setting `needs_render` any time an
+But it's not as simple as just setting `needs_render` any time an
 animation is active, however. Setting `needs_render` means re-runs
 `style`, which would notice that the animation changed a property
 value and start a *new* animation! During an animation, we want to run
@@ -878,19 +872,20 @@ shouldn't re-start the animation. Real browsers will store multiple
 copies of the style---the computed style and the animated style---to
 solve issues like this.
 
-``` {.python}
+```
 class Tab:
-    def render(self):
+    def run_animation_frame(self, scroll):
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in node.animations.items():
-                if animation.animate():
-                    # ...
+                value = animation.animate()
+                if value:
+                    node.style[property_name] = value
                     self.set_needs_layout()
 ```
 
-To support this, we've got to replace the single `needs_render` flag
-with three flags: `needs_style`, `needs_layout`, and `needs_paint`.
-The old `set_needs_render` would set all three:
+To support `set_needs_layout`, we've got to replace the single
+`needs_render` flag with three flags: `needs_style`, `needs_layout`,
+and `needs_paint`. The old `set_needs_render` would set all three:
 
 ``` {.python}
 class Tab:
@@ -916,8 +911,6 @@ class Tab:
         self.browser.set_needs_animation_frame(self)
 ```
 
-Make sure the animations loop now calls `set_needs_layout()`.
-
 Now `render` can check one flag for each phase instead of checking
 `needs_render` at the start:
 
@@ -930,9 +923,6 @@ class Tab:
             # ...
             self.needs_layout = True
             self.needs_style = False
-        
-        for node in tree_to_list(self.nodes, []):
-            # ...
 
         if self.needs_layout:
             # ...
