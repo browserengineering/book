@@ -32,6 +32,12 @@ from lab11 import draw_line, draw_text, get_font, linespace, \
     parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 
+def add_field(node, name, mk):
+    if not hasattr(node, name):
+        setattr(node, name, mk(node))
+    for child in node.children:
+        add_field(child, name, mk)
+
 class MeasureTime:
     def __init__(self, name):
         self.name = name
@@ -826,6 +832,8 @@ class JSContext:
     def innerHTML_set(self, handle, s):
         doc = HTMLParser(
             "<html><body>" + s + "</body></html>").parse()
+        add_field(doc, "style", lambda x: {})
+        add_field(doc, "animations", lambda x: {})
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
         elt.children = new_nodes
@@ -963,11 +971,9 @@ class TranslateAnimation:
     def animate(self):
         self.frame_count += 1
         if self.frame_count >= self.num_frames: return
-        return "translate({}px,{}px)".format(
-                self.old_x +
-                self.change_per_frame_x * self.frame_count,
-                self.old_y +
-                self.change_per_frame_y * self.frame_count)
+        new_x = self.old_x + self.change_per_frame_x * self.frame_count
+        new_y = self.old_y + self.change_per_frame_y * self.frame_count
+        return "translate({}px,{}px)".format(new_x, new_y)
 
 class ScrollAnimation:
     def __init__(self, old_scroll, new_scroll):
@@ -993,10 +999,6 @@ ANIMATED_PROPERTIES = {
 }
 
 def style(node, rules):
-    if not hasattr(node, 'style'):
-        node.style = {}
-    if not hasattr(node, 'animations'):
-        node.animations = {}
     old_style = node.style
 
     node.style = {}
@@ -1227,6 +1229,8 @@ class Tab:
                self.allowed_origins = csp[1:]
 
         self.nodes = HTMLParser(body).parse()
+        add_field(self.nodes, "style", lambda x: {})
+        add_field(self.nodes, "animations", lambda x: {})
 
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node

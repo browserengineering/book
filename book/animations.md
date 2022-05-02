@@ -872,7 +872,7 @@ shouldn't re-start the animation. Real browsers will store multiple
 copies of the style---the computed style and the animated style---to
 solve issues like this.
 
-```
+``` {.python}
 class Tab:
     def run_animation_frame(self, scroll):
         for node in tree_to_list(self.nodes, []):
@@ -1711,11 +1711,11 @@ class Tab:
         # ...
         self.composited_animation_updates = []
 
-    def render(self):
+    def run_animation_frame(self, scroll):
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in node.animations.items():
-                if animation.animate():
-                    node.style[property_name] = animation.value()
+                if value:
+                    node.style[property_name] = value
                     if property_name == "opacity":
                         self.composited_animation_updates.append(node)
                         self.set_needs_paint()
@@ -2164,14 +2164,10 @@ class TranslateAnimation:
 
     def animate(self):
         self.frame_count += 1
-        return self.frame_count < self.num_frames
-
-    def value(self):
-        return "translate({}px,{}px)".format(
-                self.old_x +
-                self.change_per_frame_x * self.frame_count,
-                self.old_y +
-                self.change_per_frame_y * self.frame_count)
+        if self.frame_count >= self.num_frames: return
+        new_x = self.old_x + self.change_per_frame_x * self.frame_count
+        new_y = self.old_y + self.change_per_frame_y * self.frame_count
+        return "translate({}px,{}px)".format(new_x, new_y)
 ```
 
 You should now be able to create this animation with your browser:
@@ -2423,6 +2419,7 @@ class Browser:
 ``` {.python}
 class Tab:
     def run_animation_frame(self, scroll):
+        # ...
         if not self.scroll_changed_in_tab:
             if scroll != self.scroll and not self.scroll_animation:
                 if self.scroll_behavior == 'smooth':
@@ -2430,21 +2427,18 @@ class Tab:
                     self.scroll_animation = animation
                 else:
                     self.scroll = scroll
+        # ...
 
     def render(self):
         # ...
-
-        for node in tree_to_list(self.nodes, []):
-            # ...
-        
         if self.scroll_animation:
-            if self.scroll_animation.animate():
-                self.scroll = self.scroll_animation.value()
+            value = self.scroll_animation.animate()
+            if value:
+                self.scroll = value
                 self.scroll_changed_in_tab = True
                 self.browser.set_needs_animation_frame(self)
             else:
                 self.scroll_animation = None
-    
         # ...
 ```
 
@@ -2466,9 +2460,7 @@ class ScrollAnimation:
 
     def animate(self):
         self.frame_count += 1
-        return self.frame_count < self.num_frames
-        
-    def value(self):
+        if self.frame_count >= self.num_frames: return
         updated_value = self.old_scroll + \
             self.change_per_frame * self.frame_count
         return updated_value
