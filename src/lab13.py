@@ -43,6 +43,8 @@ class Element:
         attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
         return "<" + self.tag + "".join(attrs) + ">"
 
+# Patch the `Text` and `Element` classes so that all other code that
+# uses them, like HTMLParser, all refer to the patched versions.
 import sys
 sys.modules['lab4'].Text = Text
 sys.modules['lab4'].Element = Element
