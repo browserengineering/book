@@ -836,7 +836,7 @@ show the old value.
 
 So, let's run the animations! Basically, every frame, we're going to
 want to find all the active animations on the page and call `animate`
-on them. Since these animations are basically a variation of
+on them. Since these animations are a variation of
 JavaScript animations using `requestAnimationFrame`, let's run
 animations right after handling those callbacks:
 
