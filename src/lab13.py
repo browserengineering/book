@@ -16,8 +16,37 @@ import threading
 import time
 import urllib.parse
 from lab4 import print_tree
-from lab4 import Element
-from lab4 import Text
+
+class Text:
+    def __init__(self, text, parent):
+        self.text = text
+        self.children = []
+        self.parent = parent
+
+        self.style = {}
+        self.animations = {}
+
+    def __repr__(self):
+        return repr(self.text)
+
+class Element:
+    def __init__(self, tag, attributes, parent):
+        self.tag = tag
+        self.attributes = attributes
+        self.children = []
+        self.parent = parent
+
+        self.style = {}
+        self.animations = {}
+
+    def __repr__(self):
+        attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
+        return "<" + self.tag + "".join(attrs) + ">"
+
+import sys
+sys.modules['lab4'].Text = Text
+sys.modules['lab4'].Element = Element
+
 from lab4 import HTMLParser
 from lab6 import cascade_priority
 from lab6 import layout_mode
@@ -31,12 +60,6 @@ from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import draw_line, draw_text, get_font, linespace, \
     parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
-
-def add_field(node, name, mk):
-    if not hasattr(node, name):
-        setattr(node, name, mk(node))
-    for child in node.children:
-        add_field(child, name, mk)
 
 class MeasureTime:
     def __init__(self, name):
@@ -832,8 +855,6 @@ class JSContext:
     def innerHTML_set(self, handle, s):
         doc = HTMLParser(
             "<html><body>" + s + "</body></html>").parse()
-        add_field(doc, "style", lambda x: {})
-        add_field(doc, "animations", lambda x: {})
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
         elt.children = new_nodes
@@ -1229,8 +1250,6 @@ class Tab:
                self.allowed_origins = csp[1:]
 
         self.nodes = HTMLParser(body).parse()
-        add_field(self.nodes, "style", lambda x: {})
-        add_field(self.nodes, "animations", lambda x: {})
 
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node

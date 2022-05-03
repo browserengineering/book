@@ -647,20 +647,15 @@ animated:[^delete-complicated]
     tabs where just looping over all the already-completed animations
     can take a while.
 
-<!--
-This is not actually present in the code; it's hacked in with a
-hasattr() in style() instead. Ugly!
--->
-
-``` {.python expected=False}
-class Element:
-    def __init__(self, tag, attributes, parent):
+``` {.python}
+class Text:
+    def __init__(self, text, parent):
         # ...
         self.style = {}
         self.animations = {}
 
-class Text:
-    def __init__(self, text, parent):
+class Element:
+    def __init__(self, tag, attributes, parent):
         # ...
         self.style = {}
         self.animations = {}
