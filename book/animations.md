@@ -706,13 +706,19 @@ class NumericAnimation:
 ```
 
 If the animation is animating, we'll need to compute the new value of
-the property. Let's return that from the `animate`
-method:[^animation-curve]
+the property.[^animation-curve] Let's return that from the `animate`
+method:[^precompute]
 
 [^animation-curve]: Note that this class implements a linear animation
 interpretation (or *easing function*). By default, real browsers use a
 non-linear easing function, which looks better, so the demos from this
 chapter will not look quite the same in your browser.
+
+[^precompute]: Here I've chosen to compute `change_per_frame` in the
+constructor. Of course, this is a very simple calculation and it
+frankly doesn't matter much where exactly we do it, but if the
+animation were more complex, we could precompute some information in
+the constructor for use later.
 
 ``` {.python}
 class NumericAnimation:
@@ -730,11 +736,6 @@ class NumericAnimation:
         else:
             return "{}".format(current_value)
 ```
-
-Here I've chosen to compute `change_per_frame` in the constructor. Of
-course, this is a very simple calculation and it frankly doesn't matter
-much where exactly we do it, but if the animation were more complex,
-we could precompute some information in the constructor for use later.
 
 We're going to want to create these animation objects every time a
 style value changes. We can do that in `style` by diffing the old and
