@@ -1302,19 +1302,20 @@ class DisplayItem:
 
 Next we need a `draw` method. This will be used to execute the visual effect in
 either draw or raster, depending on the results of the compositing algorithm.
-It takes an `op` function parameter; we'll use it later on for nested draw or
-raster work within the visual effect.
+That's why it has an `op` function parameter.
 
-This only does something for visual effect subclasses:
+For paint commands, this will be the same as `execute`, so just rename it
+and add the (unused) `op` parameter:
 
 ``` {.python}
-class DisplayItem:
+class DrawText(DisplayItem):
     def draw(self, canvas, op):
-        pass
+        draw_text(canvas, self.left, self.top,
+            self.text, self.font, self.color)
 ```
 
-But for those it is like `execute` (except for the `op` parameter). Here's
-`SaveLayer`:
+For other commands, it should execute the command, but in place of recursing
+it should call `op`.
 
 ``` {.python}
 class SaveLayer(DisplayItem):
@@ -1328,15 +1329,15 @@ class SaveLayer(DisplayItem):
             canvas.restore()
 ```
 
-For visual effects, redefine `execute` in terms of draw and move the
-implementation up to `DisplayItem`; remove the existing `execute` methods on
-those subclasses. Also note the use of the `op` parameter for recursion.
+Then we can redefine `execute` in terms of `draw` in `DisplayItem`. In this case,
+the `op` performs recursive raster; later on we'll use it to draw a child
+surface.
 
 ``` {.python}
 class DisplayItem:
     def execute(self, canvas):
-        assert self.cmds
         def op():
+            assert self.cmds
             for cmd in self.get_cmds():
                 cmd.execute(canvas)
         self.draw(canvas, op)
