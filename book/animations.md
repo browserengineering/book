@@ -1315,7 +1315,7 @@ class DrawText(DisplayItem):
 ```
 
 For other commands, it should execute the command, but in place of recursing
-it should call `op`.
+it should call `op`:
 
 ``` {.python}
 class SaveLayer(DisplayItem):
@@ -1329,8 +1329,8 @@ class SaveLayer(DisplayItem):
             canvas.restore()
 ```
 
-Then we can redefine `execute` in terms of `draw` in `DisplayItem`. In this case,
-the `op` performs recursive raster; later on we'll use it to draw a child
+Then we can redefine `execute` in terms of `draw` in `DisplayItem`. In this
+case, the `op` performs recursive raster; later on we'll use it to draw a child
 surface.
 
 ``` {.python}
