@@ -831,7 +831,7 @@ def style(node, rules):
 
 Now, any time a property listed in `transition` changes its value,
 we'll create an animation and get ready to run it. Note that the
-animation will start running next frame; until then, we want it to
+animation will start running in the next frame; until then, we want it to
 show the old value.
 
 So, let's run the animations! Basically, every frame, we're going to
