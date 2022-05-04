@@ -396,7 +396,7 @@ For all three types of layout object, the order of the steps in the
 + Finally, `layout` computes the `height` field, reading from the
   child layout objects.
 
-Sticking to this order is necessary to satisfy the the dependencies
+Sticking to this order is necessary to satisfy the dependencies
 between size and position fields; [Chapter 10](reflow.md) will explore
 this topic in more detail.
 
@@ -534,7 +534,7 @@ class InlineLayout:
             display_list.append(DrawText(x, y, word, font))
 ```
 
-But it can add also add `DrawRect` commands for backgrounds. Let's add
+But it can also add `DrawRect` commands for backgrounds. Let's add
 a gray background to `pre` tags (which are used for code examples):
 
 ``` {.python}
