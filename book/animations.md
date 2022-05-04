@@ -1084,8 +1084,13 @@ class DisplayItem:
 And add code to print it out after updating the display list, with something
 like:
 
-    for item in self.display_list:
-        print(item.repr_recursive())
+``` {.python expected=False}
+class Tab:
+    def render(self):
+        # ...
+        for item in self.display_list:
+            print(item.repr_recursive())
+```
 
 When run on the [opacity transition
 example](examples/example13-opacity-transition.html) before the animation has
