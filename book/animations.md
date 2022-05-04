@@ -1154,25 +1154,53 @@ Compositing algorithms
 ======================
 
 The most complex part of compositing and draw is dealing with the hierarchical
-nature of the display list. To deal with this, you might try this algoritihm:
-mark animating visual effects as composited, and raster a `skia.Surface` for
-everything below it. This works fine for the single `DrawText` example we've
-been looking at, but starts to get very complicated when you consider nested
-surfaces. For example, multiple nested DOM nodes could be simultaneously
-animating opacity, and we can't put the same subtree in two different surfaces.
-Do we instead raster some of it in one surface and some in another? Where do we
-put the combined result with all the opacities applied, or the first applied
-but not yet the second?^[We'll cover another complication---overlap
-testing---later in the chapter; see also the Go Further block at the end of
-this section for discussion of even more complications.]
+nature of the display list. For example, consider this web page:
 
-To handle all this complexity, let's break the problem down into two
-pieces: *compositing* the display list into a linear list of `skia.Surface`s,
-and *drawing* those surfaces to the screen. Compositing is in charge of finding
-non-animating subtrees of the display list and putting them into groups that
-raster together. Drawing  is in charge of re-creating a tree hierarchy that
-mirrors the hierarchy of animating visual effects in the display list.
-[^temp-surface]
+``` {.html}
+<div style="opacity:0.999">
+  <p>
+    Hello, World!
+  </p>
+  <div style="opacity=0.8">
+    <p>More text</p>
+  </div>
+</div>
+```
+
+Its display tree looks like this:
+
+    SaveLayer(opacity=0.999)
+      DrawText(text=Hello,)
+      DrawText(text=World!)
+      SaveLayer(opacity=0.8)
+        DrawText(text=More)
+        DrawText(text=text)
+
+Imagine that either opacity might animate. As it animates, we don't
+want to redo the `DrawText` commands, but we *have to* redo the
+`SaveLayer` commands. To do so, we move the `DrawText` calls to
+different `Surface`s:
+
+```{=html}
+<pre>
+SaveLayer(opacity=0.999)
+<span style='color:blue'>  DrawText(text=Hello,)
+  DrawText(text=World!)</span>
+  SaveLayer(opacity=0.8)
+    <span style='color:red'>DrawText(text=More)
+    DrawText(text=text)</span>
+</pre>
+```
+
+Here, the two `DrawText` commands in blue would be drawn on one
+surface and saved, the two `DrawText` commands in red would be
+drawn on another surface and also saved, and the remaining `SaveLayer`
+commands would be the only things left to rerun on every frame.
+
+There are two pieces to this: *compositing* the display list, which
+means identifying which drawing commands are drawn together and
+placing them into their own `Surface`s; and then *drawing* those
+surfaces to the screen, with their appropriate effects.[^temp-surface]
 
 [^temp-surface]: Nested visual effects will end up causing the need for
 temporary GPU textures to be created during draw, in order to make sure visual
