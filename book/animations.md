@@ -1735,7 +1735,7 @@ class Tab:
 * Save off each `Element` that updates its composited animation, in a new
 array called `composited_animation_updates`:
 
-``` {.python replace=if%20property_name/if%20USE_COMPOSITING%20and%20property_name}
+``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
         # ...
@@ -1915,6 +1915,7 @@ class Browser:
         else:
             for (node, save_layer) in self.composited_updates:
                 for layer in self.composited_layers:
+                    if node != composited_item.node: continue
                     composited_items = layer.composited_items()
                     for composited_item in composited_items:
                         if type(composited_item) is SaveLayer:

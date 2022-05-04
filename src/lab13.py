@@ -1319,7 +1319,9 @@ class Tab:
                 value = animation.animate()
                 if value:
                     node.style[property_name] = value
-                    if USE_COMPOSITING and property_name == "opacity":
+                    if USE_COMPOSITING and \
+                        (property_name == "opacity" or \
+                         property_name == "transform"):
                         self.composited_animation_updates.append(node)
                         self.set_needs_paint()
                     else:
@@ -1757,6 +1759,7 @@ class Browser:
                 for layer in self.composited_layers:
                     composited_items = layer.composited_items()
                     for composited_item in composited_items:
+                        if node != composited_item.node: continue
                         if type(composited_item) is Transform:
                             composited_item.copy(transform)
                         elif type(composited_item) is SaveLayer:
