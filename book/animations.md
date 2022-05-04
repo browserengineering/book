@@ -1081,8 +1081,7 @@ class DisplayItem:
                 inner=inner)
 ```
 
-And add code to print it out after updating the display list, with something
-like:
+This lets you print out the display list while you're debugging:
 
 ``` {.python expected=False}
 class Tab:
