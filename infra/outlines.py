@@ -94,7 +94,21 @@ def write_html(objs, indent=0):
         print("</code>")
 
 def to_item(cmd):
-    if isinstance(cmd, ast.ClassDef):
+    if isinstance(cmd, ast.Assign) and len(cmd.targets) == 1 and \
+         isinstance(cmd.targets[0], ast.Attribute) and \
+         isinstance(cmd.targets[0].value, ast.Subscript) and \
+         isinstance(cmd.targets[0].value.value, ast.Attribute) and \
+         isinstance(cmd.targets[0].value.value.value, ast.Name) and \
+         cmd.targets[0].value.value.value.id == 'sys' and \
+         cmd.targets[0].value.value.attr == 'modules':
+        return
+    elif isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
+         isinstance(cmd.test.left, ast.Name) and cmd.test.left.id == "__name__" and \
+         len(cmd.test.comparators) == 1 and isinstance(cmd.test.comparators[0], ast.Constant) and \
+         cmd.test.comparators[0].value == "__main__" and len(cmd.test.ops) == 1 and \
+         isinstance(cmd.test.ops[0], ast.Eq):
+        return IfMain()
+    elif isinstance(cmd, ast.ClassDef):
         return Class(cmd.name, [to_item(scmd) for scmd in cmd.body])
     elif isinstance(cmd, ast.FunctionDef):
         return Function(cmd.name, [arg.arg for arg in cmd.args.args])
@@ -113,12 +127,6 @@ def to_item(cmd):
         return
     elif isinstance(cmd, ast.ImportFrom):
         return
-    elif isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
-         isinstance(cmd.test.left, ast.Name) and cmd.test.left.id == "__name__" and \
-         len(cmd.test.comparators) == 1 and isinstance(cmd.test.comparators[0], ast.Constant) and \
-         cmd.test.comparators[0].value == "__main__" and len(cmd.test.ops) == 1 and \
-         isinstance(cmd.test.ops[0], ast.Eq):
-        return IfMain()
     else:
         raise Exception(ast.dump(cmd))
 
