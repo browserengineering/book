@@ -1,5 +1,4 @@
 from test11 import *
-import lab12
 import threading
 
 class MockTimer:

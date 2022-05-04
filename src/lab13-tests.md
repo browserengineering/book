@@ -45,17 +45,17 @@ The div in this example has `width` and `height` set to `30px` and `40px`
 respectively.
 
     >>> lab13.style_length(div, "width", 13)
-    30
+    30.0
     >>> lab13.style_length(div, "height", 14)
-    40
+    40.0
 
 The actual width and height from layout should match:
 
 	>>> div_obj = tab.document.children[0].children[0].children[0]
 	>>> div_obj.width
-	30
+	30.0
 	>>> div_obj.height
-	40
+	40.0
 
 Testing CSS transtions
 ======================
@@ -79,14 +79,14 @@ Testing CSS transtions
     >>> div = tab.nodes.children[1].children[0]
 
 There is a transition defined for opacity, for a duration of 2 seconds. This is
-about 125 animation frames, so `get_transition` should return 125.
+about 125 animation frames, so `parse_transition` should return 125.
 
-	>>> lab13.get_transition("opacity", div.style)
-	125.0
+	>>> lab13.parse_transition(div.style.get("transition"))
+	{'opacity': 125.0}
 
 At first there is not a transition running:
 
-    >>> tab.animations
+    >>> div.animations
     {}
 
 But once opacity changes, one starts:
@@ -94,8 +94,8 @@ But once opacity changes, one starts:
     >>> div.attributes["style"] = "opacity:0.1"
     >>> tab.set_needs_render()
     >>> tab.run_animation_frame(0)
-    >>> tab.animations
-    {<div style="opacity:0.1">: {'opacity': NumericAnimation(property_name=opacity, old_value=0.5, change_per_frame=-0.0032, num_frames=125.0)}}
+    >>> div.animations
+    {'opacity': NumericAnimation(old_value=0.5, change_per_frame=-0.0032, num_frames=125.0)}
 
 Now let's try it for width:
 
@@ -116,15 +116,15 @@ Now let's try it for width:
     >>> tab = browser.tabs[browser.active_tab]
     >>> div = tab.nodes.children[1].children[0]
 
-    >>> lab13.get_transition("width", div.style)
-    125.0
-    >>> tab.animations
+	>>> lab13.parse_transition(div.style.get("transition"))
+	{'width': 125.0}
+    >>> div.animations
     {}
     >>> div.attributes["style"] = "width:100px"
     >>> tab.set_needs_render()
     >>> tab.run_animation_frame(0)
-    >>> tab.animations
-    {<div style="width:100px">: {'width': NumericAnimation(property_name=width, old_value=400.0, change_per_frame=-2.4, num_frames=125.0)}}
+    >>> div.animations
+    {'width': NumericAnimation(old_value=400.0, change_per_frame=-2.4, num_frames=125.0)}
 
 Testing CSS transforms
 ======================
@@ -136,7 +136,9 @@ The `parse_transform` function parses the value of the `transform` CSS property.
     (12.0, 45.0)
 
 Unsupported values are ignored.
+
     >>> lab13.parse_transform("rotate(45deg)")
+    (0, 0)
 
 Animations work:
 
@@ -156,15 +158,15 @@ Animations work:
     >>> browser.render()
     >>> tab = browser.tabs[browser.active_tab]
     >>> div = tab.nodes.children[1].children[0]
-    >>> lab13.get_transition("transform", div.style)
-    125.0
-    >>> tab.animations
+    >>> lab13.parse_transition(div.style.get("transition"))
+    {'transform': 125.0}
+    >>> div.animations
     {}
     >>> div.attributes["style"] = "transform:translate(0px,0px)"
     >>> tab.set_needs_render()
     >>> tab.run_animation_frame(0)
-    >>> tab.animations
-    {<div style="transform:translate(0px,0px)">: {'transform': TranslateAnimation(old_value=(80.0,90.0), change_per_frame=(-0.64,-0.72), num_frames=125.0)}}
+    >>> div.animations
+    {'transform': TranslateAnimation(old_value=(80.0,90.0), change_per_frame=(-0.64,-0.72), num_frames=125.0)}
 
 Smooth scrolling
 ================
