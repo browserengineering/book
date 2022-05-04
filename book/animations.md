@@ -290,10 +290,13 @@ The `chrome_surface` incantation is a bit different, because it's creating
 a GPU texture, but one that is independent of the framebuffer:
 
 ``` {.python}
-    self.chrome_surface =  skia.Surface.MakeRenderTarget(
-            self.skia_context, skia.Budgeted.kNo,
-            skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
-    assert self.chrome_surface is not None
+class Browser:
+    def __init__(self):
+        # ...
+        self.chrome_surface =  skia.Surface.MakeRenderTarget(
+                self.skia_context, skia.Budgeted.kNo,
+                skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+        assert self.chrome_surface is not None
 ```
 
 As compared with Chapter 11 surfaces, this surface is associated explicitly with
@@ -309,7 +312,8 @@ the new framebuffer (because of OpenGL [double-buffering][double]).
 
 [double]: https://wiki.libsdl.org/SDL_GL_SwapWindow
 
-``` {python}
+``` {.python}
+class Browser:
     def draw(self):
         canvas = self.root_surface.getCanvas()
         # ...
@@ -324,14 +328,12 @@ the new framebuffer (because of OpenGL [double-buffering][double]).
 ```
 
 Let's go back and test the [counter example](scheduling.md#animating-frames)
-from Chapter 12. The results are:
-
-    Without GPU:
+from Chapter 12. Without GPU, the results were:
 
     Time in raster-and-draw on average: 66ms
     Time in render on average: 23ms
 
-    With GPU:
+Now, with GPU rendering, they are:
 
     Time in raster-and-draw on average: 24ms
     Time in render on average: 23ms
@@ -1079,11 +1081,15 @@ class DisplayItem:
                 inner=inner)
 ```
 
-And add code to print it out after updating the display list, with something
-like:
+This lets you print out the display list while you're debugging:
 
-    for item in self.display_list:
-        print(item.repr_recursive())
+``` {.python expected=False}
+class Tab:
+    def render(self):
+        # ...
+        for item in self.display_list:
+            print(item.repr_recursive())
+```
 
 When run on the [opacity transition
 example](examples/example13-opacity-transition.html) before the animation has
