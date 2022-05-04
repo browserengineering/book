@@ -1961,136 +1961,17 @@ and compositing instead.
 
 [WebRender]: https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-gets-rid-of-jank/
 
-Overlap testing
-===============
-
-The compositing algorithm our browser implemented works great in many cases.
-Unfortunately, it doesn't work correctly for display list commands
-that *overlap* each other. The easiest way to explain why it is by example.
-
-Consider this content, which is a light blue square overlapped by a light green
-one:
-
-<div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
-<div style="width:200px;height:200px;background-color:lightgreen; transform:translate(0px,0px)"></div>
-
-Now suppose we want to animate opacity on the blue square, and so allocate a
-`skia.Surface` and GPU texture for it. But we don't want to animate the green
-square, so it draws into the root surface (and does not receive a change of
-opacity, of course). Which will cause the blue to draw on top of the
-green, because the blue-square surface draws after the root surface. Oops!
-
-To fix this bug, we'll have to put the green square into its own
-`skia.Surface` (whether we like it or not). This situation is called an *overlap
-reason* for compositing, and is a major complication (and potential source of
-extra memory use and slowdown) faced by all real browsers.
-
-Let's fix the compositing algorithm to take into account overlap. It turns out
-to be not that hard to do with the flat compositing algorithm we implemented in
-this chapter:[^layer-tree-overlap-hard] when considering where to put a paint
-chunk, simply check if it overlaps with an animated `CompositedLayer`. If so,
-start a new `CompositedLayer` that has an overlap reason for compositing.
-
-[^layer-tree-overlap-hard]: On the other hand, it's quite complicated for a
-"layer tree" approach, which is another reason to prefer the flat algorithm.
-
-The change to `composite` will be only a few lines of code and an `elif` to
-check if the current paint chunk overlaps another `CompositedLayer` in the list
-that needs to be animated.
-
-``` {.python}
-    def composite(self):
-        if self.needs_composite:
-            # ...
-            for (display_item, ancestor_effects) in chunks:
-                placed = False
-                for layer in reversed(self.composited_layers):
-                    if layer.can_merge(
-                        display_item, ancestor_effects):
-                        # ...
-                    elif skia.Rect.Intersects(
-                        layer.absolute_bounds(),
-                        absolute_bounds(display_item,
-                            ancestor_effects)):
-                        layer = CompositedLayer(self.skia_context)
-                        layer.add_paint_chunk(
-                            display_item, ancestor_effects)
-                        self.composited_layers.append(layer)
-                        placed = True
-                        break
-                # ...
-```
-
-And then implementing the `absolute_bounds` methods used in the code above. As
-it stands, this might as well be equivalent to `composited_bounds` because
-there is no visual effect that can grow or move the bounding rect of paint
-commands.[^grow] So by just defining `absolute_bounds` to be
-`composited_bounds`, everything will work correctly:
-
-``` {.python expected=False}
-    def absolute_bounds(self, rect):
-        return self.composited_bounds(rect)
-```
-
-[^grow]: By grow, I mean that the pixel bounding rect of the visual effect
-when drawn to the screen is *larger* than the pixel bounding rect of a paint
-command like `DrawText` within it. After all, blending, compositing, and
-opacity all change the colors of pixels, but don't expand the set of affected
-pixels. And clips and masking decrease rather than increase the set of pixels,
-so they can't cause additional overlap either (though they might cause *less*
-overlap).
-
-But this is both unsatisfying and boring, because in fact there *are* visual
-effects that can cause additional overlap. The most important is *transforms*,
-which are a mechanism to move around the painted output of a DOM element
-anywhere on the screen.[^blur-filter] In addition, transforms are one of the
-most popular visual effects in browsers, because they allow you to move around
-content efficiently on the GPU and the browser thread. That's because
-transforms merely apply a linear transformation matrix to each pixel, which is
-one of the things GPUs are good at doing efficiently.[^overlap-example]
-
-[^blur-filter]: Certain [CSS filters][cssfilter], such as blurs, can also expand
-pixel rects.
-
-[cssfilter]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
-
-[^overlap-example]: In addition, it's not possible to create the overlapping
-squares example of this section without something like transforms. Real
-browsers have many other methods, such as [position]. In fact, it's a bit
-difficult to cause overlap at all in our current browser, though one way is to
-set the `width` and `height` of elements such that it causes text to overflow
-on top of siblings further down the page.
-
-[position]: https://developer.mozilla.org/en-US/docs/Web/CSS/position
-
-::: {.further}
-
-Overlap reasons for compositing not only create complications in the code, but
-without care from the browser and web developer can lead to a huge amount of
-GPU memory usage, as well as page slowdown to manage all of the additional
-composited layers. One way this could happen is that an additional composited
-layer results from one element overlapping another, and then a third because it
-overlaps the second, and so on. This phenomenon is called *layer explosion*.
-Our browser's algorithm avoids this problem most of the time because it is able
-to merge multiple paint chunks together as long as they have compatible
-ancestor effects, but in practice there are complicated situations where it's
-hard to make content merge efficiently.
-
-In addition to overlap, there are other situations where compositing has
-undesired side-effects leading to performance problems. For example, suppose we
-wanted to *turn off* composited scrolling in certain situations, such as on a
-machine without a lot of memory, but still use compositing for visual effect
-animations. But what if the animation is on content underneath a scroller? In
-practice, it is very difficulty to implement this situation correctly without
-just giving up and compositing the scroller.
-
-:::
-
 
 Transform animations
 ====================
 
-The `transform` CSS property lets you apply linear transform visual
+So far, we've been putting two paint commands in the same layer if
+they have the same effects applied. This works---but if paint commands
+it wouldn't. Let's add some support for the CSS `transform` property,
+so elements can overlap in our browser, and then fix our compositing
+algorithm to support it.
+
+The `transform` property lets you apply linear transform visual
 effects to an element.[^not-always-visual] In general, you can apply
 [any linear transform][transform-def] in 3D space, but I'll just cover really
 basic 2D translations. Here's HTML for the overlap example mentioned in the
@@ -2330,6 +2211,128 @@ disables use of the GPU (i.e. go back to the old way of making Skia surfaces).
 Everything should still work (albeit more slowly) in all of the modes, and you
 can use these additional modes to debug your browser more fully and benchmark
 its performance.
+:::
+
+Overlap testing
+===============
+
+Now display command can overlap, and we our compositing algorithm
+needs to account for it. Consider drawing a light blue square
+overlapped by a light green one:
+
+<div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
+<div style="width:200px;height:200px;background-color:lightgreen; transform:translate(0px,0px)"></div>
+
+Now suppose we want to animate opacity on the blue square, and so allocate a
+`skia.Surface` and GPU texture for it. But we don't want to animate the green
+square, so it draws into the root surface (and does not receive a change of
+opacity, of course). Which will cause the blue to draw on top of the
+green, because the blue-square surface draws after the root surface. Oops!
+
+To fix this bug, we'll have to put the green square into its own
+`skia.Surface` (whether we like it or not). This situation is called an *overlap
+reason* for compositing, and is a major complication (and potential source of
+extra memory use and slowdown) faced by all real browsers.
+
+Let's fix the compositing algorithm to take into account overlap. It turns out
+to be not that hard to do with the flat compositing algorithm we implemented in
+this chapter:[^layer-tree-overlap-hard] when considering where to put a paint
+chunk, simply check if it overlaps with an animated `CompositedLayer`. If so,
+start a new `CompositedLayer` that has an overlap reason for compositing.
+
+[^layer-tree-overlap-hard]: On the other hand, it's quite complicated for a
+"layer tree" approach, which is another reason to prefer the flat algorithm.
+
+The change to `composite` will be only a few lines of code and an `elif` to
+check if the current paint chunk overlaps another `CompositedLayer` in the list
+that needs to be animated.
+
+``` {.python}
+    def composite(self):
+        if self.needs_composite:
+            # ...
+            for (display_item, ancestor_effects) in chunks:
+                placed = False
+                for layer in reversed(self.composited_layers):
+                    if layer.can_merge(
+                        display_item, ancestor_effects):
+                        # ...
+                    elif skia.Rect.Intersects(
+                        layer.absolute_bounds(),
+                        absolute_bounds(display_item,
+                            ancestor_effects)):
+                        layer = CompositedLayer(self.skia_context)
+                        layer.add_paint_chunk(
+                            display_item, ancestor_effects)
+                        self.composited_layers.append(layer)
+                        placed = True
+                        break
+                # ...
+```
+
+And then implementing the `absolute_bounds` methods used in the code above. As
+it stands, this might as well be equivalent to `composited_bounds` because
+there is no visual effect that can grow or move the bounding rect of paint
+commands.[^grow] So by just defining `absolute_bounds` to be
+`composited_bounds`, everything will work correctly:
+
+``` {.python expected=False}
+    def absolute_bounds(self, rect):
+        return self.composited_bounds(rect)
+```
+
+[^grow]: By grow, I mean that the pixel bounding rect of the visual effect
+when drawn to the screen is *larger* than the pixel bounding rect of a paint
+command like `DrawText` within it. After all, blending, compositing, and
+opacity all change the colors of pixels, but don't expand the set of affected
+pixels. And clips and masking decrease rather than increase the set of pixels,
+so they can't cause additional overlap either (though they might cause *less*
+overlap).
+
+But this is both unsatisfying and boring, because in fact there *are* visual
+effects that can cause additional overlap. The most important is *transforms*,
+which are a mechanism to move around the painted output of a DOM element
+anywhere on the screen.[^blur-filter] In addition, transforms are one of the
+most popular visual effects in browsers, because they allow you to move around
+content efficiently on the GPU and the browser thread. That's because
+transforms merely apply a linear transformation matrix to each pixel, which is
+one of the things GPUs are good at doing efficiently.[^overlap-example]
+
+[^blur-filter]: Certain [CSS filters][cssfilter], such as blurs, can also expand
+pixel rects.
+
+[cssfilter]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
+
+[^overlap-example]: In addition, it's not possible to create the overlapping
+squares example of this section without something like transforms. Real
+browsers have many other methods, such as [position]. In fact, it's a bit
+difficult to cause overlap at all in our current browser, though one way is to
+set the `width` and `height` of elements such that it causes text to overflow
+on top of siblings further down the page.
+
+[position]: https://developer.mozilla.org/en-US/docs/Web/CSS/position
+
+::: {.further}
+
+Overlap reasons for compositing not only create complications in the code, but
+without care from the browser and web developer can lead to a huge amount of
+GPU memory usage, as well as page slowdown to manage all of the additional
+composited layers. One way this could happen is that an additional composited
+layer results from one element overlapping another, and then a third because it
+overlaps the second, and so on. This phenomenon is called *layer explosion*.
+Our browser's algorithm avoids this problem most of the time because it is able
+to merge multiple paint chunks together as long as they have compatible
+ancestor effects, but in practice there are complicated situations where it's
+hard to make content merge efficiently.
+
+In addition to overlap, there are other situations where compositing has
+undesired side-effects leading to performance problems. For example, suppose we
+wanted to *turn off* composited scrolling in certain situations, such as on a
+machine without a lot of memory, but still use compositing for visual effect
+animations. But what if the animation is on content underneath a scroller? In
+practice, it is very difficulty to implement this situation correctly without
+just giving up and compositing the scroller.
+
 :::
 
 Composited scrolling
