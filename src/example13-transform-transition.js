@@ -1,4 +1,3 @@
-
 var count = 0
 function frame() {
 	if (count == 1) {

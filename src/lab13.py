@@ -1077,30 +1077,29 @@ class CompositedLayer:
         self.skia_context = skia_context
         self.surface = None
         self.paint_chunks = []
-        self.composited_ancestor_index = -1
+        self.ancestor_effects = []
 
     def can_merge(self, display_item, ancestor_effects):
         if len(self.paint_chunks) == 0:
             return True
-        (item, self_ancestor_effects) = self.paint_chunks[0]
-        other_composited_ancestor_index = \
-            composited_ancestor_index(ancestor_effects)
-        if self.composited_ancestor_index != \
-            other_composited_ancestor_index:
+        if len(self.ancestor_effects) != len(ancestor_effects):
             return False
-        if self.composited_ancestor_index == -1:
+        if len(self.ancestor_effects) == 0:
             return True
-        return self_ancestor_effects[
-            self.composited_ancestor_index] == \
-            ancestor_effects[
-            other_composited_ancestor_index]
+        return self.ancestor_effects[-1] == ancestor_effects[-1]
 
     def add_paint_chunk(self, display_item, ancestor_effects):
         assert self.can_merge(display_item, ancestor_effects)
-        if len(self.paint_chunks) == 0:
-            self.composited_ancestor_index = \
-            composited_ancestor_index(ancestor_effects)
-        self.paint_chunks.append((display_item, ancestor_effects))
+        composited_index = composited_ancestor_index(ancestor_effects)
+        if len(self.paint_chunks) == 0 and composited_index >= 0:
+            self.ancestor_effects = ancestor_effects[0:composited_index + 1]
+
+        if composited_index < len(ancestor_effects) - 1:
+            self.paint_chunks.append(
+                (ancestor_effects[composited_index + 1],
+                 self.ancestor_effects))
+        else:
+            self.paint_chunks.append((display_item, ancestor_effects))
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
@@ -1157,7 +1156,7 @@ class CompositedLayer:
             def op():
                 item.execute(canvas)
             self.draw_internal(
-                canvas, op, self.composited_ancestor_index + 1,
+                canvas, op, len(self.ancestor_effects),
                 len(ancestor_effects), ancestor_effects)
         canvas.restore()
 
@@ -1182,9 +1181,9 @@ class CompositedLayer:
 
         canvas.save()
         canvas.translate(draw_offset_x, draw_offset_y)
-        if self.composited_ancestor_index >= 0:
+        if len(self.ancestor_effects) > 0:
             self.draw_internal(
-                canvas, op, 0, self.composited_ancestor_index + 1,
+                canvas, op, 0, len(self.ancestor_effects),
                 ancestor_effects)
         else:
             op()
