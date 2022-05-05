@@ -132,26 +132,6 @@ class DisplayItem:
     def copy(self, display_item):
         assert False
 
-    def repr_recursive(self, indent=0, include_noop=False):
-        inner = ""
-        if not include_noop and self.is_noop():
-            if self.children:
-                for cmd in self.children:
-                   inner += cmd.repr_recursive(indent, include_noop)
-            return inner
-        else:
-            if self.children:
-                for cmd in self.children:
-                    inner += cmd.repr_recursive(indent + 2, include_noop)
-            return ("{indentation}{repr}: bounds={bounds}, " +
-                "needs_compositing={needs_compositing}{noop}\n{inner} ").format(
-                indentation=" " * indent,
-                repr=self.__repr__(),
-                composited_bounds=self.composited_bounds(),
-                needs_compositing=self.needs_compositing(),
-                inner=inner,
-                noop=(" <no-op>" if self.is_noop() else ""))
-
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
         super().__init__(
