@@ -79,21 +79,21 @@ def linespace(font):
     return metrics.fDescent - metrics.fAscent
 
 class SaveLayer:
-    def __init__(self, sk_paint, cmds,
+    def __init__(self, sk_paint, children,
             should_save=True, should_paint_cmds=True):
         self.should_save = should_save
         self.should_paint_cmds = should_paint_cmds
         self.sk_paint = sk_paint
-        self.cmds = cmds
+        self.children = children
         self.rect = skia.Rect.MakeEmpty()
-        for cmd in self.cmds:
+        for cmd in self.children:
             self.rect.join(cmd.rect)
 
     def execute(self, canvas):
         if self.should_save:
             canvas.saveLayer(paint=self.sk_paint)
         if self.should_paint_cmds:
-            for cmd in self.cmds:
+            for cmd in self.children:
                 cmd.execute(canvas)
         if self.should_save:
             canvas.restore()
@@ -159,10 +159,10 @@ class DrawLine:
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 class ClipRRect:
-    def __init__(self, rect, radius, cmds, should_clip=True):
+    def __init__(self, rect, radius, children, should_clip=True):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.cmds = cmds
+        self.children = children
         self.should_clip = should_clip
 
     def execute(self, canvas):
@@ -170,7 +170,7 @@ class ClipRRect:
             canvas.save()
             canvas.clipRRect(self.rrect)
 
-        for cmd in self.cmds:
+        for cmd in self.children:
             cmd.execute(canvas)
 
         if self.should_clip:
