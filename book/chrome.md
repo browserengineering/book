@@ -12,8 +12,6 @@ hyperlinks, an address bar, and the rest of the browser
 interface---the part of the browser that decides *which* page we are
 looking at.
 
-<a name="hit-testing">
-
 Where are the links?
 ====================
 
