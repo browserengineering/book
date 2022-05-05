@@ -1231,9 +1231,9 @@ performance.]
 [^drawtext]: `DrawText`, `DrawRect` etc---the display list commands that
 don't have recursive children in `cmds`.
 
-Notice that each paint command can be (individually) drawn to the screen by
+Notice that each display item can be (individually) drawn to the screen by
 executing it and the series of *ancestor [visual] effects* on it. Thus the
-tuple (paint command, ancestor effects) suffices to describe that paint command
+tuple (display_item, ancestor effects) suffices to describe that paint command
 in isolation. This tuple is called a *paint chunk*. Here is how to generate all
 the paint chunks from a display list:
 
@@ -1538,16 +1538,17 @@ Composited Layers
 =================
 
 We're now ready to implement the `CompositedLayer` class. Start by defining its
-member variables: a Skia context, surface, list of paint chunks,
-and the *composited ancestor index*.
+member variables: a Skia context, surface, list of display items to raster, and
+the list of ancestor effects. (All paint chunks in the same `CompositedLayer`
+will have the same ancestor effects.)
 
 ``` {.python}
 class CompositedLayer:
     def __init__(self, skia_context):
         self.skia_context = skia_context
         self.surface = None
-        self.paint_chunks = []
-        self.composited_ancestor_index = -1
+        self.display_items = []
+        self.ancestor_effects = []
 ```
 
 Only paint chunks that have the same *nearest composited visual effect ancestor*
@@ -1572,6 +1573,9 @@ def composited_ancestor_index(ancestor_effects):
 So all paint chunks in the same `CompositedLayer` will share the same composited
 ancestor index. However, they need not have exactly the same ancestor effects
 array---there could be additional non-composited visual effects at the bottom.
+But we want the `CompositedLayer` to have a common `ancestor_effects` list for
+all display items, so when a paint chunk is added, we'll actually insert the
+highest parent display item that is not composited.
 
 [^simpler]: Intuitively, this just means "part of the same composited
 animation".
@@ -1584,20 +1588,14 @@ The `CompositedLayer` class will have the following methods:
  
 ``` {.python}
     def can_merge(self, display_item, ancestor_effects):
-        if len(self.paint_chunks) == 0:
+        if len(self.display_items) == 0:
             return True
-        (item, self_ancestor_effects) = self.paint_chunks[0]
-        other_composited_ancestor_index = \
-            composited_ancestor_index(ancestor_effects)
-        if self.composited_ancestor_index != \
-            other_composited_ancestor_index:
+        if len(self.ancestor_effects) != len(ancestor_effects):
             return False
-        if self.composited_ancestor_index == -1:
+        if len(self.ancestor_effects) == 0:
             return True
-        return self_ancestor_effects[
-            self.composited_ancestor_index] == \
-            ancestor_effects[
-                other_composited_ancestor_index]
+        return self.ancestor_effects[-1] == ancestor_effects[
+            composited_ancestor_index(ancestor_effects)]
 ```
 
 * `add_paint_chunk`: adds a new paint chunk to the `CompositedLayer`. The first
@@ -1608,10 +1606,16 @@ class CompositedLayer:
     # ...
     def add_paint_chunk(self, display_item, ancestor_effects):
         assert self.can_merge(display_item, ancestor_effects)
-        if len(self.paint_chunks) == 0:
-            self.composited_ancestor_index = \
-            composited_ancestor_index(ancestor_effects)
-        self.paint_chunks.append((display_item, ancestor_effects))
+        composited_index = composited_ancestor_index(ancestor_effects)
+        if len(self.display_items) == 0 and composited_index >= 0:
+            self.ancestor_effects = ancestor_effects[0:composited_index + 1]
+
+        if composited_index < len(ancestor_effects) - 1:
+            self.display_items.append(
+                (ancestor_effects[composited_index + 1],
+                 self.ancestor_effects))
+        else:
+            self.display_items.append((display_item, ancestor_effects))
 ```
 
 * `composited_bounds`: returns the union of the composited bounds of all
@@ -1623,17 +1627,16 @@ class CompositedLayer:
     # ...
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for (item, ancestor_effects) in self.paint_chunks:
+        for (item, ancestor_effects) in self.display_items:
             retval.join(item.composited_bounds())
         return retval
 ```
 
-* `raster`: rasters the chunks into `self.surface`. When rastering, we first
+* `raster`: rasters the display items into `self.surface`. When rastering, we first
   translate by the `top` and `left` of the composited bounds. That's because we
   should allocate a surface exactly sized to the width and height of the
   bounds; its top/left is just a positioning offset.^[This will be taken into
-  account in `draw` as well; see below.] Also, notice the second example of of
-  the `op` parameter for executing the paint command.
+  account in `draw` as well; see below.]
 
 ``` {.python}
     def raster(self):
@@ -1653,36 +1656,28 @@ class CompositedLayer:
         canvas.clear(skia.ColorTRANSPARENT)
         canvas.save()
         canvas.translate(-bounds.left(), -bounds.top())
-        for (item, ancestor_effects) in self.paint_chunks:
-            def op():
-                item.execute(canvas)
-            self.draw_internal(
-                canvas, op, self.composited_ancestor_index + 1,
-                len(ancestor_effects), ancestor_effects)
+        for (item, ancestor_effects) in self.display_items:
+            item.execute(canvas)
         canvas.restore()
 ```
 
-  The above code depends on a helper method `draw_internal`. This method
-  recursively iterates over `ancestor_effects` from the start to the end,
-  drawing each visual effect on the canvas.
+* `draw`: draws `self.surface` to the screen, taking into account the visual
+  effects applied to each chunk. `draw_internal` looks fancy, but all it's
+  duing is recursively applying each of the visual effects in
+  `ancestor_effects`, then inside the last one calling `draw` on the
+  `skia.Surface` we previously rastered for this `CompositedLayer.`
 
 ``` {.python}
-    def draw_internal(self, canvas, op, start, end, ancestor_effects):
-        if start == end:
+    def draw_internal(self, canvas, op, index, ancestor_effects):
+        if index == len(self.ancestor_effects):
             op()
         else:
-            ancestor_item = ancestor_effects[start]
+            ancestor_item = ancestor_effects[index]
             def recurse_op():
-                self.draw_internal(canvas, op, start + 1, end,
+                self.draw_internal(canvas, op, index + 1,
                     ancestor_effects)
             ancestor_item.draw(canvas, recurse_op)
-```
 
-* `draw`: draws `self.surface` to the screen, taking into account the visual
-  effects applied to each chunk. In this case, `op` is a call to `draw` on the
-  `skia.Surface`.
-
-``` {.python}
     def draw(self, canvas, draw_offset):
         if not self.surface: return
         def op():
@@ -1694,16 +1689,10 @@ class CompositedLayer:
 
         (draw_offset_x, draw_offset_y) = draw_offset
 
-        (item, ancestor_effects) = self.paint_chunks[0]
-
         canvas.save()
         canvas.translate(draw_offset_x, draw_offset_y)
-        if self.composited_ancestor_index >= 0:
-            self.draw_internal(
-                canvas, op, 0, self.composited_ancestor_index + 1,
-                ancestor_effects)
-        else:
-            op()
+        self.draw_internal(
+            canvas, op, 0, self.ancestor_effects)
         canvas.restore()
 ```
 
@@ -1914,8 +1903,7 @@ ancestors.)
 ``` {.python}
     def composited_items(self):
         items = []
-        (item, ancestor_effects) = self.paint_chunks[0]
-        for item in ancestor_effects:
+        for item in self.ancestor_effects:
             if item.needs_compositing():
                 items.append(item)
         return items
@@ -2317,7 +2305,7 @@ a `CompositedLayer`:
 class CompositedLayer:
     def absolute_bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for (item, ancestor_effects) in self.paint_chunks:
+        for (item, ancestor_effects) in self.display_items:
             retval.join(absolute_bounds(item, ancestor_effects))
         return retval
 ```
