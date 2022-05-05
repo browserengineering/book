@@ -1175,8 +1175,7 @@ class CompositedLayer:
 
         canvas.save()
         canvas.translate(draw_offset_x, draw_offset_y)
-        self.draw_internal(
-            canvas, op, 0, self.ancestor_effects)
+        self.draw_internal(canvas, op, 0, self.ancestor_effects)
         canvas.restore()
 
     def __repr__(self):
