@@ -1057,7 +1057,7 @@ display list will skip irrelevant visual effects.
 
 ``` {.python expected=False}
 class DisplayItem:
-    def __init__(children=None, is_noop=False):
+    def __init__(children=[], is_noop=False):
         self.children = children
         self.noop = is_noop
 
@@ -1067,14 +1067,12 @@ class DisplayItem:
     def repr_recursive(self, indent=0):
         inner = ""
         if self.is_noop():
-            if self.children:
-                for cmd in self.children:
-                   inner += cmd.repr_recursive(indent)
+            for cmd in self.children:
+               inner += cmd.repr_recursive(indent)
             return inner
         else:
-            if self.children:
-                for cmd in self.children:
-                    inner += cmd.repr_recursive(indent + 2)
+            for cmd in self.children:
+                inner += cmd.repr_recursive(indent + 2)
             return ("{indentation}{repr}:\n{inner} ").format(
                 indentation=" " * indent,
                 repr=self.__repr__(),
@@ -1218,6 +1216,25 @@ imagine these paint commands as being in a flat list---the output of
 enumerating them in paint order. From this point of view, the visual
 effects "merely" show how to add visual flourish to the paint commands.
 
+Let's add an `is_paint_command` method to display items that
+identifies paint commands. It'll return `False` for generic display
+items:
+
+``` {.python}
+class DisplayItem:
+    def is_paint_command(self):
+        return False
+```
+
+However, for the `DrawLine`, `DrawRRect`, `DrawRect`, and `DrawText`
+commands it'll return `True` instead. For example, here's `DrawLine`:
+
+``` {.python}
+class DrawLine(DisplayItem):
+    def is_paint_command(self):
+        return True
+```
+
 The distinction between compositing and drawing is analogous to how you can
 think of painting and visual effects as different but complementary: painting
 is drawing some pixels to a canvas, and visual effects apply a group operation
@@ -1241,12 +1258,12 @@ the paint chunks from a display list:
 def display_list_to_paint_chunks(
     display_list, ancestor_effects, chunks):
     for display_item in display_list:
-        if display_item.children != None:
+        if display_item.is_paint_command():
+            chunks.append((display_item, ancestor_effects))
+        else:
             display_list_to_paint_chunks(
                 display_item.children,
                 ancestor_effects + [display_item], chunks)
-        else:
-            chunks.append((display_item, ancestor_effects))
 ```
 
 In the `DrawText` example, there is one paint chunk with one ancestor effect
@@ -1416,7 +1433,7 @@ cache, and every cache needs a stable cache key to be useful.
 
 ``` {.python expected=False}
 class DisplayItem:
-    def __init__(self, children=None, is_noop=False, node=None):
+    def __init__(self, children=[], is_noop=False, node=None):
         # ...
         self.node = node
 ```
@@ -1458,7 +1475,6 @@ surface.
 class DisplayItem:
     def execute(self, canvas):
         def op():
-            assert self.children
             for cmd in self.children:
                 cmd.execute(canvas)
         self.draw(canvas, op)
@@ -1479,7 +1495,7 @@ define `composited_bounds` there:
 
 ``` {.python}
 class DisplayItem:
-    def __init__(self, rect, children=None, is_noop=False, node=None):
+    def __init__(self, rect, children=[], is_noop=False, node=None):
         self.rect = rect
     # ...
     def composited_bounds(self):
@@ -1489,10 +1505,9 @@ class DisplayItem:
 
     def composited_bounds_internal(self, rect):
         rect.join(self.rect)
-        if self.children:
-            for cmd in self.children:
-                if not cmd.needs_compositing():
-                    cmd.composited_bounds_internal(rect)
+        for cmd in self.children:
+            if not cmd.needs_compositing():
+                cmd.composited_bounds_internal(rect)
 ```
 
 The rect passed is the usual one; here's `DrawText`:

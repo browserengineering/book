@@ -89,11 +89,14 @@ def center_point(rect):
         rect.top() + (rect.bottom() - rect.top()) / 2)
 
 class DisplayItem:
-    def __init__(self, rect, children=None, is_noop=False, node=None):
+    def __init__(self, rect, children=[], is_noop=False, node=None):
         self.rect = rect
         self.children = children
         self.noop = is_noop
         self.node = node
+
+    def is_paint_command(self):
+        return False
 
     def composited_bounds(self):
         rect = skia.Rect.MakeEmpty()
@@ -187,11 +190,28 @@ class Transform(DisplayItem):
             (x, y) = self.translation
             return "Transform(translate({}, {}))".format(x, y)
 
+class DrawLine(DisplayItem):
+    def __init__(self, x1, y1, x2, y2):
+        super().__init__(rect=skia.Rect.MakeLTRB(x1, y1, x2, y2))
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+    def is_paint_command(self):
+        return True
+
+    def draw(self, canvas):
+        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
+
 class DrawRRect(DisplayItem):
     def __init__(self, rect, radius, color):
         super().__init__(rect=rect)
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.color = color
+
+    def is_paint_command(self):
+        return True
 
     def draw(self, canvas, op):
         sk_color = parse_color(self.color)
@@ -216,6 +236,9 @@ class DrawText(DisplayItem):
         self.color = color
         super().__init__(
             rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
+
+    def is_paint_command(self):
+        return True
 
     def draw(self, canvas, op):
         draw_text(canvas, self.left, self.top,
@@ -246,6 +269,9 @@ class DrawRect(DisplayItem):
         self.right = x2
         self.color = color
 
+    def is_paint_command(self):
+        return True
+
     def draw(self, canvas, op):
         draw_rect(canvas,
             self.left, self.top,
@@ -274,17 +300,6 @@ class ClipRRect(DisplayItem):
             return "ClipRRect(<no-op>)"
         else:
             return "ClipRRect({})".format(str(self.rrect))
-
-class DrawLine(DisplayItem):
-    def __init__(self, x1, y1, x2, y2):
-        super().__init__(rect=skia.Rect.MakeLTRB(x1, y1, x2, y2))
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
-
-    def draw(self, canvas):
-        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 class SaveLayer(DisplayItem):
     def __init__(self, sk_paint, node, children,
@@ -1576,12 +1591,12 @@ def print_composited_layers(composited_layers):
 def display_list_to_paint_chunks(
     display_list, ancestor_effects, chunks):
     for display_item in display_list:
-        if display_item.children != None:
+        if display_item.is_paint_command():
+            chunks.append((display_item, ancestor_effects))
+        else:
             display_list_to_paint_chunks(
                 display_item.children,
                 ancestor_effects + [display_item], chunks)
-        else:
-            chunks.append((display_item, ancestor_effects))
 
 USE_GPU = True
 
