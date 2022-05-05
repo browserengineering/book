@@ -89,10 +89,9 @@ def center_point(rect):
         rect.top() + (rect.bottom() - rect.top()) / 2)
 
 class DisplayItem:
-    def __init__(self, rect, children=[], is_noop=False, node=None):
+    def __init__(self, rect, children=[], node=None):
         self.rect = rect
         self.children = children
-        self.noop = is_noop
         self.node = node
 
     def is_paint_command(self):
@@ -111,13 +110,7 @@ class DisplayItem:
                     cmd.composited_bounds_internal(rect)
 
     def needs_compositing(self):
-        if not USE_COMPOSITING:
-            return False
-        return not self.is_noop() and \
-            (type(self) is Transform or type(self) is SaveLayer)
-
-    def is_noop(self):
-        return self.noop
+        return False
 
     def execute(self, canvas):
         def op():
@@ -134,21 +127,20 @@ class DisplayItem:
 
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
-        super().__init__(
-            rect=rect, children=children,
-            is_noop=translation == None, node=node)
+        super().__init__(rect, children=children, node=node)
         self.translation = translation
 
     def draw(self, canvas, op):
-        if self.is_noop():
-            op()
-        else:
-            assert self.translation
+        if self.translation:
             (x, y) = self.translation
             canvas.save()
             canvas.translate(x, y)
-            op()
+        op()
+        if self.translation:
             canvas.restore()
+
+    def needs_compositing(self):
+        return USE_COMPOSITING and self.translation
 
     def map(self, rect):
         if not self.translation:
@@ -164,15 +156,15 @@ class Transform(DisplayItem):
         self.rect = other.rect
 
     def __repr__(self):
-        if self.is_noop():
-            return "Transform(<no-op>)"
-        else:
+        if self.translation:
             (x, y) = self.translation
             return "Transform(translate({}, {}))".format(x, y)
+        else:
+            return "Transform(<no-op>)"
 
 class DrawLine(DisplayItem):
     def __init__(self, x1, y1, x2, y2):
-        super().__init__(rect=skia.Rect.MakeLTRB(x1, y1, x2, y2))
+        super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.x1 = x1
         self.y1 = y1
         self.x2 = x2
@@ -186,7 +178,7 @@ class DrawLine(DisplayItem):
 
 class DrawRRect(DisplayItem):
     def __init__(self, rect, radius, color):
-        super().__init__(rect=rect)
+        super().__init__(rect)
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.color = color
 
@@ -214,8 +206,7 @@ class DrawText(DisplayItem):
         self.font = font
         self.text = text
         self.color = color
-        super().__init__(
-            rect=skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
+        super().__init__(skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
 
     def is_paint_command(self):
         return True
@@ -242,7 +233,7 @@ def draw_rect(
 
 class DrawRect(DisplayItem):
     def __init__(self, x1, y1, x2, y2, color):
-        super().__init__(rect=skia.Rect.MakeLTRB(x1, y1, x2, y2))
+        super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.top = y1
         self.left = x1
         self.bottom = y2
@@ -264,47 +255,51 @@ class DrawRect(DisplayItem):
 
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, children, should_clip=True):
-        super().__init__(rect=rect, children=children, is_noop=not should_clip)
+        super().__init__(rect, children=children)
+        self.should_clip = should_clip
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
 
     def draw(self, canvas, op):
-        if not self.is_noop():
+        if self.should_clip:
             canvas.save()
             canvas.clipRRect(self.rrect)
         op()
-        if not self.is_noop():
+        if self.should_clip:
             canvas.restore()
 
+    def needs_compositing(self):
+        return False
+
     def __repr__(self):
-        if self.is_noop():
-            return "ClipRRect(<no-op>)"
-        else:
+        if self.should_clip:
             return "ClipRRect({})".format(str(self.rrect))
+        else:
+            return "ClipRRect(<no-op>)"
 
 class SaveLayer(DisplayItem):
-    def __init__(self, sk_paint, node, children,
-            should_save=True, should_paint_cmds=True):
-        super().__init__(rect=skia.Rect.MakeEmpty(), children=children,
-            is_noop=not should_save, node=node)
-        self.should_paint_cmds = should_paint_cmds
+    def __init__(self, sk_paint, node, children, should_save=True):
+        super().__init__(skia.Rect.MakeEmpty(), children=children, node=node)
+        self.should_save = should_save
         self.sk_paint = sk_paint
 
     def draw(self, canvas, op):
-        if not self.is_noop():
+        if self.should_save:
             canvas.saveLayer(paint=self.sk_paint)
-        if self.should_paint_cmds:
-            op()
-        if not self.is_noop():
+        op()
+        if self.should_save:
             canvas.restore()
+
+    def needs_compositing(self):
+        return USE_COMPOSITING and self.should_save
 
     def copy(self, other):
         self.sk_paint = other.sk_paint
 
     def __repr__(self):
-        if self.is_noop():
-            return "SaveLayer(<no-op>)"
-        else:
+        if self.should_save:
             return "SaveLayer(alpha={})".format(self.sk_paint.getAlphaf())
+        else:
+            return "SaveLayer(<no-op>)"
 
 def parse_transform(transform_str):
     if transform_str.find('translate') < 0:
@@ -1559,9 +1554,8 @@ def print_chunks(chunks):
         print("  chunk ancestor visual effect (skipping no-ops):")
         count = 4
         for display_item in ancestor_effects:
-            if not display_item.is_noop():
-                print(" " * count + str(display_item))
-                count += 2
+            print(" " * count + str(display_item))
+            count += 2
 
 def print_composited_layers(composited_layers):
     print("Composited layers:")
