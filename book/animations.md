@@ -1033,7 +1033,7 @@ lists.
 
 It'll be helpful to be able to print out the (recursive, tree-like) display list
 in a useful form.[^debug] Add a base class called `DisplayItem` and make all
-display list commands inherit from it, and move the `cmds` field to that class
+display list commands inherit from it, and move the `children` field to that class
 (or pass nothing if they don't have any, like `DrawText`); here's `SaveLayer`
 for example:
 
@@ -1042,10 +1042,10 @@ compositing implementation.
 
 ``` {.python expected=False}
 class SaveLayer:
-    def __init__(self, sk_paint, node, cmds,
+    def __init__(self, sk_paint, node, children,
         should_save=True, should_paint_cmds=True):
         # ...
-        super().__init__(cmds=cmds, is_noop=not should_save)
+        super().__init__(children=children, is_noop=not should_save)
 ```
 
 Then add a `repr_recursive` method to `DisplayItem` for debugging. Also add an
@@ -1057,8 +1057,8 @@ display list will skip irrelevant visual effects.
 
 ``` {.python expected=False}
 class DisplayItem:
-    def __init__(cmds=None, is_noop=False):
-        self.cmds = cmds
+    def __init__(children=None, is_noop=False):
+        self.children = children
         self.noop = is_noop
 
     def is_noop():
@@ -1067,13 +1067,13 @@ class DisplayItem:
     def repr_recursive(self, indent=0):
         inner = ""
         if self.is_noop():
-            if self.cmds:
-                for cmd in self.cmds:
+            if self.children:
+                for cmd in self.children:
                    inner += cmd.repr_recursive(indent)
             return inner
         else:
-            if self.cmds:
-                for cmd in self.cmds:
+            if self.children:
+                for cmd in self.children:
                     inner += cmd.repr_recursive(indent + 2)
             return ("{indentation}{repr}:\n{inner} ").format(
                 indentation=" " * indent,
@@ -1229,7 +1229,7 @@ correct; choosing one or the other is just a matter of which has better
 performance.]
 
 [^drawtext]: `DrawText`, `DrawRect` etc---the display list commands that
-don't have recursive children in `cmds`.
+don't have recursive children in `children`.
 
 Notice that each display item can be (individually) drawn to the screen by
 executing it and the series of *ancestor [visual] effects* on it. Thus the
@@ -1241,9 +1241,9 @@ the paint chunks from a display list:
 def display_list_to_paint_chunks(
     display_list, ancestor_effects, chunks):
     for display_item in display_list:
-        if display_item.get_cmds() != None:
+        if display_item.children != None:
             display_list_to_paint_chunks(
-                display_item.get_cmds(),
+                display_item.children,
                 ancestor_effects + [display_item], chunks)
         else:
             chunks.append((display_item, ancestor_effects))
@@ -1416,7 +1416,7 @@ cache, and every cache needs a stable cache key to be useful.
 
 ``` {.python expected=False}
 class DisplayItem:
-    def __init__(self, cmds=None, is_noop=False, node=None):
+    def __init__(self, children=None, is_noop=False, node=None):
         # ...
         self.node = node
 ```
@@ -1458,8 +1458,8 @@ surface.
 class DisplayItem:
     def execute(self, canvas):
         def op():
-            assert self.cmds
-            for cmd in self.get_cmds():
+            assert self.children
+            for cmd in self.children:
                 cmd.execute(canvas)
         self.draw(canvas, op)
 ```
@@ -1479,7 +1479,7 @@ define `composited_bounds` there:
 
 ``` {.python}
 class DisplayItem:
-    def __init__(self, rect, cmds=None, is_noop=False, node=None):
+    def __init__(self, rect, children=None, is_noop=False, node=None):
         self.rect = rect
     # ...
     def composited_bounds(self):
@@ -1489,8 +1489,8 @@ class DisplayItem:
 
     def composited_bounds_internal(self, rect):
         rect.join(self.rect)
-        if self.cmds:
-            for cmd in self.cmds:
+        if self.children:
+            for cmd in self.children:
                 if not cmd.needs_compositing():
                     cmd.composited_bounds_internal(rect)
 ```
@@ -2177,21 +2177,21 @@ the `translate` Skia canvas method, which is conveniently built-in.
 ``` {.python expected=False}
 class Transform(DisplayItem):
     def __init__(self, translation, rotation_degrees,
-        rect, node, cmds):
+        rect, node, children):
         self.translation = translation
         self.self_rect = rect
-        self.cmds = cmds
+        self.children = children
 
     def draw(self, canvas, op):
         if self.translation:
             (x, y) = self.translation
             canvas.save()
             canvas.translate(x, y)
-            for cmd in self.cmds:
+            for cmd in self.children:
                 cmd.execute(canvas)
             canvas.restore()
         else:
-            for cmd in self.cmds:
+            for cmd in self.children:
                 cmd.execute(canvas)
 
     def copy(self, other):

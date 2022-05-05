@@ -881,16 +881,16 @@ argument:
 
 ``` {.python expected=False}
 class SaveLayer:
-    def __init__(self, sk_paint, cmds):
+    def __init__(self, sk_paint, children):
         self.sk_paint = sk_paint
-        self.cmds = cmds
+        self.children = children
         self.rect = skia.Rect.MakeEmpty()
-        for cmd in self.cmds:
+        for cmd in self.children:
             self.rect.join(cmd.rect)
 
     def execute(self, scroll, canvas):
         canvas.saveLayer(paint=self.sk_paint)
-        for cmd in self.cmds:
+        for cmd in self.children:
             cmd.execute(scroll, canvas)
         canvas.restore()
 ```
@@ -1370,7 +1370,7 @@ are actually painted:
 
 ``` {.python}
 class SaveLayer:
-    def __init__(self, sk_paint, cmds,
+    def __init__(self, sk_paint, children,
             should_save=True, should_paint_cmds=True):
         self.should_save = should_save
         self.should_paint_cmds = should_paint_cmds
@@ -1380,7 +1380,7 @@ class SaveLayer:
         if self.should_save:
             canvas.saveLayer(paint=self.sk_paint)
         if self.should_paint_cmds:
-            for cmd in self.cmds:
+            for cmd in self.children:
                 cmd.execute(canvas)
         if self.should_save:
             canvas.restore()
@@ -1493,10 +1493,10 @@ doesn't create a surface it's still a big optimization here.
 
 ``` {.python}
 class ClipRRect:
-    def __init__(self, rect, radius, cmds, should_clip=True):
+    def __init__(self, rect, radius, children, should_clip=True):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.cmds = cmds
+        self.children = children
         self.should_clip = should_clip
 
     def execute(self, canvas):
@@ -1504,7 +1504,7 @@ class ClipRRect:
             canvas.save()
             canvas.clipRRect(self.rrect)
 
-        for cmd in self.cmds:
+        for cmd in self.children:
             cmd.execute(canvas)
 
         if self.should_clip:

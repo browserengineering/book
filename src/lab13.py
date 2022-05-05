@@ -89,9 +89,9 @@ def center_point(rect):
         rect.top() + (rect.bottom() - rect.top()) / 2)
 
 class DisplayItem:
-    def __init__(self, rect, cmds=None, is_noop=False, node=None):
+    def __init__(self, rect, children=None, is_noop=False, node=None):
         self.rect = rect
-        self.cmds = cmds
+        self.children = children
         self.noop = is_noop
         self.node = node
 
@@ -102,8 +102,8 @@ class DisplayItem:
 
     def composited_bounds_internal(self, rect):
         rect.join(self.rect)
-        if self.cmds:
-            for cmd in self.cmds:
+        if self.children:
+            for cmd in self.children:
                 if not cmd.needs_compositing():
                     cmd.composited_bounds_internal(rect)
 
@@ -113,16 +113,13 @@ class DisplayItem:
         return not self.is_noop() and \
             (type(self) is Transform or type(self) is SaveLayer)
 
-    def get_cmds(self):
-        return self.cmds
-
     def is_noop(self):
         return self.noop
 
     def execute(self, canvas):
         def op():
-            assert self.cmds
-            for cmd in self.get_cmds():
+            assert self.children
+            for cmd in self.children:
                 cmd.execute(canvas)
         self.draw(canvas, op)
 
@@ -135,13 +132,13 @@ class DisplayItem:
     def repr_recursive(self, indent=0, include_noop=False):
         inner = ""
         if not include_noop and self.is_noop():
-            if self.cmds:
-                for cmd in self.cmds:
+            if self.children:
+                for cmd in self.children:
                    inner += cmd.repr_recursive(indent, include_noop)
             return inner
         else:
-            if self.cmds:
-                for cmd in self.cmds:
+            if self.children:
+                for cmd in self.children:
                     inner += cmd.repr_recursive(indent + 2, include_noop)
             return ("{indentation}{repr}: bounds={bounds}, " +
                 "needs_compositing={needs_compositing}{noop}\n{inner} ").format(
@@ -153,9 +150,9 @@ class DisplayItem:
                 noop=(" <no-op>" if self.is_noop() else ""))
 
 class Transform(DisplayItem):
-    def __init__(self, translation, rect, node, cmds):
+    def __init__(self, translation, rect, node, children):
         super().__init__(
-            rect=rect, cmds=cmds,
+            rect=rect, children=children,
             is_noop=translation == None, node=node)
         self.translation = translation
 
@@ -260,8 +257,8 @@ class DrawRect(DisplayItem):
             self.left, self.top, self.right, self.bottom, self.color)
 
 class ClipRRect(DisplayItem):
-    def __init__(self, rect, radius, cmds, should_clip=True):
-        super().__init__(rect=rect, cmds=cmds, is_noop=not should_clip)
+    def __init__(self, rect, radius, children, should_clip=True):
+        super().__init__(rect=rect, children=children, is_noop=not should_clip)
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
 
     def draw(self, canvas, op):
@@ -290,9 +287,9 @@ class DrawLine(DisplayItem):
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 class SaveLayer(DisplayItem):
-    def __init__(self, sk_paint, node, cmds,
+    def __init__(self, sk_paint, node, children,
             should_save=True, should_paint_cmds=True):
-        super().__init__(rect=skia.Rect.MakeEmpty(), cmds=cmds,
+        super().__init__(rect=skia.Rect.MakeEmpty(), children=children,
             is_noop=not should_save, node=node)
         self.should_paint_cmds = should_paint_cmds
         self.sk_paint = sk_paint
@@ -1579,9 +1576,9 @@ def print_composited_layers(composited_layers):
 def display_list_to_paint_chunks(
     display_list, ancestor_effects, chunks):
     for display_item in display_list:
-        if display_item.get_cmds() != None:
+        if display_item.children != None:
             display_list_to_paint_chunks(
-                display_item.get_cmds(),
+                display_item.children,
                 ancestor_effects + [display_item], chunks)
         else:
             chunks.append((display_item, ancestor_effects))
