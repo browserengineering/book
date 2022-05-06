@@ -1346,7 +1346,82 @@ will be look like this:
             composited_layer.raster()
 ```
 
-And drawing them to the screen will be like this:[^draw-incorrect]
+Now, drawing them is a bit more complicated. We could add special code just
+to figure out how to apply each of the ancestor effects of each
+`CompositedLayer`. It's not *that* much code, but if you try it you'll discover
+that it's really hard to do it without introducing a second implementation
+of the display list commands, just for the purposes of draw. Insteaed let's
+take a different approach: constructing a new display list that replaces
+composited subtrees with a `DrawCompositedLayer` command.
+
+For the example we've been working with, it'll end up looking like this:
+
+    SaveLayer
+        DrawCompositedLayer() # contains a surface with a DrawText in it
+
+The implementation of `DrawCompositedLayer` is quite simple:
+
+``` {.python}
+class DrawCompositedLayer(DisplayItem):
+    def __init__(self, composited_layer):
+        self.composited_layer = composited_layer
+
+    def draw(self, canvas, op):
+        self.composited_layer.draw(canvas)
+
+    def copy(self, other):
+        self.composited_layer = other.composited_layer
+
+    def __repr__(self):
+        return "DrawCompositedLayer(draw_offset={}".format(self.draw_offset)
+```
+
+And now let's turn to creating the `draw_list`. This will involve *cloning* each
+of the ancestor effects in turn and injecting new children. In all but the
+bottom-most ancestor effect, children will be the next cloned visual effect in
+the sequence; at the bottom it'll be a `DrawCompositedLayer`. The new `clone`
+method will only exist on subclasses of `DisplayItem` that have children:
+
+``` {.python}
+class DisplayItem:
+    # ...
+    def clone(self, children):
+        assert False
+```
+
+But for them, it'll do what you might expect:
+
+``` {.python}
+class SaveLayer(DisplayItem):
+    # ...
+    def clone(self, children):
+        return SaveLayer(self.sk_paint, self.node, children, self.should_save)
+```
+
+``` {.python}
+class ClipRRect(DisplayItem):
+    # ...
+    def clone(self, children):
+        return ClipRRect(self.rect, self.radius, children, self.should_clip)
+```
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.draw_list = []
+
+    def paint_draw_list(self):
+        self.draw_list = []
+        for composited_layer in self.composited_layers:
+            current_effect = DrawCompositedLayer(composited_layer)
+            for visual_effect in reversed(composited_layer.ancestor_effects):
+                current_effect = visual_effect.clone([current_effect])
+            self.draw_list.append(current_effect)
+```
+
+Drawing to the screen will be simply executing the draw display
+list:[^draw-incorrect]
 
 [^draw-incorrect]: It's worth calling out once again that this is not
 correct in the presence of nested visual effects; see the Go Further section.
@@ -1357,10 +1432,11 @@ I've left fixing the problem described there to an exercise.
         canvas = self.root_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         
-        draw_offset=(0, CHROME_PX - self.scroll)
-        if self.composited_layers:
-            for composited_layer in self.composited_layers:
-                composited_layer.draw(canvas, draw_offset)
+        canvas.save()
+        canvas.translate(0, CHROME_PX - self.scroll)
+        for item in self.draw_list:
+            item.execute(canvas)
+        canvas.restore()
 ```
 
 This is the overall structure. Now I'll show how to implement `can_merge`,
@@ -1689,39 +1765,21 @@ class CompositedLayer:
         canvas.restore()
 ```
 
-* `draw`: draws `self.surface` to the screen, taking into account the visual
-  effects applied to each chunk. `draw_internal` looks fancy, but all it's
-  duing is recursively applying each of the visual effects in
-  `ancestor_effects`, then inside the last one calling `draw` on the
-  `skia.Surface` we previously rastered for this `CompositedLayer.`
+* `draw`: draws `self.surface` to the given canvas. The only slightly tricky
+part is making sure to re-introduce the top and left offsets that were omitted
+from `raster`.
 
 ``` {.python}
-    def draw_internal(self, canvas, op, index, ancestor_effects):
-        if index == len(self.ancestor_effects):
-            op()
-        else:
-            ancestor_item = ancestor_effects[index]
-            def recurse_op():
-                self.draw_internal(canvas, op, index + 1,
-                    ancestor_effects)
-            ancestor_item.draw(canvas, recurse_op)
 
-    def draw(self, canvas, draw_offset):
-        if not self.surface: return
-        def op():
-            bounds = self.composited_bounds()
-            surface_offset_x = bounds.left()
-            surface_offset_y = bounds.top()
-            self.surface.draw(canvas, surface_offset_x,
-                surface_offset_y)
-
-        (draw_offset_x, draw_offset_y) = draw_offset
-
-        canvas.save()
-        canvas.translate(draw_offset_x, draw_offset_y)
-        self.draw_internal(canvas, op, 0, self.ancestor_effects)
-        canvas.restore()
+    def draw(self, canvas):
+        bounds = self.composited_bounds()
+        surface_offset_x = bounds.left()
+        surface_offset_y = bounds.top()
+        self.surface.draw(canvas, surface_offset_x,
+            surface_offset_y)
 ```
+
+Now we come to the question of how to 
 
 We've now got enough code to make the browser composite!
 The last bit is just to wire it up by generalizing `raster_and_draw` into
@@ -1734,6 +1792,7 @@ renaming at all callsites), and everything should work end-to-end.
         self.composite()
         self.raster_chrome()
         self.raster_tab()
+        self.paint_draw_list()
         self.draw()
         # ...
 ```
@@ -2225,6 +2284,9 @@ class Transform(DisplayItem):
     def copy(self, other):
         self.translation = other.translation
         self.rect = other.rect
+
+    def clone(self, children):
+        return Transform(self.translation, self.rect,  self.node, children)
 ```
 
 ``` {.python}
