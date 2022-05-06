@@ -1316,27 +1316,9 @@ visual effects.
 
 Two paint commands can be put into the same composited layer if they
 have the exact same set of animating ancestor effects. (Otherwise the
-animations would end up applying to the wrong paint commands.)
-
-To satisfy this constraint, we *could* just put each paint command in its own
-composited layer. But of course, for examples more complex than just one
-`DrawText` that would result in a huge number of surfaces, and most likely
-exhaust the computer's GPU memory. So the goal of the *compositing algorithm*
-is to come up with a way to pack paint chunks into only a small number of
-composited layers.^[There are many possible compositing algorithms, with their
-own tradeoffs of memory, time and code complexity. I'll present a simplified
-version of the one used by Chromium.]
-
-Below is the algorithm we'll use; as you can see it's not very complicated. It
-loops over the list of paint chunks; for each paint chunk it tries to add it to
-an existing `CompositedLayer` by walking *backwards* through the
-`CompositedLayer` list.[^why-backwards] If one is found, the paint chunk is
-added to it; if not, a new `CompositedLayer` is added with that paint chunk to
-start. The `can_merge` method on a `CompositedLayer` checks compatibility of
-the paint chunk's animating ancestor effects with the ones already on it.
-
-[^why-backwards]: Backwards, because we can't draw things in the wrong
-order. Later items in the display list have to draw later.
+animations would end up applying to the wrong paint commands.) For
+now, let's focus on the simplest possible way to do that, which is to
+put every paint command into its own layer:
 
 ``` {.python expected=False}
 class Browser:
@@ -1348,20 +1330,10 @@ class Browser:
         self.composited_layers = []
         # ...
         for display_item in paint_commands:
-            for layer in reversed(composited_layers):
-                if layer.can_merge(display_item):
-                    layer.add_display_item(display_item)
-                    break
-            else:
-                layer = CompositedLayer(skia_context)
-                layer.add_display_item(display_item)
-                composited_layers.append(layer)
+            layer = CompositedLayer(skia_context)
+            layer.add_paint_chunk(display_item)
+            self.composited_layers.append(layer)
 ```
-
-The `can_merge` and `add_display_item` methods use
-`ancestor_effects_list` to make sure we group paint commands
-correctly. If you're not familiar with Python's `for ... else` syntax,
-the `else` block executes only if the loop never executed `break`.
 
 Once there is a list of `CompositedLayer`s, rastering the `CompositedLayer`s
 will be look like this:
@@ -1542,6 +1514,66 @@ and clipping.
 
 :::
 
+Grouping Paint Commands
+=======================
+
+Right now, every paint command it put in its own layer. But layers are
+expensive: each of them allocates a surface, and each of those
+allocates and holds on to GPU memory. GPU memory is limited, and we
+want to use less of it when possible. To that end, we'd like to use
+fewer layers.
+
+Below is the algorithm we'll use;^[There are many possible compositing
+algorithms, with their own tradeoffs of memory, time and code
+complexity. I'll present a simplified version of the one used by
+Chromium.] as you can see it's not very complicated. It loops over the
+list of paint chunks; for each paint chunk it tries to add it to an
+existing `CompositedLayer` by walking *backwards* through the
+`CompositedLayer` list.[^why-backwards] If one is found, the paint
+chunk is added to it; if not, a new `CompositedLayer` is added with
+that paint chunk to start. The `can_merge` method on a
+`CompositedLayer` checks compatibility of the paint chunk's animating
+ancestor effects with the ones already on it.
+
+[^why-backwards]: Backwards, because we can't draw things in the wrong
+order. Later items in the display list have to draw later.
+
+
+``` {.python}
+class Browser:
+    def composite(self):
+        for display_item in paint_commands:
+            for layer in reversed(self.composited_layers):
+                if layer.can_merge(display_item):
+                    layer.add_paint_chunk(display_item)
+                    break
+            else:
+                # ...
+```
+
+If you're not familiar with Python's `for ... else` syntax, the `else`
+block executes only if the loop never executed `break`.
+
+The `can_merge` method returns whether the given paint chunk is
+compatible with being drawn into the same `CompositedLayer` as the
+existing ones. This will be true if they have the same nearest
+composited ancestor (or both have none).
+ 
+``` {.python}
+class CompositedLayer:
+    def can_merge(self, display_item):
+        ancestor_effects = ancestor_effects_list(display_item)
+        if len(self.display_items) == 0:
+            return True
+        if len(self.ancestor_effects) != len(ancestor_effects):
+            return False
+        if len(self.ancestor_effects) == 0:
+            return True
+        return self.ancestor_effects[-1] == ancestor_effects[
+            composited_ancestor_index(ancestor_effects)]
+```
+
+
 Composited display items
 ========================
 
@@ -1692,24 +1724,6 @@ highest parent display item that is not composited.
 animation".
 
 The `CompositedLayer` class will have the following methods:
-
-* `can_merge`: returns whether the given paint chunk is compatible with being
-  drawn into the same `CompositedLayer` as the existing ones. This will be true
-  if they have the same nearest composited ancestor (or both have none).
- 
-``` {.python}
-class CompositedLayer:
-    def can_merge(self, display_item):
-        ancestor_effects = ancestor_effects_list(display_item)
-        if len(self.display_items) == 0:
-            return True
-        if len(self.ancestor_effects) != len(ancestor_effects):
-            return False
-        if len(self.ancestor_effects) == 0:
-            return True
-        return self.ancestor_effects[-1] == ancestor_effects[
-            composited_ancestor_index(ancestor_effects)]
-```
 
 * `add_paint_chunk`: adds a new paint chunk to the `CompositedLayer`. The first
   one being added will initialize its `composited_ancestor_index`.
