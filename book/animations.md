@@ -1369,9 +1369,6 @@ class DrawCompositedLayer(DisplayItem):
     def execute(self, canvas):
         self.composited_layer.draw(canvas)
 
-    def copy(self, other):
-        self.composited_layer = other.composited_layer
-
     def __repr__(self):
         return "DrawCompositedLayer(draw_offset={}".format(
             self.draw_offset)
@@ -1412,7 +1409,7 @@ Constructing the draw list just involves looping over the ancestor effects in
 reverse order, and cloning them & connecting them together into a recursive
 chain:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def __init__(self):
         # ...
@@ -1862,10 +1859,10 @@ class Tab:
 
         self.render()
 
-        composited_updates = []
+        composited_updates = {}
         if not needs_composite:
             for node in self.composited_animation_updates:
-                composited_updates.append(
+                composited_updates[node] = \
                     (node, node.save_layer))
         self.composited_animation_updates.clear()
 
@@ -1906,7 +1903,7 @@ class Browser:
             self.lock.release()
             return
         
-        if self.needs_composite or len(self.composited_updates) > 0:
+        if self.needs_composite:
             self.composite()
         if self.needs_raster:
             self.raster_chrome()
@@ -1932,67 +1929,54 @@ class Browser:
 class Browser:
     def __init__(self):
         # ...
-        self.composited_updates = []
+        self.composited_updates = {}
 
     def commit(self, tab, data):
         # ...
         if tab == self.tabs[self.active_tab]:
             # ...
             self.composited_updates = data.composited_updates
-            if len(self.composited_updates) == 0:
+            if not self.composited_updates:
                 self.set_needs_composite()
             else:
                 self.set_needs_draw()
 ```
 
-Add a new method to `CompositedLayer` that returns the ancestor effects which
-need compositing. (In this case, we need look only at the first paint chunk;
-remember that all paint chunks in a `CompositedLayer` have the same composited
-ancestors.)
+Now we need to update `draw_list` to take into account the latest value, which
+should be looked up in `composited_updates`. Define a method `clone_latest`
+that clones the update visual effect from `composited_updates` if there is one,
+and otherwise clones the original.
 
 ``` {.python}
-    def composited_items(self):
-        items = []
-        for item in self.ancestor_effects:
-            if item.needs_compositing():
-                items.append(item)
-        return items
+class Browser:
+    # ...
+    def clone_latest(self, visual_effect, current_effect):
+        node = visual_effect.node
+        if not node in self.composited_updates:
+            return visual_effect.clone(current_effect)
+        (transform, save_layer) = self.composited_updates[node]
+        if type(visual_effect) is Transform:
+            return transform.clone(current_effect)
+        elif type(visual_effect) is SaveLayer:
+            return save_layer.clone(current_effect)
 ```
 
-
-* Now for the actual animation updates on the browser thread: if
-  `needs_composite` is false, loop over each `CompositedLayer`'s
-  `composited_items`, and update each one that matches the
-  animation.[^ptrcompare] The update is accomplished by calling `copy`  on the
-  `SaveLayer`, defined as:
-
+Now we can make a simple update to `paint_draw_list` to use it:
 
 ``` {.python}
-class SaveLayer(DisplayItem):
-    def copy(self, other):
-        self.sk_paint = other.sk_paint
+class Browser:
+    # ...
+    def paint_draw_list(self):
+        # ...
+            for visual_effect in \
+                reversed(composited_layer.ancestor_effects):
+                current_effect = self.clone_latest(
+                    visual_effect, [current_effect])
 ```
 
 [^ptrcompare]: This is done by comparing equality of `Element` object
 references. Note that we are only using these objects for
 pointer comparison, since otherwise it would not be thread-safe.
-
-And here's the code with the loop over `composited_items`:
-
-``` {.python expected=False}
-class Browser:
-    def composite(self):
-        if self.needs_composite:
-            # ...
-        else:
-            for (node, save_layer) in self.composited_updates:
-                for layer in self.composited_layers:
-                    if node != composited_item.node: continue
-                    composited_items = layer.composited_items()
-                    for composited_item in composited_items:
-                        if type(composited_item) is SaveLayer:
-                            composited_item.copy(save_layer)
-```
 
 The result will be automatically drawn to the screen, because the `draw` method
 on each `CompositedLayer` will iterate through its `ancestor_effects` and
@@ -2072,25 +2056,24 @@ that needs to be animated.
 
 ``` {.python}
     def composite(self):
-        if self.needs_composite:
+        # ...
+        for (display_item, ancestor_effects) in chunks:
+            placed = False
+            for layer in reversed(self.composited_layers):
+                if layer.can_merge(
+                    display_item, ancestor_effects):
+                    # ...
+                elif skia.Rect.Intersects(
+                    layer.absolute_bounds(),
+                    absolute_bounds(display_item,
+                        ancestor_effects)):
+                    layer = CompositedLayer(self.skia_context)
+                    layer.add_paint_chunk(
+                        display_item, ancestor_effects)
+                    self.composited_layers.append(layer)
+                    placed = True
+                    break
             # ...
-            for (display_item, ancestor_effects) in chunks:
-                placed = False
-                for layer in reversed(self.composited_layers):
-                    if layer.can_merge(
-                        display_item, ancestor_effects):
-                        # ...
-                    elif skia.Rect.Intersects(
-                        layer.absolute_bounds(),
-                        absolute_bounds(display_item,
-                            ancestor_effects)):
-                        layer = CompositedLayer(self.skia_context)
-                        layer.add_paint_chunk(
-                            display_item, ancestor_effects)
-                        self.composited_layers.append(layer)
-                        placed = True
-                        break
-                # ...
 ```
 
 And then implementing the `absolute_bounds` methods used in the code above. As

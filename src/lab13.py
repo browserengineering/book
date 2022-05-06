@@ -111,9 +111,6 @@ class DisplayItem:
     def needs_compositing(self):
         return False
 
-    def copy(self, display_item):
-        assert False
-
     def clone(self, children):
         assert False
 
@@ -143,10 +140,6 @@ class Transform(DisplayItem):
             (x, y) = self.translation
             matrix.setTranslate(x, y)
         return matrix.mapRect(rect)
-
-    def copy(self, other):
-        self.translation = other.translation
-        self.rect = other.rect
 
     def clone(self, children):
         return Transform(self.translation, self.rect,  self.node, children)
@@ -295,9 +288,6 @@ class SaveLayer(DisplayItem):
     def needs_compositing(self):
         return USE_COMPOSITING and self.should_save
 
-    def copy(self, other):
-        self.sk_paint = other.sk_paint
-
     def clone(self, children):
         return SaveLayer(self.sk_paint, self.node, children, \
             self.should_save)
@@ -314,9 +304,6 @@ class DrawCompositedLayer(DisplayItem):
 
     def execute(self, canvas):
         self.composited_layer.draw(canvas)
-
-    def copy(self, other):
-        self.composited_layer = other.composited_layer
 
     def __repr__(self):
         return "DrawCompositedLayer(draw_offset={}".format(
@@ -1319,11 +1306,11 @@ class Tab:
         if self.scroll_changed_in_tab:
             scroll = self.scroll
 
-        composited_updates = []
+        composited_updates = {}
         if not needs_composite:
             for node in self.composited_animation_updates:
-                composited_updates.append(
-                    (node, node.transform, node.save_layer))
+                composited_updates[node] = \
+                    (node.transform, node.save_layer)
         self.composited_animation_updates.clear()
 
         commit_data = CommitData(
@@ -1648,7 +1635,7 @@ class Browser:
         self.active_tab_height = 0
         self.active_tab_display_list = None
 
-        self.composited_updates = []
+        self.composited_updates = {}
         self.composited_layers = []
         self.draw_list = []
 
@@ -1671,7 +1658,7 @@ class Browser:
             self.animation_timer = None
             self.composited_updates = data.composited_updates
             self.scroll_behavior = data.scroll_behavior
-            if len(self.composited_updates) == 0:
+            if not self.composited_updates:
                 self.set_needs_composite()
             else:
                 self.set_needs_draw()
@@ -1697,50 +1684,48 @@ class Browser:
         self.needs_draw = True
 
     def composite(self):
-        if self.needs_composite:
-            self.composited_layers = []
-            chunks = []
-            display_list_to_paint_chunks(
-                self.active_tab_display_list, [], chunks)
-            for (display_item, ancestor_effects) in chunks:
-                placed = False
-                for layer in reversed(self.composited_layers):
-                    if layer.can_merge(
-                        display_item, ancestor_effects):
-                        layer.add_paint_chunk(display_item, ancestor_effects)
-                        placed = True
-                        break
-                    elif skia.Rect.Intersects(
-                        layer.absolute_bounds(),
-                        absolute_bounds(display_item,
-                            ancestor_effects)):
-                        layer = CompositedLayer(self.skia_context)
-                        layer.add_paint_chunk(
-                            display_item, ancestor_effects)
-                        self.composited_layers.append(layer)
-                        placed = True
-                        break
-                if not placed:
-                    layer = CompositedLayer(self.skia_context)
+        self.composited_layers = []
+        chunks = []
+        display_list_to_paint_chunks(
+            self.active_tab_display_list, [], chunks)
+        for (display_item, ancestor_effects) in chunks:
+            placed = False
+            for layer in reversed(self.composited_layers):
+                if layer.can_merge(
+                    display_item, ancestor_effects):
                     layer.add_paint_chunk(display_item, ancestor_effects)
+                    placed = True
+                    break
+                elif skia.Rect.Intersects(
+                    layer.absolute_bounds(),
+                    absolute_bounds(display_item,
+                        ancestor_effects)):
+                    layer = CompositedLayer(self.skia_context)
+                    layer.add_paint_chunk(
+                        display_item, ancestor_effects)
                     self.composited_layers.append(layer)
+                    placed = True
+                    break
+            if not placed:
+                layer = CompositedLayer(self.skia_context)
+                layer.add_paint_chunk(display_item, ancestor_effects)
+                self.composited_layers.append(layer)
 
-            self.active_tab_height = 0
-            for layer in self.composited_layers:
-                self.active_tab_height = \
-                    max(self.active_tab_height,
-                        layer.absolute_bounds().bottom())
-        else:
-            for (node, transform,
-                save_layer) in self.composited_updates:
-                for layer in self.composited_layers:
-                    composited_items = layer.composited_items()
-                    for composited_item in composited_items:
-                        if node != composited_item.node: continue
-                        if type(composited_item) is Transform:
-                            composited_item.copy(transform)
-                        elif type(composited_item) is SaveLayer:
-                            composited_item.copy(save_layer)
+        self.active_tab_height = 0
+        for layer in self.composited_layers:
+            self.active_tab_height = \
+                max(self.active_tab_height,
+                    layer.absolute_bounds().bottom())
+
+    def clone_latest(self, visual_effect, current_effect):
+        node = visual_effect.node
+        if not node in self.composited_updates:
+            return visual_effect.clone(current_effect)
+        (transform, save_layer) = self.composited_updates[node]
+        if type(visual_effect) is Transform:
+            return transform.clone(current_effect)
+        elif type(visual_effect) is SaveLayer:
+            return save_layer.clone(current_effect)
 
     def paint_draw_list(self):
         self.draw_list = []
@@ -1748,7 +1733,8 @@ class Browser:
             current_effect = DrawCompositedLayer(composited_layer)
             for visual_effect in \
                 reversed(composited_layer.ancestor_effects):
-                current_effect = visual_effect.clone([current_effect])
+                current_effect = self.clone_latest(
+                    visual_effect, [current_effect])
             self.draw_list.append(current_effect)
 
     def composite_raster_and_draw(self):
@@ -1761,7 +1747,7 @@ class Browser:
 
         self.measure_composite_raster_and_draw.start()
         start_time = time.time()
-        if self.needs_composite or len(self.composited_updates) > 0:
+        if self.needs_composite:
             self.composite()
         if self.needs_raster:
             self.raster_chrome()
