@@ -1320,7 +1320,7 @@ animations would end up applying to the wrong paint commands.) For
 now, let's focus on the simplest possible way to do that, which is to
 put every paint command into its own layer:
 
-``` {.python}
+``` {.python expected=False}
 class Browser:
     def __init__(self):
         # ...
@@ -1331,8 +1331,8 @@ class Browser:
         # ...
         for display_item in paint_commands:
             layer = CompositedLayer(skia_context)
-            layer.add_display_item(display_item)
-            composited_layers.append(layer)
+            layer.add_paint_chunk(display_item)
+            self.composited_layers.append(layer)
 ```
 
 Once there is a list of `CompositedLayer`s, rastering the `CompositedLayer`s
@@ -1543,9 +1543,9 @@ order. Later items in the display list have to draw later.
 class Browser:
     def composite(self):
         for display_item in paint_commands:
-            for layer in reversed(composited_layers):
+            for layer in reversed(self.composited_layers):
                 if layer.can_merge(display_item):
-                    layer.add_display_item(display_item)
+                    layer.add_paint_chunk(display_item)
                     break
             else:
                 # ...
