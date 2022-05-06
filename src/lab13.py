@@ -112,7 +112,7 @@ class DisplayItem:
                 cmd.composited_bounds_internal(rect)
 
     def needs_compositing(self):
-        return False
+        return any([child.needs_compositing() for child in children])
 
     def clone(self, children):
         assert False
@@ -133,7 +133,8 @@ class Transform(DisplayItem):
             canvas.restore()
 
     def needs_compositing(self):
-        return USE_COMPOSITING and self.translation
+        return USE_COMPOSITING and self.translation or \
+            any([child.needs_compositing() for child in children])
 
     def map(self, rect):
         if not self.translation:
@@ -261,9 +262,6 @@ class ClipRRect(DisplayItem):
         if self.should_clip:
             canvas.restore()
 
-    def needs_compositing(self):
-        return False
-
     def clone(self, children):
         return ClipRRect(self.rect, self.radius, children, \
             self.should_clip)
@@ -289,7 +287,8 @@ class SaveLayer(DisplayItem):
             canvas.restore()
 
     def needs_compositing(self):
-        return USE_COMPOSITING and self.should_save
+        return USE_COMPOSITING and self.should_save or \
+            any([child.needs_compositing() for child in children])
 
     def clone(self, children):
         return SaveLayer(self.sk_paint, self.node, children, \
