@@ -1511,17 +1511,6 @@ class TaskRunner:
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
-def print_chunks(chunks):
-    for (display_item, ancestor_effects) in chunks:
-        print('chunks:')
-        print("  chunk display items:")
-        print(" " * 4 + str(display_item))
-        print("  chunk ancestor visual effect (skipping no-ops):")
-        count = 4
-        for display_item in ancestor_effects:
-            print(" " * count + str(display_item))
-            count += 2
-
 def print_composited_layers(composited_layers):
     print("Composited layers:")
     for layer in composited_layers:
