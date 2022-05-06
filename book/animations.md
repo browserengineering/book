@@ -1712,6 +1712,7 @@ class CompositedLayer:
   account in `draw` as well; see below.]
 
 ``` {.python}
+class CompositedLayer:
     def raster(self):
         bounds = self.composited_bounds()
         if bounds.isEmpty():
@@ -1739,7 +1740,7 @@ part is making sure to re-introduce the top and left offsets that were omitted
 from `raster`.
 
 ``` {.python}
-
+class CompositedLayer:
     def draw(self, canvas):
         bounds = self.composited_bounds()
         surface_offset_x = bounds.left()
@@ -1756,6 +1757,7 @@ The last bit is just to wire it up by generalizing `raster_and_draw` into
 renaming at all callsites), and everything should work end-to-end.
 
 ``` {.python}
+class Browser:
     def composite_raster_and_draw(self):
         # ...
         self.composite()
