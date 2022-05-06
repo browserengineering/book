@@ -1330,9 +1330,24 @@ class Browser:
         self.composited_layers = []
         # ...
         for display_item in paint_commands:
-            layer = CompositedLayer(skia_context)
+            layer = CompositedLayer(self.skia_context)
             layer.add_paint_chunk(display_item)
             self.composited_layers.append(layer)
+```
+
+Here, a `CompositedLayer` just stores a list of display items (and a
+surface that they'll be drawn to) and `add_paint_chunk` adds a paint
+command to the list:
+
+``` {.python replace=self.display_items.append/%20%20%20%20self.display_items.append}
+class CompositedLayer:
+    def __init__(self, skia_context):
+        self.skia_context = skia_context
+        self.surface = None
+        self.display_items = []
+
+    def add_paint_chunk(self, display_item):
+        self.display_items.append(display_item)
 ```
 
 Once there is a list of `CompositedLayer`s, rastering the `CompositedLayer`s
@@ -1740,10 +1755,10 @@ class CompositedLayer:
 
         if composited_index < len(ancestor_effects) - 1:
             self.display_items.append(
-                (ancestor_effects[composited_index + 1],
-                 self.ancestor_effects))
+                ancestor_effects[composited_index + 1],
+            )
         else:
-            self.display_items.append((display_item, ancestor_effects))
+            self.display_items.append(display_item)
 ```
 
 * `composited_bounds`: returns the union of the composited bounds of all
@@ -1755,7 +1770,7 @@ class CompositedLayer:
     # ...
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for (item, ancestor_effects) in self.display_items:
+        for item in self.display_items:
             retval.join(item.composited_bounds())
         return retval
 ```
@@ -1784,7 +1799,7 @@ class CompositedLayer:
         canvas.clear(skia.ColorTRANSPARENT)
         canvas.save()
         canvas.translate(-bounds.left(), -bounds.top())
-        for (item, ancestor_effects) in self.display_items:
+        for item in self.display_items:
             item.execute(canvas)
         canvas.restore()
 ```

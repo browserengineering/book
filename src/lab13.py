@@ -1099,21 +1099,21 @@ class CompositedLayer:
 
         if composited_index < len(ancestor_effects) - 1:
             self.display_items.append(
-                (ancestor_effects[composited_index + 1],
-                 self.ancestor_effects))
+                ancestor_effects[composited_index + 1],
+            )
         else:
-            self.display_items.append((display_item, ancestor_effects))
+            self.display_items.append(display_item)
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for (item, ancestor_effects) in self.display_items:
+        for item in self.display_items:
             retval.join(item.composited_bounds())
         return retval
 
     def absolute_bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for (item, ancestor_effects) in self.display_items:
-            retval.join(absolute_bounds(item, ancestor_effects))
+        for item in self.display_items:
+            retval.join(absolute_bounds(item))
         return retval
 
     def composited_items(self):
@@ -1144,7 +1144,7 @@ class CompositedLayer:
         canvas.clear(skia.ColorTRANSPARENT)
         canvas.save()
         canvas.translate(-bounds.left(), -bounds.top())
-        for (item, ancestor_effects) in self.display_items:
+        for item in self.display_items:
             item.execute(canvas)
         canvas.restore()
 
@@ -1165,7 +1165,7 @@ class CompositedLayer:
         return ("layer: composited_bounds={} " +
             "absolute_bounds={} first_chunk={}").format(
             self.composited_bounds(), self.absolute_bounds(),
-            self.display_items[0] if len(self.display_items) > 0 else 'None')
+            self.display_items if len(self.display_items) > 0 else 'None')
 
 def raster(display_list, canvas):
     for cmd in display_list:
