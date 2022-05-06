@@ -125,6 +125,9 @@ class DisplayItem:
     def copy(self, display_item):
         assert False
 
+    def copy(self, children):
+        assert False
+
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children=children, node=node)
@@ -154,6 +157,9 @@ class Transform(DisplayItem):
     def copy(self, other):
         self.translation = other.translation
         self.rect = other.rect
+
+    def copy(self, children):
+        return Transform(self.translation, self.rect,  self.node, children)
 
     def __repr__(self):
         if self.translation:
@@ -257,6 +263,7 @@ class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, children, should_clip=True):
         super().__init__(rect, children=children)
         self.should_clip = should_clip
+        self.radius = radius
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
 
     def draw(self, canvas, op):
@@ -269,6 +276,9 @@ class ClipRRect(DisplayItem):
 
     def needs_compositing(self):
         return False
+
+    def copy(self, children):
+        return ClipRRect(self.rect, self.radius, children, self.should_clip)
 
     def __repr__(self):
         if self.should_clip:
@@ -295,11 +305,29 @@ class SaveLayer(DisplayItem):
     def copy(self, other):
         self.sk_paint = other.sk_paint
 
+    def copy(self, children):
+        return SaveLayer(self.sk_paint, self.node, children, self.should_save)
+
     def __repr__(self):
         if self.should_save:
             return "SaveLayer(alpha={})".format(self.sk_paint.getAlphaf())
         else:
             return "SaveLayer(<no-op>)"
+
+class DrawCompositedLayer(DisplayItem):
+    def __init__(self, composited_layer, draw_offset):
+        self.composited_layer = composited_layer
+        self.draw_offset = draw_offset
+
+    def draw(self, canvas, op):
+        self.composited_layer.draw(canvas, draw_offset)
+
+    def copy(self, other):
+        self.composited_layer = other.composited_layer
+        self.draw_offset = other.draw_offset
+
+    def __repr__(self):
+        return "DrawCompositedLayer(draw_offset={}".format(self.draw_offset)
 
 def parse_transform(transform_str):
     if transform_str.find('translate') < 0:
@@ -1648,6 +1676,7 @@ class Browser:
 
         self.composited_updates = []
         self.composited_layers = []
+        self.draw_list = []
 
         self.scroll_behavior = 'auto'
 
@@ -1739,6 +1768,15 @@ class Browser:
                         elif type(composited_item) is SaveLayer:
                             composited_item.copy(save_layer)
 
+    def paint_draw_list(self):
+        self.draw_list = []
+        for composited_layer in self.composited_layers:
+            draw_offset=(0, CHROME_PX - self.scroll)
+            current_effect = DrawCompositedLayer(composited_layer, draw_offset)
+            for visual_effect in reversed(composited_layer.ancestor_effects):
+                current_effect = visual_effect.copy([current_effect])
+            self.draw_list.append(current_effect)
+
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)
         if not self.needs_composite and \
@@ -1755,6 +1793,7 @@ class Browser:
             self.raster_chrome()
             self.raster_tab()
         if self.needs_draw:
+#            self.paint_draw_list()
             self.draw()
         self.measure_composite_raster_and_draw.stop()
         self.needs_composite = False
