@@ -1092,13 +1092,6 @@ class CompositedLayer:
             retval.join(absolute_bounds(item))
         return retval
 
-    def composited_items(self):
-        items = []
-        for item in self.ancestor_effects:
-            if item.needs_compositing():
-                items.append(item)
-        return items
-
     def raster(self):
         bounds = self.composited_bounds()
         if bounds.isEmpty():
@@ -1682,7 +1675,7 @@ class Browser:
                     break
             else:
                 layer = CompositedLayer(self.skia_context)
-                layer.add(display_item, ancestor_effects)
+                layer.add(display_item)
                 self.composited_layers.append(layer)
 
         self.active_tab_height = 0
