@@ -1270,7 +1270,7 @@ don't have recursive children in `children`.
 We can find all of the paint commands in the display tree using
 `tree_to_list`:
 
-``` {.python replace=cmd.is_paint_command()/not%20cmd.needs_compositing()}
+``` {.python expected=False}
 class Browser:
     def composite(self):
         paint_commands = [cmd
@@ -1876,7 +1876,7 @@ class Browser:
         # ...
         paint_commands = [cmd
             for cmd in tree_to_list(self.active_tab_display_list, [])
-            if not cmd.needs_compositing()
+            if not cmd.needs_compositing() and cmd.parent.needs_compositing()
         ]
         # ...
 ```

@@ -1712,7 +1712,7 @@ class Browser:
         add_parent_pointers(self.active_tab_display_list)
         paint_commands = [cmd
             for cmd in tree_to_list(self.active_tab_display_list, [])
-            if not cmd.needs_compositing()
+            if not cmd.needs_compositing() and cmd.parent.needs_compositing()
         ]
         for display_item in paint_commands:
             for layer in reversed(self.composited_layers):
