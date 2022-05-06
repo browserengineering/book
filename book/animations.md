@@ -1266,7 +1266,7 @@ We can find all of the paint commands in the display tree using
 class Browser:
     def composite(self):
         paint_commands = [cmd
-            for cmd in tree_to_list(self.active_tab_display_list)
+            for cmd in tree_to_list(self.active_tab_display_list, [])
             if cmd.is_paint_command()
         ]
 ```

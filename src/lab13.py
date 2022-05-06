@@ -1706,7 +1706,7 @@ class Browser:
         self.composited_layers = []
         add_parent_pointers(self.active_tab_display_list)
         paint_commands = [cmd
-            for cmd in tree_to_list(self.active_tab_display_list)
+            for cmd in tree_to_list(self.active_tab_display_list, [])
             if cmd.is_paint_command()
         ]
         for display_item in paint_commands:
