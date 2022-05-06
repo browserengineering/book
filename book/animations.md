@@ -1331,13 +1331,13 @@ class Browser:
         # ...
         for display_item in paint_commands:
             layer = CompositedLayer(self.skia_context)
-            layer.add_paint_chunk(display_item)
+            layer.add(display_item)
             self.composited_layers.append(layer)
 ```
 
 Here, a `CompositedLayer` just stores a list of display items (and a
-surface that they'll be drawn to) and `add_paint_chunk` adds a paint
-command to the list:
+surface that they'll be drawn to) and `add` adds a paint command to
+the list:
 
 ``` {.python replace=self.display_items.append/%20%20%20%20self.display_items.append}
 class CompositedLayer:
@@ -1346,7 +1346,7 @@ class CompositedLayer:
         self.surface = None
         self.display_items = []
 
-    def add_paint_chunk(self, display_item):
+    def add(self, display_item):
         self.display_items.append(display_item)
 ```
 
@@ -1560,7 +1560,7 @@ class Browser:
         for display_item in paint_commands:
             for layer in reversed(self.composited_layers):
                 if layer.can_merge(display_item):
-                    layer.add_paint_chunk(display_item)
+                    layer.add(display_item)
                     break
             else:
                 # ...
@@ -1585,7 +1585,7 @@ class CompositedLayer:
         else:
             return True
 
-    def add_paint_chunk(self, display_item):
+    def add(self, display_item):
         assert self.can_merge(display_item)
         self.parent_effect = display_item.parent
         self.display_items.append(display_item)
@@ -2181,7 +2181,7 @@ that needs to be animated.
                     layer.absolute_bounds(),
                     absolute_bounds(display_item)):
                     layer = CompositedLayer(self.skia_context)
-                    layer.add_paint_chunk(display_item)
+                    layer.add(display_item)
                     self.composited_layers.append(layer)
                     break
 ```
