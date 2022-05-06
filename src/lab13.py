@@ -1698,10 +1698,10 @@ class Browser:
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = DrawCompositedLayer(composited_layer)
-            for visual_effect in \
-                reversed(composited_layer.ancestor_effects):
-                current_effect = self.clone_latest(
-                    visual_effect, [current_effect])
+            parent = composited_layer.parent
+            while parent:
+                current_effect = self.clone_latest(parent, [current_effect])
+                parent = parent.parent
             self.draw_list.append(current_effect)
 
     def composite_raster_and_draw(self):
