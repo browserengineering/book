@@ -278,7 +278,8 @@ class ClipRRect(DisplayItem):
         return False
 
     def clone(self, children):
-        return ClipRRect(self.rect, self.radius, children, self.should_clip)
+        return ClipRRect(self.rect, self.radius, children, \
+            self.should_clip)
 
     def __repr__(self):
         if self.should_clip:
@@ -306,7 +307,8 @@ class SaveLayer(DisplayItem):
         self.sk_paint = other.sk_paint
 
     def clone(self, children):
-        return SaveLayer(self.sk_paint, self.node, children, self.should_save)
+        return SaveLayer(self.sk_paint, self.node, children, \
+            self.should_save)
 
     def __repr__(self):
         if self.should_save:
@@ -325,7 +327,8 @@ class DrawCompositedLayer(DisplayItem):
         self.composited_layer = other.composited_layer
 
     def __repr__(self):
-        return "DrawCompositedLayer(draw_offset={}".format(self.draw_offset)
+        return "DrawCompositedLayer(draw_offset={}".format(
+            self.draw_offset)
 
 def parse_transform(transform_str):
     if transform_str.find('translate') < 0:
@@ -1751,7 +1754,8 @@ class Browser:
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = DrawCompositedLayer(composited_layer)
-            for visual_effect in reversed(composited_layer.ancestor_effects):
+            for visual_effect in \
+                reversed(composited_layer.ancestor_effects):
                 current_effect = visual_effect.clone([current_effect])
             self.draw_list.append(current_effect)
 

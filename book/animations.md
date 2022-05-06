@@ -1349,7 +1349,7 @@ will be look like this:
 Now, drawing them is a bit more complicated. We could add special code just
 to figure out how to apply each of the ancestor effects of each
 `CompositedLayer`. It's not *that* much code, but if you try it you'll discover
-that it's really hard to do it without introducing a second implementation
+that it's really hard to achieve without introducing a second implementation
 of the display list commands, just for the purposes of draw. Insteaed let's
 take a different approach: constructing a new display list that replaces
 composited subtrees with a `DrawCompositedLayer` command.
@@ -1373,7 +1373,8 @@ class DrawCompositedLayer(DisplayItem):
         self.composited_layer = other.composited_layer
 
     def __repr__(self):
-        return "DrawCompositedLayer(draw_offset={}".format(self.draw_offset)
+        return "DrawCompositedLayer(draw_offset={}".format(
+            self.draw_offset)
 ```
 
 And now let's turn to creating the `draw_list`. This will involve *cloning* each
@@ -1395,15 +1396,21 @@ But for them, it'll do what you might expect:
 class SaveLayer(DisplayItem):
     # ...
     def clone(self, children):
-        return SaveLayer(self.sk_paint, self.node, children, self.should_save)
+        return SaveLayer(self.sk_paint, self.node, children, \
+            self.should_save)
 ```
 
 ``` {.python}
 class ClipRRect(DisplayItem):
     # ...
     def clone(self, children):
-        return ClipRRect(self.rect, self.radius, children, self.should_clip)
+        return ClipRRect(self.rect, self.radius, children, \
+            self.should_clip)
 ```
+
+Constructing the draw list just involves looping over the ancestor effects in
+reverse order, and cloning them & connecting them together into a recursive
+chain:
 
 ``` {.python}
 class Browser:
@@ -1415,7 +1422,8 @@ class Browser:
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = DrawCompositedLayer(composited_layer)
-            for visual_effect in reversed(composited_layer.ancestor_effects):
+            for visual_effect in \
+                reversed(composited_layer.ancestor_effects):
                 current_effect = visual_effect.clone([current_effect])
             self.draw_list.append(current_effect)
 ```
