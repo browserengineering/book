@@ -1945,7 +1945,7 @@ class Browser:
 Now we need to update `draw_list` to take into account the latest value, which
 should be looked up in `composited_updates`. Define a method `clone_latest`
 that clones the update visual effect from `composited_updates` if there is one,
-and otherwise clones the original.
+and otherwise clones the original.[^ptrcompare]
 
 ``` {.python}
 class Browser:
