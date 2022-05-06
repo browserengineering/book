@@ -1063,7 +1063,8 @@ def composited_ancestor_index(ancestor_effects):
         count -= 1
     return -1
 
-def absolute_bounds(display_item, ancestor_effects):
+def absolute_bounds(display_item):
+    ancestor_effects = ancestor_effects_list(display_item)
     retval = display_item.composited_bounds()
     for ancestor_item in reversed(ancestor_effects):
         if type(ancestor_item) is Transform:
@@ -1077,7 +1078,8 @@ class CompositedLayer:
         self.display_items = []
         self.ancestor_effects = []
 
-    def can_merge(self, display_item, ancestor_effects):
+    def can_merge(self, display_item):
+        ancestor_effects = ancestor_effects_list(display_item)
         if len(self.display_items) == 0:
             return True
         if len(self.ancestor_effects) != len(ancestor_effects):
@@ -1087,8 +1089,9 @@ class CompositedLayer:
         return self.ancestor_effects[-1] == ancestor_effects[
             composited_ancestor_index(ancestor_effects)]
 
-    def add_paint_chunk(self, display_item, ancestor_effects):
-        assert self.can_merge(display_item, ancestor_effects)
+    def add_paint_chunk(self, display_item):
+        assert self.can_merge(display_item)
+        ancestor_effects = ancestor_effects_list(display_item)
         composited_index = composited_ancestor_index(ancestor_effects)
         if len(self.display_items) == 0 and composited_index >= 0:
             self.ancestor_effects = ancestor_effects[0:composited_index + 1]
@@ -1564,6 +1567,19 @@ def display_list_to_paint_chunks(
                 display_item.children,
                 ancestor_effects + [display_item], chunks)
 
+def add_parent_pointers(nodes, parent=None):
+    for node in nodes:
+        node.parent = parent
+        add_parent_pointers(node.children, node)
+
+def ancestor_effects_list(node):
+    parent = node.parent
+    effects = []
+    while parent:
+        effects = [parent] + effects
+        parent = parent.parent
+    return effects
+
 USE_GPU = True
 
 class Browser:
@@ -1688,28 +1704,24 @@ class Browser:
 
     def composite(self):
         self.composited_layers = []
-        chunks = []
-        display_list_to_paint_chunks(
-            self.active_tab_display_list, [], chunks)
-        for (display_item, ancestor_effects) in chunks:
-            placed = False
+        add_parent_pointers(self.active_tab_display_list)
+        paint_commands = [cmd
+            for cmd in tree_to_list(self.active_tab_display_list)
+            if cmd.is_paint_command()
+        ]
+        for display_item in paint_commands:
             for layer in reversed(self.composited_layers):
-                if layer.can_merge(
-                    display_item, ancestor_effects):
-                    layer.add_paint_chunk(display_item, ancestor_effects)
-                    placed = True
+                if layer.can_merge(display_item):
+                    layer.add_paint_chunk(display_item)
                     break
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
-                    absolute_bounds(display_item,
-                        ancestor_effects)):
+                    absolute_bounds(display_item)):
                     layer = CompositedLayer(self.skia_context)
-                    layer.add_paint_chunk(
-                        display_item, ancestor_effects)
+                    layer.add_paint_chunk(display_item)
                     self.composited_layers.append(layer)
-                    placed = True
                     break
-            if not placed:
+            else:
                 layer = CompositedLayer(self.skia_context)
                 layer.add_paint_chunk(display_item, ancestor_effects)
                 self.composited_layers.append(layer)
