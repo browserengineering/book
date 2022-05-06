@@ -2356,10 +2356,11 @@ the absolute bounds of a paint chunk:
 
 ``` {.python}
 def absolute_bounds(display_item):
-    ancestor_effects = ancestor_effects_list(display_item)
     retval = display_item.composited_bounds()
-    for ancestor_item in reversed(ancestor_effects):
-        retval = ancestor_item.map(retval)
+    effect = display_item.parent
+    while effect:
+        retval = effect.map(retval)
+        effect = effect.parent
     return retval
 ```
 

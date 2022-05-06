@@ -1064,11 +1064,11 @@ def composited_ancestor_index(ancestor_effects):
     return -1
 
 def absolute_bounds(display_item):
-    ancestor_effects = ancestor_effects_list(display_item)
     retval = display_item.composited_bounds()
-    for ancestor_item in reversed(ancestor_effects):
-        if type(ancestor_item) is Transform:
-            retval = ancestor_item.map(retval)
+    effect = display_item.parent
+    while effect:
+        retval = effect.map(retval)
+        effect = effect.parent
     return retval
 
 class CompositedLayer:
