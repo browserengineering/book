@@ -1366,7 +1366,7 @@ class DrawCompositedLayer(DisplayItem):
     def __init__(self, composited_layer):
         self.composited_layer = composited_layer
 
-    def draw(self, canvas, op):
+    def execute(self, canvas):
         self.composited_layer.draw(canvas)
 
     def copy(self, other):
@@ -1536,50 +1536,6 @@ class DisplayItem:
         # ...
         self.node = node
 ```
-
-Next we need a `draw` method. This will be used to execute the visual effect in
-either draw or raster, depending on the results of the compositing algorithm.
-That's why it has an `op` function parameter.
-
-For paint commands, this will be the same as `execute`, so just rename it
-and add the (unused) `op` parameter:
-
-``` {.python}
-class DrawText(DisplayItem):
-    def draw(self, canvas, op):
-        draw_text(canvas, self.left, self.top,
-            self.text, self.font, self.color)
-```
-
-For other commands, it should execute the command, but in place of recursing
-it should call `op`:
-
-``` {.python}
-class SaveLayer(DisplayItem):
-    # ...
-    def draw(self, canvas, op):
-        if self.should_save:
-            canvas.saveLayer(paint=self.sk_paint)
-        op()
-        if self.should_save:
-            canvas.restore()
-```
-
-Then we can redefine `execute` in terms of `draw` in `DisplayItem`. In this
-case, the `op` performs recursive raster; later on we'll use it to draw a child
-surface.
-
-``` {.python}
-class DisplayItem:
-    def execute(self, canvas):
-        def op():
-            for cmd in self.children:
-                cmd.execute(canvas)
-        self.draw(canvas, op)
-```
-
-The paint command subclasses like `DrawText` already define `execute`, which
-will override this definition.
 
 Finally, we'll need to be able to get the *composited bounds* of a
 `DisplayItem`. This is necessary to figure out the size of a `skia.Surface` that
