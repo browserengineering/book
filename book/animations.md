@@ -1170,20 +1170,28 @@ nature of the display list. For example, consider this web page:
   <p>
     Hello, World!
   </p>
-  <div style="opacity=0.8">
+  <div style="opacity=0.5">
     <p>More text</p>
   </div>
 </div>
 ```
 
-Its display tree looks like this:
+It renders like this:
 
-    SaveLayer(opacity=0.999)
-      DrawText(text=Hello,)
-      DrawText(text=World!)
-      SaveLayer(opacity=0.8)
-        DrawText(text=More)
-        DrawText(text=text)
+<iframe src="examples/example13-nested-opacity.html"></iframe>
+(click [here](examples/example13-nested-opacity.html) to load the example in
+your browser)
+
+
+Its full display list looks like this (after omitting no-ops and some):
+
+     DrawRect(top=13 left=18 bottom=787 right=98.6875 color=white)
+     SaveLayer(alpha=0.9990000128746033)
+       DrawText(text=Hello,)
+       DrawText(text=World!)
+       SaveLayer(alpha=0.5)
+         DrawText(text=More)
+         DrawText(text=text)
 
 Imagine that either opacity might animate. As it animates, we don't
 want to redo the `DrawText` commands, but we *have to* redo the
@@ -1424,6 +1432,25 @@ class Browser:
                 current_effect = visual_effect.clone([current_effect])
             self.draw_list.append(current_effect)
 ```
+
+The resulting display list looks like this (after removing no-ops). The
+first `DrawCompositedLayer` is the root layer for the white background of the
+page; the others are for the first and second group of `DrawText`s.
+
+TODO: exhibits a bug.
+
+
+    DrawCompositedLayer()
+    SaveLayer(alpha=0.9990000128746033)
+      DrawCompositedLayer()
+    SaveLayer(alpha=0.9990000128746033)
+      DrawCompositedLayer()
+    SaveLayer(alpha=0.9990000128746033)
+      SaveLayer(alpha=0.5)
+        DrawCompositedLayer()
+    SaveLayer(alpha=0.9990000128746033)
+      SaveLayer(alpha=0.5)
+        DrawCompositedLayer()
 
 Drawing to the screen will be simply executing the draw display
 list:[^draw-incorrect]
