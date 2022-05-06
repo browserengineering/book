@@ -1985,6 +1985,12 @@ execute them.
 Check out the result---animations that only update the draw step, and
 not everything else!
 
+Notice how `paint_draw_list` happens on every frame, regardless of the type of
+update. And it's not free---it has to loop over a number of
+ancestor effects for every `CompositedLayer` and built up a display list. This
+cost is not unique to our toy browser, and is present in one for or another in
+many real browsers.
+
 ::: {.further}
 
 While visual effect animations in our browser are now efficient
