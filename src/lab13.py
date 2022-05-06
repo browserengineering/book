@@ -304,13 +304,14 @@ class SaveLayer(DisplayItem):
 class DrawCompositedLayer(DisplayItem):
     def __init__(self, composited_layer):
         self.composited_layer = composited_layer
+        super().__init__(self.composited_layer.composited_bounds())
 
     def execute(self, canvas):
         self.composited_layer.draw(canvas)
 
     def __repr__(self):
-        return "DrawCompositedLayer(draw_offset={}".format(
-            self.draw_offset)
+        return "DrawCompositedLayer()"
+
 
 def parse_transform(transform_str):
     if transform_str.find('translate') < 0:
