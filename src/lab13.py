@@ -104,23 +104,12 @@ class DisplayItem:
 
     def composited_bounds_internal(self, rect):
         rect.join(self.rect)
-        if self.children:
-            for cmd in self.children:
-                if not cmd.needs_compositing():
-                    cmd.composited_bounds_internal(rect)
+        for cmd in self.children:
+            if not cmd.needs_compositing():
+                cmd.composited_bounds_internal(rect)
 
     def needs_compositing(self):
         return False
-
-    def execute(self, canvas):
-        def op():
-            assert self.children
-            for cmd in self.children:
-                cmd.execute(canvas)
-        self.draw(canvas, op)
-
-    def draw(self, canvas, op):
-        pass
 
     def copy(self, display_item):
         assert False
@@ -133,12 +122,13 @@ class Transform(DisplayItem):
         super().__init__(rect, children=children, node=node)
         self.translation = translation
 
-    def draw(self, canvas, op):
+    def execute(self, canvas):
         if self.translation:
             (x, y) = self.translation
             canvas.save()
             canvas.translate(x, y)
-        op()
+        for cmd in self.children:
+            cmd.execute(canvas)
         if self.translation:
             canvas.restore()
 
@@ -179,7 +169,7 @@ class DrawLine(DisplayItem):
     def is_paint_command(self):
         return True
 
-    def draw(self, canvas):
+    def execute(self, canvas):
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
 class DrawRRect(DisplayItem):
@@ -191,7 +181,7 @@ class DrawRRect(DisplayItem):
     def is_paint_command(self):
         return True
 
-    def draw(self, canvas, op):
+    def execute(self, canvas):
         sk_color = parse_color(self.color)
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=sk_color))
@@ -217,7 +207,7 @@ class DrawText(DisplayItem):
     def is_paint_command(self):
         return True
 
-    def draw(self, canvas, op):
+    def execute(self, canvas):
         draw_text(canvas, self.left, self.top,
             self.text, self.font, self.color)
 
@@ -249,7 +239,7 @@ class DrawRect(DisplayItem):
     def is_paint_command(self):
         return True
 
-    def draw(self, canvas, op):
+    def execute(self, canvas):
         draw_rect(canvas,
             self.left, self.top,
             self.right, self.bottom,
@@ -266,11 +256,12 @@ class ClipRRect(DisplayItem):
         self.radius = radius
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
 
-    def draw(self, canvas, op):
+    def execute(self, canvas):
         if self.should_clip:
             canvas.save()
             canvas.clipRRect(self.rrect)
-        op()
+        for cmd in self.children:
+            cmd.execute(canvas)
         if self.should_clip:
             canvas.restore()
 
@@ -293,10 +284,11 @@ class SaveLayer(DisplayItem):
         self.should_save = should_save
         self.sk_paint = sk_paint
 
-    def draw(self, canvas, op):
+    def execute(self, canvas):
         if self.should_save:
             canvas.saveLayer(paint=self.sk_paint)
-        op()
+        for cmd in self.children:
+                cmd.execute(canvas)
         if self.should_save:
             canvas.restore()
 
@@ -320,7 +312,7 @@ class DrawCompositedLayer(DisplayItem):
     def __init__(self, composited_layer):
         self.composited_layer = composited_layer
 
-    def draw(self, canvas, op):
+    def execute(self, canvas):
         self.composited_layer.draw(canvas)
 
     def copy(self, other):
