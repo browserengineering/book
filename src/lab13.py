@@ -1758,10 +1758,6 @@ class Browser:
             self.raster_tab()
         if self.needs_draw:
             self.paint_draw_list()
-            print('go-----------')
-            for item in self.draw_list:
-              print_tree(item)
-
             self.draw()
         self.measure_composite_raster_and_draw.stop()
         self.needs_composite = False
