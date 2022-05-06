@@ -97,6 +97,9 @@ class DisplayItem:
     def is_paint_command(self):
         return False
 
+    def map(self, rect):
+        return rect
+
     def composited_bounds(self):
         rect = skia.Rect.MakeEmpty()
         self.composited_bounds_internal(rect)
@@ -135,11 +138,11 @@ class Transform(DisplayItem):
     def map(self, rect):
         if not self.translation:
             return rect
-        matrix = skia.Matrix()
-        if self.translation:
+        else:
             (x, y) = self.translation
+            matrix = skia.Matrix()
             matrix.setTranslate(x, y)
-        return matrix.mapRect(rect)
+            return matrix.mapRect(rect)
 
     def clone(self, children):
         return Transform(self.translation, self.rect,  self.node, children)

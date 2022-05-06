@@ -2318,15 +2318,19 @@ Let's first add the implementation of a new `absolute_bounds` function. The
  four corners increased by 20.
 
 ``` {.python}
+class DisplayItem:
+    def map(self, rect):
+        return rect
+
 class Transform(DisplayItem):
     def map(self, rect):
         if not self.translation:
             return rect
-        matrix = skia.Matrix()
-        if self.translation:
+        else:
             (x, y) = self.translation
+            matrix = skia.Matrix()
             matrix.setTranslate(x, y)
-        return matrix.mapRect(rect)
+            return matrix.mapRect(rect)
 ```
 
 We can use `map` to implement a new `absolute_bounds` function that determines
@@ -2336,8 +2340,7 @@ the absolute bounds of a paint chunk:
 def absolute_bounds(display_item, ancestor_effects):
     retval = display_item.composited_bounds()
     for ancestor_item in reversed(ancestor_effects):
-        if type(ancestor_item) is Transform:
-            retval = ancestor_item.map(retval)
+        retval = ancestor_item.map(retval)
     return retval
 ```
 
