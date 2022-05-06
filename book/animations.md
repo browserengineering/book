@@ -1378,8 +1378,7 @@ class DrawCompositedLayer(DisplayItem):
         self.composited_layer.draw(canvas)
 
     def __repr__(self):
-        return "DrawCompositedLayer(draw_offset={}".format(
-            self.draw_offset)
+        return "DrawCompositedLayer()"
 ```
 
 And now let's turn to creating the `draw_list`. This will involve *cloning* each
