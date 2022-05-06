@@ -1539,14 +1539,6 @@ def add_parent_pointers(nodes, parent=None):
         node.parent = parent
         add_parent_pointers(node.children, node)
 
-def ancestor_effects_list(node):
-    parent = node.parent
-    effects = []
-    while parent:
-        effects = [parent] + effects
-        parent = parent.parent
-    return effects
-
 USE_GPU = True
 
 class Browser:

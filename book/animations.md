@@ -1296,18 +1296,6 @@ class Browser:
         # ...
 ```
 
-Now we can get the list of ancestor effects with a simple loop:
-
-``` {.python}
-def ancestor_effects_list(node):
-    parent = node.parent
-    effects = []
-    while parent:
-        effects = [parent] + effects
-        parent = parent.parent
-    return effects
-```
-
 When combined together, multiple paint commands form a *composited
 layer*, represented by the `CompositedLayer` class. This class will
 own a `skia.Surface` that rasters its content, and also know how to
