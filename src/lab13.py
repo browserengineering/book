@@ -1064,6 +1064,11 @@ def composited_ancestor_index(ancestor_effects):
         count -= 1
     return -1
 
+def composited_ancestor(node):
+    while node and not node.needs_compositing():
+        node = node.parent
+    return node
+
 def absolute_bounds(display_item):
     retval = display_item.composited_bounds()
     effect = display_item.parent
@@ -1708,7 +1713,7 @@ class Browser:
         add_parent_pointers(self.active_tab_display_list)
         paint_commands = [cmd
             for cmd in tree_to_list(self.active_tab_display_list, [])
-            if cmd.is_paint_command()
+            if not cmd.needs_compositing()
         ]
         for display_item in paint_commands:
             for layer in reversed(self.composited_layers):

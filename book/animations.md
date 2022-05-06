@@ -1595,23 +1595,6 @@ Composited display items
 Before getting to finishing off `CompositedLayer`, let's add some more features
 to display items to help then support compositing.
 
-The first thing we'll need is a way to signal that a visual effect "needs
-compositing", meaning that it may be animating and so its contents should be
-cached in a GPU texture. Indicate that with a new `needs_compositing` method on
-`DisplayItem`. As a simple heuristic, we'll always composite `SaveLayer`s
-(but only when they actually do something that isn't a no-op), regardless of
-whether they are animating.
-
-``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
-class DisplayItem:
-    def needs_compositing(self):
-        return False
-
-class SaveLayer(DisplayItem):
-    def needs_compositing(self):
-        return self.should_save
-```
-
 And while we're at it, add another `DisplayItem` constructor parameter
 indicating the `node` that the `DisplayItem` belongs to (the one that painted
 it); this will be useful when keeping track of mappings between `DisplayItem`s
@@ -1851,6 +1834,52 @@ re-architecture project only
 so perhaps sometime soon this work will be threaded in Chromium.
 
 :::
+
+Non-composited effects
+======================
+
+So far, every internal node of our display list runs in the draw
+phase, while every paint command runs in the raster phase. But some
+internal nodes---visual effects---can't be animated. We can run them
+in the raster phase, which will make the draw phase faster.
+
+The first thing we'll need is a way to signal that a visual effect
+"needs compositing", meaning that it may be animating and so its
+contents should be cached in a GPU texture. Indicate that with a new
+`needs_compositing` method on `DisplayItem`. As a simple heuristic,
+we'll always composite `SaveLayer`s (but only when they actually do
+something that isn't a no-op), regardless of whether they are
+animating, but we won't animate `ClipRRect` commands unless they have
+composited children.
+
+::: {.todo}
+Explain why composited children...
+:::
+
+``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
+class DisplayItem:
+    def needs_compositing(self):
+        return any([child.needs_compositing() for child in children])
+
+class SaveLayer(DisplayItem):
+    def needs_compositing(self):
+        return self.should_save or \
+            any([child.needs_compositing() for child in children])
+```
+
+Now, instead of layers containing bare paint commands, they can
+contain little subtrees of non-composited commands:
+
+``` {.python}
+class Browser:
+    def composite(self):
+        # ...
+        paint_commands = [cmd
+            for cmd in tree_to_list(self.active_tab_display_list, [])
+            if not cmd.needs_compositing()
+        ]
+        # ...
+```
 
 Composited animations
 =====================
@@ -2426,8 +2455,8 @@ a `CompositedLayer`:
 class CompositedLayer:
     def absolute_bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for (item, ancestor_effects) in self.display_items:
-            retval.join(absolute_bounds(item, ancestor_effects))
+        for item in self.display_items:
+            retval.join(absolute_bounds(item))
         return retval
 ```
 
