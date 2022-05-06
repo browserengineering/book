@@ -1294,7 +1294,7 @@ animations would end up applying to the wrong paint commands.) For
 now, let's focus on the simplest possible way to do that, which is to
 put every paint command into its own layer:
 
-``` {.python expected=False}
+``` {.python}
 class Browser:
     def __init__(self):
         # ...
@@ -1568,10 +1568,6 @@ existing ones. This will be true if they have the same parent.
  
 ``` {.python}
 class CompositedLayer:
-    def __init__(self, skia_context):
-        # ...
-        self.parent = None
-
     def can_merge(self, display_item):
         if self.display_items:
             return display_item.parent == self.display_item[0].parent
