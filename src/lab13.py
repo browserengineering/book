@@ -1081,32 +1081,18 @@ class CompositedLayer:
         self.skia_context = skia_context
         self.surface = None
         self.display_items = []
-        self.ancestor_effects = []
+        self.parent_effect = None
 
     def can_merge(self, display_item):
-        ancestor_effects = ancestor_effects_list(display_item)
-        if len(self.display_items) == 0:
+        if self.display_items:
+            return display_item.parent = self.display_item[0].parent
+        else:
             return True
-        if len(self.ancestor_effects) != len(ancestor_effects):
-            return False
-        if len(self.ancestor_effects) == 0:
-            return True
-        return self.ancestor_effects[-1] == ancestor_effects[
-            composited_ancestor_index(ancestor_effects)]
 
     def add_paint_chunk(self, display_item):
         assert self.can_merge(display_item)
-        ancestor_effects = ancestor_effects_list(display_item)
-        composited_index = composited_ancestor_index(ancestor_effects)
-        if len(self.display_items) == 0 and composited_index >= 0:
-            self.ancestor_effects = ancestor_effects[0:composited_index + 1]
-
-        if composited_index < len(ancestor_effects) - 1:
-            self.display_items.append(
-                ancestor_effects[composited_index + 1],
-            )
-        else:
-            self.display_items.append(display_item)
+        self.parent_effect = display_item.parent
+        self.display_items.append(display_item)
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()

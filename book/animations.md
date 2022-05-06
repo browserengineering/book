@@ -1571,21 +1571,24 @@ block executes only if the loop never executed `break`.
 
 The `can_merge` method returns whether the given paint chunk is
 compatible with being drawn into the same `CompositedLayer` as the
-existing ones. This will be true if they have the same nearest
-composited ancestor (or both have none).
+existing ones. This will be true if they have the same parent.
  
 ``` {.python}
 class CompositedLayer:
+    def __init__(self, skia_context):
+        # ...
+        self.parent_effect = None
+
     def can_merge(self, display_item):
-        ancestor_effects = ancestor_effects_list(display_item)
-        if len(self.display_items) == 0:
+        if self.display_items:
+            return display_item.parent = self.display_item[0].parent
+        else:
             return True
-        if len(self.ancestor_effects) != len(ancestor_effects):
-            return False
-        if len(self.ancestor_effects) == 0:
-            return True
-        return self.ancestor_effects[-1] == ancestor_effects[
-            composited_ancestor_index(ancestor_effects)]
+
+    def add_paint_chunk(self, display_item):
+        assert self.can_merge(display_item)
+        self.parent_effect = display_item.parent
+        self.display_items.append(display_item)
 ```
 
 
