@@ -1598,21 +1598,6 @@ Composited display items
 Before getting to finishing off `CompositedLayer`, let's add some more features
 to display items to help then support compositing.
 
-And while we're at it, add another `DisplayItem` constructor parameter
-indicating the `node` that the `DisplayItem` belongs to (the one that painted
-it); this will be useful when keeping track of mappings between `DisplayItem`s
-and GPU textures.[^cache-key]
-
-[^cache-key]: Remember that these compositing GPU textures are simply a form of
-cache, and every cache needs a stable cache key to be useful.
-
-``` {.python replace=children=/rect%2c%20children=}
-class DisplayItem:
-    def __init__(self, children=[], node=None):
-        # ...
-        self.node = node
-```
-
 Finally, we'll need to be able to get the *composited bounds* of a
 `DisplayItem`. This is necessary to figure out the size of a `skia.Surface` that
 contains the item.
@@ -1856,6 +1841,22 @@ Avoiding raster and the compositing algorithm is simple in concept: keep track
 of what is animating, and re-run `draw` with different opacity parameters on
 the `CompositedLayer`s that are animating. If nothing else changes, then
 we don't need to re-composite or re-raster anything.
+
+Add another `DisplayItem` constructor parameter
+indicating the `node` that the `DisplayItem` belongs to (the one that painted
+it); this will be useful when keeping track of mappings between `DisplayItem`s
+and GPU textures.[^cache-key]
+
+[^cache-key]: Remember that these compositing GPU textures are simply a form of
+cache, and every cache needs a stable cache key to be useful.
+
+``` {.python replace=children=/rect%2c%20children=}
+class DisplayItem:
+    def __init__(self, children=[], node=None):
+        # ...
+        self.node = node
+```
+
 
 Let's accomplish that. It will have multiple parts, starting with the main
 thread.
