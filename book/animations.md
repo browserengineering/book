@@ -1686,15 +1686,6 @@ member variables: a Skia context, surface, list of display items to raster, and
 the list of ancestor effects. (All paint chunks in the same `CompositedLayer`
 will have the same ancestor effects.)
 
-``` {.python}
-class CompositedLayer:
-    def __init__(self, skia_context):
-        self.skia_context = skia_context
-        self.surface = None
-        self.display_items = []
-        self.ancestor_effects = []
-```
-
 Only paint chunks that have the same *nearest composited visual effect ancestor*
 will be allowed to be in the same `CompositedLayer`.[^simpler] The composited
 ancestor index is the index into the top-down list of ancestor effects
@@ -1702,17 +1693,6 @@ referring to this nearest ancestor. (If there is no composited ancestor, the
 index is -1). Here's how to compute it it. Note how we are walking *up* the
 display list tree (and therefore implicitly up the DOM tree also) via a
 reversed iteration:
-
-``` {.python}
-def composited_ancestor_index(ancestor_effects):
-    count = len(ancestor_effects) - 1
-    for ancestor_item in reversed(ancestor_effects):
-        if ancestor_item.needs_compositing():
-            return count
-            break
-        count -= 1
-    return -1
-```
 
 So all paint chunks in the same `CompositedLayer` will share the same composited
 ancestor index. However, they need not have exactly the same ancestor effects
@@ -1725,27 +1705,6 @@ highest parent display item that is not composited.
 animation".
 
 The `CompositedLayer` class will have the following methods:
-
-* `add_paint_chunk`: adds a new paint chunk to the `CompositedLayer`. The first
-  one being added will initialize its `composited_ancestor_index`.
-
-``` {.python}
-class CompositedLayer:
-    # ...
-    def add_paint_chunk(self, display_item):
-        assert self.can_merge(display_item)
-        ancestor_effects = ancestor_effects_list(display_item)
-        composited_index = composited_ancestor_index(ancestor_effects)
-        if len(self.display_items) == 0 and composited_index >= 0:
-            self.ancestor_effects = ancestor_effects[0:composited_index + 1]
-
-        if composited_index < len(ancestor_effects) - 1:
-            self.display_items.append(
-                ancestor_effects[composited_index + 1],
-            )
-        else:
-            self.display_items.append(display_item)
-```
 
 * `composited_bounds`: returns the union of the composited bounds of all
   paint chunks. The composited bounds of a paint chunk is its display item's

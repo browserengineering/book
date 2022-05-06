@@ -1054,20 +1054,6 @@ def style(node, rules):
 
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
-def composited_ancestor_index(ancestor_effects):
-    count = len(ancestor_effects) - 1
-    for ancestor_item in reversed(ancestor_effects):
-        if ancestor_item.needs_compositing():
-            return count
-            break
-        count -= 1
-    return -1
-
-def composited_ancestor(node):
-    while node and not node.needs_compositing():
-        node = node.parent
-    return node
-
 def absolute_bounds(display_item):
     retval = display_item.composited_bounds()
     effect = display_item.parent
@@ -1547,16 +1533,6 @@ def print_composited_layers(composited_layers):
     print("Composited layers:")
     for layer in composited_layers:
         print("  " * 4 + str(layer))
-
-def display_list_to_paint_chunks(
-    display_list, ancestor_effects, chunks):
-    for display_item in display_list:
-        if display_item.is_paint_command():
-            chunks.append((display_item, ancestor_effects))
-        else:
-            display_list_to_paint_chunks(
-                display_item.children,
-                ancestor_effects + [display_item], chunks)
 
 def add_parent_pointers(nodes, parent=None):
     for node in nodes:
