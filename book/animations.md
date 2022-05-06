@@ -1280,21 +1280,7 @@ class Browser:
 ```
 
 Notice that each display item can be (individually) drawn to the screen by
-executing it and the series of *ancestor [visual] effects* on it. To
-make it easy to access those ancestor visual effects, let's add parent
-pointers to our display tree:
-
-``` {.python}
-def add_parent_pointers(nodes, parent=None):
-    for node in nodes:
-        node.parent = parent
-        add_parent_pointers(node.children, node)
-
-class Browser:
-    def composite(self):
-        add_parent_pointers(self.active_tab_display_list)
-        # ...
-```
+executing it and the series of *ancestor [visual] effects* on it. 
 
 When combined together, multiple paint commands form a *composited
 layer*, represented by the `CompositedLayer` class. This class will
@@ -1537,6 +1523,23 @@ chunk is added to it; if not, a new `CompositedLayer` is added with
 that paint chunk to start. The `can_merge` method on a
 `CompositedLayer` checks compatibility of the paint chunk's animating
 ancestor effects with the ones already on it.
+
+To make it easy to access those ancestor visual effects, let's add parent
+pointers to our display tree:
+
+``` {.python}
+def add_parent_pointers(nodes, parent=None):
+    for node in nodes:
+        node.parent = parent
+        add_parent_pointers(node.children, node)
+
+class Browser:
+    def composite(self):
+        add_parent_pointers(self.active_tab_display_list)
+        # ...
+```
+
+
 
 [^why-backwards]: Backwards, because we can't draw things in the wrong
 order. Later items in the display list have to draw later.
