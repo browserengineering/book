@@ -1067,7 +1067,6 @@ class CompositedLayer:
         self.skia_context = skia_context
         self.surface = None
         self.display_items = []
-        self.parent_effect = None
 
     def can_merge(self, display_item):
         if self.display_items:
@@ -1077,7 +1076,6 @@ class CompositedLayer:
 
     def add(self, display_item):
         assert self.can_merge(display_item)
-        self.parent_effect = display_item.parent
         self.display_items.append(display_item)
 
     def composited_bounds(self):
@@ -1687,7 +1685,8 @@ class Browser:
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = DrawCompositedLayer(composited_layer)
-            parent = composited_layer.parent
+            if not composited_layer.display_list: pass
+            parent = composited_layer.display_list[0].parent
             while parent:
                 current_effect = self.clone_latest(parent, [current_effect])
                 parent = parent.parent

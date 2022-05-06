@@ -1406,9 +1406,11 @@ class Browser:
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = DrawCompositedLayer(composited_layer)
-            for visual_effect in \
-                reversed(composited_layer.ancestor_effects):
-                current_effect = visual_effect.clone([current_effect])
+            if not composited_layer.display_list: pass
+            parent = composited_layer.display_list[0].parent
+            while parent:
+                current_effect = parent.clone([current_effect])
+                parent = parent.parent
             self.draw_list.append(current_effect)
 ```
 
@@ -1568,7 +1570,7 @@ existing ones. This will be true if they have the same parent.
 class CompositedLayer:
     def __init__(self, skia_context):
         # ...
-        self.parent_effect = None
+        self.parent = None
 
     def can_merge(self, display_item):
         if self.display_items:
@@ -1578,7 +1580,6 @@ class CompositedLayer:
 
     def add(self, display_item):
         assert self.can_merge(display_item)
-        self.parent_effect = display_item.parent
         self.display_items.append(display_item)
 ```
 
@@ -2028,13 +2029,11 @@ Now we can make a simple update to `paint_draw_list` to use it:
 
 ``` {.python}
 class Browser:
-    # ...
     def paint_draw_list(self):
-        # ...
-            for visual_effect in \
-                reversed(composited_layer.ancestor_effects):
-                current_effect = self.clone_latest(
-                    visual_effect, [current_effect])
+        for composited_layer in self.composited_layers:
+            while parent:
+                current_effect = self.clone_latest(parent, [current_effect])
+                # ...
 ```
 
 [^ptrcompare]: This is done by comparing equality of `Element` object
