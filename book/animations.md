@@ -1805,9 +1805,10 @@ something that isn't a no-op), regardless of whether they are
 animating, but we won't animate `ClipRRect` commands unless they have
 composited children.
 
-::: {.todo}
-Explain why composited children...
-:::
+In fact, we'll also need to mark a visual effect as needing compositing if
+any of its descendants do. That's because if one effect is run on the GPU,
+then one way or another the ones above it will have to be as well.
+
 
 ``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
 class DisplayItem:
