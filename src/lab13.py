@@ -112,7 +112,7 @@ class DisplayItem:
                 cmd.composited_bounds_internal(rect)
 
     def needs_compositing(self):
-        return False
+        return any([child.needs_compositing() for child in children])
 
     def clone(self, children):
         assert False
@@ -133,7 +133,8 @@ class Transform(DisplayItem):
             canvas.restore()
 
     def needs_compositing(self):
-        return USE_COMPOSITING and self.translation
+        return USE_COMPOSITING and self.translation or \
+            any([child.needs_compositing() for child in children])
 
     def map(self, rect):
         if not self.translation:
@@ -261,9 +262,6 @@ class ClipRRect(DisplayItem):
         if self.should_clip:
             canvas.restore()
 
-    def needs_compositing(self):
-        return False
-
     def clone(self, children):
         return ClipRRect(self.rect, self.radius, children, \
             self.should_clip)
@@ -289,7 +287,8 @@ class SaveLayer(DisplayItem):
             canvas.restore()
 
     def needs_compositing(self):
-        return USE_COMPOSITING and self.should_save
+        return USE_COMPOSITING and self.should_save or \
+            any([child.needs_compositing() for child in children])
 
     def clone(self, children):
         return SaveLayer(self.sk_paint, self.node, children, \
@@ -1064,6 +1063,11 @@ def composited_ancestor_index(ancestor_effects):
         count -= 1
     return -1
 
+def composited_ancestor(node):
+    while node and not node.needs_compositing():
+        node = node.parent
+    return node
+
 def absolute_bounds(display_item):
     retval = display_item.composited_bounds()
     effect = display_item.parent
@@ -1099,21 +1103,21 @@ class CompositedLayer:
 
         if composited_index < len(ancestor_effects) - 1:
             self.display_items.append(
-                (ancestor_effects[composited_index + 1],
-                 self.ancestor_effects))
+                ancestor_effects[composited_index + 1],
+            )
         else:
-            self.display_items.append((display_item, ancestor_effects))
+            self.display_items.append(display_item)
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for (item, ancestor_effects) in self.display_items:
+        for item in self.display_items:
             retval.join(item.composited_bounds())
         return retval
 
     def absolute_bounds(self):
         retval = skia.Rect.MakeEmpty()
-        for (item, ancestor_effects) in self.display_items:
-            retval.join(absolute_bounds(item, ancestor_effects))
+        for item in self.display_items:
+            retval.join(absolute_bounds(item))
         return retval
 
     def composited_items(self):
@@ -1144,7 +1148,7 @@ class CompositedLayer:
         canvas.clear(skia.ColorTRANSPARENT)
         canvas.save()
         canvas.translate(-bounds.left(), -bounds.top())
-        for (item, ancestor_effects) in self.display_items:
+        for item in self.display_items:
             item.execute(canvas)
         canvas.restore()
 
@@ -1165,7 +1169,7 @@ class CompositedLayer:
         return ("layer: composited_bounds={} " +
             "absolute_bounds={} first_chunk={}").format(
             self.composited_bounds(), self.absolute_bounds(),
-            self.display_items[0] if len(self.display_items) > 0 else 'None')
+            self.display_items if len(self.display_items) > 0 else 'None')
 
 def raster(display_list, canvas):
     for cmd in display_list:
@@ -1708,7 +1712,7 @@ class Browser:
         add_parent_pointers(self.active_tab_display_list)
         paint_commands = [cmd
             for cmd in tree_to_list(self.active_tab_display_list, [])
-            if cmd.is_paint_command()
+            if not cmd.needs_compositing() and cmd.parent.needs_compositing()
         ]
         for display_item in paint_commands:
             for layer in reversed(self.composited_layers):
