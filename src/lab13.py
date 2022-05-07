@@ -1076,7 +1076,6 @@ class CompositedLayer:
 
     def add(self, display_item):
         assert self.can_merge(display_item)
-        self.display_items.append(display_item)
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()

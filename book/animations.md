@@ -1541,8 +1541,6 @@ class Browser:
         # ...
 ```
 
-
-
 [^why-backwards]: Backwards, because we can't draw things in the wrong
 order. Later items in the display list have to draw later.
 
@@ -1561,6 +1559,37 @@ class Browser:
 
 If you're not familiar with Python's `for ... else` syntax, the `else`
 block executes only if the loop never executed `break`.
+
+The `can_merge` method returns whether the given paint chunk is
+compatible with being drawn into the same `CompositedLayer` as the
+existing ones. This will be true if they have the same nearest
+composited ancestor (or both have none).
+ 
+``` {.python}
+class CompositedLayer:
+    def can_merge(self, display_item):
+        ancestor_effects = ancestor_effects_list(display_item)
+        if len(self.display_items) == 0:
+            return True
+        if len(self.ancestor_effects) != len(ancestor_effects):
+            return False
+        if len(self.ancestor_effects) == 0:
+            return True
+        return self.ancestor_effects[-1] == ancestor_effects[
+            composited_ancestor_index(ancestor_effects)]
+```
+
+
+Composited display items
+========================
+
+Before getting to finishing off `CompositedLayer`, let's add some more features
+to display items to help then support compositing.
+
+And while we're at it, add another `DisplayItem` constructor parameter
+indicating the `node` that the `DisplayItem` belongs to (the one that painted
+it); this will be useful when keeping track of mappings between `DisplayItem`s
+and GPU textures.[^cache-key]
 
 The `can_merge` method returns whether the given paint chunk is
 compatible with being drawn into the same `CompositedLayer` as the
