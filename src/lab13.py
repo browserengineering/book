@@ -1714,6 +1714,8 @@ class Browser:
             self.raster_tab()
         if self.needs_draw:
             self.paint_draw_list()
+            for d in self.draw_list:
+                print_tree(d)
             self.draw()
         self.measure_composite_raster_and_draw.stop()
         self.needs_composite = False

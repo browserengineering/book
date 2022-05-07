@@ -1418,18 +1418,11 @@ The resulting display list looks like this (after removing no-ops). The
 first `DrawCompositedLayer` is the root layer for the white background of the
 page; the others are for the first and second group of `DrawText`s.
 
-TODO: exhibits a bug.
-
 
     DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
+    SaveLayer(alpha=0.999)
       DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
-      DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
-      SaveLayer(alpha=0.5)
-        DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
+    SaveLayer(alpha=0.999)
       SaveLayer(alpha=0.5)
         DrawCompositedLayer()
 
