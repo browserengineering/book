@@ -1143,19 +1143,19 @@ to the `draw` stage of the pipeline.
 ::: {.further}
 
 If you look closely at the example in this section, you'll see that the
-`DrawText` command itself only has a rect with a width of 33 pixels, not the
-width of the viewport. On the other hand, the `SaveLayer` has a width of 774
-pixels. The reason they differ is that the text is only 33 pixels wide, but
-the block element that contains it is 774 pixels wide, and the opacity is placed
-on the block element, not the text.
+`DrawText` command's rect is about 30 pixels wide. On the other hand, the
+`SaveLayer` rect is almost as wide as the viewport. The reason they differ is
+that the text is only about 30 pixels wide, but the block element that contains
+it is as wide as the available width.
 
-So does the composited surface need to be 33 pixels wide or 774? In practice you
-could implement either. The algorithm presented in this chapter actually
-chooses 33 pixels, but real browsers sometimes choose 774 depending on their
-algorithm. Also note that if there was any kind of paint command associated
-with the block element itself, such as a background color, then the surface
-would definitely have to be 774 pixels wide. Likewise, if there were multiple
-inline children, the union of their bounds would contribute to the surface size.
+So does the composited surface need to be 30 pixels wide or the whole viewport?
+In practice you could implement either. The algorithm presented in this chapter
+ends up with the smaller one but real browsers sometimes choose the larger,
+depending on their algorithm. Also note that if there was any kind of paint
+command associated with the block element containing the text, such as a
+background color, then the surface would definitely have to be as wide as the
+viewport. Likewise, if there were multiple inline children, the union of their
+bounds would contribute to the surface size.
 
 :::
 
@@ -1418,18 +1418,11 @@ The resulting display list looks like this (after removing no-ops). The
 first `DrawCompositedLayer` is the root layer for the white background of the
 page; the others are for the first and second group of `DrawText`s.
 
-TODO: exhibits a bug.
-
 
     DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
+    SaveLayer(alpha=0.999)
       DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
-      DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
-      SaveLayer(alpha=0.5)
-        DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
+    SaveLayer(alpha=0.999)
       SaveLayer(alpha=0.5)
         DrawCompositedLayer()
 
@@ -1812,9 +1805,10 @@ something that isn't a no-op), regardless of whether they are
 animating, but we won't animate `ClipRRect` commands unless they have
 composited children.
 
-::: {.todo}
-Explain why composited children...
-:::
+In fact, we'll also need to mark a visual effect as needing compositing if
+any of its descendants do. That's because if one effect is run on the GPU,
+then one way or another the ones above it will have to be as well.
+
 
 ``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
 class DisplayItem:
