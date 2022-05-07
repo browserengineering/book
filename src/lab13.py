@@ -1070,7 +1070,7 @@ class CompositedLayer:
 
     def can_merge(self, display_item):
         if self.display_items:
-            return display_item.parent == self.display_item[0].parent
+            return display_item.parent == self.display_items[0].parent
         else:
             return True
 
