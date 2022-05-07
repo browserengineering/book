@@ -1320,7 +1320,7 @@ animations would end up applying to the wrong paint commands.) For
 now, let's focus on the simplest possible way to do that, which is to
 put every paint command into its own layer:
 
-``` {.python expected=False}
+``` {.python}
 class Browser:
     def __init__(self):
         # ...
@@ -1859,12 +1859,12 @@ Explain why composited children...
 ``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
 class DisplayItem:
     def needs_compositing(self):
-        return any([child.needs_compositing() for child in children])
+        return any([child.needs_compositing() for child in self.children])
 
 class SaveLayer(DisplayItem):
     def needs_compositing(self):
         return self.should_save or \
-            any([child.needs_compositing() for child in children])
+            any([child.needs_compositing() for child in self.children])
 ```
 
 Now, instead of layers containing bare paint commands, they can
@@ -1874,9 +1874,12 @@ contain little subtrees of non-composited commands:
 class Browser:
     def composite(self):
         # ...
+        for cmd in self.active_tab_display_list:
+            paint_commands = tree_to_list(cmd, paint_commands)
         paint_commands = [cmd
-            for cmd in tree_to_list(self.active_tab_display_list, [])
-            if not cmd.needs_compositing() and cmd.parent.needs_compositing()
+            for cmd in paint_commands
+            if not cmd.needs_compositing() and cmd.parent and \
+                cmd.parent.needs_compositing()
         ]
         # ...
 ```

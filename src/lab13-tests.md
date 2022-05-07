@@ -27,6 +27,7 @@ Testing the `width` and `height` CSS properties
     >>> browser = lab13.Browser()
     >>> browser.load(test_url)
     >>> browser.render()
+    >>> browser.composite_raster_and_draw()
 
     >>> tab = browser.tabs[browser.active_tab]
     >>> body = tab.nodes.children[0]
@@ -74,6 +75,7 @@ Testing CSS transtions
     >>> browser = lab13.Browser()
     >>> browser.load(transitions_url)
     >>> browser.render()
+    >>> browser.composite_raster_and_draw()
 
     >>> tab = browser.tabs[browser.active_tab]
     >>> div = tab.nodes.children[1].children[0]
@@ -113,6 +115,8 @@ Now let's try it for width:
     >>> browser = lab13.Browser()
     >>> browser.load(transitions_url2)
     >>> browser.render()
+    >>> browser.composite_raster_and_draw()
+
     >>> tab = browser.tabs[browser.active_tab]
     >>> div = tab.nodes.children[1].children[0]
 
@@ -156,6 +160,7 @@ Animations work:
     >>> browser = lab13.Browser()
     >>> browser.load(transitions_url3)
     >>> browser.render()
+    >>> browser.composite_raster_and_draw()
     >>> tab = browser.tabs[browser.active_tab]
     >>> div = tab.nodes.children[1].children[0]
     >>> lab13.parse_transition(div.style.get("transition"))
@@ -180,6 +185,7 @@ Smooth scrolling
     >>> browser = lab13.Browser()
     >>> browser.load(scroll_url)
     >>> browser.render()
+    >>> browser.composite_raster_and_draw()
     >>> tab = browser.tabs[browser.active_tab]
 
 The tab should have smooth scroll set:
