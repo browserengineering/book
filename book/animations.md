@@ -1280,33 +1280,7 @@ class Browser:
 ```
 
 Notice that each display item can be (individually) drawn to the screen by
-executing it and the series of *ancestor [visual] effects* on it. To
-make it easy to access those ancestor visual effects, let's add parent
-pointers to our display tree:
-
-``` {.python}
-def add_parent_pointers(nodes, parent=None):
-    for node in nodes:
-        node.parent = parent
-        add_parent_pointers(node.children, node)
-
-class Browser:
-    def composite(self):
-        add_parent_pointers(self.active_tab_display_list)
-        # ...
-```
-
-Now we can get the list of ancestor effects with a simple loop:
-
-``` {.python}
-def ancestor_effects_list(node):
-    parent = node.parent
-    effects = []
-    while parent:
-        effects = [parent] + effects
-        parent = parent.parent
-    return effects
-```
+executing it and the series of *ancestor [visual] effects* on it. 
 
 When combined together, multiple paint commands form a *composited
 layer*, represented by the `CompositedLayer` class. This class will
@@ -1331,13 +1305,13 @@ class Browser:
         # ...
         for display_item in paint_commands:
             layer = CompositedLayer(self.skia_context)
-            layer.add_paint_chunk(display_item)
+            layer.add(display_item)
             self.composited_layers.append(layer)
 ```
 
 Here, a `CompositedLayer` just stores a list of display items (and a
-surface that they'll be drawn to) and `add_paint_chunk` adds a paint
-command to the list:
+surface that they'll be drawn to) and `add` adds a paint command to
+the list:
 
 ``` {.python replace=self.display_items.append/%20%20%20%20self.display_items.append}
 class CompositedLayer:
@@ -1346,7 +1320,7 @@ class CompositedLayer:
         self.surface = None
         self.display_items = []
 
-    def add_paint_chunk(self, display_item):
+    def add(self, display_item):
         self.display_items.append(display_item)
 ```
 
@@ -1432,9 +1406,11 @@ class Browser:
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = DrawCompositedLayer(composited_layer)
-            for visual_effect in \
-                reversed(composited_layer.ancestor_effects):
-                current_effect = visual_effect.clone([current_effect])
+            if not composited_layer.display_list: pass
+            parent = composited_layer.display_list[0].parent
+            while parent:
+                current_effect = parent.clone([current_effect])
+                parent = parent.parent
             self.draw_list.append(current_effect)
 ```
 
@@ -1550,6 +1526,21 @@ that paint chunk to start. The `can_merge` method on a
 `CompositedLayer` checks compatibility of the paint chunk's animating
 ancestor effects with the ones already on it.
 
+To make it easy to access those ancestor visual effects, let's add parent
+pointers to our display tree:
+
+``` {.python}
+def add_parent_pointers(nodes, parent=None):
+    for node in nodes:
+        node.parent = parent
+        add_parent_pointers(node.children, node)
+
+class Browser:
+    def composite(self):
+        add_parent_pointers(self.active_tab_display_list)
+        # ...
+```
+
 [^why-backwards]: Backwards, because we can't draw things in the wrong
 order. Later items in the display list have to draw later.
 
@@ -1560,7 +1551,7 @@ class Browser:
         for display_item in paint_commands:
             for layer in reversed(self.composited_layers):
                 if layer.can_merge(display_item):
-                    layer.add_paint_chunk(display_item)
+                    layer.add(display_item)
                     break
             else:
                 # ...
@@ -1577,17 +1568,11 @@ composited ancestor (or both have none).
 ``` {.python}
 class CompositedLayer:
     def can_merge(self, display_item):
-        ancestor_effects = ancestor_effects_list(display_item)
-        if len(self.display_items) == 0:
+        if self.display_items:
+            return display_item.parent == self.display_items[0].parent
+        else:
             return True
-        if len(self.ancestor_effects) != len(ancestor_effects):
-            return False
-        if len(self.ancestor_effects) == 0:
-            return True
-        return self.ancestor_effects[-1] == ancestor_effects[
-            composited_ancestor_index(ancestor_effects)]
 ```
-
 
 Composited display items
 ========================
@@ -1600,15 +1585,29 @@ indicating the `node` that the `DisplayItem` belongs to (the one that painted
 it); this will be useful when keeping track of mappings between `DisplayItem`s
 and GPU textures.[^cache-key]
 
-[^cache-key]: Remember that these compositing GPU textures are simply a form of
-cache, and every cache needs a stable cache key to be useful.
+The `can_merge` method returns whether the given paint chunk is
+compatible with being drawn into the same `CompositedLayer` as the
+existing ones. This will be true if they have the same parent.
+ 
+``` {.python}
+class CompositedLayer:
+    def can_merge(self, display_item):
+        if self.display_items:
+            return display_item.parent == self.display_items[0].parent
+        else:
+            return True
 
-``` {.python replace=children=/rect%2c%20children=}
-class DisplayItem:
-    def __init__(self, children=[], node=None):
-        # ...
-        self.node = node
+    def add(self, display_item):
+        assert self.can_merge(display_item)
+        self.display_items.append(display_item)
 ```
+
+
+Composited display items
+========================
+
+Before getting to finishing off `CompositedLayer`, let's add some more features
+to display items to help then support compositing.
 
 Finally, we'll need to be able to get the *composited bounds* of a
 `DisplayItem`. This is necessary to figure out the size of a `skia.Surface` that
@@ -1683,15 +1682,6 @@ member variables: a Skia context, surface, list of display items to raster, and
 the list of ancestor effects. (All paint chunks in the same `CompositedLayer`
 will have the same ancestor effects.)
 
-``` {.python}
-class CompositedLayer:
-    def __init__(self, skia_context):
-        self.skia_context = skia_context
-        self.surface = None
-        self.display_items = []
-        self.ancestor_effects = []
-```
-
 Only paint chunks that have the same *nearest composited visual effect ancestor*
 will be allowed to be in the same `CompositedLayer`.[^simpler] The composited
 ancestor index is the index into the top-down list of ancestor effects
@@ -1699,17 +1689,6 @@ referring to this nearest ancestor. (If there is no composited ancestor, the
 index is -1). Here's how to compute it it. Note how we are walking *up* the
 display list tree (and therefore implicitly up the DOM tree also) via a
 reversed iteration:
-
-``` {.python}
-def composited_ancestor_index(ancestor_effects):
-    count = len(ancestor_effects) - 1
-    for ancestor_item in reversed(ancestor_effects):
-        if ancestor_item.needs_compositing():
-            return count
-            break
-        count -= 1
-    return -1
-```
 
 So all paint chunks in the same `CompositedLayer` will share the same composited
 ancestor index. However, they need not have exactly the same ancestor effects
@@ -1722,27 +1701,6 @@ highest parent display item that is not composited.
 animation".
 
 The `CompositedLayer` class will have the following methods:
-
-* `add_paint_chunk`: adds a new paint chunk to the `CompositedLayer`. The first
-  one being added will initialize its `composited_ancestor_index`.
-
-``` {.python}
-class CompositedLayer:
-    # ...
-    def add_paint_chunk(self, display_item):
-        assert self.can_merge(display_item)
-        ancestor_effects = ancestor_effects_list(display_item)
-        composited_index = composited_ancestor_index(ancestor_effects)
-        if len(self.display_items) == 0 and composited_index >= 0:
-            self.ancestor_effects = ancestor_effects[0:composited_index + 1]
-
-        if composited_index < len(ancestor_effects) - 1:
-            self.display_items.append(
-                ancestor_effects[composited_index + 1],
-            )
-        else:
-            self.display_items.append(display_item)
-```
 
 * `composited_bounds`: returns the union of the composited bounds of all
   paint chunks. The composited bounds of a paint chunk is its display item's
@@ -1765,6 +1723,7 @@ class CompositedLayer:
   account in `draw` as well; see below.]
 
 ``` {.python}
+class CompositedLayer:
     def raster(self):
         bounds = self.composited_bounds()
         if bounds.isEmpty():
@@ -1792,7 +1751,7 @@ part is making sure to re-introduce the top and left offsets that were omitted
 from `raster`.
 
 ``` {.python}
-
+class CompositedLayer:
     def draw(self, canvas):
         bounds = self.composited_bounds()
         surface_offset_x = bounds.left()
@@ -1809,6 +1768,7 @@ The last bit is just to wire it up by generalizing `raster_and_draw` into
 renaming at all callsites), and everything should work end-to-end.
 
 ``` {.python}
+class Browser:
     def composite_raster_and_draw(self):
         # ...
         self.composite()
@@ -1897,6 +1857,22 @@ Avoiding raster and the compositing algorithm is simple in concept: keep track
 of what is animating, and re-run `draw` with different opacity parameters on
 the `CompositedLayer`s that are animating. If nothing else changes, then
 we don't need to re-composite or re-raster anything.
+
+Add another `DisplayItem` constructor parameter
+indicating the `node` that the `DisplayItem` belongs to (the one that painted
+it); this will be useful when keeping track of mappings between `DisplayItem`s
+and GPU textures.[^cache-key]
+
+[^cache-key]: Remember that these compositing GPU textures are simply a form of
+cache, and every cache needs a stable cache key to be useful.
+
+``` {.python replace=children=/rect%2c%20children=}
+class DisplayItem:
+    def __init__(self, children=[], node=None):
+        # ...
+        self.node = node
+```
+
 
 Let's accomplish that. It will have multiple parts, starting with the main
 thread.
@@ -2075,13 +2051,11 @@ Now we can make a simple update to `paint_draw_list` to use it:
 
 ``` {.python}
 class Browser:
-    # ...
     def paint_draw_list(self):
-        # ...
-            for visual_effect in \
-                reversed(composited_layer.ancestor_effects):
-                current_effect = self.clone_latest(
-                    visual_effect, [current_effect])
+        for composited_layer in self.composited_layers:
+            while parent:
+                current_effect = self.clone_latest(parent, [current_effect])
+                # ...
 ```
 
 [^ptrcompare]: This is done by comparing equality of `Element` object
@@ -2181,7 +2155,7 @@ that needs to be animated.
                     layer.absolute_bounds(),
                     absolute_bounds(display_item)):
                     layer = CompositedLayer(self.skia_context)
-                    layer.add_paint_chunk(display_item)
+                    layer.add(display_item)
                     self.composited_layers.append(layer)
                     break
 ```

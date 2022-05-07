@@ -1054,20 +1054,6 @@ def style(node, rules):
 
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
-def composited_ancestor_index(ancestor_effects):
-    count = len(ancestor_effects) - 1
-    for ancestor_item in reversed(ancestor_effects):
-        if ancestor_item.needs_compositing():
-            return count
-            break
-        count -= 1
-    return -1
-
-def composited_ancestor(node):
-    while node and not node.needs_compositing():
-        node = node.parent
-    return node
-
 def absolute_bounds(display_item):
     retval = display_item.composited_bounds()
     effect = display_item.parent
@@ -1081,32 +1067,16 @@ class CompositedLayer:
         self.skia_context = skia_context
         self.surface = None
         self.display_items = []
-        self.ancestor_effects = []
 
     def can_merge(self, display_item):
-        ancestor_effects = ancestor_effects_list(display_item)
-        if len(self.display_items) == 0:
-            return True
-        if len(self.ancestor_effects) != len(ancestor_effects):
-            return False
-        if len(self.ancestor_effects) == 0:
-            return True
-        return self.ancestor_effects[-1] == ancestor_effects[
-            composited_ancestor_index(ancestor_effects)]
-
-    def add_paint_chunk(self, display_item):
-        assert self.can_merge(display_item)
-        ancestor_effects = ancestor_effects_list(display_item)
-        composited_index = composited_ancestor_index(ancestor_effects)
-        if len(self.display_items) == 0 and composited_index >= 0:
-            self.ancestor_effects = ancestor_effects[0:composited_index + 1]
-
-        if composited_index < len(ancestor_effects) - 1:
-            self.display_items.append(
-                ancestor_effects[composited_index + 1],
-            )
+        if self.display_items:
+            return display_item.parent == self.display_items[0].parent
         else:
-            self.display_items.append(display_item)
+            return True
+
+    def add(self, display_item):
+        assert self.can_merge(display_item)
+        self.display_items.append(display_item)
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
@@ -1119,13 +1089,6 @@ class CompositedLayer:
         for item in self.display_items:
             retval.join(absolute_bounds(item))
         return retval
-
-    def composited_items(self):
-        items = []
-        for item in self.ancestor_effects:
-            if item.needs_compositing():
-                items.append(item)
-        return items
 
     def raster(self):
         bounds = self.composited_bounds()
@@ -1547,44 +1510,15 @@ class TaskRunner:
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
-def print_chunks(chunks):
-    for (display_item, ancestor_effects) in chunks:
-        print('chunks:')
-        print("  chunk display items:")
-        print(" " * 4 + str(display_item))
-        print("  chunk ancestor visual effect (skipping no-ops):")
-        count = 4
-        for display_item in ancestor_effects:
-            print(" " * count + str(display_item))
-            count += 2
-
 def print_composited_layers(composited_layers):
     print("Composited layers:")
     for layer in composited_layers:
         print("  " * 4 + str(layer))
 
-def display_list_to_paint_chunks(
-    display_list, ancestor_effects, chunks):
-    for display_item in display_list:
-        if display_item.is_paint_command():
-            chunks.append((display_item, ancestor_effects))
-        else:
-            display_list_to_paint_chunks(
-                display_item.children,
-                ancestor_effects + [display_item], chunks)
-
 def add_parent_pointers(nodes, parent=None):
     for node in nodes:
         node.parent = parent
         add_parent_pointers(node.children, node)
-
-def ancestor_effects_list(node):
-    parent = node.parent
-    effects = []
-    while parent:
-        effects = [parent] + effects
-        parent = parent.parent
-    return effects
 
 USE_GPU = True
 
@@ -1722,18 +1656,18 @@ class Browser:
         for display_item in paint_commands:
             for layer in reversed(self.composited_layers):
                 if layer.can_merge(display_item):
-                    layer.add_paint_chunk(display_item)
+                    layer.add(display_item)
                     break
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
                     absolute_bounds(display_item)):
                     layer = CompositedLayer(self.skia_context)
-                    layer.add_paint_chunk(display_item)
+                    layer.add(display_item)
                     self.composited_layers.append(layer)
                     break
             else:
                 layer = CompositedLayer(self.skia_context)
-                layer.add_paint_chunk(display_item)
+                layer.add(display_item)
                 self.composited_layers.append(layer)
 
         self.active_tab_height = 0
@@ -1756,10 +1690,11 @@ class Browser:
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = DrawCompositedLayer(composited_layer)
-            for visual_effect in \
-                reversed(composited_layer.ancestor_effects):
-                current_effect = self.clone_latest(
-                    visual_effect, [current_effect])
+            if not composited_layer.display_items: continue
+            parent = composited_layer.display_items[0].parent
+            while parent:
+                current_effect = self.clone_latest(parent, [current_effect])
+                parent = parent.parent
             self.draw_list.append(current_effect)
 
     def composite_raster_and_draw(self):
