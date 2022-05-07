@@ -1330,7 +1330,7 @@ class Browser:
         self.composited_layers = []
         # ...
         for display_item in paint_commands:
-            layer = CompositedLayer(skia_context)
+            layer = CompositedLayer(self.skia_context)
             layer.add_paint_chunk(display_item)
             self.composited_layers.append(layer)
 ```
