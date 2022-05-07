@@ -1568,17 +1568,11 @@ composited ancestor (or both have none).
 ``` {.python}
 class CompositedLayer:
     def can_merge(self, display_item):
-        ancestor_effects = ancestor_effects_list(display_item)
-        if len(self.display_items) == 0:
+        if self.display_items:
+            return display_item.parent == self.display_item[0].parent
+        else:
             return True
-        if len(self.ancestor_effects) != len(ancestor_effects):
-            return False
-        if len(self.ancestor_effects) == 0:
-            return True
-        return self.ancestor_effects[-1] == ancestor_effects[
-            composited_ancestor_index(ancestor_effects)]
 ```
-
 
 Composited display items
 ========================
@@ -1825,12 +1819,12 @@ Explain why composited children...
 ``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
 class DisplayItem:
     def needs_compositing(self):
-        return any([child.needs_compositing() for child in children])
+        return any([child.needs_compositing() for child in self.children])
 
 class SaveLayer(DisplayItem):
     def needs_compositing(self):
         return self.should_save or \
-            any([child.needs_compositing() for child in children])
+            any([child.needs_compositing() for child in self.children])
 ```
 
 Now, instead of layers containing bare paint commands, they can
@@ -1840,9 +1834,12 @@ contain little subtrees of non-composited commands:
 class Browser:
     def composite(self):
         # ...
+        for cmd in self.active_tab_display_list:
+            paint_commands = tree_to_list(cmd, paint_commands)
         paint_commands = [cmd
-            for cmd in tree_to_list(self.active_tab_display_list, [])
-            if not cmd.needs_compositing() and cmd.parent.needs_compositing()
+            for cmd in paint_commands
+            if not cmd.needs_compositing() and cmd.parent and \
+                cmd.parent.needs_compositing()
         ]
         # ...
 ```

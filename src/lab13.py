@@ -112,7 +112,7 @@ class DisplayItem:
                 cmd.composited_bounds_internal(rect)
 
     def needs_compositing(self):
-        return any([child.needs_compositing() for child in children])
+        return any([child.needs_compositing() for child in self.children])
 
     def clone(self, children):
         assert False
@@ -288,7 +288,7 @@ class SaveLayer(DisplayItem):
 
     def needs_compositing(self):
         return USE_COMPOSITING and self.should_save or \
-            any([child.needs_compositing() for child in children])
+            any([child.needs_compositing() for child in self.children])
 
     def clone(self, children):
         return SaveLayer(self.sk_paint, self.node, children, \
@@ -1076,6 +1076,7 @@ class CompositedLayer:
 
     def add(self, display_item):
         assert self.can_merge(display_item)
+        self.display_items.append(display_item)
 
     def composited_bounds(self):
         retval = skia.Rect.MakeEmpty()
@@ -1121,6 +1122,7 @@ class CompositedLayer:
                 border_color="red")
 
     def draw(self, canvas):
+        if not self.surface: return
         bounds = self.composited_bounds()
         surface_offset_x = bounds.left()
         surface_offset_y = bounds.top()
@@ -1643,9 +1645,13 @@ class Browser:
     def composite(self):
         self.composited_layers = []
         add_parent_pointers(self.active_tab_display_list)
+        paint_commands = []
+        for cmd in self.active_tab_display_list:
+            paint_commands = tree_to_list(cmd, paint_commands)
         paint_commands = [cmd
-            for cmd in tree_to_list(self.active_tab_display_list, [])
-            if not cmd.needs_compositing() and cmd.parent.needs_compositing()
+            for cmd in paint_commands
+            if not cmd.needs_compositing() and cmd.parent and \
+                cmd.parent.needs_compositing()
         ]
         for display_item in paint_commands:
             for layer in reversed(self.composited_layers):
@@ -1684,8 +1690,8 @@ class Browser:
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = DrawCompositedLayer(composited_layer)
-            if not composited_layer.display_list: pass
-            parent = composited_layer.display_list[0].parent
+            if not composited_layer.display_items: continue
+            parent = composited_layer.display_items[0].parent
             while parent:
                 current_effect = self.clone_latest(parent, [current_effect])
                 parent = parent.parent
