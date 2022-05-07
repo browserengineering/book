@@ -112,7 +112,7 @@ class DisplayItem:
                 cmd.composited_bounds_internal(rect)
 
     def needs_compositing(self):
-        return any([child.needs_compositing() for child in children])
+        return any([child.needs_compositing() for child in self.children])
 
     def clone(self, children):
         assert False
@@ -288,7 +288,7 @@ class SaveLayer(DisplayItem):
 
     def needs_compositing(self):
         return USE_COMPOSITING and self.should_save or \
-            any([child.needs_compositing() for child in children])
+            any([child.needs_compositing() for child in self.children])
 
     def clone(self, children):
         return SaveLayer(self.sk_paint, self.node, children, \
@@ -1159,6 +1159,7 @@ class CompositedLayer:
                 border_color="red")
 
     def draw(self, canvas):
+        if not self.surface: return
         bounds = self.composited_bounds()
         surface_offset_x = bounds.left()
         surface_offset_y = bounds.top()
@@ -1710,9 +1711,13 @@ class Browser:
     def composite(self):
         self.composited_layers = []
         add_parent_pointers(self.active_tab_display_list)
+        paint_commands = []
+        for cmd in self.active_tab_display_list:
+            paint_commands = tree_to_list(cmd, paint_commands)
         paint_commands = [cmd
-            for cmd in tree_to_list(self.active_tab_display_list, [])
-            if not cmd.needs_compositing() and cmd.parent.needs_compositing()
+            for cmd in paint_commands
+            if not cmd.needs_compositing() and cmd.parent and \
+                cmd.parent.needs_compositing()
         ]
         for display_item in paint_commands:
             for layer in reversed(self.composited_layers):
@@ -1728,7 +1733,7 @@ class Browser:
                     break
             else:
                 layer = CompositedLayer(self.skia_context)
-                layer.add_paint_chunk(display_item, ancestor_effects)
+                layer.add_paint_chunk(display_item)
                 self.composited_layers.append(layer)
 
         self.active_tab_height = 0
