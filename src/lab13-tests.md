@@ -33,14 +33,7 @@ The draw display list should be generated as well:
 
     >>> for item in browser.draw_list:
     ...     lab13.print_tree(item)
-     Transform(translate(0, 0))
-       SaveLayer(<no-op>)
-         ClipRRect(<no-op>)
-           Transform(translate(0, 0))
-             SaveLayer(<no-op>)
-               ClipRRect(<no-op>)
-                 Transform(translate(0, 0))
-                   DrawCompositedLayer()
+     DrawCompositedLayer()
 
     >>> tab = browser.tabs[browser.active_tab]
     >>> body = tab.nodes.children[0]
@@ -92,29 +85,27 @@ Testing CSS transtions
 
     >>> for item in browser.draw_list:
     ...     lab13.print_tree(item)
-     Transform(translate(0, 0))
+     DrawCompositedLayer()
+     Transform(<no-op>)
        SaveLayer(<no-op>)
          ClipRRect(<no-op>)
-           Transform(translate(0, 0))
-             DrawCompositedLayer()
-     Transform(translate(0, 0))
+           DrawCompositedLayer()
+     Transform(<no-op>)
        SaveLayer(<no-op>)
          ClipRRect(<no-op>)
-           Transform(translate(0, 0))
+           Transform(<no-op>)
              SaveLayer(<no-op>)
                ClipRRect(<no-op>)
-                 Transform(translate(0, 0))
+                 Transform(<no-op>)
                    SaveLayer(alpha=0.5)
                      DrawCompositedLayer()
-     Transform(translate(0, 0))
+     Transform(<no-op>)
        SaveLayer(<no-op>)
          ClipRRect(<no-op>)
-           Transform(translate(0, 0))
+           Transform(<no-op>)
              SaveLayer(<no-op>)
                ClipRRect(<no-op>)
-                 Transform(translate(0, 0))
-                   DrawCompositedLayer()
-
+                 DrawCompositedLayer()
     >>> tab = browser.tabs[browser.active_tab]
     >>> div = tab.nodes.children[1].children[0]
 
@@ -180,7 +171,6 @@ The `parse_transform` function parses the value of the `transform` CSS property.
 Unsupported values are ignored.
 
     >>> lab13.parse_transform("rotate(45deg)")
-    (0, 0)
 
 Animations work:
 
