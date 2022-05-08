@@ -1740,8 +1740,8 @@ class Browser:
         # ...
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing() and cmd.parent and \
-                cmd.parent.needs_compositing()
+            if not cmd.needs_compositing() and (not cmd.parent or \
+                cmd.parent.needs_compositing())
         ]
         # ...
 ```
@@ -2253,7 +2253,7 @@ standardized transform syntax.
 ``` {.python}
 def parse_transform(transform_str):
     if transform_str.find('translate') < 0:
-        return (0, 0)
+        return None
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
     (x_px, y_px) = \
