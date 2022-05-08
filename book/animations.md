@@ -1283,18 +1283,23 @@ The simplest possible compositing algorithm is to put each paint command
 in its own `CompositedLayer`. Let's do that.
 
 First create a list of all of the paint_commands, using `tree_to_list`:
-``` {.python}
+
+TODO: this is wrong
+
+``` {.python expected=False}
 class Browser:
     def composite(self):
-        paint_commands = []
+        all_commands = []
         for cmd in self.active_tab_display_list:
-            paint_commands = tree_to_list(cmd, paint_commands)
+            all_commands = tree_to_list(cmd, all_commands)
+        paint_commands = [cmd
+            for cmd in all_commands if not cmd.children]
 ```
 
-THen put each paint command in a `CompositedLayer:`
+Then put each paint command in a `CompositedLayer:`
 
 
-``` {.python}
+``` {.python replace=paint_commands/non_composited_commands}
 class Browser:
     def __init__(self):
         # ...
@@ -1635,7 +1640,7 @@ of paint chunks; for each paint chunk it tries to add it to an existing
 order. Later items in the display list have to draw later.
 
 
-``` {.python}
+``` {.python expected=False replace=paint_commands/non_composited_commands}
 class Browser:
     def composite(self):
         for display_item in paint_commands:
@@ -1695,10 +1700,6 @@ contain little subtrees of non-composited commands:
 class Browser:
     def composite(self):
         # ...
-        all_commands = []
-        for cmd in self.active_tab_display_list:
-            all_commands = \
-                tree_to_list(cmd, all_commands)
         non_composited_commands = [cmd
             for cmd in all_commands
             if not cmd.needs_compositing() and cmd.parent and \
@@ -2100,7 +2101,7 @@ that needs to be animated.
 ``` {.python}
     def composite(self):
         # ...
-        for display_item in paint_commands:
+        for display_item in non_composited_commands:
             for layer in reversed(self.composited_layers):
                 if layer.can_merge(display_item):
                     # ...
