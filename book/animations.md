@@ -1759,7 +1759,7 @@ class Browser:
             for cmd in all_commands
             if not cmd.needs_compositing() and (not cmd.parent or \
                 cmd.parent.needs_compositing())
-        ]p
+        ]
         # ...
 ```
 
