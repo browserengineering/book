@@ -1640,7 +1640,7 @@ of paint chunks; for each paint chunk it tries to add it to an existing
 order. Later items in the display list have to draw later.
 
 
-``` {.python expected=False replace=paint_commands/non_composited_commands}
+``` {.python replace=paint_commands/non_composited_commands}
 class Browser:
     def composite(self):
         for display_item in paint_commands:
@@ -2099,6 +2099,7 @@ check if the current paint chunk overlaps another `CompositedLayer` in the list
 that needs to be animated.
 
 ``` {.python}
+class Browser:
     def composite(self):
         # ...
         for display_item in non_composited_commands:
