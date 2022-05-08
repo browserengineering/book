@@ -100,16 +100,10 @@ class DisplayItem:
     def map(self, rect):
         return rect
 
-    def composited_bounds(self):
-        rect = skia.Rect.MakeEmpty()
-        self.composited_bounds_internal(rect)
-        return rect
-
-    def composited_bounds_internal(self, rect):
+    def add_composited_bounds(self, rect):
         rect.join(self.rect)
         for cmd in self.children:
-            if not cmd.needs_compositing():
-                cmd.composited_bounds_internal(rect)
+            cmd.add_composited_bounds(rect)
 
     def needs_compositing(self):
         return any([child.needs_compositing() \
@@ -121,7 +115,7 @@ class DisplayItem:
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children=children, node=node)
-        self.translation = translation
+        self.translation = translation # if translation != (0, 0) else None
 
     def execute(self, canvas):
         if self.translation:
@@ -1066,12 +1060,13 @@ def style(node, rules):
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
 def absolute_bounds(display_item):
-    retval = display_item.composited_bounds()
+    rect = skia.Rect.MakeEmpty()
+    display_item.add_composited_bounds(rect)
     effect = display_item.parent
     while effect:
-        retval = effect.map(retval)
+        rect = effect.map(rect)
         effect = effect.parent
-    return retval
+    return rect
 
 class CompositedLayer:
     def __init__(self, skia_context):
@@ -1090,16 +1085,16 @@ class CompositedLayer:
         self.display_items.append(display_item)
 
     def composited_bounds(self):
-        retval = skia.Rect.MakeEmpty()
+        rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            retval.join(item.composited_bounds())
-        return retval
+            item.add_composited_bounds(rect)
+        return rect
 
     def absolute_bounds(self):
-        retval = skia.Rect.MakeEmpty()
+        rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            retval.join(absolute_bounds(item))
-        return retval
+            rect.join(absolute_bounds(item))
+        return rect
 
     def raster(self):
         bounds = self.composited_bounds()
@@ -1141,9 +1136,14 @@ class CompositedLayer:
             surface_offset_y)
 
     def __repr__(self):
+        composited_bounds = skia.Rect.MakeEmpty()
+        self.add_composited_bounds(composited_bounds)
+        absolute_bounds = skia.Rect.MakeEmpty()
+        self.add_absolute_bounds(absolute_bounds)
+
         return ("layer: composited_bounds={} " +
             "absolute_bounds={} first_chunk={}").format(
-            self.composited_bounds(), self.absolute_bounds(),
+            composited_bounds, absolute_bounds,
             self.display_items if len(self.display_items) > 0 else 'None')
 
 def raster(display_list, canvas):

@@ -1282,9 +1282,10 @@ to the screen by applying an appropriate sequence of visual effects.
 The simplest possible compositing algorithm is to put each paint command
 in its own `CompositedLayer`. Let's do that.
 
-First create a list of all of the paint_commands, using `tree_to_list`:
+Compositing paint commands
+==========================
 
-TODO: this is wrong
+First create a list of all of the paint_commands, using `tree_to_list`:
 
 ``` {.python expected=False}
 class Browser:
@@ -1315,7 +1316,7 @@ class Browser:
 ```
 
 Here, a `CompositedLayer` just stores a list of display items (and a
-surface that they'll be drawn to) and `add` adds a paint command to
+surface that they'll be drawn to). The `add` method adds a paint command to
 the list.^[For now, it's just one display item, but that will change pretty
 soon.]
 
@@ -1330,8 +1331,27 @@ class CompositedLayer:
         self.display_items.append(display_item)
 ```
 
-A `CompositedLayer` needs to know how to compute its size. To do so it'll just
-union the rects of all of its paint commands:
+A `CompositedLayer` needs to know how to compute its surface's size. To do so
+it'll just union the rects of all of its paint commands. To make that easier
+let's put `rect` on the `DisplayItem` class and pass it in the constructor.
+
+``` {.python expected=False}
+class DisplayItem:
+    def __init__(self, rect, children=[],):
+        self.rect = rect
+```
+
+Here's `DrawText`, for example:
+
+``` {.python}
+class DrawText(DisplayItem):
+    def __init__(self, x1, y1, text, font, color):
+        # ...
+        super().__init__(skia.Rect.MakeLTRB(x1, y1,
+            self.right, self.bottom))
+```
+
+Then `composited_bounds` unions the rects of the display items:
 
 ``` {.python expected=False}
 class CompositedLayer:
@@ -1343,8 +1363,13 @@ class CompositedLayer:
         return rect
 ```
 
-Once there is a list of `CompositedLayer`s, rastering the `CompositedLayer`s
-will be look like this:
+Rastering the `CompositedLayer`s is straightfoward: make a surface with the
+right size, then execute each display item (in this case, a single paint
+command). The only tricky part is the need to offset by the top and left
+of the composited bounds. That's necessary beacuse we want to make the surface
+only as big as the painted pixels of the display items. So we first need to
+offset so that the display items execute in the *local coordinate space* of
+the surface.
 
 ``` {.python}
     def raster(self):
@@ -1369,6 +1394,18 @@ will be look like this:
         canvas.restore()
 ```
 
+And then we can plug this into the `Browser`'s raster method:
+
+``` {.python}
+class Browser:
+    def raster_tab(self):
+        for composited_layer in self.composited_layers:
+            composited_layer.raster()
+```
+
+Drawing the surface is just a call to `draw`  on the `skia.Surface`, but
+re-adding theh offset that was removed during `raster`.
+
 
 ``` {.python}
     def draw(self, canvas):
@@ -1379,27 +1416,31 @@ will be look like this:
             surface_offset_y)
 ```
 
-``` {.python}
-class Browser:
-    def raster_tab(self):
-        for composited_layer in self.composited_layers:
-            composited_layer.raster()
-```
+But what about all of the ancestor effects that were not baked into the surface?
+Somehow those have to get applied during draw as well. That's where draw is a
+bit more complicated. One way to do it could be to add special code just to
+figure out how to apply each of the ancestor effects of each `CompositedLayer`.
+It's not *that* much code, but if you try it you'll discover that it's really
+hard to achieve without introducing a second implementation of the display list
+commands, just for the purposes of draw.
 
-Now, drawing them is a bit more complicated. We could add special code just
-to figure out how to apply each of the ancestor effects of each
-`CompositedLayer`. It's not *that* much code, but if you try it you'll discover
-that it's really hard to achieve without introducing a second implementation
-of the display list commands, just for the purposes of draw. Insteaed let's
-take a different approach: constructing a new *draw display list* that replaces
-composited subtrees with a `DrawCompositedLayer` command. Then we can just
-execute that display list to draw to the screen.
+Insteaed let's take a different approach: constructing a new *draw display list*
+that replaces composited subtrees with a `DrawCompositedLayer` command. The
+`execute` method on this command will call `draw` on `CompositedLayer`. Then we
+can just execute that display list to draw to the screen.
 
-For the example we've been working with, the draw display list (again, after
-removing no-ops) will look like this:
+The resulting display list for the
+[nested opacity example](examples/example13-nested-opacity.html) looks like
+this (after removing no-ops). The first `DrawCompositedLayer` is the root
+layer for the white background of the page; the others are for the first and
+second group of `DrawText`s.
 
-    SaveLayer
-        DrawCompositedLayer() # contains a surface with a DrawText in it
+    DrawCompositedLayer()
+    SaveLayer(alpha=0.999)
+      DrawCompositedLayer()
+    SaveLayer(alpha=0.999)
+      SaveLayer(alpha=0.5)
+        DrawCompositedLayer()
 
 The implementation of the `DrawCompositedLayer` display item is quite
 simple:
@@ -1416,7 +1457,7 @@ class DrawCompositedLayer(DisplayItem):
         return "DrawCompositedLayer()"
 ```
 
-And now let's turn to creating the draw display list, and put it in a new
+And now let's turn to creating the draw display list, and putting it in a new
 `Browser.draw_list`. This will involve *cloning* each
 of the ancestor effects in turn and injecting new children. In all but the
 bottom-most ancestor effect, children will be the next cloned visual effect in
@@ -1448,9 +1489,10 @@ class ClipRRect(DisplayItem):
             self.should_clip)
 ```
 
-Constructing `draw_list` involves looping over the ancestor effects in
-reverse order, and cloning them & connecting them together into a recursive
-chain:
+Now loop over the ancestor effects in reverse order, and cloning them &
+connecting them together into a recursive chain. This might look complicated,
+but all it's doing is copying the chain of recursive ancestor effects, and
+placing a `DrawCompositedLayer` at the bottom.
 
 ``` {.python expected=False}
 class Browser:
@@ -1470,23 +1512,11 @@ class Browser:
             self.draw_list.append(current_effect)
 ```
 
-The resulting display list for the
-[nested opacity example](examples/example13-nested-opacity.html) looks like
-this (after removing no-ops). The first `DrawCompositedLayer` is the root
-layer for the white background of the page; the others are for the first and
-second group of `DrawText`s.
-
-    DrawCompositedLayer()
-    SaveLayer(alpha=0.999)
-      DrawCompositedLayer()
-    SaveLayer(alpha=0.999)
-      SaveLayer(alpha=0.5)
-        DrawCompositedLayer()
 
 Drawing to the screen will be simply executing the draw display
 list:[^draw-incorrect]
 
-[^draw-incorrect]: It's worth calling out once again that this is not
+[^draw-incorrect]: It's worth calling out that this is not
 correct in the presence of nested visual effects; see the Go Further section.
 I've left fixing the problem described there to an exercise.
 
@@ -1522,11 +1552,12 @@ class Browser:
 
 
 So simple and elegant! This design is not only easy to implement, but shows
-clearly that: paint, raster compositing and draw are interrelated, and the
+clearly that paint, raster compositing and draw are interrelated, and the
 differences all have to do with the use of caching and the GPU.
 
 Speaking of the GPU: putting each paint command in its own surface wastes a lot
-of GPU memory, so let's address that next.
+of GPU memory, so let's address that next. But since we have a good design
+in place already, it won't be too hard.
 
 ::: {.further}
 
@@ -1584,18 +1615,18 @@ and clipping.
 Grouping Commands
 =================
 
-Right now, every paint command it put in its own layer. But layers are
-expensive: each of them allocates a surface, and each of those
-allocates and holds on to GPU memory. GPU memory is limited, and we
-want to use less of it when possible. To that end, we'd like to use
-fewer layers.
+Right now, every paint command it put in its own composited layer. But
+composited layers are expensive: each of them allocates a surface, and each of
+those allocates and holds on to GPU memory. GPU memory is limited, and we want
+to use less of it when possible. To that end, we'd like to use fewer composited
+layers.
 
-The simplest thing we can do is: put two paint commands into the same
-composited layer if they have the exact same set of ancestor effects. This
-will be determined by the `can_merge` method on `CompositedLayer`s.
+The simplest thing we can do is put paint commands into the same composited
+layer if they have the exact same set of ancestor effects. This  condition will
+be determined by the `can_merge` method on `CompositedLayer`s.
 
-To make it easy to access those ancestor visual effects, let's add parent
-pointers to our display tree:
+Let's implement that. But first, to make it easy to access those ancestor visual
+effects and compare them, add parent pointers to our display list tree:
 
 ``` {.python}
 def add_parent_pointers(nodes, parent=None):
@@ -1609,9 +1640,7 @@ class Browser:
         # ...
 ```
 
-And so `can_merge` looks like this:^[If you're not familiar with Python's
-`for ... else` syntax, the `else` block executes only if the loop never
-executed `break`.]
+And so `can_merge` looks like this:
 
 ``` {.python}
 class CompositedLayer:
@@ -1634,7 +1663,9 @@ by Chromium.] as you can see it's not very complicated. It loops over the list
 of paint chunks; for each paint chunk it tries to add it to an existing
 `CompositedLayer` by walking *backwards* through the `CompositedLayer` list.
 [^why-backwards] If one is found, the paint chunk is added to it; if not, a new
-`CompositedLayer` is added with that paint chunk to start.
+`CompositedLayer` is added with that paint chunk to start.^[If you're not
+familiar with Python's `for ... else` syntax, the `else` block executes only if
+the loop never executed `break`.]
 
 [^why-backwards]: Backwards, because we can't draw things in the wrong
 order. Later items in the display list have to draw later.
@@ -1655,30 +1686,32 @@ class Browser:
 
 
 With this implementation, multiple paint commands will sometimes end up in the
-same `CompositedLayer`, but most of the time they won't. Can't we do better?
-Sometimes a whole subtree of the display list isn't animating, so we should
-be able to put it all in the same `CompositedLayer`. Let's do that.
+same `CompositedLayer`, but the ancestor effects don't *exactly* match, they
+won't. Can't we do better?
+
+Yes we can. Sometimes a whole subtree of the display list isn't animating, so we
+should be able to put it all in the same `CompositedLayer`. 
 
 Non-composited subtrees
 =======================
 
 So far, every internal node of our display list runs in the draw
 phase, while every paint command runs in the raster phase. But some
-internal nodes---visual effects---can't be animated. We can run them
+internal nodes---visual effects---can't be animated. So we can run them
 in the raster phase, which will make the draw phase faster.
 
 The first thing we'll need is a way to signal that a visual effect
-"needs compositing", meaning that it may be animating and so its
+*needs compositing*, meaning that it may be animating and so its
 contents should be cached in a GPU texture. Indicate that with a new
 `needs_compositing` method on `DisplayItem`. As a simple heuristic,
 we'll always composite `SaveLayer`s (but only when they actually do
 something that isn't a no-op), regardless of whether they are
-animating, but we won't animate `ClipRRect` commands unless they have
-composited children.
+animating, but we won't animate `ClipRRect` commands by default.
 
-In fact, we'll also need to mark a visual effect as needing compositing if
-any of its descendants do. That's because if one effect is run on the GPU,
-then one way or another the ones above it will have to be as well.
+We'll *also* need to mark a visual effect as needing compositing if any of its
+descendants do (even if it's a `ClipRRect`). That's because if one effect is
+run on the GPU, then one way or another the ones above it will have to be as
+well.
 
 ``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
 class DisplayItem:
@@ -1694,7 +1727,12 @@ class SaveLayer(DisplayItem):
 ```
 
 Now, instead of layers containing bare paint commands, they can
-contain little subtrees of non-composited commands:
+contain little subtrees of non-composited commands:[^needs-inefficient]
+
+[^needs-inefficient]: As written, our use of `needs_compositing` is quite
+inefficient, because it walks the entire subtree each time it's called. In a
+real browser, this property would be computed by walking the entire display
+list once and setting boolean attributes on each tree node.
 
 ``` {.python}
 class Browser:
@@ -1708,26 +1746,21 @@ class Browser:
         # ...
 ```
 
-Since internal nodes can now be in a `CompositedLayer`, there is a bit
-of added complexity to `composited_bounds`.  Now we'll need to recursively
-union the rects of the whole subtree, so let's add a `DisplayItem` method
-to do that:
+Since internal nodes can now be in a `CompositedLayer`, there is a bit of added
+complexity to `composited_bounds`.  We'll need to recursively union the rects
+of the subtree of non-composited display items, so let's add a `DisplayItem`
+method to do that, and place `rect`:
 
 ``` {.python}
 class DisplayItem:
     def __init__(self, rect, children=[], node=None):
         self.rect = rect
     # ...
-    def composited_bounds(self):
-        rect = skia.Rect.MakeEmpty()
-        self.composited_bounds_internal(rect)
-        return rect
 
-    def composited_bounds_internal(self, rect):
+    def add_composited_bounds(self, rect):
         rect.join(self.rect)
         for cmd in self.children:
-            if not cmd.needs_compositing():
-                cmd.composited_bounds_internal(rect)
+            cmd.add_composited_bounds(rect)
 ```
 
 The rect passed is the usual one; here's `DrawText`:
@@ -1747,10 +1780,10 @@ use this new method as follows:
 class CompositedLayer:
     # ...
     def composited_bounds(self):
-        retval = skia.Rect.MakeEmpty()
+        rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            retval.join(item.composited_bounds())
-        return retval
+            item.add_composited_bounds(rect)
+        return rect
 ```
 
 ::: {.further}
@@ -1811,24 +1844,22 @@ of what is animating, and re-run `draw` with different opacity parameters on
 the `CompositedLayer`s that are animating. If nothing else changes, then
 we don't need to re-composite or re-raster anything.
 
-Add another `DisplayItem` constructor parameter
+To do this we'll need to keep track of anmations by some sort of id, and pass
+that id from the main thread to the browser thread. Let's use the `node`
+pointer (but the pointer only). Add another `DisplayItem` constructor parameter
 indicating the `node` that the `DisplayItem` belongs to (the one that painted
 it); this will be useful when keeping track of mappings between `DisplayItem`s
-and GPU textures.[^cache-key]
+and GPU textures.
 
-[^cache-key]: Remember that these compositing GPU textures are simply a form of
-cache, and every cache needs a stable cache key to be useful.
-
-``` {.python replace=children=/rect%2c%20children=}
+``` {.python
 class DisplayItem:
-    def __init__(self, children=[], node=None):
+    def __init__(self, rect, children=[], node=None):
         # ...
         self.node = node
 ```
 
-
-Let's accomplish that. It will have multiple parts, starting with the main
-thread.
+When animations update, let's add code to pass the node and visual effects that
+changed from one thread to the other. This will have multiple steps:
 
 * If a composited animation is running, and it's the only thing
   happening to the DOM, then only re-do `paint` (in order to update
@@ -2032,13 +2063,13 @@ many real browsers.
 ::: {.further}
 
 While visual effect animations in our browser are now efficient
-and *composited*, they are not *threaded* in the sense of[Chapter 12]
-[threaded-12]: the animation still ticks on the main thread, and if there is a
-slow JavaScript or other task clogging the task queue, animations will stutter.
-This is a significant problem for real browsers, so almost all of them support
-threaded opacity, transform and filter animations; some support certain kinds
-of clip animations as well. Adding threaded animations to our browser is
-left as an exercise at the end of this chapter.
+and *composited*, they are not *threaded* in the sense of
+[Chapter 12][threaded-12]: the animation still ticks on the main thread, and
+if there is a slow JavaScript or other task clogging the task queue, animations
+will stutter. This is a significant problem for real browsers, so almost all of
+them support threaded opacity, transform and filter animations; some support
+certain kinds of clip animations as well. Adding threaded animations to our
+browser is left as an exercise at the end of this chapter.
 
 It's common to hear people use "composited" and "threaded" as synonyms, however.
 That's because in most browsers, compositing is a *prerequisite* for threading.
@@ -2375,12 +2406,13 @@ the absolute bounds of a paint chunk:
 
 ``` {.python}
 def absolute_bounds(display_item):
-    retval = display_item.composited_bounds()
+    rect = skia.Rect.MakeEmpty()
+    display_item.add_composited_bounds(rect)
     effect = display_item.parent
     while effect:
-        retval = effect.map(retval)
+        rect = effect.map(rect)
         effect = effect.parent
-    return retval
+    return rect
 ```
 
 And add a method union all of the absolute bounds of the paint chunks in 
@@ -2389,10 +2421,10 @@ a `CompositedLayer`:
 ``` {.python}
 class CompositedLayer:
     def absolute_bounds(self):
-        retval = skia.Rect.MakeEmpty()
+        rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            retval.join(absolute_bounds(item))
-        return retval
+            rect.join(absolute_bounds(item))
+        return rect
 ```
 
 All this `absolute_bounds` code is already used in the `Browser.composite`

@@ -29,6 +29,19 @@ Testing the `width` and `height` CSS properties
     >>> browser.render()
     >>> browser.composite_raster_and_draw()
 
+The draw display list should be generated as well:
+
+    >>> for item in browser.draw_list:
+    ...     lab13.print_tree(item)
+     Transform(translate(0, 0))
+       SaveLayer(<no-op>)
+         ClipRRect(<no-op>)
+           Transform(translate(0, 0))
+             SaveLayer(<no-op>)
+               ClipRRect(<no-op>)
+                 Transform(translate(0, 0))
+                   DrawCompositedLayer()
+
     >>> tab = browser.tabs[browser.active_tab]
     >>> body = tab.nodes.children[0]
     >>> div = body.children[0]
@@ -76,6 +89,31 @@ Testing CSS transtions
     >>> browser.load(transitions_url)
     >>> browser.render()
     >>> browser.composite_raster_and_draw()
+
+    >>> for item in browser.draw_list:
+    ...     lab13.print_tree(item)
+     Transform(translate(0, 0))
+       SaveLayer(<no-op>)
+         ClipRRect(<no-op>)
+           Transform(translate(0, 0))
+             DrawCompositedLayer()
+     Transform(translate(0, 0))
+       SaveLayer(<no-op>)
+         ClipRRect(<no-op>)
+           Transform(translate(0, 0))
+             SaveLayer(<no-op>)
+               ClipRRect(<no-op>)
+                 Transform(translate(0, 0))
+                   SaveLayer(alpha=0.5)
+                     DrawCompositedLayer()
+     Transform(translate(0, 0))
+       SaveLayer(<no-op>)
+         ClipRRect(<no-op>)
+           Transform(translate(0, 0))
+             SaveLayer(<no-op>)
+               ClipRRect(<no-op>)
+                 Transform(translate(0, 0))
+                   DrawCompositedLayer()
 
     >>> tab = browser.tabs[browser.active_tab]
     >>> div = tab.nodes.children[1].children[0]
