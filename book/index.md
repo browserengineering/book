@@ -72,10 +72,11 @@ Part 4: Modern Browsers
 =======================
 
 (@) [Adding Visual Effects](visual-effects.md)\
-    Blending, Clipping and Compositing
+    Blending, clipping, and compositing
 (@) [Scheduling Tasks and Threads](scheduling.md)\
     The event loop and the rendering pipeline
-(@) Compositing and Animations
+(@) [Animating Visual Changes](animations.md)\
+    Smooth animations using the GPU
 
 ::: {.outro}
 Conclusion
