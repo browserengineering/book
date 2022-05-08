@@ -1692,6 +1692,23 @@ won't. Can't we do better?
 Yes we can. Sometimes a whole subtree of the display list isn't animating, so we
 should be able to put it all in the same `CompositedLayer`. 
 
+::: {.further}
+
+Interestingly enough, as of the time of writing this section, Chromium and
+WebKit both perform the `compositing` step on the main thread, whereas our
+browser does it on the browser thread. This is the only
+way in which our browser is actually ahead of real browsers! The reason
+compositing doesn't (yet) happen on another thread in Chromium is that to get
+there took re-architecting the entire algorithm for compositing. The
+re-architecture turned out to be extremely difficult, because the old one
+was deeply intertwined with nearly every aspect of the rendering engine. The
+re-architecture project only
+[completed in 2021](https://developer.chrome.com/blog/renderingng/#compositeafterpaint),
+so perhaps sometime soon this work will be threaded in Chromium.
+
+:::
+
+
 Non-composited subtrees
 =======================
 
@@ -1810,22 +1827,6 @@ purpose of signaling pre-compositing.
 
 [subpixel]: https://en.wikipedia.org/wiki/Subpixel_rendering
 [will-change]: https://developer.mozilla.org/en-US/docs/Web/CSS/will-change
-
-:::
-
-::: {.further}
-
-Interestingly enough, as of the time of writing this section, Chromium and
-WebKit both perform the `compositing` step on the main thread, whereas our
-browser does it on the browser thread. This is the only
-way in which our browser is actually ahead of real browsers! The reason
-compositing doesn't (yet) happen on another thread in Chromium is that to get
-there took re-architecting the entire algorithm for compositing. The
-re-architecture turned out to be extremely difficult, because the old one
-was deeply intertwined with nearly every aspect of the rendering engine. The
-re-architecture project only
-[completed in 2021](https://developer.chrome.com/blog/renderingng/#compositeafterpaint),
-so perhaps sometime soon this work will be threaded in Chromium.
 
 :::
 
