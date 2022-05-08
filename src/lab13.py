@@ -112,7 +112,8 @@ class DisplayItem:
                 cmd.composited_bounds_internal(rect)
 
     def needs_compositing(self):
-        return any([child.needs_compositing() for child in self.children])
+        return any([child.needs_compositing() \
+            for child in self.children])
 
     def clone(self, children):
         assert False
@@ -120,7 +121,7 @@ class DisplayItem:
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children=children, node=node)
-        self.translation = translation
+        self.translation = translation if translation != (0, 0) else None
 
     def execute(self, canvas):
         if self.translation:
@@ -134,7 +135,8 @@ class Transform(DisplayItem):
 
     def needs_compositing(self):
         return USE_COMPOSITING and self.translation or \
-            any([child.needs_compositing() for child in children])
+            any([child.needs_compositing() \
+                for child in self.children])
 
     def map(self, rect):
         if not self.translation:
@@ -146,7 +148,8 @@ class Transform(DisplayItem):
             return matrix.mapRect(rect)
 
     def clone(self, children):
-        return Transform(self.translation, self.rect,  self.node, children)
+        return Transform(self.translation, self.rect,
+            self.node, children)
 
     def __repr__(self):
         if self.translation:
@@ -199,7 +202,8 @@ class DrawText(DisplayItem):
         self.font = font
         self.text = text
         self.color = color
-        super().__init__(skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom))
+        super().__init__(skia.Rect.MakeLTRB(x1, y1,
+            self.right, self.bottom))
 
     def is_paint_command(self):
         return True
@@ -243,8 +247,10 @@ class DrawRect(DisplayItem):
             fill_color=self.color, width=0)
 
     def __repr__(self):
-        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
-            self.left, self.top, self.right, self.bottom, self.color)
+        return ("DrawRect(top={} left={} " +
+            "bottom={} right={} color={})").format(
+            self.left, self.top, self.right,
+            self.bottom, self.color)
 
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, children, should_clip=True):
@@ -288,7 +294,8 @@ class SaveLayer(DisplayItem):
 
     def needs_compositing(self):
         return USE_COMPOSITING and self.should_save or \
-            any([child.needs_compositing() for child in self.children])
+            any([child.needs_compositing() \
+                for child in self.children])
 
     def clone(self, children):
         return SaveLayer(self.sk_paint, self.node, children, \
@@ -992,8 +999,10 @@ class TranslateAnimation:
     def animate(self):
         self.frame_count += 1
         if self.frame_count >= self.num_frames: return
-        new_x = self.old_x + self.change_per_frame_x * self.frame_count
-        new_y = self.old_y + self.change_per_frame_y * self.frame_count
+        new_x = self.old_x + \
+            self.change_per_frame_x * self.frame_count
+        new_y = self.old_y + \
+            self.change_per_frame_y * self.frame_count
         return "translate({}px,{}px)".format(new_x, new_y)
 
 class ScrollAnimation:
@@ -1042,10 +1051,12 @@ def style(node, rules):
 
     if old_style:
         transitions = diff_styles(old_style, node.style)
-        for property, (old_value, new_value, num_frames) in transitions.items():
+        for property, (old_value, new_value, num_frames) in \
+            transitions.items():
             if property in ANIMATED_PROPERTIES:
                 AnimationClass = ANIMATED_PROPERTIES[property]
-                animation = AnimationClass(old_value, new_value, num_frames)
+                animation = AnimationClass(
+                    old_value, new_value, num_frames)
                 node.animations[property] = animation
                 node.style[property] = old_value
 
@@ -1645,15 +1656,16 @@ class Browser:
     def composite(self):
         self.composited_layers = []
         add_parent_pointers(self.active_tab_display_list)
-        paint_commands = []
+        all_commands = []
         for cmd in self.active_tab_display_list:
-            paint_commands = tree_to_list(cmd, paint_commands)
-        paint_commands = [cmd
-            for cmd in paint_commands
+            all_commands = \
+                tree_to_list(cmd, all_commands)
+        non_composited_commands = [cmd
+            for cmd in all_commands
             if not cmd.needs_compositing() and cmd.parent and \
                 cmd.parent.needs_compositing()
         ]
-        for display_item in paint_commands:
+        for display_item in non_composited_commands:
             for layer in reversed(self.composited_layers):
                 if layer.can_merge(display_item):
                     layer.add(display_item)
@@ -1693,7 +1705,8 @@ class Browser:
             if not composited_layer.display_items: continue
             parent = composited_layer.display_items[0].parent
             while parent:
-                current_effect = self.clone_latest(parent, [current_effect])
+                current_effect = \
+                    self.clone_latest(parent, [current_effect])
                 parent = parent.parent
             self.draw_list.append(current_effect)
 
