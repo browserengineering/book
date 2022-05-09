@@ -5,56 +5,155 @@ prev: scheduling
 next: skipped
 ...
 
-The UI of a complex web application requires not just fast loading, visually
-interesting rendering, and responsiveness to input and scrolling. It also needs
-smooth *animations* when transitioning between DOM states. These transitions
-improve usability of the web application by helping users understand what
-changed, and improve visual polish by replacing sudden jumps with smooth
-interpolations.
+Complex web application use *animations* when transitioning between
+DOM states. These transitions improve usability by helping users
+understand what changes are occuring. They also improve visual polish
+by replacing sudden jumps with gradual change. But to execute these
+animations smoothly, the browser must make use of the computer's GPU
+and minimize work using compositing.
 
-Modern browsers have APIs that enable animating the styles of DOM elements. To
-implement these APIs performantly, behind the scenes GPU acceleration and
-compositing is needed to make those animations smooth and fast.
+JavaScript Animations
+=====================
 
-Types of animations
-===================
+An [animation] is a sequence of still pictures shown in quick
+succession that create an illusion of *movement* to the human
+eye.[^general-movement] Web pages typically animate effects like
+changing color, fading an element in or out, or resizing an element.
+Browsers also use animations in response to user actions like
+scrolling, resizing, and pinch-zoom. And some types of animated edia,
+like videos, can also be included in web pages.[^video-anim] In this
+chapter we'll focus mostly on web page animations, though we'll touch
+on scrolling at the end.[^excuse]
 
-An [animation] is a sequence of pictures shown in quick succession that create
-an illusion of *movement* to the human eye.[^general-movement] The pixel
-changes in an animation are *not* arbitrary; they are ones that feel logical to
-a human mind trained by experience in the real world.
-
-[^general-movement]: Here *movement* should be construed broadly to encompass
-all of the kinds of visual changes humans are used to seeing and good at
-recognizing---not just movement from side to side, but growing, shrinking,
-rotating, fading, blurring, and sharpening.
+[^general-movement]: Here *movement* should be construed broadly to
+encompass all of the kinds of visual changes humans are used to seeing
+and good at recognizing---not just movement from side to side, but
+growing, shrinking, rotating, fading, blurring, and sharpening. The
+point is that an animation is not an *arbitrary* sequence of pictures;
+the sequence must feel, to a human mind trained by experience in the
+real world, to be a continuous motion.
 
 [animation]: https://en.wikipedia.org/wiki/Animation
 
-On web pages, there are several categories of common animations: DOM,
-input-driven and video-like. A DOM animation is a movement or visual effect
-change of elements on the screen, achieved by interpolating CSS properties of
-elements such as color, opacity or sizing, or changes of text content.
-Input-driven animations involve input of course: scrolling, page resizing,
-pinch-zoom, draggable menus and similar effects.[^video-anim]  In this chapter
-we'll focus mostly on DOM animations, with a bit of input-driven animations a
-bit at the end.[^excuse]
+[^video-anim]: Video-like animations also include animated images, and
+animated canvases. Since our browser doesn't support images, this
+topic is beyond the scope of this book, but it has its own
+[fascinating complexities][videong].
 
-[^video-anim]: And video-like animations include videos, animated images, and
-animated canvases.
+[videong]: https://developer.chrome.com/blog/videong/
 
-[^excuse]: Video animations is a topic unto itself, but is beyond the
-scope of this book. Arguably, canvas is a bit different than the other two,
-since it's implemented by developer scripts. And of course a canvas can have
-animations within it that look about the same as some DOM animations.
+Let's write a simple animation using the `requestAnimationFrame` API
+[implemented in Chapter 12](scheduling.md#animating-frames). This
+animation lets us request that some JavaScript run on the next
+*frame*, and we can have that JavaScript change the page slightly.
+To do this repeatedly, we'll need code like this:
 
-DOM and input-driven animations can be sub-categorized into *layout-inducing*
-and *visual*. An animation is layout-inducing if it changes an input to layout;
-animating `width` is one example that we'll encounter in this chapter.
-Otherwise the animation is visual, such as animations of `opacity` or
-`background-color`.
+``` {.javascript file=example-opacity-js}
+function run_animation_frame() {
+    if (animate())
+        requestAnimationFrame(run_animation_frame);
+}
+requestAnimationFrame(run_animation_frame);
+```
 
+Here `animate` makes some small change to the page to give the
+impression of continuous change. It returns `true` until it's done
+animating, and then stops. By changing what `animate` does we can
+change what animation occurs.
 
+Let's write a fade animation. We can fade in something out by smoothly
+transitioning its `opacity` value from 0.0 to 0.999.[^why-not-one] If we
+want to do this animation over 120 frames (about two seconds), that
+means we need to increase the opacity by about 0.008 on each frame.
+
+[^why-not-one]: Real browsers apply certain optimizations when opacity
+is exactly 1, so real-world websites often start animations at 0.999.
+That way, the animation is smooth. So it's easier to dig into the
+performance of this example on a real browser with 0.999 opacity.
+Starting animations at 0.999 is also a common trick used on web sites
+that want to avoid visual popping of the content as it goes in and out
+of GPU-accelerated mode. I chose 0.999 because the visual difference
+from 1.0 is imperceptible.
+
+For example, let's animate this `div` containing the word "Test":
+
+``` {.html file=example-opacity-html}
+<div>Test</div>
+```
+
+The `animate` function will track how many frames have occurred and 
+
+``` {.javascript file=example-opacity-js}
+var div = document.querySelectorAll("div")[0];
+var total_frames = 120;
+var current_frame = 0;
+var change_per_frame = 0.999 / total_frames;
+function animate() {
+    current_frame++;
+    var new_opacity = current_frame * change_per_frame
+    div.style = "opacity:" +
+        (percent_remaining * 0.999 +
+            (1 - percent_remaining) * 0.1);
+    return current_frame < total_frames;
+}
+```
+
+Here's how it looks:
+
+<iframe src="examples/example13-opacity-raf.html"></iframe>
+(click [here](examples/example13-opacity-raf.html) to load the example in
+your browser)
+
+This code will almost run in our browser, except that we haven't yet
+added support changing an element's `style` attribute from JavaScript.
+Let's go ahead and add that feature. We'll need to register a setter on
+the `style` attribute of `Node` in the JavaScript runtime:
+
+``` {.javascript file=runtime}
+Object.defineProperty(Node.prototype, 'style', {
+    set: function(s) {
+        call_python("style_set", this.handle, s.toString());
+    }
+});
+```
+
+Then, inside the browser, we'll need to define a handler for `style_set`:
+
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.interp.export_function("style_set", self.style_set)
+
+     def style_set(self, handle, s):
+        elt = self.handle_to_node[handle]
+        elt.attributes["style"] = s;
+        self.tab.set_needs_render()
+```
+
+Note that the `style_set` function sets the `needs_render` flag. That
+makes sure that the browser re-renders the web page with the new
+`style` parameter, and therefore shows the user the word "Test" slowly
+fading into view.
+
+::: {.further}
+
+Opacity is a special kind of CSS filter. And where it makes sense, other filters
+that parameterize on some numeric input (such as [blur]) can also be animated
+just as easily. And as we'll see, all of them can be optimized to avoid raster
+entirely during the animation.
+
+Likewise, certain paint-only effects such as color and background-color are also
+possible to animate, since colors are numeric and can be interpolated. (In that
+ase, each color channel is interpolated independently.) These are also
+visual effects, but not quite of the same character, because background color
+doesn't apply a visual effect to a whole DOM subtree. It's instead a display
+list parameter that happens not to cause layout, but generally still
+needs raster. This makes them harder to optimize.
+
+:::
+
+[blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur
 ::: {.further}
 
 The distinction between visual effect and layout animations is important for two
@@ -72,52 +171,6 @@ between content and the edge of the window) during the animation, to avoid
 updating layout on every animation frame.
 
 :::
-
-The animation loop
-==================
-
-Let's start by exploring some example animations. The simplest way to implement
-them in our current browser is with some JavaScript and a few tiny extensions
-to our browser's APIs, so we'll start there. Almost any animation
-can in principle be implemented this way.
-
-In Chapter 12 we [implemented](scheduling.md#animating-frames) the
-`requestAnimationFrame` API and built a demo that modifies the `innerHTML`
-of a DOM element on each frame. That is indeed an animation---a
-*JavaScript-driven* animation. These animations all have the following
-structure:
-
-``` {.javascript file=example-opacity-js}
-function run_animation_frame() {
-    if (animate())
-        requestAnimationFrame(run_animation_frame);
-}
-requestAnimationFrame(run_animation_frame);
-```
-
-where `animate` is a (custom-to-each-animation) function that updates the
-animation from one frame to the next, and returns `true` as long as it needs to
-keep animating. For example, the Chapter 12 equivalent of this method sets the
-`innerHTML` of an element to increase a counter. The animation examples in this
-chapter will modify CSS properties instead.
-
-Even better would be to run these CSS property animations automatically in the
-browser. As you might guess, there are huge performance, complexity and
-architectural advantages to doing so.[^advantages] And that's what this chapter
-is really about: how to go about doing that, and exploring all of these
-advantages. But it's important to keep in mind that the way the browser will
-implement these animations is at its root
-*exactly the same*: run an animation loop at 60Hz and advance the animation
- frame-by-frame.
-
-[^advantages]: Advantages such as optimizing which parts of the rendering
-pipeline have to be re-run on each animation frame, and running animations
-entirely on the browser thread.
-
-The browser implementation ends up quite complicated, and it's easy to lose
-track of where we're headed. So if you start to get lost, just remember: all
-that's going on is optimizing animation loops by building them directly into
-the rendering pipeline.
 
 ::: {.further}
 
@@ -370,109 +423,6 @@ browsers.
 
 :::
 
-Opacity animations
-==================
-
-In Chapter 12 we [implemented](scheduling.md#animating-frames) the
-`requestAnimationFrame` API and built a demo that modifies the `innerHTML`
-of a DOM element on each frame. That is indeed an animation---a
-*JavaScript-driven* animation---but `innerHTML` is generally not how
-high-quality animations are done on the web. Instead, it almost always makes
-sense to first render some content into layout objects, then apply a DOM
-animation to the layout tree by animating CSS properties.
-
-It's straightforward to see how this works for opacity: define some
-HTML that you want to animate, then interpolate the `opacity` CSS property in
-JavaScript smoothly from one value to another. Here's an example that animates
-from 0.999[^why-not-one] to 0.1, over 120 frames (about two seconds), then back
-up to 0.999 for 120 more frames, and repeats.
-
-[^why-not-one]: The animation starts below 1 because most real browsers remove
-certain animation-related optimizations when opacity is exactly 1. So it's
-easier to dig into the performance of this example on a real browser with 0.999
-opacity. Starting animations at 0.999 is also a common trick used on web sites
-that want to avoid visual popping of the content as it goes in and out of
-GPU-accelerated mode. I chose 0.999 because the visual difference from 1.0 is
-imperceptible.
-
-The HTML is:
-
-``` {.html file=example-opacity-html}
-<div>Test</div>
-```
-
-And here is the `animate` implementation for this example:
-``` {.javascript file=example-opacity-js}
-var frames_remaining = 120;
-var go_down = true;
-var div = document.querySelectorAll("div")[0];
-function animate() {
-    var percent_remaining = frames_remaining / 120;
-    if (!go_down) percent_remaining = 1 - percent_remaining;
-    div.style = "opacity:" +
-        (percent_remaining * 0.999 +
-            (1 - percent_remaining) * 0.1);
-    if (frames_remaining-- == 0) {
-        go_down = !go_down
-        frames_remaining = 120;
-    }
-    return true;
-}
-```
-
-Here's how it renders:
-
-<iframe src="examples/example13-opacity-raf.html"></iframe>
-(click [here](examples/example13-opacity-raf.html) to load the example in
-your browser)
-
-This example uses a new feature we haven't added to our browser yet: modifying
-the inline style of an element with JavaScript. Doing so has the same effect as
-having specified the new `style` attribute value in HTML.
-
-Let's go ahead and add that feature. We'll need to register a setter on
-the `style` attribute of `Node` in the JavaScript runtime:
-
-``` {.javascript file=runtime}
-Object.defineProperty(Node.prototype, 'style', {
-    set: function(s) {
-        call_python("style_set", this.handle, s.toString());
-    }
-});
-```
-
-And some simple Python code:
-
-``` {.python}
-class JSContext:
-    def __init__(self, tab):
-        self.interp.export_function("style_set", self.style_set)
-
-     def style_set(self, handle, s):
-        elt = self.handle_to_node[handle]
-        elt.attributes["style"] = s;
-        self.tab.set_needs_render()
-```
-
-::: {.further}
-
-Opacity is a special kind of CSS filter. And where it makes sense, other filters
-that parameterize on some numeric input (such as [blur]) can also be animated
-just as easily. And as we'll see, all of them can be optimized to avoid raster
-entirely during the animation.
-
-Likewise, certain paint-only effects such as color and background-color are also
-possible to animate, since colors are numeric and can be interpolated. (In that
-ase, each color channel is interpolated independently.) These are also
-visual effects, but not quite of the same character, because background color
-doesn't apply a visual effect to a whole DOM subtree. It's instead a display
-list parameter that happens not to cause layout, but generally still
-needs raster. This makes them harder to optimize.
-
-:::
-
-[blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur
-
 Width/height animations
 =======================
 
@@ -598,6 +548,25 @@ animated without introducing `width` and `height`, such as `font-size`.
 
 CSS transitions
 ===============
+
+
+Even better would be to run these CSS property animations automatically in the
+browser. As you might guess, there are huge performance, complexity and
+architectural advantages to doing so.[^advantages] And that's what this chapter
+is really about: how to go about doing that, and exploring all of these
+advantages. But it's important to keep in mind that the way the browser will
+implement these animations is at its root
+*exactly the same*: run an animation loop at 60Hz and advance the animation
+ frame-by-frame.
+
+[^advantages]: Advantages such as optimizing which parts of the rendering
+pipeline have to be re-run on each animation frame, and running animations
+entirely on the browser thread.
+
+The browser implementation ends up quite complicated, and it's easy to lose
+track of where we're headed. So if you start to get lost, just remember: all
+that's going on is optimizing animation loops by building them directly into
+the rendering pipeline.
 
 But why do we need JavaScript just to smoothly interpolate `opacity` or `width`?
 Well, that's what [CSS transitions][css-transitions] are for. But they're not
