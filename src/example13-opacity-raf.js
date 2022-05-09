@@ -1,24 +1,12 @@
 var div = document.querySelectorAll("div")[0];
 var total_frames = 120;
 var current_frame = 0;
-var change_per_frame = (0.999 - 0.1) / total_frames;
-
-function fade_in() {
+var change_per_frame = 0.999 / total_frames;
+function animate() {
     current_frame++;
-    var new_opacity = current_frame * change_per_frame + 0.1;
+    var new_opacity = current_frame * change_per_frame;
     div.style = "opacity:" + new_opacity;
     return current_frame < total_frames;
-}
-
-function run_fade_in() {
-    if (fade_in())
-        requestAnimationFrame(run_fade_in);
-}
-
-function start_fade_in(e) {
-    current_frame = 0;
-    requestAnimationFrame(run_fade_in);
-    e.preventDefault();
 }
 
 function fade_out() {

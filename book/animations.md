@@ -78,7 +78,7 @@ from 1.0 is imperceptible.
 For example, let's animate this `div` containing the word "Test":
 
 ``` {.html file=example-opacity-html}
-<div>Test</div>
+<div>This text fades out</div>
 ```
 
 The `animate` function will track how many frames have occurred and 
@@ -90,10 +90,8 @@ var current_frame = 0;
 var change_per_frame = 0.999 / total_frames;
 function animate() {
     current_frame++;
-    var new_opacity = current_frame * change_per_frame
-    div.style = "opacity:" +
-        (percent_remaining * 0.999 +
-            (1 - percent_remaining) * 0.1);
+    var new_opacity = current_frame * change_per_frame;
+    div.style = "opacity:" + new_opacity;
     return current_frame < total_frames;
 }
 ```
