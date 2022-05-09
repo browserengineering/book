@@ -98,16 +98,16 @@ function animate() {
 }
 ```
 
-Here's how it looks:
+Here's how it looks; you'll probably need to refresh the page or [open
+it full-screen](examples/example13-opacity-raf.html) to watch the
+animation from the beginning.
 
 <iframe src="examples/example13-opacity-raf.html"></iframe>
-(click [here](examples/example13-opacity-raf.html) to load the example in
-your browser)
 
-This code will almost run in our browser, except that we haven't yet
-added support changing an element's `style` attribute from JavaScript.
-Let's go ahead and add that feature. We'll need to register a setter on
-the `style` attribute of `Node` in the JavaScript runtime:
+This animation will almost run in our browser, except that our browser
+doesn't yet support JavaScript changing an element's `style`
+attribute. Let's go ahead and add that feature. We'll need to register
+a setter on the `style` attribute of `Node` in the JavaScript runtime:
 
 ``` {.javascript file=runtime}
 Object.defineProperty(Node.prototype, 'style', {
