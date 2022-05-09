@@ -8,7 +8,7 @@ next: skipped
 Complex web application use *animations* when transitioning between
 DOM states. These transitions improve usability by helping users
 understand what changes are occuring. They also improve visual polish
-by replacing sudden jumps with gradual changes. But to execute these
+by replacing sudden jumps with gradual change. But to execute these
 animations smoothly, the browser must make use of the computer's GPU
 and minimize work using compositing.
 
@@ -20,18 +20,18 @@ succession that create an illusion of *movement* to the human
 eye.[^general-movement] Web pages typically animate effects like
 changing color, fading an element in or out, or resizing an element.
 Browsers also use animations in response to user actions like
-scrolling, resizing, and pinch-zoom. And some types of animated media,
+scrolling, resizing, and pinch-zoom. And some types of animated edia,
 like videos, can also be included in web pages.[^video-anim] In this
 chapter we'll focus mostly on web page animations, though we'll touch
-on scrolling at the end.
+on scrolling at the end.[^excuse]
 
 [^general-movement]: Here *movement* should be construed broadly to
 encompass all of the kinds of visual changes humans are used to seeing
 and good at recognizing---not just movement from side to side, but
 growing, shrinking, rotating, fading, blurring, and sharpening. The
 point is that an animation is not an *arbitrary* sequence of pictures;
-the sequence must feel continuous to a human mind trained by experience in the
-real world.
+the sequence must feel, to a human mind trained by experience in the
+real world, to be a continuous motion.
 
 [animation]: https://en.wikipedia.org/wiki/Animation
 
@@ -44,11 +44,11 @@ topic is beyond the scope of this book, but it has its own
 
 Let's write a simple animation using the `requestAnimationFrame` API
 [implemented in Chapter 12](scheduling.md#animating-frames). This
-animation lets us request that some JavaScript code run on the next
-frame, and we can have that code change the page slightly.
+animation lets us request that some JavaScript run on the next
+*frame*, and we can have that JavaScript change the page slightly.
 To do this repeatedly, we'll need code like this:
 
-``` {.javascript file=example-opacity-js replace=animate/fade_out,animation_frame/fade_out}
+``` {.javascript file=example-opacity-js}
 function run_animation_frame() {
     if (animate())
         requestAnimationFrame(run_animation_frame);
@@ -62,48 +62,52 @@ animating, and then stops. By changing what `animate` does we can
 change what animation occurs.
 
 Let's write a fade animation. We can fade in something out by smoothly
-transitioning its `opacity` value from 0.1 to 0.999.[^why-not-one] If we
+transitioning its `opacity` value from 0.0 to 0.999.[^why-not-one] If we
 want to do this animation over 120 frames (about two seconds), that
 means we need to increase the opacity by about 0.008 on each frame.
 
 [^why-not-one]: Real browsers apply certain optimizations when opacity
-is exactly 1, so real-world websites often start and end animations at
-0.999 so that each frame is drawn the same way and the animation is
-smooth. Starting animations at 0.999 is also a common trick used on
-web sites that want to avoid visual popping of the content as it goes
-in and out of GPU-accelerated mode. I chose 0.999 because the visual
-difference from 1.0 is imperceptible.
+is exactly 1, so real-world websites often start animations at 0.999.
+That way, the animation is smooth. So it's easier to dig into the
+performance of this example on a real browser with 0.999 opacity.
+Starting animations at 0.999 is also a common trick used on web sites
+that want to avoid visual popping of the content as it goes in and out
+of GPU-accelerated mode. I chose 0.999 because the visual difference
+from 1.0 is imperceptible.
 
 For example, let's animate this `div` containing the word "Test":
 
 ``` {.html file=example-opacity-html}
-<div>This text fades out</div>
+<div>Test</div>
 ```
 
 The `animate` function will track how many frames have occurred and 
 
-``` {.javascript file=example-opacity-js replace=animate/fade_in}
+``` {.javascript file=example-opacity-js}
 var div = document.querySelectorAll("div")[0];
 var total_frames = 120;
 var current_frame = 0;
-var change_per_frame = (0.999 - 0.1) / total_frames;
+var change_per_frame = 0.999 / total_frames;
 function animate() {
     current_frame++;
-    var new_opacity = current_frame * change_per_frame + 0.1;
-    div.style = "opacity:" + new_opacity;
+    var new_opacity = current_frame * change_per_frame
+    div.style = "opacity:" +
+        (percent_remaining * 0.999 +
+            (1 - percent_remaining) * 0.1);
     return current_frame < total_frames;
 }
 ```
 
-You could, of course, fade the text out by making `change_per_frame`
-negative. Here's how it looks; click the buttons to start a fade:
+Here's how it looks:
 
 <iframe src="examples/example13-opacity-raf.html"></iframe>
+(click [here](examples/example13-opacity-raf.html) to load the example in
+your browser)
 
-This animation will almost run in our browser, except that our browser
-doesn't yet support JavaScript changing an element's `style`
-attribute. Let's go ahead and add that feature. Register
-a setter on the `style` attribute of `Node` in the JavaScript runtime:
+This code will almost run in our browser, except that we haven't yet
+added support changing an element's `style` attribute from JavaScript.
+Let's go ahead and add that feature. We'll need to register a setter on
+the `style` attribute of `Node` in the JavaScript runtime:
 
 ``` {.javascript file=runtime}
 Object.defineProperty(Node.prototype, 'style', {
@@ -113,7 +117,7 @@ Object.defineProperty(Node.prototype, 'style', {
 });
 ```
 
-Then, inside the browser, define a handler for `style_set`:
+Then, inside the browser, we'll need to define a handler for `style_set`:
 
 ``` {.python}
 class JSContext:
