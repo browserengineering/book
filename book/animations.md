@@ -23,7 +23,7 @@ Browsers also use animations in response to user actions like
 scrolling, resizing, and pinch-zoom. And some types of animated media,
 like videos, can also be included in web pages.[^video-anim] In this
 chapter we'll focus mostly on web page animations, though we'll touch
-on scrolling at the end.[^excuse]
+on scrolling at the end.
 
 [^general-movement]: Here *movement* should be construed broadly to
 encompass all of the kinds of visual changes humans are used to seeing
