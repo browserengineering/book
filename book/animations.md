@@ -8,7 +8,7 @@ next: skipped
 Complex web application use *animations* when transitioning between
 DOM states. These transitions improve usability by helping users
 understand what changes are occuring. They also improve visual polish
-by replacing sudden jumps with gradual change. But to execute these
+by replacing sudden jumps with gradual changes. But to execute these
 animations smoothly, the browser must make use of the computer's GPU
 and minimize work using compositing.
 
@@ -20,7 +20,7 @@ succession that create an illusion of *movement* to the human
 eye.[^general-movement] Web pages typically animate effects like
 changing color, fading an element in or out, or resizing an element.
 Browsers also use animations in response to user actions like
-scrolling, resizing, and pinch-zoom. And some types of animated edia,
+scrolling, resizing, and pinch-zoom. And some types of animated media,
 like videos, can also be included in web pages.[^video-anim] In this
 chapter we'll focus mostly on web page animations, though we'll touch
 on scrolling at the end.[^excuse]
@@ -44,8 +44,8 @@ topic is beyond the scope of this book, but it has its own
 
 Let's write a simple animation using the `requestAnimationFrame` API
 [implemented in Chapter 12](scheduling.md#animating-frames). This
-animation lets us request that some JavaScript run on the next
-*frame*, and we can have that JavaScript change the page slightly.
+animation lets us request that some JavaScript code run on the next
+*frame*, and we can have that code change the page slightly.
 To do this repeatedly, we'll need code like this:
 
 ``` {.javascript file=example-opacity-js}
