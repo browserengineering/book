@@ -75,7 +75,7 @@ Part 4: Modern Browsers
     Blending, clipping, and compositing
 (@) [Scheduling Tasks and Threads](scheduling.md)\
     The event loop and the rendering pipeline
-(@) [Animating Visual Changes](animations.md)\
+(@) [Animating and Compositing](animations.md)\
     Smooth animations using the GPU
 
 ::: {.outro}
