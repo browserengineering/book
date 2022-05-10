@@ -30,8 +30,8 @@ encompass all of the kinds of visual changes humans are used to seeing
 and good at recognizing---not just movement from side to side, but
 growing, shrinking, rotating, fading, blurring, and sharpening. The
 point is that an animation is not an *arbitrary* sequence of pictures;
-the sequence must feel, to a human mind trained by experience in the
-real world, to be a continuous motion.
+the sequence must feel continuous to a human mind trained by experience in the
+real world.
 
 [animation]: https://en.wikipedia.org/wiki/Animation
 
@@ -45,7 +45,7 @@ topic is beyond the scope of this book, but it has its own
 Let's write a simple animation using the `requestAnimationFrame` API
 [implemented in Chapter 12](scheduling.md#animating-frames). This
 animation lets us request that some JavaScript code run on the next
-*frame*, and we can have that code change the page slightly.
+frame, and we can have that code change the page slightly.
 To do this repeatedly, we'll need code like this:
 
 ``` {.javascript file=example-opacity-js}
@@ -104,7 +104,7 @@ animation from the beginning.
 
 This animation will almost run in our browser, except that our browser
 doesn't yet support JavaScript changing an element's `style`
-attribute. Let's go ahead and add that feature. We'll need to register
+attribute. Let's go ahead and add that feature. Register
 a setter on the `style` attribute of `Node` in the JavaScript runtime:
 
 ``` {.javascript file=runtime}
@@ -115,7 +115,7 @@ Object.defineProperty(Node.prototype, 'style', {
 });
 ```
 
-Then, inside the browser, we'll need to define a handler for `style_set`:
+Then, inside the browser, define a handler for `style_set`:
 
 ``` {.python}
 class JSContext:
