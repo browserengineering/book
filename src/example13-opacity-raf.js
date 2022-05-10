@@ -15,9 +15,10 @@ function run_fade_in() {
         requestAnimationFrame(run_fade_in);
 }
 
-function start_fade_in() {
+function start_fade_in(e) {
     current_frame = 0;
     requestAnimationFrame(run_fade_in);
+    e.preventDefault();
 }
 
 function fade_out() {
@@ -32,9 +33,10 @@ function run_fade_out() {
         requestAnimationFrame(run_fade_out);
 }
 
-function start_fade_out() {
+function start_fade_out(e) {
     current_frame = 0;
     requestAnimationFrame(run_fade_out);
+    e.preventDefault();
 }
 
 document.querySelectorAll("button")[0].addEventListener("click", start_fade_out);
