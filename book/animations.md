@@ -190,32 +190,81 @@ decade of the [2010s][cssanim-hist].
 GPU acceleration
 ================
 
-However, even before trying out any examples, it should be very clear from
-chapters 11 and 12 that there is no way to animate reliably at 60Hz if
-raster-and-draw takes
-[66ms or more per frame](scheduling.md#profiling-rendering) on simple examples.
+If you try the fade animation in our browser, you'll probably notice
+that it's not particularly smooth. And that shouldn't be surprising;
+after all, [last chapter](scheduling.md#profiling-rendering) had the
+following figures for our browser:
 
-So the first order of business is to move raster and draw to the
-[GPU][gpu]. Because both SDL and Skia support these modes, turning it on is
-just a matter of passing the right configuration parameters. First you'll need
-to import code for OpenGL. Install the library:
+    Time in raster-and-draw on average: 66ms
+    Time in render on average: 23ms
+
+With 66ms per frame, our browser is barely doing fifteen frames per
+second, not sixty. For smooth animations we'll need to speed up raster
+and draw.
+
+The best way to do that is to move raster and draw to the [GPU][gpu].
+A GPU is essentially a chip in your computer that runs programs, much
+like your CPU. But the GPU is specialized toward running very simple
+programs with massive parallelism; it was developed to do simple
+operations to every pixel on the screen. This makes GPUs faster for
+drawing simple shapes and *much* faster for applying visual effects.
+
+At a high level, to raster and draw on the GPU our browser
+must:[^gpu-variations]
+
+[^gpu-variations]: These steps vary a bit in the details by GPU architecture.
+
+* *Upload* the display list to specialized GPU memory.
+
+* *Compile* GPU programs that raster and draw the display list.[^compiled-gpu]
+
+[^compiled-gpu]: That's right, GPU programs are dynamically compiled! This
+allows GPU programs to be portable across a wide variety of implementations
+that may have very different instruction sets or acceleration tactics.
+Of course, between frames these compiled programs will typically be
+cached, so this step won't occur on every frame.
+
+* *Raster* every drawing command into GPU textures.[^texture]
+
+[^texture]: A surface represented on the GPU is called a *texture*. There can be
+more than one surface, and practically speaking they often can't be rastered in
+parallel with each other.
+
+* *Draw* the textures onto the screen.
+
+SDL and Skia support all of these steps---in fact, it's mostly a
+matter of passing them the right parameters. Let's do that. Note that
+a real browser typically implements both CPU and GPU raster and draw,
+because in some cases CPU raster and draw can be faster than using the
+GPU.[^example-cpu-fast] In our browswer, for simplicity, we'll stick
+to GPU mode for all pages.
+
+[^example-cpu-fast]: For example, the upload step isn't necessary on a
+    CPU, nor is the upload step. And GPUs typically have a lot less
+    memory available than CPUs, so on some memory-constrained pages
+    using the CPU can be necessary.
+
+[gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
+
+First we'll need to install the OpenGL library:
 
     pip3 install PyOpenGL
 
-and then import it:
+and import it:
 
 ``` {.python}
 import OpenGL.GL as GL
 ```
 
-Then configure `sdl_window` and start/stop a
-[GL context][glcontext] at the
-beginning/end of the program; for our purposes consider it API
-boilerplate.^[Starting a GL context is just OpenGL's way
-of saying "set up the surface into which subsequent GL drawing commands will
-draw". After doing so you can even execute OpenGL commands manually, to
-draw polygons or other objects on the screen, without using Skia at all.
-[Try it][pyopengl] if you're interested!]
+Now we'll need to configure SDL to use OpenGL and and start/stop a [GL
+context][glcontext] at the beginning/end of the program. For our
+purposes, just consider this API boilerplate.[^glcontext]
+
+[^glcontext]: Starting a GL context is just OpenGL's way of saying
+"set up the surface into which subsequent GL drawing commands will
+draw". After creating one you can even execute OpenGL commands
+manually, [without using Skia at all][pyopengl], to draw polygons or
+other objects on the screen.
 
 [glcontext]: https://www.khronos.org/opengl/wiki/OpenGL_Context
 
@@ -237,81 +286,28 @@ class Browser:
         # ...
         sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
-
 ```
 
-I've also added code above to print out the vendor and renderer of the GPU your
-computer is using; this will help you verify that it's actually using the GPU
-properly. I'm using a Chromebook to write this chapter, so for me it
+I've made our browser print out the GPU vendor and renderer that it's
+using; this will help you verify that it's actually using your GPU.
+I'm using a Chromebook to write this chapter, so for me it
 says:[^virgl]
 
     OpenGL initialized: vendor=b'Red Hat', renderer=b'virgl'
 
-[^virgl]: In this case, `virgl` stands for "virtual GL", a way of
-hardware-accelerating the Linux subsystem of ChromeOS that works with the
-ChromeOS Linux sandbox.
+[^virgl]: The `virgl` renderer stands for "virtual GL", a way of
+hardware-accelerating the Linux subsystem of ChromeOS that works with
+the ChromeOS Linux sandbox. This is a bit slower than using the GPU
+directly, so you'll probably see even faster raster and draw than I
+do.
 
-There are lots of resources online about how GPUs work and how to program them
-via GL shaders and so on. But we won't be writing shaders or other
-types of GPU programs in this book. Instead, let's focus on the basics of GPU
-technologies and how they map to browsers. A GPU is essentially a computer chip
-that is good at running very simple computer programs that specialize in
-turning simple data structures into pixels. These programs are so simple that
-the GPU can run one of them *in parallel* for each pixel, and this parallelism
-is why GPU raster is usually much faster than CPU raster. GPU draw is also
-much faster, because "copying" from one piece of GPU memory to another also
-happens in parallel for each pixel.
+Now we can configure Skia to draw directly to the screen. The
+incantation is:[^weird]
 
-At a high level, the steps to raster and draw using the GPU are:[^gpu-variations]
-
-[^gpu-variations]: These steps vary a bit in the details by GPU architecture.
-
-* *Upload* the input data structures (that describe the display list)
-   to specialized GPU memory.
-
-* *Compile* GPU programs to run on the data structures.[^compiled-gpu]
-
-[^compiled-gpu]: That's right, GPU programs are dynamically compiled! This
-allows GPU programs to be portable across a wide variety of implementations
-that may have very different instruction sets or acceleration tactics.
-
-* For each desired surface, *execute* the raster into GPU textures.[^texture]
-
-[^texture]: A surface represented on the GPU is called a *texture*. There can be
-more than one surface, and practically speaking they often can't be rastered in
-parallel with each other.
-
-* *Draw* the textures onto the screen.
-
-You can configure any GPU program to draw directly to the *screen framebuffer*,
-or to an *intermediate texture*.[^gpu-texture] Draw proceeds bottom-up: the
-leaf textures are generated from raw display list data structures, and internal
-surface tree textures are generated by computing visual effects on one or more
-children. The root of the tree is the framebuffer texture.
-
-[^gpu-texture]: Recall from [Chapter 11](visual-effects.md) that there can be
-surfaces that draw into other surfaces, forming a tree. Skia internally does
-this sometimes, based on various triggers such as blend modes. The internal
-nodes draw into intermediate textures.
-
-The time to run GPU raster is roughly the sum of the time for these four steps.
-[^optimize] The total time can be dominated by any of the four steps. The
-larger the display list, the longer the upload; the more complexity and variety
-of display list commands, the longer the compile; the more surfaces to raster,
-the longer the execute; the deeper the the nesting of surfaces in the web page,
-the longer the draw. Without care, these steps can sometimes add up to be
-longer than the time to just raster on the CPU. All of these slowdown
-situations can and do happen in real browsers for various kinds of hard-to-draw
-content.
-
-[^optimize]: It's not necessary to compile GPU programs on every raster, so
-this part can be optimized. Parts of the other steps can as well, such as
-by caching font data in the GPU.
-
-[gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
-
-The root Skia surface will need to be connected directly to the screen
-framebuffer associated with the SDL window. The incantation for that is:
+[^weird]: Weirdly, this code draws to the window without referencing
+`gl_context` or `sdl_window` directly. That's because OpenGL is a
+strange API with a lot of hidden global state; the `MakeGL` Skia
+method implicitly binds to the existing GL context.
 
 ``` {.python expected=False}
 class Browser:
@@ -327,37 +323,12 @@ class Browser:
                 skia.kBottomLeft_GrSurfaceOrigin,
                 skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
         assert self.root_surface is not None
-
 ```
 
-Note: this code never seems to reference `gl_context` or `sdl_window` directly,
-but draws to the window anyway. That's because OpenGL is a strange API that
-uses hidden global states; the `MakeGL` Skia method implicitly binds to the
-existing GL context.
-
-The `chrome_surface` incantation is a bit different, because it's creating
-a GPU texture, but one that is independent of the framebuffer:
-
-``` {.python}
-class Browser:
-    def __init__(self):
-        # ...
-        self.chrome_surface =  skia.Surface.MakeRenderTarget(
-                self.skia_context, skia.Budgeted.kNo,
-                skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
-        assert self.chrome_surface is not None
-```
-
-As compared with Chapter 11 surfaces, this surface is associated explicitly with
-the `skia_context` and uses a different color space that is required for GPU
-mode. `tab_surface` should get exactly the same treatment (but with different
-width and height arguments, of course).
-
-Finally, `draw` is much simpler: `root_surface` need not blit into the
-SDL surface, because they share a GPU framebuffer backing. (There are no
-changes at all required to raster.) All it has to do is *flush* the Skia
-surface (Skia surfaces draw lazily) and call `SDL_GL_SwapWindow` to activate
-the new framebuffer (because of OpenGL [double-buffering][double]).
+An extra advantage of this is that we won't need to copy data between
+Skia and SDL anymore. All it has to do is *flush* the Skia surface
+(Skia surfaces draw lazily) and call `SDL_GL_SwapWindow` to activate
+the new framebuffer (because of OpenGL [double-buffering][double]):
 
 [double]: https://wiki.libsdl.org/SDL_GL_SwapWindow
 
@@ -376,20 +347,40 @@ class Browser:
         sdl2.SDL_GL_SwapWindow(self.sdl_window)
 ```
 
-Let's go back and test the [counter example](scheduling.md#animating-frames)
-from Chapter 12. Without GPU, the results were:
+Finally, in our browser also creates a Skia surfaces for the
+`chrome_surface` and `tab_surface`. We don't want to draw these
+straight to the screen, so the incantation is a bit different:
 
-    Time in raster-and-draw on average: 66ms
-    Time in render on average: 23ms
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.chrome_surface =  skia.Surface.MakeRenderTarget(
+                self.skia_context, skia.Budgeted.kNo,
+                skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+        assert self.chrome_surface is not None
+```
 
-Now, with GPU rendering, they are:
+Again, you should think of these changes mostly as boilerplate, since
+the details of GPU operation aren't our focus here.[^color-space] Make
+sure to apply the same treatment to `tab_surface` (with different
+width and height arguments).
+
+[^color-space]: For example, a different color space that is required
+for GPU mode.
+
+Thanks to SDL's and Skia's thorough support for GPU rendering, that
+should be all that's necessary for our browser to raster and draw on
+the GPU. And as expected, speed is much improved:
 
     Time in raster-and-draw on average: 24ms
     Time in render on average: 23ms
 
-So GPU acceleration speeds up raster-and-draw by more than 60%. (If you're on a
-computer with a non-virtualized GL driver you will probably see even more
-speedup than that.)
+That's almost three times faster, almost fast enough to hit sixty
+frames per second. And on your computer, you'll likely see even more
+speedup than that, so perhaps your animations are already quite
+smooth. But if we want to go faster yet, we'll need to reduce the
+total amount of raster and draw work we're doing.
 
 ::: {.further}
 
