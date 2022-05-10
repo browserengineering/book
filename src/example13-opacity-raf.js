@@ -36,3 +36,6 @@ function start_fade_out() {
     current_frame = 0;
     requestAnimationFrame(run_fade_out);
 }
+
+document.querySelectorAll("button")[0].addEventListener("click", start_fade_out);
+document.querySelectorAll("button")[1].addEventListener("click", start_fade_in);
