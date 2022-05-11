@@ -439,7 +439,7 @@ to multi-threaded rendering.
 [compositing]: https://en.wikipedia.org/wiki/Compositing
 
 To explain compositing, we'll need to think about our browser's
-display tree. Printing it is going to require similar code in every
+display list. Printing it is going to require similar code in every
 display command, so let's give a new `DisplayItem` superclass to
 display commands. This makes it easy to create default behavior that's
 overridden for specific display commands. For example, we can make
@@ -521,7 +521,7 @@ On the next frame, it instead looks like this:
       DrawText(text=fades)
 
 In each case, rastering this display list means first drawing the
-three words to a surface, and then copy that to the root surface while
+three words to a Skia surface created by `saveLayer`, and then copying that to the root surface while
 applying transparency. Crucially, the drawing is identical in both
 frames; only the copy differs. This means we can speed this up with
 caching.
@@ -558,14 +558,14 @@ composited layers, which can then be reused, and only change the draw
 display list. That's the case here, because the only difference
 between frames is the `SaveLayer`, which is in the draw display list.
 Now, a browser can choose what composited layers to create however it
-wants. Typically effects like opacity are very fast to execute on a
+wants. Typically visual effects like opacity are very fast to execute on a
 GPU, but *paint commands* that draw shapes---in our browser,
 `DrawText`, `DrawRect`, `DrawRRect`, and `DrawLine`---can be slower.
-Since it's the effects that are typically animated, this means
-browsers usually leave effects in the draw display list and move paint
+Since it's the visual effects that are typically animated, this means
+browsers usually leave animated visual effects in the draw display list and move paint
 commands into composited layers. Of course, in a real browser,
-hardware capabilities, GPU memory, and application data all plays into
-this, but the basic idea of compositing is the same no matter what
+hardware capabilities, GPU memory, and application data all play into
+these decisions, but the basic idea of compositing is the same no matter what
 goes where.
 
 Some animations can't be composited because they affect more than just
