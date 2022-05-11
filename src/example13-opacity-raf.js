@@ -1,7 +1,7 @@
 var div = document.querySelectorAll("div")[0];
 var total_frames = 120;
 var current_frame = 0;
-var change_per_frame = 0.899 / total_frames;
+var change_per_frame = (0.999 - 0.1) / total_frames;
 
 function fade_in() {
     current_frame++;
