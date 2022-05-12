@@ -48,7 +48,7 @@ animation lets us request that some JavaScript code run on the next
 frame, and we can have that code change the page slightly.
 To do this repeatedly, we'll need code like this:
 
-``` {.javascript file=example-opacity-js}
+``` {.javascript file=example-opacity-js replace=animate/fade_out,animation_frame/fade_out}
 function run_animation_frame() {
     if (animate())
         requestAnimationFrame(run_animation_frame);
@@ -62,18 +62,17 @@ animating, and then stops. By changing what `animate` does we can
 change what animation occurs.
 
 Let's write a fade animation. We can fade in something out by smoothly
-transitioning its `opacity` value from 0.0 to 0.999.[^why-not-one] If we
+transitioning its `opacity` value from 0.1 to 0.999.[^why-not-one] If we
 want to do this animation over 120 frames (about two seconds), that
 means we need to increase the opacity by about 0.008 on each frame.
 
 [^why-not-one]: Real browsers apply certain optimizations when opacity
-is exactly 1, so real-world websites often start animations at 0.999.
-That way, the animation is smooth. So it's easier to dig into the
-performance of this example on a real browser with 0.999 opacity.
-Starting animations at 0.999 is also a common trick used on web sites
-that want to avoid visual popping of the content as it goes in and out
-of GPU-accelerated mode. I chose 0.999 because the visual difference
-from 1.0 is imperceptible.
+is exactly 1, so real-world websites often start and end animations at
+0.999 so that each frame is drawn the same way and the animation is
+smooth. Starting animations at 0.999 is also a common trick used on
+web sites that want to avoid visual popping of the content as it goes
+in and out of GPU-accelerated mode. I chose 0.999 because the visual
+difference from 1.0 is imperceptible.
 
 For example, let's animate this `div` containing the word "Test":
 
@@ -83,22 +82,21 @@ For example, let's animate this `div` containing the word "Test":
 
 The `animate` function will track how many frames have occurred and 
 
-``` {.javascript file=example-opacity-js}
+``` {.javascript file=example-opacity-js replace=animate/fade_in}
 var div = document.querySelectorAll("div")[0];
 var total_frames = 120;
 var current_frame = 0;
-var change_per_frame = 0.999 / total_frames;
+var change_per_frame = (0.999 - 0.1) / total_frames;
 function animate() {
     current_frame++;
-    var new_opacity = current_frame * change_per_frame;
+    var new_opacity = current_frame * change_per_frame + 0.1;
     div.style = "opacity:" + new_opacity;
     return current_frame < total_frames;
 }
 ```
 
-Here's how it looks; you'll probably need to refresh the page or [open
-it full-screen](examples/example13-opacity-raf.html) to watch the
-animation from the beginning.
+You could, of course, fade the text out by making `change_per_frame`
+negative. Here's how it looks; click the buttons to start a fade:
 
 <iframe src="examples/example13-opacity-raf.html"></iframe>
 
