@@ -1,21 +1,43 @@
-var frames_remaining = 120;
-var go_down = true;
 var div = document.querySelectorAll("div")[0];
-function animate() {
-    var percent_remaining = frames_remaining / 120;
-    if (!go_down) percent_remaining = 1 - percent_remaining;
-    div.style = "background-color:lightblue;width:" +
-        (percent_remaining * 400 +
-        (1 - percent_remaining) * 100) + "px";
-    if (frames_remaining-- == 0) {
-        frames_remaining = 120;
-        go_down = !go_down;
-    }
-    return true;
+var total_frames = 120;
+var current_frame = 0;
+var change_per_frame = (400 - 100) / total_frames;
+
+function grow() {
+    current_frame++;
+    var new_width = current_frame * change_per_frame + 100;
+    div.style = "background-color:lightblue;" + "width:" + new_width + "px";
+    return current_frame < total_frames;
 }
 
-function run_animation_frame() {
-    if (animate())
-        requestAnimationFrame(run_animation_frame);
+function run_grow() {
+    if (grow())
+        requestAnimationFrame(run_grow);
 }
-requestAnimationFrame(run_animation_frame);
+
+function start_grow(e) {
+    current_frame = 0;
+    requestAnimationFrame(run_grow);
+    e.preventDefault();
+}
+
+function shrink() {
+    current_frame++;
+    var new_width = 400 - current_frame * change_per_frame;
+    div.style = "background-color:lightblue;" + "width:" + new_width + "px";
+    return current_frame < total_frames;
+}
+
+function run_shrink() {
+    if (shrink())
+        requestAnimationFrame(run_shrink);
+}
+
+function start_shrink(e) {
+    current_frame = 0;
+    requestAnimationFrame(run_shrink);
+    e.preventDefault();
+}
+
+document.querySelectorAll("button")[0].addEventListener("click", start_grow);
+document.querySelectorAll("button")[1].addEventListener("click", start_shrink);
