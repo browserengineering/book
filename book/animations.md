@@ -570,12 +570,18 @@ goes where.
 
 Some animations can't be composited because they affect more than just
 the display tree. For example, imagine we animate the `width` of the
-`div` above, instead of animating its opacity. In that case, different
-frames have different *layout trees*, not just display trees. That
-totally changes the coordinates for the `DrawText` calls, and we
-wouldn't necessarily be able to reuse the composited layer. Such
-animations are called *layout-inducing* and speeding them up requires
-[different techniques](reflow.md).[^not-advisable]
+`div` above, instead of animating its opacity. Here's how it looks;
+you'll probably need to refresh the page or [open it
+full-screen](examples/example13-opacity-width.html) to watch the
+animation from the beginning.
+
+<iframe src="examples/example13-opacity-width.html"></iframe>
+
+Here, different frames have different *layout trees*, not just display
+trees. That totally changes the coordinates for the `DrawText` calls,
+and we wouldn't necessarily be able to reuse the composited layer.
+Such animations are called *layout-inducing* and speeding them up
+requires [different techniques](reflow.md).[^not-advisable]
 
 [^not-advisable]: Because layout-inducing animations can't easily make
     use of compositing, they're usually not a good idea on the web.
@@ -2619,6 +2625,14 @@ color channels.
  cause them to stop after the next commit when DOM changes occur that
  invalidate the animation. Real browsers encounter a lot of complications in
  this area.)
+
+*Width animations*: Implement the CSS `width` property; when `width`
+is set to some number of pixels on an element, the element should be
+that many pixels wide, regardless of how its width would normally be
+computed. Make `width` animatable; you'll need a variant of
+`NumericAnimation` that produces pixel values. Since `width` is
+layout-inducing, make sure that animating `width` sets `needs_layout`.
+Check that animating width should change line breaks.
 
 *Threaded smooth scrolling*: once you've completed the threaded animations
  exercise, you should be able to add threaded smooth scrolling without much
