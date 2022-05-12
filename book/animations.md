@@ -795,7 +795,7 @@ create a `DrawCompositedLayer` command, which we'll define in just a
 moment. Then, we walk up the display list, wrapping that
 `DrawCompositedLayer` in each visual effect that we need to apply:
 
-``` {.python replace=clone/clone_latest}
+``` {.python replace=parent.clone(/self.clone_latest(parent%2c%20}
 class Browser:
     def __init__(self):
         # ...
@@ -805,8 +805,8 @@ class Browser:
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = DrawCompositedLayer(composited_layer)
-            if not composited_layer.display_list: pass
-            parent = composited_layer.display_list[0].parent
+            if not composited_layer.display_items: continue
+            parent = composited_layer.display_items[0].parent
             while parent:
                 current_effect = parent.clone([current_effect])
                 parent = parent.parent
@@ -1607,8 +1607,7 @@ class Browser:
     def paint_draw_list(self):
         for composited_layer in self.composited_layers:
             while parent:
-                current_effect = \
-                    self.clone_latest(parent, [current_effect])
+                current_effect = self.clone_latest(parent, [current_effect])
                 # ...
 ```
 
