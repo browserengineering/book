@@ -308,6 +308,7 @@ class DrawCompositedLayer(DisplayItem):
 
     def execute(self, canvas):
         layer = self.composited_layer
+        if not layer.surface: return
         bounds = layer.composited_bounds()
         surface_offset_x = bounds.left()
         surface_offset_y = bounds.top()
