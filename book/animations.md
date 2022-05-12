@@ -239,10 +239,14 @@ because in some cases CPU raster and draw can be faster than using the
 GPU.[^example-cpu-fast] In our browswer, for simplicity, we'll stick
 to GPU mode for all pages.
 
-[^example-cpu-fast]: For example, the upload step isn't necessary on a
-    CPU, nor is the compile step. And GPUs typically have a lot less
-    memory available than CPUs, so on some memory-constrained pages
-    using the CPU can be necessary.
+[^example-cpu-fast]: Any of the four steps can make GPU raster and
+ draw slow. Large display list take a while to upload. Complexity
+ display list commands take longer to compile. Raster can be slow if
+ there are many surfaces, and draw can be slow if surfaces are deeply
+ nested. On a CPU, the upload step and compile steps aren't necessary,
+ and more memory is available for raster and draw. Of course, many
+ optimizations are available for both GPU and CPU, so choosing the
+ best way to raster and draw a given page can be quite complex.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
 
