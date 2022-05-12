@@ -205,8 +205,8 @@ and draw.
 The best way to do that is to move raster and draw to the [GPU][gpu].
 A GPU is essentially a chip in your computer that runs programs, much
 like your CPU. But the GPU is specialized toward running very simple
-programs with massive parallelism; it was developed to do simple
-operations to every pixel on the screen. This makes GPUs faster for
+programs with massive parallelism; it was developed to apply simple
+operations, in parallel, for every pixel on the screen. This makes GPUs faster for
 drawing simple shapes and *much* faster for applying visual effects.
 
 At a high level, to raster and draw on the GPU our browser
@@ -240,7 +240,7 @@ GPU.[^example-cpu-fast] In our browswer, for simplicity, we'll stick
 to GPU mode for all pages.
 
 [^example-cpu-fast]: For example, the upload step isn't necessary on a
-    CPU, nor is the upload step. And GPUs typically have a lot less
+    CPU, nor is the compile step. And GPUs typically have a lot less
     memory available than CPUs, so on some memory-constrained pages
     using the CPU can be necessary.
 
@@ -347,7 +347,7 @@ class Browser:
         sdl2.SDL_GL_SwapWindow(self.sdl_window)
 ```
 
-Finally, in our browser also creates a Skia surfaces for the
+Finally, our browser also creates a Skia surfaces for the
 `chrome_surface` and `tab_surface`. We don't want to draw these
 straight to the screen, so the incantation is a bit different:
 
