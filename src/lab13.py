@@ -307,7 +307,11 @@ class DrawCompositedLayer(DisplayItem):
         super().__init__(self.composited_layer.composited_bounds())
 
     def execute(self, canvas):
-        self.composited_layer.draw(canvas)
+        layer = self.composited_layer
+        bounds = layer.composited_bounds()
+        surface_offset_x = bounds.left()
+        surface_offset_y = bounds.top()
+        layer.surface.draw(canvas, surface_offset_x, surface_offset_y)
 
     def __repr__(self):
         return "DrawCompositedLayer()"
@@ -1127,14 +1131,6 @@ class CompositedLayer:
                 irect.height() - 1,
                 border_color="red")
 
-    def draw(self, canvas):
-        if not self.surface: return
-        bounds = self.composited_bounds()
-        surface_offset_x = bounds.left()
-        surface_offset_y = bounds.top()
-        self.surface.draw(canvas, surface_offset_x,
-            surface_offset_y)
-
     def __repr__(self):
         composited_bounds = skia.Rect.MakeEmpty()
         self.add_composited_bounds(composited_bounds)
@@ -1705,8 +1701,7 @@ class Browser:
             if not composited_layer.display_items: continue
             parent = composited_layer.display_items[0].parent
             while parent:
-                current_effect = \
-                    self.clone_latest(parent, [current_effect])
+                current_effect = self.clone_latest(parent, [current_effect])
                 parent = parent.parent
             self.draw_list.append(current_effect)
 
