@@ -23,10 +23,7 @@
             "disabled": true,
             "lab": "lab13.py",
             "runtime": "runtime13.js",
-            "example-opacity-html": "example13-opacity-raf.html",
-            "example-opacity-js": "example13-opacity-raf.js",
-            "example-width-html": "example13-width-raf.html",
-            "example-width-js": "example13-width-raf.js" },
+            "example-opacity-html": "example13-opacity-raf.html"},
 
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
