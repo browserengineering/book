@@ -414,126 +414,268 @@ browsers.
 
 :::
 
-Width/height animations
-=======================
+Compositing
+===========
 
-What about layout-inducing DOM animations? As I explained earlier in the
-chapter, these animations are usually not advisable because of the way text
-layout jumps, but do make sense for some input-based resize animations---think
-browser window resizing, or resizing the input area in a text input field, via
-a mouse gesture. But as always, it's a good exercise to try it out and see how
-it looks and performs for yourself. Let's do that.
+So, how do we do less work in the raster and draw phase? The answer is
+a technique called *compositing*, which just means caching some
+rastered images on the GPU and reusing them during later
+frames.[^compositing-def]
 
-At the moment, our browser doesn't support any layout-inducing CSS properties
-that would be useful to animate, so let's add support for `width` and
-`height`, then animate them. These CSS properties do pretty much what they
-say: force the width or height of a layout object to be the specified value in
-pixels, as opposed to the default behavior that sizes an element to contain
-block and inline descendants. If as a result the descendants don't fit, they
-will *overflow* in a natural way. This usually means overflowing the bottom
-edge of the block ancestor, because we'll use `width` to determine the area
-for line breaking.[^overflow]
+[^compositing-def]: The term [*compositing*][compositing] just means
+combining multiple images together into a final output. In browsers,
+we're typically combining rastered images into the final image of the
+page, but a similar technique is used in many operating systems to
+combine the contents of multiple windows. "Compositing" can also refer
+to multi-threaded rendering.
 
-[^overflow]: By default, overflowing content draws outside the bounds of
-the parent layout object. We discussed overflow to some extent in
-[Chapter 11](visual-effects.md#clipping-and-masking), and implemented
-`overflow:clip`, which instead clips the overflowing content at the box
-boundary. Other values include `scroll`, which clips it but allows the user
-to see it via scrolling. And if scroll is specified in the x direction, the
-descendant content will lay out as it if has an infinite width. Extra-long
-words can also cause horizontal overflow.
+[compositing]: https://en.wikipedia.org/wiki/Compositing
 
-Implementing `width` and `height` turns out to be pretty easy. Instead of
-setting the width of a layout object to the widest it can be before recursing,
-use the specified width instead. And likewise for `height`. Then, descendants
-will use that width for their sizing automatically.
+To explain compositing, we'll need to think about our browser's
+display list. Printing it is going to require similar code in every
+display command, so let's give a new `DisplayItem` superclass to
+display commands. This makes it easy to create default behavior that's
+overridden for specific display commands. For example, we can make
+sure that every display command has a `children` field:
 
-Start by implementing a `style_length` helper method that applies a
-restricted length (either in the horizontal or vertical dimension) if it's
-specified in the object's style. For example,
-
-	style_length(node, "width", 300)
-
-would return 300 if the `width` CSS property was not set on `node`,
-and the `width` value otherwise.^[Interesting side note: while `width`
-values can be specified as floating-point numbers, computer monitors
-have discrete pixels, so real browsers need to convert these values to
-integers. This process is called pixel-snapping, and in real browsers
-it's pretty complicated. [This article][pixel-canvas] touches on some
-of the complexities as they apply to canvases, but it's just as
-complex for DOM elements. For example, if two block elements touch and
-have fractional widths, it's important to round in such a way that
-there is not a visual gap introduced between them.]
-
-[pixel-canvas]: https://web.dev/device-pixel-content-box/#pixel-snapping
-
-``` {.python}
-def style_length(node, style_name, default_value):
-    style_val = node.style.get(style_name)
-    return float(style_val[:-2]) if style_val else default_value
+``` {.python replace=children=[]/rect%2c%20children=[]%2c%20node=None}
+class DisplayItem:
+    def __init__(self, children=[]):
+        self.children = children
 ```
 
-With that in hand, the changes to `BlockLayout`, `InlineLayout` and
-`InputLayout` are satisfyingly small. Here is `BlockLayout`; the other
-two are basically the same so I'll omit the edits here, but don't forget to
-update them.
+Each diplay command now needs to indicate the superclass when the
+class is declared and use special syntax in the constructor:
 
-``` {.python}
-class BlockLayout:
-	def layout(self):
-		# ...
-        self.width = style_length(
-            self.node, "width", self.parent.width)
-		# ...
-        self.height = style_length(
-            self.node, "height",
-            sum([line.height for line in self.children]))
+``` {.python expected=False}
+class DrawRect(DisplayItem):
+    def __init__(self, x1, y1, x2, y2, color):
+        super().__init__()
+        # ...
 ```
 
-Here is a simple animation of `width`. As the width of the `div` animates from
-`400px` to `100px`, its height will automatically increase to contain the text
-as it flows into multiple lines.^[And if automatic increase was not desired,
-`height` could be specified to a fixed value. But that would of course cause
-overflow, which needs to be dealt with in one way or another.] Notice how the
-text flows during the animation. It makes sense when resizing, but is otherwise
-confusing and jarring to look at, not to mention hard to read.
+Commands that already had a `children` field need to pass it to the
+`__init__` call:
 
-``` {.html file=example-width-html}
-<div style="background-color:lightblue;width:100px">
-	This is a test line of text for a width animation.
+``` {.python replace=children=children/rect%2c%20children=children}
+class ClipRRect(DisplayItem):
+    def __init__(self, rect, radius, children, should_clip=True):
+        super().__init__(children=children)
+        # ...
+```
+
+To print the display list in a useful form, let's add a printable form
+to each display command. For example, for `DrawRect` you might print:
+
+``` {.python}
+class DrawRect(DisplayItem):
+    def __repr__(self):
+        return ("DrawRect(top={} left={} " +
+            "bottom={} right={} color={})").format(
+            self.left, self.top, self.right,
+            self.bottom, self.color)
+```
+
+Some of our display commands have a flag to do nothing, like
+`ClipRRect`'s `should_clip` flag. It's useful to explicitly indicate
+that:
+
+``` {.python}
+class ClipRRect(DisplayItem):
+    def __repr__(self):
+        if self.should_clip:
+            return "ClipRRect({})".format(str(self.rrect))
+        else:
+            return "ClipRRect(<no-op>)"
+```
+
+Now we can print out our browser's display list:
+
+``` {.python expected=False}
+class Tab:
+    def render(self):
+        # ...
+        for item in self.display_list:
+            print_tree(item)
+```
+
+For our opacity example, the display list looks like this:
+
+    SaveLayer(alpha=0.112375)
+      DrawText(text=This)
+      DrawText(text=text)
+      DrawText(text=fades)
+
+On the next frame, it instead looks like this:
+
+    SaveLayer(alpha=0.119866666667)
+      DrawText(text=This)
+      DrawText(text=text)
+      DrawText(text=fades)
+
+In each case, rastering this display list means first drawing the
+three words to a Skia surface created by `saveLayer`, and then copying that to the root surface while
+applying transparency. Crucially, the drawing is identical in both
+frames; only the copy differs. This means we can speed this up with
+caching.
+
+The idea is to first draw the three words to a separate surface, which
+we'll call a *composited layer*:
+
+    Composited Layer 1:
+      DrawText(text=This)
+      DrawText(text=text)
+      DrawText(text=fades)
+
+Now instead of drawing those three words, we can just copy over the
+layer:
+
+    SaveLayer(alpha=0.112375)
+      DrawCompositedLayer()
+
+Importantly, on the next frame, the `SaveLayer` changes but the
+`DrawText`s don't, so on the next frame all we need to do is rerun the
+`SaveLayer`:
+
+    SaveLayer(alpha=0.119866666667)
+      DrawCompositedLayer()
+
+In other words, the idea behind compositing is to split the display
+list into two pieces: a set of composited layers, which are rastered
+during the browser's raster phase and then cached, and a *draw display
+list*, which is drawn during the browser's draw phase and which uses
+the composited layers.
+
+Compositing helps when different frames of the animation have the same
+composited layers, which can then be reused, and only change the draw
+display list. That's the case here, because the only difference
+between frames is the `SaveLayer`, which is in the draw display list.
+Now, a browser can choose what composited layers to create however it
+wants. Typically visual effects like opacity are very fast to execute on a
+GPU, but *paint commands* that draw shapes---in our browser,
+`DrawText`, `DrawRect`, `DrawRRect`, and `DrawLine`---can be slower.
+Since it's the visual effects that are typically animated, this means
+browsers usually leave animated visual effects in the draw display list and move paint
+commands into composited layers. Of course, in a real browser,
+hardware capabilities, GPU memory, and application data all play into
+these decisions, but the basic idea of compositing is the same no matter what
+goes where.
+
+Some animations can't be composited because they affect more than just
+the display tree. For example, imagine we animate the `width` of the
+`div` above, instead of animating its opacity. Here's how it looks;
+you'll probably need to refresh the page or [open it
+full-screen](examples/example13-opacity-width.html) to watch the
+animation from the beginning.
+
+<iframe src="examples/example13-opacity-width.html"></iframe>
+
+Here, different frames have different *layout trees*, not just display
+trees. That totally changes the coordinates for the `DrawText` calls,
+and we wouldn't necessarily be able to reuse the composited layer.
+Such animations are called *layout-inducing* and speeding them up
+requires [different techniques](reflow.md).[^not-advisable]
+
+[^not-advisable]: Because layout-inducing animations can't easily make
+    use of compositing, they're usually not a good idea on the web.
+    Not only are they slower, but because they cause page elements to
+    move around, often in sudden jumps, meaning they don't create that
+    illusion of continuous movement.
+
+The most complex part of compositing and draw is dealing with the hierarchical
+nature of the display list. For example, consider this web page:
+
+``` {.html}
+<div style="opacity:0.999">
+  <p>
+    Hello, World!
+  </p>
+  <div style="opacity=0.5">
+    <p>More text</p>
+  </div>
 </div>
 ```
-<iframe src="examples/example13-width-raf.html" style="width: 450px"></iframe>
-(click [here](examples/example13-width-raf.html) to load the example in
+
+It renders like this:
+
+<iframe src="examples/example13-nested-opacity.html"></iframe>
+(click [here](examples/example13-nested-opacity.html) to load the example in
 your browser)
 
-And `animate` looks like this (almost the same as the opacity example!):
-``` {.javascript file=example-width-js}
-var frames_remaining = 120;
-var go_down = true;
-var div = document.querySelectorAll("div")[0];
-function animate() {
-    var percent_remaining = frames_remaining / 120;
-    if (!go_down) percent_remaining = 1 - percent_remaining;
-    div.style = "background-color:lightblue;width:" +
-        (percent_remaining * 400 +
-        (1 - percent_remaining) * 100) + "px";
-    if (frames_remaining-- == 0) {
-        frames_remaining = 120;
-        go_down = !go_down;
-    }
-    return true;
-}
-```
+Its full display list looks like this (after omitting no-ops):
+
+    DrawRect(top=13 left=18 bottom=787 right=98.6875 color=white)
+    SaveLayer(alpha=0.9990000128746033)
+      DrawText(text=Hello,)
+      DrawText(text=World!)
+      SaveLayer(alpha=0.5)
+        DrawText(text=More)
+        DrawText(text=text)
+
+Imagine that either opacity might animate. As it animates, we don't
+want to redo the `DrawText` commands, but we *have to* redo the
+`SaveLayer` commands. To do so, we move the `DrawText` calls to
+different `Surface`s:
+
+    Composited Layer 1:
+      DrawRect(top=13 left=18 bottom=787 right=98.6875 color=white)
+
+    Composited Layer 2:
+      DrawText(text=Hello,)
+      DrawText(text=World!)
+
+    Composited Layer 3:
+      DrawText(text=More)
+      DrawText(text=text)
+
+Here, we need three composited layers, because each composited layer
+has a different set of effects applied: the first layer has no
+effects, the second has one alpha, and the third layer has a different
+alpha.
+
+Ideally, the resulting draw display list would look like this:
+
+    DrawCompositedLayer()
+    SaveLayer(alpha=0.9990000128746033)
+      DrawCompositedLayer()
+      SaveLayer(alpha=0.5)
+        DrawCompositedLayer()
+        
+It turns out to be pretty complicated to achieve this, so in this
+chapter we'll implement a simpler algorithm which will produce the
+following draw display list:
+
+    DrawCompositedLayer()
+    SaveLayer(alpha=0.9990000128746033)
+      DrawCompositedLayer()
+    SaveLayer(alpha=0.9990000128746033)
+      SaveLayer(alpha=0.5)
+        DrawCompositedLayer()
+
+This means our browser will produce the wrong output in certain cases,
+particularly when page elements with visual effects overlap.[^atomic]
+Real browsers, of course, have to fix this issue, but in this chapter
+we found that just implementing compositing was hard enough.
+
+[^atomic]: The jargon for this is that the top `SaveLayer` doesn't
+    apply "atomically", as in to all its arguments at once.
 
 ::: {.further}
 
-Almost any CSS property with some sort of interpolable number can be animated in
-a similar way. Here is a [list][anim-prop] of all of them. Most of them
-are layout inducing, including some interesting ones that we *could* have
-animated without introducing `width` and `height`, such as `font-size`.
+If you look closely at the example in this section, you'll see that the
+`DrawText` command's rect is about 30 pixels wide. On the other hand, the
+`SaveLayer` rect is almost as wide as the viewport. The reason they differ is
+that the text is only about 30 pixels wide, but the block element that contains
+it is as wide as the available width.
 
-[anim-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_animated_properties
+So does the composited surface need to be 30 pixels wide or the whole viewport?
+In practice you could implement either. The algorithm presented in this chapter
+ends up with the smaller one but real browsers sometimes choose the larger,
+depending on their algorithm. Also note that if there was any kind of paint
+command associated with the block element containing the text, such as a
+background color, then the surface would definitely have to be as wide as the
+viewport. Likewise, if there were multiple inline children, the union of their
+bounds would contribute to the surface size.
 
 :::
 
@@ -942,241 +1084,8 @@ and management of animations via JavaScript.
 [web-animations]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Animations_API
 :::
 
-Compositing
-===========
-
-*Compositing* is a technique to avoid raster during visual effect animations by
- caching raster results in GPU textures. These textures are re-used during
- the animation, so only `draw` is needed for each
- animation frame (with different parameters each time of course).[^compositing-def]
-
-[^compositing-def]: The term [*compositing*][compositing] originally meant to
-combine multiple images together into a final output. As it relates to
-browsers, it usually means the performance optimization technique described
-here, but the term is often overloaded to refer to OS and browser-level
-compositing, and multi-threaded rendering.
-
-[compositing]: https://en.wikipedia.org/wiki/Compositing
-
-Let's consider the opacity animation example from this chapter. When we're
-animating, opacity is changing, but the "Test" text underneath it is not. So
-let's stop re-rastering that content on every frame of the animation, and
-instead cache it in a GPU texture. This should directly reduce browser thread
-work, because no raster work will be needed on each animation frame.
-
-Below is the opacity animation with a red border "around" the surface that we
-want to cache. Notice how it's sized to the width and height of the `<div>`,
-which is as wide as the viewport and as tall as the text "Test".[^chrome] That's
-because the surface will cache the raster output of the `DrawText` command,
-and those are its bounds.
-
- <iframe src="http://localhost:8001/examples/example13-opacity-transition-borders.html">
- </iframe>
-
-[^chrome]: You can see the same thing if you load the example when running
-Chrome with the `--show-composited-layer-borders` command-line flag; there
-is also a DevTools feature for it.
-
-As I explained in [Chapter 11](visual-effects.md#browser-compositing), Skia
-sometimes caches surfaces internally. So you might think that Skia has a way to
-say "please cache this surface". And there is---keep around a `skia.Surface`
-object across multiple raster-and-draw executions and use the `draw` method on
-the surface to draw it into another canvas.^[Skia will keep alive the rastered
-content associated with a `Surface` object until it's garbage collected.] In
-other words, we'll need to do the caching ourselves. This feature is not
-built into Skia itself in a trivial-to-use form.
-
-Let's start digging into an implementation of compositing. The
-plan is to cache the "contents" of an animating visual effect in a new
-`skia.Surface` and store it somewhere. But what does "contents" mean exactly?
-If opacity is animating, which parts of the web page should we cache in the
-surface? To answer that, let's revisit the structure of our display
-lists.
-
-To simplify common functionality, let's make each display command a
-subclass of `DisplayItem`. This will make it easy to create default
-behavior that's overridden for specific display commands. For example,
-we can make sure that every display command has a `children` field:
-
-``` {.python replace=children=[]/rect%2c%20children=[]%2c%20node=None}
-class DisplayItem:
-    def __init__(self, children=[]):
-        self.children = children
-```
-
-Make every display command a subclass. This requires both indicating
-the superclass when the class is declared, and special syntax in the
-constructor:
-
-``` {.python expected=False}
-class DrawRect(DisplayItem):
-    def __init__(self, x1, y1, x2, y2, color):
-        super().__init__()
-        # ...
-```
-
-Commands that already had a `children` field need to pass it to the
-`__init__` call:
-
-``` {.python replace=children=children/rect%2c%20children=children}
-class ClipRRect(DisplayItem):
-    def __init__(self, rect, radius, children, should_clip=True):
-        super().__init__(children=children)
-        # ...
-```
-
-It'll be helpful to be able to print out the (recursive, tree-like) display list
-in a useful form.[^debug] To do that, let's add a printable form to
-each display command. For example, for `DrawRect` you might print:
-
-[^debug]: This code will also be very useful to you while debugging your
-compositing implementation.
-
-``` {.python}
-class DrawRect(DisplayItem):
-    def __repr__(self):
-        return ("DrawRect(top={} left={} " +
-            "bottom={} right={} color={})").format(
-            self.left, self.top, self.right,
-            self.bottom, self.color)
-```
-
-Some of our display commands have a flag to do nothing, like
-`ClipRRect`'s `should_clip` flag. In this case it's useful to
-explicitly print that this is a do-nothing display command:
-
-``` {.python}
-class ClipRRect(DisplayItem):
-    def __repr__(self):
-        if self.should_clip:
-            return "ClipRRect({})".format(str(self.rrect))
-        else:
-            return "ClipRRect(<no-op>)"
-```
-
-This lets you print out the display list while you're debugging:
-
-``` {.python expected=False}
-class Tab:
-    def render(self):
-        # ...
-        for item in self.display_list:
-            print_tree(item)
-```
-
-When run on the [opacity transition
-example](examples/example13-opacity-transition.html) before the animation has
-begun, it should print something like:
-
-    SaveLayer(alpha=0.999)
-        DrawText(text=Test)
-
-It seems logical to make a surface for the contents of the opacity `SaveLayer`,
-in this case containing only a `DrawText`. In more complicated examples, it
-could of course have any number of display list commands.[^command-note]
-
-[^command-note]: Note that this is *not* the same as "cache the display list for
-a DOM element subtree". To see why, consider that a single DOM element can
-result in more than one `SaveLayer`, such as when it has both opacity *and* a
-transform.
-
-Putting the `DrawText` into its own surface sounds simple enough: just make a
-surface and raster that sub-piece of the display list into it, then draw that
-surface into its "parent" surface. In this example, the resulting code to draw
-the child surface should ultimately boil down to something like this:
-
-    opacity_surface = skia.Surface(...)
-    draw_text.execute(opacity_surface.getCanvas())
-    tab_canvas.saveLayer(paint=skia.Paint(AlphaF=0.999))
-    opacity_surface.draw(tab_canvas, text_offset_x, text_offset_y)
-    tab_canvas.restore()
-
-Let's unpack what is going on in this code. First, raster `opacity_surface`.
-Then create a new conceptual
-"surface" on the Skia stack via `saveLayer`, draw `opacity_surface`,
-and finally call `restore`. Observe how this is
-*exactly* the way we described how it conceptually works *within* Skia
-in [Chapter 11](visual-effects.html#blending-and-stacking). The only
-difference is that here it's explicit that there is a `skia.Surface` between
-the `saveLayer` and the `restore`.
-Note also how we're using the `draw` method on `skia.Surface`, the very same
-method we already use in `Browser.draw` to draw the surface to the screen.
-In essence, we've moved a `saveLayer` command from the `raster` stage
-to the `draw` stage of the pipeline.
-
-::: {.further}
-
-If you look closely at the example in this section, you'll see that the
-`DrawText` command's rect is about 30 pixels wide. On the other hand, the
-`SaveLayer` rect is almost as wide as the viewport. The reason they differ is
-that the text is only about 30 pixels wide, but the block element that contains
-it is as wide as the available width.
-
-So does the composited surface need to be 30 pixels wide or the whole viewport?
-In practice you could implement either. The algorithm presented in this chapter
-ends up with the smaller one but real browsers sometimes choose the larger,
-depending on their algorithm. Also note that if there was any kind of paint
-command associated with the block element containing the text, such as a
-background color, then the surface would definitely have to be as wide as the
-viewport. Likewise, if there were multiple inline children, the union of their
-bounds would contribute to the surface size.
-
-:::
-
 Compositing algorithms
 ======================
-
-The most complex part of compositing and draw is dealing with the hierarchical
-nature of the display list. For example, consider this web page:
-
-``` {.html}
-<div style="opacity:0.999">
-  <p>
-    Hello, World!
-  </p>
-  <div style="opacity=0.5">
-    <p>More text</p>
-  </div>
-</div>
-```
-
-It renders like this:
-
-<iframe src="examples/example13-nested-opacity.html"></iframe>
-(click [here](examples/example13-nested-opacity.html) to load the example in
-your browser)
-
-
-Its full display list looks like this (after omitting no-ops):
-
-     DrawRect(top=13 left=18 bottom=787 right=98.6875 color=white)
-     SaveLayer(alpha=0.9990000128746033)
-       DrawText(text=Hello,)
-       DrawText(text=World!)
-       SaveLayer(alpha=0.5)
-         DrawText(text=More)
-         DrawText(text=text)
-
-Imagine that either opacity might animate. As it animates, we don't
-want to redo the `DrawText` commands, but we *have to* redo the
-`SaveLayer` commands. To do so, we move the `DrawText` calls to
-different `Surface`s:
-
-```{=html}
-<pre>
-SaveLayer(opacity=0.999)
-<span style='color:blue'>  DrawText(text=Hello,)
-  DrawText(text=World!)</span>
-  SaveLayer(opacity=0.8)
-    <span style='color:red'>DrawText(text=More)
-    DrawText(text=text)</span>
-</pre>
-```
-
-Here, the two `DrawText` commands in blue would be drawn on one
-surface and saved, the two `DrawText` commands in red would be
-drawn on another surface and also saved, and the remaining `SaveLayer`
-commands would be the only things left to rerun on every frame.
 
 There are two pieces to achieving this: *compositing* the display list, which
 means identifying which drawing commands are drawn together and
@@ -2709,6 +2618,14 @@ color channels.
  cause them to stop after the next commit when DOM changes occur that
  invalidate the animation. Real browsers encounter a lot of complications in
  this area.)
+
+*Width animations*: Implement the CSS `width` property; when `width`
+is set to some number of pixels on an element, the element should be
+that many pixels wide, regardless of how its width would normally be
+computed. Make `width` animatable; you'll need a variant of
+`NumericAnimation` that produces pixel values. Since `width` is
+layout-inducing, make sure that animating `width` sets `needs_layout`.
+Check that animating width should change line breaks.
 
 *Threaded smooth scrolling*: once you've completed the threaded animations
  exercise, you should be able to add threaded smooth scrolling without much
