@@ -236,11 +236,11 @@ SDL and Skia support all of these steps---in fact, it's mostly a
 matter of passing them the right parameters. Let's do that. Note that
 a real browser typically implements both CPU and GPU raster and draw,
 because in some cases CPU raster and draw can be faster than using the
-GPU.[^example-cpu-fast] In our browswer, for simplicity, we'll stick
+GPU.[^example-cpu-fast] In our browser, for simplicity, we'll stick
 to GPU mode for all pages.
 
 [^example-cpu-fast]: Any of the four steps can make GPU raster and
- draw slow. Large display list take a while to upload. Complex
+ draw slow. Large display lists take a while to upload. Complex
  display list commands take longer to compile. Raster can be slow if
  there are many surfaces, and draw can be slow if surfaces are deeply
  nested. On a CPU, the upload step and compile steps aren't necessary,
@@ -380,11 +380,11 @@ the GPU. And as expected, speed is much improved:
     Time in raster-and-draw on average: 24ms
     Time in render on average: 23ms
 
-That's almost three times faster, almost fast enough to hit sixty
+That's about three times faster, almost fast enough to hit sixty
 frames per second. And on your computer, you'll likely see even more
 speedup than that, so perhaps your animations are already quite
 smooth. But if we want to go faster yet, we'll need to reduce the
-total amount of raster and draw work we're doing.
+total amount of work in raster and draw.
 
 ::: {.further}
 
