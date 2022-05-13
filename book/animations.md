@@ -547,7 +547,7 @@ goes where.
 Some animations can't be composited because they affect more than just
 the display tree. For example, imagine we animate the `width` of the
 `div` above, instead of animating its opacity. Here's how it looks;
-click the buttons to aninimate.
+click the buttons to animate.
 
 <iframe width=500 src="examples/example13-width-transition.html"></iframe>
 
