@@ -150,23 +150,6 @@ needs raster. This makes them harder to optimize.
 :::
 
 [blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur
-::: {.further}
-
-The distinction between visual effect and layout animations is important for two
-reasons: animation quality and performance. In general, layout-inducing
-animations often have undesirable qualities---animating `width` can lead to
-text jumping around as line breaking changes---and performance implications
-(the name says it all: these animations require (main-thread) layout). Most of
-the time, layout-inducing animations are not a good idea for these reasons.
-
-An exception is a layout-inducing animation when resizing a browser window via
-a mouse gesture; in this case it's very useful for the user to see the new
-layout as the window size changes. Modern browsers are fast enough to do this,
-but it used to be that instead they would leave a visual *gutter* (a gap
-between content and the edge of the window) during the animation, to avoid
-updating layout on every animation frame.
-
-:::
 
 ::: {.further}
 
@@ -190,32 +173,85 @@ decade of the [2010s][cssanim-hist].
 GPU acceleration
 ================
 
-However, even before trying out any examples, it should be very clear from
-chapters 11 and 12 that there is no way to animate reliably at 60Hz if
-raster-and-draw takes
-[66ms or more per frame](scheduling.md#profiling-rendering) on simple examples.
+If you try the fade animation in our browser, you'll probably notice
+that it's not particularly smooth. And that shouldn't be surprising;
+after all, [last chapter](scheduling.md#profiling-rendering) had the
+following figures for our browser:
 
-So the first order of business is to move raster and draw to the
-[GPU][gpu]. Because both SDL and Skia support these modes, turning it on is
-just a matter of passing the right configuration parameters. First you'll need
-to import code for OpenGL. Install the library:
+    Time in raster-and-draw on average: 66ms
+    Time in render on average: 23ms
+
+With 66ms per frame, our browser is barely doing fifteen frames per
+second, not sixty. For smooth animations we'll need to speed up raster
+and draw.
+
+The best way to do that is to move raster and draw to the [GPU][gpu].
+A GPU is essentially a chip in your computer that runs programs, much
+like your CPU. But the GPU is specialized toward running very simple
+programs with massive parallelism; it was developed to apply simple
+operations, in parallel, for every pixel on the screen. This makes GPUs faster for
+drawing simple shapes and *much* faster for applying visual effects.
+
+At a high level, to raster and draw on the GPU our browser
+must:[^gpu-variations]
+
+[^gpu-variations]: These steps vary a bit in the details by GPU architecture.
+
+* *Upload* the display list to specialized GPU memory.
+
+* *Compile* GPU programs that raster and draw the display list.[^compiled-gpu]
+
+[^compiled-gpu]: That's right, GPU programs are dynamically compiled! This
+allows GPU programs to be portable across a wide variety of implementations
+that may have very different instruction sets or acceleration tactics.
+Of course, between frames these compiled programs will typically be
+cached, so this step won't occur on every frame.
+
+* *Raster* every drawing command into GPU textures.[^texture]
+
+[^texture]: A surface represented on the GPU is called a *texture*. There can be
+more than one texture, and practically speaking they often can't be rastered in
+parallel with each other.
+
+* *Draw* the textures onto the screen.
+
+SDL and Skia support all of these steps---in fact, it's mostly a
+matter of passing them the right parameters. Let's do that. Note that
+a real browser typically implements both CPU and GPU raster and draw,
+because in some cases CPU raster and draw can be faster than using the
+GPU.[^example-cpu-fast] In our browser, for simplicity, we'll stick
+to GPU mode for all pages.
+
+[^example-cpu-fast]: Any of the four steps can make GPU raster and
+ draw slow. Large display lists take a while to upload. Complex
+ display list commands take longer to compile. Raster can be slow if
+ there are many surfaces, and draw can be slow if surfaces are deeply
+ nested. On a CPU, the upload step and compile steps aren't necessary,
+ and more memory is available for raster and draw. Of course, many
+ optimizations are available for both GPU and CPU, so choosing the
+ best way to raster and draw a given page can be quite complex.
+
+[gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
+
+First we'll need to install the OpenGL library:
 
     pip3 install PyOpenGL
 
-and then import it:
+and import it:
 
 ``` {.python}
 import OpenGL.GL as GL
 ```
 
-Then configure `sdl_window` and start/stop a
-[GL context][glcontext] at the
-beginning/end of the program; for our purposes consider it API
-boilerplate.^[Starting a GL context is just OpenGL's way
-of saying "set up the surface into which subsequent GL drawing commands will
-draw". After doing so you can even execute OpenGL commands manually, to
-draw polygons or other objects on the screen, without using Skia at all.
-[Try it][pyopengl] if you're interested!]
+Now we'll need to configure SDL to use OpenGL and and start/stop a [GL
+context][glcontext] at the beginning/end of the program. For our
+purposes, just consider this API boilerplate.[^glcontext]
+
+[^glcontext]: Starting a GL context is just OpenGL's way of saying
+"set up the surface into which subsequent GL drawing commands will
+draw". After creating one you can even execute OpenGL commands
+manually, [without using Skia at all][pyopengl], to draw polygons or
+other objects on the screen.
 
 [glcontext]: https://www.khronos.org/opengl/wiki/OpenGL_Context
 
@@ -237,81 +273,28 @@ class Browser:
         # ...
         sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
-
 ```
 
-I've also added code above to print out the vendor and renderer of the GPU your
-computer is using; this will help you verify that it's actually using the GPU
-properly. I'm using a Chromebook to write this chapter, so for me it
+I've made our browser print out the GPU vendor and renderer that it's
+using; this will help you verify that it's actually using your GPU.
+I'm using a Chromebook to write this chapter, so for me it
 says:[^virgl]
 
     OpenGL initialized: vendor=b'Red Hat', renderer=b'virgl'
 
-[^virgl]: In this case, `virgl` stands for "virtual GL", a way of
-hardware-accelerating the Linux subsystem of ChromeOS that works with the
-ChromeOS Linux sandbox.
+[^virgl]: The `virgl` renderer stands for "virtual GL", a way of
+hardware-accelerating the Linux subsystem of ChromeOS that works with
+the ChromeOS Linux sandbox. This is a bit slower than using the GPU
+directly, so you'll probably see even faster raster and draw than I
+do.
 
-There are lots of resources online about how GPUs work and how to program them
-via GL shaders and so on. But we won't be writing shaders or other
-types of GPU programs in this book. Instead, let's focus on the basics of GPU
-technologies and how they map to browsers. A GPU is essentially a computer chip
-that is good at running very simple computer programs that specialize in
-turning simple data structures into pixels. These programs are so simple that
-the GPU can run one of them *in parallel* for each pixel, and this parallelism
-is why GPU raster is usually much faster than CPU raster. GPU draw is also
-much faster, because "copying" from one piece of GPU memory to another also
-happens in parallel for each pixel.
+Now we can configure Skia to draw directly to the screen. The
+incantation is:[^weird]
 
-At a high level, the steps to raster and draw using the GPU are:[^gpu-variations]
-
-[^gpu-variations]: These steps vary a bit in the details by GPU architecture.
-
-* *Upload* the input data structures (that describe the display list)
-   to specialized GPU memory.
-
-* *Compile* GPU programs to run on the data structures.[^compiled-gpu]
-
-[^compiled-gpu]: That's right, GPU programs are dynamically compiled! This
-allows GPU programs to be portable across a wide variety of implementations
-that may have very different instruction sets or acceleration tactics.
-
-* For each desired surface, *execute* the raster into GPU textures.[^texture]
-
-[^texture]: A surface represented on the GPU is called a *texture*. There can be
-more than one surface, and practically speaking they often can't be rastered in
-parallel with each other.
-
-* *Draw* the textures onto the screen.
-
-You can configure any GPU program to draw directly to the *screen framebuffer*,
-or to an *intermediate texture*.[^gpu-texture] Draw proceeds bottom-up: the
-leaf textures are generated from raw display list data structures, and internal
-surface tree textures are generated by computing visual effects on one or more
-children. The root of the tree is the framebuffer texture.
-
-[^gpu-texture]: Recall from [Chapter 11](visual-effects.md) that there can be
-surfaces that draw into other surfaces, forming a tree. Skia internally does
-this sometimes, based on various triggers such as blend modes. The internal
-nodes draw into intermediate textures.
-
-The time to run GPU raster is roughly the sum of the time for these four steps.
-[^optimize] The total time can be dominated by any of the four steps. The
-larger the display list, the longer the upload; the more complexity and variety
-of display list commands, the longer the compile; the more surfaces to raster,
-the longer the execute; the deeper the the nesting of surfaces in the web page,
-the longer the draw. Without care, these steps can sometimes add up to be
-longer than the time to just raster on the CPU. All of these slowdown
-situations can and do happen in real browsers for various kinds of hard-to-draw
-content.
-
-[^optimize]: It's not necessary to compile GPU programs on every raster, so
-this part can be optimized. Parts of the other steps can as well, such as
-by caching font data in the GPU.
-
-[gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
-
-The root Skia surface will need to be connected directly to the screen
-framebuffer associated with the SDL window. The incantation for that is:
+[^weird]: Weirdly, this code draws to the window without referencing
+`gl_context` or `sdl_window` directly. That's because OpenGL is a
+strange API with a lot of hidden global state; the `MakeGL` Skia
+method implicitly binds to the existing GL context.
 
 ``` {.python expected=False}
 class Browser:
@@ -327,37 +310,12 @@ class Browser:
                 skia.kBottomLeft_GrSurfaceOrigin,
                 skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
         assert self.root_surface is not None
-
 ```
 
-Note: this code never seems to reference `gl_context` or `sdl_window` directly,
-but draws to the window anyway. That's because OpenGL is a strange API that
-uses hidden global states; the `MakeGL` Skia method implicitly binds to the
-existing GL context.
-
-The `chrome_surface` incantation is a bit different, because it's creating
-a GPU texture, but one that is independent of the framebuffer:
-
-``` {.python}
-class Browser:
-    def __init__(self):
-        # ...
-        self.chrome_surface =  skia.Surface.MakeRenderTarget(
-                self.skia_context, skia.Budgeted.kNo,
-                skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
-        assert self.chrome_surface is not None
-```
-
-As compared with Chapter 11 surfaces, this surface is associated explicitly with
-the `skia_context` and uses a different color space that is required for GPU
-mode. `tab_surface` should get exactly the same treatment (but with different
-width and height arguments, of course).
-
-Finally, `draw` is much simpler: `root_surface` need not blit into the
-SDL surface, because they share a GPU framebuffer backing. (There are no
-changes at all required to raster.) All it has to do is *flush* the Skia
-surface (Skia surfaces draw lazily) and call `SDL_GL_SwapWindow` to activate
-the new framebuffer (because of OpenGL [double-buffering][double]).
+An extra advantage of this is that we won't need to copy data between
+Skia and SDL anymore. All it has to do is *flush* the Skia surface
+(Skia surfaces draw lazily) and call `SDL_GL_SwapWindow` to activate
+the new framebuffer (because of OpenGL [double-buffering][double]):
 
 [double]: https://wiki.libsdl.org/SDL_GL_SwapWindow
 
@@ -376,20 +334,40 @@ class Browser:
         sdl2.SDL_GL_SwapWindow(self.sdl_window)
 ```
 
-Let's go back and test the [counter example](scheduling.md#animating-frames)
-from Chapter 12. Without GPU, the results were:
+Finally, our browser also creates a Skia surfaces for the
+`chrome_surface` and `tab_surface`. We don't want to draw these
+straight to the screen, so the incantation is a bit different:
 
-    Time in raster-and-draw on average: 66ms
-    Time in render on average: 23ms
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.chrome_surface =  skia.Surface.MakeRenderTarget(
+                self.skia_context, skia.Budgeted.kNo,
+                skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+        assert self.chrome_surface is not None
+```
 
-Now, with GPU rendering, they are:
+Again, you should think of these changes mostly as boilerplate, since
+the details of GPU operation aren't our focus here.[^color-space] Make
+sure to apply the same treatment to `tab_surface` (with different
+width and height arguments).
+
+[^color-space]: For example, a different color space that is required
+for GPU mode.
+
+Thanks to SDL's and Skia's thorough support for GPU rendering, that
+should be all that's necessary for our browser to raster and draw on
+the GPU. And as expected, speed is much improved:
 
     Time in raster-and-draw on average: 24ms
     Time in render on average: 23ms
 
-So GPU acceleration speeds up raster-and-draw by more than 60%. (If you're on a
-computer with a non-virtualized GL driver you will probably see even more
-speedup than that.)
+That's about three times faster, almost fast enough to hit sixty
+frames per second. And on your computer, you'll likely see even more
+speedup than that, so perhaps your animations are already quite
+smooth. But if we want to go faster yet, we'll need to reduce the
+total amount of work in raster and draw.
 
 ::: {.further}
 
@@ -569,11 +547,9 @@ goes where.
 Some animations can't be composited because they affect more than just
 the display tree. For example, imagine we animate the `width` of the
 `div` above, instead of animating its opacity. Here's how it looks;
-you'll probably need to refresh the page or [open it
-full-screen](examples/example13-opacity-width.html) to watch the
-animation from the beginning.
+click the buttons to animate.
 
-<iframe src="examples/example13-opacity-width.html"></iframe>
+<iframe width=500 src="examples/example13-width-transition.html"></iframe>
 
 Here, different frames have different *layout trees*, not just display
 trees. That totally changes the coordinates for the `DrawText` calls,
@@ -581,94 +557,16 @@ and we wouldn't necessarily be able to reuse the composited layer.
 Such animations are called *layout-inducing* and speeding them up
 requires [different techniques](reflow.md).[^not-advisable]
 
-[^not-advisable]: Because layout-inducing animations can't easily make
-    use of compositing, they're usually not a good idea on the web.
-    Not only are they slower, but because they cause page elements to
-    move around, often in sudden jumps, meaning they don't create that
-    illusion of continuous movement.
-
-The most complex part of compositing and draw is dealing with the hierarchical
-nature of the display list. For example, consider this web page:
-
-``` {.html}
-<div style="opacity:0.999">
-  <p>
-    Hello, World!
-  </p>
-  <div style="opacity=0.5">
-    <p>More text</p>
-  </div>
-</div>
-```
-
-It renders like this:
-
-<iframe src="examples/example13-nested-opacity.html"></iframe>
-(click [here](examples/example13-nested-opacity.html) to load the example in
-your browser)
-
-Its full display list looks like this (after omitting no-ops):
-
-    DrawRect(top=13 left=18 bottom=787 right=98.6875 color=white)
-    SaveLayer(alpha=0.9990000128746033)
-      DrawText(text=Hello,)
-      DrawText(text=World!)
-      SaveLayer(alpha=0.5)
-        DrawText(text=More)
-        DrawText(text=text)
-
-Imagine that either opacity might animate. As it animates, we don't
-want to redo the `DrawText` commands, but we *have to* redo the
-`SaveLayer` commands. To do so, we move the `DrawText` calls to
-different `Surface`s:
-
-    Composited Layer 1:
-      DrawRect(top=13 left=18 bottom=787 right=98.6875 color=white)
-
-    Composited Layer 2:
-      DrawText(text=Hello,)
-      DrawText(text=World!)
-
-    Composited Layer 3:
-      DrawText(text=More)
-      DrawText(text=text)
-
-Here, we need three composited layers, because each composited layer
-has a different set of effects applied: the first layer has no
-effects, the second has one alpha, and the third layer has a different
-alpha.
-
-Ideally, the resulting draw display list would look like this:
-
-    DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
-      DrawCompositedLayer()
-      SaveLayer(alpha=0.5)
-        DrawCompositedLayer()
-        
-It turns out to be pretty complicated to achieve this, so in this
-chapter we'll implement a simpler algorithm which will produce the
-following draw display list:
-
-    DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
-      DrawCompositedLayer()
-    SaveLayer(alpha=0.9990000128746033)
-      SaveLayer(alpha=0.5)
-        DrawCompositedLayer()
-
-This means our browser will produce the wrong output in certain cases,
-particularly when page elements with visual effects overlap.[^atomic]
-Real browsers, of course, have to fix this issue, but in this chapter
-we found that just implementing compositing was hard enough.
-
-[^atomic]: The jargon for this is that the top `SaveLayer` doesn't
-    apply "atomically", as in to all its arguments at once. This ends
-    up requiring temporary GPU textures to be created during draw, an
-    issue we touched on in [Chapter 11][stack-cont] in the context of
-    stacking contexts.
-
-[stack-cont]: visual-effects.md#blending-and-stacking
+[^not-advisable]: Because layout-inducing animations can't easily make use of
+compositing, they're usually not a good idea on the web. Not only are they
+slower, but because they cause page elements to move around, often in sudden
+jumps, meaning they don't create that illusion of continuous movement. An
+exception is a layout-inducing animation when resizing a browser window via a
+mouse gesture; in this case it's very useful for the user to see the new layout
+as the window size changes. Modern browsers are fast enough to do this, but it
+used to be that instead they would leave a visual *gutter* (a gap between
+content and the edge of the window) during the animation, to avoid updating
+layout on every animation frame.
 
 ::: {.further}
 
@@ -888,6 +786,7 @@ next frame.
 To start with, we'll need to know how big a surface to allocate for a
 `CompositedLayer`. That's just the union of the bounding boxes of all
 of its paint commands. We'll first add a `rect` field:
+
 
 ``` {.python expected=False}
 class DisplayItem:
@@ -2536,13 +2435,14 @@ color channels.
  invalidate the animation. Real browsers encounter a lot of complications in
  this area.)
 
-*Width animations*: Implement the CSS `width` property; when `width`
-is set to some number of pixels on an element, the element should be
-that many pixels wide, regardless of how its width would normally be
-computed. Make `width` animatable; you'll need a variant of
-`NumericAnimation` that produces pixel values. Since `width` is
-layout-inducing, make sure that animating `width` sets `needs_layout`.
-Check that animating width should change line breaks.
+*Width animations*: Implement the CSS `width` property; when `width` is set to
+ some number of pixels on an element, the element should be that many pixels
+ wide, regardless of how its width would normally be computed. Make `width`
+ animatable; you'll need a variant of `NumericAnimation` that produces pixel
+ values. Since `width` is layout-inducing, make sure that animating `width`
+ sets `needs_layout`. Check that animating width should change line breaks.
+ [This example](examples/example13-width-transition.html) should work once
+ you've implemented width animations.
 
 *Threaded smooth scrolling*: once you've completed the threaded animations
  exercise, you should be able to add threaded smooth scrolling without much
