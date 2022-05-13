@@ -1,22 +1,11 @@
-var count = 0
-function frame() {
-	if (count == 1) {
-		go();
-	} else {
-		count++;
-		requestAnimationFrame(frame);
-	}
-}
-requestAnimationFrame(frame);
-
-var go_down = false;
-var div = document.querySelectorAll("div")[0];
-function go() {
-	go_down = !go_down;
-	if (go_down)
-		div.style = "background-color:lightblue;width:100px";
-	else
+div = document.querySelectorAll("div")[0];
+function start_grow(e) {
 		div.style = "background-color:lightblue;width:400px";
-	setTimeout(go, 16*120);
 }
 
+function start_shrink(e) {
+		div.style = "background-color:lightblue;width:100px";
+}
+
+document.querySelectorAll("button")[0].addEventListener("click", start_shrink);
+document.querySelectorAll("button")[1].addEventListener("click", start_grow);

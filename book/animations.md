@@ -150,23 +150,6 @@ needs raster. This makes them harder to optimize.
 :::
 
 [blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur
-::: {.further}
-
-The distinction between visual effect and layout animations is important for two
-reasons: animation quality and performance. In general, layout-inducing
-animations often have undesirable qualities---animating `width` can lead to
-text jumping around as line breaking changes---and performance implications
-(the name says it all: these animations require (main-thread) layout). Most of
-the time, layout-inducing animations are not a good idea for these reasons.
-
-An exception is a layout-inducing animation when resizing a browser window via
-a mouse gesture; in this case it's very useful for the user to see the new
-layout as the window size changes. Modern browsers are fast enough to do this,
-but it used to be that instead they would leave a visual *gutter* (a gap
-between content and the edge of the window) during the animation, to avoid
-updating layout on every animation frame.
-
-:::
 
 ::: {.further}
 
@@ -564,11 +547,9 @@ goes where.
 Some animations can't be composited because they affect more than just
 the display tree. For example, imagine we animate the `width` of the
 `div` above, instead of animating its opacity. Here's how it looks;
-you'll probably need to refresh the page or [open it
-full-screen](examples/example13-opacity-width.html) to watch the
-animation from the beginning.
+click the buttons to animate.
 
-<iframe src="examples/example13-opacity-width.html"></iframe>
+<iframe width=500 src="examples/example13-width-transition.html"></iframe>
 
 Here, different frames have different *layout trees*, not just display
 trees. That totally changes the coordinates for the `DrawText` calls,
@@ -576,11 +557,17 @@ and we wouldn't necessarily be able to reuse the composited layer.
 Such animations are called *layout-inducing* and speeding them up
 requires [different techniques](reflow.md).[^not-advisable]
 
-[^not-advisable]: Because layout-inducing animations can't easily make
-    use of compositing, they're usually not a good idea on the web.
-    Not only are they slower, but because they cause page elements to
-    move around, often in sudden jumps, meaning they don't create that
-    illusion of continuous movement.
+[^not-advisable]: Because layout-inducing animations can't easily make use of
+compositing, they're usually not a good idea on the web. Not only are they
+slower, but because they cause page elements to move around, often in sudden
+jumps, meaning they don't create that illusion of continuous movement. An
+exception is a layout-inducing animation when resizing a browser window via a
+mouse gesture; in this case it's very useful for the user to see the new layout
+as the window size changes. Modern browsers are fast enough to do this, but it
+used to be that instead they would leave a visual *gutter* (a gap between
+content and the edge of the window) during the animation, to avoid updating
+layout on every animation frame.
+
 
 The most complex part of compositing and draw is dealing with the hierarchical
 nature of the display list. For example, consider this web page:
@@ -2619,13 +2606,14 @@ color channels.
  invalidate the animation. Real browsers encounter a lot of complications in
  this area.)
 
-*Width animations*: Implement the CSS `width` property; when `width`
-is set to some number of pixels on an element, the element should be
-that many pixels wide, regardless of how its width would normally be
-computed. Make `width` animatable; you'll need a variant of
-`NumericAnimation` that produces pixel values. Since `width` is
-layout-inducing, make sure that animating `width` sets `needs_layout`.
-Check that animating width should change line breaks.
+*Width animations*: Implement the CSS `width` property; when `width` is set to
+ some number of pixels on an element, the element should be that many pixels
+ wide, regardless of how its width would normally be computed. Make `width`
+ animatable; you'll need a variant of `NumericAnimation` that produces pixel
+ values. Since `width` is layout-inducing, make sure that animating `width`
+ sets `needs_layout`. Check that animating width should change line breaks.
+ [This example](examples/example13-width-transition.html) should work once
+ you've implemented width animations.
 
 *Threaded smooth scrolling*: once you've completed the threaded animations
  exercise, you should be able to add threaded smooth scrolling without much
