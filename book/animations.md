@@ -227,7 +227,7 @@ cached, so this step won't occur on every frame.
 * *Raster* every drawing command into GPU textures.[^texture]
 
 [^texture]: A surface represented on the GPU is called a *texture*. There can be
-more than one surface, and practically speaking they often can't be rastered in
+more than one texture, and practically speaking they often can't be rastered in
 parallel with each other.
 
 * *Draw* the textures onto the screen.
