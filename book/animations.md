@@ -240,7 +240,7 @@ GPU.[^example-cpu-fast] In our browswer, for simplicity, we'll stick
 to GPU mode for all pages.
 
 [^example-cpu-fast]: Any of the four steps can make GPU raster and
- draw slow. Large display list take a while to upload. Complexity
+ draw slow. Large display list take a while to upload. Complex
  display list commands take longer to compile. Raster can be slow if
  there are many surfaces, and draw can be slow if surfaces are deeply
  nested. On a CPU, the upload step and compile steps aren't necessary,
