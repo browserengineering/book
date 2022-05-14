@@ -706,7 +706,8 @@ class Browser:
             if not composited_layer.display_items: continue
             parent = composited_layer.display_items[0].parent
             while parent:
-                current_effect = parent.clone([current_effect])
+                current_effect = \
+                    parent.clone([current_effect])
                 parent = parent.parent
             self.draw_list.append(current_effect)
 ```
@@ -1114,7 +1115,7 @@ more properties by writing new animation types:
 
 ``` {.python}
 ANIMATED_PROPERTIES = {
-    "opacity": NumericAnimation
+    "opacity": NumericAnimation,
 }
 ```
 
