@@ -536,13 +536,15 @@ between frames is the `SaveLayer`, which is in the draw display list.
 Now, a browser can choose what composited layers to create however it
 wants. Typically visual effects like opacity are very fast to execute on a
 GPU, but *paint commands* that draw shapes---in our browser,
-`DrawText`, `DrawRect`, `DrawRRect`, and `DrawLine`---can be slower.
+`DrawText`, `DrawRect`, `DrawRRect`, and `DrawLine`---can be slower.[^many]
 Since it's the visual effects that are typically animated, this means
 browsers usually leave animated visual effects in the draw display list and move paint
 commands into composited layers. Of course, in a real browser,
 hardware capabilities, GPU memory, and application data all play into
 these decisions, but the basic idea of compositing is the same no matter what
 goes where.
+
+[^many]: And there are usually a lot more of them to execute.
 
 Some animations can't be composited because they affect more than just
 the display tree. For example, imagine we animate the `width` of the
@@ -622,7 +624,7 @@ class Browser:
         for cmd in self.active_tab_display_list:
             all_commands = tree_to_list(cmd, all_commands)
         paint_commands = [cmd
-            for cmd in all_commands if not cmd.children]
+            for cmd in all_commands if cmd.is_paint_command()]
 ```
 
 We now need to group paint commands into layers. For now, let's do the
@@ -660,22 +662,19 @@ class CompositedLayer:
         self.display_items.append(display_item)
 ```
 
-That's it: we've now got a bunch of `composited_layers`s containing
-all of the paint commands!
-
-Now let's turn to using those composited layers. To do that, we'll
-need to create the draw display list that contains the layers. We'll
-build this by taking each layer we've generated and considering all
-visual effects applied to it. This will involve *cloning* each of the
-ancestors of the layer's paint commands and injecting new children,
-with a `DrawCompositedLayer` at the bottom of the tree.
+Now let's turn to using those composited layers. To do that, we'll need to
+create the draw display list that contains the layers. We'll build this by
+taking each composited layer we've generated and considering all visual effects
+applied to it. This will involve *cloning* each of the ancestors of the layer's
+paint commands and injecting new children, with a `DrawCompositedLayer` at the
+bottom of the tree.
 
 So let's add a new `clone` method to the visual effects
 classes.[^no-paint-commands] For `SaveLayer`, it'll create a new
 `SaveLayer` with the same parameters but new children:
 
 [^no-paint-commands]: We won't be cloning paint commands, since
-    they're all going to be inside a layer, so we don't need to
+    they're all going to be inside a composited layer, so we don't need to
     implement `clone` for them.
 
 ``` {.python}
@@ -688,10 +687,10 @@ class SaveLayer(DisplayItem):
 
 The other visual effect, `ClipRRect`, should do something similar.
 
-We can now build the draw display list. For each composited layer, we
-create a `DrawCompositedLayer` command, which we'll define in just a
-moment. Then, we walk up the display list, wrapping that
-`DrawCompositedLayer` in each visual effect that we need to apply:
+We can now build the draw display list. For each composited layer,
+create a `DrawCompositedLayer` command (which we'll define in just a
+moment). Then, walk up the display list, wrapping that
+`DrawCompositedLayer` in each visual effect that needs to apply:
 
 ``` {.python replace=parent.clone(/self.clone_latest(parent%2c%20}
 class Browser:
@@ -702,7 +701,8 @@ class Browser:
     def paint_draw_list(self):
         self.draw_list = []
         for composited_layer in self.composited_layers:
-            current_effect = DrawCompositedLayer(composited_layer)
+            current_effect = \
+                DrawCompositedLayer(composited_layer)
             if not composited_layer.display_items: continue
             parent = composited_layer.display_items[0].parent
             while parent:
@@ -711,11 +711,11 @@ class Browser:
             self.draw_list.append(current_effect)
 ```
 
-Note again that this simple algorithm of walking up from the
+Note that this simple algorithm of walking up from the
 composited layers isn't quite correct; it doesn't apply visual effects
 atomically. Fixing that isn't too hard, but it requires you to set up
 a mapping from the display list to the draw display list and isn't too
-important for most web pages, so I've left that as an exercise.
+visible on most web pages, so I've left that as an exercise.
 
 ::: {.further}
 
@@ -777,11 +777,10 @@ Now that we've split the display list into composited layers and a
 draw display list, we need to update the rest of the browser to use
 these pieces for raster and draw.
 
-Let's start with raster. In the raster step, the browser needs to walk
-the list of composited layers, allocate a surface for each one, and
-raster every display command in the layer to that surface. That
-surface is then saved to the composited layer, so that we can reuse it
-next frame.
+Let's start with raster. In the raster step, the browser needs to walk the list
+of composited layers, allocate a surface for each one, and raster every display
+command in the composited layer to that surface. That surface is then saved to
+the composited layer, so that we can reuse it next frame.
 
 To start with, we'll need to know how big a surface to allocate for a
 `CompositedLayer`. That's just the union of the bounding boxes of all
@@ -790,7 +789,7 @@ of its paint commands. We'll first add a `rect` field:
 
 ``` {.python expected=False}
 class DisplayItem:
-    def __init__(self, rect, children=[],):
+    def __init__(self, rect, children=[]):
         self.rect = rect
 ```
 
@@ -840,11 +839,11 @@ class CompositedLayer:
 Note that we're creating a surface just big enough to store the items
 in this composited layer. This reduces how much GPU memory we need.
 
-To raster the composited layer, we just need to draw all of its
-display items to this surface. The only tricky part is the need to
-offset by the top and left of the composited bounds. So we first need
-to offset so that the display items execute in the *local coordinate
-space* of the surface.
+To raster the composited layer, draw all of its display items to this surface.
+The only tricky part is the need to offset by the top and left of the
+composited bounds, since the surface bounds don't include that offset. To do
+that, subtract that offset offset so that the display items execute in
+the *local coordinate space* of the surface.
 
 ``` {.python}
 class CompositedLayer:
@@ -875,7 +874,8 @@ draw:
 class DrawCompositedLayer(DisplayItem):
     def __init__(self, composited_layer):
         self.composited_layer = composited_layer
-        super().__init__(self.composited_layer.composited_bounds())
+        super().__init__(
+            self.composited_layer.composited_bounds())
 
     def __repr__(self):
         return "DrawCompositedLayer()"
@@ -891,7 +891,8 @@ class DrawCompositedLayer(DisplayItem):
         bounds = layer.composited_bounds()
         surface_offset_x = bounds.left()
         surface_offset_y = bounds.top()
-        layer.surface.draw(canvas, surface_offset_x, surface_offset_y)
+        layer.surface.draw(
+            canvas, surface_offset_x, surface_offset_y)
 ```
 
 Now we can execute the draw display list:
@@ -927,13 +928,14 @@ class Browser:
         # ...
 ```
 
-So simple and elegant! Now, on every frame, we are simply splitting
-the display list into composited layers and the draw display list, and
-then running each of those it their own phase. One small thing,
-though---right now, we're doing *all* of these steps on every frame.
-But the whole point here was to avoid re-rastering layers. Let's work
-on that next.
+So simple and elegant! Now, on every frame, we are simply splitting the display
+list into composited layers and the draw display list, and then running each of
+those it their own phase. One small thing, though---right now, we're
+doing *all* of these steps on every frame...ut the whole point here was to
+avoid re-rastering layers! (Recall how expensive it is, from our profiling
+in [Chapter 12][profiling].) Let's work on that next.
 
+[profiling]: http://localhost:8001/scheduling.html#profiling-rendering
 
 
 CSS transitions
@@ -942,7 +944,7 @@ CSS transitions
 The key to avoiding re-rastering layers is to know which layers have
 changed, and which haven't. Right now, we're basically always assuming
 all layers have changed, but ideally we'd know exactly what's changed
-between frames. Browsers have all sorts of complex methods to do
+between frames. Browsers have all sorts of complex methods to achieve
 this,[^browser-detect-diff] but to keep things simple, let's implement
 a CSS feature perfect for compositing: CSS transitions.
 
@@ -981,8 +983,7 @@ the JavaScript and subtly different from real browsers.
 
 <iframe src="examples/example13-opacity-transition.html"></iframe>
 (click [here](examples/example13-opacity-transition.html) to load the example in
-your browser; [here](examples/example13-width-transition.html) is the width
-animation example)
+your browser)
 
 To implement CSS transitions, we'll need to move the variables like
 `current_frame` and `change_per_frame` from JavaScript into the
@@ -1012,18 +1013,13 @@ class Element:
 ```
 
 The simplest type of animation is a `NumericAnimation`, which animates
-simple numeric properties like `opacity` and `width`:
+simple numeric properties like `opacity`:
 
 ``` {.python}
 class NumericAnimation:
     def __init__(self, old_value, new_value, num_frames):
-        self.is_px = old_value.endswith("px")
-        if self.is_px:
-            self.old_value = float(old_value[:-2])
-            self.new_value = float(new_value[:-2])
-        else:
-            self.old_value = float(old_value)
-            self.new_value = float(new_value)
+        self.old_value = float(old_value)
+        self.new_value = float(new_value)
         self.num_frames = num_frames
 
         self.frame_count = 1
@@ -1031,20 +1027,11 @@ class NumericAnimation:
         self.change_per_frame = total_change / num_frames
 ```
 
-Note the little quirk that `width` is given in pixels while `opacity`
-is given without units,[^more-units] so `NumericAnimation` looks at
-the old value to determine the unit to use, and then stores the old
-and new values parsed.
-
-[^more-units]: In real browsers, there are a [lot more][units] units
-to contend with. And other constraints, too---like the fact that
-opacity should be a value between 0 and 1.
-
 [units]: https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Values_and_units
 
 Much like in JavaScript, we'll need an `animate` method that
-increments the frame count and computes the new
-opacity/width/whatever:
+increments the frame count and computes the new value and returns it; this
+value will be placed in the style of an element.
 
 ``` {.python}
 class NumericAnimation:
@@ -1053,10 +1040,7 @@ class NumericAnimation:
         if self.frame_count >= self.num_frames: return
         current_value = self.old_value + \
             self.change_per_frame * self.frame_count
-        if self.is_px:
-            return "{}px".format(current_value)
-        else:
-            return "{}".format(current_value)
+        return "{}".format(current_value)
 ```
 
 We're going to want to create these animation objects every time a
@@ -1099,8 +1083,10 @@ property to its old value, new value, and duration (again in frames):
 
 ``` {.python}
 def diff_styles(old_style, new_style):
-    old_transitions = parse_transition(old_style.get("transition"))
-    new_transitions = parse_transition(new_style.get("transition"))
+    old_transitions = \
+        parse_transition(old_style.get("transition"))
+    new_transitions = \
+        parse_transition(new_style.get("transition"))
 
     transitions = {}
     for property in old_transitions:
@@ -1111,7 +1097,8 @@ def diff_styles(old_style, new_style):
         old_value = old_style[property]
         new_value = new_style[property]
         if old_value == new_value: continue
-        transitions[property] = (old_value, new_value, num_frames)
+        transitions[property] = \
+            (old_value, new_value, num_frames)
 
     return transitions
 ```
@@ -1127,14 +1114,13 @@ more properties by writing new animation types:
 
 ``` {.python}
 ANIMATED_PROPERTIES = {
-    "width": NumericAnimation,
-    "opacity": NumericAnimation,
+    "opacity": NumericAnimation
 }
 ```
 
 Now `style` can animate any changed properties listed in
 `ANIMATED_PROPERTIES`:
-
+f
 ``` {.python}
 def style(node, rules):
     if old_style:
@@ -1166,7 +1152,8 @@ class Tab:
         # ...
         self.js.interp.evaljs("__runRAFHandlers()")
         for node in tree_to_list(self.nodes, []):
-            for (property_name, animation) in node.animations.items():
+            for (property_name, animation) in \
+                node.animations.items():
                 # ...
         # ...
 ```
@@ -1196,7 +1183,8 @@ solve issues like this.
 class Tab:
     def run_animation_frame(self, scroll):
         for node in tree_to_list(self.nodes, []):
-            for (property_name, animation) in node.animations.items():
+            for (property_name, animation) in \
+                node.animations.items():
                 value = animation.animate()
                 if value:
                     node.style[property_name] = value
@@ -1264,13 +1252,8 @@ to have three timers for the three phases of `render`.
 
 Well---with all that done, our browser now supports animations with
 just CSS! That's much more convenient for website authors, which is
-great. But it's not yet that much faster than a JavaScript-based
-animation. That's because the JavaScript runs really quickly, while
-layout and paint still consume a large amount of time (recall our
-[profiling in Chapter 12][profiling]). So let's turn our attention to
-dramatically speeding up rendering for animations.
-
-[profiling]: http://localhost:8001/scheduling.html#profiling-rendering
+great. Now let's use the presence of such an animation to trigger
+a composited animation that avoids re-raster.
 
 ::: {.further}
 
@@ -1312,7 +1295,7 @@ of what is animating, and re-run `draw` with different opacity parameters on
 the `CompositedLayer`s that are animating. If nothing else changes, then
 we don't need to re-composite or re-raster anything.
 
-To do this we'll need to keep track of anmations by some sort of id, and pass
+To do this we'll need to keep track of animations by some sort of id, and pass
 that id from the main thread to the browser thread. Let's use the `node`
 pointer (but the pointer only). Add another `DisplayItem` constructor parameter
 indicating the `node` that the `DisplayItem` belongs to (the one that painted
@@ -1341,28 +1324,29 @@ class Tab:
 ```
 
 * Save off each `Element` that updates its composited animation, in a new
-array called `composited_animation_updates`:
+array called `composited_updates`:
 
 ``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
         # ...
-        self.composited_animation_updates = []
+        self.composited_updates = []
 
     def run_animation_frame(self, scroll):
         for node in tree_to_list(self.nodes, []):
-            for (property_name, animation) in node.animations.items():
+            for (property_name, animation) in \
+                node.animations.items():
                 if value:
                     node.style[property_name] = value
                     if property_name == "opacity":
-                        self.composited_animation_updates.append(node)
+                        self.composited_updates.append(node)
                         self.set_needs_paint()
                     else:
                         self.set_needs_layout()
 ```
 
 * When running animation frames, if only `needs_paint` is true, then compositing
-  is not needed, and each animation in `composited_animation_updates` can be
+  is not needed, and each animation in `composited_updates` can be
   committed across to the browser thread. The data to be sent across for each
   animation update will be a DOM `Element` and a `SaveLayer` pointer.
 
@@ -1399,10 +1383,10 @@ class Tab:
 
         composited_updates = {}
         if not needs_composite:
-            for node in self.composited_animation_updates:
+            for node in self.composited_updates:
                 composited_updates[node] = \
                     (node, node.save_layer))
-        self.composited_animation_updates.clear()
+        self.composited_updates.clear()
 
         commit_data = CommitData(
             # ...
@@ -1506,7 +1490,8 @@ class Browser:
     def paint_draw_list(self):
         for composited_layer in self.composited_layers:
             while parent:
-                current_effect = self.clone_latest(parent, [current_effect])
+                current_effect = \
+                    self.clone_latest(parent, [current_effect])
                 # ...
 ```
 
@@ -1594,7 +1579,8 @@ class CompositedLayer:
     # ...
     def can_merge(self, display_item):
         if self.display_items:
-            return display_item.parent == self.display_items[0].parent
+            return display_item.parent == \
+                self.display_items[0].parent
         else:
             return True
 
@@ -1704,8 +1690,9 @@ class Browser:
         # ...
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing() and (not cmd.parent or \
-                cmd.parent.needs_compositing())
+            if not cmd.needs_compositing() and \
+                (not cmd.parent or \
+                 cmd.parent.needs_compositing())
         ]
         # ...
 ```
@@ -1713,7 +1700,7 @@ class Browser:
 Since internal nodes can now be in a `CompositedLayer`, there is a bit of added
 complexity to `composited_bounds`.  We'll need to recursively union the rects
 of the subtree of non-composited display items, so let's add a `DisplayItem`
-method to do that, and place `rect`:
+method to do that:
 
 ``` {.python}
 class DisplayItem:
@@ -1952,7 +1939,8 @@ And add some code to `paint_visual_effects`:
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    translation = parse_transform(node.style.get("transform", ""))
+    translation = parse_transform(
+        node.style.get("transform", ""))
     # ...
     save_layer = \
     # ...
@@ -2011,8 +1999,10 @@ class TranslateAnimation:
         self.num_frames = num_frames
 
         self.frame_count = 1
-        self.change_per_frame_x = (new_x - self.old_x) / num_frames
-        self.change_per_frame_y = (new_y - self.old_y) / num_frames
+        self.change_per_frame_x = \
+            (new_x - self.old_x) / num_frames
+        self.change_per_frame_y = \
+            (new_y - self.old_y) / num_frames
 
     def animate(self):
         self.frame_count += 1
@@ -2438,11 +2428,12 @@ color channels.
 *Width animations*: Implement the CSS `width` property; when `width` is set to
  some number of pixels on an element, the element should be that many pixels
  wide, regardless of how its width would normally be computed. Make `width`
- animatable; you'll need a variant of `NumericAnimation` that produces pixel
- values. Since `width` is layout-inducing, make sure that animating `width`
- sets `needs_layout`. Check that animating width should change line breaks.
- [This example](examples/example13-width-transition.html) should work once
- you've implemented width animations.
+ animatable; you'll need a variant of `NumericAnimation` that parses and
+ produces pixel values (the "px" suffix in the string). Since `width`
+ is layout-inducing, make sure that animating `width` sets `needs_layout`.
+ Check that animating width should change line breaks.[This example]
+ (examples/example13-width-transition.html) should work once you've implemented
+ width animations.
 
 *Threaded smooth scrolling*: once you've completed the threaded animations
  exercise, you should be able to add threaded smooth scrolling without much

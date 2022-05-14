@@ -304,7 +304,8 @@ class SaveLayer(DisplayItem):
 class DrawCompositedLayer(DisplayItem):
     def __init__(self, composited_layer):
         self.composited_layer = composited_layer
-        super().__init__(self.composited_layer.composited_bounds())
+        super().__init__(
+            self.composited_layer.composited_bounds())
 
     def execute(self, canvas):
         layer = self.composited_layer
@@ -312,7 +313,8 @@ class DrawCompositedLayer(DisplayItem):
         bounds = layer.composited_bounds()
         surface_offset_x = bounds.left()
         surface_offset_y = bounds.top()
-        layer.surface.draw(canvas, surface_offset_x, surface_offset_y)
+        layer.surface.draw(
+            canvas, surface_offset_x, surface_offset_y)
 
     def __repr__(self):
         return "DrawCompositedLayer()"
@@ -771,7 +773,8 @@ def style_length(node, style_name, default_value):
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
     blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
-    translation = parse_transform(node.style.get("transform", ""))
+    translation = parse_transform(
+        node.style.get("transform", ""))
 
     border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
@@ -925,8 +928,10 @@ def parse_transition(value):
     return properties
 
 def diff_styles(old_style, new_style):
-    old_transitions = parse_transition(old_style.get("transition"))
-    new_transitions = parse_transition(new_style.get("transition"))
+    old_transitions = \
+        parse_transition(old_style.get("transition"))
+    new_transitions = \
+        parse_transition(new_style.get("transition"))
 
     transitions = {}
     for property in old_transitions:
@@ -937,19 +942,15 @@ def diff_styles(old_style, new_style):
         old_value = old_style[property]
         new_value = new_style[property]
         if old_value == new_value: continue
-        transitions[property] = (old_value, new_value, num_frames)
+        transitions[property] = \
+            (old_value, new_value, num_frames)
 
     return transitions
 
 class NumericAnimation:
     def __init__(self, old_value, new_value, num_frames):
-        self.is_px = old_value.endswith("px")
-        if self.is_px:
-            self.old_value = float(old_value[:-2])
-            self.new_value = float(new_value[:-2])
-        else:
-            self.old_value = float(old_value)
-            self.new_value = float(new_value)
+        self.old_value = float(old_value)
+        self.new_value = float(new_value)
         self.num_frames = num_frames
 
         self.frame_count = 1
@@ -961,10 +962,7 @@ class NumericAnimation:
         if self.frame_count >= self.num_frames: return
         current_value = self.old_value + \
             self.change_per_frame * self.frame_count
-        if self.is_px:
-            return "{}px".format(current_value)
-        else:
-            return "{}".format(current_value)
+        return "{}".format(current_value)
 
     def __repr__(self):
         return ("NumericAnimation(" + \
@@ -981,8 +979,10 @@ class TranslateAnimation:
         self.num_frames = num_frames
 
         self.frame_count = 1
-        self.change_per_frame_x = (new_x - self.old_x) / num_frames
-        self.change_per_frame_y = (new_y - self.old_y) / num_frames
+        self.change_per_frame_x = \
+            (new_x - self.old_x) / num_frames
+        self.change_per_frame_y = \
+            (new_y - self.old_y) / num_frames
 
     def __repr__(self):
         return ("TranslateAnimation(" + \
@@ -1022,7 +1022,6 @@ class ScrollAnimation:
 
     
 ANIMATED_PROPERTIES = {
-    "width": NumericAnimation,
     "opacity": NumericAnimation,
     "transform": TranslateAnimation,
 }
@@ -1081,7 +1080,8 @@ class CompositedLayer:
 
     def can_merge(self, display_item):
         if self.display_items:
-            return display_item.parent == self.display_items[0].parent
+            return display_item.parent == \
+                self.display_items[0].parent
         else:
             return True
 
@@ -1170,7 +1170,7 @@ class Tab:
 
         self.measure_render = MeasureTime("render")
 
-        self.composited_animation_updates = []
+        self.composited_updates = []
         self.scroll_behavior = 'auto'
         self.scroll_animation = None
 
@@ -1262,14 +1262,15 @@ class Tab:
         self.js.interp.evaljs("__runRAFHandlers()")
 
         for node in tree_to_list(self.nodes, []):
-            for (property_name, animation) in node.animations.items():
+            for (property_name, animation) in \
+                node.animations.items():
                 value = animation.animate()
                 if value:
                     node.style[property_name] = value
                     if USE_COMPOSITING and \
                         (property_name == "opacity" or \
                          property_name == "transform"):
-                        self.composited_animation_updates.append(node)
+                        self.composited_updates.append(node)
                         self.set_needs_paint()
                     else:
                         self.set_needs_layout()
@@ -1291,10 +1292,10 @@ class Tab:
 
         composited_updates = {}
         if not needs_composite:
-            for node in self.composited_animation_updates:
+            for node in self.composited_updates:
                 composited_updates[node] = \
                     (node.transform, node.save_layer)
-        self.composited_animation_updates.clear()
+        self.composited_updates.clear()
 
         commit_data = CommitData(
             url=self.url,
@@ -1659,8 +1660,9 @@ class Browser:
                 tree_to_list(cmd, all_commands)
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing() and (not cmd.parent or \
-                cmd.parent.needs_compositing())
+            if not cmd.needs_compositing() and \
+                (not cmd.parent or \
+                 cmd.parent.needs_compositing())
         ]
         for display_item in non_composited_commands:
             for layer in reversed(self.composited_layers):
@@ -1698,11 +1700,13 @@ class Browser:
     def paint_draw_list(self):
         self.draw_list = []
         for composited_layer in self.composited_layers:
-            current_effect = DrawCompositedLayer(composited_layer)
+            current_effect = \
+                DrawCompositedLayer(composited_layer)
             if not composited_layer.display_items: continue
             parent = composited_layer.display_items[0].parent
             while parent:
-                current_effect = self.clone_latest(parent, [current_effect])
+                current_effect = \
+                    self.clone_latest(parent, [current_effect])
                 parent = parent.parent
             self.draw_list.append(current_effect)
 
