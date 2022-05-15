@@ -128,37 +128,6 @@ But once opacity changes, one starts:
     >>> div.animations
     {'opacity': NumericAnimation(old_value=0.5, change_per_frame=-0.0032, num_frames=125.0)}
 
-Now let's try it for width:
-
-    >>> styles = 'http://test.test/styles2.css'
-    >>> test.socket.respond(styles, b"HTTP/1.0 200 OK\r\n" +
-    ... b"content-type: text/css\r\n\r\n" +
-    ... b"div { transition:width 2s;}")
-
-    >>> transitions_url2 = 'http://test.test/transitions2'
-    >>> test.socket.respond(transitions_url2, b"HTTP/1.0 200 OK\r\n" +
-    ... b"content-type: text/html\r\n\r\n" +
-    ... b"<link rel=stylesheet href='/styles2.css'>" +
-    ... b"<div style=\"width:400px\">Text</div>)")
-
-    >>> browser = lab13.Browser()
-    >>> browser.load(transitions_url2)
-    >>> browser.render()
-    >>> browser.composite_raster_and_draw()
-
-    >>> tab = browser.tabs[browser.active_tab]
-    >>> div = tab.nodes.children[1].children[0]
-
-	>>> lab13.parse_transition(div.style.get("transition"))
-	{'width': 125.0}
-    >>> div.animations
-    {}
-    >>> div.attributes["style"] = "width:100px"
-    >>> tab.set_needs_render()
-    >>> tab.run_animation_frame(0)
-    >>> div.animations
-    {'width': NumericAnimation(old_value=400.0, change_per_frame=-2.4, num_frames=125.0)}
-
 Testing CSS transforms
 ======================
 
