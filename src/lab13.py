@@ -1004,22 +1004,6 @@ class TranslateAnimation:
             self.change_per_frame_y * self.frame_count
         return "translate({}px,{}px)".format(new_x, new_y)
 
-class ScrollAnimation:
-    def __init__(self, old_scroll, new_scroll):
-        self.old_scroll = old_scroll
-        self.new_scroll = new_scroll
-        self.num_frames = 30
-        self.change_per_frame = \
-            (new_scroll - old_scroll) / self.num_frames
-        self.frame_count = 1
-
-    def animate(self):
-        self.frame_count += 1
-        if self.frame_count >= self.num_frames: return
-        updated_value = self.old_scroll + \
-            self.change_per_frame * self.frame_count
-        return updated_value
-
     
 ANIMATED_PROPERTIES = {
     "opacity": NumericAnimation,
@@ -1171,8 +1155,6 @@ class Tab:
         self.measure_render = MeasureTime("render")
 
         self.composited_updates = []
-        self.scroll_behavior = 'auto'
-        self.scroll_animation = None
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -1253,12 +1235,7 @@ class Tab:
 
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
-            if scroll != self.scroll and not self.scroll_animation:
-                if self.scroll_behavior == 'smooth':
-                    animation = ScrollAnimation(self.scroll, scroll)
-                    self.scroll_animation = animation
-                else:
-                    self.scroll = scroll
+            self.scroll = scroll
         self.js.interp.evaljs("__runRAFHandlers()")
 
         for node in tree_to_list(self.nodes, []):
@@ -1303,7 +1280,6 @@ class Tab:
             height=document_height,
             display_list=self.display_list,
             composited_updates=composited_updates,
-            scroll_behavior=self.scroll_behavior
         )
         self.display_list = None
         self.scroll_changed_in_tab = False
@@ -1315,24 +1291,8 @@ class Tab:
 
         if self.needs_style:
             style(self.nodes, sorted(self.rules, key=cascade_priority))
-
-            if self.nodes.children[0].tag == "body":
-                body = self.nodes.children[0]
-            else:
-                body = self.nodes.children[1]
-            if 'scroll-behavior' in body.style:
-                self.scroll_behavior = body.style['scroll-behavior']
             self.needs_layout = True
             self.needs_style = False
-
-        if self.scroll_animation:
-            value = self.scroll_animation.animate()
-            if value:
-                self.scroll = value
-                self.scroll_changed_in_tab = True
-                self.browser.set_needs_animation_frame(self)
-            else:
-                self.scroll_animation = None
 
         if self.needs_layout:
             self.document = DocumentLayout(self.nodes)
@@ -1456,13 +1416,12 @@ class SingleThreadedTaskRunner:
 
 class CommitData:
     def __init__(self, url, scroll, height,
-        display_list, composited_updates, scroll_behavior):
+        display_list, composited_updates):
         self.url = url
         self.scroll = scroll
         self.height = height
         self.display_list = display_list
         self.composited_updates = composited_updates
-        self.scroll_behavior = scroll_behavior
 
 class TaskRunner:
     def __init__(self, tab):
@@ -1607,8 +1566,6 @@ class Browser:
         self.composited_layers = []
         self.draw_list = []
 
-        self.scroll_behavior = 'auto'
-
     def render(self):
         assert not USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
@@ -1625,8 +1582,8 @@ class Browser:
                 self.active_tab_display_list = data.display_list
             self.animation_timer = None
             self.composited_updates = data.composited_updates
-            self.scroll_behavior = data.scroll_behavior
             if not self.composited_updates:
+                self.composited_updates = {}
                 self.set_needs_composite()
             else:
                 self.set_needs_draw()
@@ -1732,7 +1689,6 @@ class Browser:
         self.needs_composite = False
         self.needs_raster = False
         self.needs_draw = False
-        self.composited_updates.clear()
         self.lock.release()
 
     def schedule_animation_frame(self):
@@ -1760,14 +1716,7 @@ class Browser:
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height)
-        if self.scroll_behavior == 'smooth':
-            active_tab = self.tabs[self.active_tab]
-            self.lock.release()
-            active_tab.task_runner.schedule_task(
-                Task(active_tab.run_animation_frame, scroll))
-            self.lock.acquire(blocking=True)
-        else:
-            self.scroll = scroll
+        self.scroll = scroll
         self.set_needs_draw()
         self.lock.release()
 
