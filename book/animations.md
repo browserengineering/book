@@ -590,7 +590,7 @@ bounds would contribute to the surface size.
 
 :::
 
-Splitting the display list
+Compositing paint commands
 ==========================
 
 Let's start implementing compositing. To do that we'll need to
@@ -713,43 +713,47 @@ class Browser:
             self.draw_list.append(current_effect)
 ```
 
-Note that this simple algorithm of walking up from the
-composited layers isn't quite correct; it doesn't apply visual effects
-atomically. Fixing that isn't too hard, but it requires you to set up
-a mapping from the display list to the draw display list and isn't too
-visible on most web pages, so I've left that as an exercise.
-
 ::: {.further}
 
-As mentioned earlier, the implementation of `Browser.draw` in this section is
-incorrect for the case of nested visual effects, because it's not correct to
-draw every paint chunk individually or even in groups; visual effects have to
-apply atomically to all the content at once. This should be particularly
-evident by looking at the draw display list---it has two
-`SaveLayer(alpha=0.999)` commands, when it should be one.
+The implementation of `Browser.draw` in this section is incorrect for the case
+of nested visual effects, because it's not correct to draw every paint chunk
+individually; visual effects have to apply *atomically* (i.e., all at once) to
+all the content at once. Consider [this example][nested-op] of nested opacity
+effects. Its draw display list looks like this:^[Once no-ops are removed;
+there are three composited layers because there is one for the background color
+of the page.]
 
-To fix it requires determining the necessary "draw hierarchy" of
-`CompositedLayer`s into a tree based on their visual effect nesting, and
-allocating temporary intermediate GPU textures called *render surfaces* for
-each internal node of this tree. The render surface is a place to put the
-inputs to an (atomically-applied) visual effect. Render surface textures are
-generally not cached from frame to frame.
+     DrawCompositedLayer()
+     SaveLayer(alpha=0.999)
+       DrawCompositedLayer()
+     SaveLayer(alpha=0.999)
+       SaveLayer(alpha=0.5)
+         DrawCompositedLayer()
+
+[nested-op]: examples/example13-nested-opacity.html
+
+Notice how there are two `SaveLayer(alpha=0.999)` commands, when there should be
+one. This will cause incorrect results if the two pieces of text overlap. Fixing
+this problem requires some post-processing of the draw display list to merge
+common intermediate visual effects, and allocating temporary surfaces for them.
+In general, we'd end up with a tree of such temporary surfaces. These are
+called *render surfaces*.^["Render", since they are a transient and internal
+artifact of the rendering pipeline.]
 
 A naive implementation of this tree (allocating one node for each visual effect)
-is not too hard to implement, but each additional render surface requires a
-*lot* more memory and slows down draw a bit more. So
- real browsers analyze the visual effect tree to determine which ones really
- need render surfaces, and which don't. Opacity, for example, often doesn't
- need a render surface, but opacity with at least two "descendant"
- `CompositedLayer`s does.[^only-overlapping] The reason is that opacity has to
- be applied *atomically* to all of the content under it; if it was applied
- separately to each of the child `CompositedLayer`s, the blending result on the
- screen would be potentially incorrect.
+is not too hard to implement---and tthere is an exercise at the end of this
+chapter for it---but each additional render surface requires more memory and
+slows down draw a bit more. So real browsers analyze the visual effect tree to
+determine which ones really need render surfaces, and which don't. Opacity, for
+example, often doesn't need a render surface, but opacity with at least
+two "descendant" `CompositedLayer`s does.[^only-overlapping]
 
-You might think that all this means I chose badly with my flattening
-algorithm in the first place, but that is not the case. Render surface
+You might think that all this means I chose badly with the "paint commands"
+compositing algorithm presented here, but that is not the case. Render surface
 optimizations are just as necessary (and complicated to get right!) even with
 a "layer tree" approach, because it's so important to optimize GPU memory.
+In addition, the algorithm presentd here is a simplified version of what
+Chromiuma actually implements.
 
 [^only-overlapping]: Actually, only if there are at least two children *and*
 some of them overlap each other visually. Can you see why we can avoid the
@@ -757,12 +761,10 @@ render surface for opacity if there is no overlap?
 
 For more details and information on how Chromium implements these concepts see
 [here][renderingng-dl] and [here][rendersurface]; other browsers do something
-similar.
-
-Chromium's implementation of the "visual effect nesting" data structure is
-called [property trees][prop-trees]. The name is plural because there is more
-than one tree, due to the complex [containing block][cb] structure of scrolling
-and clipping.
+similar. Chromium's implementation of the "visual effect nesting" data
+structure is called [property trees][prop-trees]. The name is plural because
+there is more than one tree, due to the complex
+[containing block][cb] structure of scrolling and clipping.
 
 [cb]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
@@ -2187,10 +2189,6 @@ should now look something like this:
 Exercises
 =========
 
-*Multiple animations*: create some demos of nested transform and opacity
- animations. They should still work of course, but these situations usually
- uncover bugs. If you find bugs, fix them!
-
 *Background-color*: implement animations of the `background-color` CSS property.
 You'll have to define a new kind of interpolation that applies to all the
 color channels.
@@ -2279,7 +2277,18 @@ for building the draw tree which doesn't handle nested, composited
 visual effects correctly, especially when there are overlapping
 elements on the page. Fix this. You can still walk up the display list
 from each composited layer, but you'll need to avoid making two clones
-of the same visual effect node.
+of the same visual effect node. You should end up with the following
+draw display list for [this example][nested-op], with one
+(probably internal-to-Skia) render surface:[^see-render-surface]
+    
+     DrawCompositedLayer()
+     SaveLayer(alpha=0.999)
+       DrawCompositedLayer()
+       SaveLayer(alpha=0.5)
+         DrawCompositedLayer()
+
+[^see-render-surface]: See the Go Further block about render surfaces for more
+information.
 
 *Animated scrolling*: Real browsers have many kinds of animations during scroll.
  For example, pressing the down key or the down-arrow in a scrollbar causes a
