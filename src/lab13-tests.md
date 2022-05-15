@@ -169,37 +169,3 @@ Animations work:
     >>> tab.run_animation_frame(0)
     >>> div.animations
     {'transform': TranslateAnimation(old_value=(80.0,90.0), change_per_frame=(-0.64,-0.72), num_frames=125.0)}
-
-Smooth scrolling
-================
-
-
-    >>> scroll_url = 'http://test.test/scroll'
-    >>> test.socket.respond(scroll_url, b"HTTP/1.0 200 OK\r\n" +
-    ... b"content-type: text/html\r\n\r\n" +
-    ... b"<body style=\"scroll-behavior:smooth\"><div style=\"height:4000px\">Text</div></body>)")
-
-    >>> browser = lab13.Browser()
-    >>> browser.load(scroll_url)
-    >>> browser.render()
-    >>> browser.composite_raster_and_draw()
-    >>> tab = browser.tabs[browser.active_tab]
-
-The tab should have smooth scroll set:
-
-    >>> tab.scroll_behavior
-    'smooth'
-
-As well as the browser:
-
-    >>> browser.scroll_behavior
-    'smooth'
-
-    >>> browser.scroll
-    0
-
-Scrolling is not immediate, but shows the result after one frame:
-
-    >>> browser.handle_down()
-    >>> math.floor(browser.scroll)
-    6
