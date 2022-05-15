@@ -134,25 +134,6 @@ fading into view.
 
 ::: {.further}
 
-Opacity is a special kind of CSS filter. And where it makes sense, other filters
-that parameterize on some numeric input (such as [blur]) can also be animated
-just as easily. And as we'll see, all of them can be optimized to avoid raster
-entirely during the animation.
-
-Likewise, certain paint-only effects such as color and background-color are also
-possible to animate, since colors are numeric and can be interpolated. (In that
-ase, each color channel is interpolated independently.) These are also
-visual effects, but not quite of the same character, because background color
-doesn't apply a visual effect to a whole DOM subtree. It's instead a display
-list parameter that happens not to cause layout, but generally still
-needs raster. This makes them harder to optimize.
-
-:::
-
-[blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur
-
-::: {.further}
-
 The animation pattern presented in this section is yet another example
 of the *event loop* first introduced [in Chapter 2][eventloop-ch2]
 and evolved further [in Chapter 12][eventloop-ch12]. What's new in this
@@ -169,6 +150,26 @@ decade of the [2010s][cssanim-hist].
 [cssanim-hist]: https://en.wikipedia.org/wiki/CSS_animations
 
 :::
+
+
+::: {.further}
+
+Opacity is a special kind of CSS filter. And where it makes sense, other filters
+that parameterize on some numeric input (such as [blur]) can also be animated
+just as easily. And as we'll see, all of them can be optimized to avoid raster
+entirely during the animation.
+
+Likewise, certain paint-only effects such as color and background-color are also
+possible to animate, since colors are numeric and can be interpolated. (In that
+ase, each color channel is interpolated independently.) These are also
+visual effects, but not quite of the same character, because background color
+doesn't apply a visual effect to a whole DOM subtree. It's instead a display
+list parameter that happens not to cause layout, but generally still
+needs raster. This makes them harder to optimize.
+
+:::
+
+[blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur
 
 GPU acceleration
 ================
@@ -1523,9 +1524,12 @@ class Browser:
 
 Notice how `paint_draw_list` happens on every frame, regardless of the type of
 update. And it's not free---it has to loop over a number of
-ancestor effects for every `CompositedLayer` and built up a display list. This
+ancestor effects for every composited layer and built up a display list. This
 cost is not unique to our toy browser, and is present in one for or another in
 many real browsers.
+
+But that's nothing compared to another problem: putting every paint command in
+its own composited layer. That's super inefficinet, and it needs to be fixed.
 
 ::: {.further}
 
@@ -1553,14 +1557,28 @@ hard to achieve with current GPU technology, because some GPUs are faster
 than others. So browsers are slowly evolving to a hybrid of direct rendering
 and compositing instead.
 
+
+While all modern browsers have threaded animations, it's interesting to note
+that, as of the time of writing this section, Chromium and WebKit both perform
+the `compositing` step on the main thread, whereas our browser does it on the
+browser thread. This is the only way in which our browser is actually ahead of
+real browsers! The reason compositing doesn't (yet) happen on another thread in
+Chromium is that to get there took re-architecting the entire algorithm for
+compositing. The re-architecture turned out to be extremely difficult, because
+the old one was deeply intertwined with nearly every aspect of the rendering
+engine. The re-architecture project only [completed in 2021][cap], so perhaps
+sometime soon this work will be threaded in Chromium.
+
 :::
+
+[cap]: (https://developer.chrome.com/blog/renderingng/#compositeafterpaint)
 
 [threaded-12]: http://localhost:8001/scheduling.html#threaded-scrolling
 
 [WebRender]: https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-gets-rid-of-jank/
 
-Grouping Commands
-=================
+Optimizing Compositing
+======================
 
 Right now, every paint command it put in its own composited layer. But
 composited layers are expensive: each of them allocates a surface, and each of
@@ -1569,8 +1587,9 @@ to use less of it when possible. To that end, we'd like to use fewer composited
 layers.
 
 The simplest thing we can do is put paint commands into the same composited
-layer if they have the exact same set of ancestor effects. This  condition will
-be determined by the `can_merge` method on `CompositedLayer`s.
+layer if they have the exact same set of ancestor visual effects in the display
+list. This  condition will be determined by the `can_merge` method on
+`CompositedLayer`s.
 
 Let's implement that. But first, to make it easy to access those ancestor visual
 effects and compare them, add parent pointers to our display list tree:
@@ -1604,14 +1623,11 @@ class CompositedLayer:
         self.display_items.append(display_item)
 ```
 
-Below is the compositing algorithm we'll use;^[There are many possible
-compositing algorithms, with their own tradeoffs of memory, time and code
-complexity. In this chapter I'll  present a simplified version of the one used
-by Chromium.] as you can see it's not very complicated. It loops over the list
-of paint chunks; for each paint chunk it tries to add it to an existing
-`CompositedLayer` by walking *backwards* through the `CompositedLayer` list.
-[^why-backwards] If one is found, the paint chunk is added to it; if not, a new
-`CompositedLayer` is added with that paint chunk to start.^[If you're not
+Using it in the compositing algorithm pretty easy: instead of making a new
+`CompositedLayer` for every single paint command, walk backwards
+[^why-backwards] through the `CompositedLayer` list trying to merge into each
+one. If one is found, the paint chunk is added to it; if not, add a new
+`CompositedLayer` with that paint chunk to start.^[If you're not
 familiar with Python's `for ... else` syntax, the `else` block executes only if
 the loop never executed `break`.]
 
@@ -1634,38 +1650,16 @@ class Browser:
 
 
 With this implementation, multiple paint commands will sometimes end up in the
-same `CompositedLayer`, but the ancestor effects don't *exactly* match, they
-won't. Can't we do better?
+same composited layer, but the ancestor effects don't *exactly* match, they
+won't. Now let's do one better, and place display list subtrees that aren't
+animating together.
 
-Yes we can. Sometimes a whole subtree of the display list isn't animating, so we
-should be able to put it all in the same `CompositedLayer`. 
+So far, every internal node (ones that aren't leaves) of our display list runs
+in the draw phase, while every paint command runs in the raster phase. But some
+internal nodes (visual effects) can't be animated. So we can run them in the
+raster phase, which will reduce the number of composed layers even more.
 
-::: {.further}
-
-Interestingly enough, as of the time of writing this section, Chromium and
-WebKit both perform the `compositing` step on the main thread, whereas our
-browser does it on the browser thread. This is the only
-way in which our browser is actually ahead of real browsers! The reason
-compositing doesn't (yet) happen on another thread in Chromium is that to get
-there took re-architecting the entire algorithm for compositing. The
-re-architecture turned out to be extremely difficult, because the old one
-was deeply intertwined with nearly every aspect of the rendering engine. The
-re-architecture project only
-[completed in 2021](https://developer.chrome.com/blog/renderingng/#compositeafterpaint),
-so perhaps sometime soon this work will be threaded in Chromium.
-
-:::
-
-
-Non-composited subtrees
-=======================
-
-So far, every internal node of our display list runs in the draw
-phase, while every paint command runs in the raster phase. But some
-internal nodes---visual effects---can't be animated. So we can run them
-in the raster phase, which will make the draw phase faster.
-
-The first thing we'll need is a way to signal that a visual effect
+To implement this, we'll first need a way to signal that a visual effect
 *needs compositing*, meaning that it may be animating and so its
 contents should be cached in a GPU texture. Indicate that with a new
 `needs_compositing` method on `DisplayItem`. As a simple heuristic,
@@ -1676,7 +1670,13 @@ animating, but we won't animate `ClipRRect` commands by default.
 We'll *also* need to mark a visual effect as needing compositing if any of its
 descendants do (even if it's a `ClipRRect`). That's because if one effect is
 run on the GPU, then one way or another the ones above it will have to be as
-well.
+well.[^needs-inefficient]
+
+[^needs-inefficient]: As written, our use of `needs_compositing` is quite
+inefficient, because it walks the entire subtree each time it's called. In a
+real browser, this property would be computed by walking the entire display
+list once and setting boolean attributes on each tree node.
+
 
 ``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
 class DisplayItem:
@@ -1692,12 +1692,7 @@ class SaveLayer(DisplayItem):
 ```
 
 Now, instead of layers containing bare paint commands, they can
-contain little subtrees of non-composited commands:[^needs-inefficient]
-
-[^needs-inefficient]: As written, our use of `needs_compositing` is quite
-inefficient, because it walks the entire subtree each time it's called. In a
-real browser, this property would be computed by walking the entire display
-list once and setting boolean attributes on each tree node.
+contain subtrees of non-composited commands:
 
 ``` {.python}
 class Browser:
@@ -1710,12 +1705,15 @@ class Browser:
                  cmd.parent.needs_compositing())
         ]
         # ...
+        for display_item in non_composited_commands:
+            # ...
+
 ```
 
-Since internal nodes can now be in a `CompositedLayer`, there is a bit of added
-complexity to `composited_bounds`.  We'll need to recursively union the rects
-of the subtree of non-composited display items, so let's add a `DisplayItem`
-method to do that:
+Since internal nodes can now be in a `CompositedLayer`, there is also a bit of
+added complexity to `composited_bounds`.  We'll need to recursively union the
+rects of the subtree of non-composited display items, so let's add a
+`DisplayItem` method to do that:
 
 ``` {.python}
 class DisplayItem:
@@ -1752,6 +1750,11 @@ class CompositedLayer:
         return rect
 ```
 
+Our compositing algorithm is now pretty well optimized! It does good job of
+grouping together non-animating content to reduce the number of composited
+layers (which saves GPU memory), and doing as much work as possible in raster
+rather than draw (which makes composited animations faster).
+
 ::: {.further}
 
 Mostly for simplicity, our browser composites `SaveLayer` visual effects,
@@ -1777,11 +1780,37 @@ purpose of signaling pre-compositing.
 [subpixel]: https://en.wikipedia.org/wiki/Subpixel_rendering
 [will-change]: https://developer.mozilla.org/en-US/docs/Web/CSS/will-change
 
+At this point, the compositing algorithm and its effect on content is getting
+pretty complicated. It will be very useful to you to add in more visual
+debugging to help understand what is going on. One good way to do this is
+to add a flag to our browser that draws a red border around `CompositedLayer`
+content. This is a very simple addition to `CompositedLayer.raster`:
+
+``` {.python}
+class CompositedLayer:
+    def raster(self):
+        # ...
+            draw_rect(
+                canvas, 0, 0, irect.width() - 1,
+                irect.height() - 1,
+                border_color="red")
+  
+```
+
+You should see three red squares for the transform animation demo:
+one for the blue square, one for the green square, and one for the root surface.
+
+I also recommend you add a mode to your browser that disables compositing
+(i.e. return `False` from `needs_compositing` for every `DisplayItem`), and
+disables use of the GPU (i.e. go back to the old way of making Skia surfaces).
+Everything should still work (albeit more slowly) in all of the modes, and you
+can use these additional modes to debug your browser more fully and benchmark
+its performance.
 :::
 
 
-Overlap testing
-===============
+Overlap and transforms
+======================
 
 The compositing algorithm our browser implemented works great in many cases.
 Unfortunately, it doesn't work correctly for display list commands
@@ -1876,33 +1905,6 @@ set the `width` and `height` of elements such that it causes text to overflow
 on top of siblings further down the page.
 
 [position]: https://developer.mozilla.org/en-US/docs/Web/CSS/position
-
-::: {.further}
-
-Overlap reasons for compositing not only create complications in the code, but
-without care from the browser and web developer can lead to a huge amount of
-GPU memory usage, as well as page slowdown to manage all of the additional
-composited layers. One way this could happen is that an additional composited
-layer results from one element overlapping another, and then a third because it
-overlaps the second, and so on. This phenomenon is called *layer explosion*.
-Our browser's algorithm avoids this problem most of the time because it is able
-to merge multiple paint chunks together as long as they have compatible
-ancestor effects, but in practice there are complicated situations where it's
-hard to make content merge efficiently.
-
-In addition to overlap, there are other situations where compositing has
-undesired side-effects leading to performance problems. For example, suppose we
-wanted to *turn off* composited scrolling in certain situations, such as on a
-machine without a lot of memory, but still use compositing for visual effect
-animations. But what if the animation is on content underneath a scroller? In
-practice, it is very difficulty to implement this situation correctly without
-just giving up and compositing the scroller.
-
-:::
-
-
-Transform animations
-====================
 
 The `transform` CSS property lets you apply linear transform visual
 effects to an element.[^not-always-visual] In general, you can apply
@@ -2134,65 +2136,27 @@ left solving this to an exercise.
 
 ::: {.further}
 
-At this point, the compositing algorithm and its effect on content is getting
-pretty complicated. It will be very useful to you to add in more visual
-debugging to help understand what is going on. One good way to do this is
-to add a flag to our browser that draws a red border around `CompositedLayer`
-content. This is a very simple addition to `CompositedLayer.raster`:
+Overlap reasons for compositing not only create complications in the code, but
+without care from the browser and web developer can lead to a huge amount of
+GPU memory usage, as well as page slowdown to manage all of the additional
+composited layers. One way this could happen is that an additional composited
+layer results from one element overlapping another, and then a third because it
+overlaps the second, and so on. This phenomenon is called *layer explosion*.
+Our browser's algorithm avoids this problem most of the time because it is able
+to merge multiple paint chunks together as long as they have compatible
+ancestor effects, but in practice there are complicated situations where it's
+hard to make content merge efficiently.
 
-``` {.python}
-class CompositedLayer:
-    def raster(self):
-        # ...
-            draw_rect(
-                canvas, 0, 0, irect.width() - 1,
-                irect.height() - 1,
-                border_color="red")
-  
-```
+In addition to overlap, there are other situations where compositing has
+undesired side-effects leading to performance problems. For example, suppose we
+wanted to *turn off* composited scrolling in certain situations, such as on a
+machine without a lot of memory, but still use compositing for visual effect
+animations. But what if the animation is on content underneath a scroller? In
+practice, it is very difficulty to implement this situation correctly without
+just giving up and compositing the scroller.
 
-You should see three red squares for the transform animation demo:
-one for the blue square, one for the green square, and one for the root surface.
-
-I also recommend you add a mode to your browser that disables compositing
-(i.e. return `False` from `needs_compositing` for every `DisplayItem`), and
-disables use of the GPU (i.e. go back to the old way of making Skia surfaces).
-Everything should still work (albeit more slowly) in all of the modes, and you
-can use these additional modes to debug your browser more fully and benchmark
-its performance.
 :::
 
-::: {.further}
-
-These days, many websites implement a number of *scroll-linked* animation
-effects. One common one is *parallax*. In real life, parallax is the phenomenon
-that objects further away appear to move slower than closer-in objects (due to
-the angle of light changing less quickly). For example, when riding a train,
-the trees nearby move faster across your field of view than the hills in the
-distance. The same mathematical result can be applied to web contents by way of
-the the [`perspective`][perspective] CSS property.
-[This article][parallax] explains how, and [this one][csstricks-perspective]
-gives a much deeper dive into perspective in CSS generally.
-
-[parallax]: https://developer.chrome.com/blog/performant-parallaxing/
-[perspective]: https://developer.mozilla.org/en-US/docs/Web/CSS/perspective
-[csstricks-perspective]: https://css-tricks.com/how-css-perspective-works/
-
-There are also animations that are tied to scroll offset but are not, strictly
-speaking, part of the scroll. An example is a rotation or opacity fade on an
-element that advances as the user scrolls down the page (and reverses as they
-scroll back up). Or there are *scroll-triggered* animations that start once an
-element has reached a certain point on the page, or when scroll changes
-direction. An example of that is animation of a top-bar onto the page when the
-user starts to change scroll direction.
-
-Scroll-linked animations implemented in JavaScript work ok most of the time, but
-suffer from the problem that they cannot perfectly sync with real browsers'
-threaded scrolling architectures. This will be solved by the upcoming
-[scroll-linked animations][scroll-linked] specification.
-
-[scroll-linked]: https://drafts.csswg.org/scroll-animations-1/
-:::
 
 Summary
 =======
@@ -2333,3 +2297,35 @@ of the same visual effect node.
 [^main-thread-scroll]: This will lose threaded scrolling. If you've implemented
 the threaded animations exercise, you could build on that code to animate
 scroll on the browser thread.
+
+::: {.further}
+
+These days, many websites implement a number of *scroll-linked* animation
+effects. One common one is *parallax*. In real life, parallax is the phenomenon
+that objects further away appear to move slower than closer-in objects (due to
+the angle of light changing less quickly). For example, when riding a train,
+the trees nearby move faster across your field of view than the hills in the
+distance. The same mathematical result can be applied to web contents by way of
+the the [`perspective`][perspective] CSS property.
+[This article][parallax] explains how, and [this one][csstricks-perspective]
+gives a much deeper dive into perspective in CSS generally.
+
+[parallax]: https://developer.chrome.com/blog/performant-parallaxing/
+[perspective]: https://developer.mozilla.org/en-US/docs/Web/CSS/perspective
+[csstricks-perspective]: https://css-tricks.com/how-css-perspective-works/
+
+There are also animations that are tied to scroll offset but are not, strictly
+speaking, part of the scroll. An example is a rotation or opacity fade on an
+element that advances as the user scrolls down the page (and reverses as they
+scroll back up). Or there are *scroll-triggered* animations that start once an
+element has reached a certain point on the page, or when scroll changes
+direction. An example of that is animation of a top-bar onto the page when the
+user starts to change scroll direction.
+
+Scroll-linked animations implemented in JavaScript work ok most of the time, but
+suffer from the problem that they cannot perfectly sync with real browsers'
+threaded scrolling architectures. This will be solved by the upcoming
+[scroll-linked animations][scroll-linked] specification.
+
+[scroll-linked]: https://drafts.csswg.org/scroll-animations-1/
+:::
