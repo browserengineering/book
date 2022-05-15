@@ -590,12 +590,12 @@ bounds would contribute to the surface size.
 
 :::
 
-Compositing paint commands
-==========================
+Compositing leaves
+==================
 
-Let's start implementing compositing. To do that we'll need to
-traverse the display list, identify all paint commands, and move them
-to composited layers. Then we'll need to create the draw display list
+Let's start implementing compositing. To do that we'll need to traverse the
+display list, identify all paint commands (the leaves of the display list), and
+move them to composited layers. Then we'll need to create the draw display list
 that combines the composited layers.
 
 Let's start by identifying paint commands with an `is_paint_command`
@@ -774,8 +774,8 @@ there is more than one tree, due to the complex
 
 :::
 
-Composited raster and draw
-==========================
+Composited raster/draw
+======================
 
 Now that we've split the display list into composited layers and a
 draw display list, we need to update the rest of the browser to use
