@@ -1509,9 +1509,12 @@ not everything else!
 
 Notice how `paint_draw_list` happens on every frame, regardless of the type of
 update. And it's not free---it has to loop over a number of
-ancestor effects for every `CompositedLayer` and built up a display list. This
+ancestor effects for every composited layer and built up a display list. This
 cost is not unique to our toy browser, and is present in one for or another in
 many real browsers.
+
+But that's nothing compared to another problem: putting every paint command in
+its own composited layer. That's super inefficinet, and it needs to be fixed.
 
 ::: {.further}
 
@@ -1545,8 +1548,8 @@ and compositing instead.
 
 [WebRender]: https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-gets-rid-of-jank/
 
-Grouping Commands
-=================
+Optimizing Compositing
+======================
 
 Right now, every paint command it put in its own composited layer. But
 composited layers are expensive: each of them allocates a surface, and each of
