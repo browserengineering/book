@@ -1367,7 +1367,7 @@ def paint_visual_effects(node, cmds, rect):
 ``` {.python}
 class CommitData:
     def __init__(self, url, scroll, height,
-        display_list, composited_updates, scroll_behavior):
+        display_list, composited_updates):
         # ...
         self.composited_updates = composited_updates
 ```
@@ -1460,6 +1460,7 @@ class Browser:
             # ...
             self.composited_updates = data.composited_updates
             if not self.composited_updates:
+                self.composited_updates = {}
                 self.set_needs_composite()
             else:
                 self.set_needs_draw()
@@ -1504,8 +1505,21 @@ The result will be automatically drawn to the screen, because the `draw` method
 on each `CompositedLayer` will iterate through its `ancestor_effects` and
 execute them.
 
-Check out the result---animations that only update the draw step, and
-not everything else!
+Check out the result---animations that only update the draw step, and not
+everything else! And actually, there are even more wins we can build on top.
+Now we can achieve threaded *and* composited scrolling, with only one line
+of code changed: replace the dirty bit for compositing and raster withi just
+`set_needs_draw` when handing a scroll:
+
+``` {.python}
+class Browser:
+    # ...
+    def handle_down(self):
+        # ...
+        self.set_needs_draw() 
+```
+
+
 
 Notice how `paint_draw_list` happens on every frame, regardless of the type of
 update. And it's not free---it has to loop over a number of
@@ -2148,191 +2162,6 @@ can use these additional modes to debug your browser more fully and benchmark
 its performance.
 :::
 
-Composited scrolling
-====================
-
-The last category of animations we haven't covered is the *input-driven* ones,
-such as scrolling. I introduced this category of animations earlier, but didn't
-really explain in much detail why it makes sense to categorize scrolling as
-an *animation*. To my mind, there are two key reasons:
-
-* Scrolling often continues after the input is done. For example, most browsers
-  animate scroll in a smooth way when scrolling by keyboard or scrollbar
-  clicks. Another example is that in a touch-driven scroll, browsers interpret
-  the touch movement as a gesture with velocity, and therefore continue the
-  scroll---a "fling" gesture---according to a physics-based model (with friction
-  slowing it down).
-
-* Touch or mouse drag-based scrolling is very performance sensitive. This is
-  because humans are much more sensitive to things keeping up with the movement
-  of their hand than they are to the latency of responding to a click. For
-  example, a mouse-drag scrolling hiccup for even one frame, even for only a
-  few tens of milliseconds, is easily noticeable and jarring to a person, but
-  most people do not notice click input delays of up to 100ms or so. Therefore
-  such gestures benefit greatly from the same GPU+compositing technology I
-  introduced in this chapter.
-
-Let's add composited scrolling to our browser, and then smooth scrolling on
-keyboard events.
-
-Composited scrolling (i.e. scrolling without raster) will be extremely easy,
-because thanks to [Chapter 12](#threaded-scrolling), we have threaded scrolling
-already, and the `scroll` offset is already present on `Browser`. All we have
-to do is replace `set_needs_raster` with `set_needs_draw`:
-
-``` {.python}
-class Browser:
-    # ...
-    def handle_down(self):
-        # ...
-        self.set_needs_draw() 
-```
-
-Smooth scrolling will have a few steps. First we'll have to parse a new 
-[scroll-behavior] CSS property that applies to scrolling of the `<body>` element,
-[^body] plumb it to the browser thread, and then trigger a
-(main-thread) animation in `Browser.handle_down`. The animation will run a
-`ScrollAnimation` that is very similar to a `NumericAnimation`.[^threaded]
-
-[scroll-behavior]: https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior
-
-[^body]: The difference between the `<body>` and `<html>` tag for scrolling is a
-[little complicated][scrollingelement], and I won't get into it here.
-
-[scrollingelement]: https://developer.mozilla.org/en-US/docs/Web/API/document/scrollingElement
-
-[^threaded]: And with some more work, the animation could run on the browser
-thread and avoid main-thread delay. I'll leave that to an exercise.
-
-The concrete steps are:
-
-* Parsing in `Tab` (there's some complication in finding the `<body>` element,
-  because the `<head>` may or may not be present):
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        self.scroll_behavior = 'auto'
-
-    def render(self):
-        # ...
-            if self.nodes.children[0].tag == "body":
-                body = self.nodes.children[0]
-            else:
-                body = self.nodes.children[1]
-            if 'scroll-behavior' in body.style:
-                self.scroll_behavior = body.style['scroll-behavior']
-```
-
-* Plumbing to `Browser`:
-
-``` {.python}
-class CommitData:
-    def __init__(self, url, scroll, height,
-        display_list, composited_updates, scroll_behavior):
-        # ...
-        self.scroll_behavior = scroll_behavior
-```
-
-``` {.python}
-class Tab:
-    # ...
-    def run_animation_frame(self, scroll):
-        commit_data = CommitData(
-            # ...
-            scroll_behavior=self.scroll_behavior
-        )
-```
-
-``` {.python}
-class Browser:
-    def __init__(self):
-        # ...
-        self.scroll_behavior = 'auto'
-
-    def commit(self, tab, data):
-        # ...
-            self.scroll_behavior = data.scroll_behavior
-```
-
-* Initiating smooth scroll from the browser thread:
-
-``` {.python}
-    def handle_down(self):
-        # ...
-        if self.scroll_behavior == 'smooth':
-            active_tab.task_runner.schedule_task(
-                Task(active_tab.run_animation_frame, scroll))
-        else:
-            self.scroll = scroll
-```
-
-* Responding to it:
-
-``` {.python}
-class Tab:
-    def run_animation_frame(self, scroll):
-        # ...
-        if not self.scroll_changed_in_tab:
-            if scroll != self.scroll and not self.scroll_animation:
-                if self.scroll_behavior == 'smooth':
-                    animation = ScrollAnimation(self.scroll, scroll)
-                    self.scroll_animation = animation
-                else:
-                    self.scroll = scroll
-        # ...
-
-    def render(self):
-        # ...
-        if self.scroll_animation:
-            value = self.scroll_animation.animate()
-            if value:
-                self.scroll = value
-                self.scroll_changed_in_tab = True
-                self.browser.set_needs_animation_frame(self)
-            else:
-                self.scroll_animation = None
-        # ...
-```
-
-* Implementing `ScrollAnimation`:[^thirty]
-
-[^thirty]: The choice of a half-second animation---30 animation frames---is an
-arbitrary choice that is intentionally left up to the browser in the definition
-of the `scroll-behavior` CSS property.
-
-``` {.python}
-class ScrollAnimation:
-    def __init__(self, old_scroll, new_scroll):
-        self.old_scroll = old_scroll
-        self.new_scroll = new_scroll
-        self.num_frames = 30
-        self.change_per_frame = \
-            (new_scroll - old_scroll) / self.num_frames
-        self.frame_count = 1
-
-    def animate(self):
-        self.frame_count += 1
-        if self.frame_count >= self.num_frames: return
-        updated_value = self.old_scroll + \
-            self.change_per_frame * self.frame_count
-        return updated_value
-```
-
-Yay, smooth scrolling! You can try it on
-[this example](examples/example13-transform-transition.html), which combines a
-smooth scroll, opacity and transform animation *at the same time*. And it's got
-super smooth animation performance. That's quite satisfying, and I hope makes
-the hard slog of this chapter worth it!
-
-On top of that, notice how once we have an animation framework implemented,
-adding new features to it becomes easier and easier. This is a pattern I hope
-you've noticed through many parts of this book. It's yet another reason to know
-how browsers work on the inside---this knowledge will help you know what they
-might be capable of in the future, and how to propose new features that are
-easy enough to implement.
-
 ::: {.further}
 
 These days, many websites implement a number of *scroll-linked* animation
@@ -2380,10 +2209,6 @@ remember are:
 
 - Compositing is necessary for smooth and threaded visual effect animations, and
   generally not feasible (at least at present) for layout-inducing animations.
-
-- Input-driven animations have tight performance constraints, and so must
-  generally be composited to behave well.
-
 
 Outline
 =======
@@ -2435,10 +2260,6 @@ color channels.
  Check that animating width should change line breaks.[This example]
  (examples/example13-width-transition.html) should work once you've implemented
  width animations.
-
-*Threaded smooth scrolling*: once you've completed the threaded animations
- exercise, you should be able to add threaded smooth scrolling without much
- more work.
 
 *CSS animations*: implement the basics of the
 [CSS animations][css-animations] API, in particular enough of the `animation`
@@ -2495,3 +2316,20 @@ visual effects correctly, especially when there are overlapping
 elements on the page. Fix this. You can still walk up the display list
 from each composited layer, but you'll need to avoid making two clones
 of the same visual effect node.
+
+*Animated scrolling*: Real browsers have many kinds of animations during scroll.
+ For example, pressing the down key or the down-arrow in a scrollbar causes a
+ pleasant animated scroll, rather than the immediate scroll our browser current
+ implements. Or on mobile, a touch interaction often causes a "fling" scroll
+ according to a physics-based model of scrol momentum with friction. Implement
+ the [`scroll-behavior`][scroll-behavior] CSS property on the `<body>` element,
+ and use it to cause animated scroll in `handle_down`, by delegating scroll to
+ a main thread animation.[^main-thread-scroll] You'll need to implement a new
+ `ScrollAnimation` class and some logic in `run_animation_frame`. Scrolling in
+ the [transform transition](examples/example13-transform-transition.html)
+ example should now be smoooth, as that example uses `scroll-behavior`.
+
+[scroll-behavior]: https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior
+[^main-thread-scroll]: This will lose threaded scrolling. If you've implemented
+the threaded animations exercise, you could build on that code to animate
+scroll on the browser thread.
