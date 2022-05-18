@@ -115,7 +115,7 @@ class DisplayItem:
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children=children, node=node)
-        self.translation = translation # if translation != (0, 0) else None
+        self.translation = translation
 
     def execute(self, canvas):
         if self.translation:
