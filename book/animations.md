@@ -406,7 +406,7 @@ a technique called *compositing*, which just means caching some
 rastered images on the GPU and reusing them during later
 frames.[^compositing-def]
 
-[^compositing-def]: The term [*compositing*][compositing] just means
+[^compositing-def]: The term [*compositing*][compositing] means
 combining multiple images together into a final output. In browsers,
 we're typically combining rastered images into the final image of the
 page, but a similar technique is used in many operating systems to
@@ -415,12 +415,12 @@ to multi-threaded rendering.
 
 [compositing]: https://en.wikipedia.org/wiki/Compositing
 
-To explain compositing, we'll need to think about our browser's
-display list. Printing it is going to require similar code in every
-display command, so let's give a new `DisplayItem` superclass to
-display commands. This makes it easy to create default behavior that's
-overridden for specific display commands. For example, we can make
-sure that every display command has a `children` field:
+To explain compositing, we'll need to think about our browser's display list,
+and to do that it's useful to print it out. Printing it is going to require
+similar code in every display command, so let's give a new `DisplayItem`
+superclass to display commands. This makes it easy to create default behavior
+that's overridden for specific display commands. For example, we can make sure
+that every display command has a `children` field:
 
 ``` {.python replace=children=[]/rect%2c%20children=[]%2c%20node=None}
 class DisplayItem:
@@ -497,14 +497,14 @@ On the next frame, it instead looks like this:
       DrawText(text=text)
       DrawText(text=fades)
 
-In each case, rastering this display list means first drawing the
-three words to a Skia surface created by `saveLayer`, and then copying that to the root surface while
-applying transparency. Crucially, the drawing is identical in both
-frames; only the copy differs. This means we can speed this up with
+In each case, rastering this display list means first drawing the three words to
+a Skia surface created by `saveLayer`, and then copying that to the root
+surface while applying transparency. Crucially, the drawing is identical in
+both frames; only the copy differs. This means we can speed it up with
 caching.
 
-The idea is to first draw the three words to a separate surface, which
-we'll call a *composited layer*:
+The idea is to first draw the three words to a separate surface (but this time
+owned by us, not Skia), which we'll call a *composited layer*:
 
     Composited Layer 1:
       DrawText(text=This)
@@ -562,7 +562,7 @@ requires [different techniques](reflow.md).[^not-advisable]
 
 [^not-advisable]: Because layout-inducing animations can't easily make use of
 compositing, they're usually not a good idea on the web. Not only are they
-slower, but because they cause page elements to move around, often in sudden
+slower, but they cause page elements to move around, often in sudden
 jumps, meaning they don't create that illusion of continuous movement. An
 exception is a layout-inducing animation when resizing a browser window via a
 mouse gesture; in this case it's very useful for the user to see the new layout
@@ -593,10 +593,11 @@ bounds would contribute to the surface size.
 Compositing leaves
 ==================
 
-Let's start implementing compositing. To do that we'll need to traverse the
-display list, identify all paint commands (the leaves of the display list), and
-move them to composited layers. Then we'll need to create the draw display list
-that combines the composited layers.
+Let's start implementing compositing. We'll put paint commands (the leaves of
+the display list) in composited layers, and all other display items in the draw
+display list. To do that we'll need to traverse the display list, identify all
+paint commands, and move them to composited layers. Then we'll need to create
+the draw display list that combines the composited layers.
 
 Let's start by identifying paint commands with an `is_paint_command`
 method. It'll return `False` for generic display items:
@@ -663,20 +664,17 @@ class CompositedLayer:
         self.display_items.append(display_item)
 ```
 
-Now let's turn to using those composited layers. To do that, we'll need to
-create the draw display list that contains the layers. We'll build this by
-taking each composited layer we've generated and considering all visual effects
-applied to it. This will involve *cloning* each of the ancestors of the layer's
-paint commands and injecting new children, with a `DrawCompositedLayer` at the
-bottom of the tree.
+Now let's turn to the draw display list that contains the composited layers.
+We'll build this by taking each composited layer we've generated and make a
+recursive chain of all visual effects applied to it. This will
+involve *cloning* each of the ancestors of the layer's paint commands and
+injecting new children, with a `DrawCompositedLayer` at the bottom of the
+tree.
 
 So let's add a new `clone` method to the visual effects
-classes.[^no-paint-commands] For `SaveLayer`, it'll create a new
+classes. For `SaveLayer`, it'll create a new
 `SaveLayer` with the same parameters but new children:
 
-[^no-paint-commands]: We won't be cloning paint commands, since
-    they're all going to be inside a composited layer, so we don't need to
-    implement `clone` for them.
 
 ``` {.python}
 class SaveLayer(DisplayItem):
@@ -687,6 +685,15 @@ class SaveLayer(DisplayItem):
 ```
 
 The other visual effect, `ClipRRect`, should do something similar.
+
+We won't be cloning paint commands, since they're all going to be inside a
+composited layer, so we don't need to implement `clone` for them:
+
+``` {.python}
+class DisplayItem:
+    def clone(self, children):
+        assert False
+```
 
 We can now build the draw display list. For each composited layer,
 create a `DrawCompositedLayer` command (which we'll define in just a
@@ -712,70 +719,6 @@ class Browser:
                 parent = parent.parent
             self.draw_list.append(current_effect)
 ```
-
-::: {.further}
-
-The implementation of `Browser.draw` in this section is incorrect for the case
-of nested visual effects, because it's not correct to draw every paint chunk
-individually; visual effects have to apply *atomically* (i.e., all at once) to
-all the content at once. Consider [this example][nested-op] of nested opacity
-effects. Its draw display list looks like this:^[Once no-ops are removed;
-there are three composited layers because there is one for the background color
-of the page.]
-
-     DrawCompositedLayer()
-     SaveLayer(alpha=0.999)
-       DrawCompositedLayer()
-     SaveLayer(alpha=0.999)
-       SaveLayer(alpha=0.5)
-         DrawCompositedLayer()
-
-[nested-op]: examples/example13-nested-opacity.html
-
-Notice how there are two `SaveLayer(alpha=0.999)` commands, when there should be
-one. This will cause incorrect results if the two pieces of text overlap. Fixing
-this problem requires some post-processing of the draw display list to merge
-common intermediate visual effects, and allocating temporary surfaces for them.
-In general, we'd end up with a tree of such temporary surfaces. These are
-called *render surfaces*.^["Render", since they are a transient and internal
-artifact of the rendering pipeline.]
-
-A naive implementation of this tree (allocating one node for each visual effect)
-is not too hard to implement---and there is an exercise at the end of this
-chapter for it---but each additional render surface requires more memory and
-slows down draw a bit more. So real browsers analyze the visual effect tree to
-determine which ones really need render surfaces, and which don't. Opacity, for
-example, often doesn't need a render surface, but opacity with at least
-two "descendant" `CompositedLayer`s does.[^only-overlapping]
-
-You might think that all this means I chose badly with the "paint commands"
-compositing algorithm presented here, but that is not the case. Render surface
-optimizations are just as necessary (and complicated to get right!) even with
-a "layer tree" approach, because it's so important to optimize GPU memory.
-In addition, the algorithm presented here is a simplified version of what
-Chromium actually implements.
-
-[^only-overlapping]: Actually, only if there are at least two children *and*
-some of them overlap each other visually. Can you see why we can avoid the
-render surface for opacity if there is no overlap?
-
-For more details and information on how Chromium implements these concepts see
-[here][renderingng-dl] and [here][rendersurface]; other browsers do something
-similar. Chromium's implementation of the "visual effect nesting" data
-structure is called [property trees][prop-trees]. The name is plural because
-there is more than one tree, due to the complex
-[containing block][cb] structure of scrolling and clipping.
-
-[cb]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
-
-[renderingng-dl]: https://developer.chrome.com/blog/renderingng-data-structures/#display-lists-and-paint-chunks
-[rendersurface]: https://developer.chrome.com/blog/renderingng-data-structures/#compositor-frames-surfaces-render-surfaces-and-gpu-texture-tiles
-[prop-trees]: https://developer.chrome.com/blog/renderingng-data-structures/#property-trees
-
-:::
-
-Composited raster/draw
-======================
 
 Now that we've split the display list into composited layers and a
 draw display list, we need to update the rest of the browser to use
@@ -884,8 +827,8 @@ class DrawCompositedLayer(DisplayItem):
         return "DrawCompositedLayer()"
 ```
 
-Executing a `DrawCompositedLayer` is straightforward; we just need to
-keep track of the correct offset:
+Executing a `DrawCompositedLayer` is straightforward---just draw its surface
+into the parent surface. We just need to keep track of the correct offset:
 
 ``` {.python}
 class DrawCompositedLayer(DisplayItem):
@@ -933,12 +876,73 @@ So simple and elegant! Now, on every frame, we are simply splitting the display
 list into composited layers and the draw display list, and then running each of
 those it their own phase.
 
-One problem remains in the way of great animation performance, though---right
-now, we're doing *all* of these steps on every frame...but the whole point of
-compositing was to avoid re-rastering layers! Let's work on that next.
+Some problems remains in the way of great animation performance, though. The
+biggest is that we're doing *all* of these steps on every frame...but the whole
+point of compositing was to avoid re-rastering layers! Let's work on that
+next.
 
 [profiling]: http://localhost:8001/scheduling.html#profiling-rendering
 
+::: {.further}
+
+The implementation of `Browser.draw` in this section is incorrect for the case
+of nested visual effects, because it's not correct to draw every paint chunk
+individually; visual effects have to apply *atomically* (i.e., all at once) to
+all the content at once. Consider [this example][nested-op] of nested opacity
+effects. Its draw display list looks like this:^[Once no-ops are removed;
+there are three composited layers because there is one for the background color
+of the page.]
+
+     DrawCompositedLayer()
+     SaveLayer(alpha=0.999)
+       DrawCompositedLayer()
+     SaveLayer(alpha=0.999)
+       SaveLayer(alpha=0.5)
+         DrawCompositedLayer()
+
+[nested-op]: examples/example13-nested-opacity.html
+
+Notice how there are two `SaveLayer(alpha=0.999)` commands, when there should be
+one. This will cause incorrect results if the two pieces of text overlap. Fixing
+this problem requires some post-processing of the draw display list to merge
+common intermediate visual effects, and allocating temporary surfaces for them.
+In general, we'd end up with a tree of such temporary surfaces. These are
+called *render surfaces*.^["Render", since they are a transient and internal
+artifact of the rendering pipeline.]
+
+A naive implementation of this tree (allocating one node for each visual effect)
+is not too hard to implement---and there is an exercise at the end of this
+chapter for it---but each additional render surface requires more memory and
+slows down draw a bit more. So real browsers analyze the visual effect tree to
+determine which ones really need render surfaces, and which don't. Opacity, for
+example, often doesn't need a render surface, but opacity with at least
+two "descendant" `CompositedLayer`s does.[^only-overlapping]
+
+You might think that all this means I chose badly with the "paint commands"
+compositing algorithm presented here, but that is not the case. Render surface
+optimizations are just as necessary (and complicated to get right!) even with
+a "layer tree" approach, because it's so important to optimize GPU memory.
+In addition, the algorithm presented here is a simplified version of what
+Chromium actually implements.
+
+[^only-overlapping]: Actually, only if there are at least two children *and*
+some of them overlap each other visually. Can you see why we can avoid the
+render surface for opacity if there is no overlap?
+
+For more details and information on how Chromium implements these concepts see
+[here][renderingng-dl] and [here][rendersurface]; other browsers do something
+similar. Chromium's implementation of the "visual effect nesting" data
+structure is called [property trees][prop-trees]. The name is plural because
+there is more than one tree, due to the complex
+[containing block][cb] structure of scrolling and clipping.
+
+[cb]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
+
+[renderingng-dl]: https://developer.chrome.com/blog/renderingng-data-structures/#display-lists-and-paint-chunks
+[rendersurface]: https://developer.chrome.com/blog/renderingng-data-structures/#compositor-frames-surfaces-render-surfaces-and-gpu-texture-tiles
+[prop-trees]: https://developer.chrome.com/blog/renderingng-data-structures/#property-trees
+
+:::
 
 CSS transitions
 ===============
@@ -948,7 +952,9 @@ changed, and which haven't. Right now, we're basically always assuming
 all layers have changed, but ideally we'd know exactly what's changed
 between frames. Browsers have all sorts of complex methods to achieve
 this,[^browser-detect-diff] but to keep things simple, let's implement
-a CSS feature perfect for compositing: CSS transitions.
+a CSS feature perfect for compositing: [CSS transitions][csstransitions].
+
+[csstransitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
 
 [^browser-detect-diff]: Chromium, for example, tries to
 [diff][chromium-diff] the old and new styles any time a style changes
@@ -960,8 +966,9 @@ always be somewhat brittle and incomplete.
 
 CSS transitions basically take the `requestAnimationFrame` loop we
 used to implement animation and move it into the browser. The web page
-just needs to apply the CSS [`transition` property][css-transitions],
-which defines properties to animate and how long to animate them for:
+just needs to interpret the CSS [`transition` property][css-transitions],
+which defines properties to animate and how long to animate them for. Here's
+how to say opacity changes should animate for two seconds:
 
 [css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
 
@@ -969,9 +976,9 @@ which defines properties to animate and how long to animate them for:
 transition: opacity 2s;
 ```
 
-Then, whenever the `opacity` property of the element
-change for any reason---including mutating its style attribute or
-loading a style sheet---the browser smoothly interpolate between the
+Then, whenever the `opacity` property of the target element
+changes for any reason---including mutating its style attribute or
+loading a style sheet---the browser smoothly interpolates between the
 old and new values for two seconds.  Here is an example:
 
 <iframe src="examples/example13-opacity-transition.html"></iframe>
@@ -981,7 +988,7 @@ your browser)
 
 It looks more or less identical[^animation-curve] to the JavaScript animation,
 but is a lot easier to write. But much more importantly, since the browser
-*understands* the animation going on, and can easily detect that it's safe to
+*understands* the animation going on, it can easily detect that it's safe to
 avoid rendering pipeline stages. For example, it's easy to see that an 
 `opacity` animation does not require layout or raster, just paint and draw.
 
@@ -1134,6 +1141,7 @@ def style(node, rules):
         for property, (old_value, new_value, num_frames) in \
             transitions.items():
             if property in ANIMATED_PROPERTIES:
+                tab.set_needs_render()
                 AnimationClass = ANIMATED_PROPERTIES[property]
                 animation = AnimationClass(
                     old_value, new_value, num_frames)
@@ -1144,7 +1152,8 @@ def style(node, rules):
 Any time a property listed in a `transition` changes its value,
 we'll create an animation and get ready to run it.^[Note that the
 animation will start running in the next frame; until then, we want it
-to use the old value of the style property. Real browsers would not delay 
+to use the old value of the style property. Scheduling that frame is also
+why we need to call `set_needs_render` here. Real browsers would not delay 
 a frame, but doing so simplifies our browser's code.]
 
 Finally, we need to run the animations! Basically, every frame, we're
@@ -1163,7 +1172,6 @@ class Tab:
             for (property_name, animation) in \
                 node.animations.items():
                 # ...
-        # ...
 ```
 
 The body of this loop needs to do two things. First, it needs to call
@@ -1171,7 +1179,9 @@ the animation's `animate` method and save the new value to the node's
 `style`. Second, since that changes the web page, we need to set a
 dirty bit; Recall that `render` exits early if `needs_render` isn't
 set, so that dirty bit is supposed to be set if there's rendering
-work to do. When an animation is active, there is.
+work to do. When an animation is active, there is.^[We also need to
+schedule an animation frame for the next frame of the animation, but
+`set_needs_render` already does that for us.]
 
 But it's not as simple as just setting `needs_render` any time an
 animation is active, however. Setting `needs_render` means re-running
@@ -1180,12 +1190,11 @@ value and start a *new* animation! During an animation, we want to run
 `layout` and `paint`, but we *don't* want to run `style`:[^even-more]
 
 [^even-more]: While a real browser definitely has an analog of the
-`needs_layout` and `needs_paint` flags, our fix for restarting
-animations doesn't handle a bunch of edge cases. For example, if a
-different style property than the one being animated changes, the browser
-shouldn't re-start the animation. Real browsers will store multiple
-copies of the style---the computed style and the animated style---to
-solve issues like this.
+`needs_layout` and `needs_paint` flags, our fix for restarting animations
+doesn't handle a bunch of edge cases. For example, if a different style
+property than the one being animated changes, the browser shouldn't re-start
+the animation. Real browsers do things like storing multiple copies of the
+style---the computed style and the animated style---to solve issues like this.
 
 ``` {.python}
 class Tab:
