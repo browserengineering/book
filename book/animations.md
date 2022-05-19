@@ -7,7 +7,7 @@ next: skipped
 
 Complex web application use *animations* when transitioning between
 DOM states. These transitions improve usability by helping users
-understand what changes are occuring. They also improve visual polish
+understand what changes are occurring. They also improve visual polish
 by replacing sudden jumps with gradual changes. But to execute these
 animations smoothly, the browser must make use of the computer's GPU
 and minimize work using compositing.
@@ -161,7 +161,7 @@ entirely during the animation.
 
 Likewise, certain paint-only effects such as color and background-color are also
 possible to animate, since colors are numeric and can be interpolated. (In that
-ase, each color channel is interpolated independently.) These are also
+case, each color channel is interpolated independently.) These are also
 visual effects, but not quite of the same character, because background color
 doesn't apply a visual effect to a whole DOM subtree. It's instead a display
 list parameter that happens not to cause layout, but generally still
@@ -374,7 +374,7 @@ total amount of work in raster and draw.
 
 A high-speed, reliable and cross-platform GPU raster path in Skia has only
 existed for a few years.[^timeline-gpu] In the very early days of Chromium,
-there was only CPU raster. Scrolling was implemented much like in the eary
+there was only CPU raster. Scrolling was implemented much like in the early
 chapters of this book, by re-rastering content. This was deemed acceptable at
 the time because computers were much slower than today in general, GPUs much
 less reliable, animations much less frequent, and mobile platforms such as
@@ -428,7 +428,7 @@ class DisplayItem:
         self.children = children
 ```
 
-Each diplay command now needs to indicate the superclass when the
+Each display command now needs to indicate the superclass when the
 class is declared and use special syntax in the constructor:
 
 ``` {.python expected=False}
@@ -741,7 +741,7 @@ called *render surfaces*.^["Render", since they are a transient and internal
 artifact of the rendering pipeline.]
 
 A naive implementation of this tree (allocating one node for each visual effect)
-is not too hard to implement---and tthere is an exercise at the end of this
+is not too hard to implement---and there is an exercise at the end of this
 chapter for it---but each additional render surface requires more memory and
 slows down draw a bit more. So real browsers analyze the visual effect tree to
 determine which ones really need render surfaces, and which don't. Opacity, for
@@ -752,8 +752,8 @@ You might think that all this means I chose badly with the "paint commands"
 compositing algorithm presented here, but that is not the case. Render surface
 optimizations are just as necessary (and complicated to get right!) even with
 a "layer tree" approach, because it's so important to optimize GPU memory.
-In addition, the algorithm presentd here is a simplified version of what
-Chromiuma actually implements.
+In addition, the algorithm presented here is a simplified version of what
+Chromium actually implements.
 
 [^only-overlapping]: Actually, only if there are at least two children *and*
 some of them overlap each other visually. Can you see why we can avoid the
@@ -915,7 +915,7 @@ class Browser:
 All that's left is wiring these methods up in `raster_and_draw`; let's
 also rename it to `composite_raster_and_draw` to remind us that
 there's now an additional composite step. (And don't forget to rename
-the corresponding dirty bit and callsites.)
+the corresponding dirty bit and call sites.)
 
 ``` {.python}
 class Browser:
@@ -1182,7 +1182,7 @@ value and start a *new* animation! During an animation, we want to run
 [^even-more]: While a real browser definitely has an analog of the
 `needs_layout` and `needs_paint` flags, our fix for restarting
 animations doesn't handle a bunch of edge cases. For example, if a
-different style property than the one being animatied changes, the browser
+different style property than the one being animated changes, the browser
 shouldn't re-start the animation. Real browsers will store multiple
 copies of the style---the computed style and the animated style---to
 solve issues like this.
@@ -1303,7 +1303,7 @@ Avoiding `raster` and `composite` is simple in concept: keep track of what is
 animating, and re-run only `paint`, `paint_draw_list` and `draw` on each frame.
 
 To do this we'll need to keep track of animations by some sort of identifier,
-and pass that identifer from the main thread to the browser thread. Let's use
+and pass that identifier from the main thread to the browser thread. Let's use
 the `node` pointer (but the pointer only). Add another `DisplayItem`
 constructor parameter indicating the `node` that the `DisplayItem` belongs to
 (the one that painted it).
@@ -1517,8 +1517,8 @@ them support threaded opacity, transform and filter animations; some support
 certain kinds of clip animations as well. Adding threaded animations to our
 browser is left as an exercise at the end of this chapter.
 
-But it's super easy to thread scroll at this point, witih only one line of code
-changed: replace the dirty bit for compositing and raster withi just
+But it's super easy to thread scroll at this point, with only one line of code
+changed: replace the dirty bit for compositing and raster with just
 `set_needs_draw` when handing a scroll:
 
 ``` {.python}
@@ -2263,13 +2263,13 @@ information.
  For example, pressing the down key or the down-arrow in a scrollbar causes a
  pleasant animated scroll, rather than the immediate scroll our browser current
  implements. Or on mobile, a touch interaction often causes a "fling" scroll
- according to a physics-based model of scrol momentum with friction. Implement
+ according to a physics-based model of scroll momentum with friction. Implement
  the [`scroll-behavior`][scroll-behavior] CSS property on the `<body>` element,
  and use it to cause animated scroll in `handle_down`, by delegating scroll to
  a main thread animation.[^main-thread-scroll] You'll need to implement a new
  `ScrollAnimation` class and some logic in `run_animation_frame`. Scrolling in
  the [transform transition](examples/example13-transform-transition.html)
- example should now be smoooth, as that example uses `scroll-behavior`.
+ example should now be smooth, as that example uses `scroll-behavior`.
 
 [scroll-behavior]: https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior
 [^main-thread-scroll]: This will lose threaded scrolling. If you've implemented
