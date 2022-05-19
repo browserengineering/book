@@ -1010,7 +1010,7 @@ ANIMATED_PROPERTIES = {
     "transform": TranslateAnimation,
 }
 
-def style(node, rules):
+def style(node, rules, tab):
     old_style = node.style
 
     node.style = {}
@@ -1036,6 +1036,7 @@ def style(node, rules):
         for property, (old_value, new_value, num_frames) in \
             transitions.items():
             if property in ANIMATED_PROPERTIES:
+                tab.set_needs_render()
                 AnimationClass = ANIMATED_PROPERTIES[property]
                 animation = AnimationClass(
                     old_value, new_value, num_frames)
@@ -1043,7 +1044,7 @@ def style(node, rules):
                 node.style[property] = old_value
 
     for child in node.children:
-        style(child, rules)
+        style(child, rules, tab)
 
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
@@ -1290,7 +1291,7 @@ class Tab:
         self.measure_render.start()
 
         if self.needs_style:
-            style(self.nodes, sorted(self.rules, key=cascade_priority))
+            style(self.nodes, sorted(self.rules, key=cascade_priority), self)
             self.needs_layout = True
             self.needs_style = False
 
