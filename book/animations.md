@@ -1061,7 +1061,7 @@ We're going to want to create these animation objects every time a
 style value changes. We can do that in `style` by diffing the old and
 the new styles of each node:
 
-``` {.python}
+``` {.python expected=False}
 def style(node, rules):
     old_style = node.style
 
@@ -1135,7 +1135,7 @@ The `style` function can animate any changed properties listed in
 `ANIMATED_PROPERTIES`:
 
 ``` {.python}
-def style(node, rules):
+def style(node, rules, tab):
     if old_style:
         transitions = diff_styles(old_style, node.style)
         for property, (old_value, new_value, num_frames) in \
