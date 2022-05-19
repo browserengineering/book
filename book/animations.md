@@ -1278,17 +1278,14 @@ just CSS! And let's use the presence of such an animation to avoid re-raster.
 
 CSS transitions are great for adding animations triggered by DOM updates from
 JavaScript. But what about animations that are just part of a page's UI, and
-not connected to a visual transition? (For example, a pulse opacity
-animation on a button or cursor.) In fact, the opacity and width animations
-we've been working with are not really connected to DOM transitions at all, and
-are instead infinitely repeating animations. This can be expressed directly in
-CSS without any JavaScript via a [CSS animation][css-animations].
+not connected to a visual transition? (For example, a pulse opacity animation
+on a button or cursor.) This can be expressed directly in CSS without any
+JavaScript via a [CSS animation][css-animations].
 
 [css-animations]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Animations/Using_CSS_animations
 
 You can see the CSS animation variant of the opacity demo
-[here](examples/example13-opacity-animation.html), and width one
-[here](examples/example13-width-animation.html). Implementing this feature
+[here](examples/example13-opacity-animation.html). Implementing this feature
 requires parsing a new `@keyframes` syntax and the `animation` CSS property.
 Notice how `@keyframes` defines the start and end point declaratively, which
 allows us to make the animation alternate infinitely
@@ -1303,10 +1300,10 @@ and management of animations via JavaScript.
 Composited animations
 =====================
 
-In this section we'll teach the browser how to avoid raster (and layout) when
+We're finally ready to teach the browser how to avoid raster (and layout) when
 running certain animations. These are called *composited animations*, since
-they are compatible with the compositing optimization to avoid raster on
-every frame.
+they are compatible with the compositing optimization to avoid raster on every
+frame.
 
 Avoiding `raster` and `composite` is simple in concept: keep track of what is
 animating, and re-run only `paint`, `paint_draw_list` and `draw` on each frame.
@@ -1353,9 +1350,10 @@ class Tab:
 ```
 
 Second. when running animation frames, if only `needs_paint` is true, then
-compositing is not needed, and each animation in `composited_updates` can be
-committed across to the browser thread. The data to be sent across for each
-animation update will be a DOM `Element` and a `SaveLayer` pointer.
+`composite` is not needed, and each animation in `composited_updates` can be
+committed accordingly across to the browser thread to communicate that fact.
+The data to be sent across for each animation update will be a DOM `Element`
+and a `SaveLayer` pointer.
 
   To accomplish this we'll need several steps. First, when painting a
   `SaveLayer`, record it on the `Element`:
@@ -1619,13 +1617,12 @@ class CompositedLayer:
         self.display_items.append(display_item)
 ```
 
-Using it in the compositing algorithm pretty easy: instead of making a new
-composited layer for every single paint command, walk
-backwards[^why-backwards] through `composited_layers` trying to merge into each
-one. If one is found, the paint chunk is added to it; if not, add a new
-`CompositedLayer` with that paint chunk to start.^[If you're not
-familiar with Python's `for ... else` syntax, the `else` block executes only if
-the loop never executed `break`.]
+Using it in `composite` is pretty easy: instead of making a new composited layer
+for every single paint command, walk backwards[^why-backwards] through
+`composited_layers` trying to merge into each one. If one is found, the paint
+chunk is added to it; if not, add a new `CompositedLayer` with that paint chunk
+to start.^[If you're not familiar with Python's `for ... else` syntax, the
+`else` block executes only if the loop never executed `break`.]
 
 [^why-backwards]: Backwards, because we can't draw things in the wrong
 order. Later items in the display list have to draw later.
@@ -1869,12 +1866,18 @@ pixel rects.
 But this is both unsatisfying and boring, because in real browsers there *are*
 visual effects that can cause overlap. The most important (for animations, at
 least) is *transforms*, which are a mechanism to move around the painted output
-of a DOM element anywhere on the screen. In addition, transforms
-are one of the most popular visual effects in browsers, because they allow you
-to move around content efficiently on the GPU and the browser thread. That's
-because transforms merely apply a linear transformation matrix to each pixel,
-which is one of the things GPUs are good at doing efficiently.
-[^overlap-example]
+of a DOM element anywhere on the screen. In addition, transforms are one of the
+most popular visual effects in browsers, because they allow you to move around
+content efficiently on the GPU and the browser
+thread.[^not-always-visual] That's because transforms merely apply a linear
+transformation matrix to each pixel, which is one of the things GPUs are good
+at doing efficiently.[^overlap-example]
+
+[^not-always-visual]: Technically, `transform` is not always just a visual
+effect. In real browsers, transformed element positions contribute to scrolling
+overflow. Real browsers mostly do this correctly, but sometimes cut corners to
+avoid slowing down transform animations.
+
 
 [cssfilter]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
 
@@ -1885,8 +1888,7 @@ difficult to cause overlap at all in our current browser.
 
 [position]: https://developer.mozilla.org/en-US/docs/Web/CSS/position
 
-The `transform` CSS property lets you apply linear transform visual
-effects to an element.[^not-always-visual] In general, you can apply
+The `transform` CSS property in general lets you apply
 [any linear transform][transform-def] in 3D space, but I'll just cover really
 basic 2D translations. Here's HTML for the overlap example mentioned in the
 last section:[^why-zero]
@@ -1897,10 +1899,6 @@ it, but there are various rules for painting, and "positioned" elements (such as
 with `transform`) are supposed to paint after regular (non-positioned) elements.
 This particular rule is purely a historical artifact.
 
-[^not-always-visual]: Technically, `transform` is not always just a visual
-effect. In real browsers, transformed element positions contribute to scrolling
-overflow. Real browsers mostly do this correctly, but sometimes cut corners to
-avoid slowing down transform animations.
 
 [transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
@@ -1964,11 +1962,6 @@ class Transform(DisplayItem):
             cmd.execute(canvas)
         if self.translation:
             canvas.restore()
-
-    def needs_compositing(self):
-        return self.translation or \
-            any([child.needs_compositing() \
-                for child in self.children])
 
     def clone(self, children):
         return Transform(self.translation, self.rect,
@@ -2035,9 +2028,11 @@ opacity was, in particular:
 
 * Set `node.transform` in `paint_visual_effects` just like `save_layer`.
 
+* Consider it composited in `run_animation_frame`.
+
 * Add `transform` to each `composited_updates` field of `CommitData`.
 
-* Consider transform during the fast-path update in `Browser.Composite`.
+* Consider transform during `paint_draw_list`.
 
 Each of these changes should be pretty straightforward and repetitive on top of
 opacity, so I'll skip showing the code. Once updated, our browser should now
@@ -2075,7 +2070,7 @@ class Transform(DisplayItem):
 ```
 
 We can use `map` to implement a new `absolute_bounds` function that determines
-the absolute bounds of a paint chunk:
+the absolute bounds of a display item:
 
 ``` {.python}
 def absolute_bounds(display_item):
@@ -2088,7 +2083,7 @@ def absolute_bounds(display_item):
     return rect
 ```
 
-And add a method union all of the absolute bounds of the paint chunks in 
+And add a method union all of the absolute bounds of the display items in 
 a `CompositedLayer`:
 
 ``` {.python}
@@ -2105,7 +2100,8 @@ method I outlined in the previous section; don't forget to update that method
 according to the code I outlined.
 
 Overlap testing is now complete.[^not-really] Your animation should animate the
-blue square underneath the green one.
+blue square underneath the green one. And with that, we now have completed
+the story of a pretty high-performance implementation of composited animations.
 
 [^not-really]: Actually, even the current code is not correct now that we have
 transforms. Since a transform animation moves content around, it also affects
@@ -2153,6 +2149,11 @@ remember are:
 
 - Compositing is necessary for smooth and threaded visual effect animations, and
   generally not feasible (at least at present) for layout-inducing animations.
+
+- It's important to optimize the number of composited layers.
+
+- Overlap testing can cause additional GPU memory use and needs to be
+  implemented witih care.
 
 Outline
 =======
