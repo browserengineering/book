@@ -1,5 +1,5 @@
 ---
-title: Animations and Compositing
+title: Animating and Compositing
 chapter: 13
 prev: scheduling
 next: skipped
