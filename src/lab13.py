@@ -1495,11 +1495,14 @@ class Browser:
     def __init__(self):
         if USE_GPU:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-                sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+                sdl2.SDL_WINDOWPOS_CENTERED,
+                sdl2.SDL_WINDOWPOS_CENTERED,
                 WIDTH, HEIGHT,
                 sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
-            self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
-            print("OpenGL initialized: vendor={}, renderer={}".format(
+            self.gl_context = sdl2.SDL_GL_CreateContext(
+                self.sdl_window)
+            print(("OpenGL initialized: vendor={}," + \
+                "renderer={}").format(
                 GL.glGetString(GL.GL_VENDOR),
                 GL.glGetString(GL.GL_RENDERER)))
 
@@ -1508,15 +1511,13 @@ class Browser:
             self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
                 self.skia_context,
                 skia.GrBackendRenderTarget(
-                    WIDTH, HEIGHT,
-                    0,  # sampleCnt
-                    0,  # stencilBits
+                    WIDTH, HEIGHT, 0, 0, 
                     skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
                     skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
             assert self.root_surface is not None
 
-            self.chrome_surface =  skia.Surface.MakeRenderTarget(
+            self.chrome_surface = skia.Surface.MakeRenderTarget(
                     self.skia_context, skia.Budgeted.kNo,
                     skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
             assert self.chrome_surface is not None
