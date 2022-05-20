@@ -1499,7 +1499,8 @@ class Browser:
                 WIDTH, HEIGHT,
                 sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
             self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
-            print("OpenGL initialized: vendor={}, renderer={}".format(
+            print(("OpenGL initialized: vendor={}," + \
+                "renderer={}").format(
                 GL.glGetString(GL.GL_VENDOR),
                 GL.glGetString(GL.GL_RENDERER)))
 

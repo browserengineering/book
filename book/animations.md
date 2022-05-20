@@ -17,13 +17,12 @@ JavaScript Animations
 
 An [animation] is a sequence of still pictures shown in quick
 succession that create an illusion of *movement* to the human
-eye.[^general-movement] Web pages typically animate effects like
+eye.[^general-movement] Typical web page animations include
 changing color, fading an element in or out, or resizing an element.
 Browsers also use animations in response to user actions like
 scrolling, resizing, and pinch-zoom. And some types of animated media,
 like videos, can also be included in web pages.[^video-anim] In this
-chapter we'll focus mostly on web page animations, though we'll touch
-on scrolling at the end.
+chapter we'll focus on web page animations.
 
 [^general-movement]: Here *movement* should be construed broadly to
 encompass all of the kinds of visual changes humans are used to seeing
@@ -37,12 +36,12 @@ real world.
 
 [^video-anim]: Video-like animations also include animated images, and
 animated canvases. Since our browser doesn't support images, this
-topic is beyond the scope of this book, but it has its own
+topic is beyond the scope of this book, but video alone has its own
 [fascinating complexities][videong].
 
 [videong]: https://developer.chrome.com/blog/videong/
 
-Let's write a simple animation using the `requestAnimationFrame` API
+Start by writing a simple animation using the `requestAnimationFrame` API
 [implemented in Chapter 12](scheduling.md#animating-frames). This
 animation lets us request that some JavaScript code run on the next
 frame, and we can have that code change the page slightly.
@@ -61,7 +60,7 @@ impression of continuous change. It returns `true` until it's done
 animating, and then stops. By changing what `animate` does we can
 change what animation occurs.
 
-Let's write a fade animation. We can fade in something out by smoothly
+Let's write a fade animation. We can fade in something in by smoothly
 transitioning its `opacity` value from 0.1 to 0.999.[^why-not-one] If we
 want to do this animation over 120 frames (about two seconds), that
 means we need to increase the opacity by about 0.008 on each frame.
@@ -69,7 +68,7 @@ means we need to increase the opacity by about 0.008 on each frame.
 [^why-not-one]: Real browsers apply certain optimizations when opacity
 is exactly 1, so real-world websites often start and end animations at
 0.999 so that each frame is drawn the same way and the animation is
-smooth. Starting animations at 0.999 is also a common trick used on
+smooth. Starting and ending animations at 0.999 is also a common trick used on
 web sites that want to avoid visual popping of the content as it goes
 in and out of GPU-accelerated mode. I chose 0.999 because the visual
 difference from 1.0 is imperceptible.
@@ -80,7 +79,8 @@ For example, let's animate this `div` containing the word "Test":
 <div>This text fades out</div>
 ```
 
-The `animate` function will track how many frames have occurred and 
+The `animate` function will track how many frames have occurred, and
+interpolate accordingly.
 
 ``` {.javascript file=example-opacity-js replace=animate/fade_in}
 var div = document.querySelectorAll("div")[0];
@@ -129,8 +129,8 @@ class JSContext:
 
 Note that the `style_set` function sets the `needs_render` flag. That
 makes sure that the browser re-renders the web page with the new
-`style` parameter, and therefore shows the user the word "Test" slowly
-fading into view.
+`style` parameter, and therefore shows the user a slow fade of the
+text "This text fades".
 
 ::: {.further}
 
@@ -151,26 +151,6 @@ decade of the [2010s][cssanim-hist].
 
 :::
 
-
-::: {.further}
-
-Opacity is a special kind of CSS filter. And where it makes sense, other filters
-that parameterize on some numeric input (such as [blur]) can also be animated
-just as easily. And as we'll see, all of them can be optimized to avoid raster
-entirely during the animation.
-
-Likewise, certain paint-only effects such as color and background-color are also
-possible to animate, since colors are numeric and can be interpolated. (In that
-case, each color channel is interpolated independently.) These are also
-visual effects, but not quite of the same character, because background color
-doesn't apply a visual effect to a whole DOM subtree. It's instead a display
-list parameter that happens not to cause layout, but generally still
-needs raster. This makes them harder to optimize.
-
-:::
-
-[blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur
-
 GPU acceleration
 ================
 
@@ -186,12 +166,12 @@ With 66ms per frame, our browser is barely doing fifteen frames per
 second, not sixty. For smooth animations we'll need to speed up raster
 and draw.
 
-The best way to do that is to move raster and draw to the [GPU][gpu].
-A GPU is essentially a chip in your computer that runs programs, much
-like your CPU. But the GPU is specialized toward running very simple
-programs with massive parallelism; it was developed to apply simple
-operations, in parallel, for every pixel on the screen. This makes GPUs faster for
-drawing simple shapes and *much* faster for applying visual effects.
+The best way to do that is to move raster and draw to the [GPU][gpu]. A GPU is
+essentially a chip in your computer that runs programs, much like your CPU. But
+the GPU is specialized toward running very simple programs with massive
+parallelism; it was developed to apply simple operations, in parallel, for
+every pixel on the screen. This makes GPUs faster for drawing simple shapes
+and *much* faster for applying visual effects.
 
 At a high level, to raster and draw on the GPU our browser
 must:[^gpu-variations]
@@ -203,7 +183,7 @@ must:[^gpu-variations]
 * *Compile* GPU programs that raster and draw the display list.[^compiled-gpu]
 
 [^compiled-gpu]: That's right, GPU programs are dynamically compiled! This
-allows GPU programs to be portable across a wide variety of implementations
+allows them to be portable across a wide variety of implementations
 that may have very different instruction sets or acceleration tactics.
 Of course, between frames these compiled programs will typically be
 cached, so this step won't occur on every frame.
@@ -216,12 +196,12 @@ parallel with each other.
 
 * *Draw* the textures onto the screen.
 
-SDL and Skia support all of these steps---in fact, it's mostly a
-matter of passing them the right parameters. Let's do that. Note that
-a real browser typically implements both CPU and GPU raster and draw,
-because in some cases CPU raster and draw can be faster than using the
-GPU.[^example-cpu-fast] In our browser, for simplicity, we'll stick
-to GPU mode for all pages.
+SDL and Skia support all of these steps---in fact, it's mostly a matter of
+passing them the right parameters. Let's do that. Note that a real browser
+typically implements both CPU and GPU raster and draw, because in some cases
+CPU raster and draw can be faster than using the GPU, or it may be necessary to
+work around bugs.[^example-cpu-fast] In our browser, for simplicity, we'll
+stick to GPU mode for all pages.
 
 [^example-cpu-fast]: Any of the four steps can make GPU raster and
  draw slow. Large display lists take a while to upload. Complex
@@ -258,17 +238,21 @@ other objects on the screen.
 
 [pyopengl]: http://pyopengl.sourceforge.net/
 
-``` {.python expected=False}
+``` {.python}
 class Browser:
     def __init__(self):
-        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-            WIDTH, HEIGHT,
-            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
-        self.gl_context = sdl2.SDL_GL_CreateContext(self.sdl_window)
-        print("OpenGL initialized: vendor={}, renderer={}".format(
-            GL.glGetString(GL.GL_VENDOR),
-            GL.glGetString(GL.GL_RENDERER)))
+         # ...
+            self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+                sdl2.SDL_WINDOWPOS_CENTERED,
+                sdl2.SDL_WINDOWPOS_CENTERED,
+                WIDTH, HEIGHT,
+                sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
+            self.gl_context = sdl2.SDL_GL_CreateContext(
+                self.sdl_window)
+            print(("OpenGL initialized: vendor={}," + \
+                "renderer={}").format(
+                GL.glGetString(GL.GL_VENDOR),
+                GL.glGetString(GL.GL_RENDERER)))
 
     def handle_quit(self):
         # ...
