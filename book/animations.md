@@ -281,20 +281,20 @@ incantation is:[^weird]
 strange API with a lot of hidden global state; the `MakeGL` Skia
 method implicitly binds to the existing GL context.
 
-``` {.python expected=False}
+``` {.python}
 class Browser:
     def __init__(self):
         #. ...
-        self.skia_context = skia.GrDirectContext.MakeGL()
+            self.skia_context = skia.GrDirectContext.MakeGL()
 
-        self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
-            self.skia_context,
-            skia.GrBackendRenderTarget(
-                WIDTH, HEIGHT, 0, 0,
-                skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
-                skia.kBottomLeft_GrSurfaceOrigin,
-                skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
-        assert self.root_surface is not None
+            self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
+                self.skia_context,
+                skia.GrBackendRenderTarget(
+                    WIDTH, HEIGHT, 0, 0,
+                    skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
+                    skia.kBottomLeft_GrSurfaceOrigin,
+                    skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
+            assert self.root_surface is not None
 ```
 
 An extra advantage of this is that we won't need to copy data between
@@ -319,7 +319,7 @@ class Browser:
         sdl2.SDL_GL_SwapWindow(self.sdl_window)
 ```
 
-Finally, our browser also creates a Skia surfaces for the
+Finally, our browser also creates Skia surfaces for the
 `chrome_surface` and `tab_surface`. We don't want to draw these
 straight to the screen, so the incantation is a bit different:
 
@@ -327,7 +327,7 @@ straight to the screen, so the incantation is a bit different:
 class Browser:
     def __init__(self):
         # ...
-        self.chrome_surface =  skia.Surface.MakeRenderTarget(
+        self.chrome_surface = skia.Surface.MakeRenderTarget(
                 self.skia_context, skia.Budgeted.kNo,
                 skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
         assert self.chrome_surface is not None
@@ -338,7 +338,7 @@ the details of GPU operation aren't our focus here.[^color-space] Make
 sure to apply the same treatment to `tab_surface` (with different
 width and height arguments).
 
-[^color-space]: For example, a different color space that is required
+[^color-space]: Example detail: a different color space is required
 for GPU mode.
 
 Thanks to SDL's and Skia's thorough support for GPU rendering, that
