@@ -243,8 +243,8 @@ class DrawRect(DisplayItem):
     def __repr__(self):
         return ("DrawRect(top={} left={} " +
             "bottom={} right={} color={})").format(
-            self.left, self.top, self.right,
-            self.bottom, self.color)
+            self.top, self.left, self.bottom,
+            self.right, self.color)
 
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, children, should_clip=True):
@@ -1508,13 +1508,15 @@ class Browser:
 
             self.skia_context = skia.GrDirectContext.MakeGL()
 
-            self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
+            self.root_surface = \
+                skia.Surface.MakeFromBackendRenderTarget(
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0, 
                     skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
-                    skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
+                    skia.kRGBA_8888_ColorType,
+                    skia.ColorSpace.MakeSRGB())
             assert self.root_surface is not None
 
             self.chrome_surface = skia.Surface.MakeRenderTarget(
