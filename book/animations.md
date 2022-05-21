@@ -41,9 +41,9 @@ topic is beyond the scope of this book, but video alone has its own
 
 [videong]: https://developer.chrome.com/blog/videong/
 
-Start by writing a simple animation using the `requestAnimationFrame` API
+Start with a simple animation using the `requestAnimationFrame` API
 [implemented in Chapter 12](scheduling.md#animating-frames). This
-animation lets us request that some JavaScript code run on the next
+API lets us request that some JavaScript code run on the next
 frame, and we can have that code change the page slightly.
 To do this repeatedly, we'll need code like this:
 
@@ -73,10 +73,10 @@ web sites that want to avoid visual popping of the content as it goes
 in and out of GPU-accelerated mode. I chose 0.999 because the visual
 difference from 1.0 is imperceptible.
 
-For example, let's animate this `div` containing the word "Test":
+For example, let's animate this `div` containing some text:
 
 ``` {.html file=example-opacity-html}
-<div>This text fades out</div>
+<div>This text fades</div>
 ```
 
 The `animate` function will track how many frames have occurred, and
@@ -214,7 +214,7 @@ stick to GPU mode for all pages.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
 
-First we'll need to install the OpenGL library:
+First, install the OpenGL library:
 
     pip3 install PyOpenGL
 
@@ -287,13 +287,15 @@ class Browser:
         #. ...
             self.skia_context = skia.GrDirectContext.MakeGL()
 
-            self.root_surface = skia.Surface.MakeFromBackendRenderTarget(
+            self.root_surface = \
+                skia.Surface.MakeFromBackendRenderTarget(
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0,
                     skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
-                    skia.kRGBA_8888_ColorType, skia.ColorSpace.MakeSRGB())
+                    skia.kRGBA_8888_ColorType,
+                    skia.ColorSpace.MakeSRGB())
             assert self.root_surface is not None
 ```
 
@@ -361,7 +363,7 @@ existed for a few years.[^timeline-gpu] In the very early days of Chromium,
 there was only CPU raster. Scrolling was implemented much like in the early
 chapters of this book, by re-rastering content. This was deemed acceptable at
 the time because computers were much slower than today in general, GPUs much
-less reliable, animations much less frequent, and mobile platforms such as
+less reliable, animations less frequent, and mobile platforms such as
 Android and iOS still emerging. (In fact, the first versions of Android
 also didn't have GPU acceleration.) The same is generally true of Firefox and
 Safari, though Safari was able to accelerate content more easily because it
@@ -392,7 +394,7 @@ frames.[^compositing-def]
 
 [^compositing-def]: The term [*compositing*][compositing] means combining
 multiple images together into a final output. In the context of browsers, it
-typically means combining rastered images into the final image of the page, but
+typically means combining rastered images into the final on-screen image, but
 a similar technique is used in many operating systems to combine the contents
 of multiple windows. "Compositing" can also refer to multi-threaded rendering.
 
@@ -439,8 +441,8 @@ class DrawRect(DisplayItem):
     def __repr__(self):
         return ("DrawRect(top={} left={} " +
             "bottom={} right={} color={})").format(
-            self.left, self.top, self.right,
-            self.bottom, self.color)
+            self.top, self.left, self.bottom,
+            self.right, self.color)
 ```
 
 Some of our display commands have a flag to do nothing, like
@@ -489,13 +491,14 @@ caching.
 The idea is to first draw the three words to a separate surface (but this time
 owned by us, not Skia), which we'll call a *composited layer*:
 
-    Composited Layer 1:
+    Composited Layer:
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
 
-Now instead of drawing those three words, we can just copy over the
-layer:
+Now instead of drawing those three words, we can just copy over the layer
+(indicated by a `DrawCompositedLayer` command that draws a pre-rastered surface
+into the root):
 
     SaveLayer(alpha=0.112375)
       DrawCompositedLayer()
@@ -518,16 +521,15 @@ composited layers, which can then be reused, and only change the draw
 display list. That's the case here, because the only difference
 between frames is the `SaveLayer`, which is in the draw display list.
 
-A browser can choose what composited layers to create however it
-wants. Typically visual effects like opacity are very fast to execute on a
-GPU, but *paint commands* that draw shapes---in our browser,
-`DrawText`, `DrawRect`, `DrawRRect`, and `DrawLine`---can be slower.[^many]
-Since it's the visual effects that are typically animated, this means
-browsers usually leave animated visual effects in the draw display list and move paint
-commands into composited layers. Of course, in a real browser,
-hardware capabilities, GPU memory, and application data all play into
-these decisions, but the basic idea of compositing is the same no matter what
-goes where.
+A browser can choose what composited layers to create however it wants.
+Typically visual effects like opacity are very fast to execute on a GPU,
+but *paint commands* that draw shapes---in our browser, `DrawText`, `DrawRect`,
+`DrawRRect`, and `DrawLine`---can be slower.[^many] Since it's the visual
+effects that are typically animated, this means browsers usually leave animated
+visual effects in the draw display list and move everything else into composited
+layers. Of course, in a real browser, hardware capabilities, GPU memory, and
+application data all play into these decisions, but the basic idea of
+compositing is the same no matter what goes where.
 
 [^many]: And there are usually a lot more of them to execute.
 
@@ -557,27 +559,28 @@ layout on every animation frame.
 
 ::: {.further}
 
-If you look closely at the example in this section, you'll see that the
-`DrawText` command's rect is about 30 pixels wide. On the other hand, the
+If you look closely at the opacity example in this section, you'll see that the
+`DrawText` command's rect is only as wide as the text. On the other hand, the
 `SaveLayer` rect is almost as wide as the viewport. The reason they differ is
-that the text is only about 30 pixels wide, but the block element that contains
-it is as wide as the available width.
+that the text is only about as wide as it needs to be, but the block element
+that contains it is as wide as the available width.
 
-So if we put it in a composited layer, does it need to be 30 pixels wide or the
-whole viewport? In practice you could implement either. The algorithm presented
-in this chapter ends up with the smaller one but real browsers sometimes choose
-the larger, depending on their algorithm. Also note that if there was any kind
-of paint command associated with the block element containing the text, such as
-a background color, then the surface would definitely have to be as wide as the
-viewport. Likewise, if there were multiple inline children, the union of their
-bounds would contribute to the surface size.
+So if we put it in a composited layer, does it need to be as wide as the text or
+the whole viewport? In practice you could implement either. The algorithm
+presented in this chapter ends up with the smaller one but real browsers
+sometimes choose the larger, depending on their algorithm. Also note that if
+there was any kind of paint command associated with the block element
+containing the text, such as a background color, then the surface would
+definitely have to be as wide as the viewport. Likewise, if there were multiple
+inline children, the union of their bounds would contribute to the surface
+size.
 
 :::
 
 Compositing leaves
 ==================
 
-Let's start implementing compositing. To start, we'll put paint commands
+Let's implementing compositing. To start, we'll put paint commands
 (the leaves of the display list) in composited layers, and all other display
 items in the draw display list. To do that we'll need to traverse the display
 list, identify all paint commands, and move them to composited layers. Then
@@ -650,8 +653,8 @@ class CompositedLayer:
 ```
 
 Now let's turn to the draw display list that contains the composited layers.
-Build this by taking each composited layer we've generated and make a
-recursive chain of all visual effects applied to it. This will
+Build this by taking each composited layer we've generated and making a
+chain of all visual effects applied to it. This will
 involve *cloning* each of the ancestors of the layer's paint commands and
 injecting new children, with a `DrawCompositedLayer` at the bottom of the
 chain.
@@ -951,7 +954,7 @@ always be somewhat brittle and incomplete.
 
 CSS transitions basically take the `requestAnimationFrame` loop we
 used to implement animation and move it into the browser. The web page
-just needs to interpret the CSS [`transition`[css-transitions] property,
+just needs to interpret the CSS [`transition`][css-transitions] property,
 which defines properties to animate and how long to animate them for. Here's
 how to say opacity changes should animate for two seconds:
 
@@ -1028,7 +1031,7 @@ class NumericAnimation:
 [units]: https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Values_and_units
 
 Much like in JavaScript, we'll need an `animate` method that
-increments the frame count and computes the new value and returns it; this
+increments the frame count, computes the new value and returns it; this
 value will be placed in the style of an element.
 
 ``` {.python}
@@ -1103,8 +1106,7 @@ def diff_styles(old_style, new_style):
     return transitions
 ```
 
-
-Now, back inside `style`, we're going to want to create a new
+Back inside `style`, we're going to want to create a new
 animation object for each transitioning property. Let's allow
 animating just `opacity` for now; we can expand this to
 more properties by writing new animation types.
@@ -1334,8 +1336,8 @@ class Tab:
 ```
 
 Second, when running animation frames, if only `needs_paint` is true, then
-`composite` is not needed, and each animation in `composited_updates` can be
-committed accordingly across to the browser thread to communicate that fact.
+`composite` is not needed, and each animation in `composited_updates` is
+accordingly committed across to the browser thread to communicate that fact.
 The data to be sent across for each animation update will be an `Element`
 and a `SaveLayer` pointer.
 
@@ -1623,14 +1625,14 @@ class Browser:
 
 
 With this implementation, multiple paint commands will sometimes end up in the
-same composited layer, but the ancestor effects don't *exactly* match, they
-won't. Now let's do one better, and place entire display list *subtrees* that
+same composited layer, but if the ancestor effects don't *exactly* match, they
+won't. Let's improve on that by placing entire display list *subtrees* that
 aren't animating together.
 
 So far, every internal node (ones that aren't leaves) of our display list runs
 in the draw phase, while every paint command runs in the raster phase. But some
 internal nodes (visual effects) can't be animated. So we can run them in the
-raster phase, which will reduce the number of composed layers even more.
+raster phase, which will reduce the number of composited layers even more.
 
 To implement this, we'll first need a way to signal that a visual effect
 *needs compositing*, meaning that it may be animating and so its
@@ -1700,7 +1702,7 @@ class DisplayItem:
             cmd.add_composited_bounds(rect)
 ```
 
-Now we can use this new method as follows:
+And use this new method as follows:
 
 ``` {.python}
 class CompositedLayer:
@@ -1989,7 +1991,7 @@ You should now be able to create this animation:^[In this
 example, I added in a simultaneous opacity animation to demonstrate that our
 browser supports it.]
 
-<iframe src="examples/example13-transform-transition.html" style="width:350px;height:350px">
+<iframe src="examples/example13-transform-transition.html" style="width:350px;height:450px">
 </iframe>
 (click [here](examples/example13-transform-transition.html) to load the example in
 your browser)
@@ -2124,8 +2126,9 @@ remember are:
 
 - GPU acceleration is necessary for smooth animations.
 
-- Compositing is necessary for smooth and threaded visual effect animations, and
-  generally not feasible (at least at present) for layout-inducing animations.
+- Compositing is usually necessary for smooth and threaded visual effect
+  animations, and generally not feasible (at least at present) for
+  layout-inducing animations.
 
 - It's important to optimize the number of composited layers.
 
