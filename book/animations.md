@@ -2148,11 +2148,11 @@ should now look something like this:
 Exercises
 =========
 
-*Background-color*: implement animations of the `background-color` CSS property.
+*Background-color*: Implement animations of the `background-color` CSS property.
 You'll have to define a new kind of interpolation that applies to all the
 color channels.
 
-*Easing functions*: our browser only implements a linear interpolation between
+*Easing functions*: Our browser only implements a linear interpolation between
  start and end values, but there are many other [easing functions][easing] 
  (in fact, the default one in real browsers is
  `cubic-bezier(0.25, 0.1, 0.25, 1.0)`, not linear). Implement this easing
@@ -2160,10 +2160,10 @@ color channels.
 
  [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
 
-*Threaded animations*: despite Chapter 12 being all about threading, we didn't
+*Threaded animations*: Despite Chapter 12 being all about threading, we didn't
  actually implement threaded animations in this chapter---they are all driven
  by code running on the main thread. But just like scrolling, in a real browser
- this is not acceptable, since there could be many main-thread tasks slowing
+ this is not good enough, since there could be many main-thread tasks slowing
  things down. Add support for threaded animations. Doing so will require
  replicating some event loop code from the main thread, but if you're careful
  you should be able to reuse all of the animation classes. (Don't worry too
@@ -2172,23 +2172,24 @@ color channels.
  invalidate the animation. Real browsers encounter a lot of complications in
  this area.)
 
-*Width animations*: Implement the CSS `width` property; when `width` is set to
- some number of pixels on an element, the element should be that many pixels
- wide, regardless of how its width would normally be computed. Make `width`
- animatable; you'll need a variant of `NumericAnimation` that parses and
- produces pixel values (the "px" suffix in the string). Since `width`
- is layout-inducing, make sure that animating `width` sets `needs_layout`.
- Check that animating width in your browser changes line breaks.
+*Width animations*: Implement the CSS `width` and `height` properties; when
+ `width` is set to some number of pixels on an element, the element should be
+ that many pixels wide, regardless of how its width would normally be computed;
+ the same goes for `height`. Make them animatable; you'll need a variant of
+ `NumericAnimation` that parses and produces pixel values (the "px" suffix in
+ the string). Since `width` and `height` are layout-inducing, make sure that
+ animating them sets `needs_layout`. Check that animating width in your
+ browser changes line breaks.
  [This example](examples/example13-width-transition.html) should work once
  you've implemented width animations.
 
-*CSS animations*: implement the basics of the
+*CSS animations*: Implement the basics of the
 [CSS animations][css-animations] API, in particular enough of the `animation`
 CSS property and parsing of `@keyframe` to implement the demos
  [here](examples/example13-opacity-animation.html) and
  [here](examples/example13-width-animation.html).
 
-*Overlap testing w/transform animations*: as mentioned in a footnote, our
+*Overlap testing w/transform animations*: As mentioned in a footnote, our
  browser currently does not overlap test correctly in the presence of transform
  animations that cause overlap to come and go. First create a demo that
  exhibits the bug, and then fix it. One way to fix it is to enter "assume
@@ -2205,7 +2206,7 @@ a transform animation is defined in terms of a CSS animation, you can
 analytically determine the bounding box of the animation, and use that for
 overlap instead.
 
-*Avoiding sparse composited layers*: our browser's algorithm currently always
+*Avoiding sparse composited layers*: Our browser's algorithm currently always
  merges paint chunks that have compatible ancestor effects. But this can lead
  to inefficient situations, such as where two paint chunks that are visually
  very far away on the web page (e.g. one at the very top and one thousands of
