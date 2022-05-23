@@ -794,9 +794,8 @@ def paint_visual_effects(node, cmds, rect):
 
     transform = Transform(translation, rect, node, [save_layer])
 
-    if transform.needs_compositing() or save_layer.needs_compositing():
-        node.transform = transform
-        node.save_layer = save_layer
+    node.transform = transform
+    node.save_layer = save_layer
 
     return [transform]
 
