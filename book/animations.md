@@ -6,23 +6,21 @@ next: skipped
 ...
 
 Complex web application use *animations* when transitioning between
-DOM states. These transitions improve usability by helping users
-understand what changes are occurring. They also improve visual polish
-by replacing sudden jumps with gradual changes. But to execute these
-animations smoothly, the browser must make use of the computer's GPU
-and minimize work using compositing.
+states. These animations help users understand the change and improve
+visual polish by replacing sudden jumps with gradual changes. But to
+execute these animations smoothly, the browser must use a technique
+called compositing to minimize redundant work.
 
 JavaScript Animations
 =====================
 
 An [animation] is a sequence of still pictures shown in quick
 succession that create an illusion of *movement* to the human
-eye.[^general-movement] Typical web page animations include
-changing color, fading an element in or out, or resizing an element.
-Browsers also use animations in response to user actions like
-scrolling, resizing, and pinch-zoom. And some types of animated media,
-like videos, can also be included in web pages.[^video-anim] In this
-chapter we'll focus on web page animations.
+eye.[^general-movement] Typical web page animations include changing
+an element's color, fading it in or out, or resizing it. Browsers also
+use animations in response to user actions like scrolling, resizing,
+and pinch-zooming. Plus, some types of animated media (like videos)
+can be included in web pages.[^video-anim]
 
 [^general-movement]: Here *movement* should be construed broadly to
 encompass all of the kinds of visual changes humans are used to seeing
@@ -41,11 +39,12 @@ topic is beyond the scope of this book, but video alone has its own
 
 [videong]: https://developer.chrome.com/blog/videong/
 
-Start with a simple animation using the `requestAnimationFrame` API
-[implemented in Chapter 12](scheduling.md#animating-frames). This
-API lets us request that some JavaScript code run on the next
-frame, and we can have that code change the page slightly.
-To do this repeatedly, we'll need code like this:
+In this chapter we'll focus on animations of web page elements. Let's
+start by writing a simple animation using the `requestAnimationFrame`
+API [implemented in Chapter 12](scheduling.md#animating-frames). This
+method requests that some JavaScript code run on the next frame; to
+run repeatedly over many frames, we can just have that JavaScript code
+call `requestAnimationFrame` itself:
 
 ``` {.javascript file=example-opacity-js replace=animate/fade_out,animation_frame/fade_out}
 function run_animation_frame() {
@@ -55,32 +54,33 @@ function run_animation_frame() {
 requestAnimationFrame(run_animation_frame);
 ```
 
-Here `animate` makes some small change to the page to give the
-impression of continuous change. It returns `true` until it's done
-animating, and then stops. By changing what `animate` does we can
-change what animation occurs.
+The `animate` function then makes some small change to the page to
+give the impression of continuous change.[^animate-return] By changing
+what `animate` does we can change what animation occurs.
 
-Let's write a fade animation. We can fade in something in by smoothly
-transitioning its `opacity` value from 0.1 to 0.999.[^why-not-one] If we
-want to do this animation over 120 frames (about two seconds), that
-means we need to increase the opacity by about 0.008 on each frame.
+[^animate-return]: It returns `true` while it's animating, and then
+    stops.
+
+For example, we can fade an element in by smoothly transitioning its
+`opacity` value from 0.1 to 0.999.[^why-not-one] Doing this over 120
+frames (about two seconds) means increasing the opacity by about 0.008
+each frame.
 
 [^why-not-one]: Real browsers apply certain optimizations when opacity
 is exactly 1, so real-world websites often start and end animations at
 0.999 so that each frame is drawn the same way and the animation is
-smooth. Starting and ending animations at 0.999 is also a common trick used on
-web sites that want to avoid visual popping of the content as it goes
-in and out of GPU-accelerated mode. I chose 0.999 because the visual
-difference from 1.0 is imperceptible.
+smooth. Starting and ending animations at 0.999 is also a common trick
+used on web sites that want to avoid visual popping of the content as
+it goes in and out of GPU-accelerated mode. I chose 0.999 because the
+visual difference from 1.0 is imperceptible.
 
-For example, let's animate this `div` containing some text:
+So let's take this `div` containing some text:
 
 ``` {.html file=example-opacity-html}
 <div>This text fades</div>
 ```
 
-The `animate` function will track how many frames have occurred, and
-interpolate accordingly.
+And write an `animate` function to incrementally change its `opacity`:
 
 ``` {.javascript file=example-opacity-js replace=animate/fade_in}
 var div = document.querySelectorAll("div")[0];
@@ -95,15 +95,14 @@ function animate() {
 }
 ```
 
-You could, of course, fade the text out by making `change_per_frame`
-negative. Here's how it looks; click the buttons to start a fade:
+Here's how it looks; click the buttons to start a fade:
 
 <iframe src="examples/example13-opacity-raf.html"></iframe>
 
-This animation will almost run in our browser, except that our browser
-doesn't yet support JavaScript changing an element's `style`
-attribute. Let's go ahead and add that feature. Register
-a setter on the `style` attribute of `Node` in the JavaScript runtime:
+This animation *almost* runs in our browser, except that we need to
+add support for changing an element's `style` attribute from
+JavaScript. To do that, register a setter on the `style` attribute of
+`Node` in the JavaScript runtime:
 
 ``` {.javascript file=runtime}
 Object.defineProperty(Node.prototype, 'style', {
@@ -127,10 +126,10 @@ class JSContext:
         self.tab.set_needs_render()
 ```
 
-Note that the `style_set` function sets the `needs_render` flag. That
-makes sure that the browser re-renders the web page with the new
-`style` parameter, and therefore shows the user a slow fade of the
-text "This text fades".
+Importantly, the `style_set` function sets the `needs_render` flag to
+make sure that the browser re-renders the web page with the new
+`style` parameter. With these changes, you should now be able to open
+and run this animation in your browser.
 
 ::: {.further}
 
@@ -154,24 +153,24 @@ decade of the [2010s][cssanim-hist].
 GPU acceleration
 ================
 
-If you try the fade animation in our browser, you'll probably notice
+Try the fade animation in your browser, and you'll probably notice
 that it's not particularly smooth. And that shouldn't be surprising;
 after all, [last chapter](scheduling.md#profiling-rendering) had the
-following figures for our browser:
+following running times for our browser:
 
     Time in raster-and-draw on average: 66ms
     Time in render on average: 23ms
 
 With 66ms per frame, our browser is barely doing fifteen frames per
-second, not sixty. For smooth animations we'll need to speed up raster
-and draw.
+second; for smooth animations we want sixty! So we need to speed up
+raster and draw.
 
-The best way to do that is to move raster and draw to the [GPU][gpu]. A GPU is
-essentially a chip in your computer that runs programs, much like your CPU. But
-the GPU is specialized toward running very simple programs with massive
-parallelism; it was developed to apply simple operations, in parallel, for
-every pixel on the screen. This makes GPUs faster for drawing simple shapes
-and *much* faster for applying visual effects.
+The best way to do that is to move raster and draw to the [GPU][gpu].
+A GPU is essentially a chip in your computer that runs programs, much
+like your CPU but specialized toward running very simple programs with
+massive parallelism---it was developed to apply simple operations, in
+parallel, for every pixel on the screen. This makes GPUs faster for
+drawing simple shapes and *much* faster for applying visual effects.
 
 At a high level, to raster and draw on the GPU our browser
 must:[^gpu-variations]
@@ -196,25 +195,25 @@ parallel with each other.
 
 * *Draw* the textures onto the screen.
 
-SDL and Skia support all of these steps---in fact, it's mostly a matter of
-passing them the right parameters. Let's do that. Note that a real browser
-typically implements both CPU and GPU raster and draw, because in some cases
-CPU raster and draw can be faster than using the GPU, or it may be necessary to
-work around bugs.[^example-cpu-fast] In our browser, for simplicity, we'll
-stick to GPU mode for all pages.
+Luckily, SDL and Skia support all of these steps; it's mostly a matter
+of passing them the right parameters. So let's do that. Note that a
+real browser typically implements both CPU and GPU raster and draw,
+because in some cases CPU raster and draw can be faster than using the
+GPU, or it may be necessary to work around bugs.[^example-cpu-fast] In
+our browser, for simplicity, we'll always use the GPU.
 
 [^example-cpu-fast]: Any of the four steps can make GPU raster and
- draw slow. Large display lists take a while to upload. Complex
- display list commands take longer to compile. Raster can be slow if
- there are many surfaces, and draw can be slow if surfaces are deeply
- nested. On a CPU, the upload step and compile steps aren't necessary,
- and more memory is available for raster and draw. Of course, many
- optimizations are available for both GPU and CPU, so choosing the
- best way to raster and draw a given page can be quite complex.
+draw slow. Large display lists take a while to upload. Complex display
+list commands take longer to compile. Raster can be slow if there are
+many surfaces, and draw can be slow if surfaces are deeply nested. On
+a CPU, the upload step and compile steps aren't necessary, and more
+memory is available for raster and draw. Of course, many optimizations
+are available for both GPU and CPU, so choosing the best way to raster
+and draw a given page can be quite complex.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
 
-First, install the OpenGL library:
+First, we'll need to install the OpenGL library:
 
     pip3 install PyOpenGL
 
@@ -226,7 +225,7 @@ import OpenGL.GL as GL
 
 Now we'll need to configure SDL to use OpenGL and and start/stop a [GL
 context][glcontext] at the beginning/end of the program. For our
-purposes, just consider this API boilerplate.[^glcontext]
+purposes, just consider this API boilerplate:[^glcontext]
 
 [^glcontext]: Starting a GL context is just OpenGL's way of saying
 "set up the surface into which subsequent GL drawing commands will
@@ -260,9 +259,9 @@ class Browser:
         sdl2.SDL_DestroyWindow(self.sdl_window)
 ```
 
-I've made our browser print out the GPU vendor and renderer that it's
-using; this will help you verify that it's actually using your GPU.
-I'm using a Chromebook to write this chapter, so for me it
+That `print` statement shows the GPU vendor and renderer that the
+browser is using; this will help you verify that it's actually using
+your GPU. I'm using a Chromebook to write this chapter, so for me it
 says:[^virgl]
 
     OpenGL initialized: vendor=b'Red Hat', renderer=b'virgl'
@@ -299,8 +298,8 @@ class Browser:
             assert self.root_surface is not None
 ```
 
-An extra advantage of this is that we won't need to copy data between
-Skia and SDL anymore. All it has to do is *flush* the Skia surface
+An extra advantage of using OpenGL is that we won't need to copy data
+between Skia and SDL anymore. Instead we just *flush* the Skia surface
 (Skia surfaces draw lazily) and call `SDL_GL_SwapWindow` to activate
 the new framebuffer (because of OpenGL [double-buffering][double]):
 
@@ -351,10 +350,10 @@ the GPU. And as expected, speed is much improved:
     Time in render on average: 23ms
 
 That's about three times faster, almost fast enough to hit sixty
-frames per second. And on your computer, you'll likely see even more
-speedup than that, so perhaps your animations are already quite
-smooth. But if we want to go faster yet, we'll need to reduce the
-total amount of work in raster and draw.
+frames per second. (And on your computer, you'll likely see even more
+speedup than I did, so for you it might already be fast enough.) But
+if we want to go faster yet, we'll need to reduce the total amount of
+work in raster and draw.
 
 ::: {.further}
 
@@ -413,8 +412,12 @@ class DisplayItem:
         self.children = children
 ```
 
-Each display command now needs to indicate the superclass when the
-class is declared and use special syntax in the constructor:
+We'll need that `children` field to use `print_tree` to print the
+display list.
+
+Now each display command needs to be a subclass of `DisplayItem`; to
+do that, you need to name the superclass when the class is declared
+and also use some special syntax in the constructor:
 
 ``` {.python expected=False}
 class DrawRect(DisplayItem):
@@ -482,13 +485,13 @@ On the next frame, it instead looks like this:
       DrawText(text=text)
       DrawText(text=fades)
 
-In each case, rastering this display list means first drawing the three words to
+In each case, rastering this display list means first raster the three words to
 a Skia surface created by `saveLayer`, and then copying that to the root
-surface while applying transparency. Crucially, the drawing is identical in
+surface while applying transparency. Crucially, the raster is identical in
 both frames; only the copy differs. This means we can speed it up with
 caching.
 
-The idea is to first draw the three words to a separate surface (but this time
+The idea is to first raster the three words to a separate surface (but this time
 owned by us, not Skia), which we'll call a *composited layer*:
 
     Composited Layer:
@@ -496,9 +499,8 @@ owned by us, not Skia), which we'll call a *composited layer*:
       DrawText(text=text)
       DrawText(text=fades)
 
-Now instead of drawing those three words, we can just copy over the layer
-(indicated by a `DrawCompositedLayer` command that draws a pre-rastered surface
-into the root):
+Now instead of drawing those three words, we can just copy over the
+composited layer with a `DrawCompositedLayer` command:
 
     SaveLayer(alpha=0.112375)
       DrawCompositedLayer()
@@ -517,12 +519,12 @@ list*, which is drawn during the browser's draw phase and which uses
 the composited layers.
 
 Compositing helps when different frames of an animation have the same
-composited layers, which can then be reused, and only change the draw
-display list. That's the case here, because the only difference
-between frames is the `SaveLayer`, which is in the draw display list.
+composited layers, which can then be reused. That's the case here,
+because the only difference between frames is the `SaveLayer`, which
+is in the draw display list.
 
-A browser can choose what composited layers to create however it wants.
-Typically visual effects like opacity are very fast to execute on a GPU,
+How exactly to split up the display list is up to the browser.
+Typically, visual effects like opacity are very fast to execute on a GPU,
 but *paint commands* that draw shapes---in our browser, `DrawText`, `DrawRect`,
 `DrawRRect`, and `DrawLine`---can be slower.[^many] Since it's the visual
 effects that are typically animated, this means browsers usually leave animated
@@ -534,28 +536,28 @@ compositing is the same no matter what goes where.
 [^many]: And there are usually a lot more of them to execute.
 
 Some animations can't be composited because they affect more than just
-the display tree. For example, imagine we animate the `width` of the
+the display list. For example, imagine we animate the `width` of the
 `div` above, instead of animating its opacity. Here's how it looks;
 click the buttons to animate.
 
 <iframe width=500 src="examples/example13-width-transition.html"></iframe>
 
-Here, different frames have different *layout trees*, not just display
-trees. That totally changes the coordinates for the `DrawText` calls,
-and we wouldn't necessarily be able to reuse the composited layer.
-Such animations are called *layout-inducing*, and speeding them up
-requires [different techniques](reflow.md).[^not-advisable]
+Here, different frames have different *layout trees*, not just
+different display lists. That totally changes the coordinates for the
+`DrawText` calls, and we wouldn't necessarily be able to reuse any
+composited layers. Such animations are called *layout-inducing*, and
+speeding them up requires [different
+techniques](reflow.md).[^not-advisable]
 
 [^not-advisable]: Because layout-inducing animations can't easily make use of
 compositing, they're usually not a good idea on the web. Not only are they
-slower, but they cause page elements to move around, often in sudden
-jumps, meaning they don't create that illusion of continuous movement. An
-exception is a layout-inducing animation when resizing a browser window via a
-mouse gesture; in this case it's very useful for the user to see the new layout
+slower, but they also cause page elements to jump around suddenly and
+don't create that illusion of continuous movement. An
+exception is resizing the browser window with your mouse. That's
+layout-inducing, but it's very useful for the user to see the new layout
 as the window size changes. Modern browsers are fast enough to do this, but it
-used to be that instead they would leave a visual *gutter* (a gap between
-content and the edge of the window) during the animation, to avoid updating
-layout on every animation frame.
+used to be that they'd only redraw the screen every couple of frames,
+leaving a visual *gutter* between content and the edge of the window.
 
 ::: {.further}
 
@@ -580,15 +582,14 @@ size.
 Compositing leaves
 ==================
 
-Let's implementing compositing. To start, we'll put paint commands
-(the leaves of the display list) in composited layers, and all other display
-items in the draw display list. To do that we'll need to traverse the display
-list, identify all paint commands, and move them to composited layers. Then
-we'll need to create the draw display list that combines the composited
-layers.
+Let's implementing compositing. We'll need to traverse the display
+list, identify paint commands, and move them to composited layers.
+Then we'll need to create the draw display list that combines these
+composited layers. To keep things simple, we'll start by creating a
+composited layer for every paint command.
 
-Let's start by identifying paint commands with an `is_paint_command`
-method. It'll return `False` for generic display items:
+We'll want an `is_paint_command` method on display items to identify
+paint commands. It'll return `False` by default:
 
 ``` {.python}
 class DisplayItem:
@@ -596,8 +597,8 @@ class DisplayItem:
         return False
 ```
 
-However, for the `DrawLine`, `DrawRRect`, `DrawRect`, and `DrawText`
-commands it'll return `True` instead. For example, here's `DrawLine`:
+But for `DrawLine`, `DrawRRect`, `DrawRect`, and `DrawText` it'll
+return `True` instead. For example, here's `DrawLine`:
 
 ``` {.python}
 class DrawLine(DisplayItem):
@@ -630,39 +631,47 @@ class Browser:
     def composite(self):
         self.composited_layers = []
         # ...
-        for display_item in paint_commands:
-            layer = CompositedLayer(self.skia_context)
-            layer.add(display_item)
+        for cmd in paint_commands:
+            layer = CompositedLayer(self.skia_context, cmd)
             self.composited_layers.append(layer)
 ```
 
 Here, a `CompositedLayer` just stores a list of display items (and a
-surface that they'll be drawn to). The `add` method adds a paint command to
-the list.^[For now, it's just one display item, but that will change pretty
-soon.]
+surface that they'll be drawn to).^[For now, it's just one display
+item, but that will change pretty soon.]
 
 ``` {.python}
 class CompositedLayer:
-    def __init__(self, skia_context):
+    def __init__(self, skia_context, display_item):
         self.skia_context = skia_context
         self.surface = None
-        self.display_items = []
-
-    def add(self, display_item):
-        self.display_items.append(display_item)
+        self.display_items = [display_item]
 ```
 
-Now let's turn to the draw display list that contains the composited layers.
-Build this by taking each composited layer we've generated and making a
-chain of all visual effects applied to it. This will
-involve *cloning* each of the ancestors of the layer's paint commands and
-injecting new children, with a `DrawCompositedLayer` at the bottom of the
-chain.
+Now we need a draw display list that combines the composited layers.
+To build this we'll walk up from each composited layer build a chain
+of all of the visual effects applied to it, with a
+`DrawCompositedLayer` at the bottom of the chain.
 
-So let's add a new `clone` method to the visual effects
-classes. For `SaveLayer`, it'll create a new
+First, to make it easy to access those ancestor visual effects and
+compare them, let's add parent pointers to our display list tree:
+
+``` {.python}
+def add_parent_pointers(nodes, parent=None):
+    for node in nodes:
+        node.parent = parent
+        add_parent_pointers(node.children, node)
+
+class Browser:
+    def composite(self):
+        add_parent_pointers(self.active_tab_display_list)
+        # ...
+```
+
+Next, we'll need to *clone* each of the ancestors of the layer's paint
+commands and injecting new children, so let's add a new `clone` method
+to the visual effects classes. For `SaveLayer`, it'll create a new
 `SaveLayer` with the same parameters but new children:
-
 
 ``` {.python}
 class SaveLayer(DisplayItem):
@@ -672,21 +681,15 @@ class SaveLayer(DisplayItem):
             self.should_save)
 ```
 
-The other visual effect, `ClipRRect`, should do something similar.
-
-We won't be cloning paint commands, since they're all going to be inside a
-composited layer, so we don't need to implement `clone` for them:
-
-``` {.python}
-class DisplayItem:
-    def clone(self, children):
-        assert False
-```
+The other visual effect, `ClipRRect`, should do something similar. We
+won't be cloning paint commands, since they're all going to be inside
+a composited layer, so we don't need to implement `clone` for them.
 
 We can now build the draw display list. For each composited layer,
 create a `DrawCompositedLayer` command (which we'll define in just a
 moment). Then, walk up the display list, wrapping that
-`DrawCompositedLayer` in each visual effect that needs to apply:
+`DrawCompositedLayer` in each visual effect that applies to that
+composited layer:
 
 ``` {.python replace=parent.clone(/self.clone_latest(parent%2c%20}
 class Browser:
@@ -710,16 +713,23 @@ class Browser:
 
 Now that we've split the display list into composited layers and a
 draw display list, we need to update the rest of the browser to use
-these pieces for raster and draw.
+them for raster and draw.
 
-Let's start with raster. In the raster step, the browser needs to walk the list
-of composited layers, allocate a surface for each one, and raster every display
-command in the composited layer to that surface. That surface is then saved to
-the composited layer, so that we can reuse it next frame.
+Let's start with raster. In the raster step, the browser needs to walk
+the list of composited layers and raster every display command in the
+composited layer:
 
-To start with, we'll need to know how big a surface to allocate for a
-`CompositedLayer`. That's just the union of the bounding boxes of all
-of its paint commands. First add a `rect` field:
+``` {.python}
+class Browser:
+    def raster_tab(self):
+        for composited_layer in self.composited_layers:
+            composited_layer.raster()
+```
+
+Inside `raster`, the browser needs to allocate a surface to raster the
+composited layer into. To start, it'll need to know how big a surface
+to allocate. That's just the union of the bounding boxes of all of its
+paint commands. First add a `rect` field to display items:
 
 
 ``` {.python expected=False}
@@ -760,8 +770,7 @@ layer; this reduces how much GPU memory we need.
 class CompositedLayer:
     def raster(self):
         bounds = self.composited_bounds()
-        if bounds.isEmpty():
-            return
+        if bounds.isEmpty(): return
         irect = bounds.roundOut()
 
         if not self.surface:
@@ -775,9 +784,7 @@ class CompositedLayer:
 
 To raster the composited layer, draw all of its display items to this surface.
 The only tricky part is the need to offset by the top and left of the
-composited bounds, since the surface bounds don't include that offset. To do
-that, subtract the offset so that the display items execute in
-the *local coordinate space* of the surface.
+composited bounds, since the surface bounds don't include that offset:
 
 ``` {.python}
 class CompositedLayer:
@@ -791,18 +798,9 @@ class CompositedLayer:
         canvas.restore()
 ```
 
-The browser's raster phase is easy: just raster each layer.
-
-``` {.python}
-class Browser:
-    def raster_tab(self):
-        for composited_layer in self.composited_layers:
-            composited_layer.raster()
-```
-
-For the draw phase, we'll first need to implement the
-`DrawCompositedLayer` command. All it needs is a composited layer to
-draw:
+That's all for the raster phase. For the draw phase, we'll first need
+to implement the `DrawCompositedLayer` command. It takes a composited
+layer to draw:
 
 ``` {.python}
 class DrawCompositedLayer(DisplayItem):
@@ -823,10 +821,7 @@ class DrawCompositedLayer(DisplayItem):
     def execute(self, canvas):
         layer = self.composited_layer
         bounds = layer.composited_bounds()
-        surface_offset_x = bounds.left()
-        surface_offset_y = bounds.top()
-        layer.surface.draw(
-            canvas, surface_offset_x, surface_offset_y)
+        layer.surface.draw(canvas, bounds.left(), bounds.top())
 ```
 
 And `draw` is satisfyingly simple: simply execute the draw display list.
@@ -834,7 +829,7 @@ And `draw` is satisfyingly simple: simply execute the draw display list.
 ``` {.python}
 class Browser:
     def draw(self):
-        # ...        
+        # ...
         canvas.save()
         canvas.translate(0, CHROME_PX - self.scroll)
         for item in self.draw_list:
@@ -843,10 +838,11 @@ class Browser:
         # ...
 ```
 
-All that's left is wiring these methods up in `raster_and_draw`; let's
-also rename it to `composite_raster_and_draw` to remind us that
-there's now an additional composite step. (And don't forget to rename
-the corresponding dirty bit and call sites.)
+All that's left is wiring these methods up; let's rename
+`raster_and_draw` to `composite_raster_and_draw` to remind us that
+there's now an additional composite step and add our two new methods.
+(And don't forget to rename the corresponding dirty bit and call
+sites.)
 
 ``` {.python}
 class Browser:
@@ -860,16 +856,12 @@ class Browser:
         # ...
 ```
 
-So simple and elegant! Now, on every frame, we are simply splitting the display
-list into composited layers and the draw display list, and then running each of
-those it their own phase.
-
-Some problems remains in the way of great animation performance, though. The
-biggest is that we're doing *all* of these steps on every frame...but the whole
-point of compositing was to avoid re-rastering layers! Let's work on that
-next.
-
-[profiling]: http://localhost:8001/scheduling.html#profiling-rendering
+So simple and elegant! Now, on every frame, we are simply splitting
+the display list into composited layers and the draw display list, and
+then running each of those it their own phase. We're now half-way
+toward getting super-smooth animations. What remains is *not*
+re-rastering the composited layers if the display list didn't change
+much between frames.
 
 ::: {.further}
 
@@ -935,12 +927,13 @@ and clipping.
 CSS transitions
 ===============
 
-The key to avoiding re-rastering layers is to know which layers have
+The key to not re-rastering layers is to know which layers have
 changed, and which haven't. Right now, we're basically always assuming
 all layers have changed, but ideally we'd know exactly what's changed
 between frames. Browsers have all sorts of complex methods to achieve
 this,[^browser-detect-diff] but to keep things simple, let's implement
-a CSS feature perfect for compositing: [CSS transitions][csstransitions].
+a CSS feature that's perfect for compositing: [CSS
+transitions][csstransitions].
 
 [csstransitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
 
@@ -953,31 +946,32 @@ always be somewhat brittle and incomplete.
 [chromium-diff]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/style/style_difference.h
 
 CSS transitions basically take the `requestAnimationFrame` loop we
-used to implement animation and move it into the browser. The web page
+used to implement animations and move it into the browser. The web page
 just needs to interpret the CSS [`transition`][css-transitions] property,
 which defines properties to animate and how long to animate them for. Here's
-how to say opacity changes should animate for two seconds:
+how to say opacity changes to a `div` should animate for two seconds:
 
 [css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
 
 ``` {.css}
-transition: opacity 2s;
+div { transition: opacity 2s; }
 ```
 
-Then, whenever the `opacity` property of the target element
-changes for any reason---including mutating its style attribute or
-loading a style sheet---the browser smoothly interpolates between the
-old and new values for two seconds.  Here is an example:
+Now, whenever the `opacity` property of a `div` changes for any
+reason---like from changing its style attribute---the browser smoothly
+interpolates between the old and new values for two seconds. Here is
+an example:
 
 <iframe src="examples/example13-opacity-transition.html"></iframe>
 (click [here](examples/example13-opacity-transition.html) to load the example in
 your browser)
 
-Visually, it looks more or less identical[^animation-curve] to the JavaScript
-animation, but is a lot easier to write. But much more importantly, since the
-browser *understands* the animation going on, it can easily detect that it's
-safe to avoid rendering pipeline stages. For example, it's easy to see that an 
-`opacity` animation does not require layout or raster, just paint and draw.
+Visually, it looks more or less identical[^animation-curve] to the
+JavaScript animation. But since the browser *understands* the
+animation, it can optimize how the animation is run. For example,
+since `opacity` only affects `SaveLayer` commands that end up in the
+draw display list, the browser knows that this animation does not
+require layout or raster, just paint and draw.
 
 [^animation-curve]: It's not quite exactly the same, because our
 JavaScript code uses a linear interpolation (or *easing function*)
@@ -986,12 +980,11 @@ function for CSS transitions because it looks better. We'll implement
 a linear easing function for our browser, so it will look identical to
 the JavaScript and subtly different from real browsers.
 
-To implement CSS transitions, we'll need to move the variables like
-`current_frame` and `change_per_frame` from JavaScript into the
-browser, and save them on some kind of animation object. Multiple
-elements can animate at a time, so let's store animations in an
-`animations` dictionary on each node, keyed by the property being
-animated:[^delete-complicated]
+To implement CSS transitions, we'll need to move JavaScript variables
+like `current_frame` and `change_per_frame` into some kind of
+animation object inside the browser. Since multiple elements can
+animate at a time, let's store an `animations` dictionary on each
+node, keyed by the property being animated:[^delete-complicated]
 
 [^delete-complicated]: For simplicity, this code leaves animations in
     the `animations` dictionary even when they're done animating.
@@ -1013,8 +1006,8 @@ class Element:
         self.animations = {}
 ```
 
-The simplest type of animation is a `NumericAnimation`, which animates
-simple numeric properties like `opacity`:
+The simplest type of animation animates numeric properties like
+`opacity`:
 
 ``` {.python}
 class NumericAnimation:
@@ -1041,12 +1034,12 @@ class NumericAnimation:
         if self.frame_count >= self.num_frames: return
         current_value = self.old_value + \
             self.change_per_frame * self.frame_count
-        return "{}".format(current_value)
+        return str(current_value)
 ```
 
-We're going to want to create these animation objects every time a
-style value changes. We can do that in `style` by diffing the old and
-the new styles of each node:
+We'll create these animation objects every time a style value changes,
+which we can detect in `style` diffing the old and the new styles of
+each node:
 
 ``` {.python expected=False}
 def style(node, rules):
@@ -1075,14 +1068,13 @@ def parse_transition(value):
     return properties
 ```
 
-
 Now `diff_style` can loop through all of the properties mentioned in
-`transition` and see which ones changed:^[It returns a dictionary
+`transition` and see which ones changed. It returns a dictionary
 containing only the transitioning properties, and mapping each such
-property to its old value, new value, and duration (again in frames).
-Note also that this code has to deal with subtleties like the `transition`
-property being added or removed, or properties being removed instead
-of changing values.]
+property to its old value, new value, and duration (again in
+frames).^[Note also that this code has to deal with subtleties like
+the `transition` property being added or removed, or properties being
+removed instead of changing values.]
 
 ``` {.python}
 def diff_styles(old_style, new_style):
@@ -1124,29 +1116,27 @@ The `style` function can animate any changed properties listed in
 def style(node, rules, tab):
     if old_style:
         transitions = diff_styles(old_style, node.style)
-        for property, (old_value, new_value, num_frames) in \
-            transitions.items():
+        for property, (old_value, new_value, num_frames) \
+            in transitions.items():
             if property in ANIMATED_PROPERTIES:
                 tab.set_needs_render()
                 AnimationClass = ANIMATED_PROPERTIES[property]
                 animation = AnimationClass(
                     old_value, new_value, num_frames)
                 node.animations[property] = animation
-                node.style[property] = old_value
+                node.style[property] = animation.animate()
 ```
 
-Any time a property listed in a `transition` changes its value,
-we'll create an animation and get ready to run it.^[Note that the
-animation will start running in the *next* frame; until then, we want it
-to use the old value of the style property. Scheduling that frame is also
-why we need to call `set_needs_render` here. Real browsers would not delay 
-a frame, but doing so simplifies our browser's code.]
+Any time a property listed in a `transition` changes its value, we'll
+create an animation and get ready to run it.^[Note that we need to
+call `set_needs_render` here to make sure that the animation will run
+on the next frame.]
 
-Finally, we need to run the animations! Basically, every frame, we're
-going to want to find all the active animations on the page and call
-`animate` on them. Since these animations are a variation of
-JavaScript animations using `requestAnimationFrame`, let's run
-animations right after handling those callbacks:
+With the animations created, we now need to run them on every later
+frame. Basically, on every frame, we iterate through all the active
+animations on the page and call `animate` on them. Since these
+animations cousin to JavaScript using `requestAnimationFrame`, let's
+run animations right after handling those callbacks:
 
 ``` {.python}
 class Tab:
@@ -1160,20 +1150,20 @@ class Tab:
                 # ...
 ```
 
-The body of this loop needs to do two things. First, it needs to call
-the animation's `animate` method and save the new value to the node's
+Inside this loop we need to do two things. First, we must call the
+animation's `animate` method and save the new value to the node's
 `style`. Second, since that changes the web page, we need to set a
 dirty bit. Recall that `render` exits early if `needs_render` isn't
-set, so that dirty bit is supposed to be set if there's rendering
-work to do. When an animation is active, there is.^[We also need to
+set, so that dirty bit is supposed to be set if there's rendering work
+to do. When an animation is active, there is.^[We also need to
 schedule an animation frame for the next frame of the animation, but
 `set_needs_render` already does that for us.]
 
-But it's not as simple as just setting `needs_render` any time an
-animation is active, however. Setting `needs_render` means re-running
-`style`, which would notice that the animation changed a property
-value and start a *new* animation! During an animation, we want to run
-`layout` and `paint`, but we *don't* want to run `style`:[^even-more]
+However, it's not as simple as just setting `needs_render` any time an
+animation is active. Setting `needs_render` means re-running `style`,
+which would notice that the animation changed a property value and
+start a *new* animation! During an animation, we want to run `layout`
+and `paint`, but we *don't* want to run `style`:[^even-more]
 
 [^even-more]: While a real browser definitely has an analog of the
 `needs_layout` and `needs_paint` flags, our fix for restarting animations
@@ -1194,13 +1184,13 @@ class Tab:
                     self.set_needs_layout()
 ```
 
-To support `set_needs_layout`, we've got to replace the single
+To implement `set_needs_layout`, we've got to replace the single
 `needs_render` flag with three flags: `needs_style`, `needs_layout`,
-and `needs_paint`. The old `set_needs_render` would set all
-three:^[In our implementation, setting a dirty bit earlier in the pipeline
-will end up causing everything after it to also run. This is yet another
-difference from real browsers, which optimize some cases that just require
-style and paint, or other combinations.]
+and `needs_paint`. In our implementation, setting a dirty bit earlier
+in the pipeline will end up causing everything after it to also run,
+so `set_needs_render` still just sets the `needs_render` flag:^[This
+is yet another difference from real browsers, which optimize some
+cases that just require style and paint, or other combinations.]
 
 ``` {.python}
 class Tab:
@@ -1216,8 +1206,8 @@ class Tab:
         self.browser.set_needs_animation_frame(self)
 ```
 
-But now we can write a `set_needs_layout` method that sets flags for
-the `layout` and `paint` phases, but not the `style` phase:
+Now we can write a `set_needs_layout` method that sets flags for the
+`layout` and `paint` phases, but not the `style` phase:
 
 ``` {.python}
 class Tab:
@@ -1226,8 +1216,8 @@ class Tab:
         self.browser.set_needs_animation_frame(self)
 ```
 
-Now `render` can check one flag for each phase instead of checking
-`needs_render` at the start:[^timer-obsolete]
+To support these new dirty bits, `render` must check each phase's bit
+instead of checking `needs_render` at the start:[^timer-obsolete]
 
 ``` {.python}
 class Tab:
@@ -1258,7 +1248,8 @@ be and just not look at the rendering measures anymore, but the best fix would
 be to have three timers for the three phases of `render`.
 
 Well---with all that done, our browser now supports animations with
-just CSS! And let's use the presence of such an animation to avoid re-raster.
+just CSS. And importantly, we can have the browser optimize these
+animations to avoid re-rastering composited layers.
 
 ::: {.further}
 
@@ -1289,32 +1280,30 @@ Composited animations
 We're finally ready to teach the browser how to avoid raster (and layout) when
 running certain animations. These are called *composited animations*, since
 they are compatible with the compositing optimization to avoid raster on every
-frame.
-
-Avoiding `raster` and `composite` is simple in concept: keep track of what is
+frame. Avoiding `raster` and `composite` is simple in concept: keep track of what is
 animating, and re-run only `paint`, `paint_draw_list` and `draw` on each frame.
 
-To do this we'll need to keep track of animations by some sort of identifier,
-and pass that identifier from the main thread to the browser thread. Let's use
-the `node` object. Add another `DisplayItem`
-constructor parameter indicating the `node` that the `DisplayItem` belongs to
-(the one that painted it).
+This is harder than it sounds. We'll need to split the _new_ display
+list into the _old_ composited layers and a _new_ draw display list.
+To do this we'll need know how the new and old display lists are
+related, and what parts of the display list changed. To do that, we'll
+add a `node` field to each display item, storing the node that painted
+it, as a sort of identifier:
 
-``` {.python
+``` {.python}
 class DisplayItem:
     def __init__(self, rect, children=[], node=None):
         # ...
         self.node = node
 ```
 
-When animations update, add code to pass the node and visual effects that
-changed from one thread to the other. This will have multiple steps.
+Now, when an animation runs (but nothing else changes), we'll use
+these nodes to determine which nodes in the new display list we need
+to use.
 
-First, if a composited animation is running, and it's the only thing happening
-to the DOM, then only re-do `paint` (in order to update the animated
-`DisplayItem`s), not `layout`, and save off each `Element` that updates its
-composited animation, in a new array called `composited_updates`. This array
-will be set across as part of `commit`.
+First, when a composited animation runs, save the `Element` whose
+style was changed in a new array called `composited_updates`. We'll
+also only set the `needs_paint` flag, not `needs_layout`, in this case:
 
 ``` {.python expected=False}
 class Tab:
@@ -1335,14 +1324,14 @@ class Tab:
                         self.set_needs_layout()
 ```
 
-Second, when running animation frames, if only `needs_paint` is true, then
-`composite` is not needed, and each animation in `composited_updates` is
-accordingly committed across to the browser thread to communicate that fact.
-The data to be sent across for each animation update will be an `Element`
-and a `SaveLayer` pointer.
+Now, when we `commit` a frame which only needed the paint phase, we
+send the `composited_updates` over to the browser thread. The browser
+thread can use that to skip composite and raster. The data to be sent
+across for each animation update will be an `Element` and a
+`SaveLayer` pointer.
 
-  To accomplish this we'll need several steps. First, when painting a
-  `SaveLayer`, record it on the `Element`:
+To accomplish this we'll need several steps. First, when painting a
+`SaveLayer`, record it on the `Element`:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
@@ -1350,8 +1339,9 @@ def paint_visual_effects(node, cmds, rect):
     node.save_layer = save_layer
 ```
 
-  Next rename `CommitForRaster` to `CommitData` and add a list of composited
-  updates (each of which will contain the `Element` and `SaveLayer` pointers).
+Next rename `CommitForRaster` to `CommitData` and add a list of
+composited updates (each of which will contain the `Element` and
+`SaveLayer` pointers).
 
 ``` {.python}
 class CommitData:
@@ -1361,7 +1351,7 @@ class CommitData:
         self.composited_updates = composited_updates
 ```
 
-  And finally, commit the new information:
+And finally, commit the new information:
 
 ``` {.python expected=False}
 class Tab:
@@ -1432,7 +1422,7 @@ Then, call `set_needs_raster` from the places that currently call
         self.set_needs_raster()
 ```
 
-Use the passed data in `commit` to decide whether to call `set_needs_composite`
+Use the data passed in `commit` to decide whether to call `set_needs_composite`
 or `set_needs_draw`, and store off the updates in `composited_updates`:
 
 ``` {.python}
@@ -1453,10 +1443,16 @@ class Browser:
                 self.set_needs_draw()
 ```
 
-Now we need to update `draw_list` to take into account the latest value, which
-should be looked up in `composited_updates`. Define a method `clone_latest`
-that clones the update visual effect from `composited_updates` if there is one,
-and otherwise clones the original.
+Now, let's think about the draw step. Normally, we create the draw
+display list from the composited layers. But that won't quite work
+now, because the composited layers come from the _old_ display list.
+If we just try rerunning `paint_draw_list`, we'll get the old draw
+display list! We need to update `draw_list` to take into account the
+new display list based on the `composited_updates`.
+
+To do so, define a method `clone_latest` that clones an updated visual
+effect from `composited_updates` if there is one, and otherwise clones
+the original:
 
 ``` {.python}
 class Browser:
@@ -1484,16 +1480,9 @@ class Browser:
                 # ...
 ```
 
-The result will be automatically drawn to the screen, because the `draw` method
-on each `CompositedLayer` will iterate through its `ancestor_effects` and
-execute them.
-
-Test the result in your browser---animations that only update the draw step, and
-not everything else!
-
-Unfortunately, we're not done. Raster is avoided, but there are *way*
-too many composited layers---one per paint command! That is a big waste
-of GPU memory and time.
+Now the draw display list will be based on the new display list, and
+animations that only require the draw step, like our example opacity
+animation, will now run super smoothly.
 
 ::: {.further}
 
@@ -1556,102 +1545,88 @@ sometime soon this work will be threaded in Chromium.
 Optimizing Compositing
 ======================
 
-Right now, every paint command is put in its own composited layer. But
-composited layers are expensive: each of them allocates a surface, and each of
-those allocates and holds on to GPU memory. GPU memory is limited, and we want
-to use less of it when possible. To that end, we'd like to use fewer composited
-layers.
+At this point, our browser now successfully runs composited animations
+while avoiding needless rasters. But compared to a real browser, there
+are *way* too many composited layers---one per paint command! That is
+a big waste of GPU memory: each composited layer allocates a surface,
+and each of those allocates and holds on to GPU memory. GPU memory is
+limited, and we want to use less of it when possible.
 
-The simplest thing we can do is put paint commands into the same composited
-layer if they have the exact same set of ancestor visual effects in the display
-list. Let's implement that.
+To that end, we'd like to use fewer composited layers. The simplest
+thing we can do is put paint commands into the same composited layer
+if they have the exact same set of ancestor visual effects in the
+display list.
 
-This condition will be determined by a new `can_merge` method on
-`CompositedLayer`s. But first, to make it easy to access those ancestor visual
-effects and compare them, add parent pointers to our display list tree:
-
-``` {.python}
-def add_parent_pointers(nodes, parent=None):
-    for node in nodes:
-        node.parent = parent
-        add_parent_pointers(node.children, node)
-
-class Browser:
-    def composite(self):
-        add_parent_pointers(self.active_tab_display_list)
-        # ...
-```
-
-And so `can_merge` looks like this:
+Let's implement that. We'll need two new methods on composited layers:
+`add` and `can_merge`. The `add` method just adds a new display item
+to a composited layer:
 
 ``` {.python}
 class CompositedLayer:
-    # ...
-    def can_merge(self, display_item):
-        if self.display_items:
-            return display_item.parent == \
-                self.display_items[0].parent
-        else:
-            return True
-
     def add(self, display_item):
-        assert self.can_merge(display_item)
         self.display_items.append(display_item)
 ```
 
-Using it in `composite` is pretty easy: instead of making a new composited layer
-for every single paint command, walk backwards[^why-backwards] through
-`composited_layers` trying to merge into each one. If one is found, the paint
-chunk is added to it; if not, add a new `CompositedLayer` with that paint chunk
-to start.^[If you're not familiar with Python's `for ... else` syntax, the
-`else` block executes only if the loop never executed `break`.]
+But we should only add compatible display items to the same composited
+layer, determined by the `can_merge` method. Two composited layers can
+be merged if they have the same parents:
+
+``` {.python}
+class CompositedLayer:
+    def can_merge(self, display_item):
+        return display_item.parent == \
+            self.display_items[0].parent
+```
+
+Now we want to use these methods in `composite`. Basically, instead of
+making a new composited layer for every single paint command, walk
+backwards[^why-backwards] through the `composited_layers` trying to
+find a composited layer to merge the command into:^[If you're not
+familiar with Python's `for ... else` syntax, the `else` block
+executes only if the loop never executed `break`.]
 
 [^why-backwards]: Backwards, because we can't draw things in the wrong
 order. Later items in the display list have to draw later.
 
-
 ``` {.python replace=paint_commands/non_composited_commands}
 class Browser:
     def composite(self):
-        for display_item in paint_commands:
+        for cmd in paint_commands:
             for layer in reversed(self.composited_layers):
-                if layer.can_merge(display_item):
-                    layer.add(display_item)
+                if layer.can_merge(cmd):
+                    layer.add(cmd)
                     break
             else:
                 # ...
 ```
 
-
-
 With this implementation, multiple paint commands will sometimes end up in the
 same composited layer, but if the ancestor effects don't *exactly* match, they
-won't. Let's improve on that by placing entire display list *subtrees* that
-aren't animating together.
+won't.
 
-So far, every internal node (ones that aren't leaves) of our display list runs
-in the draw phase, while every paint command runs in the raster phase. But some
-internal nodes (visual effects) can't be animated. So we can run them in the
-raster phase, which will reduce the number of composited layers even more.
+We can do even better by placing entire display list *subtrees* that
+aren't animating into the same composited layer. This will let us run
+some visual effects in the raster phase, reducing the number of
+composited layers even more.
 
-To implement this, we'll first need a way to signal that a visual effect
-*needs compositing*, meaning that it may be animating and so its
-contents should be cached in a GPU texture. Indicate that with a new
-`needs_compositing` method on `DisplayItem`. As a simple heuristic,
-we'll always set it to true for `SaveLayer`s (but only when they actually do
-something that isn't a no-op), regardless of whether they are
-animating, but we won't for `ClipRRect` commands by default.
+To implement this, replace the `is_paint_command` method on
+`DisplayItem`s with a new `needs_compositing` method, which is `True`
+when a visual effect should go in the draw display list and `False`
+when it should go into a layer. As a simple heuristic, we'll always
+set it to `True` for `SaveLayer`s (when they actually do something,
+not for no-ops), regardless of whether they are animating, but we'll
+set it to `False` for `ClipRRect` commands, since those can't animate
+in our browser.
 
 We'll *also* need to mark a visual effect as needing compositing if any of its
 descendants do (even if it's a `ClipRRect`). That's because if one effect is
 run on the GPU, then one way or another the ones above it will have to be as
-well.[^needs-inefficient]
+well:[^needs-inefficient]
 
 [^needs-inefficient]: As written, our use of `needs_compositing` is quite
 inefficient, because it walks the entire subtree each time it's called. In a
 real browser, this property would be computed by walking the entire display
 list once and setting boolean attributes on each tree node.
-
 
 ``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
 class DisplayItem:
@@ -1680,7 +1655,7 @@ class Browser:
                  cmd.parent.needs_compositing())
         ]
         # ...
-        for display_item in non_composited_commands:
+        for cmd in non_composited_commands:
             # ...
 
 ```
@@ -1714,7 +1689,7 @@ class CompositedLayer:
         return rect
 ```
 
-Our compositing algorithm is now pretty well optimized! It does a good job of
+Our compositing algorithm now creates way fewer layers! It does a good job of
 grouping together non-animating content to reduce the number of composited
 layers (which saves GPU memory), and doing as much work as possible in raster
 rather than draw (which makes composited animations faster).
@@ -1775,62 +1750,56 @@ Overlap and transforms
 
 The compositing algorithm we implemented works great in many cases.
 Unfortunately, it doesn't work correctly for display list commands
-that *overlap* each other. The easiest way to explain why it is by example.
+that *overlap* each other. Let me explain with an example.
 
-Consider this content, which is a light blue square overlapped by a light green
-one:
+Consider a light blue square overlapped by a light green one, with a
+white background behind them:
 
 <div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
 <div style="width:200px;height:200px;background-color:lightgreen; transform:translate(0px,0px)"></div>
 
-Now suppose we want to animate opacity on the blue square, and so allocate a
-`skia.Surface` and GPU texture for it. But we don't want to animate the green
-square, so it draws into the root surface (and does not receive a change of
-opacity, of course). Which will cause the blue to draw on top of the
-green, because the blue square surface draws after the root surface. Oops!
+Now suppose we want to animate opacity on the blue square, but not the
+green square. So the blue square goes in its own composited
+layer---but what about the green square? It has the same ancestor
+visual effects as the background. But we don't want to put the green
+square in the same composited layer as the background, because the
+blue square has to be drawn *in between* the background and the green
+square.
 
-To fix this bug, we'll have to put the green square into its own
-`skia.Surface` (whether we like it or not). This situation is called an *overlap
-reason for compositing*, and is a major complication---and potential source of
-extra memory use and slowdown---faced by all real browsers.
+Therefore, the green square has to go in its own composited layer.
+This is called an *overlap reason for compositing*, and is a major
+complication---and potential source of extra memory use and
+slowdown---faced by all real browsers.
 
-Let's fix the compositing algorithm to take into account overlap. It turns out
-to be not that hard to do: when considering where to put a paint chunk, simply
-check if it overlaps with an animated `CompositedLayer`. If so, start a new
-`CompositedLayer` that has an overlap reason for compositing.
-
-The change to `composite` will be only a few lines of code and an `elif` to
-check if the current paint chunk overlaps another `CompositedLayer` in the list
-that needs to be animated.
+Let's modify our compositing algorithm to take overlap into account.
+Basically, when considering which composited layer a display item goes
+in, also check if it overlaps with an existing composited layer. If
+so, start a new `CompositedLayer` for this display item:
 
 ``` {.python}
 class Browser:
     def composite(self):
         # ...
-        for display_item in non_composited_commands:
+        for cmd in non_composited_commands:
             for layer in reversed(self.composited_layers):
-                if layer.can_merge(display_item):
+                if layer.can_merge(cmd):
                     # ...
                 elif skia.Rect.Intersects(
-                    layer.absolute_bounds(),
-                    absolute_bounds(display_item)):
-                    layer = CompositedLayer(self.skia_context)
-                    layer.add(display_item)
+                    layer.composited_bounds(),
+                    cmd.composited_bounds()):
+                    layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
                     break
 ```
 
-And then implementing the `absolute_bounds` methods used in the code above. As
-it stands, this might as well be equivalent to `composited_bounds` because
-there is no visual effect that can grow or move the bounding rect of paint
-commands.[^grow] So by just defining `absolute_bounds` to be
-`composited_bounds`, everything will work correctly:
-
-``` {.python expected=False}
-class DisplayItem:
-    def absolute_bounds(self, rect):
-        return self.composited_bounds(rect)
-```
+It's a bit hard to _test_ this code, however, because our browser
+doesn't yet support any ways to move[^overlap-example] or grow[^grow]
+an element as part of a visual effect, so nothing ever overlaps. Oops!
+In real browsers there are lots of visual effects that cause overlap,
+the most important (for animations) being *transforms*, which let you
+move the painted output of a DOM element around the
+screen.[^not-always-visual] Plus, transforms can be executed
+efficiently on the GPU.
 
 [^grow]: By grow, I mean that the pixel bounding rect of the visual effect
 when drawn to the screen is *larger* than the pixel bounding rect of a paint
@@ -1841,16 +1810,6 @@ so they can't cause additional overlap either (though they might cause *less*
 overlap). Certain [CSS filters][cssfilter], such as blurs, can also expand
 pixel rects.
 
-But this is both unsatisfying and boring, because in real browsers there *are*
-visual effects that can cause overlap. The most important (for animations, at
-least) is *transforms*, which are a mechanism to move around the painted output
-of a DOM element anywhere on the screen. In addition, transforms are one of the
-most popular visual effects in browsers, because they allow you to move around
-content efficiently on the GPU and the browser
-thread.[^not-always-visual] That's because transforms merely apply a linear
-transformation matrix to each pixel, which is one of the things GPUs are good
-at doing efficiently.[^overlap-example]
-
 [^not-always-visual]: Technically, `transform` is not always just a visual
 effect. In real browsers, transformed element positions contribute to scrolling
 overflow. Real browsers mostly do this correctly, but sometimes cut corners to
@@ -1859,23 +1818,23 @@ avoid slowing down transform animations.
 
 [cssfilter]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
 
-[^overlap-example]: In addition, it's not possible to create the overlapping
-squares example of this section without something like transforms. Real
-browsers have many other methods, such as [position]. In fact, it's very
-difficult to cause overlap at all in our current browser.
+[^overlap-example]: It's not possible to create the overlapping
+squares example of this section without something way of moving an
+element around. Real browsers have many methods for this, such as
+[position].
 
 [position]: https://developer.mozilla.org/en-US/docs/Web/CSS/position
 
-The `transform` CSS property in general lets you apply
-[any linear transform][transform-def] in 3D space, but I'll just cover really
-basic 2D translations. Here's HTML for the overlap example mentioned in the
-last section:[^why-zero]
+The `transform` CSS property in quite general and lets you apply [any
+linear transform][transform-def] in 3D space, but let's stick to basic
+2D translations. That's enough to implement the example with the blue
+and green square:[^why-zero]
 
 [^why-zero]: The green square has a `transform` property also so that paint
 order doesn't change when you try the demo in a real browser. I won't get into
 it, but there are various rules for painting, and "positioned" elements (such as
-with `transform`) are supposed to paint after regular (non-positioned) elements.
-This particular rule is purely a historical artifact.
+elements with a `transform`) are supposed to paint after regular
+(non-positioned) elements. This particular rule is purely a historical artifact.
 
 
 [transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
@@ -1887,8 +1846,8 @@ This particular rule is purely a historical artifact.
                 background-color:lightgreen;
                 transform:translate(0px, 0px)"></div>
 
-Adding in support for this kind of transform is not too hard: first
-just parse it:[^space-separated]
+Support these transform is simple. First let's parse the property
+values:[^space-separated]
 
 [^space-separated]: The CSS transform syntax allows multiple transforms in a
 space-separated sequence; the end result involves applying each in sequence. I
@@ -1906,7 +1865,8 @@ def parse_transform(transform_str):
     return (float(x_px[:-2]), float(y_px[:-2]))
 ```
 
-And add some code to `paint_visual_effects`:
+Then, add some code to `paint_visual_effects` to add new `Transform`
+visual effects:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
@@ -1922,8 +1882,8 @@ def paint_visual_effects(node, cmds, rect):
     return [transform]
 ```
 
-The `Transform` display list command is pretty straightforward as well: it calls
-the `translate` Skia canvas method, which is conveniently built-in.
+These `Transform` display items just call the conveniently built-in
+Skia canvas `translate` method:
 
 ``` {.python replace=self.translation%20or/USE_COMPOSITING%20and%20self.translation%20or}
 class Transform(DisplayItem):
@@ -1953,18 +1913,99 @@ class Transform(DisplayItem):
             return "Transform(<no-op>)"
 ```
 
-Add it as an animating property:
+But if you try it on the example above, you'll find that it still
+looks wrong---the blue square is supposed to be *under* the green one,
+but it's on top.
+
+That's because when we test for overlap, we're comparing the
+`composited_bounds` of the display item to the `composited_bounds` of
+the the composited layer. That means we're comparing the original
+location of the display item, not its shifted version. We need to
+compute the absolute, page-coordinates bounds instead:
 
 ``` {.python}
+class Browser:
+    def composite(self):
+        for cmd in non_composited_commands:
+            for layer in reversed(self.composited_layers):
+                if layer.can_merge(cmd):
+                    # ...
+                elif skia.Rect.Intersects(
+                    layer.absolute_bounds(),
+                    absolute_bounds(cmd)):
+                    # ...
+```
+
+To implement `absolute_bounds`, we first need a new `map` method on
+`Transform` that takes a rect in the coordinate space of the
+"contents" of the transform and outputs a rect in post-transform
+space. For example, if the transform was `translate(20px, 0px)` then
+the output of calling `map` on a rect would translate it by 20 pixels
+in the *x* direction:
+
+``` {.python}
+class DisplayItem:
+    def map(self, rect):
+        return rect
+
+class Transform(DisplayItem):
+    def map(self, rect):
+        if not self.translation:
+            return rect
+        else:
+            (x, y) = self.translation
+            matrix = skia.Matrix()
+            matrix.setTranslate(x, y)
+            return matrix.mapRect(rect)
+```
+
+Now we can compute the absolute bounds of a display item mapping its
+composited bounds through all of the visual effects applied to it:
+
+``` {.python}
+def absolute_bounds(display_item):
+    rect = skia.Rect.MakeEmpty()
+    display_item.add_composited_bounds(rect)
+    effect = display_item.parent
+    while effect:
+        rect = effect.map(rect)
+        effect = effect.parent
+    return rect
+```
+
+The absolute bounds of a `CompositedLayer` are similar:
+
+``` {.python}
+class CompositedLayer:
+    def absolute_bounds(self):
+        rect = skia.Rect.MakeEmpty()
+        for item in self.display_items:
+            rect.join(absolute_bounds(item))
+        return rect
+```
+
+The blue square should now be underneath the green square, so overlap
+testing is now complete.[^not-really] And with that, we now have
+completed the story of a pretty high-performance implementation of
+composited animations.
+
+[^not-really]: Actually, even the current code is not correct now that we have
+transforms. Since a transform animation moves content around, overlap depends
+on where it moved to during the animation. Thus animations can cause overlap to
+appear and disappear during execution. I conveniently chose a demo that starts
+out overlapping and remains so throughout, but if it didn't, our browser would
+not correctly notice when overlap starts happening during the animation. I've
+left solving this to an exercise.
+
+While we're here, let's also make transforms animatable via a new
+`TranslateAnimation` class:
+
+``` {.python replace=True)/USE_COMPOSITING)}
 ANIMATED_PROPERTIES = {
     # ...
     "transform": TranslateAnimation,
 }
-```
 
-Via `TranslateAnimation`:
-
-``` {.python replace=True)/USE_COMPOSITING)}
 class TranslateAnimation:
     def __init__(self, old_value, new_value, num_frames):
         (self.old_x, self.old_y) = parse_transform(old_value)
@@ -2016,79 +2057,6 @@ Each of these changes should be pretty straightforward and repetitive on top of
 opacity, so I'll skip showing the code. Once updated, our browser should now
 have fast, composited transform animations.
 
-But if you try it on the example above, you'll find that the animation still
-looks wrong---the blue square is supposed to be *under* the green one, but
-now it's on top. Which is of course because of the lack of overlap testing,
-which we should now complete.
-
-Let's first add the implementation of the `absolute_bounds` function. Before we
-added support for `transform`, this was the same as the union of the rects of
-each paint command. But now we need to account for a transform moving content
-around on screen. The first step in accomplishing that is with a new `map`
-method on `Transform` that takes a rect in the coordinate space of
-the "contents" of the transform and outputs a rect in post-transform space. For
-example, if the transform was `translate(20px, 0px)` then the output of calling
-`map` on a rect would return a new rect with the x coordinate of all four
-corners increased by 20.
-
-``` {.python}
-class DisplayItem:
-    def map(self, rect):
-        return rect
-
-class Transform(DisplayItem):
-    def map(self, rect):
-        if not self.translation:
-            return rect
-        else:
-            (x, y) = self.translation
-            matrix = skia.Matrix()
-            matrix.setTranslate(x, y)
-            return matrix.mapRect(rect)
-```
-
-We can use `map` to implement a new `absolute_bounds` function that determines
-the absolute bounds of a display item:
-
-``` {.python}
-def absolute_bounds(display_item):
-    rect = skia.Rect.MakeEmpty()
-    display_item.add_composited_bounds(rect)
-    effect = display_item.parent
-    while effect:
-        rect = effect.map(rect)
-        effect = effect.parent
-    return rect
-```
-
-And add a method union all of the absolute bounds of the display items in 
-a `CompositedLayer`:
-
-``` {.python}
-class CompositedLayer:
-    def absolute_bounds(self):
-        rect = skia.Rect.MakeEmpty()
-        for item in self.display_items:
-            rect.join(absolute_bounds(item))
-        return rect
-```
-
-All this `absolute_bounds` code is already used in the `Browser.composite`
-method I outlined earlier; don't forget to update that method
-according to the code I outlined.
-
-Overlap testing is now complete.[^not-really] Your animation should animate the
-blue square underneath the green one. And with that, we now have completed
-the story of a pretty high-performance implementation of composited animations.
-
-[^not-really]: Actually, even the current code is not correct now that we have
-transforms. Since a transform animation moves content around, overlap depends
-on where it moved to during the animation. Thus animations can cause overlap to
-appear and disappear during execution. I conveniently chose a demo that starts
-out overlapping and remains so throughout, but if it didn't, our browser would
-not correctly notice when overlap starts happening during the animation. I've
-left solving this to an exercise.
-
 ::: {.further}
 
 Overlap reasons for compositing not only create complications in the code, but
@@ -2116,7 +2084,7 @@ without just giving up and compositing the scroller.
 Summary
 =======
 
-This chapter introduced the concept of animations. The key takeaways you should
+This chapter introduce animations. The key takeaways you should
 remember are:
 
 - Animations come in DOM-based, input-driven and video-like varieties.
@@ -2153,53 +2121,53 @@ You'll have to define a new kind of interpolation that applies to all the
 color channels.
 
 *Easing functions*: Our browser only implements a linear interpolation between
- start and end values, but there are many other [easing functions][easing] 
- (in fact, the default one in real browsers is
- `cubic-bezier(0.25, 0.1, 0.25, 1.0)`, not linear). Implement this easing
- function, and one or two others.
+start and end values, but there are many other [easing functions][easing] 
+(in fact, the default one in real browsers is
+`cubic-bezier(0.25, 0.1, 0.25, 1.0)`, not linear). Implement this easing
+function, and one or two others.
 
  [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
 
 *Threaded animations*: Despite Chapter 12 being all about threading, we didn't
- actually implement threaded animations in this chapter---they are all driven
- by code running on the main thread. But just like scrolling, in a real browser
- this is not good enough, since there could be many main-thread tasks slowing
- things down. Add support for threaded animations. Doing so will require
- replicating some event loop code from the main thread, but if you're careful
- you should be able to reuse all of the animation classes. (Don't worry too
- much about how to synchronize these animations with the main thread, except to
- cause them to stop after the next commit when DOM changes occur that
- invalidate the animation. Real browsers encounter a lot of complications in
- this area.)
+actually implement threaded animations in this chapter---they are all driven
+by code running on the main thread. But just like scrolling, in a real browser
+this is not good enough, since there could be many main-thread tasks slowing
+things down. Add support for threaded animations. Doing so will require
+replicating some event loop code from the main thread, but if you're careful
+you should be able to reuse all of the animation classes. (Don't worry too
+much about how to synchronize these animations with the main thread, except to
+cause them to stop after the next commit when DOM changes occur that
+invalidate the animation. Real browsers encounter a lot of complications in
+this area.)
 
 *Width animations*: Implement the CSS `width` and `height` properties; when
- `width` is set to some number of pixels on an element, the element should be
- that many pixels wide, regardless of how its width would normally be computed;
- the same goes for `height`. Make them animatable; you'll need a variant of
- `NumericAnimation` that parses and produces pixel values (the "px" suffix in
- the string). Since `width` and `height` are layout-inducing, make sure that
- animating them sets `needs_layout`. Check that animating width in your
- browser changes line breaks.
- [This example](examples/example13-width-transition.html) should work once
- you've implemented width animations.
+`width` is set to some number of pixels on an element, the element should be
+that many pixels wide, regardless of how its width would normally be computed;
+the same goes for `height`. Make them animatable; you'll need a variant of
+`NumericAnimation` that parses and produces pixel values (the "px" suffix in
+the string). Since `width` and `height` are layout-inducing, make sure that
+animating them sets `needs_layout`. Check that animating width in your
+browser changes line breaks.
+[This example](examples/example13-width-transition.html) should work once
+you've implemented width animations.
 
 *CSS animations*: Implement the basics of the
 [CSS animations][css-animations] API, in particular enough of the `animation`
 CSS property and parsing of `@keyframe` to implement the demos
- [here](examples/example13-opacity-animation.html) and
- [here](examples/example13-width-animation.html).
+[here](examples/example13-opacity-animation.html) and
+[here](examples/example13-width-animation.html).
 
 *Overlap testing w/transform animations*: As mentioned in a footnote, our
- browser currently does not overlap test correctly in the presence of transform
- animations that cause overlap to come and go. First create a demo that
- exhibits the bug, and then fix it. One way to fix it is to enter "assume
- overlap mode" whenever an animated transform paint chunk is encountered. This
- means that every subsequent paint chunk is assumed to overlap the animating
- one (even if it doesn't at the moment), and therefore can't merge into any
- `CompositedLayer` earlier in the list than the animating one. Another way is
- to run overlap testing on every animation frame in the browser thread, and if
- the results differ from the prior frame, re-do compositing and raster.
- [^css-animation-transform]
+browser currently does not overlap test correctly in the presence of transform
+animations that cause overlap to come and go. First create a demo that
+exhibits the bug, and then fix it. One way to fix it is to enter "assume
+overlap mode" whenever an animated transform paint chunk is encountered. This
+means that every subsequent paint chunk is assumed to overlap the animating
+one (even if it doesn't at the moment), and therefore can't merge into any
+`CompositedLayer` earlier in the list than the animating one. Another way is
+to run overlap testing on every animation frame in the browser thread, and if
+the results differ from the prior frame, re-do compositing and raster.
+[^css-animation-transform]
 
 [^css-animation-transform]: And if you've done the CSS animations exercise, and
 a transform animation is defined in terms of a CSS animation, you can
@@ -2207,25 +2175,25 @@ analytically determine the bounding box of the animation, and use that for
 overlap instead.
 
 *Avoiding sparse composited layers*: Our browser's algorithm currently always
- merges paint chunks that have compatible ancestor effects. But this can lead
- to inefficient situations, such as where two paint chunks that are visually
- very far away on the web page (e.g. one at the very top and one thousands of
- pixels lower down) end up in the same `CompositedLayer`. That can be very bad,
- because it results in a huge `skia.Surface` that is mostly wasted GPU memory.
- One way to reduce that problem is to stop merging paint chunks that would make
- the total area of the `skia.Surface` larger than some fixed value. Implement
- that.[^tiling-helps]
+merges paint chunks that have compatible ancestor effects. But this can lead
+to inefficient situations, such as where two paint chunks that are visually
+very far away on the web page (e.g. one at the very top and one thousands of
+pixels lower down) end up in the same `CompositedLayer`. That can be very bad,
+because it results in a huge `skia.Surface` that is mostly wasted GPU memory.
+One way to reduce that problem is to stop merging paint chunks that would make
+the total area of the `skia.Surface` larger than some fixed value. Implement
+that.[^tiling-helps]
 
  [^tiling-helps]: Another way is via surface tiling (this technique was briefly
  discussed in a Go Further block in Chapter 11).
 
- *Short display lists*: it's relatively common in real browsers to encounter
-  `CompositedLayer`s that are only a single solid color, or only a few
-  simple paint commands.[^real-browser-simple] Implement an optimization that
-  skips storing a `skia.Surface` on a `CompositedLayer` with less than a fixed
-  number (3, say) of paint commands, and instead execute them directly. In
-  other words, `raster` on these `CompositedLayer`s will be a no-op and `draw`
-  will execute the paint commands instead.
+*Short display lists*: it's relatively common in real browsers to encounter
+`CompositedLayer`s that are only a single solid color, or only a few
+simple paint commands.[^real-browser-simple] Implement an optimization that
+skips storing a `skia.Surface` on a `CompositedLayer` with less than a fixed
+number (3, say) of paint commands, and instead execute them directly. In
+other words, `raster` on these `CompositedLayer`s will be a no-op and `draw`
+will execute the paint commands instead.
 
 [^real-browser-simple]: A real browser would use as its criterion whether the
 time to raster the provided paint commands is low enough to not justify a GPU
@@ -2233,13 +2201,13 @@ texture. This will be true for solid color rectangles, but probably not complex
 shapes or text.
 
 *Atomic effects*: Our browser currently uses a simplistic algorithm for building
- the draw list which doesn't handle nested, composited visual effects
- correctly, especially when there are overlapping elements on the page(this was
- discussed in a Go Further block as well). Fix this. You can still walk up the
- display list from each composited layer, but you'll need to avoid making two
- clones of the same visual effect node. You should end up with the following
- draw display list for [this example][nested-op], with one
- (probably internal-to-Skia) render surface:[^see-render-surface]
+the draw list which doesn't handle nested, composited visual effects
+correctly, especially when there are overlapping elements on the page(this was
+discussed in a Go Further block as well). Fix this. You can still walk up the
+display list from each composited layer, but you'll need to avoid making two
+clones of the same visual effect node. You should end up with the following
+draw display list for [this example][nested-op], with one
+(probably internal-to-Skia) render surface:[^see-render-surface]
     
      DrawCompositedLayer()
      SaveLayer(alpha=0.999)
@@ -2251,16 +2219,16 @@ shapes or text.
 information.
 
 *Animated scrolling*: Real browsers have many kinds of animations during scroll.
- For example, pressing the down key or the down-arrow in a scrollbar causes a
- pleasant animated scroll, rather than the immediate scroll our browser current
- implements. Or on mobile, a touch interaction often causes a "fling" scroll
- according to a physics-based model of scroll momentum with friction. Implement
- the [`scroll-behavior`][scroll-behavior] CSS property on the `<body>` element,
- and use it to cause animated scroll in `handle_down`, by delegating scroll to
- a main thread animation.[^main-thread-scroll] You'll need to implement a new
- `ScrollAnimation` class and some logic in `run_animation_frame`. Scrolling in
- the [transform transition](examples/example13-transform-transition.html)
- example should now be smooth, as that example uses `scroll-behavior`.
+For example, pressing the down key or the down-arrow in a scrollbar causes a
+pleasant animated scroll, rather than the immediate scroll our browser current
+implements. Or on mobile, a touch interaction often causes a "fling" scroll
+according to a physics-based model of scroll momentum with friction. Implement
+the [`scroll-behavior`][scroll-behavior] CSS property on the `<body>` element,
+and use it to cause animated scroll in `handle_down`, by delegating scroll to
+a main thread animation.[^main-thread-scroll] You'll need to implement a new
+`ScrollAnimation` class and some logic in `run_animation_frame`. Scrolling in
+the [transform transition](examples/example13-transform-transition.html)
+example should now be smooth, as that example uses `scroll-behavior`.
 
 [scroll-behavior]: https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior
 
