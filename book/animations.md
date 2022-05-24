@@ -28,15 +28,15 @@ chapter we'll focus on web page animations.
 encompass all of the kinds of visual changes humans are used to seeing
 and good at recognizing---not just movement from side to side, but
 growing, shrinking, rotating, fading, blurring, and sharpening. The
-point is that an animation is not an *arbitrary* sequence of pictures;
+rule is that an animation is not an *arbitrary* sequence of pictures;
 the sequence must feel continuous to a human mind trained by experience in the
 real world.
 
 [animation]: https://en.wikipedia.org/wiki/Animation
 
-[^video-anim]: Video-like animations also include animated images, and
-animated canvases. Since our browser doesn't support images, this
-topic is beyond the scope of this book, but video alone has its own
+[^video-anim]: Video-like animations also include animated images and
+animated canvases. Since our browser doesn't support images yet, this
+topic is beyond the scope of this chapter; video alone has its own
 [fascinating complexities][videong].
 
 [videong]: https://developer.chrome.com/blog/videong/
@@ -183,10 +183,10 @@ must:[^gpu-variations]
 * *Compile* GPU programs that raster and draw the display list.[^compiled-gpu]
 
 [^compiled-gpu]: That's right, GPU programs are dynamically compiled! This
-allows them to be portable across a wide variety of implementations
-that may have very different instruction sets or acceleration tactics.
-Of course, between frames these compiled programs will typically be
-cached, so this step won't occur on every frame.
+allows them to be portable across a wide variety of implementations that may
+have very different instruction sets or acceleration tactics. These compiled
+programs will typically be cached, so this step won't occur on every animation
+frame.
 
 * *Raster* every drawing command into GPU textures.[^texture]
 
@@ -229,7 +229,7 @@ context][glcontext] at the beginning/end of the program. For our
 purposes, just consider this API boilerplate.[^glcontext]
 
 [^glcontext]: Starting a GL context is just OpenGL's way of saying
-"set up the surface into which subsequent GL drawing commands will
+"set up the surface into which subsequent OpenGL commands will
 draw". After creating one you can even execute OpenGL commands
 manually, [without using Skia at all][pyopengl], to draw polygons or
 other objects on the screen.
@@ -874,7 +874,7 @@ next.
 ::: {.further}
 
 The implementation of `Browser.draw` in this section is incorrect for the case
-of nested visual effects, because it's not correct to draw every paint chunk
+of nested visual effects, because it's not correct to draw every paint command
 individually; visual effects have to apply *atomically* (i.e., all at once) to
 all the content at once. Consider [this example][nested-op] of nested opacity
 effects. Its draw display list looks like this:^[Once no-ops are removed;
@@ -979,9 +979,9 @@ browser *understands* the animation going on, it can easily detect that it's
 safe to avoid rendering pipeline stages. For example, it's easy to see that an 
 `opacity` animation does not require layout or raster, just paint and draw.
 
-[^animation-curve]: It's not quite exactly the same, because our
+[^animation-curve]: It's not exactly the same, because our
 JavaScript code uses a linear interpolation (or *easing function*)
-between the old and new values. Real browsers use a non-linear easing
+between the old and new values. Real browsers use a non-linear default easing
 function for CSS transitions because it looks better. We'll implement
 a linear easing function for our browser, so it will look identical to
 the JavaScript and subtly different from real browsers.
@@ -1602,9 +1602,9 @@ class CompositedLayer:
 Using it in `composite` is pretty easy: instead of making a new composited layer
 for every single paint command, walk backwards[^why-backwards] through
 `composited_layers` trying to merge into each one. If one is found, the paint
-chunk is added to it; if not, add a new `CompositedLayer` with that paint chunk
-to start.^[If you're not familiar with Python's `for ... else` syntax, the
-`else` block executes only if the loop never executed `break`.]
+chunk is added to it; if not, add a new `CompositedLayer` with that paint
+command to start.^[If you're not familiar with Python's `for ... else` syntax,
+the `else` block executes only if the loop never executed `break`.]
 
 [^why-backwards]: Backwards, because we can't draw things in the wrong
 order. Later items in the display list have to draw later.
@@ -1795,13 +1795,13 @@ reason for compositing*, and is a major complication---and potential source of
 extra memory use and slowdown---faced by all real browsers.
 
 Let's fix the compositing algorithm to take into account overlap. It turns out
-to be not that hard to do: when considering where to put a paint chunk, simply
+to be not that hard to do: when considering where to put a display item, simply
 check if it overlaps with an animated `CompositedLayer`. If so, start a new
 `CompositedLayer` that has an overlap reason for compositing.
 
 The change to `composite` will be only a few lines of code and an `elif` to
-check if the current paint chunk overlaps another `CompositedLayer` in the list
-that needs to be animated.
+check if the current display item overlaps another `CompositedLayer` in the
+list that needs to be animated.
 
 ``` {.python}
 class Browser:
@@ -1836,7 +1836,7 @@ class DisplayItem:
 when drawn to the screen is *larger* than the pixel bounding rect of a paint
 command like `DrawText` within it. After all, blending, compositing, and
 opacity all change the colors of pixels, but don't expand the set of affected
-pixels. And clips and masking decrease rather than increase the set of pixels,
+ones. And clips and masking decrease rather than increase the set of pixels,
 so they can't cause additional overlap either (though they might cause *less*
 overlap). Certain [CSS filters][cssfilter], such as blurs, can also expand
 pixel rects.
@@ -1862,7 +1862,7 @@ avoid slowing down transform animations.
 [^overlap-example]: In addition, it's not possible to create the overlapping
 squares example of this section without something like transforms. Real
 browsers have many other methods, such as [position]. In fact, it's very
-difficult to cause overlap at all in our current browser.
+difficult to cause overlap at all in our current browser!
 
 [position]: https://developer.mozilla.org/en-US/docs/Web/CSS/position
 
@@ -1872,9 +1872,9 @@ basic 2D translations. Here's HTML for the overlap example mentioned in the
 last section:[^why-zero]
 
 [^why-zero]: The green square has a `transform` property also so that paint
-order doesn't change when you try the demo in a real browser. I won't get into
-it, but there are various rules for painting, and "positioned" elements (such as
-with `transform`) are supposed to paint after regular (non-positioned) elements.
+order doesn't change when you try the demo in a real browser. That's because
+there are various rules for painting, and "positioned" elements (such as with
+`transform`) are supposed to paint after regular (non-positioned) elements.
 This particular rule is purely a historical artifact.
 
 
@@ -2084,7 +2084,7 @@ the story of a pretty high-performance implementation of composited animations.
 [^not-really]: Actually, even the current code is not correct now that we have
 transforms. Since a transform animation moves content around, overlap depends
 on where it moved to during the animation. Thus animations can cause overlap to
-appear and disappear during execution. I conveniently chose a demo that starts
+come and go during execution. I conveniently chose a demo that starts
 out overlapping and remains so throughout, but if it didn't, our browser would
 not correctly notice when overlap starts happening during the animation. I've
 left solving this to an exercise.
@@ -2096,11 +2096,11 @@ without care from the browser and web developer can lead to a huge amount of
 GPU memory usage, as well as page slowdown to manage all of the additional
 composited layers. One way this could happen is that an additional composited
 layer results from one element overlapping another, and then a third because it
-overlaps the second, and so on. This phenomenon is
-called *layer explosion*. Our browser's algorithm avoids this problem most of
-the time because it is able to merge multiple paint chunks together as long as
-they have compatible ancestor effects, but in practice there are complicated
-situations where it's hard to make content merge efficiently.
+overlaps the second, and so on. This phenomenon is called *layer explosion*.
+Our browser's algorithm avoids this problem most of the time because it is able
+to merge multiple display items together as long as they have compatible
+ancestor effects, but in practice there are complicated situations where it's
+hard to make content merge efficiently.
 
 In addition to overlap, there are other situations where compositing has
 undesired side-effects leading to performance problems. For example, suppose we
@@ -2193,8 +2193,8 @@ CSS property and parsing of `@keyframe` to implement the demos
  browser currently does not overlap test correctly in the presence of transform
  animations that cause overlap to come and go. First create a demo that
  exhibits the bug, and then fix it. One way to fix it is to enter "assume
- overlap mode" whenever an animated transform paint chunk is encountered. This
- means that every subsequent paint chunk is assumed to overlap the animating
+ overlap mode" whenever an animated transform display item is encountered. This
+ means that every subsequent display item is assumed to overlap the animating
  one (even if it doesn't at the moment), and therefore can't merge into any
  `CompositedLayer` earlier in the list than the animating one. Another way is
  to run overlap testing on every animation frame in the browser thread, and if
@@ -2207,34 +2207,34 @@ analytically determine the bounding box of the animation, and use that for
 overlap instead.
 
 *Avoiding sparse composited layers*: Our browser's algorithm currently always
- merges paint chunks that have compatible ancestor effects. But this can lead
- to inefficient situations, such as where two paint chunks that are visually
- very far away on the web page (e.g. one at the very top and one thousands of
- pixels lower down) end up in the same `CompositedLayer`. That can be very bad,
- because it results in a huge `skia.Surface` that is mostly wasted GPU memory.
- One way to reduce that problem is to stop merging paint chunks that would make
- the total area of the `skia.Surface` larger than some fixed value. Implement
- that.[^tiling-helps]
+ merges non-animating subtrees that have compatible ancestor effects. But this
+ can lead to inefficient situations, such as where two paint commands that are
+ visually very far away on the web page (e.g. one at the very top and one
+ thousands of pixels lower down) end up in the same `CompositedLayer`. That can
+ be very bad, because it results in a huge `skia.Surface` that is mostly wasted
+ GPU memory. One way to reduce that problem is to stop merging subtrees
+ that would make the total area of the `skia.Surface` larger than some fixed
+ value. Implement that.[^tiling-helps]
 
  [^tiling-helps]: Another way is via surface tiling (this technique was briefly
  discussed in a Go Further block in Chapter 11).
 
  *Short display lists*: it's relatively common in real browsers to encounter
   `CompositedLayer`s that are only a single solid color, or only a few
-  simple paint commands.[^real-browser-simple] Implement an optimization that
+  simple display items.[^real-browser-simple] Implement an optimization that
   skips storing a `skia.Surface` on a `CompositedLayer` with less than a fixed
-  number (3, say) of paint commands, and instead execute them directly. In
+  number (3, say) of display items, and instead execute them directly. In
   other words, `raster` on these `CompositedLayer`s will be a no-op and `draw`
-  will execute the paint commands instead.
+  will execute the display items instead.
 
-[^real-browser-simple]: A real browser would use as its criterion whether the
-time to raster the provided paint commands is low enough to not justify a GPU
-texture. This will be true for solid color rectangles, but probably not complex
-shapes or text.
+[^real-browser-simple]: A real browser would use as among its criteria
+whether the time to raster the provided display items is low enough to not
+justify a GPU texture. This will be true for solid colors, but
+probably not complex shapes or text.
 
 *Atomic effects*: Our browser currently uses a simplistic algorithm for building
  the draw list which doesn't handle nested, composited visual effects
- correctly, especially when there are overlapping elements on the page(this was
+ correctly, especially when there are overlapping elements on the page (this was
  discussed in a Go Further block as well). Fix this. You can still walk up the
  display list from each composited layer, but you'll need to avoid making two
  clones of the same visual effect node. You should end up with the following
@@ -2288,7 +2288,7 @@ There are also animations that are tied to scroll offset but are not, strictly
 speaking, part of the scroll. An example is a rotation or opacity fade on an
 element that advances as the user scrolls down the page (and reverses as they
 scroll back up). Or there are *scroll-triggered* animations that start once an
-element has reached a certain point on the page, or when scroll changes
+element has scrolled to a certain point on the screen, or when scroll changes
 direction. An example of that is animation of a top-bar onto the page when the
 user starts to change scroll direction.
 
