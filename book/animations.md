@@ -8,8 +8,9 @@ next: skipped
 Complex web application use *animations* when transitioning between
 states. These animations help users understand the change and improve
 visual polish by replacing sudden jumps with gradual changes. But to
-execute these animations smoothly, the browser must use a technique
-called compositing to minimize redundant work.
+execute these animations smoothly, the browser must propare each frame
+of the animation in minimal time, using GPU acceleration to speed up
+visual effects and compositing to minimize redundant work.
 
 JavaScript Animations
 =====================
@@ -351,9 +352,9 @@ the GPU. And as expected, speed is much improved:
 
 That's about three times faster, almost fast enough to hit sixty
 frames per second. (And on your computer, you'll likely see even more
-speedup than I did, so for you it might already be fast enough.) But
-if we want to go faster yet, we'll need to reduce the total amount of
-work in raster and draw.
+speedup than I did, so for you it might already be fast enough in this
+example.) But if we want to go faster yet, we'll need to reduce the
+total amount of work in raster and draw.
 
 ::: {.further}
 
@@ -859,9 +860,8 @@ class Browser:
 So simple and elegant! Now, on every frame, we are simply splitting
 the display list into composited layers and the draw display list, and
 then running each of those it their own phase. We're now half-way
-toward getting super-smooth animations. What remains is *not*
-re-rastering the composited layers if the display list didn't change
-much between frames.
+toward getting super-smooth animations. What remains is skipping the
+raster step if the display list didn't change much between frames.
 
 ::: {.further}
 
@@ -1038,7 +1038,7 @@ class NumericAnimation:
 ```
 
 We'll create these animation objects every time a style value changes,
-which we can detect in `style` diffing the old and the new styles of
+which we can detect in `style` by diffing the old and new styles of
 each node:
 
 ``` {.python expected=False}
@@ -1133,10 +1133,10 @@ call `set_needs_render` here to make sure that the animation will run
 on the next frame.]
 
 With the animations created, we now need to run them on every later
-frame. Basically, on every frame, we iterate through all the active
-animations on the page and call `animate` on them. Since these
-animations cousin to JavaScript using `requestAnimationFrame`, let's
-run animations right after handling those callbacks:
+frame. Basically, on every frame, iterate through all the active
+animations on the page and call `animate` on them. Since CSS
+transitions are similar to `requestAnimationFrame` animations, let's
+run animations right after handling `requestAnimationFrame` callbacks:
 
 ``` {.python}
 class Tab:
@@ -1188,7 +1188,7 @@ To implement `set_needs_layout`, we've got to replace the single
 `needs_render` flag with three flags: `needs_style`, `needs_layout`,
 and `needs_paint`. In our implementation, setting a dirty bit earlier
 in the pipeline will end up causing everything after it to also run,
-so `set_needs_render` still just sets the `needs_render` flag:^[This
+so `set_needs_render` still just sets the `needs_style` flag:^[This
 is yet another difference from real browsers, which optimize some
 cases that just require style and paint, or other combinations.]
 
@@ -1281,7 +1281,8 @@ We're finally ready to teach the browser how to avoid raster (and layout) when
 running certain animations. These are called *composited animations*, since
 they are compatible with the compositing optimization to avoid raster on every
 frame. Avoiding `raster` and `composite` is simple in concept: keep track of what is
-animating, and re-run only `paint`, `paint_draw_list` and `draw` on each frame.
+animating, and re-run only `paint`, `paint_draw_list` and `draw` on
+each frame if the only changes are to visual effects like opacity.
 
 This is harder than it sounds. We'll need to split the _new_ display
 list into the _old_ composited layers and a _new_ draw display list.
@@ -1297,9 +1298,9 @@ class DisplayItem:
         self.node = node
 ```
 
-Now, when an animation runs (but nothing else changes), we'll use
-these nodes to determine which nodes in the new display list we need
-to use.
+Now, when an animation runs---but nothing else changes---we'll use
+these nodes to determine which display items in the draw display list
+we need to update.
 
 First, when a composited animation runs, save the `Element` whose
 style was changed in a new array called `composited_updates`. We'll
@@ -1328,7 +1329,7 @@ Now, when we `commit` a frame which only needed the paint phase, we
 send the `composited_updates` over to the browser thread. The browser
 thread can use that to skip composite and raster. The data to be sent
 across for each animation update will be an `Element` and a
-`SaveLayer` pointer.
+`SaveLayer`.
 
 To accomplish this we'll need several steps. First, when painting a
 `SaveLayer`, record it on the `Element`:
@@ -1443,7 +1444,7 @@ class Browser:
                 self.set_needs_draw()
 ```
 
-Now, let's think about the draw step. Normally, we create the draw
+Now let's think about the draw step. Normally, we create the draw
 display list from the composited layers. But that won't quite work
 now, because the composited layers come from the _old_ display list.
 If we just try rerunning `paint_draw_list`, we'll get the old draw
@@ -1612,11 +1613,11 @@ composited layers even more.
 To implement this, replace the `is_paint_command` method on
 `DisplayItem`s with a new `needs_compositing` method, which is `True`
 when a visual effect should go in the draw display list and `False`
-when it should go into a layer. As a simple heuristic, we'll always
-set it to `True` for `SaveLayer`s (when they actually do something,
-not for no-ops), regardless of whether they are animating, but we'll
-set it to `False` for `ClipRRect` commands, since those can't animate
-in our browser.
+when it should go into a composited layer. As a simple heuristic,
+we'll always set it to `True` for `SaveLayer`s (when they actually do
+something, not for no-ops), regardless of whether they are animating,
+but we'll set it to `False` for `ClipRRect` commands, since those
+can't animate in our browser.
 
 We'll *also* need to mark a visual effect as needing compositing if any of its
 descendants do (even if it's a `ClipRRect`). That's because if one effect is
@@ -1819,16 +1820,16 @@ avoid slowing down transform animations.
 [cssfilter]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
 
 [^overlap-example]: It's not possible to create the overlapping
-squares example of this section without something way of moving an
+squares example of this section without some way of moving an
 element around. Real browsers have many methods for this, such as
 [position].
 
 [position]: https://developer.mozilla.org/en-US/docs/Web/CSS/position
 
-The `transform` CSS property in quite general and lets you apply [any
-linear transform][transform-def] in 3D space, but let's stick to basic
-2D translations. That's enough to implement the example with the blue
-and green square:[^why-zero]
+The `transform` CSS property in general quite powerful and lets you
+apply [any linear transform][transform-def] in 3D space, but let's
+stick to basic 2D translations. That's enough to implement the example
+with the blue and green square:[^why-zero]
 
 [^why-zero]: The green square has a `transform` property also so that paint
 order doesn't change when you try the demo in a real browser. I won't get into
@@ -1846,7 +1847,7 @@ elements with a `transform`) are supposed to paint after regular
                 background-color:lightgreen;
                 transform:translate(0px, 0px)"></div>
 
-Support these transform is simple. First let's parse the property
+Supporting these transforms is simple. First let's parse the property
 values:[^space-separated]
 
 [^space-separated]: The CSS transform syntax allows multiple transforms in a
@@ -2084,7 +2085,7 @@ without just giving up and compositing the scroller.
 Summary
 =======
 
-This chapter introduce animations. The key takeaways you should
+This chapter introduces animations. The key takeaways you should
 remember are:
 
 - Animations come in DOM-based, input-driven and video-like varieties.
