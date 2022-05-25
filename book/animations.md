@@ -27,15 +27,15 @@ can be included in web pages.[^video-anim]
 encompass all of the kinds of visual changes humans are used to seeing
 and good at recognizing---not just movement from side to side, but
 growing, shrinking, rotating, fading, blurring, and sharpening. The
-point is that an animation is not an *arbitrary* sequence of pictures;
+rule is that an animation is not an *arbitrary* sequence of pictures;
 the sequence must feel continuous to a human mind trained by experience in the
 real world.
 
 [animation]: https://en.wikipedia.org/wiki/Animation
 
-[^video-anim]: Video-like animations also include animated images, and
-animated canvases. Since our browser doesn't support images, this
-topic is beyond the scope of this book, but video alone has its own
+[^video-anim]: Video-like animations also include animated images and
+animated canvases. Since our browser doesn't support images yet, this
+topic is beyond the scope of this chapter; video alone has its own
 [fascinating complexities][videong].
 
 [videong]: https://developer.chrome.com/blog/videong/
@@ -183,10 +183,10 @@ must:[^gpu-variations]
 * *Compile* GPU programs that raster and draw the display list.[^compiled-gpu]
 
 [^compiled-gpu]: That's right, GPU programs are dynamically compiled! This
-allows them to be portable across a wide variety of implementations
-that may have very different instruction sets or acceleration tactics.
-Of course, between frames these compiled programs will typically be
-cached, so this step won't occur on every frame.
+allows them to be portable across a wide variety of implementations that may
+have very different instruction sets or acceleration tactics. These compiled
+programs will typically be cached, so this step won't occur on every animation
+frame.
 
 * *Raster* every drawing command into GPU textures.[^texture]
 
@@ -229,7 +229,7 @@ context][glcontext] at the beginning/end of the program. For our
 purposes, just consider this API boilerplate:[^glcontext]
 
 [^glcontext]: Starting a GL context is just OpenGL's way of saying
-"set up the surface into which subsequent GL drawing commands will
+"set up the surface into which subsequent OpenGL commands will
 draw". After creating one you can even execute OpenGL commands
 manually, [without using Skia at all][pyopengl], to draw polygons or
 other objects on the screen.
@@ -866,7 +866,7 @@ raster step if the display list didn't change much between frames.
 ::: {.further}
 
 The implementation of `Browser.draw` in this section is incorrect for the case
-of nested visual effects, because it's not correct to draw every paint chunk
+of nested visual effects, because it's not correct to draw every paint command
 individually; visual effects have to apply *atomically* (i.e., all at once) to
 all the content at once. Consider [this example][nested-op] of nested opacity
 effects. Its draw display list looks like this:^[Once no-ops are removed;
@@ -973,9 +973,9 @@ since `opacity` only affects `SaveLayer` commands that end up in the
 draw display list, the browser knows that this animation does not
 require layout or raster, just paint and draw.
 
-[^animation-curve]: It's not quite exactly the same, because our
+[^animation-curve]: It's not exactly the same, because our
 JavaScript code uses a linear interpolation (or *easing function*)
-between the old and new values. Real browsers use a non-linear easing
+between the old and new values. Real browsers use a non-linear default easing
 function for CSS transitions because it looks better. We'll implement
 a linear easing function for our browser, so it will look identical to
 the JavaScript and subtly different from real browsers.
@@ -1806,7 +1806,7 @@ efficiently on the GPU.
 when drawn to the screen is *larger* than the pixel bounding rect of a paint
 command like `DrawText` within it. After all, blending, compositing, and
 opacity all change the colors of pixels, but don't expand the set of affected
-pixels. And clips and masking decrease rather than increase the set of pixels,
+ones. And clips and masking decrease rather than increase the set of pixels,
 so they can't cause additional overlap either (though they might cause *less*
 overlap). Certain [CSS filters][cssfilter], such as blurs, can also expand
 pixel rects.
@@ -1832,10 +1832,11 @@ stick to basic 2D translations. That's enough to implement the example
 with the blue and green square:[^why-zero]
 
 [^why-zero]: The green square has a `transform` property also so that paint
-order doesn't change when you try the demo in a real browser. I won't get into
-it, but there are various rules for painting, and "positioned" elements (such as
-elements with a `transform`) are supposed to paint after regular
-(non-positioned) elements. This particular rule is purely a historical artifact.
+order doesn't change when you try the demo in a real browser. That's
+because there are various rules for painting, and "positioned"
+elements (such as elements with a `transform`) are supposed to paint
+after regular (non-positioned) elements. This particular rule is
+purely a historical artifact.
 
 
 [transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
@@ -2065,11 +2066,11 @@ without care from the browser and web developer can lead to a huge amount of
 GPU memory usage, as well as page slowdown to manage all of the additional
 composited layers. One way this could happen is that an additional composited
 layer results from one element overlapping another, and then a third because it
-overlaps the second, and so on. This phenomenon is
-called *layer explosion*. Our browser's algorithm avoids this problem most of
-the time because it is able to merge multiple paint chunks together as long as
-they have compatible ancestor effects, but in practice there are complicated
-situations where it's hard to make content merge efficiently.
+overlaps the second, and so on. This phenomenon is called *layer explosion*.
+Our browser's algorithm avoids this problem most of the time because it is able
+to merge multiple display items together as long as they have compatible
+ancestor effects, but in practice there are complicated situations where it's
+hard to make content merge efficiently.
 
 In addition to overlap, there are other situations where compositing has
 undesired side-effects leading to performance problems. For example, suppose we
@@ -2162,8 +2163,8 @@ CSS property and parsing of `@keyframe` to implement the demos
 browser currently does not overlap test correctly in the presence of transform
 animations that cause overlap to come and go. First create a demo that
 exhibits the bug, and then fix it. One way to fix it is to enter "assume
-overlap mode" whenever an animated transform paint chunk is encountered. This
-means that every subsequent paint chunk is assumed to overlap the animating
+overlap mode" whenever an animated transform display item is encountered. This
+means that every subsequent display item is assumed to overlap the animating
 one (even if it doesn't at the moment), and therefore can't merge into any
 `CompositedLayer` earlier in the list than the animating one. Another way is
 to run overlap testing on every animation frame in the browser thread, and if
@@ -2196,10 +2197,10 @@ number (3, say) of paint commands, and instead execute them directly. In
 other words, `raster` on these `CompositedLayer`s will be a no-op and `draw`
 will execute the paint commands instead.
 
-[^real-browser-simple]: A real browser would use as its criterion whether the
-time to raster the provided paint commands is low enough to not justify a GPU
-texture. This will be true for solid color rectangles, but probably not complex
-shapes or text.
+[^real-browser-simple]: A real browser would use as among its criteria
+whether the time to raster the provided display items is low enough to not
+justify a GPU texture. This will be true for solid colors, but
+probably not complex shapes or text.
 
 *Atomic effects*: Our browser currently uses a simplistic algorithm for building
 the draw list which doesn't handle nested, composited visual effects
@@ -2257,7 +2258,7 @@ There are also animations that are tied to scroll offset but are not, strictly
 speaking, part of the scroll. An example is a rotation or opacity fade on an
 element that advances as the user scrolls down the page (and reverses as they
 scroll back up). Or there are *scroll-triggered* animations that start once an
-element has reached a certain point on the page, or when scroll changes
+element has scrolled to a certain point on the screen, or when scroll changes
 direction. An example of that is animation of a top-bar onto the page when the
 user starts to change scroll direction.
 
