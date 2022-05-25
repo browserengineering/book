@@ -997,12 +997,11 @@ class TranslateAnimation:
             self.change_per_frame_y * self.frame_count
         return "translate({}px,{}px)".format(new_x, new_y)
 
-    
 ANIMATED_PROPERTIES = {
     "opacity": NumericAnimation,
     "transform": TranslateAnimation,
 }
-
+    
 def style(node, rules, tab):
     old_style = node.style
 
@@ -1026,15 +1025,15 @@ def style(node, rules, tab):
 
     if old_style:
         transitions = diff_styles(old_style, node.style)
-        for property, (old_value, new_value, num_frames) in \
-            transitions.items():
+        for property, (old_value, new_value, num_frames) \
+            in transitions.items():
             if property in ANIMATED_PROPERTIES:
                 tab.set_needs_render()
                 AnimationClass = ANIMATED_PROPERTIES[property]
                 animation = AnimationClass(
                     old_value, new_value, num_frames)
                 node.animations[property] = animation
-                node.style[property] = old_value
+                node.style[property] = animation.animate()
 
     for child in node.children:
         style(child, rules, tab)
@@ -1079,8 +1078,7 @@ class CompositedLayer:
 
     def raster(self):
         bounds = self.composited_bounds()
-        if bounds.isEmpty():
-            return
+        if bounds.isEmpty(): return
         irect = bounds.roundOut()
 
         if not self.surface:
