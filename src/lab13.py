@@ -109,9 +109,6 @@ class DisplayItem:
         return any([child.needs_compositing() \
             for child in self.children])
 
-    def clone(self, children):
-        assert False
-
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children=children, node=node)
@@ -311,10 +308,7 @@ class DrawCompositedLayer(DisplayItem):
         layer = self.composited_layer
         if not layer.surface: return
         bounds = layer.composited_bounds()
-        surface_offset_x = bounds.left()
-        surface_offset_y = bounds.top()
-        layer.surface.draw(
-            canvas, surface_offset_x, surface_offset_y)
+        layer.surface.draw(canvas, bounds.left(), bounds.top())
 
     def __repr__(self):
         return "DrawCompositedLayer()"
@@ -961,7 +955,7 @@ class NumericAnimation:
         if self.frame_count >= self.num_frames: return
         current_value = self.old_value + \
             self.change_per_frame * self.frame_count
-        return "{}".format(current_value)
+        return str(current_value)
 
     def __repr__(self):
         return ("NumericAnimation(" + \
@@ -1003,12 +997,11 @@ class TranslateAnimation:
             self.change_per_frame_y * self.frame_count
         return "translate({}px,{}px)".format(new_x, new_y)
 
-    
 ANIMATED_PROPERTIES = {
     "opacity": NumericAnimation,
     "transform": TranslateAnimation,
 }
-
+    
 def style(node, rules, tab):
     old_style = node.style
 
@@ -1032,15 +1025,15 @@ def style(node, rules, tab):
 
     if old_style:
         transitions = diff_styles(old_style, node.style)
-        for property, (old_value, new_value, num_frames) in \
-            transitions.items():
+        for property, (old_value, new_value, num_frames) \
+            in transitions.items():
             if property in ANIMATED_PROPERTIES:
                 tab.set_needs_render()
                 AnimationClass = ANIMATED_PROPERTIES[property]
                 animation = AnimationClass(
                     old_value, new_value, num_frames)
                 node.animations[property] = animation
-                node.style[property] = old_value
+                node.style[property] = animation.animate()
 
     for child in node.children:
         style(child, rules, tab)
@@ -1057,17 +1050,15 @@ def absolute_bounds(display_item):
     return rect
 
 class CompositedLayer:
-    def __init__(self, skia_context):
+    def __init__(self, skia_context, display_item):
         self.skia_context = skia_context
         self.surface = None
-        self.display_items = []
+        self.display_items = [display_item]
+        self.parent = display_item.parent
 
     def can_merge(self, display_item):
-        if self.display_items:
-            return display_item.parent == \
-                self.display_items[0].parent
-        else:
-            return True
+        return display_item.parent == \
+            self.display_items[0].parent
 
     def add(self, display_item):
         assert self.can_merge(display_item)
@@ -1087,8 +1078,7 @@ class CompositedLayer:
 
     def raster(self):
         bounds = self.composited_bounds()
-        if bounds.isEmpty():
-            return
+        if bounds.isEmpty(): return
         irect = bounds.roundOut()
 
         if not self.surface:
@@ -1624,21 +1614,19 @@ class Browser:
                 (not cmd.parent or \
                  cmd.parent.needs_compositing())
         ]
-        for display_item in non_composited_commands:
+        for cmd in non_composited_commands:
             for layer in reversed(self.composited_layers):
-                if layer.can_merge(display_item):
-                    layer.add(display_item)
+                if layer.can_merge(cmd):
+                    layer.add(cmd)
                     break
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
-                    absolute_bounds(display_item)):
-                    layer = CompositedLayer(self.skia_context)
-                    layer.add(display_item)
+                    absolute_bounds(cmd)):
+                    layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
                     break
             else:
-                layer = CompositedLayer(self.skia_context)
-                layer.add(display_item)
+                layer = CompositedLayer(self.skia_context, cmd)
                 self.composited_layers.append(layer)
 
         self.active_tab_height = 0
