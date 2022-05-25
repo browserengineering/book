@@ -1777,7 +1777,7 @@ Basically, when considering which composited layer a display item goes
 in, also check if it overlaps with an existing composited layer. If
 so, start a new `CompositedLayer` for this display item:
 
-``` {.python}
+``` {.python replace=layer.composited_bounds/layer.absolute_bounds,cmd.rect/absolute_bounds(cmd)}
 class Browser:
     def composite(self):
         # ...
@@ -1787,7 +1787,7 @@ class Browser:
                     # ...
                 elif skia.Rect.Intersects(
                     layer.composited_bounds(),
-                    cmd.composited_bounds()):
+                    cmd.rect):
                     layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
                     break
@@ -2001,12 +2001,7 @@ left solving this to an exercise.
 While we're here, let's also make transforms animatable via a new
 `TranslateAnimation` class:
 
-``` {.python replace=True)/USE_COMPOSITING)}
-ANIMATED_PROPERTIES = {
-    # ...
-    "transform": TranslateAnimation,
-}
-
+``` {.python}
 class TranslateAnimation:
     def __init__(self, old_value, new_value, num_frames):
         (self.old_x, self.old_y) = parse_transform(old_value)
@@ -2027,6 +2022,11 @@ class TranslateAnimation:
         new_y = self.old_y + \
             self.change_per_frame_y * self.frame_count
         return "translate({}px,{}px)".format(new_x, new_y)
+
+ANIMATED_PROPERTIES = {
+    # ...
+    "transform": TranslateAnimation,
+}
 ```
 
 You should now be able to create this animation:^[In this
