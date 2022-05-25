@@ -1987,34 +1987,16 @@ class TranslateAnimation:
         return "translate({}px,{}px)".format(new_x, new_y)
 ```
 
-You should now be able to create this animation:^[In this
-example, I added in a simultaneous opacity animation to demonstrate that our
-browser supports it.]
+You should now be able to create this animation:^[In this example, I added in a
+simultaneous opacity animation to demonstrate that our browser supports it. In
+addition, transforms are compatible with composited animations, but it's not
+implemented in our browser. Doing so is a lot like numeric animations, so I've
+left implementing it to an exercise.]
 
 <iframe src="examples/example13-transform-transition.html" style="width:350px;height:450px">
 </iframe>
 (click [here](examples/example13-transform-transition.html) to load the example in
 your browser)
-
-Finally, transforms are compatible with composited animations, so there is a bit
-more work to do to make transforms plug into that system. Doing so is not hard,
-it just requires edits to the code to handle transform in all the same places
-opacity was, in particular:
-
-* Write `Transform.needs_compositing`. It should return `True` if
-  there is a transformation active.
-
-* Set `node.transform` in `paint_visual_effects` just like `save_layer`.
-
-* Consider it composited in `run_animation_frame`.
-
-* Add `transform` to each `composited_updates` field of `CommitData`.
-
-* Consider transform during `paint_draw_list`.
-
-Each of these changes should be pretty straightforward and repetitive on top of
-opacity, so I'll skip showing the code. Once updated, our browser should now
-have fast, composited transform animations.
 
 But if you try it on the example above, you'll find that the animation still
 looks wrong---the blue square is supposed to be *under* the green one, but
@@ -2159,6 +2141,14 @@ color channels.
  function, and one or two others.
 
  [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
+
+*Composited transform animations*: Our browser supports transform animations,
+ but they are not composited (i.e., they cause raster on every frame).
+ Implement composited animations for `transform`. It just requires edits to the
+ code to handle transform in all the same places as `opacity`. The
+ transform animation [example][tr-example] should then become noticeably faster.
+
+ [tr-example]: examples/example13-transform-transition.html
 
 *Threaded animations*: Despite Chapter 12 being all about threading, we didn't
  actually implement threaded animations in this chapter---they are all driven
