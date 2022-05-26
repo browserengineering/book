@@ -1229,7 +1229,7 @@ class Tab:
                 if value:
                     node.style[property_name] = value
                     if USE_COMPOSITING and \
-                        (property_name == "opacity"):
+                        property_name == "opacity":
                         self.composited_updates.append(node)
                         self.set_needs_paint()
                     else:
@@ -1634,6 +1634,7 @@ class Browser:
         save_layer = self.composited_updates[node]
         if type(visual_effect) is SaveLayer:
             return save_layer.clone(current_effect)
+        return visual_effect.clone(current_effect)
 
     def paint_draw_list(self):
         self.draw_list = []
