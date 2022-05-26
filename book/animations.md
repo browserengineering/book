@@ -8,8 +8,8 @@ next: skipped
 Complex web application use *animations* when transitioning between
 states. These animations help users understand the change and improve
 visual polish by replacing sudden jumps with gradual changes. But to
-execute these animations smoothly, the browser must propare each frame
-of the animation in minimal time, using GPU acceleration to speed up
+execute these animations smoothly, the browser must minimize time in each
+animation frame, using GPU acceleration to speed up
 visual effects and compositing to minimize redundant work.
 
 JavaScript Animations
@@ -353,8 +353,8 @@ the GPU. And as expected, speed is much improved:
 That's about three times faster, almost fast enough to hit sixty
 frames per second. (And on your computer, you'll likely see even more
 speedup than I did, so for you it might already be fast enough in this
-example.) But if we want to go faster yet, we'll need to reduce the
-total amount of work in raster and draw.
+example.) But if we want to go faster yet, we'll need to find ways to
+reduce the total amount of work in raster and draw.
 
 ::: {.further}
 
@@ -727,8 +727,8 @@ class Browser:
             composited_layer.raster()
 ```
 
-Inside `raster`, the browser needs to allocate a surface to raster the
-composited layer into. To start, it'll need to know how big a surface
+Inside `raster`, the composited layer needs to allocate a surface to raster
+itself into. To start, it'll need to know how big a surface
 to allocate. That's just the union of the bounding boxes of all of its
 paint commands. First add a `rect` field to display items:
 
@@ -898,9 +898,9 @@ determine which ones really need render surfaces, and which don't. Opacity, for
 example, often doesn't need a render surface, but opacity with at least
 two "descendant" `CompositedLayer`s does.[^only-overlapping]
 
-[^only-overlapping]: Actually, only if there are at least two children *and*
-some of them overlap each other visually. Can you see why we can avoid the
-render surface for opacity if there is no overlap?
+[^only-overlapping]: Actually, only if there are at least two descendants,
+*and* some of them overlap each other visually. Can you see why we can
+avoid the render surface for opacity if there is no overlap?
 
 You might think that all this means I chose badly with the "paint commands"
 compositing algorithm presented here, but that is not the case. Render surface
@@ -910,7 +910,7 @@ a "layer tree" approach, because it's so important to optimize GPU memory.
 In addition, the algorithm presented here is a simplified version of what
 Chromium actually implements. For more details and information on how Chromium
 implements these concepts see [here][renderingng-dl] and
-[here][rendersurface]; other browsers do something similar. Chromium's
+[here][rendersurface]; other browsers do something broadly similar. Chromium's
 implementation of the "visual effect nesting" data structure is called
 [property trees][prop-trees]. The name is plural because there is more than
 one tree, due to the complex [containing block][cb] structure of scrolling
@@ -945,7 +945,7 @@ always be somewhat brittle and incomplete.
 
 [chromium-diff]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/style/style_difference.h
 
-CSS transitions basically take the `requestAnimationFrame` loop we
+CSS transitions take the `requestAnimationFrame` loop we
 used to implement animations and move it into the browser. The web page
 just needs to interpret the CSS [`transition`][css-transitions] property,
 which defines properties to animate and how long to animate them for. Here's
@@ -1447,7 +1447,7 @@ class Browser:
 Now let's think about the draw step. Normally, we create the draw
 display list from the composited layers. But that won't quite work
 now, because the composited layers come from the _old_ display list.
-If we just try rerunning `paint_draw_list`, we'll get the old draw
+If we just try re-running `paint_draw_list`, we'll get the old draw
 display list! We need to update `draw_list` to take into account the
 new display list based on the `composited_updates`.
 
@@ -1751,7 +1751,7 @@ Overlap and transforms
 
 The compositing algorithm we implemented works great in many cases.
 Unfortunately, it doesn't work correctly for display list commands
-that *overlap* each other. Let me explain with an example.
+that *overlap* each other. Let me explain why with an example.
 
 Consider a light blue square overlapped by a light green one, with a
 white background behind them:
@@ -1826,7 +1826,7 @@ element around. Real browsers have many methods for this, such as
 
 [position]: https://developer.mozilla.org/en-US/docs/Web/CSS/position
 
-The `transform` CSS property in general quite powerful and lets you
+The `transform` CSS property is quite powerful, and lets you
 apply [any linear transform][transform-def] in 3D space, but let's
 stick to basic 2D translations. That's enough to implement the example
 with the blue and green square:[^why-zero]
@@ -1987,19 +1987,9 @@ class CompositedLayer:
 ```
 
 The blue square should now be underneath the green square, so overlap
-testing is now complete.[^not-really] And with that, we now have
-completed the story of a pretty high-performance implementation of
-composited animations.
+testing is now complete.[^not-really]
 
-[^not-really]: Actually, even the current code is not correct now that we have
-transforms. Since a transform animation moves content around, overlap depends
-on where it moved to during the animation. Thus animations can cause overlap to
-appear and disappear during execution. I conveniently chose a demo that starts
-out overlapping and remains so throughout, but if it didn't, our browser would
-not correctly notice when overlap starts happening during the animation. I've
-left solving this to an exercise.
-
-While we're here, let's also make transforms animatable via a new
+And while we're here, let's also make transforms animatable via a new
 `TranslateAnimation` class:
 
 ``` {.python}
@@ -2029,6 +2019,17 @@ ANIMATED_PROPERTIES = {
     "transform": TranslateAnimation,
 }
 ```
+
+And with that, we now have completed the story of a pretty high-performance
+implementation of composited animations.
+
+[^not-really]: Actually, even the current code is not correct now that we have
+transforms. Since a transform animation moves content around, overlap depends
+on where it moved to during the animation. Thus animations can cause overlap to
+appear and disappear during execution. I conveniently chose a demo that starts
+out overlapping and remains so throughout, but if it didn't, our browser would
+not correctly notice when overlap starts happening during the animation. I've
+left solving this to an exercise.
 
 You should now be able to create this animation:^[In this example, I added in a
 simultaneous opacity animation to demonstrate that our browser supports it. In
@@ -2079,7 +2080,7 @@ remember are:
 - GPU acceleration is necessary for smooth animations.
 
 - Compositing is usually necessary for smooth and threaded visual effect
-  animations, and generally not feasible (at least at present) for
+  animations, and generally not feasible for
   layout-inducing animations.
 
 - It's important to optimize the number of composited layers.
