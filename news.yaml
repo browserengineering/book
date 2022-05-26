@@ -4,9 +4,17 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Animating and Compositing
+    link: https://browser.engineering/animations.html
+    pubDate: Wed, 25 May 2022, 12:00:00 -0700
+    description:
+      Animations make browsers more fun, but they also require solving
+      a lot of really interesting algorithmic and design challenges to
+      utilize GPU-accelerated compositing. Find out how in our new
+      chapter, Animating and Compositing!
   - title: Scheduling Tasks and Threads
     link: https://browser.engineering/scheduling.html
-    pubDate: Mon, 14 Feb 2021, 09:55:00 -0700
+    pubDate: Mon, 14 Feb 2022, 09:55:00 -0700
     description: 
       With a new year and then some more time to actually finish
       things, we present a new chapter on Scheduling Tasks and

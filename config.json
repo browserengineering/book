@@ -20,7 +20,7 @@
         "visual-effects.md": { "disabled": false, "lab": "lab11.py", "examples": "examples11.py", "server": "server11.py"  },
         "scheduling.md": { "disabled": false, "lab": "lab12.py", "server": "server12.py", "runtime": "runtime12.js", "eventloop": "eventloop12.js" },
         "animations.md": {
-            "disabled": true,
+            "disabled": false,
             "lab": "lab13.py",
             "runtime": "runtime13.js",
             "example-opacity-html": "example13-opacity-raf.html"},
