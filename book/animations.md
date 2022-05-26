@@ -1462,11 +1462,10 @@ class Browser:
         node = visual_effect.node
         if not node in self.composited_updates:
             return visual_effect.clone(current_effect)
-        (transform, save_layer) = self.composited_updates[node]
-        if type(visual_effect) is Transform:
-            return transform.clone(current_effect)
-        elif type(visual_effect) is SaveLayer:
+        save_layer = self.composited_updates[node]
+        if type(visual_effect) is SaveLayer:
             return save_layer.clone(current_effect)
+        return visual_effect.clone(current_effect)
 ```
 
 Using `clone_latest` in `paint_draw_list` is a one-liner:
