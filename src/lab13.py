@@ -124,11 +124,6 @@ class Transform(DisplayItem):
         if self.translation:
             canvas.restore()
 
-    def needs_compositing(self):
-        return USE_COMPOSITING and self.translation or \
-            any([child.needs_compositing() \
-                for child in self.children])
-
     def map(self, rect):
         if not self.translation:
             return rect
@@ -788,7 +783,6 @@ def paint_visual_effects(node, cmds, rect):
 
     transform = Transform(translation, rect, node, [save_layer])
 
-    node.transform = transform
     node.save_layer = save_layer
 
     return [transform]
@@ -1235,8 +1229,7 @@ class Tab:
                 if value:
                     node.style[property_name] = value
                     if USE_COMPOSITING and \
-                        (property_name == "opacity" or \
-                         property_name == "transform"):
+                        (property_name == "opacity"):
                         self.composited_updates.append(node)
                         self.set_needs_paint()
                     else:
@@ -1260,8 +1253,7 @@ class Tab:
         composited_updates = {}
         if not needs_composite:
             for node in self.composited_updates:
-                composited_updates[node] = \
-                    (node.transform, node.save_layer)
+                composited_updates[node] = node.save_layer
         self.composited_updates.clear()
 
         commit_data = CommitData(
@@ -1639,10 +1631,8 @@ class Browser:
         node = visual_effect.node
         if not node in self.composited_updates:
             return visual_effect.clone(current_effect)
-        (transform, save_layer) = self.composited_updates[node]
-        if type(visual_effect) is Transform:
-            return transform.clone(current_effect)
-        elif type(visual_effect) is SaveLayer:
+        save_layer = self.composited_updates[node]
+        if type(visual_effect) is SaveLayer:
             return save_layer.clone(current_effect)
 
     def paint_draw_list(self):
