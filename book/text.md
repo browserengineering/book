@@ -506,7 +506,7 @@ def text(self, tok):
         # ...
 ```
 
-Now that everything has moved out of `Browser`'s old `load`
+Now that everything has moved out of `Browser`'s old `layout`
 function, it can be replaced with calls into `Layout`:
 
 ``` {.python}

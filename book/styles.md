@@ -1049,11 +1049,11 @@ directly sets the width or height of the layout object, or the word
 `auto`, in which case the existing layout algorithm is used.
 
 *Class Selectors*: Any HTML element can have a `class` attribute,
-whose value is a space-separated list of tags that apply to that
-element. A CSS class selector, like `.main`, affects all elements
-tagged `main`. Implement class selectors; give them priority 10.
-If you've implemented them correctly, you should see code blocks in
-this book being syntax-highlighted.
+whose value is a space-separated list of that element's classes. A CSS
+class selector, like `.main`, affects all elements with the `main`
+class. Implement class selectors; give them priority 10. If you've
+implemented them correctly, the code blocks in this book should be
+syntax-highlighted.
 
 *Display*: Right now, the `layout_mode` function relies on a
 hard-coded list of block elements. In a real browser, the `display`

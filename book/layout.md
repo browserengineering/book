@@ -304,13 +304,22 @@ user styles, which modify these rules and allow setting custom widths,
 borders, or padding.
 
 ``` {.python}
-self.width = self.parent.width
+class BlockLayout:
+    def layout(self):
+        # ...
+        self.width = self.parent.width
+        # ...
 ```
 
-And each layout object starts at its parent's left edge:
+An `InlineLayout` would have the same width computation. And each
+layout object starts at its parent's left edge:
 
 ``` {.python}
-self.x = self.parent.x
+class BlockLayout:
+    def layout(self):
+        # ...
+        self.x = self.parent.x
+        # ...
 ```
 
 The vertical position of a layout object depends on the position and
@@ -318,10 +327,14 @@ height of their previous sibling. If there is no previous sibling,
 they start at the parent's top edge:
 
 ``` {.python}
-if self.previous:
-    self.y = self.previous.y + self.previous.height
-else:
-    self.y = self.parent.y
+class BlockLayout:
+    def layout(self):
+        # ...
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+        # ...
 ```
 
 These three computations have to go *before* the recursive call to
@@ -337,7 +350,10 @@ contain all of its children, so its height should be the sum of its
 children's heights:
 
 ``` {.python}
-self.height = sum([child.height for child in self.children])
+class BlockLayout:
+    def layout(self):
+        # ...
+        self.height = sum([child.height for child in self.children])
 ```
 
 Since a `BlockLayout`'s height depends on the height of its children, its height
