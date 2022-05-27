@@ -554,7 +554,7 @@ generalize a bit and write a recursive function that turns a tree into
 a list of nodes:
 
 [^like-canonical]: For browsers, `stylesheet` is the most important
-[kinds of link][link-types], but there's also `preload` for loading
+[kind of link][link-types], but there's also `preload` for loading
 assets that a page will use later and `icon` for identifying favicons.
 Search engines also use these links; for example, `rel=canonical`
 names the "true name" of a page and search engines use it to track
@@ -871,18 +871,19 @@ small { font-size: 90%; }
 big { font-size: 110%; }
 ```
 
-The browser looks up font information in its `text` method; we'll need
-to change that method to use the node's `style` field:
+The browser looks up font information in `InlineLayout`'s `text`
+method; we'll need to change it to use the node's `style` field:
 
 ``` {.python indent=4}
-def text(self, node):
-    # ...
-    weight = node.style["font-weight"]
-    style = node.style["font-style"]
-    if style == "normal": style = "roman"
-    size = int(float(node.style["font-size"][:-2]) * .75)
-    font = get_font(size, weight, style)
-    # ...
+class InlineLayout:
+    def text(self, node):
+        # ...
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(float(node.style["font-size"][:-2]) * .75)
+        font = get_font(size, weight, style)
+        # ...
 ```
 
 Note that for `font-style` we need to translate CSS "normal" to Tk

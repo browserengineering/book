@@ -177,11 +177,10 @@ of course, since different letters have different width:[^9]
 
 [^9]: The sum at the end of this snippet may not work on your machine:
     the width of a word is not always the sum of the widths of its
-    letters. That's because Tk always returns whole pixels, but
-    internally might do some rounding. Plus some fonts use something
-    called *kerning* to shift letters a little bit when particular pairs
-    of letters are next to one another, though I don't know if Tk
-    supports this.
+    letters. That's because Tk uses fractional pixels internally, but
+    rounds up to return whole pixels. For example, some fonts use
+    something called *kerning* to shift letters a little bit when
+    particular pairs of letters are next to one another.
 
 
 You can use this information to lay text out on the page. For example,
@@ -287,9 +286,9 @@ line spacing is a normal amount.
 
 [^11]: Designers say the text is too "tight".
 
-[^12]: So named because in metal type days, thin pieces of lead that
-    were placed between the lines to space them out. Lead is a softer
-    metal than what the actual letter pieces were made of, so it could
+[^12]: So named because in metal type days, thin pieces of lead were
+    placed between the lines to space them out. Lead is a softer metal
+    than what the actual letter pieces were made of, so it could
     compress a little to keep pressure on the other pieces. Pronounce
     it "led-ing" not "leed-ing".
 
@@ -578,7 +577,7 @@ appear, `<b>`, `<i>`, and `<small>` have hair-splitting
 [appearance-independent meanings][html5-text].
 :::
 
-[html5-text]: https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-u-element
+[html5-text]: https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-small-element
 
 Text of different sizes
 =======================
@@ -866,11 +865,15 @@ letter.
 *Soft hyphens:* The soft hyphen character, written `\N{soft hyphen}`
 in Python, represents a place where the text renderer can, but doesn't
 have to, insert a hyphen and break the word across lines. Add support
-for it. If a word doesn't fit at the end of a line, check if it has
-soft hyphens, and if so break the word across lines. Remember that a
-word can have multiple soft hyphens in it, and make sure to draw a
-hyphen when you break a word. The word
+for it.[^entity] If a word doesn't fit at the end of a line, check if
+it has soft hyphens, and if so break the word across lines. Remember
+that a word can have multiple soft hyphens in it, and make sure to
+draw a hyphen when you break a word. The word
 "super­cala­fraga­listic­expi­ala­do­shus" is a good test case.
+
+[^entity]: If you've done a [previous exercise](http.md#exercises) on
+    HTML entities, you might also want to add support for the `&shy;`
+    entity, which expands to a soft hyphen.
 
 *Small caps:* Make the `<abbr>` element render text in small caps,
 <abbr>like this</abbr>. Inside an `<abbr>` tag, lower-case letters

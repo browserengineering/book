@@ -539,9 +539,9 @@ class DrawRect:
 Now `InlineLayout` must add `DrawText` objects to the display
 list:[^why-not-change]
 
-[^why-not-change]: Why not change `display_list` to contain `DrawText`
-commands directly? You could, but it would be a bit harder to refactor
-later.
+[^why-not-change]: Why not change the `display_list` field inside an
+`InlineLayout` to contain `DrawText` commands directly? You could, but
+it would be a bit harder to refactor later.
 
 ``` {.python}
 class InlineLayout:
@@ -644,7 +644,7 @@ def scrolldown(self, e):
     self.draw()
 ```
 
-So that's the basics of tree-based layout! In fact, as we'll see in
+So those are the basics of tree-based layout! In fact, as we'll see in
 the next two chapters, this is just part of the layout tree's role in
 the browser. But before we get to that, we need to add some styling
 capabilities to our browser.
