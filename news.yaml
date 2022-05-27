@@ -6,7 +6,7 @@ webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
   - title: Animating and Compositing
     link: https://browser.engineering/animations.html
-    pubDate: Wed, 25 May 2022, 12:00:00 -0700
+    pubDate: Wed, 26 May 2022, 12:33:00 -0700
     description:
       Animations make browsers more fun, but they also require solving
       a lot of really interesting algorithmic and design challenges to
