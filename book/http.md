@@ -594,6 +594,14 @@ the new socket back into the `s` variable. That's because you don't
 want to send over the original socket; it would be unencrypted and
 also confusing.
 
+::: {.installation}
+On macOS, you'll need to [run a program called "Install
+Certificates"][macos-fix] before you can use Python's `ssl` package on
+most websites.
+:::
+
+[macos-fix]: https://stackoverflow.com/questions/52805115/certificate-verify-failed-unable-to-get-local-issuer-certificate
+
 Let's try to take this code and add it to `request`. First, we need to
 detect which scheme is being used:
 
@@ -734,15 +742,17 @@ compressed. Add support for this case. To decompress the data, you can
 use the `decompress` method in the `gzip` module. Calling `makefile`
 with the `encoding` argument will no longer work, because compressed
 data is not `utf8`-encoded. You can change the first argument `"rb"`
-to work with raw bytes instead of encoded text.[^te]
+to work with raw bytes instead of encoded text. Most web servers send
+compressed data in a `Transfer-Encoding` called [`chunked`][chunked].
+You'll need to add support for that, too, to access most web servers
+that support compressed data.[^te-gzip]
 
 [negotiate]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
 
-[^te]: Most web servers send compressed data in a `Transfer-Encoding`
-called [`chunked`][chunked]. You'll need to add support for it too to
-access most web servers that support compressed data.
-
 [chunked]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
+
+[^te-gzip]: There's also a couple of `Transfer-Encoding`s that
+    compress the data. Those aren't commonly used.
 
 *Redirects:* Error codes in the 300 range request a redirect. When
 your browser encounters one, it should make a new request to the URL

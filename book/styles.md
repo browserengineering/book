@@ -554,7 +554,7 @@ generalize a bit and write a recursive function that turns a tree into
 a list of nodes:
 
 [^like-canonical]: For browsers, `stylesheet` is the most important
-[kinds of link][link-types], but there's also `preload` for loading
+[kind of link][link-types], but there's also `preload` for loading
 assets that a page will use later and `icon` for identifying favicons.
 Search engines also use these links; for example, `rel=canonical`
 names the "true name" of a page and search engines use it to track
@@ -871,18 +871,19 @@ small { font-size: 90%; }
 big { font-size: 110%; }
 ```
 
-The browser looks up font information in its `text` method; we'll need
-to change that method to use the node's `style` field:
+The browser looks up font information in `InlineLayout`'s `text`
+method; we'll need to change it to use the node's `style` field:
 
 ``` {.python indent=4}
-def text(self, node):
-    # ...
-    weight = node.style["font-weight"]
-    style = node.style["font-style"]
-    if style == "normal": style = "roman"
-    size = int(float(node.style["font-size"][:-2]) * .75)
-    font = get_font(size, weight, style)
-    # ...
+class InlineLayout:
+    def text(self, node):
+        # ...
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(float(node.style["font-size"][:-2]) * .75)
+        font = get_font(size, weight, style)
+        # ...
 ```
 
 Note that for `font-style` we need to translate CSS "normal" to Tk
@@ -1049,11 +1050,11 @@ directly sets the width or height of the layout object, or the word
 `auto`, in which case the existing layout algorithm is used.
 
 *Class Selectors*: Any HTML element can have a `class` attribute,
-whose value is a space-separated list of tags that apply to that
-element. A CSS class selector, like `.main`, affects all elements
-tagged `main`. Implement class selectors; give them priority 10.
-If you've implemented them correctly, you should see code blocks in
-this book being syntax-highlighted.
+whose value is a space-separated list of that element's classes. A CSS
+class selector, like `.main`, affects all elements with the `main`
+class. Implement class selectors; give them priority 10. If you've
+implemented them correctly, the code blocks in this book should be
+syntax-highlighted.
 
 *Display*: Right now, the `layout_mode` function relies on a
 hard-coded list of block elements. In a real browser, the `display`

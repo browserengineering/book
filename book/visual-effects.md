@@ -594,14 +594,14 @@ This is some example text.
 Implementing `border-radius` requires drawing a rounded rectangle, so
 let's add a new `DrawRRect` command:
 
-``` {.python}
+``` {.python replace=scroll%2c%20/}
 class DrawRRect:
     def __init__(self, rect, radius, color):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.color = color
 
-    def execute(self, canvas):
+    def execute(self, scroll, canvas):
         sk_color = parse_color(self.color)
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=sk_color))
