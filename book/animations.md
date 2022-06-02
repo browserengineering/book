@@ -2,7 +2,7 @@
 title: Animating and Compositing
 chapter: 13
 prev: scheduling
-next: skipped
+next: accessibility
 ...
 
 Complex web application use *animations* when transitioning between

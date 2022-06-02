@@ -14,7 +14,7 @@
         "chrome.md": { "disabled": false, "lab": "lab7.py" },
 
         "forms.md": { "disabled": false, "lab": "lab8.py", "server": "server8.py", "stylesheet": "browser8.css" },
-        "scripts.md": { "disabled": false, "lab": "lab9.py", "server": "server9.py", "runtime": "runtime9.js" },
+    "scripts.md": { "disabled": false, "lab": "lab9.py", "server": "server9.py", "runtime": "runtime9.js" },
         "security.md": { "disabled": false, "lab": "lab10.py", "server": "server10.py", "runtime": "runtime10.js" },
 
         "visual-effects.md": { "disabled": false, "lab": "lab11.py", "examples": "examples11.py", "server": "server11.py"  },
@@ -25,6 +25,7 @@
             "runtime": "runtime13.js",
             "example-opacity-html": "example13-opacity-raf.html"},
 
+        "accessibility.md": { "disabled": true, "lab": "lab14.py" },
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
         "reflow.md": { "disabled": true, "lab": "reflow-chapter.py" },
