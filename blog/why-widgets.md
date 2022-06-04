@@ -3,6 +3,7 @@ title: Why Widgets?
 author: Pavel Panchekha
 date: 22 April 2020
 prev: outlines
+next: shuhei-browser
 ...
 
 This is a different kind of blog post---perhaps you can call it a

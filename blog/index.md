@@ -6,6 +6,8 @@ main: true
 
 Writing progress, updates, and [my book on web browsers](../).
 
+- [Shuhei's Browser](shuhei-browser.md) \
+  Highlighting impressive reader browsers
 - [Why Widgets](why-widgets.md) \
   Why we're adding interactive widgets to the book
 - [Code Outlines](outlines.md) \
