@@ -61,28 +61,8 @@ from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import draw_line, draw_text, get_font, linespace, \
     parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
+from lab12 import MeasureTime
 import OpenGL.GL as GL
-
-class MeasureTime:
-    def __init__(self, name):
-        self.name = name
-        self.start_time = None
-        self.total_s = 0
-        self.count = 0
-
-    def start(self):
-        self.start_time = time.time()
-
-    def stop(self):
-        self.total_s += time.time() - self.start_time
-        self.count += 1
-        self.start_time = None
-
-    def text(self):
-        if self.count == 0: return ""
-        avg = self.total_s / self.count
-        return "Time in {} on average: {:>.0f}ms".format(
-            self.name, avg * 1000)
 
 def center_point(rect):
     return (rect.left() + (rect.right() - rect.left()) / 2,
