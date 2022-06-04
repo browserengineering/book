@@ -32,12 +32,66 @@ from lab11 import draw_line, draw_text, get_font, linespace, \
 import OpenGL.GL as GL
 from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, CSSParser, JSContext, style, \
-    clamp_scroll, CompositedLayer, absolute_bounds, draw_rect, \
+    clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, CommitData, add_parent_pointers, \
-    LineLayout, TextLayout, style_length, DrawRect, DrawRRect, \
+    LineLayout, TextLayout, style_length, DisplayItem, DrawRRect, \
     paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, REFRESH_RATE_SEC, \
     HSTEP, VSTEP
-    
+
+def parse_outline(outline_str):
+    if not outline_str:
+        return None
+    values = outline_str.split(" ")
+    if len(values) != 3:
+        return None
+    if values[1] != "solid":
+        return None
+    return (int(values[0][:-2]), values[2])
+
+
+def draw_rect(
+    canvas, rect, fill_color=None, border_color="black", width=1):
+    paint = skia.Paint()
+    if fill_color:
+        paint.setStrokeWidth(width);
+        paint.setColor(parse_color(fill_color))
+    else:
+        paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(width);
+        paint.setColor(parse_color(border_color))
+    canvas.drawRect(rect, paint)
+
+class DrawRect(DisplayItem):
+    def __init__(self, rect, border_color, fill_color=None, width=0):
+        super().__init__(rect)
+        self.border_color = border_color
+        self.fill_color = fill_color
+        self.width = width
+
+    def is_paint_command(self):
+        return True
+
+    def execute(self, canvas):
+        draw_rect(canvas, self.rect,
+            fill_color=self.fill_color,
+            border_color=self.border_color, width=self.width)
+
+    def __repr__(self):
+        return ("DrawRect(top={} left={} " +
+            "bottom={} right={} border_color={} " +
+            "fill_color={})").format(
+            self.rect.top, self.rect.left, self.rect.bottom,
+            self.rect.right, self.border_color, self.fill_color)
+
+def paint_outline(node, cmds, rect):
+    outline = parse_outline(node.style.get("outline"))
+    if outline:
+        (outline_width, outline_color) = outline
+        outline_rect = rect
+        cmds.append(DrawRect(outline_rect, border_color=outline_color,
+            width=outline_width))
+
+
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -86,10 +140,12 @@ class BlockLayout:
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor, bgcolor))
 
         for child in self.children:
             child.paint(cmds)
+
+        paint_outline(self.node, cmds, rect)
 
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
@@ -190,10 +246,12 @@ class InlineLayout:
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor, bgcolor))
  
         for child in self.children:
             child.paint(cmds)
+
+        paint_outline(self.node, cmds, rect)
 
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
@@ -221,8 +279,9 @@ class DocumentLayout:
 
     def paint(self, display_list):
         display_list.append(
-            DrawRect(self.x, self.y, self.x + self.width, self.y + self.height,
-                "white"))
+            DrawRect(skia.Rect.MakeLTRB(
+                self.x, self.y, self.x + self.width, self.y + self.height),
+                "white", "white"))
         self.children[0].paint(display_list)
 
     def __repr__(self):
@@ -848,11 +907,11 @@ class Browser:
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        draw_rect(canvas, 10, 10, 30, 30)
+        draw_rect(canvas, skia.Rect.MakeLTRB(10, 10, 30, 30))
         draw_text(canvas, 11, 4, "+", buttonfont)
 
         # Draw the URL address bar:
-        draw_rect(canvas, 40, 50, WIDTH - 10, 90)
+        draw_rect(canvas, skia.Rect.MakeLTRB(40.0, 50.0, WIDTH - 10.0, 90.0))
         if self.focus == "address bar":
             draw_text(canvas, 55, 55, self.address_bar, buttonfont)
             w = buttonfont.measureText(self.address_bar)
@@ -862,7 +921,7 @@ class Browser:
                 draw_text(canvas, 55, 55, self.url, buttonfont)
 
         # Draw the back button:
-        draw_rect(canvas, 10, 50, 35, 90)
+        draw_rect(canvas, skia.Rect.MakeLTRB(10, 50, 35, 90))
         path = \
             skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
         paint = skia.Paint(
