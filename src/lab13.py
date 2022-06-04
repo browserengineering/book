@@ -62,7 +62,8 @@ from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import draw_line, draw_text, get_font, linespace, \
     parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
 from lab12 import MeasureTime
-from lab12 import WIDTH, HEIGHT, TaskRunner, Task, REFRESH_RATE_SEC, HSTEP, VSTEP
+from lab12 import WIDTH, HEIGHT, SingleThreadedTaskRunner, TaskRunner, Task, \
+    REFRESH_RATE_SEC, HSTEP, VSTEP
 import OpenGL.GL as GL
 
 def center_point(rect):
