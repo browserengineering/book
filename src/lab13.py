@@ -62,6 +62,7 @@ from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import draw_line, draw_text, get_font, linespace, \
     parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
 from lab12 import MeasureTime
+from lab12 import WIDTH, HEIGHT, TaskRunner, Task, REFRESH_RATE_SEC, HSTEP, VSTEP
 import OpenGL.GL as GL
 
 def center_point(rect):
@@ -1339,43 +1340,6 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
-
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
-
-class Task:
-    def __init__(self, task_code, *args):
-        self.task_code = task_code
-        self.args = args
-        self.__name__ = "task"
-
-    def run(self):
-        self.task_code(*self.args)
-        self.task_code = None
-        self.args = None
-
-class SingleThreadedTaskRunner:
-    def __init__(self, tab):
-        self.tab = tab
-        self.needs_quit = False
-        self.lock = threading.Lock()
-
-    def schedule_task(self, callback):
-        callback.run()
-
-    def clear_pending_tasks(self):
-        pass
-
-    def start(self):    
-        pass
-
-    def set_needs_quit(self):
-        self.needs_quit = True
-        pass
-
-    def run(self):
-        pass
-
 class CommitData:
     def __init__(self, url, scroll, height,
         display_list, composited_updates):
@@ -1384,61 +1348,6 @@ class CommitData:
         self.height = height
         self.display_list = display_list
         self.composited_updates = composited_updates
-
-class TaskRunner:
-    def __init__(self, tab):
-        self.condition = threading.Condition()
-        self.tab = tab
-        self.tasks = []
-        self.main_thread = threading.Thread(target=self.run)
-        self.needs_quit = False
-
-    def schedule_task(self, task):
-        self.condition.acquire(blocking=True)
-        self.tasks.append(task)
-        self.condition.notify_all()
-        self.condition.release()
-
-    def set_needs_quit(self):
-        self.condition.acquire(blocking=True)
-        self.needs_quit = True
-        self.condition.notify_all()
-        self.condition.release()
-
-    def clear_pending_tasks(self):
-        self.tasks.clear()
-        self.pending_scroll = None
-
-    def start(self):
-        self.main_thread.start()
-
-    def run(self):
-        while True:
-            self.condition.acquire(blocking=True)
-            needs_quit = self.needs_quit
-            self.condition.release()
-            if needs_quit:
-                self.handle_quit()
-                return
-
-            task = None
-            self.condition.acquire(blocking=True)
-            if len(self.tasks) > 0:
-                task = self.tasks.pop(0)
-            self.condition.release()
-            if task:
-                task.run()
-
-            self.condition.acquire(blocking=True)
-            if len(self.tasks) == 0:
-                self.condition.wait()
-            self.condition.release()
-
-
-    def handle_quit(self):
-        print(self.tab.measure_render.text())
-
-REFRESH_RATE_SEC = 0.016 # 16ms
 
 def print_composited_layers(composited_layers):
     print("Composited layers:")
