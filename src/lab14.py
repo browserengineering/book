@@ -31,10 +31,13 @@ from lab11 import draw_line, draw_text, get_font, linespace, \
     parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
-from lab13 import USE_BROWSER_THREAD, CSSParser, JSContext, style, clamp_scroll, \
-    CompositedLayer, absolute_bounds, draw_rect, DrawCompositedLayer, WIDTH, HEIGHT, Task, TaskRunner, \
-    REFRESH_RATE_SEC, CommitData, add_parent_pointers, LineLayout, TextLayout
-
+from lab13 import USE_BROWSER_THREAD, CSSParser, JSContext, style, \
+    clamp_scroll, CompositedLayer, absolute_bounds, draw_rect, \
+    DrawCompositedLayer, Task, TaskRunner, CommitData, add_parent_pointers, \
+    LineLayout, TextLayout, style_length, DrawRect, DrawRRect, \
+    paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, REFRESH_RATE_SEC, \
+    HSTEP, VSTEP
+    
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -224,8 +227,6 @@ class DocumentLayout:
 
     def __repr__(self):
         return "DocumentLayout()"
-
-INPUT_WIDTH_PX = 200
 
 class InputLayout:
     def __init__(self, node, parent, previous):
