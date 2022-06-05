@@ -16,8 +16,8 @@ import threading
 import time
 import urllib.parse
 from lab4 import print_tree
-from lab13 import Text, Element
 from lab4 import HTMLParser
+from lab13 import Text, Element
 from lab6 import cascade_priority
 from lab6 import layout_mode
 from lab6 import resolve_url
@@ -34,9 +34,9 @@ from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, CSSParser, JSContext, style, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, CommitData, add_parent_pointers, \
-    LineLayout, TextLayout, style_length, DisplayItem, DrawRRect, \
-    paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, REFRESH_RATE_SEC, \
-    HSTEP, VSTEP
+    LineLayout, TextLayout, style_length, DisplayItem, DrawRRect, DrawText, \
+    DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
+    REFRESH_RATE_SEC, HSTEP, VSTEP
 
 def parse_outline(outline_str):
     if not outline_str:
@@ -47,7 +47,6 @@ def parse_outline(outline_str):
     if values[1] != "solid":
         return None
     return (int(values[0][:-2]), values[2])
-
 
 def draw_rect(
     canvas, rect, fill_color=None, border_color="black", width=1):
@@ -83,14 +82,17 @@ class DrawRect(DisplayItem):
             self.rect.top, self.rect.left, self.rect.bottom,
             self.rect.right, self.border_color, self.fill_color)
 
+def outline_cmd(rect, outline):
+    (outline_width, outline_color) = outline
+    return DrawRect(rect, border_color=outline_color,
+            width=outline_width)
+
 def paint_outline(node, cmds, rect):
     outline = parse_outline(node.style.get("outline"))
     if outline:
-        (outline_width, outline_color) = outline
-        outline_rect = rect
-        cmds.append(DrawRect(outline_rect, border_color=outline_color,
-            width=outline_width))
-
+        cmds.append(outline_cmd(rect, outline))
+    elif hasattr(node, "is_focused") and node.is_focused:
+        cmds.append(outline_cmd(rect, (2, "black")))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -339,13 +341,14 @@ class InputLayout:
         cmds.append(DrawText(self.x, self.y,
                              text, self.font, color))
 
+        paint_outline(self.node, cmds, rect)
+
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
-
 
 class Tab:
     def __init__(self, browser):
@@ -380,6 +383,7 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
+        self.focus = None
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
@@ -527,9 +531,25 @@ class Tab:
 
         self.measure_render.stop()
 
+    def apply_focus(self, node):
+        if self.focus:
+            self.focus.is_focused = None
+        self.focus = node
+        if node:
+            if node.tag == "input":
+                node.attributes["value"] = ""
+            node.is_focused = True
+
+    def activate_button(self, elt):
+        while elt:
+            if elt.tag == "form" and "action" in elt.attributes:
+                self.submit_form(elt)
+            elt = elt.parent
+        return elt
+
     def click(self, x, y):
         self.render()
-        self.focus = None
+        self.apply_focus(None)
         y += self.scroll
         objs = [obj for obj in tree_to_list(self.document, [])
                 if obj.x <= x < obj.x + obj.width
@@ -551,10 +571,7 @@ class Tab:
                 self.focus = elt
                 return
             elif elt.tag == "button":
-                while elt:
-                    if elt.tag == "form" and "action" in elt.attributes:
-                        return self.submit_form(elt)
-                    elt = elt.parent
+                elt = activate_button(self, elt)
             elt = elt.parent
 
     def submit_form(self, elt):
@@ -581,6 +598,30 @@ class Tab:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
             self.set_needs_render()
+
+    def enter(self):
+        if self.focus and self.focus.tag == "button":
+            self.activate_button(self.focus)
+
+    def is_focusable(node):
+        return node.tag == "input" or node.tag == "button" or node.tag == "a"
+
+    def advance_tab(self):
+        focusable_nodes = [node
+            for node in tree_to_list(self.nodes, [])
+            if isinstance(node, Element) and Tab.is_focusable(node)]
+        if not focusable_nodes:
+            self.apply_focus(None)
+        elif not self.focus:
+            self.apply_focus(focusable_nodes[0])
+        else:
+            i = focusable_nodes.index(self.focus)
+            if i == len(focusable_nodes) - 1:
+                self.apply_focus(None)
+                self.browser.focus_addressbar()
+            else:
+                self.apply_focus(focusable_nodes[i+1])
+        self.set_needs_render()
 
     def go_back(self):
         if len(self.history) > 1:
@@ -818,6 +859,20 @@ class Browser:
         self.set_needs_draw()
         self.lock.release()
 
+    def handle_tab(self):
+        self.focus = "content"
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.advance_tab)
+        active_tab.task_runner.schedule_task(task)
+        pass
+
+    def focus_addressbar(self):
+        self.lock.acquire(blocking=True)
+        self.focus = "address bar"
+        self.address_bar = ""
+        self.set_needs_raster()
+        self.lock.release()
+
     def clear_data(self):
         self.scroll = 0
         self.url = None
@@ -877,6 +932,11 @@ class Browser:
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster()
+        elif self.focus == "content":
+            active_tab = self.tabs[self.active_tab]
+            task = Task(active_tab.enter)
+            active_tab.task_runner.schedule_task(task)
+
         self.lock.release()
 
     def load(self, url):
@@ -1013,6 +1073,8 @@ if __name__ == "__main__":
                     browser.handle_enter()
                 elif event.key.keysym.sym == sdl2.SDLK_DOWN:
                     browser.handle_down()
+                elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                    browser.handle_tab()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
