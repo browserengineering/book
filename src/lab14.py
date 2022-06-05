@@ -519,7 +519,7 @@ class Tab:
             self.display_list = []
 
             self.document.paint(self.display_list)
-            if self.focus:
+            if self.focus and self.focus.tag == "input":
                 obj = [obj for obj in tree_to_list(self.document, [])
                         if obj.node == self.focus][0]
                 text = self.focus.attributes.get("value", "")
@@ -540,11 +540,17 @@ class Tab:
                 node.attributes["value"] = ""
             node.is_focused = True
 
-    def activate_button(self, elt):
-        while elt:
-            if elt.tag == "form" and "action" in elt.attributes:
-                self.submit_form(elt)
-            elt = elt.parent
+    def activate_element(self, elt):
+        if elt.tag == "a" and "href" in elt.attributes:
+            url = resolve_url(elt.attributes["href"], self.url)
+            self.load(url)
+            return None
+        elif elt.tag == "button":
+            while elt:
+                if elt.tag == "form" and "action" in elt.attributes:
+                    self.submit_form(elt)
+                    return None
+                elt = elt.parent
         return elt
 
     def click(self, x, y):
@@ -560,18 +566,14 @@ class Tab:
         while elt:
             if isinstance(elt, Text):
                 pass
-            elif elt.tag == "a" and "href" in elt.attributes:
-                url = resolve_url(elt.attributes["href"], self.url)
-                self.load(url)
-                return
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
                 if elt != self.focus:
                     self.set_needs_render()
                 self.focus = elt
                 return
-            elif elt.tag == "button":
-                elt = activate_button(self, elt)
+            if not activate_element(self, elt):
+                return
             elt = elt.parent
 
     def submit_form(self, elt):
@@ -600,8 +602,8 @@ class Tab:
             self.set_needs_render()
 
     def enter(self):
-        if self.focus and self.focus.tag == "button":
-            self.activate_button(self.focus)
+        if self.focus:
+            self.activate_element(self.focus)
 
     def is_focusable(node):
         return node.tag == "input" or node.tag == "button" or node.tag == "a"
