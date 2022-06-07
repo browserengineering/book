@@ -372,6 +372,8 @@ class Tab:
 
         self.composited_updates = []
 
+        self.zoom = 1.0
+
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
@@ -623,6 +625,13 @@ class Tab:
                 self.browser.focus_addressbar()
             else:
                 self.apply_focus(focusable_nodes[i+1])
+        self.set_needs_render()
+
+    def zoom_by(self, increment):
+        if increment > 0:
+            self.zoom *= 1.1;
+        else:
+            self.zoom *= 1/1.1;
         self.set_needs_render()
 
     def go_back(self):
@@ -941,6 +950,11 @@ class Browser:
 
         self.lock.release()
 
+    def handle_zoom(self, increment):
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.zoom_by, increment)
+        active_tab.task_runner.schedule_task(task)
+
     def load(self, url):
         new_tab = Tab(self)
         self.set_active_tab(len(self.tabs))
@@ -1060,6 +1074,7 @@ if __name__ == "__main__":
     browser = Browser()
     browser.load(args.url)
 
+    ctrl_down = False
     event = sdl2.SDL_Event()
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -1071,12 +1086,24 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_MOUSEBUTTONUP:
                 browser.handle_click(event.button)
             elif event.type == sdl2.SDL_KEYDOWN:
+                if ctrl_down:
+                    if event.key.keysym.sym == sdl2.SDLK_EQUALS:
+                        browser.handle_zoom(1)
+                    elif event.key.keysym.sym == sdl2.SDLK_MINUS:
+                        browser.handle_zoom(-1)
                 if event.key.keysym.sym == sdl2.SDLK_RETURN:
                     browser.handle_enter()
                 elif event.key.keysym.sym == sdl2.SDLK_DOWN:
                     browser.handle_down()
                 elif event.key.keysym.sym == sdl2.SDLK_TAB:
                     browser.handle_tab()
+                elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = True
+            elif event.type == sdl2.SDL_KEYUP:
+                if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = False
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
