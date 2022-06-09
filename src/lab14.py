@@ -34,7 +34,7 @@ from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, CSSParser, JSContext, style, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, CommitData, add_parent_pointers, \
-    LineLayout, TextLayout, style_length, DisplayItem, DrawRRect, DrawText, \
+    TextLayout, DisplayItem, DrawRRect, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP
 
@@ -105,7 +105,7 @@ class BlockLayout:
         self.width = None
         self.height = None
 
-    def layout(self):
+    def layout(self, zoom):
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
@@ -116,7 +116,7 @@ class BlockLayout:
             previous = next
 
         self.width = style_length(
-            self.node, "width", self.parent.width)
+            self.node, "width", self.parent.width, zoom)
         self.x = self.parent.x
 
         if self.previous:
@@ -125,11 +125,11 @@ class BlockLayout:
             self.y = self.parent.y
 
         for child in self.children:
-            child.layout()
+            child.layout(zoom)
 
         self.height = style_length(
             self.node, "height",
-            sum([child.height for child in self.children]))
+            sum([child.height for child in self.children]), zoom)
 
     def paint(self, display_list):
         cmds = []
@@ -168,9 +168,9 @@ class InlineLayout:
         self.height = None
         self.display_list = None
 
-    def layout(self):
+    def layout(self, zoom):
         self.width = style_length(
-            self.node, "width", self.parent.width)
+            self.node, "width", self.parent.width, zoom)
 
         self.x = self.parent.x
 
@@ -180,26 +180,26 @@ class InlineLayout:
             self.y = self.parent.y
 
         self.new_line()
-        self.recurse(self.node)
+        self.recurse(self.node, zoom)
         
         for line in self.children:
-            line.layout()
+            line.layout(zoom)
 
         self.height = style_length(
             self.node, "height",
-            sum([line.height for line in self.children]))
+            sum([line.height for line in self.children]), zoom)
 
-    def recurse(self, node):
+    def recurse(self, node, zoom):
         if isinstance(node, Text):
-            self.text(node)
+            self.text(node, zoom)
         else:
             if node.tag == "br":
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
-                self.input(node)
+                self.input(node, zoom)
             else:
                 for child in node.children:
-                    self.recurse(child)
+                    self.recurse(child, zoom)
 
     def new_line(self):
         self.previous_word = None
@@ -208,10 +208,10 @@ class InlineLayout:
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def text(self, node):
+    def text(self, node, zoom):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = float(node.style["font-size"][:-2])
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
         font = get_font(size, weight, size)
         for word in node.text.split():
             w = font.measureText(word)
@@ -223,8 +223,8 @@ class InlineLayout:
             self.previous_word = text
             self.cursor_x += w + font.measureText(" ")
 
-    def input(self, node):
-        w = INPUT_WIDTH_PX
+    def input(self, node, zoom):
+        w = device_px(INPUT_WIDTH_PX, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -233,7 +233,7 @@ class InlineLayout:
         self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = float(node.style["font-size"][:-2])
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
@@ -262,6 +262,99 @@ class InlineLayout:
         return "InlineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def layout(self, zoom):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for word in self.children:
+            word.layout(zoom)
+
+        if not self.children:
+            self.height = 0
+            return
+
+        max_ascent = max([-word.font.getMetrics().fAscent 
+                          for word in self.children])
+        baseline = self.y + 1.25 * max_ascent
+        for word in self.children:
+            word.y = baseline + word.font.getMetrics().fAscent
+        max_descent = max([word.font.getMetrics().fDescent
+                           for word in self.children])
+        self.height = 1.25 * (max_ascent + max_descent)
+
+    def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
+    def __repr__(self):
+        return "LineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
+class TextLayout:
+    def __init__(self, node, word, parent, previous):
+        self.node = node
+        self.word = word
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def layout(self, zoom):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
+        self.font = get_font(size, weight, style)
+
+        # Do not set self.y!!!
+        self.width = self.font.measureText(self.word)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+        self.height = linespace(self.font)
+
+    def paint(self, display_list):
+        color = self.node.style["color"]
+        display_list.append(
+            DrawText(self.x, self.y, self.word, self.font, color))
+    
+    def __repr__(self):
+        return "TextLayout(x={}, y={}, width={}, height={}".format(
+            self.x, self.y, self.width, self.height)
+
+
+def device_px(layout_px, zoom):
+    return layout_px * zoom
+
+def style_length(node, style_name, default_value, zoom):
+    style_val = node.style.get(style_name)
+    return device_px(float(style_val[:-2]), zoom) if style_val \
+        else default_value
+
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
@@ -269,15 +362,15 @@ class DocumentLayout:
         self.previous = None
         self.children = []
 
-    def layout(self):
+    def layout(self, zoom):
         child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
-        self.width = WIDTH - 2*HSTEP
-        self.x = HSTEP
-        self.y = VSTEP
-        child.layout()
-        self.height = child.height + 2*VSTEP
+        self.width = WIDTH - 2 * device_px(HSTEP, zoom)
+        self.x = device_px(HSTEP, zoom)
+        self.y = device_px(VSTEP, zoom)
+        child.layout(zoom)
+        self.height = child.height + 2* device_px(VSTEP, zoom)
 
     def paint(self, display_list):
         display_list.append(
@@ -301,17 +394,17 @@ class InputLayout:
         self.height = None
         self.font = None
 
-    def layout(self):
+    def layout(self, zoom):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = float(self.node.style["font-size"][:-2])
+        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
         self.width = style_length(
-            self.node, "width", INPUT_WIDTH_PX)
+            self.node, "width", device_px(INPUT_WIDTH_PX, zoom), zoom)
         self.height = style_length(
-            self.node, "height", linespace(self.font))
+            self.node, "height", linespace(self.font), zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -372,6 +465,8 @@ class Tab:
 
         self.composited_updates = []
 
+        self.zoom = 1.0
+
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
@@ -383,6 +478,7 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
+        self.zoom = 1
         self.focus = None
         self.scroll = 0
         self.scroll_changed_in_tab = True
@@ -511,7 +607,7 @@ class Tab:
 
         if self.needs_layout:
             self.document = DocumentLayout(self.nodes)
-            self.document.layout()
+            self.document.layout(self.zoom)
             self.needs_paint = True
             self.needs_layout = False
         
@@ -623,6 +719,13 @@ class Tab:
                 self.browser.focus_addressbar()
             else:
                 self.apply_focus(focusable_nodes[i+1])
+        self.set_needs_render()
+
+    def zoom_by(self, increment):
+        if increment > 0:
+            self.zoom *= 1.1;
+        else:
+            self.zoom *= 1/1.1;
         self.set_needs_render()
 
     def go_back(self):
@@ -941,6 +1044,11 @@ class Browser:
 
         self.lock.release()
 
+    def handle_zoom(self, increment):
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.zoom_by, increment)
+        active_tab.task_runner.schedule_task(task)
+
     def load(self, url):
         new_tab = Tab(self)
         self.set_active_tab(len(self.tabs))
@@ -1060,6 +1168,7 @@ if __name__ == "__main__":
     browser = Browser()
     browser.load(args.url)
 
+    ctrl_down = False
     event = sdl2.SDL_Event()
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -1071,13 +1180,25 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_MOUSEBUTTONUP:
                 browser.handle_click(event.button)
             elif event.type == sdl2.SDL_KEYDOWN:
+                if ctrl_down:
+                    if event.key.keysym.sym == sdl2.SDLK_EQUALS:
+                        browser.handle_zoom(1)
+                    elif event.key.keysym.sym == sdl2.SDLK_MINUS:
+                        browser.handle_zoom(-1)
                 if event.key.keysym.sym == sdl2.SDLK_RETURN:
                     browser.handle_enter()
                 elif event.key.keysym.sym == sdl2.SDLK_DOWN:
                     browser.handle_down()
                 elif event.key.keysym.sym == sdl2.SDLK_TAB:
                     browser.handle_tab()
-            elif event.type == sdl2.SDL_TEXTINPUT:
+                elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = True
+            elif event.type == sdl2.SDL_KEYUP:
+                if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = False
+            elif event.type == sdl2.SDL_TEXTINPUT and not ctrl_down:
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
         if not USE_BROWSER_THREAD:
