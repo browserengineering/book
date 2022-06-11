@@ -670,7 +670,7 @@ class Tab:
                     self.set_needs_render()
                 self.focus = elt
                 return
-            if not activate_element(self, elt):
+            elif not self.activate_element(elt):
                 return
             elt = elt.parent
 
@@ -990,6 +990,12 @@ class Browser:
         self.clear_data()
         self.needs_animation_frame = True
 
+    def go_back(self):
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.go_back)
+        active_tab.task_runner.schedule_task(task)
+        self.clear_data()
+
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < CHROME_PX:
@@ -999,10 +1005,7 @@ class Browser:
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
-                active_tab = self.tabs[self.active_tab]
-                task = Task(active_tab.go_back)
-                active_tab.task_runner.schedule_task(task)
-                self.clear_data()
+                self.go_back()
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
@@ -1186,6 +1189,8 @@ if __name__ == "__main__":
                         browser.handle_zoom(1)
                     elif event.key.keysym.sym == sdl2.SDLK_MINUS:
                         browser.handle_zoom(-1)
+                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+                        browser.go_back()
                 if event.key.keysym.sym == sdl2.SDLK_RETURN:
                     browser.handle_enter()
                 elif event.key.keysym.sym == sdl2.SDLK_DOWN:
