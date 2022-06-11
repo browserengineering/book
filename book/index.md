@@ -77,7 +77,7 @@ Part 4: Modern Browsers
     The event loop and the rendering pipeline
 (@) [Animating and Compositing](animations.md)\
     Smooth animations using the GPU
-(@)) [Making Content Accessible](accessibility.md)\
+(@) [Making Content Accessible](accessibility.md)\
     Keyboard input, zooming, and the accessibility tree
 
 ::: {.outro}
