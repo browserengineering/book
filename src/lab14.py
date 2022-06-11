@@ -33,7 +33,8 @@ import OpenGL.GL as GL
 from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, CSSParser, JSContext, style, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
-    DrawCompositedLayer, Task, TaskRunner, CommitData, add_parent_pointers, \
+    DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
+    CommitData, add_parent_pointers, \
     TextLayout, DisplayItem, DrawRRect, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP
@@ -78,9 +79,10 @@ class DrawRect(DisplayItem):
     def __repr__(self):
         return ("DrawRect(top={} left={} " +
             "bottom={} right={} border_color={} " +
-            "fill_color={})").format(
-            self.rect.top, self.rect.left, self.rect.bottom,
-            self.rect.right, self.border_color, self.fill_color)
+            "width={} fill_color={})").format(
+            self.rect.top(), self.rect.left(), self.rect.bottom(),
+            self.rect.right(), self.border_color,
+            self.width, self.fill_color)
 
 def outline_cmd(rect, outline):
     (outline_width, outline_color) = outline
@@ -918,7 +920,6 @@ class Browser:
             and not self.needs_raster and not self.needs_draw:
             self.lock.release()
             return
-
         self.measure_composite_raster_and_draw.start()
         start_time = time.time()
         if self.needs_composite:

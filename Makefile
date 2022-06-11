@@ -76,7 +76,7 @@ backup:
 
 test:
 	set -e; \
-	for i in $$(seq 1 13); do \
+	for i in $$(seq 1 14); do \
 		(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest lab$$i-tests.md); \
 	done
 	python3 -m doctest infra/compiler.md
