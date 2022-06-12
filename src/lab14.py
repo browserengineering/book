@@ -502,6 +502,13 @@ class InputLayout:
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
+class AccessibilityNode:
+    def __init__(self, layout_object):
+        self.layout_object = layout_object
+
+    def build(self):
+        pass
+
 class Tab:
     def __init__(self, browser):
         self.history = []
@@ -512,7 +519,11 @@ class Tab:
         self.needs_raf_callbacks = False
         self.needs_style = False
         self.needs_layout = False
+        self.needs_accessibility = False
         self.needs_paint = False
+        self.layout_tree = None
+        self.accessibility_tree = None
+
         self.browser = browser
         if USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
@@ -626,7 +637,7 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.document.height)
+        document_height = math.ceil(self.layout_tree.height)
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
@@ -665,17 +676,23 @@ class Tab:
             self.needs_style = False
 
         if self.needs_layout:
-            self.document = DocumentLayout(self.nodes)
-            self.document.layout(self.zoom)
-            self.needs_paint = True
+            self.layout_tree = DocumentLayout(self.nodes)
+            self.layout_tree.layout(self.zoom)
+            self.needs_accessibility = True
             self.needs_layout = False
+
+        if self.needs_accessibility:
+            self.accessibility_tree = AccessibilityNode(self.layout_tree)
+            self.accessibility_tree.build()
+            self.needs_accessibility = False
+            self.needs_paint = True
         
         if self.needs_paint:
             self.display_list = []
 
-            self.document.paint(self.display_list)
+            self.layout_tree.paint(self.display_list)
             if self.focus and self.focus.tag == "input":
-                obj = [obj for obj in tree_to_list(self.document, [])
+                obj = [obj for obj in tree_to_list(self.layout_tree, [])
                         if obj.node == self.focus][0]
                 text = self.focus.attributes.get("value", "")
                 x = obj.x + obj.font.measureText(text)
@@ -712,7 +729,7 @@ class Tab:
         self.render()
         self.apply_focus(None)
         y += self.scroll
-        objs = [obj for obj in tree_to_list(self.document, [])
+        objs = [obj for obj in tree_to_list(self.layout_tree, [])
                 if obj.x <= x < obj.x + obj.width
                 and obj.y <= y < obj.y + obj.height]
         if not objs: return
