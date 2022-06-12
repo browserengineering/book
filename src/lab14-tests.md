@@ -110,4 +110,7 @@ The accessibility tree is automatically created.
     >>> browser.load(focus_url)
     >>> browser.render()
     >>> lab14.print_tree(browser.tabs[0].accessibility_tree)
-     AccessibilityNode(layout_object=DocumentLayout()
+     AccessibilityNode(node=<html> role=document
+       AccessibilityNode(node=<input> role=textbox
+       AccessibilityNode(node=<a href="/dest"> role=link
+         AccessibilityNode(node='Link' role=link

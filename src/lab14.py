@@ -316,6 +316,9 @@ class LineLayout:
         if focused_node:
             paint_outline(focused_node, display_list, outline_rect)
 
+    def role(self):
+        return "none"
+
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
@@ -502,19 +505,45 @@ class InputLayout:
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
+def compute_role(node):
+    if isinstance(node, Text):
+        if node.parent.tag == "a":
+            return "link"
+        else:
+            return "StaticText"
+    else:
+        if node.tag == "a":
+            return "link"
+        elif node.tag == "input":
+            return "textbox"
+        elif node.tag == "html":
+            return "document"
+        else:
+            return "none"
+
 class AccessibilityNode:
-    def __init__(self, layout_object):
-        self.layout_object = layout_object
-        self.parent = None
+    def __init__(self, node):
+        self.node = node
         self.previous = None
         self.children = []
 
     def build(self):
+        for child_node in self.node.children:
+            AccessibilityNode.build_internal(child_node, self)
         pass
 
+    def build_internal(node, parent):
+        role = compute_role(node)
+        if role != "none":
+            child = AccessibilityNode(node)
+            parent.children.append(child)
+            parent = child
+        for child_node in node.children:
+            AccessibilityNode.build_internal(child_node, parent)
+
     def __repr__(self):
-        return "AccessibilityNode(layout_object={}".format(
-            str(self.layout_object))
+        return "AccessibilityNode(node={} role={}".format(
+            str(self.node), compute_role(self.node))
 
 class Tab:
     def __init__(self, browser):
@@ -689,7 +718,7 @@ class Tab:
             self.needs_layout = False
 
         if self.needs_accessibility:
-            self.accessibility_tree = AccessibilityNode(self.layout_tree)
+            self.accessibility_tree = AccessibilityNode(self.nodes)
             self.accessibility_tree.build()
             self.needs_accessibility = False
             self.needs_paint = True
