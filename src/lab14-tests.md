@@ -36,16 +36,62 @@ An outline causes a `DrawRect` with the given width and color:
     ... b"content-type: text/css\r\n\r\n" +
     ... b"div { width: 30px; height: 40px; outline: 3px solid red; }")
 
-    >>> test_url = 'http://test.test/'
-    >>> test.socket.respond(test_url, b"HTTP/1.0 200 OK\r\n" +
+    >>> outline_url = 'http://test.test/'
+    >>> test.socket.respond(outline_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n" +
     ... b"<link rel=stylesheet href='/styles.css'>" +
     ... b'<div></div>')
 
     >>> browser = lab14.Browser()
-    >>> browser.load(test_url)
+    >>> browser.load(outline_url)
     >>> browser.render()
 
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      DrawRect(top=18.0 left=13.0 bottom=94.0 right=787.0 border_color=white width=0 fill_color=white)
      DrawRect(top=18.0 left=13.0 bottom=58.0 right=43.0 border_color=red width=3 fill_color=None)
+
+Focus
+=====
+
+    >>> focus_url = 'http://test.test/focus'
+    >>> test.socket.respond(focus_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b'<input><a href="/dest">Link</a>')
+
+    >>> browser = lab14.Browser()
+    >>> browser.load(focus_url)
+    >>> browser.render()
+
+On load, nothing is focused:
+
+    >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
+     DrawRect(top=18.0 left=13.0 bottom=76.34375 right=787.0 border_color=white width=0 fill_color=white)
+     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawText(text=)
+     DrawText(text=Link)
+
+But pressing `tab` will focus first the `input` and then the `a` element.
+
+    >>> browser.handle_tab()
+    >>> browser.render()
+
+The 2px wide black display list command is the focus ring for the `input`:
+
+    >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
+     DrawRect(top=18.0 left=13.0 bottom=76.34375 right=787.0 border_color=white width=0 fill_color=white)
+     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawText(text=)
+     DrawRect(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=black width=2 fill_color=None)
+     DrawText(text=Link)
+     DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
+
+And now it's for the `a`:
+
+    >>> browser.handle_tab()
+    >>> browser.render()
+    >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
+     DrawRect(top=18.0 left=13.0 bottom=76.34375 right=787.0 border_color=white width=0 fill_color=white)
+     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawText(text=)
+     DrawText(text=Link)
+     DrawRect(top=21.62109375 left=217.0 bottom=39.49609375 right=247.0 border_color=black width=2 fill_color=None)

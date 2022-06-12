@@ -140,6 +140,10 @@ class DrawLine(DisplayItem):
     def execute(self, canvas):
         draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
 
+    def __repr__(self):
+        return "DrawLine top={} left={} bottom={} right={}".format(
+            self.y1, self.x1, self.y2, self.x2)
+
 class DrawRRect(DisplayItem):
     def __init__(self, rect, radius, color):
         super().__init__(rect)

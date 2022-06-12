@@ -35,7 +35,7 @@ from lab13 import USE_BROWSER_THREAD, CSSParser, JSContext, style, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
     CommitData, add_parent_pointers, \
-    TextLayout, DisplayItem, DrawRRect, DrawText, \
+    DisplayItem, DrawRRect, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP
 
@@ -88,6 +88,11 @@ def outline_cmd(rect, outline):
     (outline_width, outline_color) = outline
     return DrawRect(rect, border_color=outline_color,
             width=outline_width)
+
+def is_focused(node):
+    if isinstance(node, Text):
+        node = node.parent
+    return hasattr(node, "is_focused") and node.is_focused
 
 def paint_outline(node, cmds, rect):
     outline = parse_outline(node.style.get("outline"))
@@ -144,7 +149,7 @@ class BlockLayout:
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
 
         for child in self.children:
             child.paint(cmds)
@@ -250,12 +255,10 @@ class InlineLayout:
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
             child.paint(cmds)
-
-        paint_outline(self.node, cmds, rect)
 
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
@@ -301,8 +304,17 @@ class LineLayout:
         self.height = 1.25 * (max_ascent + max_descent)
 
     def paint(self, display_list):
+        outline_rect = skia.Rect.MakeEmpty()
+        focused_node = None
         for child in self.children:
+            node = child.node
+            if isinstance(node, Text) and is_focused(node.parent):
+                focused_node = node.parent
+                outline_rect.join(child.rect())
             child.paint(display_list)
+
+        if focused_node:
+            paint_outline(focused_node, display_list, outline_rect)
 
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={})".format(
@@ -383,6 +395,51 @@ class DocumentLayout:
 
     def __repr__(self):
         return "DocumentLayout()"
+
+class TextLayout:
+    def __init__(self, node, word, parent, previous):
+        self.node = node
+        self.word = word
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def layout(self, zoom):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
+        self.font = get_font(size, weight, style)
+
+        # Do not set self.y!!!
+        self.width = self.font.measureText(self.word)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+        self.height = linespace(self.font)
+
+    def paint(self, display_list):
+        color = self.node.style["color"]
+        display_list.append(
+            DrawText(self.x, self.y, self.word, self.font, color))
+
+    def rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+    
+    def __repr__(self):
+        return "TextLayout(x={}, y={}, width={}, height={}".format(
+            self.x, self.y, self.width, self.height)
 
 class InputLayout:
     def __init__(self, node, parent, previous):
@@ -730,6 +787,10 @@ class Tab:
             self.zoom *= 1/1.1;
         self.set_needs_render()
 
+    def reset_zoom(self):
+        self.zoom = 1
+        self.set_needs_render()
+
     def go_back(self):
         if len(self.history) > 1:
             self.history.pop()
@@ -1048,9 +1109,14 @@ class Browser:
 
         self.lock.release()
 
-    def handle_zoom(self, increment):
+    def increment_zoom(self, increment):
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.zoom_by, increment)
+        active_tab.task_runner.schedule_task(task)
+
+    def reset_zoom(self):
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.reset_zoom)
         active_tab.task_runner.schedule_task(task)
 
     def load(self, url):
@@ -1186,11 +1252,13 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                     if event.key.keysym.sym == sdl2.SDLK_EQUALS:
-                        browser.handle_zoom(1)
+                        browser.increment_zoom(1)
                     elif event.key.keysym.sym == sdl2.SDLK_MINUS:
-                        browser.handle_zoom(-1)
+                        browser.increment_zoom(-1)
                     elif event.key.keysym.sym == sdl2.SDLK_LEFT:
                         browser.go_back()
+                    elif event.key.keysym.sym == sdl2.SDLK_0:
+                        browser.reset_zoom()
                 if event.key.keysym.sym == sdl2.SDLK_RETURN:
                     browser.handle_enter()
                 elif event.key.keysym.sym == sdl2.SDLK_DOWN:
