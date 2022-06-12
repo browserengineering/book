@@ -95,3 +95,19 @@ And now it's for the `a`:
      DrawText(text=)
      DrawText(text=Link)
      DrawRect(top=21.62109375 left=217.0 bottom=39.49609375 right=247.0 border_color=black width=2 fill_color=None)
+
+Accessibility
+=============
+
+The accessibility tree is automatically created
+
+    >>> focus_url = 'http://test.test/focus'
+    >>> test.socket.respond(focus_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b'<input><a href="/dest">Link</a>')
+
+    >>> browser = lab14.Browser()
+    >>> browser.load(focus_url)
+    >>> browser.render()
+    >>> lab14.print_tree(browser.tabs[0].accessibility_tree)
+     AccessibilityNode(layout_object=DocumentLayout()

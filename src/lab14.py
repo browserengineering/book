@@ -505,9 +505,16 @@ class InputLayout:
 class AccessibilityNode:
     def __init__(self, layout_object):
         self.layout_object = layout_object
+        self.parent = None
+        self.previous = None
+        self.children = []
 
     def build(self):
         pass
+
+    def __repr__(self):
+        return "AccessibilityNode(layout_object={}".format(
+            str(self.layout_object))
 
 class Tab:
     def __init__(self, browser):
