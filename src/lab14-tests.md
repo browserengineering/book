@@ -99,7 +99,7 @@ And now it's for the `a`:
 Accessibility
 =============
 
-The accessibility tree is automatically created
+The accessibility tree is automatically created.
 
     >>> focus_url = 'http://test.test/focus'
     >>> test.socket.respond(focus_url, b"HTTP/1.0 200 OK\r\n" +
