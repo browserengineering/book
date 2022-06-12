@@ -99,7 +99,7 @@ def paint_outline(node, cmds, rect):
     if outline:
         cmds.append(outline_cmd(rect, outline))
     elif hasattr(node, "is_focused") and node.is_focused:
-        cmds.append(outline_cmd(rect, (2, "black")))       
+        cmds.append(outline_cmd(rect, (2, "black")))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
