@@ -816,10 +816,14 @@ class Tab:
     def is_focusable(node):
         return node.tag == "input" or node.tag == "button" or node.tag == "a"
 
+    def get_tabindex(node):
+        return int(node.attributes.get("tabindex", 9999999))
+
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
             if isinstance(node, Element) and Tab.is_focusable(node)]
+        focusable_nodes.sort(key=Tab.get_tabindex)
         if not focusable_nodes:
             self.apply_focus(None)
         elif not self.focus:
