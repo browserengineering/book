@@ -1295,8 +1295,8 @@ if __name__ == "__main__":
     browser = Browser()
     browser.load(args.url)
 
-    ctrl_down = False
     event = sdl2.SDL_Event()
+    ctrl_down = False
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             if event.type == sdl2.SDL_QUIT:
@@ -1312,10 +1312,10 @@ if __name__ == "__main__":
                         browser.increment_zoom(1)
                     elif event.key.keysym.sym == sdl2.SDLK_MINUS:
                         browser.increment_zoom(-1)
-                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
-                        browser.go_back()
                     elif event.key.keysym.sym == sdl2.SDLK_0:
                         browser.reset_zoom()
+                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+                        browser.go_back()
                 if event.key.keysym.sym == sdl2.SDLK_RETURN:
                     browser.handle_enter()
                 elif event.key.keysym.sym == sdl2.SDLK_DOWN:
