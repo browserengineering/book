@@ -7,25 +7,25 @@ next: skipped
 
 It's important for everyone to be able to access content on the web, even if you
 have a hard time using a mouse, can't read small fonts easily, are triggered by
-very bright colors, or can't see a computer screen at all. It turns out that,
-without too much more effort, our browser can address all of these problems,
-through a variety of User Agent features that alonw the user to customize the
-browser to meet their accessibilty needs.
+very bright colors, or can't see a computer screen at all. Browsers have
+features aimed at all of these use cases, taking advantage of the fact
+that web pages declare the UI and allow the browser to manipulate it on behalf
+of the user.
 
 Text zoom
 =========
 
-Let's start with the simplest, and perhaps most common accessibility problem:
-reading words that have too small of a font. Almost all of us will face this
-problem sooner or later, as our eyes become more weak with age. There are
-multiple ways to do this, but the simplest and most effective is simply
-increasing the size of fonts via a feature called zoom---like a camera zooming
-in on a scene. Let's try that.
+Let's start with the simplest accessibility problem: words on the screen that
+are too small to read. In fact, it's also probably the most common as well---
+almost all of us will face this problem sooner or later, as our eyes become
+weaker with age. There are multiple ways to address this problem, but the
+simplest and most effective is simply increasing font sizes. This approach
+is called text zoom---like a camera zooming in on a scene. Let's implement it.
 
-Let's bind the `ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to
-zooming out, and `ctrl-zero` to reset. The `zoom` of the browser wll start at
-1. Zooming in and out will increase or decrease this number. Then we'll use the
-number to multiply the sizes of all of the fonts on the page.
+ind the `ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to zooming out,
+and `ctrl-zero` to reset. A new `zoom` property on `Browser` wll start at `1`.
+Zooming in and out will increase or decrease `zoom`. Then we'll use the
+multiply the sizes of all of the fonts on the page by `zoom` as well.
 
 Binding these keystrokes in the browser main loop involves watching for when the
 `ctrl` key is pressed and released:
@@ -65,7 +65,7 @@ browser:
              	# ...
 ```
 
-The `Browser` code just delegate to the `Tab`:
+The `Browser` code just delegates to the `Tab`:
 
 ``` {.python}
 class Browser:
@@ -81,7 +81,8 @@ class Browser:
         active_tab.task_runner.schedule_task(task)
 ```
 
-which in turn changes `zoom` and re-renders:
+which in turn changes `zoom`---let's increase or decrease by a
+factor of 1.1, because that looks reasonable on the screen---and re-renders:
 
 ``` {.python}
 class Tab:
@@ -113,8 +114,9 @@ class Tab:
 ```
 
 And within each layout class type pass around `zoom` as well; whenever a font is
-found, override the font size to account for zoom. To update that zoom let's
-use a helper method that coverts from a *layout pixel* to a *device pixel* by
+found, override the font size to account for zoom. To make that easier, add a
+helper method that converts from a *layout pixel* (the units specified in a CSS
+declaration) to a *device pixel* (what's actually drawn on the screen) by
 multiplying by zoom:
 
 ``` {.python}
@@ -123,7 +125,7 @@ def device_px(layout_px, zoom):
 ```
 
 Finally, there are a bunch of small changes to the `layout` methods. First
-`BlockLayot`, `LineLayout` and `DocumentLayout`, which just pass on the zoom
+`BlockLayout`, `LineLayout` and `DocumentLayout`, which just pass on the zoom
 to children:
 
 ``` {.python}
@@ -148,7 +150,7 @@ class DocumentLayout:
 ```
 
 `InlineLayout` is where it starts to get interesting. First some regular
-plubming happens:
+plumbing happens:
 
 ``` {.python}
 class InlineLayout:
@@ -176,6 +178,8 @@ But when we get to the `text` and `input` methods, the font sizes should be
 adjusted:
 
 ``` {.python}
+class InlineLayout:
+	# ....
     def text(self, node, zoom):
     	# ...
         size = device_px(float(node.style["font-size"][:-2]), zoom)
@@ -184,8 +188,155 @@ adjusted:
 	    # ...
         size = device_px(float(node.style["font-size"][:-2]), zoom)
 ```
-`
 
+`TextLayout` also has some code to edit:
+
+``` {.python}
+class TextLayout:
+	# ...
+    def layout(self, zoom):
+    	# ...
+        size = device_px(
+        	float(self.node.style["font-size"][:-2]), zoom)
+```
+
+Now try it out! All of the fonts should be get about 10% bigger each time you
+press `ctrl-plus`, and the opposite with `ctrl-minus`. This is great for
+reading text more easily.
+
+But you'll quickly notice that there is a big problem with this approach: pretty
+soon the text starts overflowing its container, and even worse gets cut off at
+the edge of the screen. That's quite bad actually---we traded one accessibility
+improvement in one area (you can read the text) for a loss in another(you can't
+even see all the text!).
+
+How can we fix this? Well, it turns out we shouldn't just increase the size
+of fonts, but *also* the sizes of every other CSS pixel defined in `layout`.
+We should essentially run the same layout algorithm we have, but with each
+device pixel measurement larger by a a factor of `zoom`. This will automatically
+cause inline text and content to wrap when it gets to the edge of the screen,
+and not grow beyond.
+
+For example, change `DocumentLayout` to adjust `HSTEP` and `VSTEP`---which are
+in CSS pixels---to account for `zoom`:
+
+``` {.python}
+class DocumentLayout:
+	# ...
+    def layout(self, zoom):
+    	# ...
+        self.width = WIDTH - 2 * device_px(HSTEP, zoom)
+        self.x = device_px(HSTEP, zoom)
+        self.y = device_px(VSTEP, zoom)
+        child.layout(zoom)
+        self.height = child.height + 2* device_px(VSTEP, zoom)
+
+```
+
+Likewise, the `width` and `height` CSS properties need to be converted. In this
+case, pass `zoom` to style_length as a new parameter for convenience:
+
+``` {.python}
+def style_length(node, style_name, default_value, zoom):
+    style_val = node.style.get(style_name)
+    return device_px(float(style_val[:-2]), zoom) if style_val \
+        else default_value
+```
+
+Then use it:
+
+``` {.python expected=False}
+class BlockLayout:
+	# ...
+    def layout(self, zoom):
+    	# ...
+        self.width = style_length(
+            self.node, "width", self.parent.width, zoom)
+        # ...
+        self.height = style_length(
+            self.node, "height",
+            sum([child.height for child in self.children]), zoom)
+```
+
+``` {.python}
+class InlineLayout:
+	# ...
+    def layout(self, zoom):
+        self.width = style_length(
+            self.node, "width", self.parent.width, zoom)
+        # ...
+        self.height = style_length(
+            self.node, "height",
+            sum([line.height for line in self.children]), zoom)
+```
+
+``` {.python}
+class InputLayout:
+	# ...
+    def layout(self, zoom):
+		# ...
+		self.width = style_length(
+            self.node, "width", device_px(INPUT_WIDTH_PX, zoom), zoom)
+        self.height = style_length(
+            self.node, "height", linespace(self.font), zoom)
+```
+
+And `InlineLayout` also has a fixed `INPUT_WIDTH_PX` CSS pixels value that needs
+to be adjusted:
+
+``` {.python }
+class InlineLayout:
+	# ...
+    def input(self, node, zoom):
+        w = device_px(INPUT_WIDTH_PX, zoom)	
+```
+
+Now fire up the browser and try to zoom some pages. Everything should layout
+quite well!
+
+::: {.further}
+
+TODO: `zoom` css property; device pixel scale and interpreting as zoom.
+
+:::
+
+Keyboard navigation
+===================
+
+Implement visual focus rings via the CSS outline property
+Define ‘focusable’ elements
+Implement the focus pseudoclass
+Implement ‘tab’ to rotate among focusable elements
+Implement tabindex to control tab order
+
+Implement ‘enter’ to cause a button click.
+Implement shortcut to focus the URL bar.
+Implement keyboard back-button
+
+Dark mode
+=========
+
+Voice navigation
+================
+
+Introduce accessibility tech
+Implement the accessibility tree
+Introduce the concept of implicit accessibility semantics, such as via form controls or links
+Integrate with NVDA
+Demonstrate how to run the browser and interact with web pages with the same tool
+
+Section 7: aria labels, modifications of the accessibility tree
+pIntroduce one or two
+Introduce concept of alternate text, with anchor link text as an example
+Augment the accessibility tree via them
+Implement display: none
+Implement inert
+
+OS integrations:
+https://www.w3.org/TR/accname-1.2/
+https://www.w3.org/TR/core-aam-1.2/
+https://www.w3.org/TR/html-aam-1.0/
+https://www.w3.org/TR/svg-aam-1.0/
 
 Section 1: what is accessibility (link to authoritative texts), what kinds of accessibility APIs exist. Keep it focused on what exists in browsers and how they work.
 
@@ -202,43 +353,6 @@ Caret browsing [Just a simulated mouse, not that important to show how to implem
 Other mouse features like visual indications for mouse etc
 Autofill [Leave to exercise]
 
-
-Section 2: focus indicators; tab order
-
-Implement visual focus rings via the CSS outline property
-Define ‘focusable’ elements
-Implement the focus pseudoclass
-Implement ‘tab’ to rotate among focusable elements
-Implement tabindex to control tab order
-
-Section 3: keyboard interactions generally
-Implement ‘enter’ to cause a button click.
-Implement shortcut to focus the URL bar.
-Implement keyboard back-button
-
-Section 4: text zooming
-Implement zooming of css pixels and how it affects layout
-Add a keyboard shortcut for ctrl-+/-
-
-Section 5: voice interaction
-Introduce accessibility tech
-Implement the accessibility tree
-Introduce the concept of implicit accessibility semantics, such as via form controls or links
-Integrate with NVDA
-Demonstrate how to run the browser and interact with web pages with the same tool
-
-Section 7: aria labels, modifications of the accessibility tree
-Introduce one or two
-Introduce concept of alternate text, with anchor link text as an example
-Augment the accessibility tree via them
-Implement display: none
-Implement inert
-
-OS integrations:
-https://www.w3.org/TR/accname-1.2/
-https://www.w3.org/TR/core-aam-1.2/
-https://www.w3.org/TR/html-aam-1.0/
-https://www.w3.org/TR/svg-aam-1.0/
 
 
 

@@ -323,47 +323,6 @@ class LineLayout:
         return "LineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
-class TextLayout:
-    def __init__(self, node, word, parent, previous):
-        self.node = node
-        self.word = word
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
-    def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
-        self.font = get_font(size, weight, style)
-
-        # Do not set self.y!!!
-        self.width = self.font.measureText(self.word)
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-
-        self.height = linespace(self.font)
-
-    def paint(self, display_list):
-        color = self.node.style["color"]
-        display_list.append(
-            DrawText(self.x, self.y, self.word, self.font, color))
-    
-    def __repr__(self):
-        return "TextLayout(x={}, y={}, width={}, height={}".format(
-            self.x, self.y, self.width, self.height)
-
-
 def device_px(layout_px, zoom):
     return layout_px * zoom
 
@@ -416,7 +375,8 @@ class TextLayout:
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
         # Do not set self.y!!!
