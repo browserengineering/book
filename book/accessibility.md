@@ -178,6 +178,8 @@ But when we get to the `text` and `input` methods, the font sizes should be
 adjusted:
 
 ``` {.python}
+class InlineLayout:
+	# ....
     def text(self, node, zoom):
     	# ...
         size = device_px(float(node.style["font-size"][:-2]), zoom)
@@ -243,18 +245,20 @@ def style_length(node, style_name, default_value, zoom):
 
 Then use it:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
 	# ...
     def layout(self, zoom):
     	# ...
         self.width = style_length(
             self.node, "width", self.parent.width, zoom)
-
+        # ...
         self.height = style_length(
             self.node, "height",
             sum([child.height for child in self.children]), zoom)
+```
 
+``` {.python}
 class InlineLayout:
 	# ...
     def layout(self, zoom):
@@ -264,8 +268,11 @@ class InlineLayout:
         self.height = style_length(
             self.node, "height",
             sum([line.height for line in self.children]), zoom)
+```
 
+``` {.python}
 class InputLayout:
+	# ...
     def layout(self, zoom):
 		# ...
 		self.width = style_length(
@@ -274,11 +281,11 @@ class InputLayout:
             self.node, "height", linespace(self.font), zoom)
 ```
 
-And `InputLayout` also has a fixed `INPUT_WIDTH_PX` CSS pixels value that needs
+And `InlineLayout` also has a fixed `INPUT_WIDTH_PX` CSS pixels value that needs
 to be adjusted:
 
-``` {.python}
-class InputLayout:
+``` {.python }
+class InlineLayout:
 	# ...
     def input(self, node, zoom):
         w = device_px(INPUT_WIDTH_PX, zoom)	
