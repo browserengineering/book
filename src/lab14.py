@@ -159,7 +159,7 @@ class BlockLayout:
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
-    def __repr__(self):p
+    def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.x, self.width, self.height)
 
