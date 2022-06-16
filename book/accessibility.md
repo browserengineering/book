@@ -6,11 +6,11 @@ next: skipped
 ...
 
 It's important for everyone to be able to access content on the web, even if you
-have a hard time using a mouse, can't read small fonts easily, are triggered by
-very bright colors, or can't see a computer screen at all. Browsers have
-features aimed at all of these use cases, taking advantage of the fact
-that web pages declare the UI and allow the browser to manipulate it on behalf
-of the user.
+have a hard time reading small text, can't or don't want ot use a mouse, are
+triggered by very bright colors, or can't see a computer screen at all.
+Browsers have features aimed at all of these use cases, taking advantage of the
+fact that web pages declare the UI and allow the browser to manipulate it on
+behalf of the user.
 
 Text zoom
 =========
@@ -302,6 +302,92 @@ TODO: `zoom` css property; device pixel scale and interpreting as zoom.
 
 Keyboard navigation
 ===================
+
+Our browser is currently mouse-only.^[Except for scrolling.] This is
+problematic, because there are a number of reasons why users might want to use
+the keyboard to interact instead, such as physical inability, injury to the
+hand or arm from too much movement, or simply a power user that finds keyboards
+more efficient than mice.
+
+Let's add keyboard equivalents to all of the mouse interactions. This includes
+browser chrome interactions such as the back button, typing a URL, or quitting
+the browser, as well as web page ones such as clicking on buttons, typing
+input, and navigating links.
+
+Most of these interactions are built on top of an expanded implementation of
+*focus*. We already have a `focus` property on each `Tab` (indicating whether
+an `input` element should be capturing keyboard input, and on the `Browser`
+to indicate if the browser chrome is doing so instead. Let's expand on that
+notion to allow buttons and links to capture input as well. When one of them
+is focused and the user presses `enter`, then the button will be clicked
+or the link navigated.
+
+``` {.python}
+class Browser:
+	# ...
+    def handle_enter(self):
+    	# ...
+        elif self.focus == "content":
+            active_tab = self.tabs[self.active_tab]
+            task = Task(active_tab.enter)
+            active_tab.task_runner.schedule_task(task)
+        # ...
+```
+
+Let's call the act of pressing a button or navigating a link *activating* that
+element:
+
+``` {.python}
+class Tab:
+	# ...
+    def activate_element(self, elt):
+        if elt.tag == "a" and "href" in elt.attributes:
+            url = resolve_url(elt.attributes["href"], self.url)
+            self.load(url)
+            return None
+        elif elt.tag == "button":
+            while elt:
+                if elt.tag == "form" and "action" in elt.attributes:
+                    self.submit_form(elt)
+                    return None
+                elt = elt.parent
+        return elt
+
+    def enter(self):
+        if self.focus:
+            self.activate_element(self.focus)	
+```
+
+With these methods, we can avoid a bit of dulicated code in `click`, which
+of course also handles the activation concept (but via the mouse):
+
+``` {.python}
+class Tab:
+	# ...
+	def click(self, x, y):
+		 # ...
+        while elt:
+            if isinstance(elt, Text):
+                pass
+            elif elt.tag == "input":
+                elt.attributes["value"] = ""
+                if elt != self.focus:
+                    self.set_needs_render()
+                self.focus = elt
+                return
+            elif not self.activate_element(elt):
+                return
+            elt = elt.parent
+```
+
+Focus is also currently set only via a mouse click, so we need to also introduce
+a keyboard way to cycle through all of the focusable elements in the browser.
+We'll implement this via the `tab` key: each time `tab` is presseed, we'll
+advance focus to the next thing in order.
+
+There is a third aspect though: if focus is caused by the keyboard, the user
+needs to know what actually has focus. This is done with a *focus ring*---a
+visual outline around an element that lets the user know what is focused.
 
 Implement visual focus rings via the CSS outline property
 Define ‘focusable’ elements
