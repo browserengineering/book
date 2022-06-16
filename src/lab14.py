@@ -1123,7 +1123,6 @@ class Browser:
             active_tab = self.tabs[self.active_tab]
             task = Task(active_tab.enter)
             active_tab.task_runner.schedule_task(task)
-
         self.lock.release()
 
     def increment_zoom(self, increment):
@@ -1276,7 +1275,12 @@ if __name__ == "__main__":
                         browser.reset_zoom()
                     elif event.key.keysym.sym == sdl2.SDLK_LEFT:
                         browser.go_back()
-                if event.key.keysym.sym == sdl2.SDLK_RETURN:
+                    elif event.key.keysym.sym == sdl2.SDLK_q:
+                        browser.handle_quit()
+                        sdl2.SDL_Quit()
+                        sys.exit()
+                        break
+                elif event.key.keysym.sym == sdl2.SDLK_RETURN:
                     browser.handle_enter()
                 elif event.key.keysym.sym == sdl2.SDLK_DOWN:
                     browser.handle_down()
