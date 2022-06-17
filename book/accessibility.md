@@ -382,12 +382,166 @@ class Tab:
 
 Focus is also currently set only via a mouse click, so we need to also introduce
 a keyboard way to cycle through all of the focusable elements in the browser.
-We'll implement this via the `tab` key: each time `tab` is presseed, we'll
-advance focus to the next thing in order.
+We'll implement this via the `tab` key:
+
+``` {.python}
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+        	# ...
+            elif event.type == sdl2.SDL_KEYDOWN:
+                elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                    browser.handle_tab()
+```
+
+``` {.python}
+class Browser:
+	# ...
+    def handle_tab(self):
+        self.focus = "content"
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.advance_tab)
+        active_tab.task_runner.schedule_task(task)
+        pass	
+```
+
+Each time `tab` is presseed, we'll advance focus to the next thing in order.
+This will first require a definition of which elements are focusable:
+
+``` {.python}
+    def is_focusable(node):
+        return node.tag == "input" or node.tag == "button" or node.tag == "a"
+```
+
+And then each iterating through them. When `tab` is pressed and we're at the
+end of the focusable list, focus the addressbar:
+
+``` {.python}
+class Tab:
+    def advance_tab(self):
+        focusable_nodes = [node
+            for node in tree_to_list(self.nodes, [])
+            if isinstance(node, Element) and Tab.is_focusable(node)]
+        if not focusable_nodes:
+            self.apply_focus(None)
+        elif not self.focus:
+            self.apply_focus(focusable_nodes[0])
+        else:
+            i = focusable_nodes.index(self.focus)
+            if i < len(focusable_nodes) - 1:
+                self.apply_focus(focusable_nodes[i+1])
+            else:
+                self.apply_focus(None)
+                self.browser.focus_addressbar()
+        self.set_needs_render()
+```
+
+Setting focus works like this:
+
+``` {.python}
+    def apply_focus(self, node):
+        if self.focus:
+            self.focus.is_focused = None
+        self.focus = node
+        if node:
+            if node.tag == "input":
+                node.attributes["value"] = ""
+            node.is_focused = True
+```
+
+which by the way should also be used from `click`:
+
+``` {.python}
+    def click(self, x, y):
+        self.render()
+        self.apply_focus(None)
+```
+
+
+And `focus_addressbar` is like this:
+
+``` {.python}
+class Browser:
+	# ...
+    def focus_addressbar(self):
+        self.lock.acquire(blocking=True)
+        self.focus = "address bar"
+        self.address_bar = ""
+        self.set_needs_raster()
+        self.lock.release()
+```
 
 There is a third aspect though: if focus is caused by the keyboard, the user
 needs to know what actually has focus. This is done with a *focus ring*---a
 visual outline around an element that lets the user know what is focused.
+
+We'll do this by painting a `2px` wide black rectangle around the element that
+is focused. This requires some code in various `paint` methods plus this
+helper:
+
+``` {.python expected=False}
+def paint_outline(node, cmds, rect):
+    if hasattr(node, "is_focused") and node.is_focused:
+        cmds.append(outline_cmd(rect, (2, "black")))
+```
+
+which is called in `BlockLayout` (note how it's after painting children, but
+before visual effects):
+
+``` {.python}
+class BlockLayout:
+	# ...
+	def paint(self, display_list):
+		# ...
+        for child in self.children:
+            child.paint(cmds)
+
+        paint_outline(self.node, cmds, rect)
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+```
+
+And `InputLayout` is similar:
+
+``` {.python}
+class InputLayout:
+	# ...
+	def paint(self, display_list):
+		# ...
+        paint_outline(self.node, cmds, rect)
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+```
+
+But for inline layout, the situation is more complicated, for two reasons. The
+first is that the painting of each inline element is broken into runs of
+text, and can span multiple lines. So it's not even just one rectanglle; if an
+`<a>` element's anchor text spans multiple lines, we should paint one rectangle
+for each text run in each line.
+
+The second complication is that there is not necessarily a layout object
+corresponding exactly to an `<a>` element, if there is other text or an
+`<input>` on the same line.
+
+We'll solve both of these problems `LineLayout` (recall there is one of these
+for each line of an `InlineLayout`), and union the rects of all children
+that are for `Text` node child of a focused parent.
+
+``` {.python}
+class LineLayout:
+	# ...
+    def paint(self, display_list):
+    	# ...
+        focused_node = None
+        for child in self.children:
+            node = child.node
+            if isinstance(node, Text) and is_focused(node.parent):
+                focused_node = node.parent
+                outline_rect.join(child.rect())
+        # ...
+        if focused_node:
+            paint_outline(focused_node, display_list, outline_rect)
+
+```
 
 Implement visual focus rings via the CSS outline property
 Define ‘focusable’ elements

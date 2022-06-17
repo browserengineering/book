@@ -790,11 +790,11 @@ class Tab:
             self.apply_focus(focusable_nodes[0])
         else:
             i = focusable_nodes.index(self.focus)
-            if i == len(focusable_nodes) - 1:
+            if i < len(focusable_nodes) - 1:
+                self.apply_focus(focusable_nodes[i+1])
+            else:
                 self.apply_focus(None)
                 self.browser.focus_addressbar()
-            else:
-                self.apply_focus(focusable_nodes[i+1])
         self.set_needs_render()
 
     def zoom_by(self, increment):
