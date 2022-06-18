@@ -214,7 +214,7 @@ class InlineLayout:
 
 But actually, there are a couple more complications due to the way we decided
 to resolve the block-mixed-with-inline-siblings problem
-(see [Chapter 4](html.md#layout-modes). One is that if there are no children
+(see [Chapter 5](layout.md#layout-modes)). One is that if there are no children
 for a node, we assume it's a block element. But `<input>` elements don't
 have children. We can fix that with this change to `layout_mode`:
 
@@ -254,7 +254,7 @@ class InlineLayout:
 ```
 
 [^hack-inline]: This is a bit of a hack, but it's indicative of the surprising
-difficulty and complexity of all of the ways the different layout modes can mix
+difficulty and complexity in all of the ways the different layout modes can mix
 in real browsers.
 
 With these changes the browser should now draw `input` and `button`
