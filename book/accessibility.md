@@ -409,7 +409,8 @@ This will first require a definition of which elements are focusable:
 
 ``` {.python}
     def is_focusable(node):
-        return node.tag == "input" or node.tag == "button" or node.tag == "a"
+        return node.tag == "input" or node.tag == "button" \
+        	or node.tag == "a"
 ```
 
 And then each iterating through them. When `tab` is pressed and we're at the
@@ -514,7 +515,7 @@ class InputLayout:
 
 But for inline layout, the situation is more complicated, for two reasons. The
 first is that the painting of each inline element is broken into runs of
-text, and can span multiple lines. So it's not even just one rectanglle; if an
+text, and can span multiple lines. So it's not even just one rectangle; if an
 `<a>` element's anchor text spans multiple lines, we should paint one rectangle
 for each text run in each line.
 
@@ -543,18 +544,21 @@ class LineLayout:
 
 ```
 
-Implement visual focus rings via the CSS outline property
-Define ‘focusable’ elements
-Implement the focus pseudoclass
-Implement ‘tab’ to rotate among focusable elements
-Implement tabindex to control tab order
-
-Implement ‘enter’ to cause a button click.
-Implement shortcut to focus the URL bar.
-Implement keyboard back-button
+Iterating through the focusable elements with the keyboard, and highlighting
+them with a focus rect, should now work. Try it in
+this [example](examples/example14-focus.html). And if you zoom in enough, you
+should be able to make the link cross multiple lines
 
 Dark mode
 =========
+
+Implement dark mode.
+
+Customizing accessibility features
+==================================
+
+1. Outline CSS property
+2. tabindex
 
 Voice navigation
 ================
