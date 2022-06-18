@@ -83,7 +83,7 @@ def layout_mode(node):
             if child.tag in BLOCK_ELEMENTS:
                 return "block"
         return "inline"
-    elif node.tag == "input" or node.tag== "button":
+    elif node.tag == "input" or node.tag == "button":
         return "inline"
     else:
         return "block"
