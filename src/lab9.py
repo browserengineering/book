@@ -13,7 +13,7 @@ import dukpy
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
+from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import DrawText, CSSParser, cascade_priority, style, resolve_url, tree_to_list
 from lab7 import LineLayout, TextLayout, CHROME_PX
 from lab8 import request, DocumentLayout, BlockLayout, InlineLayout, InputLayout, INPUT_WIDTH_PX
@@ -135,7 +135,8 @@ class Tab:
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
+               if obj.node == self.focus and \
+                    isinstance(obj, InputLayout)][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measure(text)
             y = obj.y - self.scroll + CHROME_PX

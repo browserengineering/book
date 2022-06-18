@@ -57,6 +57,7 @@ from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
 from lab6 import compute_style
 from lab6 import TagSelector, DescendantSelector
+from lab8 import layout_mode, is_input
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import draw_line, draw_text, get_font, linespace, \
@@ -505,7 +506,7 @@ class InlineLayout:
         else:
             if node.tag == "br":
                 self.new_line()
-            elif node.tag == "input" or node.tag == "button":
+            elif is_input(node):
                 self.input(node)
             else:
                 for child in node.children:
@@ -554,16 +555,18 @@ class InlineLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+        if not is_input(self.node):
+            bgcolor = self.node.style.get("background-color",
+                                     "transparent")
+            if bgcolor != "transparent":
+                radius = float(self.node.style.get("border-radius", "0px")[:-2])
+                cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
             child.paint(cmds)
 
-        cmds = paint_visual_effects(self.node, cmds, rect)
+        if not is_input(self.node):
+            cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -1274,7 +1277,8 @@ class Tab:
             self.document.paint(self.display_list)
             if self.focus:
                 obj = [obj for obj in tree_to_list(self.document, [])
-                        if obj.node == self.focus][0]
+                   if obj.node == self.focus and \
+                        isinstance(obj, InputLayout)][0]
                 text = self.focus.attributes.get("value", "")
                 x = obj.x + obj.font.measureText(text)
                 y = obj.y
