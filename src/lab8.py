@@ -12,7 +12,7 @@ import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
+from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import DrawText, CSSParser, cascade_priority, style, resolve_url, tree_to_list
 from lab7 import LineLayout, TextLayout, CHROME_PX
 
@@ -73,6 +73,20 @@ def request(url, payload=None):
     s.close()
 
     return headers, body
+
+def layout_mode(node):
+    if isinstance(node, Text):
+        return "inline"
+    elif node.children:
+        for child in node.children:
+            if isinstance(child, Text): continue
+            if child.tag in BLOCK_ELEMENTS:
+                return "block"
+        return "inline"
+    elif node.tag == "input" or node.tag== "button":
+        return "inline"
+    else:
+        return "block"
 
 INPUT_WIDTH_PX = 200
 

@@ -270,11 +270,10 @@ class InlineLayout:
             sum([line.height for line in self.children]), zoom)
 ```
 
-``` {.python}
+``` {.python expected=False}
 class InputLayout:
 	# ...
     def layout(self, zoom):
-		# ...
 		self.width = style_length(
             self.node, "width", device_px(INPUT_WIDTH_PX, zoom), zoom)
         self.height = style_length(

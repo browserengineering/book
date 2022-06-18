@@ -19,7 +19,7 @@ from lab4 import print_tree
 from lab4 import HTMLParser
 from lab13 import Text, Element
 from lab6 import cascade_priority
-from lab6 import layout_mode
+from lab8 import layout_mode
 from lab6 import resolve_url
 from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
@@ -251,11 +251,11 @@ class InlineLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+        # bgcolor = self.node.style.get("background-color",
+        #                          "transparent")
+        # if bgcolor != "transparent":
+        #     radius = float(self.node.style.get("border-radius", "0px")[:-2])
+        #     cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
             child.paint(cmds)
@@ -401,8 +401,8 @@ class TextLayout:
             self.y + self.height)
     
     def __repr__(self):
-        return "TextLayout(x={}, y={}, width={}, height={}".format(
-            self.x, self.y, self.width, self.height)
+        return "TextLayout(x={}, y={}, width={}, height={} word={})".format(
+            self.x, self.y, self.width, self.height, self.word)
 
 class InputLayout:
     def __init__(self, node, parent, previous):
@@ -425,6 +425,7 @@ class InputLayout:
 
         self.width = style_length(
             self.node, "width", device_px(INPUT_WIDTH_PX, zoom), zoom)
+
         self.height = style_length(
             self.node, "height", linespace(self.font), zoom)
 
@@ -462,8 +463,12 @@ class InputLayout:
         display_list.extend(cmds)
 
     def __repr__(self):
-        return "InputLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        if self.node.tag == "input":
+            extra = "type=input"
+        else:
+            extra = "type=button text={}".format(self.node.children[0].text)
+        return "InputLayout(x={}, y={}, width={}, height={} {})".format(
+            self.x, self.y, self.width, self.height, extra)
 
 def compute_role(node):
     if isinstance(node, Text):
@@ -689,7 +694,8 @@ class Tab:
             self.layout_tree.paint(self.display_list)
             if self.focus and self.focus.tag == "input":
                 obj = [obj for obj in tree_to_list(self.layout_tree, [])
-                        if obj.node == self.focus][0]
+                        if obj.node == self.focus and \
+                        isinstance(obj, InputLayout)][0]
                 text = self.focus.attributes.get("value", "")
                 x = obj.x + obj.font.measureText(text)
                 y = obj.y
