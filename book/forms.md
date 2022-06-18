@@ -234,16 +234,22 @@ def layout_mode(node):
         return "block"
 ```
 
-The second problem is that, again due to having block siblins, sometimes an
+The second problem is that, again due to having block siblings, sometimes an
 `InputLayout` will end up wrapped in a `InlineLayout` that refers to to the
-`<input` node. But both `InlineLayout` and `InputLayout` have a `paint` method,
-which emans we're painting the `<input>` twice. We can fix that with some simple
+`<input>` node. But both `InlineLayout` and `InputLayout` have a `paint` method,
+which means we're painting the `<input>` twice. We can fix that with some simple
 logic to skip painting in `InlineLayout` in this case:[^hack-inline]
 
 ``` {.python}
 class InlineLayout:
     # ...
     def paint(self, display_list):
+        # ...
+        if not is_input(self.node):
+            if bgcolor != "transparent":
+                x2, y2 = self.x + self.width, self.y + self.height
+                rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+                display_list.append(rect)
 
 ```
 
