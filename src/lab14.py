@@ -774,7 +774,8 @@ class Tab:
             self.activate_element(self.focus)
 
     def is_focusable(node):
-        return node.tag == "input" or node.tag == "button" or node.tag == "a"
+        return node.tag == "input" or node.tag == "button" \
+            or node.tag == "a"
 
     def get_tabindex(node):
         return int(node.attributes.get("tabindex", 9999999))
