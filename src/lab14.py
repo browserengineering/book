@@ -163,6 +163,10 @@ class BlockLayout:
         return "BlockLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.x, self.width, self.height)
 
+def is_input(node):
+    return not isinstance(node, Text) and \
+        (node.tag == "input" or node.tag == "button")
+
 class InlineLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -202,7 +206,7 @@ class InlineLayout:
         else:
             if node.tag == "br":
                 self.new_line()
-            elif node.tag == "input" or node.tag == "button":
+            elif is_input(self.node):
                 self.input(node, zoom)
             else:
                 for child in node.children:
@@ -251,21 +255,24 @@ class InlineLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        # bgcolor = self.node.style.get("background-color",
-        #                          "transparent")
-        # if bgcolor != "transparent":
-        #     radius = float(self.node.style.get("border-radius", "0px")[:-2])
-        #     cmds.append(DrawRRect(rect, radius, bgcolor))
+        if not is_input(self.node):
+            bgcolor = self.node.style.get("background-color",
+                                     "transparent")
+            if bgcolor != "transparent":
+                radius = float(self.node.style.get("border-radius", "0px")[:-2])
+                cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
             child.paint(cmds)
 
-        cmds = paint_visual_effects(self.node, cmds, rect)
+        if not is_input(self.node):
+            cmds = paint_visual_effects(self.node, cmds, rect)
+
         display_list.extend(cmds)
 
     def __repr__(self):
-        return "InlineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        return "InlineLayout(x={}, y={}, width={}, height={} node={})".format(
+            self.x, self.y, self.width, self.height, self.node)
 
 class LineLayout:
     def __init__(self, node, parent, previous):
@@ -320,8 +327,8 @@ class LineLayout:
         return "none"
 
     def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        return "LineLayout(x={}, y={}, width={}, height={} node={})".format(
+            self.x, self.y, self.width, self.height, self.node)
 
 def device_px(layout_px, zoom):
     return layout_px * zoom
@@ -780,8 +787,7 @@ class Tab:
             self.activate_element(self.focus)
 
     def is_focusable(node):
-        return node.tag == "input" or node.tag == "button" \
-            or node.tag == "a"
+        return is_input(node) or node.tag == "a"
 
     def get_tabindex(node):
         return int(node.attributes.get("tabindex", 9999999))
