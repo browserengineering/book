@@ -679,7 +679,7 @@ class TextLayout:
             DrawText(self.x, self.y, self.word, self.font, color))
     
     def __repr__(self):
-        return "TextLayout(x={}, y={}, width={}, height={}".format(
+        return "TextLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
 class InputLayout:

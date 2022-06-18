@@ -59,11 +59,11 @@ Testing InputLayout
            BlockLayout(x=13, y=18, width=774, height=45.0)
              InlineLayout(x=13, y=18, width=774, height=15.0)
                LineLayout(x=13, y=18, width=774, height=15.0)
-                 TextLayout(x=13, y=20.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None
+                 TextLayout(x=13, y=20.25, width=60, height=12, font=Font size=12 weight=normal slant=roman style=None)
                  InputLayout(x=85, y=20.25, width=200, height=12)
              InlineLayout(x=13, y=33.0, width=774, height=15.0)
                LineLayout(x=13, y=33.0, width=774, height=15.0)
-                 TextLayout(x=13, y=35.25, width=96, height=12, font=Font size=12 weight=normal slant=roman style=None
+                 TextLayout(x=13, y=35.25, width=96, height=12, font=Font size=12 weight=normal slant=roman style=None)
                  InputLayout(x=121, y=35.25, width=200, height=12)
              InlineLayout(x=13, y=48.0, width=774, height=15.0)
                LineLayout(x=13, y=48.0, width=774, height=15.0)
