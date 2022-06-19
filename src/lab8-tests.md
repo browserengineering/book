@@ -145,12 +145,12 @@ sibling (the `<div`), they should be contianed in a `BlockLayout`, but the
 
     >>> lab8.print_tree(browser.tabs[0].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=15.0)
-         BlockLayout(x=13, y=18, width=774, height=15.0)
-           InlineLayout(x=13, y=18, width=774, height=15.0)
+       BlockLayout(x=13, y=18, width=774, height=15.0, node=<html>)
+         BlockLayout(x=13, y=18, width=774, height=15.0, node=<body>)
+           InlineLayout(x=13, y=18, width=774, height=15.0, node=<input>)
              LineLayout(x=13, y=18, width=774, height=15.0)
-               InputLayout(x=13, y=20.25, width=200, height=12)
-           BlockLayout(x=13, y=33.0, width=774, height=0)
+               InputLayout(x=13, y=20.25, width=200, height=12, type=input)
+           BlockLayout(x=13, y=33.0, width=774, height=0, node=<div>)
 
 The painted output also is only drawing the input as 200px wide:
 
