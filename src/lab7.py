@@ -96,8 +96,9 @@ class TextLayout:
             DrawText(self.x, self.y, self.word, self.font, color))
     
     def __repr__(self):
-        return "TextLayout(x={}, y={}, width={}, height={}, font={}".format(
-            self.x, self.y, self.width, self.height, self.font)
+        return ("TextLayout(x={}, y={}, width={}, height={}, " +
+            "node={}, word={})").format(
+            self.x, self.y, self.width, self.height, self.node, self.word)
 
 class BlockLayout:
     def __init__(self, node, parent, previous):

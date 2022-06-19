@@ -140,8 +140,12 @@ class InputLayout:
             DrawText(self.x, self.y, text, self.font, color))
 
     def __repr__(self):
-        return "InputLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        if self.node.tag == "input":
+            extra = "type=input"
+        else:
+            extra = "type=button text={}".format(self.node.children[0].text)
+        return "InputLayout(x={}, y={}, width={}, height={}, {})".format(
+            self.x, self.y, self.width, self.height, extra)
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -182,8 +186,8 @@ class BlockLayout:
             child.paint(display_list)
 
     def __repr__(self):
-        return "BlockLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
+            self.x, self.y, self.width, self.height, self.node)
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
@@ -275,8 +279,8 @@ class InlineLayout:
             child.paint(display_list)
 
     def __repr__(self):
-        return "InlineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        return "InlineLayout(x={}, y={}, width={}, height={}, node={})".format(
+            self.x, self.y, self.width, self.height, self.node)
 
 class DocumentLayout:
     def __init__(self, node):
