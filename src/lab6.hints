@@ -2,5 +2,7 @@
 {"code": "'://' in url", "type": "str"},
 {"code": "self.s[self.i] in chars", "type": "list"},
 {"code": "'style' in node.attributes", "type": "dict"},
-{"code": "'href' in node.attributes", "type": "dict"}
+{"code": "'href' in node.attributes", "type": "dict"},
+{"code": "'/' not in hostpath", "type": "bool"},
+{"code": "'/' not in hostpath", "js": "hostpath.indexOf('/') >= 0"}
 ]

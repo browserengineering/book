@@ -463,8 +463,8 @@ class BlockLayout:
         display_list.extend(cmds)
 
     def __repr__(self):
-        return "BlockLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.x, self.width, self.height)
+        return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
+            self.x, self.x, self.width, self.height, self.node)
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
@@ -567,8 +567,8 @@ class InlineLayout:
         display_list.extend(cmds)
 
     def __repr__(self):
-        return "InlineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        return "InlineLayout(x={}, y={}, width={}, height={}, node={})".format(
+            self.x, self.y, self.width, self.height, self.node)
 
 class DocumentLayout:
     def __init__(self, node):
@@ -639,8 +639,8 @@ class LineLayout:
             child.paint(display_list)
 
     def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
+            self.x, self.y, self.width, self.height, self.node)
 
 class TextLayout:
     def __init__(self, node, word, parent, previous):
@@ -679,8 +679,9 @@ class TextLayout:
             DrawText(self.x, self.y, self.word, self.font, color))
     
     def __repr__(self):
-        return "TextLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        return ("TextLayout(x={}, y={}, width={}, height={}, " +
+            "node={}, word={})").format(
+            self.x, self.y, self.width, self.height, self.node, self.word)
 
 class InputLayout:
     def __init__(self, node, parent, previous):
