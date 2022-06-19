@@ -253,9 +253,9 @@ class InlineLayout:
 
 ```
 
-[^hack-inline]: This is a bit of a hack, but it's indicative of the surprising
-difficulty and complexity in all of the ways the different layout modes can mix
-in real browsers.
+[^hack-inline]: This is a bit of a hack, but it's indicative of the
+difficulty and complexity in all the ways layout modes can mix in real
+browsers.
 
 With these changes the browser should now draw `input` and `button`
 elements as blue and orange rectangles.
