@@ -1079,7 +1079,7 @@ class Browser:
     def add_tab(self):
         self.load("https://browser.engineering/")
 
-    def cycle_tab(self):
+    def cycle_tabs(self):
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
         self.set_active_tab(new_active_tab)
 
@@ -1285,7 +1285,7 @@ if __name__ == "__main__":
                     elif event.key.keysym.sym == sdl2.SDLK_LEFT:
                         browser.go_back()
                     elif event.key.keysym.sym == sdl2.SDLK_TAB:
-                        browser.cycle_tab()
+                        browser.cycle_tabs()
                     elif event.key.keysym.sym == sdl2.SDLK_t:
                         browser.add_tab()
                     elif event.key.keysym.sym == sdl2.SDLK_q:
