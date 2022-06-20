@@ -31,6 +31,8 @@ def layout_mode(node):
             if child.tag in BLOCK_ELEMENTS:
                 return "block"
         return "inline"
+    elif node.tag not in BLOCK_ELEMENTS:
+        return "inline"
     else:
         return "block"
 
