@@ -463,7 +463,8 @@ class Tab:
         # ...
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
+               if obj.node == self.focus and \
+                    isinstance(obj, InputLayout)][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measureText(text)
             y = obj.y

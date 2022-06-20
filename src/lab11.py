@@ -18,12 +18,12 @@ from lab4 import Element
 from lab4 import Text
 from lab4 import HTMLParser
 from lab6 import cascade_priority
-from lab6 import layout_mode
 from lab6 import resolve_url
 from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
 from lab6 import CSSParser, compute_style, style
 from lab6 import TagSelector, DescendantSelector
+from lab8 import is_input, layout_mode
 from lab10 import COOKIE_JAR, request, url_origin, JSContext
 
 FONTS = {}
@@ -344,16 +344,18 @@ class InlineLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+        if not is_input(self.node):
+            bgcolor = self.node.style.get("background-color",
+                                     "transparent")
+            if bgcolor != "transparent":
+                radius = float(self.node.style.get("border-radius", "0px")[:-2])
+                cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
             child.paint(cmds)
 
-        cmds = paint_visual_effects(self.node, cmds, rect)
+        if not is_input(self.node):
+            cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -631,7 +633,8 @@ class Tab:
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
+               if obj.node == self.focus and \
+                    isinstance(obj, InputLayout)][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measureText(text)
             y = obj.y
