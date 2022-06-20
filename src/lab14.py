@@ -1079,6 +1079,13 @@ class Browser:
         active_tab.task_runner.schedule_task(task)
         self.clear_data()
 
+    def add_tab(self):
+        self.load("https://browser.engineering/")
+
+    def cycle_tab(self):
+        new_active_tab = (self.active_tab + 1) % len(self.tabs)
+        self.set_active_tab(new_active_tab)
+
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < CHROME_PX:
@@ -1086,7 +1093,7 @@ class Browser:
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.set_active_tab(int((e.x - 40) / 80))
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load("https://browser.engineering/")
+                self.add_tab()
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
                 self.go_back()
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
@@ -1280,6 +1287,10 @@ if __name__ == "__main__":
                         browser.reset_zoom()
                     elif event.key.keysym.sym == sdl2.SDLK_LEFT:
                         browser.go_back()
+                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                        browser.cycle_tab()
+                    elif event.key.keysym.sym == sdl2.SDLK_t:
+                        browser.add_tab()
                     elif event.key.keysym.sym == sdl2.SDLK_q:
                         browser.handle_quit()
                         sdl2.SDL_Quit()
