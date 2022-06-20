@@ -1,3 +1,5 @@
 [
-{"code": "child.tag in BLOCK_ELEMENTS", "type": "list"}
+{"code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
+{"code": "node.tag not in BLOCK_ELEMENTS", "type": "bool"},
+{"code": "node.tag not in BLOCK_ELEMENTS", "js": "!(node.tag in BLOCK_ELEMENTS)"}
 ]
