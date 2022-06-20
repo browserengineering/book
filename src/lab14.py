@@ -19,12 +19,12 @@ from lab4 import print_tree
 from lab4 import HTMLParser
 from lab13 import Text, Element
 from lab6 import cascade_priority
+from lab6 import layout_mode
 from lab6 import resolve_url
 from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
 from lab6 import compute_style
 from lab6 import TagSelector, DescendantSelector
-from lab8 import layout_mode, is_input
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import draw_line, draw_text, get_font, linespace, \
@@ -202,7 +202,7 @@ class InlineLayout:
         else:
             if node.tag == "br":
                 self.new_line()
-            elif is_input(node):
+            elif node.tag == "input" or node.tag == "button":
                 self.input(node, zoom)
             else:
                 for child in node.children:
@@ -251,18 +251,16 @@ class InlineLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        if not is_input(self.node):
-            bgcolor = self.node.style.get("background-color",
-                                     "transparent")
-            if bgcolor != "transparent":
-                radius = float(self.node.style.get("border-radius", "0px")[:-2])
-                cmds.append(DrawRRect(rect, radius, bgcolor))
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
             child.paint(cmds)
 
-        if not is_input(self.node):
-            cmds = paint_visual_effects(self.node, cmds, rect)
+        cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -692,8 +690,7 @@ class Tab:
             self.layout_tree.paint(self.display_list)
             if self.focus and self.focus.tag == "input":
                 obj = [obj for obj in tree_to_list(self.layout_tree, [])
-                   if obj.node == self.focus and \
-                        isinstance(obj, InputLayout)][0]
+                        if obj.node == self.focus][0]
                 text = self.focus.attributes.get("value", "")
                 x = obj.x + obj.font.measureText(text)
                 y = obj.y
@@ -778,7 +775,7 @@ class Tab:
             self.activate_element(self.focus)
 
     def is_focusable(node):
-        return is_input(node) \
+        return node.tag == "input" or node.tag == "button" \
             or node.tag == "a"
 
     def get_tabindex(node):
