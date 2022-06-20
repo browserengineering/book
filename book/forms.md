@@ -168,12 +168,6 @@ We now need to create some `InputLayout`s, which we can do in
 `InlineLayout`:
 
 ``` {.python}
-def is_input(node):
-    return not isinstance(node, Text) and \
-        (node.tag == "button" or node.tag == "input")
-```
-
-``` {.python}
 class InlineLayout:
     def recurse(self, node):
         if isinstance(node, Text):
@@ -181,7 +175,7 @@ class InlineLayout:
         else:
             if node.tag == "br":
                 self.new_line()
-            elif is_input(node):
+            elif node.tag == "input" or node.tag == "button":
                 self.input(node)
             else:
                 for child in node.children:
@@ -211,51 +205,6 @@ class InlineLayout:
         font = self.get_font(node)
         self.cursor_x += w + font.measure(" ")
 ```
-
-But actually, there are a couple more complications due to the way we decided
-to resolve the block-mixed-with-inline-siblings problem
-(see [Chapter 5](layout.md#layout-modes)). One is that if there are no children
-for a node, we assume it's a block element. But `<input>` elements don't
-have children. We can fix that with this change to `layout_mode`:
-
-``` {.python}
-def layout_mode(node):
-    if isinstance(node, Text):
-        return "inline"
-    elif node.children:
-        for child in node.children:
-            if isinstance(child, Text): continue
-            if child.tag in BLOCK_ELEMENTS:
-                return "block"
-        return "inline"
-    elif is_input(node):
-        return "inline"
-    else:
-        return "block"
-```
-
-The second problem is that, again due to having block siblings, sometimes an
-`InputLayout` will end up wrapped in a `InlineLayout` that refers to to the
-`<input>` node. But both `InlineLayout` and `InputLayout` have a `paint` method,
-which means we're painting the `<input>` twice. We can fix that with some simple
-logic to skip painting in `InlineLayout` in this case:[^hack-inline]
-
-``` {.python}
-class InlineLayout:
-    # ...
-    def paint(self, display_list):
-        # ...
-        if not is_input(self.node):
-            if bgcolor != "transparent":
-                x2, y2 = self.x + self.width, self.y + self.height
-                rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-                display_list.append(rect)
-
-```
-
-[^hack-inline]: This is a bit of a hack, but it's indicative of the
-difficulty and complexity in all the ways layout modes can mix in real
-browsers.
 
 With these changes the browser should now draw `input` and `button`
 elements as blue and orange rectangles.
@@ -444,8 +393,7 @@ class Tab:
         # ...
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus and \
-                        isinstance(obj, InputLayout)][0]
+                   if obj.node == self.focus][0]
 ```
 
 Then using that layout object we can find the coordinates where the

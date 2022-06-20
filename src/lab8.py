@@ -12,7 +12,7 @@ import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect
+from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
 from lab6 import DrawText, CSSParser, cascade_priority, style, resolve_url, tree_to_list
 from lab7 import LineLayout, TextLayout, CHROME_PX
 
@@ -73,24 +73,6 @@ def request(url, payload=None):
     s.close()
 
     return headers, body
-
-def is_input(node):
-    return not isinstance(node, Text) and \
-        (node.tag == "button" or node.tag == "input")
-
-def layout_mode(node):
-    if isinstance(node, Text):
-        return "inline"
-    elif node.children:
-        for child in node.children:
-            if isinstance(child, Text): continue
-            if child.tag in BLOCK_ELEMENTS:
-                return "block"
-        return "inline"
-    elif is_input(node):
-        return "inline"
-    else:
-        return "block"
 
 INPUT_WIDTH_PX = 200
 
@@ -224,7 +206,7 @@ class InlineLayout:
         else:
             if node.tag == "br":
                 self.new_line()
-            elif is_input(node):
+            elif node.tag == "input" or node.tag == "button":
                 self.input(node)
             else:
                 for child in node.children:
@@ -270,11 +252,10 @@ class InlineLayout:
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
-        if not is_input(self.node):
-            if bgcolor != "transparent":
-                x2, y2 = self.x + self.width, self.y + self.height
-                rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-                display_list.append(rect)
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            display_list.append(rect)
         for child in self.children:
             child.paint(display_list)
 
@@ -351,8 +332,7 @@ class Tab:
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus and \
-                        isinstance(obj, InputLayout)][0]
+                   if obj.node == self.focus][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measure(text)
             y = obj.y - self.scroll + CHROME_PX
