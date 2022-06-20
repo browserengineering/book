@@ -551,11 +551,11 @@ should be able to make the link cross multiple lines.
 
 In addition to activation of input elements, there are four more mouse controls
 in the browser: the back button, the add-tab button, iterating through the
-tabs, and the button to quit the browser.^[one-more] Bind them to `ctrl-left`,
-`ctrl-t`, `ctrl-tab` (to cycle through tabs) and `ctrl-q`, respectively. The
-code to implement these is straightforward, so I've omitted it.
+tabs, and the button to quit the browser.[^one-more] Bind them to `ctrl-left`,
+`ctrl-t`, `ctrl-tab` and `ctrl-q`, respectively. The code to implement these is
+straightforward, so I've omitted it.
 
-^[one-more]: Actually, there are sometimes more: buttons to minimize or
+[^one-more]: Actually, there are sometimes more: buttons to minimize or
 maximize the browser window. Those require calling specialized OS APIs, so I
 won't implement them.
 
