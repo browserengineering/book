@@ -167,7 +167,7 @@ class InlineLayout:
             self.text(node, zoom)
         else:
         	# ...
-            elif node.tag == "input" or node.tag == "button":
+            elif is_input(node):
                 self.input(node, zoom)
             else:
                 for child in node.children:
@@ -409,7 +409,7 @@ This will first require a definition of which elements are focusable:
 
 ``` {.python}
     def is_focusable(node):
-        return node.tag == "input" or node.tag == "button" \
+        return is_input(node) \
         	or node.tag == "a"
 ```
 

@@ -17,7 +17,6 @@ from lab4 import Text
 from lab4 import HTMLParser
 from lab5 import DrawRect
 from lab6 import cascade_priority
-from lab6 import layout_mode
 from lab6 import resolve_url
 from lab6 import style
 from lab6 import tree_to_list
@@ -26,7 +25,7 @@ from lab6 import TagSelector, DescendantSelector
 from lab6 import DrawText
 from lab7 import LineLayout
 from lab7 import TextLayout
-from lab8 import DocumentLayout
+from lab8 import DocumentLayout, InputLayout
 
 def url_origin(url):
     scheme_colon, _, host, _ = url.split("/", 3)
@@ -262,7 +261,8 @@ class Tab:
 
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
+               if obj.node == self.focus and \
+                    isinstance(obj, InputLayout)][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measure(text)
             y = obj.y - self.scroll + CHROME_PX
