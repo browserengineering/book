@@ -91,6 +91,13 @@ class TextLayout:
         self.height = self.font.metrics("linespace")
 
     def paint(self, display_list):
+        bgcolor = self.node.parent.style.get("background-color",
+                                             "transparent")
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            display_list.append(rect)
+
         color = self.node.style["color"]
         display_list.append(
             DrawText(self.x, self.y, self.word, self.font, color))
@@ -202,12 +209,6 @@ class InlineLayout:
             self.cursor_x += w + font.measure(" ")
 
     def paint(self, display_list):
-        bgcolor = self.node.style.get("background-color",
-                                      "transparent")
-        if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
         for child in self.children:
             child.paint(display_list)
 
