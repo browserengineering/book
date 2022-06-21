@@ -239,7 +239,7 @@ The second problem is that, again due to having block siblings, sometimes an
 `InputLayout` will end up wrapped in a `InlineLayout` that refers to to the
 `<input>` or `<buttom>` node. But both `InlineLayout` and `InputLayout` have a
 `paint` method, which means we're painting the node twice. We can fix that
-with some simple logic to skip painting such atomic inlines via `InlineLayout`
+with some simple logic to skip painting them via `InlineLayout`
 in this case:
 [^atomic-inline-input]
 
