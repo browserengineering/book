@@ -74,10 +74,6 @@ def request(url, payload=None):
 
     return headers, body
 
-def is_input(node):
-    return not isinstance(node, Text) and \
-        (node.tag == "button" or node.tag == "input")
-
 def layout_mode(node):
     if isinstance(node, Text):
         return "inline"
@@ -87,7 +83,7 @@ def layout_mode(node):
             if child.tag in BLOCK_ELEMENTS:
                 return "block"
         return "inline"
-    elif is_input(node):
+    elif node.tag == "input":
         return "inline"
     else:
         return "block"
@@ -224,7 +220,7 @@ class InlineLayout:
         else:
             if node.tag == "br":
                 self.new_line()
-            elif is_input(node):
+            elif node.tag == "input" or node.tag == "button":
                 self.input(node)
             else:
                 for child in node.children:
@@ -270,7 +266,11 @@ class InlineLayout:
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
-        if not is_input(self.node):
+
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
+        if not is_atomic:
             if bgcolor != "transparent":
                 x2, y2 = self.x + self.width, self.y + self.height
                 rect = DrawRect(self.x, self.y, x2, y2, bgcolor)

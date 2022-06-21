@@ -57,7 +57,7 @@ from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
 from lab6 import compute_style
 from lab6 import TagSelector, DescendantSelector
-from lab8 import layout_mode, is_input
+from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import draw_line, draw_text, get_font, linespace, \
@@ -506,7 +506,7 @@ class InlineLayout:
         else:
             if node.tag == "br":
                 self.new_line()
-            elif is_input(node):
+            elif node.tag == "input" or node.tag == "button":
                 self.input(node)
             else:
                 for child in node.children:
@@ -555,7 +555,10 @@ class InlineLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        if not is_input(self.node):
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
+        if not is_atomic:
             bgcolor = self.node.style.get("background-color",
                                      "transparent")
             if bgcolor != "transparent":
@@ -565,7 +568,7 @@ class InlineLayout:
         for child in self.children:
             child.paint(cmds)
 
-        if not is_input(self.node):
+        if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 

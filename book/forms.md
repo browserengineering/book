@@ -168,12 +168,6 @@ We now need to create some `InputLayout`s, which we can do in
 `InlineLayout`:
 
 ``` {.python}
-def is_input(node):
-    return not isinstance(node, Text) and \
-        (node.tag == "button" or node.tag == "input")
-```
-
-``` {.python}
 class InlineLayout:
     def recurse(self, node):
         if isinstance(node, Text):
@@ -181,7 +175,7 @@ class InlineLayout:
         else:
             if node.tag == "br":
                 self.new_line()
-            elif is_input(node):
+            elif node.tag == "button" or node.tag == "input":
                 self.input(node)
             else:
                 for child in node.children:
@@ -212,11 +206,17 @@ class InlineLayout:
         self.cursor_x += w + font.measure(" ")
 ```
 
-But actually, there are a couple more complications due to the way we decided
-to resolve the block-mixed-with-inline-siblings problem
-(see [Chapter 5](layout.md#layout-modes)). One is that if there are no children
-for a node, we assume it's a block element. But `<input>` elements don't
-have children. We can fix that with this change to `layout_mode`:
+But actually, there are a couple more complications due to the way we decided to
+resolve the block-mixed-with-inline-siblings problem(see [Chapter 5]
+(layout.md#layout-modes)). One is that if there are no children for a node, we
+assume it's a block element. But `<input>` elements don't have children, yet
+must have inline layout or else they won't draw correctly.^[This situation is
+specific to `<input>`s in our browser, because they are the only instance of an
+element with something other than text under it that nevertheless draws
+something and has inline bounds. It's one exmaple of an
+[atomic inline](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes).]
+
+We can fix that with this change to `layout_mode`:
 
 ``` {.python}
 def layout_mode(node):
@@ -228,7 +228,7 @@ def layout_mode(node):
             if child.tag in BLOCK_ELEMENTS:
                 return "block"
         return "inline"
-    elif is_input(node):
+    elif node.tag == "input":
         return "inline"
     else:
         return "block"
@@ -238,14 +238,14 @@ The second problem is that, again due to having block siblings, sometimes an
 `InputLayout` will end up wrapped in a `InlineLayout` that refers to to the
 `<input>` node. But both `InlineLayout` and `InputLayout` have a `paint` method,
 which means we're painting the `<input>` twice. We can fix that with some simple
-logic to skip painting in `InlineLayout` in this case:[^hack-inline]
+logic to skip painting in `InlineLayout` in this case:[^atomic-inline-input]
 
 ``` {.python}
 class InlineLayout:
     # ...
     def paint(self, display_list):
         # ...
-        if not is_input(self.node):
+        if self.node.tag != "input":
             if bgcolor != "transparent":
                 x2, y2 = self.x + self.width, self.y + self.height
                 rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
@@ -253,9 +253,8 @@ class InlineLayout:
 
 ```
 
-[^hack-inline]: This is a bit of a hack, but it's indicative of the
-difficulty and complexity in all the ways layout modes can mix in real
-browsers.
+[^atomic-inline-input]: See also the footnote earlier about how atomic inlines
+are often special in these kinds of ways.
 
 With these changes the browser should now draw `input` and `button`
 elements as blue and orange rectangles.

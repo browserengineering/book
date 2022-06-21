@@ -23,7 +23,7 @@ from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
 from lab6 import CSSParser, compute_style, style
 from lab6 import TagSelector, DescendantSelector
-from lab8 import is_input, layout_mode
+from lab8 import layout_mode
 from lab10 import COOKIE_JAR, request, url_origin, JSContext
 
 FONTS = {}
@@ -344,7 +344,10 @@ class InlineLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        if not is_input(self.node):
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
+        if not is_atomic:
             bgcolor = self.node.style.get("background-color",
                                      "transparent")
             if bgcolor != "transparent":
@@ -354,7 +357,7 @@ class InlineLayout:
         for child in self.children:
             child.paint(cmds)
 
-        if not is_input(self.node):
+        if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
