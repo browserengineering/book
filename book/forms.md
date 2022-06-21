@@ -260,7 +260,10 @@ class InlineLayout:
 ```
 
 [^atomic-inline-input]: See also the footnote earlier about how atomic inlines
-are often special in these kinds of ways.
+are often special in these kinds of ways. It's worth noting that there are
+various other ways that our browser does not fully implement all the
+complexities of inline painting---one example is that it does not correctly
+paint nested inlines with different background colors.
 
 With these changes the browser should now draw `input` and `button`
 elements as blue and orange rectangles.
