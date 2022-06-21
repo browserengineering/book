@@ -207,15 +207,15 @@ class InlineLayout:
 ```
 
 But actually, there are a couple more complications due to the way we decided to
-resolve the block-mixed-with-inline-siblings problem (see [Chapter 5]
-(layout.md#layout-modes)). One is that if there are no children for a node, we
-assume it's a block element. But `<input>` elements don't have children, yet
-must have inline layout or else they won't draw correctly. Likewise, a
-`<button>` does have children, but hey are treated specially.^[This situation
-is specific to these elements in our browser, but only because they are the
-only instance of an elements with special painting behavior within an inline
-context. These are also two examples of
-[atomic inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes)].
+resolve the block-mixed-with-inline-siblings problem (see
+[Chapter 5](layout.md#layout-modes)). One is that if there are no children for
+a node, we assume it's a block element. But `<input>` elements don't have
+children, yet must have inline layout or else they won't draw correctly.
+Likewise, a `<button>` does have children, but they are treated
+specially.^[This situation is specific to these elements in our browser, but
+only because they are the only elements with special painting
+behavior within an inline context. These are also two examples of
+[atomic inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes).]
 
 We can fix that with this change to `layout_mode`:
 
@@ -237,7 +237,7 @@ def layout_mode(node):
 
 The second problem is that, again due to having block siblings, sometimes an
 `InputLayout` will end up wrapped in a `InlineLayout` that refers to to the
-`<input>` or `<buttom>` node. But both `InlineLayout` and `InputLayout` have a
+`<input>` or `<button>` node. But both `InlineLayout` and `InputLayout` have a
 `paint` method, which means we're painting the node twice. We can fix that
 with some simple logic to skip painting them via `InlineLayout`
 in this case:
