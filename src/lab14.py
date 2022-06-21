@@ -518,7 +518,7 @@ class Tab:
         self.needs_layout = False
         self.needs_accessibility = False
         self.needs_paint = False
-        self.layout_tree = None
+        self.document = None
         self.accessibility_tree = None
 
         self.browser = browser
@@ -634,7 +634,7 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.layout_tree.height)
+        document_height = math.ceil(self.document.height)
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
@@ -673,8 +673,8 @@ class Tab:
             self.needs_style = False
 
         if self.needs_layout:
-            self.layout_tree = DocumentLayout(self.nodes)
-            self.layout_tree.layout(self.zoom)
+            self.document = DocumentLayout(self.nodes)
+            self.document.layout(self.zoom)
             self.needs_accessibility = True
             self.needs_layout = False
 
@@ -687,9 +687,9 @@ class Tab:
         if self.needs_paint:
             self.display_list = []
 
-            self.layout_tree.paint(self.display_list)
+            self.document.paint(self.display_list)
             if self.focus and self.focus.tag == "input":
-                obj = [obj for obj in tree_to_list(self.layout_tree, [])
+                obj = [obj for obj in tree_to_list(self.document, [])
                         if obj.node == self.focus][0]
                 text = self.focus.attributes.get("value", "")
                 x = obj.x + obj.font.measureText(text)
@@ -726,7 +726,7 @@ class Tab:
         self.render()
         self.apply_focus(None)
         y += self.scroll
-        objs = [obj for obj in tree_to_list(self.layout_tree, [])
+        objs = [obj for obj in tree_to_list(self.document, [])
                 if obj.x <= x < obj.x + obj.width
                 and obj.y <= y < obj.y + obj.height]
         if not objs: return
