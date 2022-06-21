@@ -175,7 +175,7 @@ class InlineLayout:
         else:
             if node.tag == "br":
                 self.new_line()
-            elif node.tag == "button" or node.tag == "input":
+            elif node.tag == "input" or node.tag == "button":
                 self.input(node)
             else:
                 for child in node.children:
@@ -236,16 +236,21 @@ def layout_mode(node):
 
 The second problem is that, again due to having block siblings, sometimes an
 `InputLayout` will end up wrapped in a `InlineLayout` that refers to to the
-`<input>` node. But both `InlineLayout` and `InputLayout` have a `paint` method,
-which means we're painting the `<input>` twice. We can fix that with some simple
-logic to skip painting in `InlineLayout` in this case:[^atomic-inline-input]
+`<input>` or `<buttom>` node. But both `InlineLayout` and `InputLayout` have a
+`paint` method, which means we're painting the node twice. We can fix that
+with some simple logic to skip painting such atomic inlines via `InlineLayout`
+in this case:
+[^atomic-inline-input]
 
 ``` {.python}
 class InlineLayout:
     # ...
     def paint(self, display_list):
         # ...
-        if self.node.tag != "input":
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
+        if not is_atomic:
             if bgcolor != "transparent":
                 x2, y2 = self.x + self.width, self.y + self.height
                 rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
