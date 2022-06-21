@@ -207,14 +207,15 @@ class InlineLayout:
 ```
 
 But actually, there are a couple more complications due to the way we decided to
-resolve the block-mixed-with-inline-siblings problem(see [Chapter 5]
+resolve the block-mixed-with-inline-siblings problem (see [Chapter 5]
 (layout.md#layout-modes)). One is that if there are no children for a node, we
 assume it's a block element. But `<input>` elements don't have children, yet
-must have inline layout or else they won't draw correctly.^[This situation is
-specific to `<input>`s in our browser, because they are the only instance of an
-element with something other than text under it that nevertheless draws
-something and has inline bounds. It's one exmaple of an
-[atomic inline](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes).]
+must have inline layout or else they won't draw correctly. Likewise, a
+`<button>` does have children, but hey are treated specially.^[This situation
+is specific to these elements in our browser, but only because they are the
+only instance of an elements with special painting behavior within an inline
+context. These are also two examples of
+[atomic inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes)].
 
 We can fix that with this change to `layout_mode`:
 
