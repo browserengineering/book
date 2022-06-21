@@ -249,9 +249,7 @@ class InlineLayout:
 ```
 
 I've removed the default gray background from `pre` elements for now, but we'll
-put it back soon.^[Note that given the way we decided to make the layout tree,
-our browser does not currently support nested inline painting situations such
-as a `<span>` inside a `<span>` with different colors.]
+put it back soon.
 
 Open this chapter up in your browser to test your code: the code block
 right after this paragraph should now have a light blue background.
