@@ -482,6 +482,16 @@ def compute_role(node):
         else:
             return "none"
 
+def announce_text(node):
+    if isinstance(node, Text):
+        return node.text
+    elif node.tag == "input":
+        return "Input box"
+    elif node.tag == "button":
+        return "Button {}".format(node.children[0].text)
+    else:
+        return None
+
 class AccessibilityNode:
     def __init__(self, node):
         self.node = node
@@ -507,11 +517,16 @@ class AccessibilityNode:
             str(self.node), compute_role(self.node))
 
 class AccessibilityAgent:
-    def __init__(self, accessibility_tree):
-        self.accessibility_tree = None
+    def __init__(self, tab):
+        self.tab = tab
 
     def update(self):
-        print('update')
+        print('update agent')
+        tree_list = tree_to_list(self.tab.accessibility_tree, [])
+        for accessibility_node in tree_list:
+            text = announce_text(accessibility_node.node)
+            if text:
+                print(text)
 
 class Tab:
     def __init__(self, browser):
@@ -693,10 +708,9 @@ class Tab:
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.accessibility_tree.build()
-            print_tree(self.accessibility_tree)
             if not self.accessibility_agent:
                 self.accessibility_agent = AccessibilityAgent(
-                    self.accessibility_tree)
+                    self)
             self.needs_accessibility = False
             self.needs_paint = True
 
