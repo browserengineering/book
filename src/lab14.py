@@ -694,7 +694,7 @@ class Tab:
 
             self.document.paint(self.display_list)
             if self.focus and self.focus.tag == "input":
-                obj = [obj for obj in tree_to_list(self.layout_tree, [])
+                obj = [obj for obj in tree_to_list(self.document, [])
                    if obj.node == self.focus and \
                         isinstance(obj, InputLayout)][0]
                 text = self.focus.attributes.get("value", "")
