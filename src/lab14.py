@@ -682,8 +682,8 @@ class Tab:
             self.needs_style = False
 
         if self.needs_layout:
-            self.layout_tree = DocumentLayout(self.nodes)
-            self.layout_tree.layout(self.zoom)
+            self.document = DocumentLayout(self.nodes)
+            self.document.layout(self.zoom)
             if self.accessibility_is_on:
                 self.needs_accessibility = True
             else:
