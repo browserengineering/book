@@ -525,12 +525,8 @@ class Tab:
         self.needs_layout = False
         self.needs_accessibility = False
         self.needs_paint = False
-<<<<<<< HEAD
-        self.layout_tree = None
-        self.accessibility_is_on = False
-=======
         self.document = None
->>>>>>> 56780afc9f953eca6ef5d06c0ef37943caf7f04d
+        self.accessibility_is_on = False
         self.accessibility_tree = None
         self.accessibility_agent = None
 
