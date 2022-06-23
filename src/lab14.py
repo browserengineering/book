@@ -506,6 +506,13 @@ class AccessibilityNode:
         return "AccessibilityNode(node={} role={}".format(
             str(self.node), compute_role(self.node))
 
+class AccessibilityAgent:
+    def __init__(self, accessibility_tree):
+        self.accessibility_tree = None
+
+    def update(self):
+        print('update')
+
 class Tab:
     def __init__(self, browser):
         self.history = []
@@ -519,7 +526,9 @@ class Tab:
         self.needs_accessibility = False
         self.needs_paint = False
         self.layout_tree = None
+        self.accessibility_is_on = False
         self.accessibility_tree = None
+        self.accessibility_agent = None
 
         self.browser = browser
         if USE_BROWSER_THREAD:
@@ -675,15 +684,25 @@ class Tab:
         if self.needs_layout:
             self.layout_tree = DocumentLayout(self.nodes)
             self.layout_tree.layout(self.zoom)
-            self.needs_accessibility = True
+            if self.accessibility_is_on:
+                self.needs_accessibility = True
+            else:
+                self.needs_paint = True
             self.needs_layout = False
 
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.accessibility_tree.build()
+            print_tree(self.accessibility_tree)
+            if not self.accessibility_agent:
+                self.accessibility_agent = AccessibilityAgent(
+                    self.accessibility_tree)
             self.needs_accessibility = False
             self.needs_paint = True
-        
+
+            task = Task(self.accessibility_agent.update)
+            self.task_runner.schedule_task(task)
+
         if self.needs_paint:
             self.display_list = []
 
@@ -815,6 +834,10 @@ class Tab:
             self.history.pop()
             back = self.history.pop()
             self.load(back)
+
+    def toggle_accessibility(self):
+        self.accessibility_is_on = not self.accessibility_is_on
+        self.set_needs_render()
 
 class Browser:
     def __init__(self):
@@ -1083,6 +1106,11 @@ class Browser:
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
         self.set_active_tab(new_active_tab)
 
+    def toggle_accessibility(self):
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.toggle_accessibility)
+        active_tab.task_runner.schedule_task(task)
+
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < CHROME_PX:
@@ -1286,6 +1314,8 @@ if __name__ == "__main__":
                         browser.go_back()
                     elif event.key.keysym.sym == sdl2.SDLK_TAB:
                         browser.cycle_tabs()
+                    elif event.key.keysym.sym == sdl2.SDLK_a:
+                        browser.toggle_accessibility()
                     elif event.key.keysym.sym == sdl2.SDLK_t:
                         browser.add_tab()
                     elif event.key.keysym.sym == sdl2.SDLK_q:
