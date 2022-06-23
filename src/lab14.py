@@ -521,7 +521,6 @@ class AccessibilityAgent:
         self.tab = tab
 
     def update(self):
-        print('update agent')
         tree_list = tree_to_list(self.tab.accessibility_tree, [])
         for accessibility_node in tree_list:
             text = announce_text(accessibility_node.node)
