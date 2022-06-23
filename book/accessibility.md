@@ -105,7 +105,7 @@ class Tab:
 
 Now we just need to pass `zoom` down into `layout`:
 
-``` {.python replace=document/layout_tree}
+``` {.python}
 class Tab:
 	# ...
 	def render(self):
