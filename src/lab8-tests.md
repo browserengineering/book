@@ -123,3 +123,36 @@ POST requsts to other URLs return 404 pages:
     >>> server8.do_request("POST", "/", {}, "")
     ('404 Not Found', '<!doctype html><h1>POST / not found!</h1>')
 
+Testing layout_mode
+===================
+
+    >>> block_inline_url = 'http://test.test/example'
+    >>> test.socket.respond(block_inline_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"Header1: Value1\r\n\r\n" +
+    ... b"<input>" +
+    ... b"<div></div>")
+    >>> browser = lab8.Browser()
+    >>> browser.load(block_inline_url)
+    >>> lab8.print_tree(browser.tabs[0].document.node)
+     <html>
+       <body>
+         <input>
+         <div>
+
+In this case, because there is an inline elemnet (the `<input>`) and a block'
+sibling (the `<div`), they should be contianed in a `BlockLayout`, but the
+`<input>` element is in an `InlineLayout`:
+
+    >>> lab8.print_tree(browser.tabs[0].document)
+     DocumentLayout()
+       BlockLayout(x=13, y=18, width=774, height=15.0, node=<html>)
+         BlockLayout(x=13, y=18, width=774, height=15.0, node=<body>)
+           InlineLayout(x=13, y=18, width=774, height=15.0, node=<input>)
+             LineLayout(x=13, y=18, width=774, height=15.0)
+               InputLayout(x=13, y=20.25, width=200, height=12, type=input)
+           BlockLayout(x=13, y=33.0, width=774, height=0, node=<div>)
+
+The painted output also is only drawing the input as 200px wide:
+
+    >>> browser.tabs[0].display_list
+    [DrawRect(top=20.25 left=13 bottom=32.25 right=213 color=lightblue), DrawText(text=)]

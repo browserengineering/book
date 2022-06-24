@@ -206,6 +206,65 @@ class InlineLayout:
         self.cursor_x += w + font.measure(" ")
 ```
 
+But actually, there are a couple more complications due to the way we decided to
+resolve the block-mixed-with-inline-siblings problem (see
+[Chapter 5](layout.md#layout-modes)). One is that if there are no children for
+a node, we assume it's a block element. But `<input>` elements don't have
+children, yet must have inline layout or else they won't draw correctly.
+Likewise, a `<button>` does have children, but they are treated
+specially.^[This situation is specific to these elements in our browser, but
+only because they are the only elements with special painting
+behavior within an inline context. These are also two examples of
+[atomic inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes).]
+
+We can fix that with this change to `layout_mode`:
+
+``` {.python}
+def layout_mode(node):
+    if isinstance(node, Text):
+        return "inline"
+    elif node.children:
+        for child in node.children:
+            if isinstance(child, Text): continue
+            if child.tag in BLOCK_ELEMENTS:
+                return "block"
+        return "inline"
+    elif node.tag == "input":
+        return "inline"
+    else:
+        return "block"
+```
+
+The second problem is that, again due to having block siblings, sometimes an
+`InputLayout` will end up wrapped in a `InlineLayout` that refers to to the
+`<input>` or `<button>` node. But both `InlineLayout` and `InputLayout` have a
+`paint` method, which means we're painting the node twice. We can fix that
+with some simple logic to skip painting them via `InlineLayout`
+in this case:
+[^atomic-inline-input]
+
+``` {.python}
+class InlineLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
+        if not is_atomic:
+            if bgcolor != "transparent":
+                x2, y2 = self.x + self.width, self.y + self.height
+                rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+                display_list.append(rect)
+
+```
+
+[^atomic-inline-input]: See also the footnote earlier about how atomic inlines
+are often special in these kinds of ways. It's worth noting that there are
+various other ways that our browser does not fully implement all the
+complexities of inline painting---one example is that it does not correctly
+paint nested inlines with different background colors.
+
 With these changes the browser should now draw `input` and `button`
 elements as blue and orange rectangles.
 
@@ -393,7 +452,8 @@ class Tab:
         # ...
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
+                   if obj.node == self.focus and \
+                        isinstance(obj, InputLayout)][0]
 ```
 
 Then using that layout object we can find the coordinates where the

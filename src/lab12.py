@@ -20,16 +20,16 @@ from lab4 import Element
 from lab4 import Text
 from lab4 import HTMLParser
 from lab6 import cascade_priority
-from lab6 import layout_mode
 from lab6 import resolve_url
 from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
 from lab6 import CSSParser, compute_style, style
 from lab6 import TagSelector, DescendantSelector
+from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import DocumentLayout, DrawLine, draw_line, draw_rect, \
-    draw_text, parse_color, request, CHROME_PX, SCROLL_STEP
+    draw_text, parse_color, request, CHROME_PX, SCROLL_STEP, InputLayout
 
 class MeasureTime:
     def __init__(self, name):
@@ -298,7 +298,8 @@ class Tab:
         self.document.paint(self.display_list)
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus][0]
+                   if obj.node == self.focus and \
+                        isinstance(obj, InputLayout)][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measureText(text)
             y = obj.y
