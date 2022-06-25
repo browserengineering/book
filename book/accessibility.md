@@ -407,10 +407,10 @@ class Browser:
 Each time `tab` is presseed, we'll advance focus to the next thing in order.
 This will first require a definition of which elements are focusable:
 
-``` {.python}
-    def is_focusable(node):
-        return node.tag == "input" or node.tag == "button" \
-        	or node.tag == "a"
+``` {.python expected=False}
+def is_focusable(node):
+    return node.tag == "input" or node.tag == "button" \
+    	or node.tag == "a"
 ```
 
 And then each iterating through them. When `tab` is pressed and we're at the
@@ -421,7 +421,7 @@ class Tab:
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
-            if isinstance(node, Element) and Tab.is_focusable(node)]
+            if isinstance(node, Element) and is_focusable(node)]
         if not focusable_nodes:
             self.apply_focus(None)
         elif not self.focus:
