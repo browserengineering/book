@@ -879,7 +879,7 @@ class Tab:
 
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_render()        
+        self.set_needs_render()
 
 class Browser:
     def __init__(self):
