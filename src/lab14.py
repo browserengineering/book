@@ -489,11 +489,14 @@ def compute_role(node):
 
 def announce_text(node):
     if isinstance(node, Text):
-        return node.text
+        return node.text.split()
+
     elif node.tag == "input":
-        return "Input box"
+        return ["Input box"]
     elif node.tag == "button":
-        return "Button {}".format(node.children[0].text)
+        return ["Button: {}".format(node.children[0].text)]
+    elif node.tag == "a":
+        return ["Link: {}".format(node.children[0].text)]
     else:
         return None
 
@@ -524,13 +527,31 @@ class AccessibilityNode:
 class AccessibilityAgent:
     def __init__(self, tab):
         self.tab = tab
+        self.has_spoken_document = False
+        self.focus = self.tab.focus
 
-    def update(self):
+    def speak_node(self, node):
+        text = announce_text(node)
+        if text:
+            for item in text:
+                time.sleep(0.1)
+                print(item)
+
+    def speak_document(self):
+        print('Here are the document contents:')
         tree_list = tree_to_list(self.tab.accessibility_tree, [])
         for accessibility_node in tree_list:
-            text = announce_text(accessibility_node.node)
-            if text:
-                print(text)
+            self.speak_node(accessibility_node.node)
+        print("\n")
+
+    def update(self):
+        if not self.has_spoken_document:
+            self.speak_document()
+            self.has_spoken_document = True
+
+        if self.tab.focus and self.tab.focus != self.focus:
+            self.focus = self.tab.focus
+            self.speak_node(self.tab.focus)
 
 class Tab:
     def __init__(self, browser):
@@ -580,6 +601,8 @@ class Tab:
         self.task_runner.clear_pending_tasks()
         headers, body = request(url, self.url, payload=body)
         self.url = url
+        self.accessibility_agent = None
+        self.accessibility_tree = None
         self.history.append(url)
 
         self.allowed_origins = None
@@ -856,7 +879,7 @@ class Tab:
 
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_render()
+        self.set_needs_render()        
 
 class Browser:
     def __init__(self):
