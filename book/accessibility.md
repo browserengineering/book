@@ -570,6 +570,14 @@ Customizing accessibility features
 1. Outline CSS property
 2. tabindex
 
+The accessibility tree
+======================
+
+Install:
+
+    pip3 install gtts
+    pip3 install playsound
+
 Voice navigation
 ================
 

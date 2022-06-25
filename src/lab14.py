@@ -7,7 +7,10 @@ without exercises.
 import ctypes
 import dukpy
 import io
+import gtts
 import math
+import os
+import playsound
 import sdl2
 import skia
 import socket
@@ -489,14 +492,14 @@ def compute_role(node):
 
 def announce_text(node):
     if isinstance(node, Text):
-        return node.text.split()
+        return node.text
 
     elif node.tag == "input":
-        return ["Input box"]
+        return "Input box"
     elif node.tag == "button":
-        return ["Button: {}".format(node.children[0].text)]
+        return "Button: {}".format(node.children[0].text)
     elif node.tag == "a":
-        return ["Link: {}".format(node.children[0].text)]
+        return "Link: {}".format(node.children[0].text)
     else:
         return None
 
@@ -524,25 +527,37 @@ class AccessibilityNode:
         return "AccessibilityNode(node={} role={}".format(
             str(self.node), compute_role(self.node))
 
+SPEECH_FILE = "/tmp/speech-fragment.mp3"
+
 class AccessibilityAgent:
     def __init__(self, tab):
         self.tab = tab
         self.has_spoken_document = False
         self.focus = self.tab.focus
+    
+    def speak_text(text):
+        tts = gtts.gTTS(text)
+        tts.save(SPEECH_FILE)
+        playsound.playsound(SPEECH_FILE)
+        os.remove(SPEECH_FILE)
 
     def speak_node(self, node):
         text = announce_text(node)
         if text:
-            for item in text:
-                time.sleep(0.1)
-                print(item)
+            print(text)
+            if not self.tab.browser.is_muted():
+                AccessibilityAgent.speak_text(text)
 
     def speak_document(self):
-        print('Here are the document contents:')
+        text = "Here are the document contents: "
         tree_list = tree_to_list(self.tab.accessibility_tree, [])
         for accessibility_node in tree_list:
-            self.speak_node(accessibility_node.node)
-        print("\n")
+            new_text = announce_text(accessibility_node.node)
+            if new_text:
+                text += " "  + new_text
+        print(text)
+        if not self.tab.browser.is_muted():
+            AccessibilityAgent.speak_text(text)
 
     def update(self):
         if not self.has_spoken_document:
@@ -959,6 +974,7 @@ class Browser:
         self.composited_updates = {}
         self.composited_layers = []
         self.draw_list = []
+        self.muted = True
 
     def render(self):
         assert not USE_BROWSER_THREAD
@@ -1152,6 +1168,15 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.toggle_accessibility)
         active_tab.task_runner.schedule_task(task)
+
+    def toggle_mute(self):
+        self.muted = not self.muted
+
+    def is_muted(self):
+        self.lock.acquire(blocking=True)
+        muted = self.muted
+        self.lock.release()
+        return muted
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
@@ -1358,6 +1383,8 @@ if __name__ == "__main__":
                         browser.cycle_tabs()
                     elif event.key.keysym.sym == sdl2.SDLK_a:
                         browser.toggle_accessibility()
+                    elif event.key.keysym.sym == sdl2.SDLK_m:
+                        browser.toggle_mute()
                     elif event.key.keysym.sym == sdl2.SDLK_t:
                         browser.add_tab()
                     elif event.key.keysym.sym == sdl2.SDLK_q:
