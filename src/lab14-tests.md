@@ -130,6 +130,28 @@ And then the `input`:
      DrawText(text=Link)
      DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
 
+Regular elements aren't focusable, but if the `tabindex` attribute is set, they
+are:
+
+    >>> focus_tabindex_url = 'http://test.test/focus-tabindex'
+    >>> test.socket.respond(focus_tabindex_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b'<div>Not focusable</div><div tabindex=1>Is focusable</div>')
+
+    >>> browser = lab14.Browser()
+    >>> browser.load(focus_tabindex_url)
+    >>> browser.render()
+
+The first `div` is not focusable.
+
+    >>> lab14.is_focusable(browser.tabs[0].nodes.children[0].children[0])
+    False
+
+But the second one is, because it has a `tabindex` attribute.
+
+    >>> lab14.is_focusable(browser.tabs[0].nodes.children[0].children[1])
+    True
+
 Accessibility
 =============
 
@@ -147,7 +169,7 @@ The accessibility tree is automatically created.
 Rendering will read out the accessibility instructions:
 
     >>> browser.render()
-    Here are the document contents:  Input box Link: Link Link
+    Here are the document contents:  Input box Link Link
 
 From this tree:
 

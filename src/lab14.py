@@ -474,10 +474,16 @@ class InputLayout:
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
+def is_focusable(node):
+    return node.tag == "input" or node.tag == "button" \
+        or node.tag == "a" or "tabindex" in node.attributes
+
 def compute_role(node):
     if isinstance(node, Text):
         if node.parent.tag == "a":
             return "link"
+        elif is_focusable(node.parent):
+            return "focusable text"
         else:
             return "StaticText"
     else:
@@ -485,8 +491,12 @@ def compute_role(node):
             return "link"
         elif node.tag == "input":
             return "textbox"
+        elif node.tag == "button":
+            return "button"
         elif node.tag == "html":
             return "document"
+        elif is_focusable(node):
+            return "focusable"
         else:
             return "none"
 
@@ -497,9 +507,11 @@ def announce_text(node):
     elif node.tag == "input":
         return "Input box"
     elif node.tag == "button":
-        return "Button: {}".format(node.children[0].text)
+        return "Button"
     elif node.tag == "a":
-        return "Link: {}".format(node.children[0].text)
+        return "Link"
+    elif is_focusable(node):
+        return "focused element"
     else:
         return None
 
@@ -529,24 +541,27 @@ class AccessibilityNode:
 
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
 
+def speak_text(text):
+    tts = gtts.gTTS(text)
+    tts.save(SPEECH_FILE)
+    playsound.playsound(SPEECH_FILE)
+    os.remove(SPEECH_FILE)
+
 class AccessibilityAgent:
     def __init__(self, tab):
         self.tab = tab
         self.has_spoken_document = False
-        self.focus = self.tab.focus
-    
-    def speak_text(text):
-        tts = gtts.gTTS(text)
-        tts.save(SPEECH_FILE)
-        playsound.playsound(SPEECH_FILE)
-        os.remove(SPEECH_FILE)
+        self.focus = self.tab.focus    
 
     def speak_node(self, node):
+        text = "Element focused. "
         text = announce_text(node)
+        if text and node.children and isinstance(node.children[0], Text):
+            text += " " + announce_text(node.children[0])
+        print(text)
         if text:
-            print(text)
             if not self.tab.browser.is_muted():
-                AccessibilityAgent.speak_text(text)
+                speak_text(text)
 
     def speak_document(self):
         text = "Here are the document contents: "
@@ -557,7 +572,7 @@ class AccessibilityAgent:
                 text += " "  + new_text
         print(text)
         if not self.tab.browser.is_muted():
-            AccessibilityAgent.speak_text(text)
+            speak_text(text)
 
     def update(self):
         if not self.has_spoken_document:
@@ -850,17 +865,13 @@ class Tab:
         if self.focus:
             self.activate_element(self.focus)
 
-    def is_focusable(node):
-        return node.tag == "input" or node.tag == "button" \
-            or node.tag == "a"
-
     def get_tabindex(node):
         return int(node.attributes.get("tabindex", 9999999))
 
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
-            if isinstance(node, Element) and Tab.is_focusable(node)]
+            if isinstance(node, Element) and is_focusable(node)]
         focusable_nodes.sort(key=Tab.get_tabindex)
         if not focusable_nodes:
             self.apply_focus(None)
@@ -974,6 +985,7 @@ class Browser:
         self.composited_updates = {}
         self.composited_layers = []
         self.draw_list = []
+        self.accessibility_is_on = False
         self.muted = True
 
     def render(self):
@@ -1137,6 +1149,8 @@ class Browser:
         self.lock.acquire(blocking=True)
         self.focus = "address bar"
         self.address_bar = ""
+        if self.accessibility_is_on:
+            speak_text("Address bar focused")
         self.set_needs_raster()
         self.lock.release()
 
@@ -1165,6 +1179,7 @@ class Browser:
         self.set_active_tab(new_active_tab)
 
     def toggle_accessibility(self):
+        self.accessibility_is_on = not self.accessibility_is_on
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.toggle_accessibility)
         active_tab.task_runner.schedule_task(task)
