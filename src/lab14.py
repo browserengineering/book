@@ -928,7 +928,6 @@ def draw_line(canvas, x1, y1, x2, y2, color):
     paint.setStrokeWidth(1)
     canvas.drawPath(path, paint)
 
-
 class Browser:
     def __init__(self):
         if USE_GPU:
