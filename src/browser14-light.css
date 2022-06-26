@@ -1,0 +1,17 @@
+pre { background-color: gray; }
+
+a { color: blue; }
+i { font-style: italic; }
+b { font-weight: bold; }
+small { font-size: 90%; }
+big { font-size: 110%; }
+
+
+input {
+    font-size: 16px; font-weight: normal; font-style: normal;
+    background-color: lightblue;
+}
+button {
+    font-size: 16px; font-weight: normal; font-style: normal;
+    background-color: orange;
+}

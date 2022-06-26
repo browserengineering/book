@@ -30,17 +30,39 @@ from lab6 import TagSelector, DescendantSelector
 from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
-from lab11 import draw_line, draw_text, get_font, linespace, \
-    parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
+from lab11 import draw_text, get_font, linespace, \
+    parse_blend_mode, request, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, CSSParser, JSContext, style, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
     CommitData, add_parent_pointers, \
-    DisplayItem, DrawRRect, DrawText, \
+    DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP
+
+def parse_color(color):
+    if color == "white":
+        return skia.ColorWHITE
+    elif color == "lightblue":
+        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
+    elif color == "orange":
+        return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
+    elif color == "orangered":
+        return skia.ColorSetARGB(0xFF, 0xFF, 0x45, 0x00)
+    elif color == "red":
+        return skia.ColorRED
+    elif color == "green":
+        return skia.ColorGREEN
+    elif color == "blue":
+        return skia.ColorBLUE
+    elif color == "gray":
+        return skia.ColorGRAY
+    elif color == "lightgreen":
+        return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
+    else:
+        return skia.ColorBLACK
 
 def parse_outline(outline_str):
     if not outline_str:
@@ -63,6 +85,28 @@ def draw_rect(
         paint.setStrokeWidth(width);
         paint.setColor(parse_color(border_color))
     canvas.drawRect(rect, paint)
+
+
+class DrawRRect(DisplayItem):
+    def __init__(self, rect, radius, color):
+        super().__init__(rect)
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+        self.color = color
+
+    def is_paint_command(self):
+        return True
+
+    def execute(self, canvas):
+        sk_color = parse_color(self.color)
+        canvas.drawRRect(self.rrect,
+            paint=skia.Paint(Color=sk_color))
+
+    def print(self, indent=0):
+        return " " * indent + self.__repr__()
+
+    def __repr__(self):
+        return "DrawRRect(rect={}, color={})".format(
+            str(self.rrect), self.color)
 
 class DrawRect(DisplayItem):
     def __init__(self, rect, border_color, fill_color=None, width=0):
@@ -356,11 +400,15 @@ class DocumentLayout:
         child.layout(zoom)
         self.height = child.height + 2* device_px(VSTEP, zoom)
 
-    def paint(self, display_list):
+    def paint(self, display_list, dark_mode):
+        if dark_mode:
+            background_color = "black"
+        else:
+            background_color = "white"
         display_list.append(
             DrawRect(skia.Rect.MakeLTRB(
                 self.x, self.y, self.x + self.width, self.y + self.height),
-                "white", "white"))
+                background_color, background_color))
         self.children[0].paint(display_list)
 
     def __repr__(self):
@@ -599,6 +647,7 @@ class Tab:
         self.accessibility_is_on = False
         self.accessibility_tree = None
         self.accessibility_agent = None
+        self.dark_mode = False
 
         self.browser = browser
         if USE_BROWSER_THREAD:
@@ -613,8 +662,10 @@ class Tab:
 
         self.zoom = 1.0
 
-        with open("browser8.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
+        with open("browser14-light.css") as f:
+            self.default_light_style_sheet = CSSParser(f.read()).parse()
+        with open("browser14-dark.css") as f:
+            self.default_dark_style_sheet = CSSParser(f.read()).parse()
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
@@ -659,7 +710,8 @@ class Tab:
             task = Task(self.js.run, script_url, body)
             self.task_runner.schedule_task(task)
 
-        self.rules = self.default_style_sheet.copy()
+        self.light_rules = self.default_light_style_sheet.copy()
+        self.dark_rules = self.default_dark_style_sheet.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
@@ -675,7 +727,8 @@ class Tab:
                 header, body = request(style_url, url)
             except:
                 continue
-            self.rules.extend(CSSParser(body).parse())
+            self.light_rules.extend(CSSParser(body).parse())
+            self.dark_rules.extend(CSSParser(body).parse())
         self.set_needs_render()
 
     def set_needs_render(self):
@@ -749,7 +802,14 @@ class Tab:
         self.measure_render.start()
 
         if self.needs_style:
-            style(self.nodes, sorted(self.rules, key=cascade_priority), self)
+            if self.dark_mode:
+                INHERITED_PROPERTIES["color"] = "white"
+                style(self.nodes,
+                    sorted(self.dark_rules, key=cascade_priority), self)
+            else:
+                INHERITED_PROPERTIES["color"] = "black"
+                style(self.nodes,
+                    sorted(self.light_rules, key=cascade_priority), self)
             self.needs_layout = True
             self.needs_style = False
 
@@ -777,7 +837,7 @@ class Tab:
         if self.needs_paint:
             self.display_list = []
 
-            self.document.paint(self.display_list)
+            self.document.paint(self.display_list, self.dark_mode)
             if self.focus and self.focus.tag == "input":
                 obj = [obj for obj in tree_to_list(self.document, [])
                    if obj.node == self.focus and \
@@ -907,6 +967,18 @@ class Tab:
         self.accessibility_is_on = not self.accessibility_is_on
         self.set_needs_render()
 
+    def toggle_dark_mode(self):
+        self.dark_mode = not self.dark_mode
+        self.set_needs_render()
+
+def draw_line(canvas, x1, y1, x2, y2, color):
+    sk_color = parse_color(color)
+    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
+    paint = skia.Paint(Color=sk_color)
+    paint.setStyle(skia.Paint.kStroke_Style)
+    paint.setStrokeWidth(1)
+    canvas.drawPath(path, paint)
+
 class Browser:
     def __init__(self):
         if USE_GPU:
@@ -987,6 +1059,7 @@ class Browser:
         self.draw_list = []
         self.accessibility_is_on = False
         self.muted = True
+        self.dark_mode = False
 
     def render(self):
         assert not USE_BROWSER_THREAD
@@ -1193,6 +1266,18 @@ class Browser:
         self.lock.release()
         return muted
 
+    def toggle_dark_mode(self):
+        self.dark_mode = not self.dark_mode
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.toggle_dark_mode)
+        active_tab.task_runner.schedule_task(task)
+
+    def is_dark_mode(self):
+        self.lock.acquire(blocking=True)
+        dark_mode = self.dark_mode
+        self.lock.release()
+        return dark_mode
+
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < CHROME_PX:
@@ -1266,46 +1351,63 @@ class Browser:
 
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
+        if self.dark_mode:
+            canvas.clear(skia.ColorBLACK)
+            color = "white"
+            background_color = "black"
+        else:
+            canvas.clear(skia.ColorWHITE)
+            color = "black"
+            background_color = "white"
     
         # Draw the tabs UI:
         tabfont = skia.Font(skia.Typeface('Arial'), 20)
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_line(canvas, x1, 0, x1, 40)
-            draw_line(canvas, x2, 0, x2, 40)
-            draw_text(canvas, x1 + 10, 10, name, tabfont)
+            draw_line(canvas, x1, 0, x1, 40, color)
+            draw_line(canvas, x2, 0, x2, 40, color)
+            draw_text(canvas, x1 + 10, 10, name, tabfont, color)
             if i == self.active_tab:
-                draw_line(canvas, 0, 40, x1, 40)
-                draw_line(canvas, x2, 40, WIDTH, 40)
+                draw_line(canvas, 0, 40, x1, 40, color)
+                draw_line(canvas, x2, 40, WIDTH, 40, color)
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        draw_rect(canvas, skia.Rect.MakeLTRB(10, 10, 30, 30))
-        draw_text(canvas, 11, 4, "+", buttonfont)
+        draw_rect(canvas, skia.Rect.MakeLTRB(10, 10, 30, 30),
+            fill_color=background_color, border_color=color)
+        draw_text(canvas, 11, 4, "+", buttonfont, color=color)
 
         # Draw the URL address bar:
-        draw_rect(canvas, skia.Rect.MakeLTRB(40.0, 50.0, WIDTH - 10.0, 90.0))
+        draw_rect(canvas, skia.Rect.MakeLTRB(40.0, 50.0, WIDTH - 10.0, 90.0),
+            fill_color=background_color, border_color=color)
+
         if self.focus == "address bar":
-            draw_text(canvas, 55, 55, self.address_bar, buttonfont)
+            draw_text(canvas, 55, 55, self.address_bar, buttonfont,
+                color=color)
             w = buttonfont.measureText(self.address_bar)
-            draw_line(canvas, 55 + w, 55, 55 + w, 85)
+            draw_line(canvas, 55 + w, 55, 55 + w, 85, color)
         else:
             if self.url:
-                draw_text(canvas, 55, 55, self.url, buttonfont)
+                draw_text(canvas, 55, 55, self.url, buttonfont,
+                    color=color)
 
         # Draw the back button:
-        draw_rect(canvas, skia.Rect.MakeLTRB(10, 50, 35, 90))
+        draw_rect(canvas, skia.Rect.MakeLTRB(10, 50, 35, 90),
+            fill_color=background_color, border_color=color)
+
         path = \
             skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
         paint = skia.Paint(
-            Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
+            Color=parse_color(color), Style=skia.Paint.kFill_Style)
         canvas.drawPath(path, paint)
 
     def draw(self):
         canvas = self.root_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
+        if self.dark_mode:
+            canvas.clear(skia.ColorBLACK)
+        else:
+            canvas.clear(skia.ColorWHITE)
 
         canvas.save()
         canvas.translate(0, CHROME_PX - self.scroll)
@@ -1398,6 +1500,8 @@ if __name__ == "__main__":
                         browser.cycle_tabs()
                     elif event.key.keysym.sym == sdl2.SDLK_a:
                         browser.toggle_accessibility()
+                    elif event.key.keysym.sym == sdl2.SDLK_d:
+                        browser.toggle_dark_mode()
                     elif event.key.keysym.sym == sdl2.SDLK_m:
                         browser.toggle_mute()
                     elif event.key.keysym.sym == sdl2.SDLK_t:

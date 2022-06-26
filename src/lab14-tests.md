@@ -178,3 +178,35 @@ From this tree:
        AccessibilityNode(node=<input> role=textbox
        AccessibilityNode(node=<a href="/dest"> role=link
          AccessibilityNode(node='Link' role=link
+
+
+Dark mode
+=========
+
+The browser supports light and dark mode rendering.
+
+    >>> focus_url = 'http://test.test/focus'
+    >>> test.socket.respond(focus_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b'<input><a href="/dest">Link</a>')
+
+The tab contents are light:
+
+    >>> browser = lab14.Browser()
+    >>> browser.load(focus_url)
+    >>> browser.render()
+    >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
+     DrawRect(top=18.0 left=13.0 bottom=76.34375 right=787.0 border_color=white width=0 fill_color=white)
+     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawText(text=)
+     DrawText(text=Link)
+
+But when we toggle to dark, it switches:
+
+    >>> browser.toggle_dark_mode()
+    >>> browser.render()
+    >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
+     DrawRect(top=18.0 left=13.0 bottom=76.34375 right=787.0 border_color=black width=0 fill_color=black)
+     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=blue)
+     DrawText(text=)
+     DrawText(text=Link)
