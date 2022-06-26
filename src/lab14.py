@@ -31,16 +31,38 @@ from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import draw_text, get_font, linespace, \
-    parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
+    parse_blend_mode, request, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, CSSParser, JSContext, style, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
     CommitData, add_parent_pointers, \
-    DisplayItem, DrawRRect, DrawText, \
+    DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP
+
+def parse_color(color):
+    if color == "white":
+        return skia.ColorWHITE
+    elif color == "lightblue":
+        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
+    elif color == "orange":
+        return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
+    elif color == "orangered":
+        return skia.ColorSetARGB(0xFF, 0xFF, 0x45, 0x00)
+    elif color == "red":
+        return skia.ColorRED
+    elif color == "green":
+        return skia.ColorGREEN
+    elif color == "blue":
+        return skia.ColorBLUE
+    elif color == "gray":
+        return skia.ColorGRAY
+    elif color == "lightgreen":
+        return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
+    else:
+        return skia.ColorBLACK
 
 def parse_outline(outline_str):
     if not outline_str:
@@ -63,6 +85,28 @@ def draw_rect(
         paint.setStrokeWidth(width);
         paint.setColor(parse_color(border_color))
     canvas.drawRect(rect, paint)
+
+
+class DrawRRect(DisplayItem):
+    def __init__(self, rect, radius, color):
+        super().__init__(rect)
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+        self.color = color
+
+    def is_paint_command(self):
+        return True
+
+    def execute(self, canvas):
+        sk_color = parse_color(self.color)
+        canvas.drawRRect(self.rrect,
+            paint=skia.Paint(Color=sk_color))
+
+    def print(self, indent=0):
+        return " " * indent + self.__repr__()
+
+    def __repr__(self):
+        return "DrawRRect(rect={}, color={})".format(
+            str(self.rrect), self.color)
 
 class DrawRect(DisplayItem):
     def __init__(self, rect, border_color, fill_color=None, width=0):
@@ -618,8 +662,10 @@ class Tab:
 
         self.zoom = 1.0
 
-        with open("browser8.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
+        with open("browser14-light.css") as f:
+            self.default_light_style_sheet = CSSParser(f.read()).parse()
+        with open("browser14-dark.css") as f:
+            self.default_dark_style_sheet = CSSParser(f.read()).parse()
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
@@ -664,7 +710,8 @@ class Tab:
             task = Task(self.js.run, script_url, body)
             self.task_runner.schedule_task(task)
 
-        self.rules = self.default_style_sheet.copy()
+        self.light_rules = self.default_light_style_sheet.copy()
+        self.dark_rules = self.default_dark_style_sheet.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
@@ -680,7 +727,8 @@ class Tab:
                 header, body = request(style_url, url)
             except:
                 continue
-            self.rules.extend(CSSParser(body).parse())
+            self.light_rules.extend(CSSParser(body).parse())
+            self.dark_rules.extend(CSSParser(body).parse())
         self.set_needs_render()
 
     def set_needs_render(self):
@@ -756,9 +804,12 @@ class Tab:
         if self.needs_style:
             if self.dark_mode:
                 INHERITED_PROPERTIES["color"] = "white"
+                style(self.nodes,
+                    sorted(self.dark_rules, key=cascade_priority), self)
             else:
                 INHERITED_PROPERTIES["color"] = "black"
-            style(self.nodes, sorted(self.rules, key=cascade_priority), self)
+                style(self.nodes,
+                    sorted(self.light_rules, key=cascade_priority), self)
             self.needs_layout = True
             self.needs_style = False
 
