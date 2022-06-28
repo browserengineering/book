@@ -407,7 +407,8 @@ class DocumentLayout:
             background_color = "white"
         display_list.append(
             DrawRect(skia.Rect.MakeLTRB(
-                self.x, self.y, self.x + self.width, self.y + self.height),
+                self.x, self.y, self.x + self.width,
+                self.y + self.height),
                 background_color, background_color))
         self.children[0].paint(display_list)
 
@@ -647,7 +648,7 @@ class Tab:
         self.accessibility_is_on = False
         self.accessibility_tree = None
         self.accessibility_agent = None
-        self.dark_mode = False
+        self.dark_mode = browser.dark_mode
 
         self.browser = browser
         if USE_BROWSER_THREAD:
@@ -663,9 +664,11 @@ class Tab:
         self.zoom = 1.0
 
         with open("browser14-light.css") as f:
-            self.default_light_style_sheet = CSSParser(f.read()).parse()
+            self.default_light_style_sheet = \
+                CSSParser(f.read()).parse()
         with open("browser14-dark.css") as f:
-            self.default_dark_style_sheet = CSSParser(f.read()).parse()
+            self.default_dark_style_sheet = \
+                CSSParser(f.read()).parse()
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
@@ -805,11 +808,13 @@ class Tab:
             if self.dark_mode:
                 INHERITED_PROPERTIES["color"] = "white"
                 style(self.nodes,
-                    sorted(self.dark_rules, key=cascade_priority), self)
+                    sorted(self.dark_rules,
+                        key=cascade_priority), self)
             else:
                 INHERITED_PROPERTIES["color"] = "black"
                 style(self.nodes,
-                    sorted(self.light_rules, key=cascade_priority), self)
+                    sorted(self.light_rules,
+                        key=cascade_priority), self)
             self.needs_layout = True
             self.needs_style = False
 
@@ -1272,12 +1277,6 @@ class Browser:
         task = Task(active_tab.toggle_dark_mode)
         active_tab.task_runner.schedule_task(task)
 
-    def is_dark_mode(self):
-        self.lock.acquire(blocking=True)
-        dark_mode = self.dark_mode
-        self.lock.release()
-        return dark_mode
-
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < CHROME_PX:
@@ -1352,13 +1351,12 @@ class Browser:
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
         if self.dark_mode:
-            canvas.clear(skia.ColorBLACK)
             color = "white"
             background_color = "black"
         else:
-            canvas.clear(skia.ColorWHITE)
             color = "black"
             background_color = "white"
+        canvas.clear(parse_color(background_color))
     
         # Draw the tabs UI:
         tabfont = skia.Font(skia.Typeface('Arial'), 20)

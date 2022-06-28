@@ -562,7 +562,223 @@ won't implement them.
 Dark mode
 =========
 
-Implement dark mode.
+Next up is solving the issue of content being too bright for a user. The reasons
+why might include extra sensitivity to light, or needing to use a device often
+at night (especially in a shared space where others might be disturbed by too
+much light). For this, browsers support a *dark mode*---a mode where the
+browser---and therefore also web pages---by default have a black background and
+a white foreground (as opposed to a white background and black foreground).
+
+We'll bind the `ctrl-d` keystroke to toggle dark mode:
+
+``` {.python}
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+                if ctrl_down:
+                    # ...
+                    elif event.key.keysym.sym == sdl2.SDLK_d:
+                        browser.toggle_dark_mode()
+```
+
+Which toggles in the browser:
+
+``` {.python}
+class Browser:
+    # ...
+    def __init__(self):
+        # ...
+        self.dark_mode = False
+
+    def toggle_dark_mode(self):
+        self.dark_mode = not self.dark_mode
+```
+
+To make the browser chrome dark, we just need to flip all the colors in
+`raster_chrome`. First set some variables to capture it, and set the canvas
+default to `background_color`:
+
+``` {.python}
+class Browser:
+    # ...
+    def raster_chrome(self):
+        if self.dark_mode:
+            color = "white"
+            background_color = "black"
+        else:
+            color = "black"
+            background_color = "white"
+        canvas.clear(parse_color(background_color))
+```
+
+Then we just need to use `color` or `background_color` in place of all of the
+colors. For example plumb color to the `draw_line` function and pass `color`
+as the color for rastering tabs:
+
+``` {python}
+def draw_line(canvas, x1, y1, x2, y2, color):
+    sk_color = parse_color(color)
+    # ...
+    paint = skia.Paint(Color=sk_color)
+
+class Browser:
+    # ...
+    def raster_chrome(self):
+        # ...
+
+        # Draw the tabs UI:
+        tabfont = skia.Font(skia.Typeface('Arial'), 20)
+        for i, tab in enumerate(self.tabs):
+            name = "Tab {}".format(i)
+            x1, x2 = 40 + 80 * i, 120 + 80 * i
+            draw_line(canvas, x1, 0, x1, 40, color)
+            draw_line(canvas, x2, 0, x2, 40, color)
+            draw_text(canvas, x1 + 10, 10, name, tabfont, color)
+            if i == self.active_tab:
+                draw_line(canvas, 0, 40, x1, 40, color)
+                draw_line(canvas, x2, 40, WIDTH, 40, color)
+```
+
+Likewise all the rest of the `draw_line`, `draw_text` and `draw_rect` calls
+in `raster_chrome` should be instrumented with the dark mode-dependent color.
+
+``` {.python}
+class Browser:
+    # ...
+    def toggle_dark_mode(self):
+        # ...
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.toggle_dark_mode)
+        active_tab.task_runner.schedule_task(task)
+```
+
+The `draw` method technically also needs to clear to a dark mode color
+(though this color is generally not available, it's just there to avoid any
+accidental transparency in the window).
+
+``` {.python}
+class Browser:
+    # ...
+    def draw(self):
+        # ...
+        if self.dark_mode:
+            canvas.clear(skia.ColorBLACK)
+        else:
+            canvas.clear(skia.ColorWHITE)
+```
+
+Dark mode also needs to make tabs dark by default. So first plumb the bit:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.dark_mode = browser.dark_mode
+
+    def toggle_dark_mode(self):
+        self.dark_mode = not self.dark_mode
+        self.set_needs_render()
+```
+
+Now we need to flip the colors somehow. The easiest to change are the default
+text color and background color of the document. The text color can just
+be overridden by changing `INHERITED_PROPERTIES`:
+
+``` {.python expected=False}
+class Tab:
+    # ...
+    def render(self):
+        # ...
+        if self.dark_mode:
+            INHERITED_PROPERTIES["color"] = "white"
+        else:
+            INHERITED_PROPERTIES["color"] = "black"
+        style(self.nodes, sorted(
+            self.rules, key=cascade_priority), self)
+```
+
+And the default background color of the document can be flipped by passing a
+new `dark_mode` parameter:
+
+``` {.python}
+class Tab:
+    # ...
+    def render(self):
+        self.document.paint(self.display_list, self.dark_mode)
+```
+
+``` {.python}
+class DocumentLayout:
+    # ...
+    def paint(self, display_list, dark_mode):
+        if dark_mode:
+            background_color = "black"
+        else:
+            background_color = "white"
+        display_list.append(
+            DrawRect(skia.Rect.MakeLTRB(
+                self.x, self.y, self.x + self.width,
+                self.y + self.height),
+                background_color, background_color))
+```
+
+If you load up a page, now you should see white text on a black background.
+But if you try [this example](examples/example14-focus.html) it still won't
+look very good, because buttons and input elements now have poor contrast
+with the white foreground text. Let's fix that. Recall that the `lightblue` and
+`orange` colors for `<input>` and `<button>` elements come from the
+browser style sheet. What we need is to make that style sheet depend on dark
+mode.
+
+This won't be *too* hard. One way to do it would be to programmatically modify
+styles in `style`. Instead let's just define two browser style sheets,
+and load both:^[Yes, this is quite inefficient because the style sheets of the
+document are stored twice. See the go-further event at the end of this section.]
+
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        with open("browser14-light.css") as f:
+            self.default_light_style_sheet = \
+                CSSParser(f.read()).parse()
+        with open("browser14-dark.css") as f:
+            self.default_dark_style_sheet = \
+                CSSParser(f.read()).parse()
+    # ...
+    def load(self, url, body=None):
+        # ...
+        self.light_rules = self.default_light_style_sheet.copy()
+        self.dark_rules = self.default_dark_style_sheet.copy()
+        # ...
+        for link in links:
+            self.light_rules.extend(CSSParser(body).parse())
+            self.dark_rules.extend(CSSParser(body).parse())
+```
+
+Then we can just use them when calling `style`:
+
+``` {.python}
+class Tab:
+    # ...
+    def render(self):
+        if self.needs_style:
+            if self.dark_mode:
+                INHERITED_PROPERTIES["color"] = "white"
+                style(self.nodes,
+                    sorted(self.dark_rules,
+                        key=cascade_priority), self)
+            else:
+                INHERITED_PROPERTIES["color"] = "black"
+                style(self.nodes,
+                    sorted(self.light_rules,
+                        key=cascade_priority), self)
+```
+
+::: {.further}
+Describe media queries and prefers-color-scheme in particular.
+:::
 
 Customizing accessibility features
 ==================================
@@ -626,3 +842,10 @@ Third example: color contrast, forced colors mode
 
 Other thoughts:
 Introduce the role attribute? (needs a compelling example; maybe explain in the context of aria + the accessibility tree?)
+
+
+
+Exercises
+=========
+
+* Implement `prefers-color-scheme`
