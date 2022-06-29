@@ -780,11 +780,6 @@ class Tab:
 Describe media queries and prefers-color-scheme in particular.
 :::
 
-Customizing accessibility features
-==================================
-
-1. Outline CSS property
-2. tabindex
 
 The accessibility tree
 ======================
@@ -793,6 +788,100 @@ Install:
 
     pip3 install gtts
     pip3 install playsound
+
+Customizing accessibility features
+==================================
+
+Our browser now has all these cool features to help accessibility: zoom,
+keyboard navigation and dark mode. But what if the website wants to *extend*
+that work to new use cases not built into the browser? For example, what if
+a web developer wants to add their own different kind of input element, or
+a fancier kind of hyperlink? These kinds of *custom widgets* are very common
+on the web, in fact much more common than the built-in ones.
+
+You can make a custom widget with event listeners for keyboard and mouse events,
+and your own styling and layout. But it immediately loses important features
+like becoming focusable, participating in tab index order, and responding to
+dark mode. This means that as a site wants to customize the experience to
+make it nicer for some users, it becomes worse for others---the ones who
+really depend on tab order, dark mode and the accessibility tree.
+
+Let's add features to our browser to allow custom widgets to get back that
+functionality, and start with focus and tab order. This is easily solved
+with the `tabindex` attribute on HTML elements. When this attribute is present,
+the element automatically becomes focusable. The value of this property is
+a number, indicating the order of focus. For example, an element with
+`tabindex=1` on it will be focused before `tabindex=2`.^[Elements like
+input that are by default focusable can have `tabindex` set, but if it isn't
+set they will be last in the order after `tabidex` elements.]
+
+First, `is_focusable` needs to be extended accordingly:
+
+``` {.python}
+def is_focusable(node):
+    return node.tag == "input" or node.tag == "button" \
+        or node.tag == "a" or "tabindex" in node.attributes
+```
+
+Define a new method to get the tab index. It defaults to 9999999, which is
+an approximation to "higher tabindex than anything specified".
+
+``` {.python}
+class Tab:
+    # ...
+    def get_tabindex(node):
+        return int(node.attributes.get("tabindex", 9999999))
+```
+
+Then it can be used in the sorting order for `advance_tab`:
+
+``` {.python}
+class Tab:
+    def advance_tab(self):
+        focusable_nodes = [node
+            for node in tree_to_list(self.nodes, [])
+            if isinstance(node, Element) and is_focusable(node)]
+        focusable_nodes.sort(key=Tab.get_tabindex)
+        # ...
+```
+
+That's it! Now tabindex works. Tabbing through the
+[focus example](examples/example14-focus.html) should now
+change its order according to the `tabindex` attributes in it.
+
+Next up is customizing the focus rectangle via the `outline` CSS property.
+As usual, we'll implement only the subset of it that looks like this:
+
+    outline: 3px solid red;
+
+Which means "make the outline 3px and red". First parse it:
+
+``` {.python}
+def parse_outline(outline_str):
+    if not outline_str:
+        return None
+    values = outline_str.split(" ")
+    if len(values) != 3:
+        return None
+    if values[1] != "solid":
+        return None
+    return (int(values[0][:-2]), values[2])
+```
+
+And use it, The outline will be present if the element is focused or has
+the outline generally.
+
+``` {.python}
+def paint_outline(node, cmds, rect):
+    outline = parse_outline(node.style.get("outline"))
+    if outline:
+        cmds.append(outline_cmd(rect, outline))
+    elif hasattr(node, "is_focused") and node.is_focused:
+        cmds.append(outline_cmd(rect, (2, "black")))
+```
+
+Which is a problem. Implement pseudoclass syntax?
+
 
 Voice navigation
 ================
