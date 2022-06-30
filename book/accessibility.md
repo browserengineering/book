@@ -781,13 +781,75 @@ Describe media queries and prefers-color-scheme in particular.
 :::
 
 
-The accessibility tree
-======================
+Voice navigation
+================
 
-Install:
+Now let's consider a challenge even harder than too-small/too-bright contrent or
+keyboard navigation: what if the user can't see the web page at
+all? For these users, a whole lot of the work our browser does is about
+rendering content visually, which for them is simply not useful at all. So
+what do we do instead?
+
+Well, there is still the DOM itself, and that has inherent *semantics* in it.
+For example, an `<a>` element has a clear meaning and purpose, irrespedctive
+of how it's displayed on the screen. The same goes for `<input` and `<button>`.
+And of course the text in the document has meaning even without display.
+
+So what we need to do is bundle up the semantics of the DOM and present them to
+the user in some way they can visualize. For a user that can't see the screen,
+the simplest approach will be to read the content out loud. This functionality
+is called a *screen reader*. Screen readers are in practice generally
+[^why-diff] a different application than the browser. But it's actually
+not so hard to build one directly *into* our browser, and doing so will give
+you a lot of insights into how accessibility actually works in a browser.
+So let's do it![^os-pain]
+
+[^why-diff]: I think the reason is mainly historical, in that accessibilty APIs
+and screen readers evolved first with operating systems, and before/in paralell
+with the development of browsers. These days, though, browsers are by far the
+most important app many users interact with (especially on desktop OSes),
+so it makes more sense to consier such features core to a browser with each
+year that passes
+
+[^os-pain]: Another reason is that it's actually quite a lot of work to
+directly integrate a browser with the accessibility APIs of each OS. Further,
+it's not very easy to find Python bindings for these APIs, especially Linux.]
+
+The first step is to install something that can read text out loud. For this
+we'll use two libraries: one that converts text to audio files, and one that
+plays the audio files. For the first we'll use [`gtts`][gtts], a Python library
+that wraps the Google [text-to-speech API][tts]. For the latter we'll
+use the [`playsound`][playsound] library.
+
+[gtts]: https://pypi.org/project/gTTS/
+
+[tts]: https://cloud.google.com/text-to-speech/docs/apis
+
+[playsound]: https://pypi.org/project/playsound/
+
+First install them:
 
     pip3 install gtts
     pip3 install playsound
+
+And then import them:
+
+``` {.python}
+import gtts
+# ...
+import playsound
+```
+
+
+::: {.further}
+
+Describe connection bewteen blind users and assistant experiences, search engine
+crawlers and other machine-reading use cases.
+
+:::
+
+The accessibility tree
+======================
 
 Customizing accessibility features
 ==================================
@@ -883,8 +945,8 @@ def paint_outline(node, cmds, rect):
 Which is a problem. Implement pseudoclass syntax?
 
 
-Voice navigation
-================
+
+
 
 Introduce accessibility tech
 Implement the accessibility tree
