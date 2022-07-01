@@ -559,6 +559,13 @@ straightforward, so I've omitted it.
 maximize the browser window. Those require calling specialized OS APIs, so I
 won't implement them.
 
+::: {.further}
+
+Discuss the opposite of keyboard input: voice input. And how it can be mapped
+to these same APIs, via speech-to-text assistants.
+
+:::
+
 Dark mode
 =========
 
@@ -832,14 +839,29 @@ First install them:
     pip3 install gtts
     pip3 install playsound
 
-And then import them:
+And then import them (we need the `os` module also, for managing files created
+by `gtts`:
 
 ``` {.python}
 import gtts
 # ...
+import os
 import playsound
 ```
+Using these librares is very easy. To speak text out loud you just convert it
+to an audio file, then play the file:
 
+``` {.python}
+SPEECH_FILE = "/tmp/speech-fragment.mp3"
+
+def speak_text(text):
+    tts = gtts.gTTS(text)
+    tts.save(SPEECH_FILE)
+    playsound.playsound(SPEECH_FILE)
+    os.remove(SPEECH_FILE)
+```
+
+The next question is: which text should we print?
 
 ::: {.further}
 
