@@ -596,42 +596,6 @@ def speak_text(text):
     playsound.playsound(SPEECH_FILE)
     os.remove(SPEECH_FILE)
 
-class AccessibilityAgent:
-    def __init__(self, tab):
-        self.tab = tab
-        self.has_spoken_document = False
-        self.focus = self.tab.focus    
-
-    def speak_node(self, node):
-        text = "Element focused. "
-        text = announce_text(node)
-        if text and node.children and isinstance(node.children[0], Text):
-            text += " " + announce_text(node.children[0])
-        print(text)
-        if text:
-            if not self.tab.browser.is_muted():
-                speak_text(text)
-
-    def speak_document(self):
-        text = "Here are the document contents: "
-        tree_list = tree_to_list(self.tab.accessibility_tree, [])
-        for accessibility_node in tree_list:
-            new_text = announce_text(accessibility_node.node)
-            if new_text:
-                text += " "  + new_text
-        print(text)
-        if not self.tab.browser.is_muted():
-            speak_text(text)
-
-    def update(self):
-        if not self.has_spoken_document:
-            self.speak_document()
-            self.has_spoken_document = True
-
-        if self.tab.focus and self.tab.focus != self.focus:
-            self.focus = self.tab.focus
-            self.speak_node(self.tab.focus)
-
 class Tab:
     def __init__(self, browser):
         self.history = []
@@ -645,10 +609,12 @@ class Tab:
         self.needs_accessibility = False
         self.needs_paint = False
         self.document = None
+        self.dark_mode = browser.dark_mode
+
         self.accessibility_is_on = False
         self.accessibility_tree = None
-        self.accessibility_agent = None
-        self.dark_mode = browser.dark_mode
+        self.has_spoken_document = False
+        self.accessibility_focus = None
 
         self.browser = browser
         if USE_BROWSER_THREAD:
@@ -685,7 +651,6 @@ class Tab:
         self.task_runner.clear_pending_tasks()
         headers, body = request(url, self.url, payload=body)
         self.url = url
-        self.accessibility_agent = None
         self.accessibility_tree = None
         self.history.append(url)
 
@@ -801,6 +766,36 @@ class Tab:
 
         self.browser.commit(self, commit_data)
 
+    def speak_node(self, node):
+        text = "Element focused. "
+        text = announce_text(node)
+        if text and node.children and isinstance(node.children[0], Text):
+            text += " " + announce_text(node.children[0])
+        print(text)
+        if text:
+            if not self.browser.is_muted():
+                speak_text(text)
+
+    def speak_document(self):
+        text = "Here are the document contents: "
+        tree_list = tree_to_list(self.accessibility_tree, [])
+        for accessibility_node in tree_list:
+            new_text = announce_text(accessibility_node.node)
+            if new_text:
+                text += " "  + new_text
+        print(text)
+        if not self.browser.is_muted():
+            speak_text(text)
+
+    def speak_update(self):
+        if not self.has_spoken_document:
+            self.speak_document()
+            self.has_spoken_document = True
+
+        if self.accessibility_focus and self.focus != self.accessibility_focus:
+            self.accessibility_focus = self.focus
+            self.speak_node(self.focus)
+
     def render(self):
         self.measure_render.start()
 
@@ -830,13 +825,10 @@ class Tab:
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.accessibility_tree.build()
-            if not self.accessibility_agent:
-                self.accessibility_agent = AccessibilityAgent(
-                    self)
             self.needs_accessibility = False
             self.needs_paint = True
 
-            task = Task(self.accessibility_agent.update)
+            task = Task(self.speak_update)
             self.task_runner.schedule_task(task)
 
         if self.needs_paint:
