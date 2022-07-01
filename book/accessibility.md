@@ -1051,6 +1051,36 @@ nodes if their role is not `None`:
             AccessibilityNode.build_internal(child_node, parent)
 ```
 
+Let's now use this code to speak the whole document once after it's been loaded:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.has_spoken_document = False
+
+    # ...
+    def speak_document(self):
+        text = "Here are the document contents: "
+        tree_list = tree_to_list(self.accessibility_tree, [])
+        for accessibility_node in tree_list:
+            new_text = announce_text(accessibility_node.node)
+            if new_text:
+                text += " "  + new_text
+        print(text)
+        if not self.browser.is_muted():
+            speak_text(text)
+
+    def speak_update(self):
+        if not self.has_spoken_document:
+            self.speak_document()
+            self.has_spoken_document = True
+
+        if self.focus and \
+            self.focus != self.accessibility_focus:
+            self.accessibility_focus = self.focus
+            self.speak_node(self.focus)
+```
 
 Customizing accessibility features
 ==================================
