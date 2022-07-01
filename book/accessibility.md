@@ -559,6 +559,13 @@ straightforward, so I've omitted it.
 maximize the browser window. Those require calling specialized OS APIs, so I
 won't implement them.
 
+::: {.further}
+
+Discuss the opposite of keyboard input: voice input. And how it can be mapped
+to these same APIs, via speech-to-text assistants.
+
+:::
+
 Dark mode
 =========
 
@@ -832,14 +839,97 @@ First install them:
     pip3 install gtts
     pip3 install playsound
 
-And then import them:
+And then import them (we need the `os` module also, for managing files created
+by `gtts`:
 
 ``` {.python}
 import gtts
 # ...
+import os
 import playsound
 ```
+Using these librares is very easy. To speak text out loud you just convert it
+to an audio file, then play the file:
 
+``` {.python}
+SPEECH_FILE = "/tmp/speech-fragment.mp3"
+
+def speak_text(text):
+    tts = gtts.gTTS(text)
+    tts.save(SPEECH_FILE)
+    playsound.playsound(SPEECH_FILE)
+    os.remove(SPEECH_FILE)
+```
+
+Let's use this to speak to the user the focused element. A new method,
+`speak_update`, will check if the focused element changed and say it out loud,
+via a `speak_node` method. Saying it out loud will require knowing what text to
+say, which will be decided in `announce_text`.
+
+Here is `announce_text`. For text nodes it's just the text, and otherwise it
+describes the element tag, plus whether it's focused.
+
+``` {.python}
+def announce_text(node):
+    if isinstance(node, Text):
+        return node.text
+
+    elif node.tag == "input":
+        return "Input box"
+    elif node.tag == "button":
+        return "Button"
+    elif node.tag == "a":
+        return "Link"
+    elif is_focusable(node):
+        return "focused element"
+    else:
+        return None
+```
+
+The `speak_node` method calls `announce_text` and also adds in any text
+children. It then prints it to the screen (most useful for our own debugging),
+and then speaks the text.
+
+``` {.python}
+class Tab:
+    # ...
+    def speak_node(self, node):
+        text = "Element focused. "
+        text = announce_text(node)
+        if text and node.children and \
+            isinstance(node.children[0], Text):
+            text += " " + announce_text(node.children[0])
+        print(text)
+        if text:
+            if not self.browser.is_muted():
+                speak_text(text)
+```
+
+And finally there is `speak_update`:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.accessibility_focus = None
+
+    def speak_update(self):
+        if self.focus and \
+            self.focus != self.accessibility_focus:
+            self.accessibility_focus = self.focus
+            self.speak_node(self.focus)
+```
+
+The update can then be called after layout is done:
+
+``` {.python expected=False}
+class Tab:
+    # ...
+    def render(self):
+        # ...
+            self.document.layout(self.zoom)
+            self.speak_update()     
+```
 
 ::: {.further}
 
@@ -850,6 +940,147 @@ crawlers and other machine-reading use cases.
 
 The accessibility tree
 ======================
+
+Reading out focus is great, but there are a number of other things such users
+want to do, such as reading the whole document and interacting with it in
+various ways. And the semantics of how this work ends up being a lot like
+rendering. For example, DOM nodes that are invisible[^invisible-example] to the
+user, or are purely *presentational*[^presentational] in nature, should not be
+read out to users, and is not important for interaction.
+
+[^invisible-example]: For example, `opacity:0`. There are several other
+ways in real browsers that elements can be made invisible, such as with the
+`visibility` or `display` CSS properties.
+
+[^presentational]: A node that is presentational is one whose purpose is only
+to create something visual on the screen, and has no semantic meaning to a user
+who is not looking at a screen. An example is a `<div>` that is present only
+to create space or a background color.
+
+Further, the semantics are sometimes a bit different than layout and paint.
+So we'll need to create a new *accessibility* tree in rendering to implement
+it. Add a new rendering pipeline phase after layout and before paint to
+build this tree.
+
+``` {.python expected=False}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.accessibility_tree = None
+
+    def render(self):
+        # ...
+        if self.needs_layout:
+            self.document = DocumentLayout(self.nodes)
+            self.document.layout(self.zoom)
+            if self.accessibility_is_on:
+                self.needs_accessibility = True
+            else:
+                self.needs_paint = True
+            self.needs_layout = False
+
+        if self.needs_accessibility:
+            self.accessibility_tree = AccessibilityNode(self.nodes)
+            self.accessibility_tree.build()
+            self.needs_accessibility = False
+            self.needs_paint = True
+            self.speak_task()
+```
+
+And building it recursively creates the tree. But not all nodes in the
+document tree are present in the accessibility tree. For example, a `<div>` by
+itself is by default considered presentational or otherwise having no
+accessibilty semantics, but `<input>`, `<a>` and `<button` do have semantics.
+The semantics are called the *role* of the element---the role it plays in the
+meaning of the document.
+
+``` {.python}
+def compute_role(node):
+    if isinstance(node, Text):
+        if node.parent.tag == "a":
+            return "link"
+        elif is_focusable(node.parent):
+            return "focusable text"
+        else:
+            return "StaticText"
+    else:
+        if node.tag == "a":
+            return "link"
+        elif node.tag == "input":
+            return "textbox"
+        elif node.tag == "button":
+            return "button"
+        elif node.tag == "html":
+            return "document"
+        elif is_focusable(node):
+            return "focusable"
+        else:
+            return "none"
+```
+
+An `AccessibilityNode` forms a tree just like the other ones:
+
+``` {.python}
+class AccessibilityNode:
+    def __init__(self, node):
+        self.node = node
+        self.previous = None
+        self.children = []
+
+    def __repr__(self):
+        return "AccessibilityNode(node={} role={}".format(
+            str(self.node), compute_role(self.node))        
+```
+
+Building the tree requires recursingly walking the document tree and adding
+nodes if their role is not `None`:
+
+``` {.python}
+    def build(self):
+        for child_node in self.node.children:
+            AccessibilityNode.build_internal(child_node, self)
+        pass
+
+    def build_internal(node, parent):
+        role = compute_role(node)
+        if role != "none":
+            child = AccessibilityNode(node)
+            parent.children.append(child)
+            parent = child
+        for child_node in node.children:
+            AccessibilityNode.build_internal(child_node, parent)
+```
+
+Let's now use this code to speak the whole document once after it's been loaded:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.has_spoken_document = False
+
+    # ...
+    def speak_document(self):
+        text = "Here are the document contents: "
+        tree_list = tree_to_list(self.accessibility_tree, [])
+        for accessibility_node in tree_list:
+            new_text = announce_text(accessibility_node.node)
+            if new_text:
+                text += " "  + new_text
+        print(text)
+        if not self.browser.is_muted():
+            speak_text(text)
+
+    def speak_update(self):
+        if not self.has_spoken_document:
+            self.speak_document()
+            self.has_spoken_document = True
+
+        if self.focus and \
+            self.focus != self.accessibility_focus:
+            self.accessibility_focus = self.focus
+            self.speak_node(self.focus)
+```
 
 Customizing accessibility features
 ==================================
