@@ -769,7 +769,8 @@ class Tab:
     def speak_node(self, node):
         text = "Element focused. "
         text = announce_text(node)
-        if text and node.children and isinstance(node.children[0], Text):
+        if text and node.children and \
+            isinstance(node.children[0], Text):
             text += " " + announce_text(node.children[0])
         print(text)
         if text:
@@ -792,7 +793,8 @@ class Tab:
             self.speak_document()
             self.has_spoken_document = True
 
-        if self.accessibility_focus and self.focus != self.accessibility_focus:
+        if self.focus and \
+            self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
             self.speak_node(self.focus)
 
