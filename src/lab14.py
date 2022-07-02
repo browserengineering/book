@@ -21,7 +21,6 @@ import urllib.parse
 from lab4 import print_tree
 from lab4 import HTMLParser
 from lab13 import Text, Element
-from lab6 import cascade_priority
 from lab6 import resolve_url
 from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
@@ -34,7 +33,7 @@ from lab11 import draw_text, get_font, linespace, \
     parse_blend_mode, request, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
-from lab13 import USE_BROWSER_THREAD, JSContext, style, \
+from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
     CommitData, add_parent_pointers, \
@@ -383,6 +382,49 @@ def style_length(node, style_name, default_value, zoom):
     return device_px(float(style_val[:-2]), zoom) if style_val \
         else default_value
 
+def cascade_priority(rule):
+    selector, body, preferred_color_scheme = rule
+    return selector.priority
+
+def style(node, rules, tab):
+    old_style = node.style
+
+    node.style = {}
+    for property, default_value in INHERITED_PROPERTIES.items():
+        if node.parent:
+            node.style[property] = node.parent.style[property]
+        else:
+            node.style[property] = default_value
+    for selector, body, preferred_color_scheme in rules:
+        if preferred_color_scheme:
+            if preferred_color_scheme == "dark" != tab.dark_mode: continue
+        if not selector.matches(node): continue
+        for property, value in body.items():
+            computed_value = compute_style(node, property, value)
+            if not computed_value: continue
+            node.style[property] = computed_value
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        for property, value in pairs.items():
+            computed_value = compute_style(node, property, value)
+            node.style[property] = computed_value
+
+    if old_style:
+        transitions = diff_styles(old_style, node.style)
+        for property, (old_value, new_value, num_frames) \
+            in transitions.items():
+            if property in ANIMATED_PROPERTIES:
+                tab.set_needs_render()
+                AnimationClass = ANIMATED_PROPERTIES[property]
+                animation = AnimationClass(
+                    old_value, new_value, num_frames)
+                node.animations[property] = animation
+                node.style[property] = animation.animate()
+
+    for child in node.children:
+        style(child, rules, tab)
+
+
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
@@ -600,6 +642,7 @@ class CSSParser:
     def __init__(self, s):
         self.s = s
         self.i = 0
+        self.preferred_color_scheme = None
 
     def whitespace(self):
         while self.i < len(self.s) and self.s[self.i].isspace():
@@ -676,17 +719,49 @@ class CSSParser:
             self.whitespace()
         return out
 
+#@media (prefers-color-scheme: dark) {
+    def try_media_query(self):
+        if self.i == len(self.s):
+            return
+
+        if self.s[self.i] == "@":
+            media = self.word()
+            assert media == "@media"
+            self.whitespace()
+            self.literal("(")
+            (prop, val) = self.pair()
+            assert prop == "prefers-color-scheme"
+            assert val == "dark" or val == "light"
+            self.wihitespace()
+            self.literal(")")
+            self.whitespace()
+            self.literal("{")
+            self.preferred_color_scheme = val
+
+
+    def try_end_media_query(self):
+        if self.i == len(self.s):
+            return
+
+        if not self.preferred_color_scheme:
+            return
+        if self.s[self.i] == "}":
+            self.literal("}")
+            self.preferred_color_scheme = None
+
     def parse(self):
         rules = []
         while self.i < len(self.s):
             try:
                 self.whitespace()
+                self.try_media_query()
+                self.try_end_media_query()                    
                 selector = self.selector()
                 self.literal("{")
                 self.whitespace()
                 body = self.body()
                 self.literal("}")
-                rules.append((selector, body))
+                rules.append((selector, body, self.preferred_color_scheme))
             except AssertionError:
                 why = self.ignore_until(["}"])
                 if why == "}":
