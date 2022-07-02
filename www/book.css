@@ -195,25 +195,7 @@ form h1 { margin-bottom: 1em; margin-top: 0; }
 a.checkoff { font-size: 24px; }
 form .checkoff, form button[type=submit] { margin-top: 1em; }
 
-#signup { border: 2px solid gold; padding: 1em; margin: 1em 0; background-color: #fffbe5; position: relative; }
-#signup input { border: 2px none gold; border-bottom-style: solid; background: transparent; }
-#signup button { border: 2px solid gold; background: #fff7cc; }
-#signup button:hover { background: #fff099; cursor: pointer; }
-#signup button:active { background: gold; color: black; cursor: pointer; }
-#signup button[type=reset] { display: block; }
-
-form.states > div { display: none; }
-form.states > div.s-initial { display: block; }
-form.states.s-progress > div { display: none}
-form.states.s-progress > div.s-progress { display: block}
-form.states.s-success > div { display: none}
-form.states.s-success > div.s-success { display: block}
-form.states.s-error > div { display: none}
-form.states.s-error > div.s-error { display: block}
-form > div.status { text-align: center; font-size: 120%; }
-form > div.s-error { color: red; }
-form.states #signup-close { display: none; }
-form.states.s-success #signup-close { display: block; }
+#signup { border: 2px solid gold; position: relative; }
 #signup-close {
     position: absolute; top: 0; right: 8px;
     font-size: 0; text-decoration: none; color: #333;

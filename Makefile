@@ -1,4 +1,4 @@
-.PHONY: book blog draft widgets publish clean download wc lint examples
+.PHONY: book draft widgets publish clean download wc lint examples
 
 FLAGS=
 
@@ -10,7 +10,6 @@ EXAMPLE_JS=$(patsubst src/example%.js,%,$(wildcard src/example*.js))
 EXAMPLE_CSS=$(patsubst src/example%.css,%,$(wildcard src/example*.css))
 
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets examples
-blog: $(patsubst blog/%.md,www/blog/%.html,$(wildcard blog/*.md)) www/rss.xml
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
 widgets: $(patsubst lab%,www/widgets/lab%-browser.html,$(WIDGET_LAB_CODE)) $(patsubst lab%,www/widgets/lab%.js,$(WIDGET_LAB_CODE))
 examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) \
@@ -25,9 +24,6 @@ PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-
 
 www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:book --template infra/template.html -c book.css $< -o $@
-
-www/blog/%.html: blog/%.md infra/template.html infra/filter.lua config.json
-	$(PANDOC) --metadata=mode:blog --template infra/template.html -c book.css $< -o $@
 
 www/draft/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:draft --template infra/template.html -c book.css $< -o $@
