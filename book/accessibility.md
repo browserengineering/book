@@ -743,7 +743,7 @@ and load both:^[Yes, this is quite inefficient because the style sheets of the
 document are stored twice. See the go-further event at the end of this section.]
 
 
-``` {.python}
+``` {.python expected=False}
 class Tab:
     def __init__(self, browser):
         # ...
@@ -766,7 +766,7 @@ class Tab:
 
 Then we can just use them when calling `style`:
 
-``` {.python}
+``` {.python expected=False}
 class Tab:
     # ...
     def render(self):
