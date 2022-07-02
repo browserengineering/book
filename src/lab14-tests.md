@@ -210,3 +210,12 @@ But when we toggle to dark, it switches:
      DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=blue)
      DrawText(text=)
      DrawText(text=Link)
+
+The rules parsed by the browser style sheet should also indicate dark mode:
+
+    >>> for selector, body, preferred_color_scheme in browser.tabs[0].rules:
+    ...     if preferred_color_scheme == "dark":
+    ...         print(str(selector) + " " + str(body))
+    TagSelector(tag=a, priority=1) {'color': 'lightblue'}
+    TagSelector(tag=input, priority=1) {'background-color': 'blue'}
+    TagSelector(tag=button, priority=1) {'background-color': 'orangered'}

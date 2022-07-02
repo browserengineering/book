@@ -15,3 +15,11 @@ button {
     font-size: 16px; font-weight: normal; font-style: normal;
     background-color: orange;
 }
+
+@media (prefers-color-scheme: dark) {
+
+a { color: lightblue; }
+input { background-color: blue; }
+button { background-color: orangered; }
+
+}
