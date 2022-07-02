@@ -34,7 +34,7 @@ from lab11 import draw_text, get_font, linespace, \
     parse_blend_mode, request, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
-from lab13 import USE_BROWSER_THREAD, CSSParser, JSContext, style, \
+from lab13 import USE_BROWSER_THREAD, JSContext, style, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
     CommitData, add_parent_pointers, \
@@ -595,6 +595,106 @@ def speak_text(text):
     tts.save(SPEECH_FILE)
     playsound.playsound(SPEECH_FILE)
     os.remove(SPEECH_FILE)
+
+class CSSParser:
+    def __init__(self, s):
+        self.s = s
+        self.i = 0
+
+    def whitespace(self):
+        while self.i < len(self.s) and self.s[self.i].isspace():
+            self.i += 1
+
+    def literal(self, literal):
+        assert self.i < len(self.s) and self.s[self.i] == literal
+        self.i += 1
+
+    def word(self):
+        start = self.i
+        in_quote = False
+        while self.i < len(self.s):
+            cur = self.s[self.i]
+            if cur == "'":
+                in_quote = not in_quote
+            if cur.isalnum() or cur in ",/#-.%()\"'" \
+                or (in_quote and cur == ':'):
+                self.i += 1
+            else:
+                break
+        assert self.i > start
+        return self.s[start:self.i]
+
+    def until_semicolon(self):
+        start = self.i
+        while self.i < len(self.s):
+            cur = self.s[self.i]
+            if cur == ";":
+                break
+            self.i += 1
+        return self.s[start:self.i]
+
+    def pair(self):
+        prop = self.word()
+        self.whitespace()
+        self.literal(":")
+        self.whitespace()
+        val = self.until_semicolon()
+        return prop.lower(), val
+
+    def ignore_until(self, chars):
+        while self.i < len(self.s):
+            if self.s[self.i] in chars:
+                return self.s[self.i]
+            else:
+                self.i += 1
+
+    def body(self):
+        pairs = {}
+        while self.i < len(self.s) and self.s[self.i] != "}":
+            try:
+                prop, val = self.pair()
+                pairs[prop.lower()] = val
+                self.whitespace()
+                self.literal(";")
+                self.whitespace()
+            except AssertionError:
+                why = self.ignore_until([";", "}"])
+                if why == ";":
+                    self.literal(";")
+                    self.whitespace()
+                else:
+                    break
+        return pairs
+
+    def selector(self):
+        out = TagSelector(self.word().lower())
+        self.whitespace()
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            tag = self.word()
+            descendant = TagSelector(tag.lower())
+            out = DescendantSelector(out, descendant)
+            self.whitespace()
+        return out
+
+    def parse(self):
+        rules = []
+        while self.i < len(self.s):
+            try:
+                self.whitespace()
+                selector = self.selector()
+                self.literal("{")
+                self.whitespace()
+                body = self.body()
+                self.literal("}")
+                rules.append((selector, body))
+            except AssertionError:
+                why = self.ignore_until(["}"])
+                if why == "}":
+                    self.literal("}")
+                    self.whitespace()
+                else:
+                    break
+        return rules
 
 class Tab:
     def __init__(self, browser):
