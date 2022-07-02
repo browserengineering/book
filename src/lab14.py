@@ -397,7 +397,7 @@ def style(node, rules, tab):
             node.style[property] = default_value
     for selector, body, preferred_color_scheme in rules:
         if preferred_color_scheme:
-            if preferred_color_scheme == "dark" != tab.dark_mode: continue
+            if (preferred_color_scheme == "dark") != tab.dark_mode: continue
         if not selector.matches(node): continue
         for property, value in body.items():
             computed_value = compute_style(node, property, value)
@@ -659,6 +659,9 @@ class CSSParser:
             cur = self.s[self.i]
             if cur == "'":
                 in_quote = not in_quote
+            if cur == "(":
+                print("in parens")
+                in_parens = True
             if cur.isalnum() or cur in ",/#-.%()\"'" \
                 or (in_quote and cur == ':'):
                 self.i += 1
@@ -667,21 +670,21 @@ class CSSParser:
         assert self.i > start
         return self.s[start:self.i]
 
-    def until_semicolon(self):
+    def until_char(self, char):
         start = self.i
         while self.i < len(self.s):
             cur = self.s[self.i]
-            if cur == ";":
+            if cur == char:
                 break
             self.i += 1
         return self.s[start:self.i]
 
-    def pair(self):
+    def pair(self, end_char):
         prop = self.word()
         self.whitespace()
         self.literal(":")
         self.whitespace()
-        val = self.until_semicolon()
+        val = self.until_char(end_char)
         return prop.lower(), val
 
     def ignore_until(self, chars):
@@ -695,7 +698,7 @@ class CSSParser:
         pairs = {}
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
-                prop, val = self.pair()
+                prop, val = self.pair(";")
                 pairs[prop.lower()] = val
                 self.whitespace()
                 self.literal(";")
@@ -719,25 +722,25 @@ class CSSParser:
             self.whitespace()
         return out
 
-#@media (prefers-color-scheme: dark) {
     def try_media_query(self):
         if self.i == len(self.s):
             return
 
         if self.s[self.i] == "@":
+            self.literal("@")
             media = self.word()
-            assert media == "@media"
+            assert media == "media"
             self.whitespace()
             self.literal("(")
-            (prop, val) = self.pair()
+            (prop, val) = self.pair(")")
             assert prop == "prefers-color-scheme"
             assert val == "dark" or val == "light"
-            self.wihitespace()
+            self.whitespace()
             self.literal(")")
             self.whitespace()
             self.literal("{")
             self.preferred_color_scheme = val
-
+            return True
 
     def try_end_media_query(self):
         if self.i == len(self.s):
@@ -748,14 +751,16 @@ class CSSParser:
         if self.s[self.i] == "}":
             self.literal("}")
             self.preferred_color_scheme = None
+            return True
 
     def parse(self):
         rules = []
         while self.i < len(self.s):
             try:
                 self.whitespace()
-                self.try_media_query()
-                self.try_end_media_query()                    
+                if self.try_media_query(): continue
+                if self.try_end_media_query(): continue
+
                 selector = self.selector()
                 self.literal("{")
                 self.whitespace()
@@ -804,11 +809,8 @@ class Tab:
 
         self.zoom = 1.0
 
-        with open("browser14-light.css") as f:
-            self.default_light_style_sheet = \
-                CSSParser(f.read()).parse()
-        with open("browser14-dark.css") as f:
-            self.default_dark_style_sheet = \
+        with open("browser14.css") as f:
+            self.default_style_sheet = \
                 CSSParser(f.read()).parse()
 
     def allowed_request(self, url):
@@ -853,8 +855,7 @@ class Tab:
             task = Task(self.js.run, script_url, body)
             self.task_runner.schedule_task(task)
 
-        self.light_rules = self.default_light_style_sheet.copy()
-        self.dark_rules = self.default_dark_style_sheet.copy()
+        self.rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
@@ -870,8 +871,7 @@ class Tab:
                 header, body = request(style_url, url)
             except:
                 continue
-            self.light_rules.extend(CSSParser(body).parse())
-            self.dark_rules.extend(CSSParser(body).parse())
+            self.rules.extend(CSSParser(body).parse())
         self.set_needs_render()
 
     def set_needs_render(self):
@@ -979,14 +979,11 @@ class Tab:
         if self.needs_style:
             if self.dark_mode:
                 INHERITED_PROPERTIES["color"] = "white"
-                style(self.nodes,
-                    sorted(self.dark_rules,
-                        key=cascade_priority), self)
             else:
                 INHERITED_PROPERTIES["color"] = "black"
-                style(self.nodes,
-                    sorted(self.light_rules,
-                        key=cascade_priority), self)
+            style(self.nodes,
+                sorted(self.rules,
+                    key=cascade_priority), self)
             self.needs_layout = True
             self.needs_style = False
 
