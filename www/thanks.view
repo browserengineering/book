@@ -12,7 +12,8 @@
 
 <header>
   <h1 class="title">Contributors</h1>
-  <a href="https://twitter.com/browserbook">Twitter</a> · <a href="/blog/">Blog</a> ·
+  <a href="https://twitter.com/browserbook">Twitter</a> ·
+  <a href="https://browserbook.substack.com/">Blog</a> ·
   <a href="https://patreon.com/browserengineering">Patreon</a> ·
   <a href="https://github.com/browserengineering/book/discussions">Discussions</a>
 </header>
