@@ -1176,7 +1176,7 @@ def paint_outline(node, cmds, rect):
 Which is a problem. Implement pseudoclass syntax?
 
 
-
+TODO: Implement media queries dark mode.
 
 
 Introduce accessibility tech
