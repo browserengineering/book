@@ -66,3 +66,21 @@ function highlight_regions() {
 window.addEventListener("load", resize_iframes);
 window.addEventListener("resize", resize_iframes);
 window.addEventListener("DOMContentLoaded", highlight_regions);
+
+function close_signup(e) {
+    window.localStorage["signup"] = "close";
+    this.parentNode.remove();
+    if (e) e.preventDefault();
+}
+
+function setup_close() {
+    var close = document.querySelector("#signup-close");
+    if (!close) return;
+    if (window.localStorage["signup"] == "close") {
+        close_signup.bind(close)();
+    } else {
+        close.addEventListener("click", close_signup);
+    }
+}
+
+window.addEventListener("load", setup_close);
