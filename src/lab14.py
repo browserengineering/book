@@ -1393,8 +1393,11 @@ class Browser:
         self.lock.acquire(blocking=True)
         self.focus = "address bar"
         self.address_bar = ""
+        text = "Address bar focused"
         if self.accessibility_is_on:
-            speak_text("Address bar focused")
+            print(text)
+            if not self.muted:
+                speak_text(text)
         self.set_needs_raster()
         self.lock.release()
 
