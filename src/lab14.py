@@ -144,8 +144,6 @@ def paint_outline(node, cmds, rect):
     outline = parse_outline(node.style.get("outline"))
     if outline:
         cmds.append(outline_cmd(rect, outline))
-    elif hasattr(node, "is_focused") and node.is_focused:
-        cmds.append(outline_cmd(rect, (2, "black")))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -638,6 +636,26 @@ def speak_text(text):
     playsound.playsound(SPEECH_FILE)
     os.remove(SPEECH_FILE)
 
+class TagSelector:
+    def __init__(self, tag):
+        self.tag = tag
+        self.priority = 1
+        self.pseudoclass = None
+
+    def matches(self, node):
+        tag_match =  isinstance(node, Element) and self.tag == node.tag
+        if not tag_match: return False
+        if not self.pseudoclass: return True
+        retval = self.pseudoclass == "focus" and is_focused(node)
+        return retval
+
+    def set_pseudoclass(self, pseudoclass):
+        self.pseudoclass = pseudoclass
+
+    def __repr__(self):
+        return "TagSelector(tag={}, priority={} pseudoclass={})".format(
+            self.tag, self.priority, self.pseudoclass)
+
 class CSSParser:
     def __init__(self, s):
         self.s = s
@@ -712,12 +730,21 @@ class CSSParser:
                     break
         return pairs
 
+    def try_pseudoclass(self):
+        if self.i == len(self.s):
+            return None
+        if self.s[self.i] != ":":
+            return None
+        self.i += 1
+        return self.word().lower()
+
     def selector(self):
         out = TagSelector(self.word().lower())
+        out.set_pseudoclass(self.try_pseudoclass())
         self.whitespace()
         while self.i < len(self.s) and self.s[self.i] != "{":
-            tag = self.word()
-            descendant = TagSelector(tag.lower())
+            descendant = TagSelector(self.word().lower())
+            descendant.set_pseudoclass(self.try_pseudoclass())
             out = DescendantSelector(out, descendant)
             self.whitespace()
         return out

@@ -216,6 +216,30 @@ The rules parsed by the browser style sheet should also indicate dark mode:
     >>> for selector, body, preferred_color_scheme in browser.tabs[0].rules:
     ...     if preferred_color_scheme == "dark":
     ...         print(str(selector) + " " + str(body))
-    TagSelector(tag=a, priority=1) {'color': 'lightblue'}
-    TagSelector(tag=input, priority=1) {'background-color': 'blue'}
-    TagSelector(tag=button, priority=1) {'background-color': 'orangered'}
+    TagSelector(tag=a, priority=1 pseudoclass=None) {'color': 'lightblue'}
+    TagSelector(tag=input, priority=1 pseudoclass=None) {'background-color': 'blue'}
+    TagSelector(tag=button, priority=1 pseudoclass=None) {'background-color': 'orangered'}
+    TagSelector(tag=input, priority=1 pseudoclass=focus) {'outline': '2px solid white'}
+    TagSelector(tag=button, priority=1 pseudoclass=focus) {'outline': '2px solid white'}
+    TagSelector(tag=div, priority=1 pseudoclass=focus) {'outline': '2px solid white'}
+    TagSelector(tag=a, priority=1 pseudoclass=focus) {'outline': '2px solid white'}
+
+Focus
+=====
+
+Tab order causes focus:
+
+    >>> browser.tabs[0].advance_tab()
+    >>> browser.tabs[0].focus
+    <input value="">
+
+It also nd also causes a painted outline:
+
+    >>> browser.render()
+    >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
+     DrawRect(top=18.0 left=13.0 bottom=76.34375 right=787.0 border_color=black width=0 fill_color=black)
+     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=blue)
+     DrawText(text=)
+     DrawRect(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=white width=2 fill_color=None)
+     DrawText(text=Link)
+     DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0

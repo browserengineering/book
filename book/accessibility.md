@@ -1164,7 +1164,7 @@ def parse_outline(outline_str):
 And use it, The outline will be present if the element is focused or has
 the outline generally.
 
-``` {.python}
+``` {.python expected=False}
 def paint_outline(node, cmds, rect):
     outline = parse_outline(node.style.get("outline"))
     if outline:
@@ -1173,10 +1173,10 @@ def paint_outline(node, cmds, rect):
         cmds.append(outline_cmd(rect, (2, "black")))
 ```
 
-Which is a problem. Implement pseudoclass syntax?
-
+Which is a problem. TODO: describe pseudoclasses.
 
 TODO: Implement media queries dark mode.
+
 
 
 Introduce accessibility tech
