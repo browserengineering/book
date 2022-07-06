@@ -1268,19 +1268,25 @@ class CSSParser:
 
 And that's it! Elegant, right?
 
+::: {.further}
+
+:::
+
 Color scheme
 ============
 
 Dark mode has a similar problem to focus: when it's on, a web developer will
 want to adjust all of the styles of their page, not just the ones provided by
-the browser. ^[But they'll also want to be able to customize those built-ins!]
+the browser.^[But they'll also want to be able to customize those built-ins!]
 Now dark mode is a browser state just like focus, so it would technically be
 possible to introduce a pseudo-class for it. But since dark mode is a global
 state that applies to all elements, and it's unlikely to change often, the
 pseudo-class syntax is too repetitive and clunky. 
 
-So instead, dark mode uses a [*media query*][mediaquery] syntax. This a lot
-like wrapping some lines of CSS in an if statement. The syntax:
+So instead, dark mode uses a [*media query*][mediaquery] syntax. This a lot like
+wrapping some lines of CSS in an if statement. This syntax will make a `<div>`
+tag have a white text color only in dark mode:
+
 
 ``` {.css expected=False}
     @media (prefers-color-scheme:dark) {
@@ -1288,7 +1294,6 @@ like wrapping some lines of CSS in an if statement. The syntax:
     }
 ```
 
-Will make a `<div>` tag have a white text color only in dark mode.
 And just like `:focus`, once we've implemented a dark mode media query, we can
 simplify the style sheet code and specify dark colors directly in the browser
 style sheet:
@@ -1355,7 +1360,7 @@ class CSSParser:
 Here I made a modification to `pair` to accept an end character other than `;`:
 
 ``` {.python}
-class CSSParser
+class CSSParser:
     def pair(self, end_char):
         prop = self.word()
         self.whitespace()
@@ -1399,6 +1404,13 @@ def style(node, rules, tab):
 
 [mediaquery]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries/Using_media_queries
 
+
+::: {.further}
+
+Explain other parts of dark mode support, such as `color-scheme` and
+the `<meta>` tag. Put some in an exercise.
+
+:::
 
 Notes
 =====
@@ -1455,3 +1467,5 @@ Exercises
 =========
 
 * Implement `prefers-color-scheme`
+
+* Implement the `:visited` pseudoclass.
