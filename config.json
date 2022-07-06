@@ -25,7 +25,7 @@
             "runtime": "runtime13.js",
             "example-opacity-html": "example13-opacity-raf.html"},
 
-        "accessibility.md": { "disabled": true, "lab": "lab14.py" },
+        "accessibility.md": { "disabled": true, "lab": "lab14.py", "stylesheet": "browser14.css" },
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
         "reflow.md": { "disabled": true, "lab": "reflow-chapter.py" },

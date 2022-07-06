@@ -1082,8 +1082,8 @@ class Tab:
             self.speak_node(self.focus)
 ```
 
-Customizing accessibility features
-==================================
+Tab-index
+=========
 
 Our browser now has all these cool features to help accessibility: zoom,
 keyboard navigation and dark mode. But what if the website wants to *extend*
@@ -1142,6 +1142,9 @@ That's it! Now tabindex works. Tabbing through the
 [focus example](examples/example14-focus.html) should now
 change its order according to the `tabindex` attributes in it.
 
+Outline
+=======
+
 Next up is customizing the focus rectangle via the `outline` CSS property.
 As usual, we'll implement only the subset of it that looks like this:
 
@@ -1162,22 +1165,225 @@ def parse_outline(outline_str):
 ```
 
 And use it, The outline will be present if the element is focused or has
-the outline generally.
+the outline generally. While we could finish implementing that via
+some extra logic in `paint_outline`, the feature has a fundamental problem
+that has to be fixed. Specifying an outline is a fine feature to offer
+to web developers, but it doesn't actually solve the problem of customizing
+the focus outline. That's because `outline`, if specified by the developer,
+would *always* apply, but instead we want it to onyl apply to an element when
+it's focused!
 
-``` {.python expected=False}
+To do this we need some way to let developers express outline-while-focused in
+CSS. This is done with a [*pseudo-class*][pseudoclass], which is a way to
+target internal state of the browser (in this case internal state of a specific
+element).[^why-pseudoclass] Pseudo-classes are notated with a suffix applied to
+a tag or other selector, separated by a single colon character. For the case of
+focus, the syntax looks like this:
+
+    div:focus { outline: 2px solid black; }
+
+[pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
+
+[^why-pseudoclass]: It's called a pseudo-class because it's similar to how a
+developoer would indicate a [class] attribute on an element for the purpose
+of targeting special elements with different styles. It's "pseudo" because
+there is no actual class attribute set on the element whie it's focused.
+
+[class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Class_selectors
+
+Let's implement the `focus` pseuo-class. Then we can change focus outlines to
+use a browser style sheet with `:focus` instead of special code in
+`paint_outline`. The style sheet lines will look like this:
+
+``` {.css}
+input:focus { outline: 2px solid black; }
+
+button:focus { outline: 2px solid black; }
+
+div:focus { outline: 2px solid black; }
+```
+
+And then we can change `paint_outline` to just look at the `outline` CSS
+property:
+
+``` {.python}
 def paint_outline(node, cmds, rect):
     outline = parse_outline(node.style.get("outline"))
     if outline:
         cmds.append(outline_cmd(rect, outline))
-    elif hasattr(node, "is_focused") and node.is_focused:
-        cmds.append(outline_cmd(rect, (2, "black")))
 ```
 
-Which is a problem. TODO: describe pseudoclasses.
+Now for adding support for `:focus`. The first step will be teaching the
+`CSSParser how to parse it`.  Let's start by providing a way to mark a
+`TagSelector` as needing a pseudoclass to also be set in order to apply:
 
-TODO: Implement media queries dark mode.
+``` {.python}
+class TagSelector:
+    def __init__(self, tag):
+        # ...
+        self.pseudoclass = None
+
+    def set_pseudoclass(self, pseudoclass):
+        self.pseudoclass = pseudoclass
+
+    def matches(self, node):
+        tag_match = isinstance(node, Element) and self.tag == node.tag
+        if not tag_match: return False
+        if not self.pseudoclass: return True
+        return self.pseudoclass == "focus" and is_focused(node)
+
+    def __repr__(self):
+        return ("TagSelector(tag={}, priority={} " +
+            "pseudoclass={})").format(
+            self.tag, self.priority, self.pseudoclass)
+```
+
+In `CSSParser`, we first need to write a method that consumes a pseudoclass
+string if the `:` separator was found:
+
+``` {.python}
+class CSSParser:
+    def try_pseudoclass(self):
+        if self.i == len(self.s):
+            return None
+        if self.s[self.i] != ":":
+            return None
+        self.i += 1
+        return self.word().lower()
+```
+
+And then call it in `selector`:
+
+``` {.python}
+class CSSParser:
+    def selector(self):
+        out = TagSelector(self.word().lower())
+        out.set_pseudoclass(self.try_pseudoclass())
+        # ...
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            descendant = TagSelector(self.word().lower())
+            descendant.set_pseudoclass(self.try_pseudoclass())
+            # ...
+```
+
+And that's it! Elegant, right?
+
+Color scheme
+============
+
+Dark mode has a similar problem to focus: when it's on, a web developer
+will want to adjust all of the styles of their page, not just the ones
+provided by the browser. (But they'll want to be able to customize those
+built-ins also.) Now dark mode is a browser state just like focus, so it
+would technically be possible to introduce a pseudo-class for it. But since
+dark mode is a global state that applies to all elements, and it's unlikely
+to change often, the pseudo-class syntax is too repetitive and clunky. 
+
+So instead, dark mode uses a [*media query*][mediaquery] syntax. This a lot
+like wrapping some lines of CSS in an if statement. The syntax:
+
+``` {.css expected=False}
+    @media (prefers-color-scheme:dark) {
+    div { color: white; }
+    }
+```
+
+Will make an `<div>` tag have a light blue text color only in dark mode.
+And just like `:focus`, once we've implemented a dark mode media query, we can
+simplify the style sheet code and specify dark colors directly in the browser
+style sheet:
+
+``` {.css}
+@media (prefers-color-scheme: dark) {
+
+a { color: lightblue; }
+input { background-color: blue; }
+button { background-color: orangered; }
+
+input:focus { outline: 2px solid white; }
+
+button:focus { outline: 2px solid white; }
+
+div:focus { outline: 2px solid white; }
+
+a:focus { outline: 2px solid white; }
+
+}
+```
+
+And get rid of having a second `default_dark_style_sheet`; instead there can
+just be a single default style sheet on a `Tab` object, just like before this
+chapter (but with the additional rules listed above).
+
+Parssing requires looking for media query syntax:
+
+``` {.python}
+class CSSParser:
+    def try_media_query(self):
+        if self.i == len(self.s):
+            return
+
+        if self.s[self.i] == "@":
+            self.literal("@")
+            media = self.word()
+            assert media == "media"
+            self.whitespace()
+            self.literal("(")
+            (prop, val) = self.pair(")")
+            assert prop == "prefers-color-scheme"
+            assert val == "dark" or val == "light"
+            self.whitespace()
+            self.literal(")")
+            self.whitespace()
+            self.literal("{")
+            self.preferred_color_scheme = val
+            return True
+
+    def try_end_media_query(self):
+        if self.i == len(self.s):
+            return
+
+        if not self.preferred_color_scheme:
+            return
+        if self.s[self.i] == "}":
+            self.literal("}")
+            self.preferred_color_scheme = None
+            return True
+```
+
+And then looking for it in each loop of `parse`:
+
+``` {.python}
+class CSSParser:
+    def parse(self):
+        # ...
+        while self.i < len(self.s):
+            try:
+                self.whitespace()
+                if self.try_media_query(): continue
+                if self.try_end_media_query(): continue
+                # ...
+                rules.append(
+                    (selector, body, self.preferred_color_scheme))
+```
+
+The `style` method also needs to understand dark mode rules:
+
+``` {.python}
+def style(node, rules, tab):
+    # ...
+    for selector, body, preferred_color_scheme in rules:
+        if preferred_color_scheme:
+            if (preferred_color_scheme == "dark") != \
+                tab.dark_mode: continue
+        # ...
+```
+
+[mediaquery]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries/Using_media_queries
 
 
+Notes
+=====
 
 Introduce accessibility tech
 Implement the accessibility tree
