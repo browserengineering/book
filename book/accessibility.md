@@ -1170,11 +1170,11 @@ some extra logic in `paint_outline`, the feature has a fundamental problem
 that has to be fixed. Specifying an outline is a fine feature to offer
 to web developers, but it doesn't actually solve the problem of customizing
 the focus outline. That's because `outline`, if specified by the developer,
-would *always* apply, but instead we want it to onyl apply to an element when
+would *always* apply, but instead we want it to only apply to an element when
 it's focused!
 
-To do this we need some way to let developers express outline-while-focused in
-CSS. This is done with a [*pseudo-class*][pseudoclass], which is a way to
+To do this we need some way to let developers express outline-only-while-focused
+in CSS. This is done with a [*pseudo-class*][pseudoclass], which is a way to
 target internal state of the browser (in this case internal state of a specific
 element).[^why-pseudoclass] Pseudo-classes are notated with a suffix applied to
 a tag or other selector, separated by a single colon character. For the case of
@@ -1187,7 +1187,7 @@ focus, the syntax looks like this:
 [^why-pseudoclass]: It's called a pseudo-class because it's similar to how a
 developoer would indicate a [class] attribute on an element for the purpose
 of targeting special elements with different styles. It's "pseudo" because
-there is no actual class attribute set on the element whie it's focused.
+there is no actual class attribute set on the element while it's focused.
 
 [class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Class_selectors
 
@@ -1213,8 +1213,8 @@ def paint_outline(node, cmds, rect):
         cmds.append(outline_cmd(rect, outline))
 ```
 
-Now for adding support for `:focus`. The first step will be teaching the
-`CSSParser how to parse it`.  Let's start by providing a way to mark a
+Now for adding support for `:focus`. The first step will be teaching
+`CSSParser` how to parse it.  Let's start by providing a way to mark a
 `TagSelector` as needing a pseudoclass to also be set in order to apply:
 
 ``` {.python}
@@ -1271,13 +1271,13 @@ And that's it! Elegant, right?
 Color scheme
 ============
 
-Dark mode has a similar problem to focus: when it's on, a web developer
-will want to adjust all of the styles of their page, not just the ones
-provided by the browser. (But they'll want to be able to customize those
-built-ins also.) Now dark mode is a browser state just like focus, so it
-would technically be possible to introduce a pseudo-class for it. But since
-dark mode is a global state that applies to all elements, and it's unlikely
-to change often, the pseudo-class syntax is too repetitive and clunky. 
+Dark mode has a similar problem to focus: when it's on, a web developer will
+want to adjust all of the styles of their page, not just the ones provided by
+the browser. ^[But they'll also want to be able to customize those built-ins!]
+Now dark mode is a browser state just like focus, so it would technically be
+possible to introduce a pseudo-class for it. But since dark mode is a global
+state that applies to all elements, and it's unlikely to change often, the
+pseudo-class syntax is too repetitive and clunky. 
 
 So instead, dark mode uses a [*media query*][mediaquery] syntax. This a lot
 like wrapping some lines of CSS in an if statement. The syntax:
@@ -1288,7 +1288,7 @@ like wrapping some lines of CSS in an if statement. The syntax:
     }
 ```
 
-Will make an `<div>` tag have a light blue text color only in dark mode.
+Will make a `<div>` tag have a white text color only in dark mode.
 And just like `:focus`, once we've implemented a dark mode media query, we can
 simplify the style sheet code and specify dark colors directly in the browser
 style sheet:
@@ -1311,9 +1311,10 @@ a:focus { outline: 2px solid white; }
 }
 ```
 
-And get rid of having a second `default_dark_style_sheet`; instead there can
-just be a single default style sheet on a `Tab` object, just like before this
-chapter (but with the additional rules listed above).
+This also lets us get rid of the second style sheet, i.e.
+`default_dark_style_sheet`; instead there can just be a single default style
+sheet on a `Tab` object, just like before this chapter (but with the additional
+rules listed above).
 
 Parssing requires looking for media query syntax:
 
@@ -1349,6 +1350,23 @@ class CSSParser:
             self.literal("}")
             self.preferred_color_scheme = None
             return True
+```
+
+Here I made a modification to `pair` to accept an end character other than `;`:
+
+``` {.python}
+class CSSParser
+    def pair(self, end_char):
+        prop = self.word()
+        self.whitespace()
+        self.literal(":")
+        self.whitespace()
+        val = self.until_char(end_char)
+        return prop.lower(), val
+
+    def body(self):
+        # ...
+                prop, val = self.pair(";")            
 ```
 
 And then looking for it in each loop of `parse`:
