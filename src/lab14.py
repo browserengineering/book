@@ -395,7 +395,8 @@ def style(node, rules, tab):
             node.style[property] = default_value
     for selector, body, preferred_color_scheme in rules:
         if preferred_color_scheme:
-            if (preferred_color_scheme == "dark") != tab.dark_mode: continue
+            if (preferred_color_scheme == "dark") != \
+                tab.dark_mode: continue
         if not selector.matches(node): continue
         for property, value in body.items():
             computed_value = compute_style(node, property, value)
@@ -642,18 +643,18 @@ class TagSelector:
         self.priority = 1
         self.pseudoclass = None
 
-    def matches(self, node):
-        tag_match =  isinstance(node, Element) and self.tag == node.tag
-        if not tag_match: return False
-        if not self.pseudoclass: return True
-        retval = self.pseudoclass == "focus" and is_focused(node)
-        return retval
-
     def set_pseudoclass(self, pseudoclass):
         self.pseudoclass = pseudoclass
 
+    def matches(self, node):
+        tag_match = isinstance(node, Element) and self.tag == node.tag
+        if not tag_match: return False
+        if not self.pseudoclass: return True
+        return self.pseudoclass == "focus" and is_focused(node)
+
     def __repr__(self):
-        return "TagSelector(tag={}, priority={} pseudoclass={})".format(
+        return ("TagSelector(tag={}, priority={} " +
+            "pseudoclass={})").format(
             self.tag, self.priority, self.pseudoclass)
 
 class CSSParser:
@@ -793,7 +794,8 @@ class CSSParser:
                 self.whitespace()
                 body = self.body()
                 self.literal("}")
-                rules.append((selector, body, self.preferred_color_scheme))
+                rules.append(
+                    (selector, body, self.preferred_color_scheme))
             except AssertionError:
                 why = self.ignore_until(["}"])
                 if why == "}":
