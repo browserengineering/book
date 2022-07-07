@@ -1462,7 +1462,7 @@ customize these elements' look and feel beyond the limits of what the browser
 allows---for exampole, by adding an autocomplete dropdown, or fancy styling.
 
 Implementing the `role` attribute is very easy, so let's do that for the
-`textbox` and `button` roles. It's as simple as modifying `compute_role`:
+`textbox` roles. It's as simple as modifying `compute_role`:
 
 ``` {.python}
 def compute_role(node):
@@ -1489,47 +1489,32 @@ def announce_text(node):
 
 
 [role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles
-[textbox-role]
+[textbox-role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/textbox_role
 
-Notes
-=====
+::: {.further}
 
-Introduce accessibility tech
-Implement the accessibility tree
-Introduce the concept of implicit accessibility semantics, such as via form controls or links
-Integrate with NVDA
-Demonstrate how to run the browser and interact with web pages with the same tool
-
-Section 7: aria labels, modifications of the accessibility tree
-pIntroduce one or two
-Introduce concept of alternate text, with anchor link text as an example
-Augment the accessibility tree via them
-Implement display: none
-Implement inert
-
-OS integrations:
 https://www.w3.org/TR/accname-1.2/
 https://www.w3.org/TR/core-aam-1.2/
 https://www.w3.org/TR/html-aam-1.0/
 https://www.w3.org/TR/svg-aam-1.0/
 
-Section 1: what is accessibility (link to authoritative texts), what kinds of accessibility APIs exist. Keep it focused on what exists in browsers and how they work.
 
-Types of accessibility to implement in this chapter:
-Text zooming
-Keyboard navigation
-Voice interaction and navigation
-Focus highlighting
+:::
 
+Outline
+=======
 
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
 
-Other thoughts:
-Introduce the role attribute? (needs a compelling example; maybe explain in the context of aria + the accessibility tree?)
-
-
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab14.py
+:::
 
 Exercises
 =========
+
+* *Button role*: Add support for the `button` value of the `role` attribute.
 
 * Implement `prefers-color-scheme`
 
