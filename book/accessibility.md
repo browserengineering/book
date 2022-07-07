@@ -869,7 +869,7 @@ say, which will be decided in `announce_text`.
 Here is `announce_text`. For text nodes it's just the text, and otherwise it
 describes the element tag, plus whether it's focused.
 
-``` {.python}
+``` {.python expected=False}
 def announce_text(node):
     role = compute_role(node)
     if role == "StaticText":
@@ -1069,7 +1069,7 @@ class Tab:
         for accessibility_node in tree_list:
             new_text = announce_text(accessibility_node.node)
             if new_text:
-                text += " "  + new_text
+                text += "\n"  + new_text
         print(text)
         if not self.browser.is_muted():
             speak_text(text)
@@ -1468,7 +1468,7 @@ Implementing the `role` attribute is very easy, so let's do that for the
 def compute_role(node):
     # ...
         elif "role" in node.attributes:
-            return role    
+            return node.attributes["role"]
 ```
 And then a small modification to `announce_text` to get the text contents
 from the child text node:
