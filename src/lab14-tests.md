@@ -169,7 +169,10 @@ The accessibility tree is automatically created.
 Rendering will read out the accessibility instructions:
 
     >>> browser.render()
-    Here are the document contents:  Input box Link Link
+    Here are the document contents: 
+    Input box: 
+    Link
+    Link
 
 From this tree:
 

@@ -572,6 +572,8 @@ def compute_role(node):
     if isinstance(node, Text):
         if node.parent.tag == "a":
             return "link"
+        elif compute_role(node.parent)  == "textbox":
+            return "none"
         elif is_focusable(node.parent):
             return "focusable text"
         else:
@@ -585,20 +587,31 @@ def compute_role(node):
             return "button"
         elif node.tag == "html":
             return "document"
+        elif "role" in node.attributes:
+            return node.attributes["role"]
         elif is_focusable(node):
             return "focusable"
         else:
             return "none"
 
 def announce_text(node):
-    if isinstance(node, Text):
+    role = compute_role(node)
+    if role == "StaticText":
         return node.text
-
-    elif node.tag == "input":
-        return "Input box"
-    elif node.tag == "button":
+    elif role == "focusable text":
+        return "focusable text: " + node.text
+    elif role == "textbox":
+        if "value" in node.attributes:
+            value = node.attributes["value"]
+        elif node.tag != "input" and node.children and \
+            isinstance(node.children[0], Text):
+            value = node.children[0].text
+        else:
+            value = ""
+        return "Input box: " + value
+    elif role == "button":
         return "Button"
-    elif node.tag == "a":
+    elif role == "link":
         return "Link"
     elif is_focusable(node):
         return "focused element"
@@ -987,7 +1000,7 @@ class Tab:
         for accessibility_node in tree_list:
             new_text = announce_text(accessibility_node.node)
             if new_text:
-                text += " "  + new_text
+                text += "\n"  + new_text
         print(text)
         if not self.browser.is_muted():
             speak_text(text)

@@ -869,16 +869,19 @@ say, which will be decided in `announce_text`.
 Here is `announce_text`. For text nodes it's just the text, and otherwise it
 describes the element tag, plus whether it's focused.
 
-``` {.python}
+``` {.python expected=False}
 def announce_text(node):
-    if isinstance(node, Text):
+    role = compute_role(node)
+    if role == "StaticText":
         return node.text
-
-    elif node.tag == "input":
-        return "Input box"
-    elif node.tag == "button":
+    elif role == "focusable text":
+        return "focusable text: " + node.text
+    elif role == "textbox":
+        value = node.attributes["value"] if "value" in node.attributes else ""
+        return "Input box: " + value
+    elif role == "button":
         return "Button"
-    elif node.tag == "a":
+    elif role == "link":
         return "Link"
     elif is_focusable(node):
         return "focused element"
@@ -1066,7 +1069,7 @@ class Tab:
         for accessibility_node in tree_list:
             new_text = announce_text(accessibility_node.node)
             if new_text:
-                text += " "  + new_text
+                text += "\n"  + new_text
         print(text)
         if not self.browser.is_muted():
             speak_text(text)
@@ -1081,6 +1084,10 @@ class Tab:
             self.accessibility_focus = self.focus
             self.speak_node(self.focus)
 ```
+
+::: {.further}
+Other uses of the accessibility tree.
+:::
 
 Tab-index
 =========
@@ -1412,6 +1419,78 @@ the `<meta>` tag. Put some in an exercise.
 
 :::
 
+ARIA
+====
+
+The accessibility tree can also be customized. For one thing, various CSS
+properties influence whether elements are in the accessibility tree at all. For
+example, making elements invisible^[Via `display:none` or `visibility:hidden`,
+for example.] causes them to lose their accessibility tree node. But there
+what about changing the role of an element? For example, tab-index allows a
+`<div>` to participage in focus, but can it also be made to behave like an
+input element? That's what the [`role`][role] attribute is for: overriding the 
+semantic role of an element from its default.
+
+This markup gives a `<div>` a role of [`textbox`][textbox-role]:
+
+    <div role=textbox>contents</div>
+
+Its role  in the accessibility tree now becomes equivalent to an `<input>`
+element. The first text child is also reused as the *value* of the input field
+(a representation of what the user has typed), and pressing `<enter>` submits
+any containing `<form>` element. But more importantly, the element is
+advertised to users of accessibility features as an textbox. For example, when
+the element is read to a person using voice input, it is identified as a
+textbox, and the user is therefore encouraged to treat it as such---expecting
+to have all the usual behaviors of an `<input>` element.
+
+However, otherwise the element does not change anything; in particular:
+
+* It is not by default focusable.
+* Keyboard events do not modify the text child.
+* Visual rendering is unchanged from a regular `<div>`.
+
+That means that the web page is now responsible for implementing all of this
+correctly, and providing all the right keyboard event handlers via JavaScript
+that the user expects. And if the page doesn't do it, the user is left
+confused and sad. That's why it's better for a web page author to simply
+use `<input>` elements---it's all to easy to accidentally forget to implement
+something important for those users.
+
+But the `role` attribute exists nevertheless, as a way for a page author to
+customize these elements' look and feel beyond the limits of what the browser
+allows---for exampole, by adding an autocomplete dropdown, or fancy styling.
+
+Implementing the `role` attribute is very easy, so let's do that for the
+`textbox` and `button` roles. It's as simple as modifying `compute_role`:
+
+``` {.python}
+def compute_role(node):
+    # ...
+        elif "role" in node.attributes:
+            return node.attributes["role"]
+```
+And then a small modification to `announce_text` to get the text contents
+from the child text node:
+
+``` {.python}
+def announce_text(node):
+    # ...
+    elif role == "textbox":
+        if "value" in node.attributes:
+            value = node.attributes["value"]
+        elif node.tag != "input" and node.children and \
+            isinstance(node.children[0], Text):
+            value = node.children[0].text
+        else:
+            value = ""
+        return "Input box: " + value
+```
+
+
+[role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles
+[textbox-role]
+
 Notes
 =====
 
@@ -1442,20 +1521,6 @@ Keyboard navigation
 Voice interaction and navigation
 Focus highlighting
 
-Skipped:
-High-contrast mode [Leave to an exercise]
-Other kinds of input modalities, like:
-Caret browsing [Just a simulated mouse, not that important to show how to implement] or other kinds of special input devices
-Other mouse features like visual indications for mouse etc
-Autofill [Leave to exercise]
-
-
-
-
-Section 6: visual modes for accessibility
-Introduce media queries. Example: dark mode
-Another example: prefers reduced motion
-Third example: color contrast, forced colors mode
 
 
 Other thoughts:
@@ -1469,3 +1534,14 @@ Exercises
 * Implement `prefers-color-scheme`
 
 * Implement the `:visited` pseudoclass.
+
+* Implement high-contrast forced-colors mode, plus the `forced-color-adjust`
+CSS property.
+
+* Implement caret browsing.
+
+* Implement a prefers-reduced-motion mode and media query.
+
+* *Custom inputs*: Implement an `<input>` element with a `<div>` completely in
+JavaScript. Make sure that it's represented correctly in the accessibility tree
+and participates correctly in form submission.
