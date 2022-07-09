@@ -20,7 +20,7 @@ name for the broad class of browser features for these use cases.
 
 [a11y]: https://developer.mozilla.org/en-US/docs/Learn/Accessibility/What_is_accessibility
 
-CSS Zoom
+CSS zoom
 ========
 
 Let's start with the simplest accessibility problem: words on the screen that
@@ -31,9 +31,10 @@ the simplest and most effective is simply increasing font and element sizes.
 This approach is called *CSS zoom*.[^zoom] Let's
 implement it.
 
-[^zoom]: The word brings up an analogy to a camera zooming in, but is not the
+[^zoom]: The word zoom evokes an analogy to a camera zooming in, but is not the
 same, because CSS zoom causes layout. *Pinch zoom*, on the other hand is just
-like a camera and does not cause layout.
+like a camera and does not cause layout (see the go-further block at the end
+of this section).
 
 Let's bind the `ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to
 zooming out, and `ctrl-zero` to reset. A new `zoom` property on `Browser` wll
@@ -228,7 +229,8 @@ How can we fix this? Well, it turns out we shouldn't just increase the size of
 fonts, but also the *sizes of every other CSS pixel* defined in `layout`. We
 should essentially run the same layout algorithm we have, but with each device
 pixel measurement larger by a a factor of `zoom`. But since the screen doesn't
-magically get bigger when zooming, its width and height wiil remain fixed. This
+magically get bigger when zooming, its width and height wiil remain fixed in
+physical pixel width (and hence smaller in CSS pixels). This
 will automatically cause inline text and content to wrap when it gets to the
 edge of the screen or container elements, and not grow beyond.
 
@@ -314,26 +316,29 @@ as needed.
 
 Another way that CSS pixels and device pixels can differ is on a high-resolution
 screen. When CSS was first defined, the typical screen had about 96 pixels per
-inch of screen. Since then, various devices (the original iPhone was the first)
-have screens with much higher pixel density. This led to a problem though---web
-sites displayed on those screens would look tiny if one CSS pixel mapped to one
-device pixel. This was solved with the [`devicePixelRatio`][dpr] concept---each
-CSS pixel is by default multiplied by the device pixel ratio to arrive at
-device pixels. The original iPhone, for example, had 163 pixels per inch.
-`163/96 ~= 1.7`, but since a multiplier like 1.7 leads to awkward rounding
-issues in layout, that device selected a `devicePixelRatio` of 2.^[Since then,
-may different screens with different pixel densities have appeared, and these
-days it's not uncommon to have a ratio that is not an integer. For example, the
-Pixelbook Go I'm using to write this book has a ratio of 1.25. (As you can
-see, the choice of ratio for a given screen is somewhat arbitrary.)]
+inch of screen. Since then, various devices (the original iPhone was an early
+exxample) have screens with much higher pixel density. This led to a problem
+though---web sites displayed on those screens would look tiny if one CSS pixel
+mapped to one device pixel. This was solved with the
+[`devicePixelRatio`][dpr] concept---each CSS pixel is by default multiplied by
+the device pixel ratio to arrive at device pixels. The original iPhone, for
+example, had 163 pixels per inch. `163/96 ~= 1.7`, but since a multiplier like
+1.7 leads to awkward rounding issues in layout, that device selected a
+`devicePixelRatio` of
+2.^[Since then, may different screens with different pixel densities have
+appeared, and these days it's not uncommon to have a ratio that is not an
+integer. For example, the Pixelbook Go I'm using to write this book has a ratio
+of 1.25. (As you can see, the choice of ratio for a given screen is somewhat
+arbitrary.)]
 
 On a device with a `devicePixelRatio` other than 1, `zoom` and
 `devicePixelRatio` have to be multiplied together in the rendering code. In
 addition, real browsers expose a global variable exposed to JavaScript called
-`devicePixelRatio` that is updated whenever the user zooms in or out. In
-addition, there is a (non-standard, please don't use it!) [`zoom`]
-[zoom-css] CSS property in WebKit and Chromium browsers that allows developers
-to apply something similar to CSS zoom to specific element subtrees.
+`devicePixelRatio` that equal to the product of these two and updated whenever
+the user zooms in or out. In addition, there is a (non-standard, please don't
+use it!) [`zoom`][zoom-css] CSS property in WebKit and Chromium browsers that
+allows developers to apply something similar to CSS zoom to specific element
+subtrees.
 
 [dpr]: https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
 
