@@ -378,6 +378,14 @@ is focused and the user presses `enter`, then the button will be clicked
 or the link navigated.
 
 ``` {.python}
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+                elif event.key.keysym.sym == sdl2.SDLK_RETURN:
+                    browser.handle_enter()
+```
+
+``` {.python}
 class Browser:
 	# ...
     def handle_enter(self):
@@ -390,7 +398,15 @@ class Browser:
 ```
 
 Let's call the act of pressing a button or navigating a link *activating* that
-element:
+element. The `enter` method activates the currently focused element:
+
+``` {.python}
+    def enter(self):
+        if self.focus:
+            self.activate_element(self.focus)   
+```
+
+Which performs a behavior depending on what it is:
 
 ``` {.python}
 class Tab:
@@ -407,13 +423,9 @@ class Tab:
                     return None
                 elt = elt.parent
         return elt
-
-    def enter(self):
-        if self.focus:
-            self.activate_element(self.focus)	
 ```
 
-With these methods, we can avoid a bit of dulicated code in `click`, which
+With these methods, we can also avoid a bit of dulicated code in `click`, which
 of course also handles the activation concept (but via the mouse):
 
 ``` {.python}
@@ -492,12 +504,13 @@ class Tab:
         self.set_needs_render()
 ```
 
-Setting focus works like this:
+Setting focus works like this. Note that it now sets `is_focused` to true or
+false on the node; this will come in handy later.
 
 ``` {.python}
     def apply_focus(self, node):
         if self.focus:
-            self.focus.is_focused = None
+            self.focus.is_focused = False
         self.focus = node
         if node:
             if node.tag == "input":
@@ -505,14 +518,13 @@ Setting focus works like this:
             node.is_focused = True
 ```
 
-which by the way should also be used from `click`:
+Just like activation, this also be used from `click`:
 
 ``` {.python}
     def click(self, x, y):
         self.render()
         self.apply_focus(None)
 ```
-
 
 And `focus_addressbar` is like this:
 
@@ -527,9 +539,11 @@ class Browser:
         self.lock.release()
 ```
 
-There is a third aspect though: if focus is caused by the keyboard, the user
-needs to know what actually has focus. This is done with a *focus ring*---a
-visual outline around an element that lets the user know what is focused.
+Now we have focus implemented on `<a>` and `<button>`, plus a way to cycle
+through them with the keyboard. But how do you know which element is currently
+focused? There needs to be some kind of visual indication. This is done with
+a *focus ring*---a visual outline around an element that lets the user know
+what is focused.
 
 Draw the focus ring by painting a `2px` wide black rectangle around the element
 that is focused. This requires some code in various `paint` methods plus this
@@ -570,18 +584,18 @@ class InputLayout:
 ```
 
 But for inline layout, the situation is more complicated, for two reasons. The
-first is that the painting of each inline element is broken into runs of
-text, and can span multiple lines. So it's not even just one rectangle; if an
-`<a>` element's anchor text spans multiple lines, we should paint one rectangle
-for each text run in each line.
+first is that the painting of each inline element is potentially broken into
+multiple lines of text. So it's not even just one rectangle; if an `<a>`
+element's anchor text spans multiple lines, we should paint one rectangle for
+each text run in each line.
 
 The second complication is that there is not necessarily a layout object
 corresponding exactly to an `<a>` element, if there is other text or an
-`<input>` on the same line.
+`<input>` or `<button>` on the same line.
 
 We'll solve both of these problems by painting the focus ring in `LineLayout`
 (recall there is one of these for each line of an `InlineLayout`). Each line
-will paint a rect that is the union of the rects of all children that are for
+will paint a rect that is the union of the rects of all children that are for a
 `Text` node child of a focused parent.
 
 ``` {.python}
@@ -612,14 +626,20 @@ tabs, and the button to quit the browser.[^one-more] Bind them to `ctrl-left`,
 `ctrl-t`, `ctrl-tab` and `ctrl-q`, respectively. The code to implement these is
 straightforward, so I've omitted it.
 
-[^one-more]: Actually, there are sometimes more: buttons to minimize or
-maximize the browser window. Those require calling specialized OS APIs, so I
-won't implement them.
+[^one-more]: Actually, there are sometimes more, depending on the OS you're
+working with: buttons to minimize or maximize the browser window. Those require
+calling specialized OS APIs, so I won't implement them.
 
 ::: {.further}
 
-Discuss the opposite of keyboard input: voice input. And how it can be mapped
-to these same APIs, via speech-to-text assistants.
+Keyboards, mice and touch screens are not the only way to interact with a
+computer. There is also the possibility of voice input---talking to the
+computer. Some operating systems have built-in support for voice commands and
+dictation (speaking to type), plus there are software packages you can buy that
+also do it. These systems generally work very well with a keyboard-enabled
+browser, because the voice input software can translate the voice commands
+directly into simulated keyboard events. This is one more reason that it's
+important for browsers and web sites to provide keyboard input alternatives.
 
 :::
 
@@ -844,8 +864,8 @@ TOOD
 :::
 
 
-Voice navigation
-================
+Screen readers
+==============
 
 Now let's consider a challenge even harder than too-small/too-bright contrent or
 keyboard navigation: what if the user can't see the web page at
@@ -1335,7 +1355,25 @@ class CSSParser:
 And that's it! Elegant, right?
 
 ::: {.further}
-TODO
+
+In addition to focus rings being present for focus, another very important part
+of accessibility is ensuring *contrast*. I alluded to it in the section on dark
+mode, in the context of ensuring that the dark mode style sheet provides good
+default contrast. But in fact, the focus ring we've implemented here does not
+necessarily have great contrast, for example if it's next to an element with a
+black background. This is not too hard to fix, and there is an exercise at the
+end of this chapter about it.
+
+Contrast is one key part of the [Web Content Accessibility Guidelines][wcag], a
+standard set of recommendations to page authors on how to ensure accessibility.
+The browser can do a lot, but ultimately things like
+[good contrast][contrast] between colors is something that page authors also
+have to pay attention to.
+
+
+[wcag]: https://www.w3.org/WAI/standards-guidelines/wcag/
+[contrast]: https://www.w3.org/TR/WCAG21/#contrast-minimum
+
 :::
 
 Color scheme
@@ -1586,6 +1624,10 @@ should now look something like this:
 Exercises
 =========
 
+* *Focus ring with good contrast*: Add a second white color to the outside of
+the 2px black one, and likewise on the inside, to ensure that there is contrast
+between the focus ring and surrounding content.
+
 * *Button role*: Add support for the `button` value of the `role` attribute.
 
 * Implement `prefers-color-scheme`
@@ -1593,7 +1635,10 @@ Exercises
 * Implement the `:visited` pseudoclass.
 
 * Implement high-contrast forced-colors mode, plus the `forced-color-adjust`
-CSS property.
+CSS property. As part of this, draw a rectangular *backplate* behind all lines
+of text in order to ensure that there is sufficient contrast (as
+[defined][contrast] by the WCAG specification) between 
+foreground and background colors.
 
 * Implement caret browsing.
 
