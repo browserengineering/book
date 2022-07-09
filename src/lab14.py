@@ -1066,7 +1066,7 @@ class Tab:
 
     def apply_focus(self, node):
         if self.focus:
-            self.focus.is_focused = None
+            self.focus.is_focused = False
         self.focus = node
         if node:
             if node.tag == "input":
