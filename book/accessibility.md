@@ -504,8 +504,9 @@ class Tab:
         self.set_needs_render()
 ```
 
-Setting focus works like this. Note that it now sets `is_focused` to true or
-false on the node; this will come in handy later.
+Setting focus works like this:^[Note that it now sets `is_focused` to true or
+false on the node; this will come in handy later when we want to style
+based on focus status.]
 
 ``` {.python}
     def apply_focus(self, node):
@@ -636,8 +637,8 @@ Keyboards, mice and touch screens are not the only way to interact with a
 computer. There is also the possibility of voice input---talking to the
 computer. Some operating systems have built-in support for voice commands and
 dictation (speaking to type), plus there are software packages you can buy that
-also do it. These systems generally work very well with a keyboard-enabled
-browser, because the voice input software can translate the voice commands
+do it. These systems generally work very well with a keyboard-enabled
+browser, because the voice input software can translate voice commands
 directly into simulated keyboard events. This is one more reason that it's
 important for browsers and web sites to provide keyboard input alternatives.
 
@@ -1364,7 +1365,7 @@ necessarily have great contrast, for example if it's next to an element with a
 black background. This is not too hard to fix, and there is an exercise at the
 end of this chapter about it.
 
-Contrast is one key part of the [Web Content Accessibility Guidelines][wcag], a
+Contrast is one part of the [Web Content Accessibility Guidelines][wcag], a
 standard set of recommendations to page authors on how to ensure accessibility.
 The browser can do a lot, but ultimately things like
 [good contrast][contrast] between colors is something that page authors also
