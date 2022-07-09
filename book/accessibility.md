@@ -10,29 +10,36 @@ have a hard time reading small text, can't or don't want to use a mouse, are
 triggered by very bright colors, suffer from repetitive stress injury, or can't
 see a computer screen at all. Browsers have features aimed at all of these use
 cases, taking advantage of the fact that web pages [declare] UI and allow the
-browser to manipulate it [on behalf][ua] of the user. *Accessibility* is the
+browser to manipulate it [on behalf][ua] of the user.
+[*Accessibility*][a11y] is the
 name for the broad class of browser features for these use cases.
 
 [ua]: http://localhost:8001/intro.html#the-role-of-the-browser
 
 [declare]: intro.md#browser-code-concepts
 
+[a11y]: https://developer.mozilla.org/en-US/docs/Learn/Accessibility/What_is_accessibility
 
-Text zoom
-=========
+CSS zoom
+========
 
 Let's start with the simplest accessibility problem: words on the screen that
 are too small to read. In fact, it's also probably the most common as
 well---almost all of us will face this problem sooner or later, as our eyes
 become weaker with age. There are multiple ways to address this problem, but
 the simplest and most effective is simply increasing font and element sizes.
-This approach is called text zoom---like a camera zooming in on a scene. Let's
+This approach is called *CSS zoom*.[^zoom] Let's
 implement it.
 
-Bind the `ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to zooming out,
-and `ctrl-zero` to reset. A new `zoom` property on `Browser` wll start at `1`.
-Zooming in and out will increase or decrease `zoom`. Then we'll multiply
-the sizes of all of the fonts on the page by `zoom` as well.
+[^zoom]: The word zoom evokes an analogy to a camera zooming in, but is not the
+same, because CSS zoom causes layout. *Pinch zoom*, on the other hand is just
+like a camera and does not cause layout (see the go-further block at the end
+of this section).
+
+Let's bind the `ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to
+zooming out, and `ctrl-zero` to reset. A new `zoom` property on `Browser` wll
+start at `1`. Zooming in and out will increase or decrease `zoom`. Then we'll
+multiply the sizes of all of the "CSS sizes" on the page by `zoom` as well.
 
 Binding these keystrokes in the browser main loop involves watching for when the
 `ctrl` key is pressed and released:
@@ -72,7 +79,7 @@ browser:
              	# ...
 ```
 
-The `Browser` code just delegates to the `Tab`:
+The `Browser` code just delegates to the `Tab`, via a main thread task:
 
 ``` {.python}
 class Browser:
@@ -88,8 +95,8 @@ class Browser:
         active_tab.task_runner.schedule_task(task)
 ```
 
-which in turn changes `zoom`---let's increase or decrease by a
-factor of 1.1, because that looks reasonable on the screen---and re-renders:
+The `Tab` in turn in turn changes `zoom`---let's increase or decrease by a
+multiplicative factor of 1.1---and re-renders:
 
 ``` {.python}
 class Tab:
@@ -120,11 +127,12 @@ class Tab:
 			self.document.layout(self.zoom)
 ```
 
-And within each layout class type pass around `zoom` as well; whenever a font is
-found, override the font size to account for zoom. To make that easier, add a
-helper method that converts from a *layout pixel* (the units specified in a CSS
-declaration) to a *device pixel* (what's actually drawn on the screen) by
-multiplying by zoom:
+And within each layout class type pass around `zoom` as well. But what do we do
+with it? Let's start by resizing all fonts according to `zoom`.  To make that
+easier, add a helper method that converts from a *CSS pixel* (the units
+specified in a CSS declaration) to a *device pixel* (what's actually drawn on
+the screen) by multiplying by zoom. There will be a bunch of places to edit,
+and this helps us avoid mistakes.
 
 ``` {.python}
 def device_px(layout_px, zoom):
@@ -196,7 +204,7 @@ class InlineLayout:
         size = device_px(float(node.style["font-size"][:-2]), zoom)
 ```
 
-`TextLayout` also has some code to edit:
+Also adjust the font size in `TextLayout`:
 
 ``` {.python}
 class TextLayout:
@@ -212,17 +220,19 @@ press `ctrl-plus`, and the opposite with `ctrl-minus`. This is great for
 reading text more easily.
 
 But you'll quickly notice that there is a big problem: pretty soon the text
-starts overflowing its container, and even worse gets cut off at the edge of
-the screen. That's quite bad actually---we traded one accessibility improvement
-in one area (you can read the text) for a loss in another (you can't even see
-all the text!).
+starts overflowing the screen, and if the `width` or `height` CSS properties
+are specified, it'll overflow elements as well. That's quite bad---we
+traded an accessibility improvement in one area (you can read the text) for a
+loss in another (you can't even see all the text!).
 
-How can we fix this? Well, it turns out we shouldn't just increase the size
-of fonts, but also the *sizes of every other CSS pixel* defined in `layout`.
-We should essentially run the same layout algorithm we have, but with each
-device pixel measurement larger by a a factor of `zoom`. This will automatically
-cause inline text and content to wrap when it gets to the edge of the screen,
-and not grow beyond.
+How can we fix this? Well, it turns out we shouldn't just increase the size of
+fonts, but also the *sizes of every other CSS pixel* defined in `layout`. We
+should essentially run the same layout algorithm we have, but with each device
+pixel measurement larger by a a factor of `zoom`. But since the screen doesn't
+magically get bigger when zooming, its width and height wiil remain fixed in
+physical pixel width (and hence smaller in CSS pixels). This
+will automatically cause inline text and content to wrap when it gets to the
+edge of the screen or container elements, and not grow beyond.
 
 For example, change `DocumentLayout` to adjust `HSTEP` and `VSTEP`---which are
 in CSS pixels---to account for `zoom`:
@@ -299,11 +309,49 @@ class InlineLayout:
 ```
 
 Now fire up the browser and try to zoom some pages. Everything should layout
-quite well!
+quite well when zoomed, and text will naturally flow into multiple lines
+as needed.
 
 ::: {.further}
 
-TODO: `zoom` css property; device pixel scale and interpreting as zoom.
+Another way that CSS pixels and device pixels can differ is on a high-resolution
+screen. When CSS was first defined, the typical screen had about 96 pixels per
+inch of screen. Since then, various devices (the original iPhone was an early
+exxample) have screens with much higher pixel density. This led to a problem
+though---web sites displayed on those screens would look tiny if one CSS pixel
+mapped to one device pixel. This was solved with the
+[`devicePixelRatio`][dpr] concept---each CSS pixel is by default multiplied by
+the device pixel ratio to arrive at device pixels. The original iPhone, for
+example, had 163 pixels per inch. `163/96 ~= 1.7`, but since a multiplier like
+1.7 leads to awkward rounding issues in layout, that device selected a
+`devicePixelRatio` of
+2.^[Since then, may different screens with different pixel densities have
+appeared, and these days it's not uncommon to have a ratio that is not an
+integer. For example, the Pixelbook Go I'm using to write this book has a ratio
+of 1.25. (As you can see, the choice of ratio for a given screen is somewhat
+arbitrary.)]
+
+On a device with a `devicePixelRatio` other than 1, `zoom` and
+`devicePixelRatio` have to be multiplied together in the rendering code. In
+addition, real browsers expose a global variable exposed to JavaScript called
+`devicePixelRatio` that equal to the product of these two and updated whenever
+the user zooms in or out. In addition, there is a (non-standard, please don't
+use it!) [`zoom`][zoom-css] CSS property in WebKit and Chromium browsers that
+allows developers to apply something similar to CSS zoom to specific element
+subtrees.
+
+[dpr]: https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
+
+[zoom-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/zoom
+
+On devices with touch screens,^[Originally just phones, but now many desktop
+computers have touch screens.] many browsers also implement *pinch zoom*:
+zooming in on the picture with a multi-touch pinch gesture. This kind of zoom
+is just like a CSS scale transform though---it zooms in on the pixels but
+doesn't update the main-thread rendering pipeline. The resulting view on the
+screen is called the [visual viewport][visual-viewport].
+
+[visual-viewport]: https://developer.mozilla.org/en-US/docs/Web/API/Visual_Viewport_API
 
 :::
 
@@ -1510,11 +1558,6 @@ https://www.w3.org/TR/svg-aam-1.0/
 
 :::
 
-Machine-assisted Computing
-==========================
-
-TODO
-
 Summary
 =======
 
@@ -1561,3 +1604,5 @@ JavaScript. Make sure that it's represented correctly in the accessibility tree
 and participates correctly in form submission.
 
 * *Find-in-page*: implement it.
+
+* *Autofill*: implement it.
