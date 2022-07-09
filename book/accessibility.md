@@ -6,26 +6,33 @@ next: skipped
 ...
 
 It's important for everyone to be able to access content on the web, even if you
-have a hard time reading small text, can't or don't want ot use a mouse, are
-triggered by very bright colors, or can't see a computer screen at all.
-Browsers have features aimed at all of these use cases, taking advantage of the
-fact that web pages declare the UI and allow the browser to manipulate it on
-behalf of the user.
+have a hard time reading small text, can't or don't want to use a mouse, are
+triggered by very bright colors, suffer from repetitive stress injury, or can't
+see a computer screen at all. Browsers have features aimed at all of these use
+cases, taking advantage of the fact that web pages [declare] UI and allow the
+browser to manipulate it [on behalf][ua] of the user. *Accessibility* is the
+name for the broad class of browser features for these use cases.
+
+[ua]: http://localhost:8001/intro.html#the-role-of-the-browser
+
+[declare]: intro.md#browser-code-concepts
+
 
 Text zoom
 =========
 
 Let's start with the simplest accessibility problem: words on the screen that
-are too small to read. In fact, it's also probably the most common as well---
-almost all of us will face this problem sooner or later, as our eyes become
-weaker with age. There are multiple ways to address this problem, but the
-simplest and most effective is simply increasing font sizes. This approach
-is called text zoom---like a camera zooming in on a scene. Let's implement it.
+are too small to read. In fact, it's also probably the most common as
+well---almost all of us will face this problem sooner or later, as our eyes
+become weaker with age. There are multiple ways to address this problem, but
+the simplest and most effective is simply increasing font and element sizes.
+This approach is called text zoom---like a camera zooming in on a scene. Let's
+implement it.
 
-ind the `ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to zooming out,
+Bind the `ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to zooming out,
 and `ctrl-zero` to reset. A new `zoom` property on `Browser` wll start at `1`.
-Zooming in and out will increase or decrease `zoom`. Then we'll use the
-multiply the sizes of all of the fonts on the page by `zoom` as well.
+Zooming in and out will increase or decrease `zoom`. Then we'll multiply
+the sizes of all of the fonts on the page by `zoom` as well.
 
 Binding these keystrokes in the browser main loop involves watching for when the
 `ctrl` key is pressed and released:
@@ -204,14 +211,14 @@ Now try it out! All of the fonts should be get about 10% bigger each time you
 press `ctrl-plus`, and the opposite with `ctrl-minus`. This is great for
 reading text more easily.
 
-But you'll quickly notice that there is a big problem with this approach: pretty
-soon the text starts overflowing its container, and even worse gets cut off at
-the edge of the screen. That's quite bad actually---we traded one accessibility
-improvement in one area (you can read the text) for a loss in another(you can't
-even see all the text!).
+But you'll quickly notice that there is a big problem: pretty soon the text
+starts overflowing its container, and even worse gets cut off at the edge of
+the screen. That's quite bad actually---we traded one accessibility improvement
+in one area (you can read the text) for a loss in another (you can't even see
+all the text!).
 
 How can we fix this? Well, it turns out we shouldn't just increase the size
-of fonts, but *also* the sizes of every other CSS pixel defined in `layout`.
+of fonts, but also the *sizes of every other CSS pixel* defined in `layout`.
 We should essentially run the same layout algorithm we have, but with each
 device pixel measurement larger by a a factor of `zoom`. This will automatically
 cause inline text and content to wrap when it gets to the edge of the screen,
@@ -303,19 +310,19 @@ TODO: `zoom` css property; device pixel scale and interpreting as zoom.
 Keyboard navigation
 ===================
 
-Our browser is currently mouse-only.^[Except for scrolling.] This is
-problematic, because there are a number of reasons why users might want to use
-the keyboard to interact instead, such as physical inability, injury to the
-hand or arm from too much movement, or simply a power user that finds keyboards
-more efficient than mice.
+Our browser is currently mouse-only.^[Except for scrolling, which is
+keyboard-only.] This is problematic, because there are a number of reasons why
+users might want to use the keyboard to interact instead. Reasons such as
+physical inability, injury to the hand or arm from too much movement, or simply
+being a power user that finds keyboards more efficient than mice.
 
 Let's add keyboard equivalents to all of the mouse interactions. This includes
 browser chrome interactions such as the back button, typing a URL, or quitting
 the browser, as well as web page ones such as clicking on buttons, typing
 input, and navigating links.
 
-Most of these interactions are built on top of an expanded implementation of
-*focus*. We already have a `focus` property on each `Tab` (indicating whether
+Most of these interactions will be built on top of an expanded implementation
+of *focus*. We already have a `focus` property on each `Tab` indicating whether
 an `input` element should be capturing keyboard input, and on the `Browser`
 to indicate if the browser chrome is doing so instead. Let's expand on that
 notion to allow buttons and links to capture input as well. When one of them
@@ -404,8 +411,9 @@ class Browser:
         pass	
 ```
 
-Each time `tab` is presseed, we'll advance focus to the next thing in order.
-This will first require a definition of which elements are focusable:
+Each time `tab` is pressed, the browser should advance focus to the next thing
+in order. This will first require a definition of which elements are
+focusable:
 
 ``` {.python expected=False}
 def is_focusable(node):
@@ -475,8 +483,8 @@ There is a third aspect though: if focus is caused by the keyboard, the user
 needs to know what actually has focus. This is done with a *focus ring*---a
 visual outline around an element that lets the user know what is focused.
 
-We'll do this by painting a `2px` wide black rectangle around the element that
-is focused. This requires some code in various `paint` methods plus this
+Draw the focus ring by painting a `2px` wide black rectangle around the element
+that is focused. This requires some code in various `paint` methods plus this
 helper:
 
 ``` {.python expected=False}
@@ -523,9 +531,10 @@ The second complication is that there is not necessarily a layout object
 corresponding exactly to an `<a>` element, if there is other text or an
 `<input>` on the same line.
 
-We'll solve both of these problems `LineLayout` (recall there is one of these
-for each line of an `InlineLayout`), and union the rects of all children
-that are for `Text` node child of a focused parent.
+We'll solve both of these problems by painting the focus ring in `LineLayout`
+(recall there is one of these for each line of an `InlineLayout`). Each line
+will paint a rect that is the union of the rects of all children that are for
+`Text` node child of a focused parent.
 
 ``` {.python}
 class LineLayout:
@@ -572,7 +581,7 @@ Dark mode
 Next up is solving the issue of content being too bright for a user. The reasons
 why might include extra sensitivity to light, or needing to use a device often
 at night (especially in a shared space where others might be disturbed by too
-much light). For this, browsers support a *dark mode*---a mode where the
+much light). For this, browsers support *dark mode*: a mode where the
 browser---and therefore also web pages---by default have a black background and
 a white foreground (as opposed to a white background and black foreground).
 
@@ -619,8 +628,7 @@ class Browser:
 ```
 
 Then we just need to use `color` or `background_color` in place of all of the
-colors. For example plumb color to the `draw_line` function and pass `color`
-as the color for rastering tabs:
+colors. For example, plumb `color` to the `draw_line` function:
 
 ``` {python}
 def draw_line(canvas, x1, y1, x2, y2, color):
@@ -740,7 +748,7 @@ mode.
 This won't be *too* hard. One way to do it would be to programmatically modify
 styles in `style`. Instead let's just define two browser style sheets,
 and load both:^[Yes, this is quite inefficient because the style sheets of the
-document are stored twice. See the go-further event at the end of this section.]
+document are stored twice. We'll optimize it later on.]
 
 
 ``` {.python expected=False}
@@ -784,7 +792,7 @@ class Tab:
 ```
 
 ::: {.further}
-Describe media queries and prefers-color-scheme in particular.
+TOOD
 :::
 
 
@@ -815,12 +823,11 @@ So let's do it![^os-pain]
 and screen readers evolved first with operating systems, and before/in paralell
 with the development of browsers. These days, though, browsers are by far the
 most important app many users interact with (especially on desktop OSes),
-so it makes more sense to consier such features core to a browser with each
-year that passes
+so it makes more sense to consider such features core to a browser.
 
 [^os-pain]: Another reason is that it's actually quite a lot of work to
 directly integrate a browser with the accessibility APIs of each OS. Further,
-it's not very easy to find Python bindings for these APIs, especially Linux.]
+it's not very easy to find Python bindings for these APIs, especially Linux.
 
 The first step is to install something that can read text out loud. For this
 we'll use two libraries: one that converts text to audio files, and one that
@@ -848,7 +855,7 @@ import gtts
 import os
 import playsound
 ```
-Using these librares is very easy. To speak text out loud you just convert it
+Using these libraries is very easy. To speak text out loud you just convert it
 to an audio file, then play the file:
 
 ``` {.python}
@@ -861,7 +868,7 @@ def speak_text(text):
     os.remove(SPEECH_FILE)
 ```
 
-Let's use this to speak to the user the focused element. A new method,
+Let's use this to speak the focused element to the user. A new method,
 `speak_update`, will check if the focused element changed and say it out loud,
 via a `speak_node` method. Saying it out loud will require knowing what text to
 say, which will be decided in `announce_text`.
@@ -877,7 +884,8 @@ def announce_text(node):
     elif role == "focusable text":
         return "focusable text: " + node.text
     elif role == "textbox":
-        value = node.attributes["value"] if "value" in node.attributes else ""
+        value = node.attributes["value"] \
+            if "value" in node.attributes else ""
         return "Input box: " + value
     elif role == "button":
         return "Button"
@@ -936,9 +944,7 @@ class Tab:
 
 ::: {.further}
 
-Describe connection bewteen blind users and assistant experiences, search engine
-crawlers and other machine-reading use cases.
-
+TODO
 :::
 
 The accessibility tree
@@ -946,7 +952,7 @@ The accessibility tree
 
 Reading out focus is great, but there are a number of other things such users
 want to do, such as reading the whole document and interacting with it in
-various ways. And the semantics of how this work ends up being a lot like
+various ways. And the semantics of how this works ends up being a lot like
 rendering. For example, DOM nodes that are invisible[^invisible-example] to the
 user, or are purely *presentational*[^presentational] in nature, should not be
 read out to users, and is not important for interaction.
@@ -993,7 +999,7 @@ class Tab:
 And building it recursively creates the tree. But not all nodes in the
 document tree are present in the accessibility tree. For example, a `<div>` by
 itself is by default considered presentational or otherwise having no
-accessibilty semantics, but `<input>`, `<a>` and `<button` do have semantics.
+accessibilty semantics, but `<input>`, `<a>` and `<button>` do.
 The semantics are called the *role* of the element---the role it plays in the
 meaning of the document.
 
@@ -1097,14 +1103,14 @@ keyboard navigation and dark mode. But what if the website wants to *extend*
 that work to new use cases not built into the browser? For example, what if
 a web developer wants to add their own different kind of input element, or
 a fancier kind of hyperlink? These kinds of *custom widgets* are very common
-on the web, in fact much more common than the built-in ones.
+on the web; in fact much more common than the built-in ones.
 
 You can make a custom widget with event listeners for keyboard and mouse events,
 and your own styling and layout. But it immediately loses important features
 like becoming focusable, participating in tab index order, and responding to
 dark mode. This means that as a site wants to customize the experience to
 make it nicer for some users, it becomes worse for others---the ones who
-really depend on tab order, dark mode and the accessibility tree.
+really depend on these accessibility features.
 
 Let's add features to our browser to allow custom widgets to get back that
 functionality, and start with focus and tab order. This is easily solved
@@ -1113,7 +1119,8 @@ the element automatically becomes focusable. The value of this property is
 a number, indicating the order of focus. For example, an element with
 `tabindex=1` on it will be focused before `tabindex=2`.^[Elements like
 input that are by default focusable can have `tabindex` set, but if it isn't
-set they will be last in the order after `tabidex` elements.]
+set they will be last in the order after `tabidex` elements, and will be
+ordered according to to their position in the DOM.]
 
 First, `is_focusable` needs to be extended accordingly:
 
@@ -1152,8 +1159,11 @@ change its order according to the `tabindex` attributes in it.
 Outline
 =======
 
-Next up is customizing the focus rectangle via the `outline` CSS property.
-As usual, we'll implement only the subset of it that looks like this:
+Next up is customizing the focus rectangle via the [`outline`][outline] CSS
+property. As usual, we'll implement only a subset of the full definition; in
+particular, syntax that looks like this:
+
+[outline]: https://developer.mozilla.org/en-US/docs/Web/CSS/outline
 
     outline: 3px solid red;
 
@@ -1171,21 +1181,22 @@ def parse_outline(outline_str):
     return (int(values[0][:-2]), values[2])
 ```
 
-And use it, The outline will be present if the element is focused or has
-the outline generally. While we could finish implementing that via
-some extra logic in `paint_outline`, the feature has a fundamental problem
-that has to be fixed. Specifying an outline is a fine feature to offer
-to web developers, but it doesn't actually solve the problem of customizing
-the focus outline. That's because `outline`, if specified by the developer,
+Now to use it. The outline will be present if the element is focused or has the
+`outline` CSS property generally. While we could finish implementing that via
+some extra logic in `paint_outline`, the feature has a fundamental problem that
+has to be fixed. Specifying an outline is a fine feature to offer to web
+developers, but it doesn't actually solve the problem of customizing the focus
+outline. That's because `outline`, if specified by the developer,
 would *always* apply, but instead we want it to only apply to an element when
 it's focused!
 
-To do this we need some way to let developers express outline-only-while-focused
-in CSS. This is done with a [*pseudo-class*][pseudoclass], which is a way to
-target internal state of the browser (in this case internal state of a specific
-element).[^why-pseudoclass] Pseudo-classes are notated with a suffix applied to
-a tag or other selector, separated by a single colon character. For the case of
-focus, the syntax looks like this:
+To do this we need some way to let developers
+express *outline-only-while-focused* in CSS. This is done with a
+[*pseudo-class*][pseudoclass], which is a way to target internal state of the
+browser (in this case internal state of a specific element).
+[^why-pseudoclass] Pseudo-classes are notated with a suffix applied to a tag or
+other selector, separated by a single colon character. For the case of focus,
+the syntax looks like this:
 
     div:focus { outline: 2px solid black; }
 
@@ -1276,7 +1287,7 @@ class CSSParser:
 And that's it! Elegant, right?
 
 ::: {.further}
-
+TODO
 :::
 
 Color scheme
@@ -1302,8 +1313,7 @@ tag have a white text color only in dark mode:
 ```
 
 And just like `:focus`, once we've implemented a dark mode media query, we can
-simplify the style sheet code and specify dark colors directly in the browser
-style sheet:
+specify dark colors directly in the browser style sheet:
 
 ``` {.css}
 @media (prefers-color-scheme: dark) {
@@ -1364,7 +1374,8 @@ class CSSParser:
             return True
 ```
 
-Here I made a modification to `pair` to accept an end character other than `;`:
+Here I made a modification to `pair` to accept an end character other than
+a semicolon:
 
 ``` {.python}
 class CSSParser:
@@ -1457,12 +1468,10 @@ confused and sad. That's why it's better for a web page author to simply
 use `<input>` elements---it's all to easy to accidentally forget to implement
 something important for those users.
 
-But the `role` attribute exists nevertheless, as a way for a page author to
-customize these elements' look and feel beyond the limits of what the browser
-allows---for exampole, by adding an autocomplete dropdown, or fancy styling.
-
-Implementing the `role` attribute is very easy, so let's do that for the
-`textbox` roles. It's as simple as modifying `compute_role`:
+But the `role` attribute exists nevertheless, as a way for a page author to not
+lose accessibility when building custom widgets. Implementing the `role`
+attribute is very easy, so let's do that for the `textbox` roles. It's as
+simple as modifying `compute_role`:
 
 ``` {.python}
 def compute_role(node):
@@ -1501,6 +1510,26 @@ https://www.w3.org/TR/svg-aam-1.0/
 
 :::
 
+Machine-assisted Computing
+==========================
+
+TODO
+
+Summary
+=======
+
+This chapter in introduced accessibility, then showed how to solve several of
+the most common accessibility problems in browsers. The key takeaways are:
+
+* Built-in accessibility is possible because of the semantic and deeclarative
+nature of HTML.
+
+* Accessibility features are a natural extension to the tech we've already
+introduced in earlier chapters.
+
+* It's important to design additional browser features so that page authors
+can customize their widgets without losing accessibility.
+
 Outline
 =======
 
@@ -1530,3 +1559,5 @@ CSS property.
 * *Custom inputs*: Implement an `<input>` element with a `<div>` completely in
 JavaScript. Make sure that it's represented correctly in the accessibility tree
 and participates correctly in form submission.
+
+* *Find-in-page*: implement it.
