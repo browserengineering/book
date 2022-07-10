@@ -650,7 +650,7 @@ Dark mode
 Next up is helping users who prefer darker screens. The reasons why might
 include extra sensitivity to light, or using a device at night, or at night
 near others without disturbing them. For these use cases, browsers these days
-support a *dark mode* browser feature that darkens the browser and web pages,
+support a *dark mode* feature that darkens the browser and web pages,
 such as having  a black background and a white foreground (as opposed to the
 default white background and black foreground).
 
@@ -894,10 +894,10 @@ sheets, and instead rely on extensions.
 Screen readers
 ==============
 
-Next let's consider a challenge even harder than too-small/too-bright content or
-keyboard navigation: what if the user can't see the web page at all? For these
-users, a whole lot of the work our browser does to rendering content visually
-is simply not useful at all. So what do we do instead?
+Next let's consider a challenge even more basic than too-small/too-bright
+content or keyboard navigation: what if the user can't see the web page at all?
+For these users, a whole lot of the work our browser does to rendering content
+visually is simply not useful at all. So what do we do instead?
 
 Well, there is still the DOM itself, and that has inherent *semantics*
 (meaning) in it. For example, an `<a>` element has a clear meaning and purpose,
@@ -1046,7 +1046,7 @@ instead of speech, such as with a [braille display][braille-display]. Making
 our browser work with such a device is just a matter of replacing
 `speak_text` with the equivalent APIs calls that connect to a braille display
 and program its output.^[I havne't checked in detail, but there may be
-easy-to-use python libraries for it. If you're interested and have a braille
+easy-to-use Python libraries for it. If you're interested and have a braille
 display (or even an emulated one on the computer screen), it would be a fun
 project to implement this functionality.]
 
@@ -1684,7 +1684,7 @@ CSS property. As part of this, draw a rectangular *backplate* behind all lines
 of text in order to ensure that there is sufficient contrast (as
 [defined][contrast] by the WCAG specification) between 
 foreground and background colors. Also check the contrast of the default
-style sheets I provied in this chapter. Do they meet the requirements?
+style sheets I provied in this chapter---o they meet the requirements?
 
 * Implement caret browsing.
 
