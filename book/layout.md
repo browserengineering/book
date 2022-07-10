@@ -300,7 +300,7 @@ By default, layout objects are greedy and take up all the horizontal
 space they can.[^until-css] So their width is their parent's width:
 
 [^until-css]: In the [next chapter](styles.md), we'll add support for
-user styles, which modify these rules and allow setting custom widths,
+author-defined styles, which modify these rules and allow setting custom widths,
 borders, or padding.
 
 ``` {.python}

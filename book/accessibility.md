@@ -647,12 +647,12 @@ important for browsers and web sites to provide keyboard input alternatives.
 Dark mode
 =========
 
-Next up is solving the issue of content being too bright for a user. The reasons
-why might include extra sensitivity to light, or needing to use a device often
-at night (especially in a shared space where others might be disturbed by too
-much light). For this, browsers support *dark mode*: a mode where the
-browser---and therefore also web pages---by default have a black background and
-a white foreground (as opposed to a white background and black foreground).
+Next up is helping users who prefer darker screens. The reasons why might
+include extra sensitivity to light, or using a device at night, or at night
+near others without disturbing them. For these use cases, browsers these days
+support a *dark mode* browser feature that darkens the browser and web pages,
+such as having  a black background and a white foreground (as opposed to the
+default white background and black foreground).
 
 We'll bind the `ctrl-d` keystroke to toggle dark mode:
 
@@ -704,7 +704,11 @@ def draw_line(canvas, x1, y1, x2, y2, color):
     sk_color = parse_color(color)
     # ...
     paint = skia.Paint(Color=sk_color)
+```
 
+And use it there and in `draw_text`:
+
+``` {.python}
 class Browser:
     # ...
     def raster_chrome(self):
@@ -723,18 +727,9 @@ class Browser:
                 draw_line(canvas, x2, 40, WIDTH, 40, color)
 ```
 
-Likewise all the rest of the `draw_line`, `draw_text` and `draw_rect` calls
-in `raster_chrome` should be instrumented with the dark mode-dependent color.
-
-``` {.python}
-class Browser:
-    # ...
-    def toggle_dark_mode(self):
-        # ...
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.toggle_dark_mode)
-        active_tab.task_runner.schedule_task(task)
-```
+Likewise all the rest of the `draw_line`, `draw_text` and `draw_rect` calls in
+`raster_chrome` (not all are shown above) should be instrumented with the dark
+mode-dependent color.
 
 The `draw` method technically also needs to clear to a dark mode color
 (though this color is generally not available, it's just there to avoid any
@@ -751,7 +746,19 @@ class Browser:
             canvas.clear(skia.ColorWHITE)
 ```
 
-Dark mode also needs to make tabs dark by default. So first plumb the bit:
+Next up is also informing the `Tab` to switch in or out of dark mode:
+
+``` {.python}
+class Browser:
+    # ...
+    def toggle_dark_mode(self):
+        # ...
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.toggle_dark_mode)
+        active_tab.task_runner.schedule_task(task)
+```
+
+And in `Tab`:
 
 ``` {.python}
 class Tab:
@@ -766,7 +773,7 @@ class Tab:
 
 Now we need to flip the colors somehow. The easiest to change are the default
 text color and background color of the document. The text color can just
-be overridden by changing `INHERITED_PROPERTIES`:
+be overridden by changing `INHERITED_PROPERTIES` before calling `style`:
 
 ``` {.python expected=False}
 class Tab:
@@ -811,7 +818,7 @@ But if you try [this example](examples/example14-focus.html) it still won't
 look very good, because buttons and input elements now have poor contrast
 with the white foreground text. Let's fix that. Recall that the `lightblue` and
 `orange` colors for `<input>` and `<button>` elements come from the
-browser style sheet. What we need is to make that style sheet depend on dark
+browser style sheet. We need to to make that style sheet depend on dark
 mode.
 
 This won't be *too* hard. One way to do it would be to programmatically modify
@@ -824,10 +831,10 @@ document are stored twice. We'll optimize it later on.]
 class Tab:
     def __init__(self, browser):
         # ...
-        with open("browser14-light.css") as f:
+        with open("browser-light.css") as f:
             self.default_light_style_sheet = \
                 CSSParser(f.read()).parse()
-        with open("browser14-dark.css") as f:
+        with open("browser-dark.css") as f:
             self.default_dark_style_sheet = \
                 CSSParser(f.read()).parse()
     # ...
@@ -861,42 +868,63 @@ class Tab:
 ```
 
 ::: {.further}
-TOOD
+
+Dark mode is a relatively recent browser feature. In the original design of CSS,
+the [cascade](https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade) defined
+not just browser and author style sheets, but also [*user*][user-style] style
+sheets. These are style sheets defined by the person using the browser, as a
+kind of custom theme. Another approach is to add a
+[browser extension][extension] (or equivalent browser built-in feature) that
+injects additional style sheets applying dark styles.[^no-user-styles]
+
+With one of these mechanisms, users might be able to add their
+own dark mode. While it's relatively easy for this to work well overriding the
+browser's default style sheet and a few common sites, it's very hard to come up
+with styles that work well alongside the style sheets of many sites without
+losing readability or failing to provide adequate dark mode stying.
+
+[extension]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions
+[user-style]: https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade#user_stylesheets
+[^no-user-styles]: Most browsers these days don't even support user style
+sheets, and instead rely on extensions.
+
 :::
 
 
 Screen readers
 ==============
 
-Now let's consider a challenge even harder than too-small/too-bright contrent or
-keyboard navigation: what if the user can't see the web page at
-all? For these users, a whole lot of the work our browser does is about
-rendering content visually, which for them is simply not useful at all. So
-what do we do instead?
+Next let's consider a challenge even harder than too-small/too-bright content or
+keyboard navigation: what if the user can't see the web page at all? For these
+users, a whole lot of the work our browser does to rendering content visually
+is simply not useful at all. So what do we do instead?
 
-Well, there is still the DOM itself, and that has inherent *semantics* in it.
-For example, an `<a>` element has a clear meaning and purpose, irrespedctive
-of how it's displayed on the screen. The same goes for `<input` and `<button>`.
-And of course the text in the document has meaning even without display.
+Well, there is still the DOM itself, and that has inherent *semantics*
+(meaning) in it. For example, an `<a>` element has a clear meaning and purpose,
+irrespective of how it's displayed on the screen. The same goes for `<input`
+and `<button>`. And of course the text in the document has meaning.
 
 So what we need to do is bundle up the semantics of the DOM and present them to
-the user in some way they can visualize. For a user that can't see the screen,
+the user in some way they can access. For a user that can't see the screen,
 the simplest approach will be to read the content out loud. This functionality
-is called a *screen reader*. Screen readers are in practice generally
-[^why-diff] a different application than the browser. But it's actually
+is called a *screen reader*. Screen readers are in practice
+generally[^why-diff] a different application than the browser. But it's actually
 not so hard to build one directly *into* our browser, and doing so will give
 you a lot of insights into how accessibility actually works in a browser.
-So let's do it![^os-pain]
+So let's do it![^os-pain] 
 
 [^why-diff]: I think the reason is mainly historical, in that accessibilty APIs
 and screen readers evolved first with operating systems, and before/in paralell
-with the development of browsers. These days, though, browsers are by far the
-most important app many users interact with (especially on desktop OSes),
+with the development of browsers. These days, browsers are by far the
+most important app many users interact with (especially on desktop computers),
 so it makes more sense to consider such features core to a browser.
 
-[^os-pain]: Another reason is that it's actually quite a lot of work to
-directly integrate a browser with the accessibility APIs of each OS. Further,
-it's not very easy to find Python bindings for these APIs, especially Linux.
+[^os-pain]: Another reason is that it's actually quite a lot of work to directly
+integrate a browser with the accessibility APIs of each OS. Further, it's not
+very easy to find Python bindings for these APIs, especially Linux. As you'll
+see, it really isn't very hard to get the basics working, though a big
+reason is that these days there are high-quality text-to-speeh libraries
+available for non-commerical use.
 
 The first step is to install something that can read text out loud. For this
 we'll use two libraries: one that converts text to audio files, and one that
@@ -1000,7 +1028,7 @@ class Tab:
             self.speak_node(self.focus)
 ```
 
-The update can then be called after layout is done:
+The `speak_update` method can then be called after layout is done:
 
 ``` {.python expected=False}
 class Tab:
@@ -1013,8 +1041,24 @@ class Tab:
 
 ::: {.further}
 
-TODO
+In addition to speech output, sometimes users prefer output via touch
+instead of speech, such as with a [braille display][braille-display]. Making
+our browser work with such a device is just a matter of replacing
+`speak_text` with the equivalent APIs calls that connect to a braille display
+and program its output.^[I havne't checked in detail, but there may be
+easy-to-use python libraries for it. If you're interested and have a braille
+display (or even an emulated one on the computer screen), it would be a fun
+project to implement this functionality.]
+
+And of course, the opposite of a braille display is a braille keyboard that
+allows typing in a more optimized way than memorizing the locations of each key
+on a non-braille keyboard. Or you can buy keyboards with raised braille dots on
+each key. Each of these options should work out of the box with our browser,
+since these keyboards generate the same OS events as other keyboards.
+
 :::
+
+[braille-display]: https://en.wikipedia.org/wiki/Refreshable_braille_display
 
 The accessibility tree
 ======================
@@ -1639,7 +1683,8 @@ between the focus ring and surrounding content.
 CSS property. As part of this, draw a rectangular *backplate* behind all lines
 of text in order to ensure that there is sufficient contrast (as
 [defined][contrast] by the WCAG specification) between 
-foreground and background colors.
+foreground and background colors. Also check the contrast of the default
+style sheets I provied in this chapter. Do they meet the requirements?
 
 * Implement caret browsing.
 
