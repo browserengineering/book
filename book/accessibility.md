@@ -894,7 +894,7 @@ sheets, and instead rely on extensions.
 Screen readers
 ==============
 
-Next let's consider a challenge even more basic than too-small/too-bright
+Consider a challenge even more fundamental than too-small/too-bright
 content or keyboard navigation: what if the user can't see the web page at all?
 For these users, a whole lot of the work our browser does to rendering content
 visually is simply not useful at all. So what do we do instead?
@@ -1067,7 +1067,8 @@ Reading out focus is great, but there are a number of other things such users
 want to do, such as reading the whole document and interacting with it in
 various ways. And the semantics of how this works ends up being a lot like
 rendering. For example, DOM nodes that are invisible[^invisible-example] to the
-user, or are purely *presentational*[^presentational] in nature, should not be
+user, or are purely *presentational* in nature (i.e only
+for the purpose of changing visual apperance[^presentational]) should not be
 read out to users, and is not important for interaction.
 
 [^invisible-example]: For example, `opacity:0`. There are several other
@@ -1079,10 +1080,10 @@ to create something visual on the screen, and has no semantic meaning to a user
 who is not looking at a screen. An example is a `<div>` that is present only
 to create space or a background color.
 
-Further, the semantics are sometimes a bit different than layout and paint.
-So we'll need to create a new *accessibility* tree in rendering to implement
-it. Add a new rendering pipeline phase after layout and before paint to
-build this tree.
+Further, the semantics are sometimes a bit different than layout and paint. So
+instead of shoehorning something into the layout tree or the DOM, we'll need to
+create a new *accessibility tree* in rendering to implement it. Add a new
+rendering pipeline phase after layout and before paint to build this tree.
 
 ``` {.python expected=False}
 class Tab:
@@ -1109,12 +1110,17 @@ class Tab:
             self.speak_task()
 ```
 
-And building it recursively creates the tree. But not all nodes in the
-document tree are present in the accessibility tree. For example, a `<div>` by
-itself is by default considered presentational or otherwise having no
-accessibilty semantics, but `<input>`, `<a>` and `<button>` do.
-The semantics are called the *role* of the element---the role it plays in the
-meaning of the document.
+The `build` method on `AccessibilityNode` recursively creates the tree. Whether
+a node is represented in the accessibilty tree dpeends on its tag and style,
+which in turn determine not only whether the element is presentational, but if
+not what its semantics are. For example, a `<div>` by itself is by default
+considered presentational or otherwise having no accessibilty semantics, but
+`<input>`, `<a>` and `<button>` do. The semantics are called the *role* of the
+element---the role it plays in the meaning of the document. And these roles are
+not arbitrary tedxt; they are specified in a[standard][aria-roles] just like
+rendering.
+
+[aria-roles]: https://www.w3.org/TR/wai-aria-1.2/#introroles
 
 ``` {.python}
 def compute_role(node):
@@ -1204,8 +1210,56 @@ class Tab:
             self.speak_node(self.focus)
 ```
 
+The accessiblity tree also stores geometry of each object. This allows
+accessibility technology to know where things are on the screen in case
+the user wants to [hit test][hit-test] a place on the screen to see what is
+there. A user who can't see the screen still might want to do things like
+touch exploration of the screen, or being notified what is under the mouse
+as they move it around.
+
+[hit-test]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_3.md#Hit-testing
+
+Let's implement the second use case. We'll store the size and location of
+each `AccessibilityNode`, and the hit testing algorithm will be exactly the
+same as we've already implemented when handling mouse clicks (except on 
+a different tree, of course).
+
+TODO: finish it.
+
 ::: {.further}
-Other uses of the accessibility tree.
+
+The accessiblity tree typically plays a key role in the interface between
+browsers and accessibility technology like screen readers. The screen reader
+registers itself with accessibility OS APIs that promise to call it when
+interaction events happen, and the browser does the same on the other end.
+Users can express intent by interacting with the accessibility tech, and
+then this is forwarded on by way of the OS to an event triggered on the
+corresponding accessibility object in the tree.
+
+Generally speaking, the OS does not enforce that the browser build such a tree,
+but it's convenient enough that browsers generally do it. But in the era of
+multi-process browser engines (of which [Chromium][chrome-mp] was the first), an
+accessibility tree in the browser process that mirrors content state from each
+visible browser tab is necessary. That's because OS accessibility APIs are
+generally synchronous, and it's not possible to synchronously stop the browser and tab at the
+same time to figure out how to respond. See
+[here][chrome-mp-a11y] for a more
+detailed description of the challenge and how Chromium deals with it.
+
+[chrome-mp]: https://www.chromium.org/developers/design-documents/multi-process-architecture/
+
+[chrome-mp-a11y]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_2.md
+
+In addition, defining this tree in a specification is a means to encourage
+interoperability between browsers. This is critically important---imagine
+how frustrating it would be if a web site doesn't work in your chosen browser
+just because it happens to interpret accessibility slightly differently than
+another one! This is made worse since web sites unfortunately vary greatly
+in quality of accessibility, and so a user might be forced to constantly
+switch browsers in the hope of finding one that works well. Interoperability
+is also important for web site authors who would otherwise have to constantly
+test everything in every browser.
+
 :::
 
 Tab-index
