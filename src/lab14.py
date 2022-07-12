@@ -145,9 +145,13 @@ def paint_outline(node, cmds, rect):
     if outline:
         cmds.append(outline_cmd(rect, outline))
 
+def has_outline(node):
+    return parse_outline(node.style.get("outline"))
+
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
+        node.layout_object = self
         self.parent = parent
         self.previous = previous
         self.children = []
@@ -210,6 +214,7 @@ class BlockLayout:
 class InlineLayout:
     def __init__(self, node, parent, previous):
         self.node = node
+        node.layout_object = self
         self.parent = parent
         self.previous = previous
         self.children = []
@@ -354,16 +359,16 @@ class LineLayout:
 
     def paint(self, display_list):
         outline_rect = skia.Rect.MakeEmpty()
-        focused_node = None
+        outline_node = None
         for child in self.children:
             node = child.node
-            if isinstance(node, Text) and is_focused(node.parent):
-                focused_node = node.parent
+            if isinstance(node, Text) and has_outline(node.parent):
+                outline_node = node.parent
                 outline_rect.join(child.rect())
             child.paint(display_list)
 
-        if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
+        if outline_node:
+            paint_outline(outline_node, display_list, outline_rect)
 
     def role(self):
         return "none"
@@ -427,6 +432,7 @@ def style(node, rules, tab):
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
+        node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
@@ -613,10 +619,10 @@ def announce_text(node):
         return "Button"
     elif role == "link":
         return "Link"
-    elif is_focusable(node):
+    elif not isinstance(node, Text) and is_focusable(node):
         return "focused element"
     else:
-        return None
+        return ""
 
 class AccessibilityNode:
     def __init__(self, node):
@@ -637,6 +643,25 @@ class AccessibilityNode:
             parent = child
         for child_node in node.children:
             AccessibilityNode.build_internal(child_node, parent)
+
+    def intersects(self, x, y):
+        if hasattr(self.node, "layout_object"):
+            obj = self.node.layout_object
+            return obj.x <= x < obj.x + obj.width \
+                and obj.y <= y < obj.y + obj.height
+        return False
+
+    def hit_test(self, x, y):
+        nodes = [node for node in tree_to_list(self, [])
+                if node.intersects(x, y)]
+        if not nodes:
+            return None
+        else:
+            node = nodes[-1] 
+            if isinstance(node, Text):
+                return node.parent
+            else:
+                return node
 
     def __repr__(self):
         return "AccessibilityNode(node={} role={}".format(
@@ -663,7 +688,10 @@ class TagSelector:
         tag_match = isinstance(node, Element) and self.tag == node.tag
         if not tag_match: return False
         if not self.pseudoclass: return True
-        return self.pseudoclass == "focus" and is_focused(node)
+        if self.pseudoclass == "focus":
+            return is_focused(node)
+        elif self.pseudoclass == "hover":
+            return hasattr(node, "is_hovered") and node.is_hovered
 
     def __repr__(self):
         return ("TagSelector(tag={}, priority={} " +
@@ -692,7 +720,6 @@ class CSSParser:
             if cur == "'":
                 in_quote = not in_quote
             if cur == "(":
-                print("in parens")
                 in_parens = True
             if cur.isalnum() or cur in ",/#-.%()\"'" \
                 or (in_quote and cur == ':'):
@@ -846,10 +873,10 @@ class Tab:
         self.task_runner.start()
 
         self.measure_render = MeasureTime("render")
-
         self.composited_updates = []
-
         self.zoom = 1.0
+        self.pending_hover = None
+        self.hovered_node = None
 
         with open("browser14.css") as f:
             self.default_style_sheet = \
@@ -983,9 +1010,8 @@ class Tab:
 
         self.browser.commit(self, commit_data)
 
-    def speak_node(self, node):
-        text = "Element focused. "
-        text = announce_text(node)
+    def speak_node(self, node, text):
+        text += announce_text(node)
         if text and node.children and \
             isinstance(node.children[0], Text):
             text += " " + announce_text(node.children[0])
@@ -993,6 +1019,12 @@ class Tab:
         if text:
             if not self.browser.is_muted():
                 speak_text(text)
+
+    def speak_focus(self, node):
+        self.speak_node(node, "element focused ")
+
+    def speak_hit_test(self, node):
+        self.speak_node(node, "hit test ")
 
     def speak_document(self):
         text = "Here are the document contents: "
@@ -1013,7 +1045,7 @@ class Tab:
         if self.focus and \
             self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
-            self.speak_node(self.focus)
+            self.speak_focus(self.focus)
 
     def render(self):
         self.measure_render.start()
@@ -1061,6 +1093,20 @@ class Tab:
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
                 self.needs_paint = False
+
+        if self.pending_hover:
+            if self.accessibility_tree:
+                (x, y) = self.pending_hover
+                a11y_node = self.accessibility_tree.hit_test(x, y)
+                if self.hovered_node:
+                    self.hovered_node.is_hovered = False
+
+                if a11y_node:
+                    if a11y_node.node != self.hovered_node:
+                        self.speak_hit_test(a11y_node.node)
+                    self.hovered_node = a11y_node.node
+                    self.hovered_node.is_hovered = True
+            self.pending_hover = None
 
         self.measure_render.stop()
 
@@ -1182,6 +1228,10 @@ class Tab:
 
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
+        self.set_needs_render()
+
+    def hover(self, x, y):
+        self.pending_hover = (x, y)
         self.set_needs_render()
 
 def draw_line(canvas, x1, y1, x2, y2, color):
@@ -1509,6 +1559,12 @@ class Browser:
             active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
+    def handle_hover(self, event):
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
+        active_tab.task_runner.schedule_task(task)
+
+
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
@@ -1695,6 +1751,8 @@ if __name__ == "__main__":
                 break
             elif event.type == sdl2.SDL_MOUSEBUTTONUP:
                 browser.handle_click(event.button)
+            elif event.type == sdl2.SDL_MOUSEMOTION:
+                browser.handle_hover(event.motion)
             elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                     if event.key.keysym.sym == sdl2.SDLK_EQUALS:

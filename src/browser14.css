@@ -26,6 +26,10 @@ a:focus {
     outline: 2px solid black;
 }
 
+a:hover {
+    outline: 4px solid red;
+}
+
 @media (prefers-color-scheme: dark) {
 
 a { color: lightblue; }

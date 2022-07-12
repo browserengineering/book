@@ -599,7 +599,7 @@ We'll solve both of these problems by painting the focus ring in `LineLayout`
 will paint a rect that is the union of the rects of all children that are for a
 `Text` node child of a focused parent.
 
-``` {.python}
+``` {.python expected=False}
 class LineLayout:
 	# ...
     def paint(self, display_list):
@@ -1001,9 +1001,8 @@ and then speaks the text.
 ``` {.python}
 class Tab:
     # ...
-    def speak_node(self, node):
-        text = "Element focused. "
-        text = announce_text(node)
+    def speak_node(self, node, text):
+        text += announce_text(node)
         if text and node.children and \
             isinstance(node.children[0], Text):
             text += " " + announce_text(node.children[0])
@@ -1011,6 +1010,9 @@ class Tab:
         if text:
             if not self.browser.is_muted():
                 speak_text(text)
+
+    def speak_focus(self, node):
+        self.speak_node(node, "element focused ")
 ```
 
 And finally there is `speak_update`:
@@ -1025,7 +1027,7 @@ class Tab:
         if self.focus and \
             self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
-            self.speak_node(self.focus)
+            self.speak_focus(self.focus)
 ```
 
 The `speak_update` method can then be called after layout is done:
@@ -1207,7 +1209,7 @@ class Tab:
         if self.focus and \
             self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
-            self.speak_node(self.focus)
+            self.speak_focus(self.focus)
 ```
 
 The accessiblity tree also stores geometry of each object. This allows
@@ -1398,6 +1400,23 @@ def paint_outline(node, cmds, rect):
         cmds.append(outline_cmd(rect, outline))
 ```
 
+``` {.python expected=False}
+class LineLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+        focused_node = None
+        for child in self.children:
+            node = child.node
+            if isinstance(node, Text) and is_focused(node.parent):
+                focused_node = node.parent
+                outline_rect.join(child.rect())
+        # ...
+        if focused_node:
+            paint_outline(focused_node, display_list, outline_rect)
+
+```
+
 Now for adding support for `:focus`. The first step will be teaching
 `CSSParser` how to parse it.  Let's start by providing a way to mark a
 `TagSelector` as needing a pseudoclass to also be set in order to apply:
@@ -1415,7 +1434,8 @@ class TagSelector:
         tag_match = isinstance(node, Element) and self.tag == node.tag
         if not tag_match: return False
         if not self.pseudoclass: return True
-        return self.pseudoclass == "focus" and is_focused(node)
+        if self.pseudoclass == "focus":
+            return is_focused(node)
 
     def __repr__(self):
         return ("TagSelector(tag={}, priority={} " +
