@@ -145,6 +145,9 @@ def paint_outline(node, cmds, rect):
     if outline:
         cmds.append(outline_cmd(rect, outline))
 
+def has_outline(node):
+    return parse_outline(node.style.get("outline"))
+
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -356,16 +359,16 @@ class LineLayout:
 
     def paint(self, display_list):
         outline_rect = skia.Rect.MakeEmpty()
-        focused_node = None
+        outline_node = None
         for child in self.children:
             node = child.node
-            if isinstance(node, Text) and is_focused(node.parent):
-                focused_node = node.parent
+            if isinstance(node, Text) and has_outline(node.parent):
+                outline_node = node.parent
                 outline_rect.join(child.rect())
             child.paint(display_list)
 
-        if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
+        if outline_node:
+            paint_outline(outline_node, display_list, outline_rect)
 
     def role(self):
         return "none"
@@ -644,9 +647,6 @@ class AccessibilityNode:
     def intersects(self, x, y):
         if hasattr(self.node, "layout_object"):
             obj = self.node.layout_object
-            # print("obj: " + str(obj))
-            # print(obj.x)
-            # print(x)
             return obj.x <= x < obj.x + obj.width \
                 and obj.y <= y < obj.y + obj.height
         return False
@@ -688,7 +688,10 @@ class TagSelector:
         tag_match = isinstance(node, Element) and self.tag == node.tag
         if not tag_match: return False
         if not self.pseudoclass: return True
-        return self.pseudoclass == "focus" and is_focused(node)
+        if self.pseudoclass == "focus":
+            return is_focused(node)
+        elif self.pseudoclass == "hover":
+            return hasattr(node, "is_hovered") and node.is_hovered
 
     def __repr__(self):
         return ("TagSelector(tag={}, priority={} " +
@@ -717,7 +720,6 @@ class CSSParser:
             if cur == "'":
                 in_quote = not in_quote
             if cur == "(":
-                print("in parens")
                 in_parens = True
             if cur.isalnum() or cur in ",/#-.%()\"'" \
                 or (in_quote and cur == ':'):
@@ -1096,12 +1098,14 @@ class Tab:
             if self.accessibility_tree:
                 (x, y) = self.pending_hover
                 a11y_node = self.accessibility_tree.hit_test(x, y)
+                if self.hovered_node:
+                    self.hovered_node.is_hovered = False
+
                 if a11y_node:
                     if a11y_node.node != self.hovered_node:
                         self.speak_hit_test(a11y_node.node)
                     self.hovered_node = a11y_node.node
-                else:
-                    self.hovered_node = None
+                    self.hovered_node.is_hovered = True
             self.pending_hover = None
 
         self.measure_render.stop()
