@@ -10,9 +10,10 @@ have a hard time reading small text, can't or don't want to use a mouse, are
 triggered by very bright colors, suffer from repetitive stress injury, or can't
 see a computer screen at all. Browsers have features aimed at all of these use
 cases, taking advantage of the fact that web pages [declare] UI and allow the
-browser to manipulate it [on behalf][ua] of the user.
-[*Accessibility*][a11y] is the
-name for the broad class of browser features for these use cases.
+browser to manipulate it [on behalf][ua] of the user.[*Accessibility*][a11y] is
+the name for the broad class of browser features for these use cases. They are
+a critical part of a modern browser, and pretty much everyone benefits from one
+or more of them.
 
 [ua]: http://localhost:8001/intro.html#the-role-of-the-browser
 
@@ -28,18 +29,22 @@ are too small to read. In fact, it's also probably the most common as
 well---almost all of us will face this problem sooner or later, as our eyes
 become weaker with age. There are multiple ways to address this problem, but
 the simplest and most effective is simply increasing font and element sizes.
-This approach is called *CSS zoom*.[^zoom] Let's
-implement it.
+This approach is called *CSS zoom*.[^zoom]
 
 [^zoom]: The word zoom evokes an analogy to a camera zooming in, but is not the
 same, because CSS zoom causes layout. *Pinch zoom*, on the other hand is just
 like a camera and does not cause layout (see the go-further block at the end
 of this section).
 
-Let's bind the `ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to
-zooming out, and `ctrl-zero` to reset. A new `zoom` property on `Browser` wll
-start at `1`. Zooming in and out will increase or decrease `zoom`. Then we'll
-multiply the sizes of all of the "CSS sizes" on the page by `zoom` as well.
+To implement it, we first need a way to trigger zooming. Let's bind the
+`ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to zooming out, and
+`ctrl-zero` to reset. A new `zoom` property on `Browser` wll start at `1`.
+Zooming in and out will increase or decrease `zoom`. Then we'll multiply all of
+the "CSS sizes" on the web page by `zoom` as well.[^browser-chrome]
+
+[^browser-chrome]: This operation does not zoom in the browser chrome UI.
+Browsers also have such a feature, and it's usually triggered by a global
+OS setting.
 
 Binding these keystrokes in the browser main loop involves watching for when the
 `ctrl` key is pressed and released:
@@ -61,8 +66,7 @@ Binding these keystrokes in the browser main loop involves watching for when the
            # ...
 ```
 
-and then looking for plus, minus or zero pressed next and running code in the
-browser:
+and then looking for plus, minus or zero pressed next:
 
 ``` {.python}
     while True:
@@ -117,7 +121,8 @@ class Tab:
         self.set_needs_render()
 ```
 
-Now we just need to pass `zoom` down into `layout`:
+The `zoom` factor is supposed to multiply all CSS sizes, so
+pass `zoom` down into `layout`:
 
 ``` {.python}
 class Tab:
@@ -127,12 +132,12 @@ class Tab:
 			self.document.layout(self.zoom)
 ```
 
-And within each layout class type pass around `zoom` as well. But what do we do
+And within each layout class type, pass around `zoom` as well. But what do we do
 with it? Let's start by resizing all fonts according to `zoom`.  To make that
-easier, add a helper method that converts from a *CSS pixel* (the units
+easier, add a `device_px` helper method that converts from a *CSS pixel* (the units
 specified in a CSS declaration) to a *device pixel* (what's actually drawn on
-the screen) by multiplying by zoom. There will be a bunch of places to edit,
-and this helps us avoid mistakes.
+the screen) by multiplying by zoom.^[There will be a bunch of places to edit,
+and this helper method lets us avoid mistakes.]
 
 ``` {.python}
 def device_px(layout_px, zoom):
@@ -225,14 +230,26 @@ are specified, it'll overflow elements as well. That's quite bad---we
 traded an accessibility improvement in one area (you can read the text) for a
 loss in another (you can't even see all the text!).
 
-How can we fix this? Well, it turns out we shouldn't just increase the size of
-fonts, but also the *sizes of every other CSS pixel* defined in `layout`. We
+How can we fix this? We shouldn't just increase the size of
+fonts, but also the size of every other CSS pixel. defined in `layout`. We
 should essentially run the same layout algorithm we have, but with each device
 pixel measurement larger by a a factor of `zoom`. But since the screen doesn't
-magically get bigger when zooming, its width and height wiil remain fixed in
+magically get bigger when zooming, its width and height will remain fixed in
 physical pixel width (and hence smaller in CSS pixels). This
-will automatically cause inline text and content to wrap when it gets to the
-edge of the screen or container elements, and not grow beyond.
+will automatically cause inline text and content to wrap when they hit the
+edge of the screen or container elements, and not grow beyond.[^min-font-size]
+And the layout design of the website will tend to continue working, because
+elements `width` and `height` will get larger in proportion to the font.
+
+[^min-font-size]: Browsers also usually have a *minimum font size* feature. When
+it's used, the browser will try to avoid rendering any fonts smaller than the
+minimum. However, these features don't automatically use zoom, and therefore
+suffer from problems like overflowing fonts and broken layouts. Because of
+these problems, browsers also often restrict the feature to situations where
+the site seems to be using [relative font sizes][relative-font-size], making
+the feature even less useful. CSS zoom is a much better solution.
+
+[relative-font-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-size
 
 For example, change `DocumentLayout` to adjust `HSTEP` and `VSTEP`---which are
 in CSS pixels---to account for `zoom`:
@@ -308,7 +325,7 @@ class InlineLayout:
         w = device_px(INPUT_WIDTH_PX, zoom)	
 ```
 
-Now fire up the browser and try to zoom some pages. Everything should layout
+Fire up the browser and try to zoom some pages. Everything should layout
 quite well when zoomed, and text will naturally flow into multiple lines
 as needed.
 
@@ -317,19 +334,19 @@ as needed.
 Another way that CSS pixels and device pixels can differ is on a high-resolution
 screen. When CSS was first defined, the typical screen had about 96 pixels per
 inch of screen. Since then, various devices (the original iPhone was an early
-exxample) have screens with much higher pixel density. This led to a problem
+example) have screens with much higher pixel density. This led to a problem
 though---web sites displayed on those screens would look tiny if one CSS pixel
 mapped to one device pixel. This was solved with the
 [`devicePixelRatio`][dpr] concept---each CSS pixel is by default multiplied by
 the device pixel ratio to arrive at device pixels. The original iPhone, for
-example, had 163 pixels per inch. `163/96 ~= 1.7`, but since a multiplier like
+example, had 163 pixels per inch. 163/96 = 1.7, but since a multiplier like
 1.7 leads to awkward rounding issues in layout, that device selected a
 `devicePixelRatio` of
 2.^[Since then, may different screens with different pixel densities have
 appeared, and these days it's not uncommon to have a ratio that is not an
 integer. For example, the Pixelbook Go I'm using to write this book has a ratio
-of 1.25. (As you can see, the choice of ratio for a given screen is somewhat
-arbitrary.)]
+of 1.25 (but with 166 pixels per inch---As you can see, the choice of ratio
+for a given screen is somewhat arbitrary).]
 
 On a device with a `devicePixelRatio` other than 1, `zoom` and
 `devicePixelRatio` have to be multiplied together in the rendering code. In
@@ -375,7 +392,7 @@ an `input` element should be capturing keyboard input, and on the `Browser`
 to indicate if the browser chrome is doing so instead. Let's expand on that
 notion to allow buttons and links to capture input as well. When one of them
 is focused and the user presses `enter`, then the button will be clicked
-or the link navigated.
+or the link navigated:
 
 ``` {.python}
     while True:
@@ -401,6 +418,8 @@ Let's call the act of pressing a button or navigating a link *activating* that
 element. The `enter` method activates the currently focused element:
 
 ``` {.python}
+class Tab:
+    # ...
     def enter(self):
         if self.focus:
             self.activate_element(self.focus)   
@@ -426,7 +445,7 @@ class Tab:
 ```
 
 With these methods, we can also avoid a bit of dulicated code in `click`, which
-of course also handles the activation concept (but via the mouse):
+of course already handled the activation concept (but via the mouse):
 
 ``` {.python}
 class Tab:
@@ -447,7 +466,7 @@ class Tab:
             elt = elt.parent
 ```
 
-Focus is also currently set only via a mouse click, so we need to also introduce
+Focus is also currently set only via a mouse click, so we also need introduce
 a keyboard way to cycle through all of the focusable elements in the browser.
 We'll implement this via the `tab` key:
 
@@ -504,9 +523,7 @@ class Tab:
         self.set_needs_render()
 ```
 
-Setting focus works like this:^[Note that it now sets `is_focused` to true or
-false on the node; this will come in handy later when we want to style
-based on focus status.]
+Setting focus works like this:
 
 ``` {.python}
     def apply_focus(self, node):
@@ -619,7 +636,8 @@ class LineLayout:
 Iterating through the focusable elements with the keyboard, and highlighting
 them with a focus rect, should now work. Try it in
 this [example](examples/example14-focus.html). And if you zoom in enough, you
-should be able to make the link cross multiple lines.
+should be able to make the link cross multiple lines and use multiple
+focus rectangles.
 
 In addition to activation of input elements, there are four more mouse controls
 in the browser: the back button, the add-tab button, iterating through the
@@ -732,7 +750,7 @@ Likewise all the rest of the `draw_line`, `draw_text` and `draw_rect` calls in
 mode-dependent color.
 
 The `draw` method technically also needs to clear to a dark mode color
-(though this color is generally not available, it's just there to avoid any
+(though this color is generally not visible, it's just there to avoid any
 accidental transparency in the window).
 
 ``` {.python}
@@ -895,8 +913,11 @@ Screen readers
 ==============
 
 Consider a challenge even more fundamental than too-small/too-bright
-content or keyboard navigation: what if the user can't see the web page at all?
-For these users, a whole lot of the work our browser does to rendering content
+content or keyboard navigation: what if the user can't see the web page at
+all?^[The original motivation of screen readers was for blind users, but it's
+also sometimes useful for situations where the user shouldn't be looking
+at the screen, such as driving.]
+For these users, a whole lot of the work our browser does to render content
 visually is simply not useful at all. So what do we do instead?
 
 Well, there is still the DOM itself, and that has inherent *semantics*
@@ -907,22 +928,22 @@ and `<button>`. And of course the text in the document has meaning.
 So what we need to do is bundle up the semantics of the DOM and present them to
 the user in some way they can access. For a user that can't see the screen,
 the simplest approach will be to read the content out loud. This functionality
-is called a *screen reader*. Screen readers are in practice
-generally[^why-diff] a different application than the browser. But it's actually
-not so hard to build one directly *into* our browser, and doing so will give
-you a lot of insights into how accessibility actually works in a browser.
+is called a *screen reader*. Screen readers are typically[^why-diff] a different
+application than the browser. But it's actually not so hard to build one
+directly into our browser, and doing so will give you a lot of insights into
+how accessibility actually works in a browser.
 So let's do it![^os-pain] 
 
 [^why-diff]: I think the reason is mainly historical, in that accessibilty APIs
-and screen readers evolved first with operating systems, and before/in paralell
+and screen readers evolved first with operating systems, and before/in parallel
 with the development of browsers. These days, browsers are by far the
 most important app many users interact with (especially on desktop computers),
 so it makes more sense to consider such features core to a browser.
 
 [^os-pain]: Another reason is that it's actually quite a lot of work to directly
 integrate a browser with the accessibility APIs of each OS. Further, it's not
-very easy to find Python bindings for these APIs, especially Linux. As you'll
-see, it really isn't very hard to get the basics working, though a big
+very easy to find Python bindings for these APIs, especially Linux. And as
+you'll see, it really isn't very hard to get the basics working, though a big
 reason is that these days there are high-quality text-to-speeh libraries
 available for non-commerical use.
 
@@ -944,7 +965,7 @@ First install them:
     pip3 install playsound
 
 And then import them (we need the `os` module also, for managing files created
-by `gtts`:
+by `gtts`):
 
 ``` {.python}
 import gtts
@@ -1047,7 +1068,7 @@ In addition to speech output, sometimes users prefer output via touch
 instead of speech, such as with a [braille display][braille-display]. Making
 our browser work with such a device is just a matter of replacing
 `speak_text` with the equivalent APIs calls that connect to a braille display
-and program its output.^[I havne't checked in detail, but there may be
+and programming its output.^[I haven't checked in detail, but there may be
 easy-to-use Python libraries for it. If you're interested and have a braille
 display (or even an emulated one on the computer screen), it would be a fun
 project to implement this functionality.]
@@ -1071,24 +1092,24 @@ various ways. And the semantics of how this works ends up being a lot like
 rendering. For example, DOM nodes that are invisible[^invisible-example] to the
 user, or are purely *presentational* in nature (i.e only
 for the purpose of changing visual apperance[^presentational]) should not be
-read out to users, and is not important for interaction.
+read out to users, because they are not important.
 
 [^invisible-example]: For example, `opacity:0`. There are several other
 ways in real browsers that elements can be made invisible, such as with the
 `visibility` or `display` CSS properties.
 
-[^presentational]: A node that is presentational is one whose purpose is only
-to create something visual on the screen, and has no semantic meaning to a user
-who is not looking at a screen. An example is a `<div>` that is present only
-to create space or a background color.
+[^presentational]: A `<div>` element, for example, is by default
+presentational (or more precisely, has no semantic role).
 
 First, not everyone wants the accessibility tree to be on, so let's bind it
-to a keystroke:
+to the `ctrl-a` keystroke:
 
 ``` {.python}
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
+                if ctrl_down:
+                    # ...
                     elif event.key.keysym.sym == sdl2.SDLK_a:
                         browser.toggle_accessibility()            
 ```
@@ -1118,8 +1139,10 @@ class Tab:
 
 Further, the semantics are sometimes a bit different than layout and paint. So
 instead of shoehorning something into the layout tree or the DOM, we'll need to
-create a new *accessibility tree* in rendering to implement it. Add a new
+create a new [*accessibility tree*][at] in rendering to implement it. Add a new
 rendering pipeline phase after layout and before paint to build this tree.
+
+[at]: https://developer.mozilla.org/en-US/docs/Glossary/Accessibility_tree
 
 ``` {.python expected=False}
 class Tab:
@@ -1147,14 +1170,17 @@ class Tab:
 ```
 
 The `build` method on `AccessibilityNode` recursively creates the tree. Whether
-a node is represented in the accessibilty tree dpeends on its tag and style,
+a node is represented in the accessibilty tree depends on its tag and style,
 which in turn determine not only whether the element is presentational, but if
 not what its semantics are. For example, a `<div>` by itself is by default
 considered presentational or otherwise having no accessibilty semantics, but
-`<input>`, `<a>` and `<button>` do. The semantics are called the *role* of the
-element---the role it plays in the meaning of the document. And these roles are
-not arbitrary text; they are specified in a [standard][aria-roles] just like
-rendering.
+`<input>`, `<a>` and `<button>` have them by default. The semantics are called
+the *role* of the element---the role it plays in the meaning of the document.
+And these roles arenot arbitrary text; they are specified in a
+[standard][aria-roles] just like rendering.[^not-exposed]
+
+[^not-exposed]: However, the role computed by the browser is not exposed to
+any JavaScript API.
 
 [aria-roles]: https://www.w3.org/TR/wai-aria-1.2/#introroles
 
@@ -1246,16 +1272,35 @@ class Tab:
             self.speak_focus(self.focus)
 ```
 
-The accessiblity tree also stores geometry of each object. This allows
+The accessiblity tree also needs access to geometry of each object. This allows
 accessibility technology to know where things are on the screen in case
 the user wants to [hit test][hit-test] a place on the screen to see what is
 there. A user who can't see the screen still might want to do things like
 touch exploration of the screen, or being notified what is under the mouse
 as they move it around.
 
+To get access to the geometry, let's add a `layout_object` pointer to each
+`Node` object if it has one. That's easy to do in the constructor of each layout
+object type. Here are two examples (don't forget to handle all of them):
+
+``` {.python}
+class DocumentLayout:
+    def __init__(self, node):
+        # ...
+        node.layout_object = self
+```
+
+``` {.python}
+class BlockLayout:
+    def __init__(self, node, parent, previous):
+        # ...
+        node.layout_object = self
+```
+
 [hit-test]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_3.md#Hit-testing
 
-Let's implement the second use case. We'll store the size and location of
+Let's implement the second use case I mentioned above (being notified what
+is under the mouse). We'll store the size and location of
 each `AccessibilityNode`, and the hit testing algorithm will be exactly the
 same as we've already implemented when handling mouse clicks (except on 
 a different tree, of course).
@@ -1283,22 +1328,24 @@ class Browser:
 ```
 
 Now the tab should listen to the hovered position, determine if it's over an
-accessibility node, and higlight that node. But as I explained in[chapter 11]
-[forced-layout-hit-test], a hit test is one way that forced layouts can occur.
-So we could first call `render` inside `hover` before running the hit test. And
-this is exactly what `click` does. But there is something different about
-hover: when a click happens, the tab needs[^why-needs] to respond synchronously
-to it. But a hover is arguably much less urgent than a click, and so the hit
-test can be delayed until after the next time the rendering pipeline runs. By
-delaying it, we can avoid any forced renders for hit testing.
+accessibility node, and higlight that node. But as I explained in
+[chapter 11][forced-layout-hit-test], a hit test is one way that forced layouts
+can occur. So we could first call `render` inside `hover` before running the
+hit test. And this is exactly what `click` does. But there is something
+different about hover: when a click happens, the tab needs[^why-needs] to
+respond synchronously to it. But a hover is arguably much less urgent than a
+click, and so the hit test can be delayed until after the next time the
+rendering pipeline runs. By delaying it, we can avoid any forced renders for
+hit testing.
+
 [forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
 
-[^why-needs]: It's probably not immediately obvious why clicks can't be
+[^why-needs]: It may not be immediately obvious why clicks can't be
 asynchronous and happen after a scheduled render. If all that was happening
 was browser clicks, and the browser was always responsive and fast, then
 maybe that's a good idea. But the browser can't always guarantee that
 scripts or other work won't slow down the page, and it's quite important to
-respond to clicks because the user is waiting on the result.
+respond quickly clicks because the user is waiting on the result.
 
 So `hover` should just note down that a hover is desired, and schedule a render:
 
@@ -1336,8 +1383,6 @@ class Tab:
 The last bit is implementing `hit_test` on `AccessibilityNode`. It's
 basically the same as regular hit testing:
 
-TODO: refactor to share code?
-
 ``` {.python}
 class AccessibilityNode:
     # ...
@@ -1365,12 +1410,12 @@ then this is forwarded on by way of the OS to an event triggered on the
 corresponding accessibility object in the tree.
 
 Generally speaking, the OS does not enforce that the browser build such a tree,
-but it's convenient enough that browsers generally do it. But in the era of
+but it's convenient enough that browsers generally do it. However, in the era of
 multi-process browser engines (of which [Chromium][chrome-mp] was the first), an
 accessibility tree in the browser process that mirrors content state from each
-visible browser tab is necessary. That's because OS accessibility APIs are
-generally synchronous, and it's not possible to synchronously stop the browser and tab at the
-same time to figure out how to respond. See
+visible browser tab hash become necessary. That's because OS accessibility
+APIs are generally synchronous, and it's not possible to synchronously stop
+the browser and tab at the same time to figure out how to respond. See
 [here][chrome-mp-a11y] for a more
 detailed description of the challenge and how Chromium deals with it.
 
@@ -1383,7 +1428,7 @@ interoperability between browsers. This is critically important---imagine
 how frustrating it would be if a web site doesn't work in your chosen browser
 just because it happens to interpret accessibility slightly differently than
 another one! This is made worse since web sites unfortunately vary greatly
-in quality of accessibility, and so a user might be forced to constantly
+in accessibility quality, and so a user might be forced to constantly
 switch browsers in the hope of finding one that works well. Interoperability
 is also important for web site authors who would otherwise have to constantly
 test everything in every browser.
@@ -1398,14 +1443,15 @@ keyboard navigation and dark mode. But what if the website wants to *extend*
 that work to new use cases not built into the browser? For example, what if
 a web developer wants to add their own different kind of input element, or
 a fancier kind of hyperlink? These kinds of *custom widgets* are very common
-on the web; in fact much more common than the built-in ones.
+on the web---in fact much more common than the built-in ones, because they
+look nicer and have extra features.
 
 You can make a custom widget with event listeners for keyboard and mouse events,
 and your own styling and layout. But it immediately loses important features
-like becoming focusable, participating in tab index order, and responding to
-dark mode. This means that as a site wants to customize the experience to
-make it nicer for some users, it becomes worse for others---the ones who
-really depend on these accessibility features.
+like becoming focusable, participating in tab index order, responding to
+dark mode, and expressing semantics. This means that as a site wants to
+customize the experience to make it nicer for some users, it becomes worse for
+others---the ones who really depend on these accessibility features.
 
 Let's add features to our browser to allow custom widgets to get back that
 functionality, and start with focus and tab order. This is easily solved
@@ -1425,8 +1471,8 @@ def is_focusable(node):
         or node.tag == "a" or "tabindex" in node.attributes
 ```
 
-Define a new method to get the tab index. It defaults to 9999999, which is
-an approximation to "higher tabindex than anything specified".
+Define a new method to get the tab index. It defaults to a very large number,
+which is an approximation to "higher `tabindex` than anything specified".
 
 ``` {.python}
 class Tab:
@@ -1462,7 +1508,7 @@ particular, syntax that looks like this:
 
     outline: 3px solid red;
 
-Which means "make the outline 3px and red". First parse it:
+Which means "make the outline red 3px thick". First parse it:
 
 ``` {.python}
 def parse_outline(outline_str):
@@ -1606,8 +1652,8 @@ of accessibility is ensuring *contrast*. I alluded to it in the section on dark
 mode, in the context of ensuring that the dark mode style sheet provides good
 default contrast. But in fact, the focus ring we've implemented here does not
 necessarily have great contrast, for example if it's next to an element with a
-black background. This is not too hard to fix, and there is an exercise at the
-end of this chapter about it.
+black background provided in a page style sheet. This is not too hard to
+fix, and there is an exercise at the end of this chapter about it.
 
 Contrast is one part of the [Web Content Accessibility Guidelines][wcag], a
 standard set of recommendations to page authors on how to ensure accessibility.
@@ -1627,18 +1673,18 @@ Hover CSS
 Let's come back to the mouse-hover-for-accessibility use case. Our browser
 can read the hovered element to the user, but it'd be even better to
 highlight it visually, in a way similar to focus outlines. Let's implement
-that with a new pseudoclass for accessibility highlighting.
+that with a new pseudo-class for accessibility highlighting.
 
 However, in this case it's not so clear that it's a good idea to expose this
-pseudoclass to scripts as well. After all, it's really important that
+pseudo-class to scripts as well. After all, it's really important that
 accessibility features actually help users access a web page---more
 important, in fact, than the ability of web developers to style it.
 
-Nevertheless, it would be super convenient to re-use the pseudoclass machinery
+Nevertheless, it would be super convenient to re-use the pseudo-class machinery
 we just built. Browsers achieve this with *browser-internal*
-pseudoclasses---ones that can only be used from with the default
+pseudo-classes---ones that can only be used from with the default
 browser style sheet. In this case we'll define a new 
-`-internal-accessibility-hover` pseudoclass, and put rules like this in
+`-internal-accessibility-hover` pseudo-class, and put rules like this in
 `browser.css`:
 
 ``` {.css}
@@ -1677,7 +1723,7 @@ class TagSelector:
 
 The only step remaining is to restrict to the browser style sheet. That
 requires passing around an `is_internal` flag in `CSSParser`. If it's not
-true then internal pseudoclasses are ignored:
+true then internal pseudo-classes are ignored:
 
 ``` {.python}
 class CSSParser:
@@ -1716,10 +1762,10 @@ class Tab:
 
 ::: {.further}
 
-Browsers have a number of internal pseudoclasses and other CSS features to help
-them smooth implementation. For example, check out the
+Browsers have a number of internal pseudo-classes and other CSS features to
+ease their implementation. For example, check out the
 [internal features][internal-chromium] in Chromium's HTML style sheet
-(everything with the `-internal` prefix.[^vendor-prefix]
+(everything with the `-internal` prefix).[^vendor-prefix]
 
 [internal-chromium]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/html/resources/html.css
 
@@ -1791,12 +1837,12 @@ a:focus { outline: 2px solid white; }
 }
 ```
 
-This also lets us get rid of the second style sheet, i.e.
-`default_dark_style_sheet`; instead there can just be a single default style
+This also lets us get rid of the second style sheet
+(`default_dark_style_sheet`); instead there can just be a single default style
 sheet on a `Tab` object, just like before this chapter (but with the additional
 rules listed above).
 
-Parssing requires looking for media query syntax:
+Parsing requires looking for media query syntax:
 
 ``` {.python}
 class CSSParser:
@@ -1883,9 +1929,22 @@ def style(node, rules, tab):
 
 ::: {.further}
 
-Explain other parts of dark mode support, such as `color-scheme` and
-the `<meta>` tag. Put some in an exercise.
+Fully customizable dark mode requires several additional features beyond
+`prefers-color-scheme`. The most important is that web sites need a way
+to declare whether they support dark mode or not (if they don't, the
+browser should really not be flipping the colors on that page, because it'll
+likely have terrible accessibility outcomes!) This feature is achieved with
+the `color-scheme` [`meta` tag][meta-tag], and allows the web page to declare
+whether it supports light mode, dark mode, or both.
 
+[meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
+
+The second is the [`color-scheme`][color-scheme] CSS, indicating whether that
+element and its subtree support dark, light or both modes. (And with the `only`
+keyword, whether it should be forced into the ones indicated.)
+
+
+[color-scheme]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
 :::
 
 ARIA
@@ -1909,11 +1968,12 @@ element. The first text child is also reused as the *value* of the input field
 (a representation of what the user has typed), and pressing `<enter>` submits
 any containing `<form>` element. But more importantly, the element is
 advertised to users of accessibility features as an textbox. For example, when
-the element is read to a person using voice input, it is identified as a
+the element is read to a person using a screen reader, it is identified as a
 textbox, and the user is therefore encouraged to treat it as such---expecting
 to have all the usual behaviors of an `<input>` element.
 
-However, otherwise the element does not change anything; in particular:
+However, the `role` CSS property does not affect the element in any other way.
+in particular:
 
 * It is not by default focusable.
 * Keyboard events do not modify the text child.
@@ -1923,8 +1983,10 @@ That means that the web page is now responsible for implementing all of this
 correctly, and providing all the right keyboard event handlers via JavaScript
 that the user expects. And if the page doesn't do it, the user is left
 confused and sad. That's why it's better for a web page author to simply
-use `<input>` elements---it's all to easy to accidentally forget to implement
-something important for those users.
+[use `<input>` elements when possible][use-input]---it's all too easy to
+accidentally forget to implement something important for those users.
+
+[use-input]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/textbox_role
 
 But the `role` attribute exists nevertheless, as a way for a page author to not
 lose accessibility when building custom widgets. Implementing the `role`
@@ -1971,13 +2033,14 @@ https://www.w3.org/TR/svg-aam-1.0/
 Summary
 =======
 
-This chapter in introduced accessibility, then showed how to solve several of
+This chapter introduces accessibility---features to ensure *all* users can
+access and interact with web sites---then showed how to solve several of
 the most common accessibility problems in browsers. The key takeaways are:
 
 * Built-in accessibility is possible because of the semantic and deeclarative
 nature of HTML.
 
-* Accessibility features are a natural extension to the tech we've already
+* Accessibility features are a natural extension to the technology we've already
 introduced in earlier chapters.
 
 * It's important to design additional browser features so that page authors
@@ -2002,28 +2065,24 @@ between the focus ring and surrounding content.
 
 * *Button role*: Add support for the `button` value of the `role` attribute.
 
-* Implement `prefers-color-scheme`
+* *Visited links*: Implement the [`:visited`][visited] pseudo-class. This
+shows `<a>` links pointing to destination URLs have been loaded in the past
+by the user in a different color.
 
-* Implement the `:visited` pseudoclass.
+[visited]: https://developer.mozilla.org/en-US/docs/Web/CSS/:visited
 
-* Implement high-contrast forced-colors mode, plus the `forced-color-adjust`
-CSS property. As part of this, draw a rectangular *backplate* behind all lines
-of text in order to ensure that there is sufficient contrast (as
-[defined][contrast] by the WCAG specification) between 
-foreground and background colors. Also check the contrast of the default
-style sheets I provied in this chapter---o they meet the requirements?
+* *High-contrast mode*: Implement high-contrast [forced-colors] mode. As part
+of this, draw a rectangular *backplate* behind all lines of text in order to
+ensure that there is sufficientcontrast (as [defined][contrast] by the WCAG
+specification) between  foreground and background colors. Also check the
+contrast of the default style sheets I provied in this chapter---do they meet
+the requirements?
 
-* Implement caret browsing.
-
-* Implement a prefers-reduced-motion mode and media query.
+[forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
 
 * *Custom inputs*: Implement an `<input>` element with a `<div>` completely in
 JavaScript. Make sure that it's represented correctly in the accessibility tree
 and participates correctly in form submission.
-
-* *Find-in-page*: implement it.
-
-* *Autofill*: implement it.
 
 * *Threaded accessibility*: The accessibility code currently speaks on the
 main thread, which creates a lot of slowdown because the playback doesn't
@@ -2043,3 +2102,13 @@ same way as `-internal-accessibility-hover ` but hit tests the layout tree
 instead. Implement it.
 
 [hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
+
+* *Find-in-page*: Yet another accessibility feature is searching for
+text within a web page. Implement this feature. A simple approach might be to
+binding it to `ctrl-f` and then interpreting subsequent keyboard input
+as the text to search for, and ended by pressing `esc`. Add an internal
+pseudo-class for the selected element. You don't need
+to implement matching text across multiple `InlineLayout` elements (in general,
+find-in-page and other [selection] APIs are quite complicated.
+
+[selection]: https://developer.mozilla.org/en-US/docs/Web/API/Selection
