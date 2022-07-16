@@ -675,6 +675,8 @@ def speak_text(text):
     playsound.playsound(SPEECH_FILE)
     os.remove(SPEECH_FILE)
 
+INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
+
 class TagSelector:
     def __init__(self, tag):
         self.tag = tag
@@ -690,7 +692,7 @@ class TagSelector:
         if not self.pseudoclass: return True
         if self.pseudoclass == "focus":
             return is_focused(node)
-        elif self.pseudoclass == "hover":
+        elif self.pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
             return hasattr(node, "is_hovered") and node.is_hovered
 
     def __repr__(self):
@@ -771,21 +773,26 @@ class CSSParser:
                     break
         return pairs
 
-    def try_pseudoclass(self):
+    def try_pseudoclass(self, is_internal):
         if self.i == len(self.s):
             return None
         if self.s[self.i] != ":":
             return None
         self.i += 1
-        return self.word().lower()
+        word = self.word().lower()
+        if word == INTERNAL_ACCESSIBILITY_HOVER and not is_internal:
+            return "IGNORED"
+        else:
+            return word
 
-    def selector(self):
+    def selector(self, is_internal):
         out = TagSelector(self.word().lower())
-        out.set_pseudoclass(self.try_pseudoclass())
+        out.set_pseudoclass(self.try_pseudoclass(is_internal))
         self.whitespace()
         while self.i < len(self.s) and self.s[self.i] != "{":
             descendant = TagSelector(self.word().lower())
-            descendant.set_pseudoclass(self.try_pseudoclass())
+            descendant.set_pseudoclass(
+                self.try_pseudoclass(is_internal))
             out = DescendantSelector(out, descendant)
             self.whitespace()
         return out
@@ -821,7 +828,7 @@ class CSSParser:
             self.preferred_color_scheme = None
             return True
 
-    def parse(self):
+    def parse(self, is_internal=False):
         rules = []
         while self.i < len(self.s):
             try:
@@ -829,7 +836,7 @@ class CSSParser:
                 if self.try_media_query(): continue
                 if self.try_end_media_query(): continue
 
-                selector = self.selector()
+                selector = self.selector(is_internal)
                 self.literal("{")
                 self.whitespace()
                 body = self.body()
@@ -880,7 +887,7 @@ class Tab:
 
         with open("browser14.css") as f:
             self.default_style_sheet = \
-                CSSParser(f.read()).parse()
+                CSSParser(f.read()).parse(is_internal=True)
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
@@ -1079,6 +1086,20 @@ class Tab:
             task = Task(self.speak_update)
             self.task_runner.schedule_task(task)
 
+        if self.pending_hover:
+            if self.accessibility_tree:
+                (x, y) = self.pending_hover
+                a11y_node = self.accessibility_tree.hit_test(x, y)
+                if self.hovered_node:
+                    self.hovered_node.is_hovered = False
+
+                if a11y_node:
+                    if a11y_node.node != self.hovered_node:
+                        self.speak_hit_test(a11y_node.node)
+                    self.hovered_node = a11y_node.node
+                    self.hovered_node.is_hovered = True
+            self.pending_hover = None
+
         if self.needs_paint:
             self.display_list = []
 
@@ -1093,20 +1114,6 @@ class Tab:
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
                 self.needs_paint = False
-
-        if self.pending_hover:
-            if self.accessibility_tree:
-                (x, y) = self.pending_hover
-                a11y_node = self.accessibility_tree.hit_test(x, y)
-                if self.hovered_node:
-                    self.hovered_node.is_hovered = False
-
-                if a11y_node:
-                    if a11y_node.node != self.hovered_node:
-                        self.speak_hit_test(a11y_node.node)
-                    self.hovered_node = a11y_node.node
-                    self.hovered_node.is_hovered = True
-            self.pending_hover = None
 
         self.measure_render.stop()
 
@@ -1563,7 +1570,6 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
         active_tab.task_runner.schedule_task(task)
-
 
     def handle_key(self, char):
         self.lock.acquire(blocking=True)

@@ -1082,6 +1082,40 @@ to create something visual on the screen, and has no semantic meaning to a user
 who is not looking at a screen. An example is a `<div>` that is present only
 to create space or a background color.
 
+First, not everyone wants the accessibility tree to be on, so let's bind it
+to a keystroke:
+
+``` {.python}
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+                    elif event.key.keysym.sym == sdl2.SDLK_a:
+                        browser.toggle_accessibility()            
+```
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        self.accessibility_is_on = False
+
+    def toggle_accessibility(self):
+        self.accessibility_is_on = not self.accessibility_is_on
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.toggle_accessibility)
+        active_tab.task_runner.schedule_task(task)
+```
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        self.accessibility_is_on = False
+    # ...
+
+    def toggle_accessibility(self):
+        self.accessibility_is_on = not self.accessibility_is_on
+        self.set_needs_render()
+```
+
 Further, the semantics are sometimes a bit different than layout and paint. So
 instead of shoehorning something into the layout tree or the DOM, we'll need to
 create a new *accessibility tree* in rendering to implement it. Add a new
@@ -1119,7 +1153,7 @@ not what its semantics are. For example, a `<div>` by itself is by default
 considered presentational or otherwise having no accessibilty semantics, but
 `<input>`, `<a>` and `<button>` do. The semantics are called the *role* of the
 element---the role it plays in the meaning of the document. And these roles are
-not arbitrary tedxt; they are specified in a[standard][aria-roles] just like
+not arbitrary text; they are specified in a [standard][aria-roles] just like
 rendering.
 
 [aria-roles]: https://www.w3.org/TR/wai-aria-1.2/#introroles
@@ -1226,7 +1260,99 @@ each `AccessibilityNode`, and the hit testing algorithm will be exactly the
 same as we've already implemented when handling mouse clicks (except on 
 a different tree, of course).
 
-TODO: finish it.
+First we need to listen for mouse move events:
+
+``` {.python}
+
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+            elif event.type == sdl2.SDL_MOUSEMOTION:
+                browser.handle_hover(event.motion)
+```
+
+In `Browser`:
+
+``` {.python}
+class Browser:
+    # ...
+    def handle_hover(self, event):
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
+        active_tab.task_runner.schedule_task(task)
+```
+
+Now the tab should listen to the hovered position, determine if it's over an
+accessibility node, and higlight that node. But as I explained in[chapter 11]
+[forced-layout-hit-test], a hit test is one way that forced layouts can occur.
+So we could first call `render` inside `hover` before running the hit test. And
+this is exactly what `click` does. But there is something different about
+hover: when a click happens, the tab needs[^why-needs] to respond synchronously
+to it. But a hover is arguably much less urgent than a click, and so the hit
+test can be delayed until after the next time the rendering pipeline runs. By
+delaying it, we can avoid any forced renders for hit testing.
+[forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
+
+[^why-needs]: It's probably not immediately obvious why clicks can't be
+asynchronous and happen after a scheduled render. If all that was happening
+was browser clicks, and the browser was always responsive and fast, then
+maybe that's a good idea. But the browser can't always guarantee that
+scripts or other work won't slow down the page, and it's quite important to
+respond to clicks because the user is waiting on the result.
+
+So `hover` should just note down that a hover is desired, and schedule a render:
+
+``` {.python}
+class Tab:
+    # ...
+    def hover(self, x, y):
+        self.pending_hover = (x, y)
+        self.set_needs_render()
+```
+
+Then, after the accessibility tree is built, process the pending hover:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.pending_hover = None
+        self.hovered_node = None
+
+        if self.pending_hover:
+            if self.accessibility_tree:
+                (x, y) = self.pending_hover
+                a11y_node = self.accessibility_tree.hit_test(x, y)
+                if self.hovered_node:
+                    self.hovered_node.is_hovered = False
+
+                if a11y_node:
+                    if a11y_node.node != self.hovered_node:
+                        self.speak_hit_test(a11y_node.node)
+                    self.hovered_node = a11y_node.node
+            self.pending_hover = None
+```
+
+The last bit is implementing `hit_test` on `AccessibilityNode`. It's
+basically the same as regular hit testing:
+
+TODO: refactor to share code?
+
+``` {.python}
+class AccessibilityNode:
+    # ...
+    def hit_test(self, x, y):
+        nodes = [node for node in tree_to_list(self, [])
+                if node.intersects(x, y)]
+        if not nodes:
+            return None
+        else:
+            node = nodes[-1] 
+            if isinstance(node, Text):
+                return node.parent
+            else:
+                return node
+```
 
 ::: {.further}
 
@@ -1446,7 +1572,7 @@ class TagSelector:
 In `CSSParser`, we first need to write a method that consumes a pseudoclass
 string if the `:` separator was found:
 
-``` {.python}
+``` {.python expected=False}
 class CSSParser:
     def try_pseudoclass(self):
         if self.i == len(self.s):
@@ -1459,7 +1585,7 @@ class CSSParser:
 
 And then call it in `selector`:
 
-``` {.python}
+``` {.python expected=False}
 class CSSParser:
     def selector(self):
         out = TagSelector(self.word().lower())
@@ -1492,6 +1618,133 @@ have to pay attention to.
 
 [wcag]: https://www.w3.org/WAI/standards-guidelines/wcag/
 [contrast]: https://www.w3.org/TR/WCAG21/#contrast-minimum
+
+:::
+
+Hover CSS
+=========
+
+Let's come back to the mouse-hover-for-accessibility use case. Our browser
+can read the hovered element to the user, but it'd be even better to
+highlight it visually, in a way similar to focus outlines. Let's implement
+that with a new pseudoclass for accessibility highlighting.
+
+However, in this case it's not so clear that it's a good idea to expose this
+pseudoclass to scripts as well. After all, it's really important that
+accessibility features actually help users access a web page---more
+important, in fact, than the ability of web developers to style it.
+
+Nevertheless, it would be super convenient to re-use the pseudoclass machinery
+we just built. Browsers achieve this with *browser-internal*
+pseudoclasses---ones that can only be used from with the default
+browser style sheet. In this case we'll define a new 
+`-internal-accessibility-hover` pseudoclass, and put rules like this in
+`browser.css`:
+
+``` {.css}
+input:-internal-accessibility-hover {
+    outline: 4px solid red;
+}
+```
+
+Making it work is very easy, just set `is_hovered` on the right node:
+
+``` {.python}
+class Tab:
+    # ...
+    def render(self):
+        # ...
+                a11y_node = self.accessibility_tree.hit_test(x, y)
+                if self.hovered_node:
+                    self.hovered_node.is_hovered = False
+                if a11y_node:
+                    # ...
+                    self.hovered_node.is_hovered = True
+```
+
+And match it in `TagSelector`:
+
+``` {.python}
+INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
+# ...
+class TagSelector:
+    # ...
+    def matches(self, node):
+        # ...
+        elif self.pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
+            return hasattr(node, "is_hovered") and node.is_hovered
+```
+
+The only step remaining is to restrict to the browser style sheet. That
+requires passing around an `is_internal` flag in `CSSParser`. If it's not
+true then internal pseudoclasses are ignored:
+
+``` {.python}
+class CSSParser:
+    # ...
+    def try_pseudoclass(self, is_internal):
+        # ...
+        word = self.word().lower()
+        if word == INTERNAL_ACCESSIBILITY_HOVER and not is_internal:
+            return "IGNORED"
+        else:
+            return word
+
+    def selector(self, is_internal):
+        # ...
+        out.set_pseudoclass(self.try_pseudoclass(is_internal))
+        # ...
+            descendant.set_pseudoclass(
+                self.try_pseudoclass(is_internal))
+
+    def parse(self, is_internal=False):
+        # ...
+                selector = self.selector(is_internal)
+```
+
+And then parsing the browser style sheet:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        with open("browser14.css") as f:
+            self.default_style_sheet = \
+                CSSParser(f.read()).parse(is_internal=True)
+```
+
+
+::: {.further}
+
+Browsers have a number of internal pseudoclasses and other CSS features to help
+them smooth implementation. For example, check out the
+[internal features][internal-chromium] in Chromium's HTML style sheet
+(everything with the `-internal` prefix.[^vendor-prefix]
+
+[internal-chromium]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/html/resources/html.css
+
+[^vendor-prefix]: You'll also see various features in there that start with
+`-webkit`. These are not internal, but instead
+[vendor-specific prefixes][vendor-prefix]. A
+decade or so ago, browsers shipped "experimental" features based on these
+prefixes with the intention of standardizing them later. However,
+everyone eventually decided this was a bad idea, because once web sites
+start depending on a feature, even if it's "experimental", you can't remove
+it from browsers or it will break the web. Even worse, browsers that never
+shipped such a feature might be forced to ship it for compatibility reasons.
+
+These features are also sometimes a way to *incubate* new web platform features.
+For example, because it's convenient, browsers sometimes use CSS to style their
+own browser chrome UI, and at times the needs of the UI exceed what is
+expressible in a web page, but could be solved with a simple CSS
+extension.^[Browser-internal accessibility state is a good example.]
+But in some of these cases, it may make sense to later on expose the CSS
+feature to developers, and trying it out on internal UI can inform the
+motivation and design of a corresponding new standardized feature. (Plus,
+knowing that it was implemented by a browser is a good sign that it's not
+*too* hard to do it.)
+
+[vendor-prefix]: https://developer.mozilla.org/en-US/docs/Glossary/Vendor_Prefix
 
 :::
 
@@ -1599,7 +1852,7 @@ class CSSParser:
 
 And then looking for it in each loop of `parse`:
 
-``` {.python}
+``` {.python expected=False}
 class CSSParser:
     def parse(self):
         # ...
@@ -1771,3 +2024,22 @@ and participates correctly in form submission.
 * *Find-in-page*: implement it.
 
 * *Autofill*: implement it.
+
+* *Threaded accessibility*: The accessibility code currently speaks on the
+main thread, which creates a lot of slowdown because the playback doesn't
+happen in parallel with other work. Solve this by adding a new accessibility
+thread that is in charge of speaking the document. (You don't want to use
+the compositor thread, because then that thread will become slow also.) To
+achieve this you will need to copy the accessibility tree from one thread
+to another.
+
+* *Highlighting elements during read*: The method to read the document works,
+but it'd be nice to also highlight the elements being read as it happens,
+in a similar way to how we did it for mouse hover. Implement that.
+
+* *`:hover` pseudoclass*: There is in fact a pseudoclass for generic mouse
+[hover][hover-pseudo] events (it's unrelated to accessibility). It works the
+same way as `-internal-accessibility-hover ` but hit tests the layout tree
+instead. Implement it.
+
+[hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover

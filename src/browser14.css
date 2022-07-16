@@ -26,7 +26,15 @@ a:focus {
     outline: 2px solid black;
 }
 
-a:hover {
+input:-internal-accessibility-hover {
+    outline: 4px solid red;
+}
+
+button:-internal-accessibility-hover {
+    outline: 4px solid red;
+}
+
+a:-internal-accessibility-hover {
     outline: 4px solid red;
 }
 
