@@ -38,7 +38,7 @@ of this section).
 
 To implement it, we first need a way to trigger zooming. Let's bind the
 `ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to zooming out, and
-`ctrl-zero` to reset. A new `zoom` property on `Browser` wll start at `1`.
+`ctrl-zero` to reset. A new `zoom` property on `Browser` will start at `1`.
 Zooming in and out will increase or decrease `zoom`. Then we'll multiply all of
 the "CSS sizes" on the web page by `zoom` as well.[^browser-chrome]
 
@@ -444,7 +444,7 @@ class Tab:
         return elt
 ```
 
-With these methods, we can also avoid a bit of dulicated code in `click`, which
+With these methods, we can also avoid a bit of duplicated code in `click`, which
 of course already handled the activation concept (but via the mouse):
 
 ``` {.python}
@@ -501,7 +501,7 @@ def is_focusable(node):
 ```
 
 And then each iterating through them. When `tab` is pressed and we're at the
-end of the focusable list, focus the addressbar:
+end of the focusable list, focus the address bar:
 
 ``` {.python}
 class Tab:
@@ -899,7 +899,7 @@ With one of these mechanisms, users might be able to add their
 own dark mode. While it's relatively easy for this to work well overriding the
 browser's default style sheet and a few common sites, it's very hard to come up
 with styles that work well alongside the style sheets of many sites without
-losing readability or failing to provide adequate dark mode stying.
+losing readability or failing to provide adequate dark mode styling.
 
 [extension]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions
 [user-style]: https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade#user_stylesheets
@@ -934,7 +934,7 @@ directly into our browser, and doing so will give you a lot of insights into
 how accessibility actually works in a browser.
 So let's do it![^os-pain] 
 
-[^why-diff]: I think the reason is mainly historical, in that accessibilty APIs
+[^why-diff]: I think the reason is mainly historical, in that accessibility APIs
 and screen readers evolved first with operating systems, and before/in parallel
 with the development of browsers. These days, browsers are by far the
 most important app many users interact with (especially on desktop computers),
@@ -944,8 +944,8 @@ so it makes more sense to consider such features core to a browser.
 integrate a browser with the accessibility APIs of each OS. Further, it's not
 very easy to find Python bindings for these APIs, especially Linux. And as
 you'll see, it really isn't very hard to get the basics working, though a big
-reason is that these days there are high-quality text-to-speeh libraries
-available for non-commerical use.
+reason is that these days there are high-quality text-to-speech libraries
+available for non-commercial use.
 
 The first step is to install something that can read text out loud. For this
 we'll use two libraries: one that converts text to audio files, and one that
@@ -1091,7 +1091,7 @@ want to do, such as reading the whole document and interacting with it in
 various ways. And the semantics of how this works ends up being a lot like
 rendering. For example, DOM nodes that are invisible[^invisible-example] to the
 user, or are purely *presentational* in nature (i.e only
-for the purpose of changing visual apperance[^presentational]) should not be
+for the purpose of changing visual appearance[^presentational]) should not be
 read out to users, because they are not important.
 
 [^invisible-example]: For example, `opacity:0`. There are several other
@@ -1170,13 +1170,13 @@ class Tab:
 ```
 
 The `build` method on `AccessibilityNode` recursively creates the tree. Whether
-a node is represented in the accessibilty tree depends on its tag and style,
+a node is represented in the accessibility tree depends on its tag and style,
 which in turn determine not only whether the element is presentational, but if
 not what its semantics are. For example, a `<div>` by itself is by default
-considered presentational or otherwise having no accessibilty semantics, but
+considered presentational or otherwise having no accessibility semantics, but
 `<input>`, `<a>` and `<button>` have them by default. The semantics are called
 the *role* of the element---the role it plays in the meaning of the document.
-And these roles arenot arbitrary text; they are specified in a
+And these roles are not arbitrary text; they are specified in a
 [standard][aria-roles] just like rendering.[^not-exposed]
 
 [^not-exposed]: However, the role computed by the browser is not exposed to
@@ -1222,7 +1222,7 @@ class AccessibilityNode:
             str(self.node), compute_role(self.node))        
 ```
 
-Building the tree requires recursingly walking the document tree and adding
+Building the tree requires recursively walking the document tree and adding
 nodes if their role is not `None`:
 
 ``` {.python}
@@ -1272,7 +1272,7 @@ class Tab:
             self.speak_focus(self.focus)
 ```
 
-The accessiblity tree also needs access to geometry of each object. This allows
+The accessibility tree also needs access to geometry of each object. This allows
 accessibility technology to know where things are on the screen in case
 the user wants to [hit test][hit-test] a place on the screen to see what is
 there. A user who can't see the screen still might want to do things like
@@ -1328,7 +1328,7 @@ class Browser:
 ```
 
 Now the tab should listen to the hovered position, determine if it's over an
-accessibility node, and higlight that node. But as I explained in
+accessibility node, and highlight that node. But as I explained in
 [chapter 11][forced-layout-hit-test], a hit test is one way that forced layouts
 can occur. So we could first call `render` inside `hover` before running the
 hit test. And this is exactly what `click` does. But there is something
@@ -1401,7 +1401,7 @@ class AccessibilityNode:
 
 ::: {.further}
 
-The accessiblity tree typically plays a key role in the interface between
+The accessibility tree typically plays a key role in the interface between
 browsers and accessibility technology like screen readers. The screen reader
 registers itself with accessibility OS APIs that promise to call it when
 interaction events happen, and the browser does the same on the other end.
@@ -1460,7 +1460,7 @@ the element automatically becomes focusable. The value of this property is
 a number, indicating the order of focus. For example, an element with
 `tabindex=1` on it will be focused before `tabindex=2`.^[Elements like
 input that are by default focusable can have `tabindex` set, but if it isn't
-set they will be last in the order after `tabidex` elements, and will be
+set they will be last in the order after `tabindex` elements, and will be
 ordered according to to their position in the DOM.]
 
 First, `is_focusable` needs to be extended accordingly:
@@ -1544,13 +1544,13 @@ the syntax looks like this:
 [pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
 
 [^why-pseudoclass]: It's called a pseudo-class because it's similar to how a
-developoer would indicate a [class] attribute on an element for the purpose
+developer would indicate a [class] attribute on an element for the purpose
 of targeting special elements with different styles. It's "pseudo" because
 there is no actual class attribute set on the element while it's focused.
 
 [class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Class_selectors
 
-Let's implement the `focus` pseuo-class. Then we can change focus outlines to
+Let's implement the `focus` pseudo-class. Then we can change focus outlines to
 use a browser style sheet with `:focus` instead of special code in
 `paint_outline`. The style sheet lines will look like this:
 
@@ -1955,7 +1955,7 @@ properties influence whether elements are in the accessibility tree at all. For
 example, making elements invisible^[Via `display:none` or `visibility:hidden`,
 for example.] causes them to lose their accessibility tree node. But there
 what about changing the role of an element? For example, tab-index allows a
-`<div>` to participage in focus, but can it also be made to behave like an
+`<div>` to participate in focus, but can it also be made to behave like an
 input element? That's what the [`role`][role] attribute is for: overriding the 
 semantic role of an element from its default.
 
@@ -2037,7 +2037,7 @@ This chapter introduces accessibility---features to ensure *all* users can
 access and interact with web sites---then showed how to solve several of
 the most common accessibility problems in browsers. The key takeaways are:
 
-* Built-in accessibility is possible because of the semantic and deeclarative
+* Built-in accessibility is possible because of the semantic and declarative
 nature of HTML.
 
 * Accessibility features are a natural extension to the technology we've already
@@ -2073,9 +2073,9 @@ by the user in a different color.
 
 * *High-contrast mode*: Implement high-contrast [forced-colors] mode. As part
 of this, draw a rectangular *backplate* behind all lines of text in order to
-ensure that there is sufficientcontrast (as [defined][contrast] by the WCAG
+ensure that there is sufficient contrast (as [defined][contrast] by the WCAG
 specification) between  foreground and background colors. Also check the
-contrast of the default style sheets I provied in this chapter---do they meet
+contrast of the default style sheets I provided in this chapter---do they meet
 the requirements?
 
 [forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
