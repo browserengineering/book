@@ -1572,7 +1572,7 @@ class TagSelector:
 In `CSSParser`, we first need to write a method that consumes a pseudoclass
 string if the `:` separator was found:
 
-``` {.python}
+``` {.python expected=False}
 class CSSParser:
     def try_pseudoclass(self):
         if self.i == len(self.s):
@@ -1585,7 +1585,7 @@ class CSSParser:
 
 And then call it in `selector`:
 
-``` {.python}
+``` {.python expected=False}
 class CSSParser:
     def selector(self):
         out = TagSelector(self.word().lower())
@@ -1686,8 +1686,9 @@ class CSSParser:
         # ...
         word = self.word().lower()
         if word == INTERNAL_ACCESSIBILITY_HOVER and not is_internal:
-            return ""
-        else return word
+            return "IGNORED"
+        else:
+            return word
 
     def selector(self, is_internal):
         # ...
@@ -1851,7 +1852,7 @@ class CSSParser:
 
 And then looking for it in each loop of `parse`:
 
-``` {.python}
+``` {.python expected=False}
 class CSSParser:
     def parse(self):
         # ...
