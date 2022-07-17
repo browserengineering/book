@@ -377,8 +377,8 @@ class LineLayout:
         return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.y, self.width, self.height, self.node)
 
-def device_px(layout_px, zoom):
-    return layout_px * zoom
+def device_px(css_px, zoom):
+    return css_px * zoom
 
 def style_length(node, style_name, default_value, zoom):
     style_val = node.style.get(style_name)
@@ -602,10 +602,11 @@ def compute_role(node):
 
 def announce_text(node):
     role = compute_role(node)
+    text = ""
     if role == "StaticText":
-        return node.text
+        text = node.text
     elif role == "focusable text":
-        return "focusable text: " + node.text
+        text = "focusable text: " + node.text
     elif role == "textbox":
         if "value" in node.attributes:
             value = node.attributes["value"]
@@ -614,15 +615,14 @@ def announce_text(node):
             value = node.children[0].text
         else:
             value = ""
-        return "Input box: " + value
+        text = "Input box: " + value
     elif role == "button":
-        return "Button"
+        text = "Button"
     elif role == "link":
-        return "Link"
-    elif not isinstance(node, Text) and is_focusable(node):
-        return "focused element"
-    else:
-        return ""
+        text = "Link"
+    if hasattr(node, "is_focused") and node.is_focused:
+        text += " is focused"
+    return text
 
 class AccessibilityNode:
     def __init__(self, node):
@@ -1125,6 +1125,7 @@ class Tab:
             if node.tag == "input":
                 node.attributes["value"] = ""
             node.is_focused = True
+        self.set_needs_render()
 
     def activate_element(self, elt):
         if elt.tag == "a" and "href" in elt.attributes:
@@ -1149,6 +1150,7 @@ class Tab:
         if not objs: return
         elt = objs[-1].node
         if elt and self.js.dispatch_event("click", elt): return
+        focus_applied = False
         while elt:
             if isinstance(elt, Text):
                 pass
@@ -1156,11 +1158,16 @@ class Tab:
                 elt.attributes["value"] = ""
                 if elt != self.focus:
                     self.set_needs_render()
-                self.focus = elt
+                if not focus_applied:
+                    self.apply_focus(elt)
                 return
             elif not self.activate_element(elt):
+                if not focus_applied:
+                    self.apply_focus(elt)
                 return
             elt = elt.parent
+            self.apply_focus(elt)
+            self.focus_applied = True
 
     def submit_form(self, elt):
         if self.js.dispatch_event("submit", elt): return
