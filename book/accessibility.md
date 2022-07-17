@@ -141,7 +141,7 @@ the screen):
 
 ``` {.python}
 def device_px(css_px, zoom):
-    return layout_px * zoom
+    return css_px * zoom
 ```
 
 Finally, there are a bunch of small changes to the `layout` methods. First
@@ -449,7 +449,7 @@ With these methods, we can also avoid a bit of duplicated code in `click`, which
 of course already handled the activation concept---via mouse input---even if it
 didn't have a name at the time:
 
-``` {.python}
+``` {.python expected=False}
 class Tab:
 	# ...
 	def click(self, x, y):
