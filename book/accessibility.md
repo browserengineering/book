@@ -5,15 +5,16 @@ prev: animations
 next: skipped
 ...
 
-It's important for everyone to be able to access content on the web, even if you
-have a hard time reading small text, can't or don't want to use a mouse, are
-triggered by very bright colors, suffer from repetitive stress injury, or can't
-see a computer screen at all. Browsers have features aimed at all of these use
-cases, taking advantage of the fact that web pages [declare] UI and allow the
-browser to manipulate it [on behalf][ua] of the user.[*Accessibility*][a11y] is
-the name for the broad class of browser features for these use cases. They are
-a critical part of a modern browser, and pretty much everyone benefits from one
-or more of them.
+It's important for *everyone* to be able to access content on the web, even if
+you have a hard time reading small text, can't or don't want to use a mouse,
+are triggered by very bright colors, suffer from repetitive stress injury, or
+can't see a computer screen at all. Browsers have
+[*accessibility*][a11y] features aimed at all of these use cases, taking
+advantage of the fact that web pages [declare] UI and allow the browser to
+manipulate it [on behalf][ua] of the user. Accessiblity is a critical part of
+a modern browser. On top of these features, browsers need to provide a robust
+set of features to help web sites avoid losing accessibility when customizing
+their look and feel beyond that provided by built-in elements.
 
 [ua]: http://localhost:8001/intro.html#the-role-of-the-browser
 
@@ -136,11 +137,10 @@ And within each layout class type, pass around `zoom` as well. But what do we do
 with it? Let's start by resizing all fonts according to `zoom`.  To make that
 easier, add a `device_px` helper method that converts from a *CSS pixel* (the units
 specified in a CSS declaration) to a *device pixel* (what's actually drawn on
-the screen) by multiplying by zoom.^[There will be a bunch of places to edit,
-and this helper method lets us avoid mistakes.]
+the screen):
 
 ``` {.python}
-def device_px(layout_px, zoom):
+def device_px(css_px, zoom):
     return layout_px * zoom
 ```
 
@@ -220,7 +220,7 @@ class TextLayout:
         	float(self.node.style["font-size"][:-2]), zoom)
 ```
 
-Now try it out! All of the fonts should be get about 10% bigger each time you
+Now try it out. All of the fonts should be get about 10% bigger each time you
 press `ctrl-plus`, and the opposite with `ctrl-minus`. This is great for
 reading text more easily.
 
@@ -231,23 +231,24 @@ traded an accessibility improvement in one area (you can read the text) for a
 loss in another (you can't even see all the text!).
 
 How can we fix this? We shouldn't just increase the size of
-fonts, but also the size of every other CSS pixel. defined in `layout`. We
-should essentially run the same layout algorithm we have, but with each device
+fonts, but *also* the size of every other CSS pixel. defined in `layout`. In
+other words, run the same layout algorithm, but with each device
 pixel measurement larger by a a factor of `zoom`. But since the screen doesn't
 magically get bigger when zooming, its width and height will remain fixed in
 physical pixel width (and hence smaller in CSS pixels). This
 will automatically cause inline text and content to wrap when they hit the
 edge of the screen or container elements, and not grow beyond.[^min-font-size]
 And the layout design of the website will tend to continue working, because
-elements `width` and `height` will get larger in proportion to the font.
+elements' `width` and `height` will get larger in proportion to the font.
 
 [^min-font-size]: Browsers also usually have a *minimum font size* feature. When
 it's used, the browser will try to avoid rendering any fonts smaller than the
 minimum. However, these features don't automatically use zoom, and therefore
-suffer from problems like overflowing fonts and broken layouts. Because of
-these problems, browsers also often restrict the feature to situations where
-the site seems to be using [relative font sizes][relative-font-size], making
-the feature even less useful. CSS zoom is a much better solution.
+suffer from problems just like this: overflowing fonts and broken layouts.
+Because of these problems, browsers also often restrict the feature to
+situations where the site seems to be using
+[relative font sizes][relative-font-size], making the feature even less useful.
+CSS zoom is a much better solution.
 
 [relative-font-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-size
 
@@ -334,25 +335,24 @@ as needed.
 Another way that CSS pixels and device pixels can differ is on a high-resolution
 screen. When CSS was first defined, the typical screen had about 96 pixels per
 inch of screen. Since then, various devices (the original iPhone was an early
-example) have screens with much higher pixel density. This led to a problem
-though---web sites displayed on those screens would look tiny if one CSS pixel
-mapped to one device pixel. This was solved with the
+example) have screens with much higher pixel densities. This led to a problem
+though---web sites designed for an assumed pixel density of 96 would look
+tiny when displayed on those screens. This was solved with the
 [`devicePixelRatio`][dpr] concept---each CSS pixel is by default multiplied by
 the device pixel ratio to arrive at device pixels. The original iPhone, for
-example, had 163 pixels per inch. 163/96 = 1.7, but since a multiplier like
-1.7 leads to awkward rounding issues in layout, that device selected a
-`devicePixelRatio` of
-2.^[Since then, may different screens with different pixel densities have
-appeared, and these days it's not uncommon to have a ratio that is not an
-integer. For example, the Pixelbook Go I'm using to write this book has a ratio
-of 1.25 (but with 166 pixels per inch---As you can see, the choice of ratio
-for a given screen is somewhat arbitrary).]
+example, had 163 pixels per inch. 163/96 = 1.7, but since a multiplier like 1.7
+leads to awkward rounding issues in layout, that device selected a
+`devicePixelRatio` of 2.^[Since then, may different screens with different
+pixel densities have appeared, and these days it's not uncommon to have a ratio
+that is not an integer. For example, the Pixelbook Go I'm using to write this
+book has a ratio of 1.25 (but with 166 pixels per inch; as you can see, the
+choice of ratio for a given screen is somewhat arbitrary).]
 
 On a device with a `devicePixelRatio` other than 1, `zoom` and
 `devicePixelRatio` have to be multiplied together in the rendering code. In
 addition, real browsers expose a global variable exposed to JavaScript called
 `devicePixelRatio` that equal to the product of these two and updated whenever
-the user zooms in or out. In addition, there is a (non-standard, please don't
+the user zooms in or out.  Adn there is a (non-standard, please don't
 use it!) [`zoom`][zoom-css] CSS property in WebKit and Chromium browsers that
 allows developers to apply something similar to CSS zoom to specific element
 subtrees.
@@ -365,7 +365,8 @@ On devices with touch screens,^[Originally just phones, but now many desktop
 computers have touch screens.] many browsers also implement *pinch zoom*:
 zooming in on the picture with a multi-touch pinch gesture. This kind of zoom
 is just like a CSS scale transform though---it zooms in on the pixels but
-doesn't update the main-thread rendering pipeline. The resulting view on the
+doesn't update the main-thread rendering pipeline, and doesn't affect the
+`devicePixelRatio` variable. The resulting view on the
 screen is called the [visual viewport][visual-viewport].
 
 [visual-viewport]: https://developer.mozilla.org/en-US/docs/Web/API/Visual_Viewport_API
@@ -392,7 +393,7 @@ an `input` element should be capturing keyboard input, and on the `Browser`
 to indicate if the browser chrome is doing so instead. Let's expand on that
 notion to allow buttons and links to capture input as well. When one of them
 is focused and the user presses `enter`, then the button will be clicked
-or the link navigated:
+or the link navigated. As usual, we start with plumbing:
 
 ``` {.python}
     while True:
@@ -445,7 +446,8 @@ class Tab:
 ```
 
 With these methods, we can also avoid a bit of duplicated code in `click`, which
-of course already handled the activation concept (but via the mouse):
+of course already handled the activation concept---via mouse input---even if it
+didn't have a name at the time:
 
 ``` {.python}
 class Tab:
@@ -500,8 +502,7 @@ def is_focusable(node):
     	or node.tag == "a"
 ```
 
-And then each iterating through them. When `tab` is pressed and we're at the
-end of the focusable list, focus the address bar:
+And then each iterating through them:
 
 ``` {.python}
 class Tab:
@@ -517,13 +518,29 @@ class Tab:
             i = focusable_nodes.index(self.focus)
             if i < len(focusable_nodes) - 1:
                 self.apply_focus(focusable_nodes[i+1])
-            else:
-                self.apply_focus(None)
-                self.browser.focus_addressbar()
         self.set_needs_render()
 ```
 
-Setting focus works like this:
+ When `tab` is pressed and we're at the
+end of the focusable list, focus the address bar:
+
+``` {.python}
+class Tab:
+    def advance_tab(self):
+        # ...
+            if i < len(focusable_nodes) - 1:
+                self.apply_focus(focusable_nodes[i+1])
+            else:
+                self.apply_focus(None)
+                self.browser.focus_addressbar()
+```
+
+Setting focus sets an `is_focused` property on the node, and has some special
+logic for input elements to clear them out.^[This logic is inherited from
+[Chapter 8][clear-input]. Real browsers will typically preserve what
+was typed there before, but we just skipped that part for simplicity.]
+
+[clear-input]: http://localhost:8001/forms.html#interacting-with-widgets
 
 ``` {.python}
     def apply_focus(self, node):
@@ -536,15 +553,36 @@ Setting focus works like this:
             node.is_focused = True
 ```
 
-Just like activation, this also be used from `click`:
+Just like activation, this also be used from `click`. It will apply focus
+to the 
 
 ``` {.python}
     def click(self, x, y):
         self.render()
         self.apply_focus(None)
+        # ...
+        elt = objs[-1].node
+
+        while elt:
+            if isinstance(elt, Text):
+                pass
+            elif elt.tag == "input":
+                elt.attributes["value"] = ""
+                if elt != self.focus:
+                    self.set_needs_render()
+                if not focus_applied:
+                    self.apply_focus(elt)
+                return
+            elif not self.activate_element(elt):
+                if not focus_applied:
+                    self.apply_focus(elt)
+                return
+            elt = elt.parent
+            self.apply_focus(elt)
+            self.focus_applied = True
 ```
 
-And `focus_addressbar` is like this:
+And `focus_addressbar` similarly sets some state and clears the address bar.
 
 ``` {.python}
 class Browser:
@@ -559,13 +597,16 @@ class Browser:
 
 Now we have focus implemented on `<a>` and `<button>`, plus a way to cycle
 through them with the keyboard. But how do you know which element is currently
-focused? There needs to be some kind of visual indication. This is done with
+focused? There needs to be some kind of visual indication, or the tab focus
+feature will be super confusing to use.^[Focus for input elements in our
+browser previously indicated focus only via the input cursor.] This is done with
 a *focus ring*---a visual outline around an element that lets the user know
 what is focused.
 
 Draw the focus ring by painting a `2px` wide black rectangle around the element
 that is focused. This requires some code in various `paint` methods plus this
-helper:
+helper (note the use of the `is_focused` property added earlier by
+`apply_focus`):
 
 ``` {.python expected=False}
 def paint_outline(node, cmds, rect):
@@ -668,9 +709,9 @@ Dark mode
 Next up is helping users who prefer darker screens. The reasons why might
 include extra sensitivity to light, or using a device at night, or at night
 near others without disturbing them. For these use cases, browsers these days
-support a *dark mode* feature that darkens the browser and web pages,
-such as having  a black background and a white foreground (as opposed to the
-default white background and black foreground).
+support a *dark mode* feature that darkens the browser and web pages. For
+example, dark mode pages have a black background and a white foreground
+(as opposed to the default white background and black foreground).
 
 We'll bind the `ctrl-d` keystroke to toggle dark mode:
 
@@ -749,9 +790,9 @@ Likewise all the rest of the `draw_line`, `draw_text` and `draw_rect` calls in
 `raster_chrome` (not all are shown above) should be instrumented with the dark
 mode-dependent color.
 
-The `draw` method technically also needs to clear to a dark mode color
-(though this color is generally not visible, it's just there to avoid any
-accidental transparency in the window).
+The `draw` method also needs to clear to a dark mode color (though this color
+is generally not visible, it's just there to avoid any accidental transparency
+in the window).
 
 ``` {.python}
 class Browser:
@@ -929,10 +970,9 @@ So what we need to do is bundle up the semantics of the DOM and present them to
 the user in some way they can access. For a user that can't see the screen,
 the simplest approach will be to read the content out loud. This functionality
 is called a *screen reader*. Screen readers are typically[^why-diff] a different
-application than the browser. But it's actually not so hard to build one
-directly into our browser, and doing so will give you a lot of insights into
-how accessibility actually works in a browser.
-So let's do it![^os-pain] 
+application than the browser. But it's actually not so hard to build a
+(very simple) one directly into our browser, and doing so will give you a lot
+of insights into how accessibility actually works in a browser.[^os-pain] 
 
 [^why-diff]: I think the reason is mainly historical, in that accessibility APIs
 and screen readers evolved first with operating systems, and before/in parallel
@@ -940,18 +980,18 @@ with the development of browsers. These days, browsers are by far the
 most important app many users interact with (especially on desktop computers),
 so it makes more sense to consider such features core to a browser.
 
-[^os-pain]: Another reason is that it's actually quite a lot of work to directly
+[^os-pain]: Another reason is that it's quite a lot of work to directly
 integrate a browser with the accessibility APIs of each OS. Further, it's not
 very easy to find Python bindings for these APIs, especially Linux. And as
 you'll see, it really isn't very hard to get the basics working, though a big
 reason is that these days there are high-quality text-to-speech libraries
 available for non-commercial use.
 
-The first step is to install something that can read text out loud. For this
-we'll use two libraries: one that converts text to audio files, and one that
-plays the audio files. For the first we'll use [`gtts`][gtts], a Python library
-that wraps the Google [text-to-speech API][tts]. For the latter we'll
-use the [`playsound`][playsound] library.
+The first step is to install two libraries: one that converts text to audio
+files, and one that plays the audio files. For the first we'll use 
+`gtts`][gtts], a Python library that wraps the Google
+[text-to-speech API][tts]. For the latter we'll use the
+[`playsound`][playsound] library.
 
 [gtts]: https://pypi.org/project/gTTS/
 
@@ -996,23 +1036,20 @@ describes the element tag, plus whether it's focused.
 
 ``` {.python expected=False}
 def announce_text(node):
-    role = compute_role(node)
-    if role == "StaticText":
-        return node.text
-    elif role == "focusable text":
-        return "focusable text: " + node.text
-    elif role == "textbox":
+    text = ""
+    if isinstance(node, Text):
+        text = node.text
+    elif node.tag == "input":
         value = node.attributes["value"] \
             if "value" in node.attributes else ""
-        return "Input box: " + value
-    elif role == "button":
-        return "Button"
-    elif role == "link":
-        return "Link"
-    elif is_focusable(node):
-        return "focused element"
-    else:
-        return None
+        text = "Input box: " + value
+    elif node.tag == "button":
+        text = "Button"
+    elif node.tag == "link":
+        text = "Link"
+    if hasattr(node, "is_focused") and node.is_focused:
+        text += " is focused"
+    return text
 ```
 
 The `speak_node` method calls `announce_text` and also adds in any text
@@ -1086,13 +1123,14 @@ since these keyboards generate the same OS events as other keyboards.
 The accessibility tree
 ======================
 
-Reading out focus is great, but there are a number of other things such users
-want to do, such as reading the whole document and interacting with it in
-various ways. And the semantics of how this works ends up being a lot like
-rendering. For example, DOM nodes that are invisible[^invisible-example] to the
-user, or are purely *presentational* in nature (i.e only
-for the purpose of changing visual appearance[^presentational]) should not be
-read out to users, because they are not important.
+Reading out focus is great, but there are a number of other things users want to
+do with a screen reader, such as reading the whole document and interacting
+with it in various ways. And the semantics of how this works ends up being a
+lot like rendering. For example, DOM nodes that are invisible
+[^invisible-example] to the user, or are purely *presentational* in nature
+(i.e only for the purpose of changing visual appearance
+[^presentational]) should not be read out to users, because they are not
+important.
 
 [^invisible-example]: For example, `opacity:0`. There are several other
 ways in real browsers that elements can be made invisible, such as with the
@@ -1101,8 +1139,8 @@ ways in real browsers that elements can be made invisible, such as with the
 [^presentational]: A `<div>` element, for example, is by default
 presentational (or more precisely, has no semantic role).
 
-First, not everyone wants the accessibility tree to be on, so let's bind it
-to the `ctrl-a` keystroke:
+First, not everyone wants a screen reader to be used, so let's bind turning
+it on to the `ctrl-a` keystroke:
 
 ``` {.python}
     while True:
@@ -1272,12 +1310,12 @@ class Tab:
             self.speak_focus(self.focus)
 ```
 
-The accessibility tree also needs access to geometry of each object. This allows
-accessibility technology to know where things are on the screen in case
+The accessibility tree also needs access to the geometry of each object. This
+allows accessibility technology to know where things are on the screen in case
 the user wants to [hit test][hit-test] a place on the screen to see what is
-there. A user who can't see the screen still might want to do things like
-touch exploration of the screen, or being notified what is under the mouse
-as they move it around.
+there. A user who can't see the screen still might want to do things like touch
+exploration of the screen, or being notified what is under the mouse as they
+move it around.
 
 To get access to the geometry, let's add a `layout_object` pointer to each
 `Node` object if it has one. That's easy to do in the constructor of each layout
@@ -1401,7 +1439,7 @@ class AccessibilityNode:
 
 ::: {.further}
 
-The accessibility tree typically plays a key role in the interface between
+The accessibility tree plays a key role in the interface between
 browsers and accessibility technology like screen readers. The screen reader
 registers itself with accessibility OS APIs that promise to call it when
 interaction events happen, and the browser does the same on the other end.
@@ -1424,14 +1462,14 @@ detailed description of the challenge and how Chromium deals with it.
 [chrome-mp-a11y]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_2.md
 
 In addition, defining this tree in a specification is a means to encourage
-interoperability between browsers. This is critically important---imagine
-how frustrating it would be if a web site doesn't work in your chosen browser
-just because it happens to interpret accessibility slightly differently than
-another one! This is made worse since web sites unfortunately vary greatly
-in accessibility quality, and so a user might be forced to constantly
-switch browsers in the hope of finding one that works well. Interoperability
-is also important for web site authors who would otherwise have to constantly
-test everything in every browser.
+interoperability between browsers. This is critically important---imagine how
+frustrating it would be if a web site doesn't work in your chosen browser just
+because it happens to interpret accessibility slightly differently than another
+one! This might force a user to constantly switch browsers in the hope of
+finding one that works well on any particular site, and which one does
+may be unrepdictable. Interoperability is also important for web site
+authors who would otherwise have to constantly test everything in every
+browser.
 
 :::
 
@@ -1999,12 +2037,18 @@ def compute_role(node):
         elif "role" in node.attributes:
             return node.attributes["role"]
 ```
-And then a small modification to `announce_text` to get the text contents
-from the child text node:
+
+Now that roles and element tags need not be the same, we need to redefine
+`announce_text` to look only at the computed role, and not the element tag:
 
 ``` {.python}
 def announce_text(node):
-    # ...
+    role = compute_role(node)
+    text = ""
+    if role == "StaticText":
+        text = node.text
+    elif role == "focusable text":
+        text = "focusable text: " + node.text
     elif role == "textbox":
         if "value" in node.attributes:
             value = node.attributes["value"]
@@ -2013,7 +2057,14 @@ def announce_text(node):
             value = node.children[0].text
         else:
             value = ""
-        return "Input box: " + value
+        text = "Input box: " + value
+    elif role == "button":
+        text = "Button"
+    elif role == "link":
+        text = "Link"
+    if hasattr(node, "is_focused") and node.is_focused:
+        text += " is focused"
+    return text
 ```
 
 
