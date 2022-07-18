@@ -1473,8 +1473,8 @@ browser.
 
 :::
 
-Tab-index
-=========
+Custom widgets
+==============
 
 Our browser now has all these cool features to help accessibility: zoom,
 keyboard navigation and dark mode. But what if the website wants to *extend*
@@ -1484,22 +1484,28 @@ a fancier kind of hyperlink? These kinds of *custom widgets* are very common
 on the web---in fact much more common than the built-in ones, because they
 look nicer and have extra features.
 
-You can make a custom widget with event listeners for keyboard and mouse events,
-and your own styling and layout. But it immediately loses important features
-like becoming focusable, participating in tab index order, responding to
-dark mode, and expressing semantics. This means that as a site wants to
-customize the experience to make it nicer for some users, it becomes worse for
-others---the ones who really depend on these accessibility features.
+A web developer can make a custom widget with event listeners for keyboard and
+mouse events, plus custom CSS to style, layout, paint and animate. But it
+immediately loses important features like becoming focusable, participating in
+tab index order, responding to dark mode, and expressing semantics. This means
+that as a site wants to customize the experience to make it nicer for some
+users, it becomes worse for others---the ones who really depend on these
+accessibility features.
 
 Let's add features to our browser to allow custom widgets to get back that
-functionality, and start with focus and tab order. This is easily solved
-with the `tabindex` attribute on HTML elements. When this attribute is present,
-the element automatically becomes focusable. The value of this property is
-a number, indicating the order of focus. For example, an element with
-`tabindex=1` on it will be focused before `tabindex=2`.^[Elements like
-input that are by default focusable can have `tabindex` set, but if it isn't
-set they will be last in the order after `tabindex` elements, and will be
-ordered according to to their position in the DOM.]
+functionality, and start with focus and tab order.
+
+Tab-index & outline
+===================
+
+Tab order is is easily solved with the `tabindex` attribute on HTML elements.
+When this attribute is present, the element automatically becomes focusable.
+The value of this property is a number, indicating the order of focus. For
+example, an element with `tabindex=1` on it will be focused before
+`tabindex=2`.^[Elements like input that are by default focusable can have
+`tabindex` set, but if it isn't set they will be last in the order after
+`tabindex` elements, and will be ordered according to to their position in the
+DOM.]
 
 First, `is_focusable` needs to be extended accordingly:
 
@@ -1534,9 +1540,6 @@ class Tab:
 That's it! Now tabindex works. Tabbing through the
 [focus example](examples/example14-focus.html) should now
 change its order according to the `tabindex` attributes in it.
-
-Outline
-=======
 
 Next up is customizing the focus rectangle via the [`outline`][outline] CSS
 property. As usual, we'll implement only a subset of the full definition; in
@@ -1695,9 +1698,8 @@ fix, and there is an exercise at the end of this chapter about it.
 
 Contrast is one part of the [Web Content Accessibility Guidelines][wcag], a
 standard set of recommendations to page authors on how to ensure accessibility.
-The browser can do a lot, but ultimately things like
-[good contrast][contrast] between colors is something that page authors also
-have to pay attention to.
+The browser can do a lot, but ultimately [good contrast][contrast] between
+colors is something that page authors also have to pay attention to.
 
 
 [wcag]: https://www.w3.org/WAI/standards-guidelines/wcag/
@@ -1713,10 +1715,11 @@ can read the hovered element to the user, but it'd be even better to
 highlight it visually, in a way similar to focus outlines. Let's implement
 that with a new pseudo-class for accessibility highlighting.
 
-However, in this case it's not so clear that it's a good idea to expose this
-pseudo-class to scripts as well. After all, it's really important that
-accessibility features actually help users access a web page---more
-important, in fact, than the ability of web developers to style it.
+However, in this case it's not totally clear that it's a good idea to expose
+this pseudo-class to scripts as well. After all, it's really important that
+accessibility features actually help users access a web page---more important,
+in fact, than the ability of web developers to style it.^[Iny any case, there is
+no pseudo-class on the web right now for this situation.]
 
 Nevertheless, it would be super convenient to re-use the pseudo-class machinery
 we just built. Browsers achieve this with *browser-internal*
@@ -1839,18 +1842,18 @@ Dark mode has a similar problem to focus: when it's on, a web developer will
 want to adjust all of the styles of their page, not just the ones provided by
 the browser.^[But they'll also want to be able to customize those built-ins!]
 Now dark mode is a browser state just like focus, so it would technically be
-possible to introduce a pseudo-class for it. But since dark mode is a global
-state that applies to all elements, and it's unlikely to change often, the
+possible to introduce a pseudo-class for it. But since dark mode is global
+and applies to all elements, and it's unlikely to change often, the
 pseudo-class syntax is too repetitive and clunky. 
 
 So instead, dark mode uses a [*media query*][mediaquery] syntax. This a lot like
 wrapping some lines of CSS in an if statement. This syntax will make a `<div>`
-tag have a white text color only in dark mode:
+tag have a white text color and black background color only in dark mode:
 
 
 ``` {.css expected=False}
     @media (prefers-color-scheme:dark) {
-    div { color: white; }
+    div { background-color: black; color: white; }
     }
 ```
 
@@ -1977,24 +1980,23 @@ whether it supports light mode, dark mode, or both.
 
 [meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
 
-The second is the [`color-scheme`][color-scheme] CSS, indicating whether that
-element and its subtree support dark, light or both modes. (And with the `only`
-keyword, whether it should be forced into the ones indicated.)
+The second is the [`color-scheme`][color-scheme] CSS property, indicating
+whether that element and its subtree support dark, light or both modes.
+(And with the `only` keyword, whether it should be forced into the ones
+indicated.)
 
 
 [color-scheme]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
 :::
 
-ARIA
-====
+Custom accessibility roles
+===========================
 
 The accessibility tree can also be customized. For one thing, various CSS
-properties influence whether elements are in the accessibility tree at all. For
-example, making elements invisible^[Via `display:none` or `visibility:hidden`,
-for example.] causes them to lose their accessibility tree node. But there
-what about changing the role of an element? For example, tab-index allows a
-`<div>` to participate in focus, but can it also be made to behave like an
-input element? That's what the [`role`][role] attribute is for: overriding the 
+properties influence whether elements are in the accessibility tree at all. But
+there what about changing the role of an element? For example, tab-index allows
+a `<div>` to participate in focus, but can it also be made to behave like an
+input element? That's what the [`role`][role] attribute is for: overriding the
 semantic role of an element from its default.
 
 This markup gives a `<div>` a role of [`textbox`][textbox-role]:
@@ -2028,8 +2030,8 @@ accidentally forget to implement something important for those users.
 
 But the `role` attribute exists nevertheless, as a way for a page author to not
 lose accessibility when building custom widgets. Implementing the `role`
-attribute is very easy, so let's do that for the `textbox` roles. It's as
-simple as modifying `compute_role`:
+attribute is very easy, so let's do that for the `textbox` roles as an
+example. It's as simple as modifying `compute_role`:
 
 ``` {.python}
 def compute_role(node):
@@ -2073,11 +2075,40 @@ def announce_text(node):
 
 ::: {.further}
 
-https://www.w3.org/TR/accname-1.2/
-https://www.w3.org/TR/core-aam-1.2/
-https://www.w3.org/TR/html-aam-1.0/
-https://www.w3.org/TR/svg-aam-1.0/
+The `role` attribute is part of the ARIA specification---ARIA stands for
+Accessible Rich Internet Applications. You can see in the
+name a direct reference to the custom-widget-with-good-accessiblity goal
+I've presented here. It defines [many]
+different attributes; `role` is just one (though an important one). For
+example, you can mark a whole subtree of the DOM as
+hidden-to-the-accessibility-tree with the `aria-hidden`
+attribute;^[This attribute is useful as a way of indicating parts of the DOM
+that are not being currently presented to the user (but are still there for
+performance or convenience-to-the-developer reasons).] the `aria-label`
+attribute specifies the label for elements like buttons.
 
+[many]: https://www.w3.org/TR/wai-aria-1.2/#accessibilityroleandproperties-correspondence
+
+Some of the accessibility problems that ARIA tries to solve stem from a common
+root problem: it's very difficult or sometimes impossible to apply a custom
+style to the the built-in form control elements. If those were directly
+stylable, then there would in most cases be no need for ARIA attributes, because
+the built-in elements pre-define all of the necessary accessibility semantics.
+
+That root problem is in turn because these elements have somewhat magical layout
+and paint behavior that is not defined by CSS or HTML (or any other web
+specification), and so it's not clear how to style them. However, there are
+several pseudo-classes available for input controls to
+provide limited styling.^[One example is the [`checked`][checked]
+pseudo-class.] And recently there has been progress towards defining
+additional styles such as [`accent-color`][accent-color] (added in 2021), and
+also defining new and fully stylable [form control elements][openui].
+
+[checked]: https://developer.mozilla.org/en-US/docs/Web/CSS/:checked
+
+[accent-color]: https://developer.mozilla.org/en-US/docs/Web/CSS/accent-color
+
+[openui]: https://open-ui.org/#proposals
 
 :::
 
@@ -2090,6 +2121,10 @@ the most common accessibility problems in browsers. The key takeaways are:
 
 * Built-in accessibility is possible because of the semantic and declarative
 nature of HTML.
+
+* There are many accessibility use cases, accessibility features
+often serve multiple needs, and almost everyone benefits from these features
+in one way or another.
 
 * Accessibility features are a natural extension to the technology we've already
 introduced in earlier chapters.
