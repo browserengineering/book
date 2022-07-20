@@ -11,10 +11,10 @@ are triggered by very bright colors, suffer from repetitive stress injury, or
 can't see a computer screen at all. Browsers have
 [*accessibility*][a11y] features aimed at all of these use cases, taking
 advantage of the fact that web pages [declare] UI and allow the browser to
-manipulate it [on behalf][ua] of the user. Accessiblity is a critical part of
-a modern browser. On top of these features, browsers need to provide a robust
-set of features to help web sites avoid losing accessibility when customizing
-their look and feel beyond that provided by built-in elements.
+manipulate it [on behalf][ua] of the user.  On top of these features, browsers
+need to provide a robust set of features to help web sites avoid losing
+accessibility when customizing their look and feel. Accessiblity is a critical
+part of a modern browser.
 
 [ua]: http://localhost:8001/intro.html#the-role-of-the-browser
 
@@ -144,7 +144,7 @@ def device_px(css_px, zoom):
     return css_px * zoom
 ```
 
-Finally, there are a bunch of small changes to the `layout` methods. First
+Next, there are a bunch of small changes to the `layout` methods. First
 `BlockLayout`, `LineLayout` and `DocumentLayout`, which just pass on the zoom
 to children:
 
@@ -379,7 +379,7 @@ Keyboard navigation
 Our browser is currently mouse-only.^[Except for scrolling, which is
 keyboard-only.] This is problematic, because there are a number of reasons why
 users might want to use the keyboard to interact instead. Reasons such as
-physical inability, injury to the hand or arm from too much movement, or simply
+physical inability, injury to the hand or arm from too much movement, or
 being a power user that finds keyboards more efficient than mice.
 
 Let's add keyboard equivalents to all of the mouse interactions. This includes
@@ -538,7 +538,7 @@ class Tab:
 Setting focus sets an `is_focused` property on the node, and has some special
 logic for input elements to clear them out.^[This logic is inherited from
 [Chapter 8][clear-input]. Real browsers will typically preserve what
-was typed there before, but we just skipped that part for simplicity.]
+was typed there before.]
 
 [clear-input]: http://localhost:8001/forms.html#interacting-with-widgets
 
@@ -554,7 +554,7 @@ was typed there before, but we just skipped that part for simplicity.]
 ```
 
 Just like activation, this also be used from `click`. It will apply focus
-to the 
+to the first `Element` node that is focusable in the ancestor chain.
 
 ``` {.python}
     def click(self, x, y):
@@ -582,7 +582,7 @@ to the
             self.focus_applied = True
 ```
 
-And `focus_addressbar` similarly sets some state and clears the address bar.
+Finally `focus_addressbar` similarly sets some state and clears the address bar.
 
 ``` {.python}
 class Browser:
@@ -873,8 +873,8 @@ class DocumentLayout:
 ```
 
 If you load up a page, now you should see white text on a black background.
-But if you try [this example](examples/example14-focus.html) it still won't
-look very good, because buttons and input elements now have poor contrast
+But if you try [this example](examples/example14-focus.html) it isn't
+very readable, because buttons and input elements now have poor contrast
 with the white foreground text. Let's fix that. Recall that the `lightblue` and
 `orange` colors for `<input>` and `<button>` elements come from the
 browser style sheet. We need to to make that style sheet depend on dark
@@ -957,7 +957,7 @@ Consider a challenge even more fundamental than too-small/too-bright
 content or keyboard navigation: what if the user can't see the web page at
 all?^[The original motivation of screen readers was for blind users, but it's
 also sometimes useful for situations where the user shouldn't be looking
-at the screen, such as driving.]
+at the screen (such as driving), or for devices with no screen.]
 For these users, a whole lot of the work our browser does to render content
 visually is simply not useful at all. So what do we do instead?
 
@@ -971,8 +971,8 @@ the user in some way they can access. For a user that can't see the screen,
 the simplest approach will be to read the content out loud. This functionality
 is called a *screen reader*. Screen readers are typically[^why-diff] a different
 application than the browser. But it's actually not so hard to build a
-(very simple) one directly into our browser, and doing so will give you a lot
-of insights into how accessibility actually works in a browser.[^os-pain] 
+(very simple) one directly into our browser, and doing so will give you
+insight into how accessibility actually works in a browser.[^os-pain] 
 
 [^why-diff]: I think the reason is mainly historical, in that accessibility APIs
 and screen readers evolved first with operating systems, and before/in parallel
@@ -1132,6 +1132,15 @@ lot like rendering. For example, DOM nodes that are invisible
 [^presentational]) should not be read out to users, because they are not
 important.
 
+So just like rendering, we'll create a tree representing the "rendered" output
+of accessibility. But the semantics are sometimes a bit different than layout
+and paint. So instead of shoehorning something into the layout tree or the DOM,
+we'll need to create a new [*accessibility tree*][at] to implement
+it.
+
+[at]: https://developer.mozilla.org/en-US/docs/Glossary/Accessibility_tree
+
+
 [^invisible-example]: For example, `opacity:0`. There are several other
 ways in real browsers that elements can be made invisible, such as with the
 `visibility` or `display` CSS properties.
@@ -1139,8 +1148,8 @@ ways in real browsers that elements can be made invisible, such as with the
 [^presentational]: A `<div>` element, for example, is by default
 presentational (or more precisely, has no semantic role).
 
-First, not everyone wants a screen reader to be used, so let's bind turning
-it on to the `ctrl-a` keystroke:
+Let's implement that tree. But first, not everyone wants a screen reader to be
+used, so let's bind turning it on to the `ctrl-a` keystroke:
 
 ``` {.python}
     while True:
@@ -1175,12 +1184,7 @@ class Tab:
         self.set_needs_render()
 ```
 
-Further, the semantics are sometimes a bit different than layout and paint. So
-instead of shoehorning something into the layout tree or the DOM, we'll need to
-create a new [*accessibility tree*][at] in rendering to implement it. Add a new
-rendering pipeline phase after layout and before paint to build this tree.
-
-[at]: https://developer.mozilla.org/en-US/docs/Glossary/Accessibility_tree
+The accessibility tree is built in a rendering phase just after layout:
 
 ``` {.python expected=False}
 class Tab:
@@ -1311,9 +1315,9 @@ class Tab:
 ```
 
 The accessibility tree also needs access to the geometry of each object. This
-allows accessibility technology to know where things are on the screen in case
+allows screen readers to know where things are on the screen in case
 the user wants to [hit test][hit-test] a place on the screen to see what is
-there. A user who can't see the screen still might want to do things like touch
+there:  user who can't see the screen still might want to do things like touch
 exploration of the screen, or being notified what is under the mouse as they
 move it around.
 
@@ -1451,7 +1455,7 @@ Generally speaking, the OS does not enforce that the browser build such a tree,
 but it's convenient enough that browsers generally do it. However, in the era of
 multi-process browser engines (of which [Chromium][chrome-mp] was the first), an
 accessibility tree in the browser process that mirrors content state from each
-visible browser tab hash become necessary. That's because OS accessibility
+visible browser tab has become necessary. That's because OS accessibility
 APIs are generally synchronous, and it's not possible to synchronously stop
 the browser and tab at the same time to figure out how to respond. See
 [here][chrome-mp-a11y] for a more
@@ -1467,7 +1471,7 @@ frustrating it would be if a web site doesn't work in your chosen browser just
 because it happens to interpret accessibility slightly differently than another
 one! This might force a user to constantly switch browsers in the hope of
 finding one that works well on any particular site, and which one does
-may be unrepdictable. Interoperability is also important for web site
+may be unpredictable. Interoperability is also important for web site
 authors who would otherwise have to constantly test everything in every
 browser.
 
@@ -1476,13 +1480,13 @@ browser.
 Custom widgets
 ==============
 
-Our browser now has all these cool features to help accessibility: zoom,
-keyboard navigation and dark mode. But what if the website wants to *extend*
-that work to new use cases not built into the browser? For example, what if
-a web developer wants to add their own different kind of input element, or
-a fancier kind of hyperlink? These kinds of *custom widgets* are very common
-on the web---in fact much more common than the built-in ones, because they
-look nicer and have extra features.
+Our browser now has all these great features to help accessibility: zoom,
+keyboard navigation, dark mode and an accessibility tree. But what if the
+website wants to *extend* that work to new use cases not built into the
+browser? For example, what if a web developer wants to add their own different
+kind of input element, or a fancier kind of hyperlink? These kinds of *custom
+widgets* are very common on the web---in fact much more common than the
+built-in ones, because they look nicer and have extra features.
 
 A web developer can make a custom widget with event listeners for keyboard and
 mouse events, plus custom CSS to style, layout, paint and animate. But it
@@ -1492,7 +1496,7 @@ that as a site wants to customize the experience to make it nicer for some
 users, it becomes worse for others---the ones who really depend on these
 accessibility features.
 
-Let's add features to our browser to allow custom widgets to get back that
+Let's add developer APIs to our browser to allow custom widgets to get back that
 functionality, and start with focus and tab order.
 
 Tab-index & outline
@@ -1975,7 +1979,7 @@ Fully customizable dark mode requires several additional features beyond
 to declare whether they support dark mode or not (if they don't, the
 browser should really not be flipping the colors on that page, because it'll
 likely have terrible accessibility outcomes!) This feature is achieved with
-the `color-scheme` [`meta` tag][meta-tag], and allows the web page to declare
+the `color-scheme` [`meta` tag][meta-tag], which allows the web page to declare
 whether it supports light mode, dark mode, or both.
 
 [meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
@@ -2012,7 +2016,7 @@ the element is read to a person using a screen reader, it is identified as a
 textbox, and the user is therefore encouraged to treat it as such---expecting
 to have all the usual behaviors of an `<input>` element.
 
-However, the `role` CSS property does not affect the element in any other way.
+However, the `role` attribute *does not* affect the element in any other way.
 in particular:
 
 * It is not by default focusable.
@@ -2028,7 +2032,7 @@ accidentally forget to implement something important for those users.
 
 [use-input]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/textbox_role
 
-But the `role` attribute exists nevertheless, as a way for a page author to not
+But the `role` attribute nevertheless exists, as a way for a page author to not
 lose accessibility when building custom widgets. Implementing the `role`
 attribute is very easy, so let's do that for the `textbox` roles as an
 example. It's as simple as modifying `compute_role`:
@@ -2077,7 +2081,7 @@ def announce_text(node):
 
 The `role` attribute is part of the ARIA specification---ARIA stands for
 Accessible Rich Internet Applications. You can see in the
-name a direct reference to the custom-widget-with-good-accessiblity goal
+name a direct reference to the custom-widget-with-good-accessibility goal
 I've presented here. It defines [many]
 different attributes; `role` is just one (though an important one). For
 example, you can mark a whole subtree of the DOM as
@@ -2092,12 +2096,13 @@ attribute specifies the label for elements like buttons.
 Some of the accessibility problems that ARIA tries to solve stem from a common
 root problem: it's very difficult or sometimes impossible to apply a custom
 style to the the built-in form control elements. If those were directly
-stylable, then there would in most cases be no need for ARIA attributes, because
-the built-in elements pre-define all of the necessary accessibility semantics.
+stylable, then there would in these cases be no need for ARIA attributes,
+because the built-in elements pre-define all of the necessary accessibility
+semantics.
 
 That root problem is in turn because these elements have somewhat magical layout
 and paint behavior that is not defined by CSS or HTML (or any other web
-specification), and so it's not clear how to style them. However, there are
+specification), and so it's not clear *how* to style them. However, there are
 several pseudo-classes available for input controls to
 provide limited styling.^[One example is the [`checked`][checked]
 pseudo-class.] And recently there has been progress towards defining
@@ -2151,12 +2156,6 @@ between the focus ring and surrounding content.
 
 * *Button role*: Add support for the `button` value of the `role` attribute.
 
-* *Visited links*: Implement the [`:visited`][visited] pseudo-class. This
-shows `<a>` links pointing to destination URLs have been loaded in the past
-by the user in a different color.
-
-[visited]: https://developer.mozilla.org/en-US/docs/Web/CSS/:visited
-
 * *High-contrast mode*: Implement high-contrast [forced-colors] mode. As part
 of this, draw a rectangular *backplate* behind all lines of text in order to
 ensure that there is sufficient contrast (as [defined][contrast] by the WCAG
@@ -2193,8 +2192,9 @@ instead. Implement it.
 text within a web page. Implement this feature. A simple approach might be to
 binding it to `ctrl-f` and then interpreting subsequent keyboard input
 as the text to search for, and ended by pressing `esc`. Add an internal
-pseudo-class for the selected element. You don't need
-to implement matching text across multiple `InlineLayout` elements (in general,
-find-in-page and other [selection] APIs are quite complicated.
+pseudo-class for the selected element so that it can be highlighted
+visually. You don't need to implement matching text across multiple
+`InlineLayout` elements (in general, find-in-page and other [selection]
+APIs are quite complicated).
 
 [selection]: https://developer.mozilla.org/en-US/docs/Web/API/Selection
