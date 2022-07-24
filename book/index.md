@@ -79,6 +79,8 @@ Part 4: Modern Browsers
     Smooth animations using the GPU
 (@) [Making Content Accessible](accessibility.md)\
     Keyboard input, zooming, and the accessibility tree
+(@) [Supporting Embedded Content](embeds.md)\
+    Images and iframes
 
 ::: {.outro}
 Conclusion
