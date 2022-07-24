@@ -91,15 +91,16 @@ def request(url, top_level_url, payload=None):
         body += "Content-Length: {}\r\n".format(content_length)
     body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
-    response = s.makefile("r", encoding="utf8", newline="\r\n")
 
-    statusline = response.readline()
+    response = s.makefile("b")
+
+    statusline = response.readline().decode("utf8")
     version, status, explanation = statusline.split(" ", 2)
     assert status == "200", "{}: {}".format(status, explanation)
 
     headers = {}
     while True:
-        line = response.readline()
+        line = response.readline().decode("utf8")
         if line == "\r\n": break
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
@@ -119,7 +120,13 @@ def request(url, top_level_url, payload=None):
     assert "transfer-encoding" not in headers
     assert "content-encoding" not in headers
 
-    body = response.read()
+    if headers.get(
+        'content-type',
+        'application/octet-stream').startswith("text"):
+        body = response.read().decode("utf8")
+    else:
+        body = response.read()
+
     s.close()
 
     return headers, body
@@ -370,8 +377,9 @@ class IframeLayout:
 
 def decode_image(image_bytes):
     picture_stream = io.BytesIO(image_bytes)
-
+    print('here1')
     pil_image = PIL.Image.open(picture_stream)
+    print('here2')
     if pil_image.mode == "RGBA":
         pil_image_bytes = pil_image.tobytes()
     else:
@@ -672,6 +680,7 @@ class Tab:
                 print(image_url)
                 print(url)
                 header, body = request(image_url, url)
+                print("loaded image")
                 img.image = decode_image(body)
                 print('done loading image')
             except:
