@@ -28,9 +28,9 @@ from lab6 import compute_style
 from lab6 import TagSelector, DescendantSelector
 from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, request, url_origin
+from lab10 import COOKIE_JAR, url_origin, request
 from lab11 import draw_text, get_font, linespace, \
-    parse_blend_mode, request, CHROME_PX, SCROLL_STEP
+    parse_blend_mode, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
