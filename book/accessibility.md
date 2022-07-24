@@ -373,6 +373,253 @@ screen is called the [visual viewport][visual-viewport].
 
 :::
 
+Dark mode
+=========
+
+Next up is helping users who prefer darker screens. The reasons why might
+include extra sensitivity to light, or using a device at night, or at night
+near others without disturbing them. For these use cases, browsers these days
+support a *dark mode* feature that darkens the browser and web pages. For
+example, dark mode pages have a black background and a white foreground
+(as opposed to the default white background and black foreground).
+
+We'll bind the `ctrl-d` keystroke to toggle dark mode:
+
+``` {.python}
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+                if ctrl_down:
+                    # ...
+                    elif event.key.keysym.sym == sdl2.SDLK_d:
+                        browser.toggle_dark_mode()
+```
+
+Which toggles in the browser:
+
+``` {.python}
+class Browser:
+    # ...
+    def __init__(self):
+        # ...
+        self.dark_mode = False
+
+    def toggle_dark_mode(self):
+        self.dark_mode = not self.dark_mode
+```
+
+To make the browser chrome dark, we just need to flip all the colors in
+`raster_chrome`. First set some variables to capture it, and set the canvas
+default to `background_color`:
+
+``` {.python}
+class Browser:
+    # ...
+    def raster_chrome(self):
+        if self.dark_mode:
+            color = "white"
+            background_color = "black"
+        else:
+            color = "black"
+            background_color = "white"
+        canvas.clear(parse_color(background_color))
+```
+
+Then we just need to use `color` or `background_color` in place of all of the
+colors. For example, plumb `color` to the `draw_line` function:
+
+``` {python}
+def draw_line(canvas, x1, y1, x2, y2, color):
+    sk_color = parse_color(color)
+    # ...
+    paint = skia.Paint(Color=sk_color)
+```
+
+And use it there and in `draw_text`:
+
+``` {.python}
+class Browser:
+    # ...
+    def raster_chrome(self):
+        # ...
+
+        # Draw the tabs UI:
+        tabfont = skia.Font(skia.Typeface('Arial'), 20)
+        for i, tab in enumerate(self.tabs):
+            name = "Tab {}".format(i)
+            x1, x2 = 40 + 80 * i, 120 + 80 * i
+            draw_line(canvas, x1, 0, x1, 40, color)
+            draw_line(canvas, x2, 0, x2, 40, color)
+            draw_text(canvas, x1 + 10, 10, name, tabfont, color)
+            if i == self.active_tab:
+                draw_line(canvas, 0, 40, x1, 40, color)
+                draw_line(canvas, x2, 40, WIDTH, 40, color)
+```
+
+Likewise all the rest of the `draw_line`, `draw_text` and `draw_rect` calls in
+`raster_chrome` (not all are shown above) should be instrumented with the dark
+mode-dependent color.
+
+The `draw` method also needs to clear to a dark mode color (though this color
+is generally not visible, it's just there to avoid any accidental transparency
+in the window).
+
+``` {.python}
+class Browser:
+    # ...
+    def draw(self):
+        # ...
+        if self.dark_mode:
+            canvas.clear(skia.ColorBLACK)
+        else:
+            canvas.clear(skia.ColorWHITE)
+```
+
+Next up is also informing the `Tab` to switch in or out of dark mode:
+
+``` {.python}
+class Browser:
+    # ...
+    def toggle_dark_mode(self):
+        # ...
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.toggle_dark_mode)
+        active_tab.task_runner.schedule_task(task)
+```
+
+And in `Tab`:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.dark_mode = browser.dark_mode
+
+    def toggle_dark_mode(self):
+        self.dark_mode = not self.dark_mode
+        self.set_needs_render()
+```
+
+Now we need to flip the colors somehow. The easiest to change are the default
+text color and background color of the document. The text color can just
+be overridden by changing `INHERITED_PROPERTIES` before calling `style`:
+
+``` {.python expected=False}
+class Tab:
+    # ...
+    def render(self):
+        # ...
+        if self.dark_mode:
+            INHERITED_PROPERTIES["color"] = "white"
+        else:
+            INHERITED_PROPERTIES["color"] = "black"
+        style(self.nodes, sorted(
+            self.rules, key=cascade_priority), self)
+```
+
+And the default background color of the document can be flipped by passing a
+new `dark_mode` parameter:
+
+``` {.python}
+class Tab:
+    # ...
+    def render(self):
+        self.document.paint(self.display_list, self.dark_mode)
+```
+
+``` {.python}
+class DocumentLayout:
+    # ...
+    def paint(self, display_list, dark_mode):
+        if dark_mode:
+            background_color = "black"
+        else:
+            background_color = "white"
+        display_list.append(
+            DrawRect(skia.Rect.MakeLTRB(
+                self.x, self.y, self.x + self.width,
+                self.y + self.height),
+                background_color, background_color))
+```
+
+If you load up a page, now you should see white text on a black background.
+But if you try [this example](examples/example14-focus.html) it isn't
+very readable, because buttons and input elements now have poor contrast
+with the white foreground text. Let's fix that. Recall that the `lightblue` and
+`orange` colors for `<input>` and `<button>` elements come from the
+browser style sheet. We need to to make that style sheet depend on dark
+mode.
+
+This won't be *too* hard. One way to do it would be to programmatically modify
+styles in `style`. Instead let's just define two browser style sheets,
+and load both:^[Yes, this is quite inefficient because the style sheets of the
+document are stored twice. We'll optimize it later on.]
+
+
+``` {.python expected=False}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        with open("browser-light.css") as f:
+            self.default_light_style_sheet = \
+                CSSParser(f.read()).parse()
+        with open("browser-dark.css") as f:
+            self.default_dark_style_sheet = \
+                CSSParser(f.read()).parse()
+    # ...
+    def load(self, url, body=None):
+        # ...
+        self.light_rules = self.default_light_style_sheet.copy()
+        self.dark_rules = self.default_dark_style_sheet.copy()
+        # ...
+        for link in links:
+            self.light_rules.extend(CSSParser(body).parse())
+            self.dark_rules.extend(CSSParser(body).parse())
+```
+
+Then we can just use them when calling `style`:
+
+``` {.python expected=False}
+class Tab:
+    # ...
+    def render(self):
+        if self.needs_style:
+            if self.dark_mode:
+                INHERITED_PROPERTIES["color"] = "white"
+                style(self.nodes,
+                    sorted(self.dark_rules,
+                        key=cascade_priority), self)
+            else:
+                INHERITED_PROPERTIES["color"] = "black"
+                style(self.nodes,
+                    sorted(self.light_rules,
+                        key=cascade_priority), self)
+```
+
+::: {.further}
+
+Dark mode is a relatively recent browser feature. In the original design of CSS,
+the [cascade](https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade) defined
+not just browser and author style sheets, but also [*user*][user-style] style
+sheets. These are style sheets defined by the person using the browser, as a
+kind of custom theme. Another approach is to add a
+[browser extension][extension] (or equivalent browser built-in feature) that
+injects additional style sheets applying dark styles.[^no-user-styles]
+
+With one of these mechanisms, users might be able to add their
+own dark mode. While it's relatively easy for this to work well overriding the
+browser's default style sheet and a few common sites, it's very hard to come up
+with styles that work well alongside the style sheets of many sites without
+losing readability or failing to provide adequate dark mode styling.
+
+[extension]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions
+[user-style]: https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade#user_stylesheets
+[^no-user-styles]: Most browsers these days don't even support user style
+sheets, and instead rely on extensions.
+
+:::
+
+
 Keyboard navigation
 ===================
 
@@ -702,253 +949,6 @@ directly into simulated keyboard events. This is one more reason that it's
 important for browsers and web sites to provide keyboard input alternatives.
 
 :::
-
-Dark mode
-=========
-
-Next up is helping users who prefer darker screens. The reasons why might
-include extra sensitivity to light, or using a device at night, or at night
-near others without disturbing them. For these use cases, browsers these days
-support a *dark mode* feature that darkens the browser and web pages. For
-example, dark mode pages have a black background and a white foreground
-(as opposed to the default white background and black foreground).
-
-We'll bind the `ctrl-d` keystroke to toggle dark mode:
-
-``` {.python}
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
-                if ctrl_down:
-                    # ...
-                    elif event.key.keysym.sym == sdl2.SDLK_d:
-                        browser.toggle_dark_mode()
-```
-
-Which toggles in the browser:
-
-``` {.python}
-class Browser:
-    # ...
-    def __init__(self):
-        # ...
-        self.dark_mode = False
-
-    def toggle_dark_mode(self):
-        self.dark_mode = not self.dark_mode
-```
-
-To make the browser chrome dark, we just need to flip all the colors in
-`raster_chrome`. First set some variables to capture it, and set the canvas
-default to `background_color`:
-
-``` {.python}
-class Browser:
-    # ...
-    def raster_chrome(self):
-        if self.dark_mode:
-            color = "white"
-            background_color = "black"
-        else:
-            color = "black"
-            background_color = "white"
-        canvas.clear(parse_color(background_color))
-```
-
-Then we just need to use `color` or `background_color` in place of all of the
-colors. For example, plumb `color` to the `draw_line` function:
-
-``` {python}
-def draw_line(canvas, x1, y1, x2, y2, color):
-    sk_color = parse_color(color)
-    # ...
-    paint = skia.Paint(Color=sk_color)
-```
-
-And use it there and in `draw_text`:
-
-``` {.python}
-class Browser:
-    # ...
-    def raster_chrome(self):
-        # ...
-
-        # Draw the tabs UI:
-        tabfont = skia.Font(skia.Typeface('Arial'), 20)
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_line(canvas, x1, 0, x1, 40, color)
-            draw_line(canvas, x2, 0, x2, 40, color)
-            draw_text(canvas, x1 + 10, 10, name, tabfont, color)
-            if i == self.active_tab:
-                draw_line(canvas, 0, 40, x1, 40, color)
-                draw_line(canvas, x2, 40, WIDTH, 40, color)
-```
-
-Likewise all the rest of the `draw_line`, `draw_text` and `draw_rect` calls in
-`raster_chrome` (not all are shown above) should be instrumented with the dark
-mode-dependent color.
-
-The `draw` method also needs to clear to a dark mode color (though this color
-is generally not visible, it's just there to avoid any accidental transparency
-in the window).
-
-``` {.python}
-class Browser:
-    # ...
-    def draw(self):
-        # ...
-        if self.dark_mode:
-            canvas.clear(skia.ColorBLACK)
-        else:
-            canvas.clear(skia.ColorWHITE)
-```
-
-Next up is also informing the `Tab` to switch in or out of dark mode:
-
-``` {.python}
-class Browser:
-    # ...
-    def toggle_dark_mode(self):
-        # ...
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.toggle_dark_mode)
-        active_tab.task_runner.schedule_task(task)
-```
-
-And in `Tab`:
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        self.dark_mode = browser.dark_mode
-
-    def toggle_dark_mode(self):
-        self.dark_mode = not self.dark_mode
-        self.set_needs_render()
-```
-
-Now we need to flip the colors somehow. The easiest to change are the default
-text color and background color of the document. The text color can just
-be overridden by changing `INHERITED_PROPERTIES` before calling `style`:
-
-``` {.python expected=False}
-class Tab:
-    # ...
-    def render(self):
-        # ...
-        if self.dark_mode:
-            INHERITED_PROPERTIES["color"] = "white"
-        else:
-            INHERITED_PROPERTIES["color"] = "black"
-        style(self.nodes, sorted(
-            self.rules, key=cascade_priority), self)
-```
-
-And the default background color of the document can be flipped by passing a
-new `dark_mode` parameter:
-
-``` {.python}
-class Tab:
-    # ...
-    def render(self):
-        self.document.paint(self.display_list, self.dark_mode)
-```
-
-``` {.python}
-class DocumentLayout:
-    # ...
-    def paint(self, display_list, dark_mode):
-        if dark_mode:
-            background_color = "black"
-        else:
-            background_color = "white"
-        display_list.append(
-            DrawRect(skia.Rect.MakeLTRB(
-                self.x, self.y, self.x + self.width,
-                self.y + self.height),
-                background_color, background_color))
-```
-
-If you load up a page, now you should see white text on a black background.
-But if you try [this example](examples/example14-focus.html) it isn't
-very readable, because buttons and input elements now have poor contrast
-with the white foreground text. Let's fix that. Recall that the `lightblue` and
-`orange` colors for `<input>` and `<button>` elements come from the
-browser style sheet. We need to to make that style sheet depend on dark
-mode.
-
-This won't be *too* hard. One way to do it would be to programmatically modify
-styles in `style`. Instead let's just define two browser style sheets,
-and load both:^[Yes, this is quite inefficient because the style sheets of the
-document are stored twice. We'll optimize it later on.]
-
-
-``` {.python expected=False}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        with open("browser-light.css") as f:
-            self.default_light_style_sheet = \
-                CSSParser(f.read()).parse()
-        with open("browser-dark.css") as f:
-            self.default_dark_style_sheet = \
-                CSSParser(f.read()).parse()
-    # ...
-    def load(self, url, body=None):
-        # ...
-        self.light_rules = self.default_light_style_sheet.copy()
-        self.dark_rules = self.default_dark_style_sheet.copy()
-        # ...
-        for link in links:
-            self.light_rules.extend(CSSParser(body).parse())
-            self.dark_rules.extend(CSSParser(body).parse())
-```
-
-Then we can just use them when calling `style`:
-
-``` {.python expected=False}
-class Tab:
-    # ...
-    def render(self):
-        if self.needs_style:
-            if self.dark_mode:
-                INHERITED_PROPERTIES["color"] = "white"
-                style(self.nodes,
-                    sorted(self.dark_rules,
-                        key=cascade_priority), self)
-            else:
-                INHERITED_PROPERTIES["color"] = "black"
-                style(self.nodes,
-                    sorted(self.light_rules,
-                        key=cascade_priority), self)
-```
-
-::: {.further}
-
-Dark mode is a relatively recent browser feature. In the original design of CSS,
-the [cascade](https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade) defined
-not just browser and author style sheets, but also [*user*][user-style] style
-sheets. These are style sheets defined by the person using the browser, as a
-kind of custom theme. Another approach is to add a
-[browser extension][extension] (or equivalent browser built-in feature) that
-injects additional style sheets applying dark styles.[^no-user-styles]
-
-With one of these mechanisms, users might be able to add their
-own dark mode. While it's relatively easy for this to work well overriding the
-browser's default style sheet and a few common sites, it's very hard to come up
-with styles that work well alongside the style sheets of many sites without
-losing readability or failing to provide adequate dark mode styling.
-
-[extension]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions
-[user-style]: https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade#user_stylesheets
-[^no-user-styles]: Most browsers these days don't even support user style
-sheets, and instead rely on extensions.
-
-:::
-
 
 Screen readers
 ==============
