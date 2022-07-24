@@ -2,7 +2,7 @@
 title: Making Content Accessible
 chapter: 14
 prev: animations
-next: skipped
+next: embeds
 ...
 
 It's important for *everyone* to be able to access content on the web, even if
