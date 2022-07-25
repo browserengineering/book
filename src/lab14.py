@@ -428,7 +428,6 @@ def style(node, rules, tab):
     for child in node.children:
         style(child, rules, tab)
 
-
 class DocumentLayout:
     def __init__(self, node):
         self.node = node

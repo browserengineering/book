@@ -10,6 +10,7 @@ import io
 import gtts
 import math
 import os
+import PIL.Image
 import playsound
 import sdl2
 import skia
@@ -132,8 +133,9 @@ def request(url, top_level_url, payload=None):
     return headers, body
 
 
-class DrawImage:
+class DrawImage(DisplayItem):
     def __init__(self, image, rect):
+        super().__init__(rect)
         self.image = image
         self.rect = rect
 
@@ -141,6 +143,102 @@ class DrawImage:
         canvas.drawImage(
             self.image, self.rect.left(),
             self.rect.top())
+
+class DocumentLayout:
+    def __init__(self, node):
+        self.node = node
+        node.layout_object = self
+        self.parent = None
+        self.previous = None
+        self.children = []
+
+    def layout(self, zoom):
+        child = BlockLayout(self.node, self, None)
+        self.children.append(child)
+
+        self.width = WIDTH - 2 * device_px(HSTEP, zoom)
+        self.x = device_px(HSTEP, zoom)
+        self.y = device_px(VSTEP, zoom)
+        child.layout(zoom)
+        self.height = child.height + 2* device_px(VSTEP, zoom)
+
+    def paint(self, display_list, dark_mode):
+        if dark_mode:
+            background_color = "black"
+        else:
+            background_color = "white"
+        display_list.append(
+            DrawRect(skia.Rect.MakeLTRB(
+                self.x, self.y, self.x + self.width,
+                self.y + self.height),
+                background_color, background_color))
+        self.children[0].paint(display_list)
+
+    def __repr__(self):
+        return "DocumentLayout()"
+
+class BlockLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        node.layout_object = self
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def layout(self, zoom):
+        previous = None
+        for child in self.node.children:
+            if layout_mode(child) == "inline":
+                next = InlineLayout(child, self, previous)
+            else:
+                next = BlockLayout(child, self, previous)
+            self.children.append(next)
+            previous = next
+
+        self.width = style_length(
+            self.node, "width", self.parent.width, zoom)
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for child in self.children:
+            child.layout(zoom)
+
+        self.height = style_length(
+            self.node, "height",
+            sum([child.height for child in self.children]), zoom)
+
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(
+                self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        for child in self.children:
+            child.paint(cmds)
+
+        paint_outline(self.node, cmds, rect)
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+
+    def __repr__(self):
+        return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
+            self.x, self.x, self.width, self.height, self.node)
 
 
 class InlineLayout:
@@ -185,6 +283,8 @@ class InlineLayout:
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node, zoom)
+            elif node.tag == "img":
+                self.image(node, zoom)
             else:
                 for child in node.children:
                     self.recurse(child, zoom)
@@ -225,7 +325,7 @@ class InlineLayout:
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def image(self, node):
+    def image(self, node, zoom):
         w = 0
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
@@ -282,6 +382,63 @@ class InlineLayout:
         return "InlineLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.y, self.width, self.height, self.node)
 
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def layout(self, zoom):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for word in self.children:
+            word.layout(zoom)
+
+        if not self.children:
+            self.height = 0
+            return
+
+        max_ascent = max([-word.font.getMetrics().fAscent 
+                          for word in self.children])
+        baseline = self.y + 1.25 * max_ascent
+        for word in self.children:
+            word.y = baseline + word.font.getMetrics().fAscent
+        max_descent = max([word.font.getMetrics().fDescent
+                           for word in self.children])
+        self.height = 1.25 * (max_ascent + max_descent)
+
+    def paint(self, display_list):
+        outline_rect = skia.Rect.MakeEmpty()
+        outline_node = None
+        for child in self.children:
+            node = child.node
+            if isinstance(node, Text) and has_outline(node.parent):
+                outline_node = node.parent
+                outline_rect.join(child.rect())
+            child.paint(display_list)
+
+        if outline_node:
+            paint_outline(outline_node, display_list, outline_rect)
+
+    def role(self):
+        return "none"
+
+    def __repr__(self):
+        return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
+            self.x, self.y, self.width, self.height, self.node)
+
+
 class ImageLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -299,16 +456,18 @@ class ImageLayout:
     def get_descent(self, font_multiplier=1.0):
         return 0
 
-    def layout(self):
+    def layout(self, zoom):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
-        self.width = self.node.image.width()
+        self.width = style_length(
+            self.node, "width", self.node.image.width(), zoom)
 
-        self.height = max(self.node.image.height(), linespace(self.font))
+        self.height = style_length(self.node, "height",
+            max(self.node.image.height(), linespace(self.font)), zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -346,7 +505,6 @@ class IframeLayout:
 
         self.document = Document(tab)
         document_url = resolve_url(self.node.attributes["src"], tab.document.url)
-        print("iframe: " + document_url)
         self.document.load(document_url)
 
     def get_ascent(self, font_multiplier=1.0):
@@ -355,7 +513,7 @@ class IframeLayout:
     def get_descent(self, font_multiplier=1.0):
         return 0
 
-    def layout(self):
+    def layout(self, zoom):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
@@ -377,9 +535,7 @@ class IframeLayout:
 
 def decode_image(image_bytes):
     picture_stream = io.BytesIO(image_bytes)
-    print('here1')
     pil_image = PIL.Image.open(picture_stream)
-    print('here2')
     if pil_image.mode == "RGBA":
         pil_image_bytes = pil_image.tobytes()
     else:
@@ -670,21 +826,15 @@ class Tab:
                  and "src" in node.attributes]
 
         for img in images:
-            print(img.attributes["src"])
             link = img.attributes["src"]
             image_url = resolve_url(link, url)
             if not self.allowed_request(image_url):
                 print("Blocked image", link, "due to CSP")
                 continue
             try:
-                print(image_url)
-                print(url)
                 header, body = request(image_url, url)
-                print("loaded image")
                 img.image = decode_image(body)
-                print('done loading image')
             except:
-                print('exception')
                 continue
 
         self.set_needs_render()
