@@ -382,8 +382,8 @@ def device_px(css_px, zoom):
 
 def style_length(node, style_name, default_value, zoom):
     style_val = node.style.get(style_name)
-    return device_px(float(style_val[:-2]), zoom) if style_val \
-        else default_value
+    return device_px(float(style_val[:-2] if style_val \
+        else default_value), zoom)
 
 def cascade_priority(rule):
     selector, body, preferred_color_scheme = rule
