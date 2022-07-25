@@ -393,7 +393,8 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def image(self, node, zoom):
-        w = 0
+        w = style_length(
+            node, "width", node.image.width(), zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -407,7 +408,8 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def iframe(self, node, zoom):
-        w = 0
+        w = style_length(
+            node, "width", node.image.width(), zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -558,7 +560,6 @@ class TextLayout:
             "node={}, word={})").format(
             self.x, self.y, self.width, self.height, self.node, self.word)
 
-
 class ImageLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -585,8 +586,6 @@ class ImageLayout:
 
         self.width = style_length(
             self.node, "width", self.node.image.width(), zoom)
-        print("image width: " + str(self.width) + " zoom: " + str(zoom))
-
         self.height = style_length(self.node, "height",
             max(self.node.image.height(), linespace(self.font)), zoom)
 
@@ -643,6 +642,11 @@ class IframeLayout:
         if style == "normal": style = "roman"
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
+
+        self.width = style_length(
+            self.node, "width", self.node.image.width(), zoom)
+        self.height = style_length(self.node, "height",
+            max(self.node.image.height(), linespace(self.font)), zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
