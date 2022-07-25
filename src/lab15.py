@@ -350,6 +350,8 @@ class InlineLayout:
                 self.input(node, zoom)
             elif node.tag == "img":
                 self.image(node, zoom)
+            elif node.tag == "iframe":
+                self.iframe(node)
             else:
                 for child in node.children:
                     self.recurse(child, zoom)
@@ -400,11 +402,11 @@ class InlineLayout:
         self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = float(node.style["font-size"][:-2])
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def iframe(self, node):
+    def iframe(self, node, zoom):
         w = 0
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
@@ -415,7 +417,7 @@ class InlineLayout:
         self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = float(node.style["font-size"][:-2])
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
@@ -578,11 +580,12 @@ class ImageLayout:
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = float(self.node.style["font-size"][:-2])
+        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
         self.width = style_length(
             self.node, "width", self.node.image.width(), zoom)
+        print("image width: " + str(self.width) + " zoom: " + str(zoom))
 
         self.height = style_length(self.node, "height",
             max(self.node.image.height(), linespace(self.font)), zoom)

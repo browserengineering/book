@@ -16,4 +16,13 @@ Plan:
 
 * image resizing, filter quality, decoding to match rendered size
 
-* 
+* background-image: positioning, clipping
+
+* iframes
+
+Exercises:
+
+* Tiled images
+
+* object-fit
+
