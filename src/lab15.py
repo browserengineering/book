@@ -10,6 +10,7 @@ import io
 import gtts
 import math
 import os
+import PIL.Image
 import playsound
 import sdl2
 import skia
@@ -28,9 +29,9 @@ from lab6 import compute_style
 from lab6 import TagSelector, DescendantSelector
 from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, request, url_origin
+from lab10 import COOKIE_JAR, url_origin
 from lab11 import draw_text, get_font, linespace, \
-    parse_blend_mode, request, CHROME_PX, SCROLL_STEP
+    parse_blend_mode, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
@@ -40,113 +41,140 @@ from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP
+from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, DrawRect, \
+    outline_cmd, is_focused, paint_outline, has_outline, \
+    device_px, style_length, cascade_priority, style, \
+    is_focusable, compute_role, announce_text, AccessibilityNode, speak_text
 
-def parse_color(color):
-    if color == "white":
-        return skia.ColorWHITE
-    elif color == "lightblue":
-        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
-    elif color == "orange":
-        return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
-    elif color == "orangered":
-        return skia.ColorSetARGB(0xFF, 0xFF, 0x45, 0x00)
-    elif color == "red":
-        return skia.ColorRED
-    elif color == "green":
-        return skia.ColorGREEN
-    elif color == "blue":
-        return skia.ColorBLUE
-    elif color == "gray":
-        return skia.ColorGRAY
-    elif color == "lightgreen":
-        return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
+def request(url, top_level_url, payload=None):
+    scheme, url = url.split("://", 1)
+    assert scheme in ["http", "https"], \
+        "Unknown scheme {}".format(scheme)
+
+    if "/" not in url:
+        url = url + "/"
+    host, path = url.split("/", 1)
+
+    path = "/" + path
+    port = 80 if scheme == "http" else 443
+
+    if ":" in host:
+        host, port = host.split(":", 1)
+        port = int(port)
+
+    s = socket.socket(
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
+        proto=socket.IPPROTO_TCP,
+    )
+    s.connect((host, port))
+
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
+
+    method = "POST" if payload else "GET"
+    body = "{} {} HTTP/1.0\r\n".format(method, path)
+    body += "Host: {}\r\n".format(host)
+    if host in COOKIE_JAR:
+        cookie, params = COOKIE_JAR[host]
+        allow_cookie = True
+        if top_level_url and params.get("samesite", "none") == "lax":
+            _, _, top_level_host, _ = top_level_url.split("/", 3)
+            if ":" in top_level_host:
+                top_level_host, _ = top_level_host.split(":", 1)
+            allow_cookie = (host == top_level_host or method == "GET")
+        if allow_cookie:
+            body += "Cookie: {}\r\n".format(cookie)
+    if payload:
+        content_length = len(payload.encode("utf8"))
+        body += "Content-Length: {}\r\n".format(content_length)
+    body += "\r\n" + (payload or "")
+    s.send(body.encode("utf8"))
+
+    response = s.makefile("b")
+
+    statusline = response.readline().decode("utf8")
+    version, status, explanation = statusline.split(" ", 2)
+    assert status == "200", "{}: {}".format(status, explanation)
+
+    headers = {}
+    while True:
+        line = response.readline().decode("utf8")
+        if line == "\r\n": break
+        header, value = line.split(":", 1)
+        headers[header.lower()] = value.strip()
+
+    if "set-cookie" in headers:
+        params = {}
+        if ";" in headers["set-cookie"]:
+            cookie, rest = headers["set-cookie"].split(";", 1)
+            for param_pair in rest.split(";"):
+                if '=' in param_pair:
+                    name, value = param_pair.strip().split("=", 1)
+                    params[name.lower()] = value.lower()
+        else:
+            cookie = headers["set-cookie"]
+        COOKIE_JAR[host] = (cookie, params)
+
+    assert "transfer-encoding" not in headers
+    assert "content-encoding" not in headers
+
+    if headers.get(
+        'content-type',
+        'application/octet-stream').startswith("text"):
+        body = response.read().decode("utf8")
     else:
-        return skia.ColorBLACK
+        body = response.read()
 
-def parse_outline(outline_str):
-    if not outline_str:
-        return None
-    values = outline_str.split(" ")
-    if len(values) != 3:
-        return None
-    if values[1] != "solid":
-        return None
-    return (int(values[0][:-2]), values[2])
+    s.close()
 
-def draw_rect(
-    canvas, rect, fill_color=None, border_color="black", width=1):
-    paint = skia.Paint()
-    if fill_color:
-        paint.setStrokeWidth(width);
-        paint.setColor(parse_color(fill_color))
-    else:
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(width);
-        paint.setColor(parse_color(border_color))
-    canvas.drawRect(rect, paint)
+    return headers, body
 
 
-class DrawRRect(DisplayItem):
-    def __init__(self, rect, radius, color):
-        super().__init__(rect)
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.color = color
-
-    def is_paint_command(self):
-        return True
+class DrawImage(DisplayItem):
+    def __init__(self, image, src_rect, dst_rect):
+        super().__init__(dst_rect)
+        self.image = image
+        self.src_rect = src_rect
+        self.dst_rect = dst_rect
 
     def execute(self, canvas):
-        sk_color = parse_color(self.color)
-        canvas.drawRRect(self.rrect,
-            paint=skia.Paint(Color=sk_color))
+        canvas.drawImageRect(
+            self.image, self.src_rect, self.dst_rect)
 
-    def print(self, indent=0):
-        return " " * indent + self.__repr__()
+class DocumentLayout:
+    def __init__(self, node):
+        self.node = node
+        node.layout_object = self
+        self.parent = None
+        self.previous = None
+        self.children = []
+
+    def layout(self, zoom):
+        child = BlockLayout(self.node, self, None)
+        self.children.append(child)
+
+        self.width = WIDTH - 2 * device_px(HSTEP, zoom)
+        self.x = device_px(HSTEP, zoom)
+        self.y = device_px(VSTEP, zoom)
+        child.layout(zoom)
+        self.height = child.height + 2* device_px(VSTEP, zoom)
+
+    def paint(self, display_list, dark_mode):
+        if dark_mode:
+            background_color = "black"
+        else:
+            background_color = "white"
+        display_list.append(
+            DrawRect(skia.Rect.MakeLTRB(
+                self.x, self.y, self.x + self.width,
+                self.y + self.height),
+                background_color, background_color))
+        self.children[0].paint(display_list)
 
     def __repr__(self):
-        return "DrawRRect(rect={}, color={})".format(
-            str(self.rrect), self.color)
-
-class DrawRect(DisplayItem):
-    def __init__(self, rect, border_color, fill_color=None, width=0):
-        super().__init__(rect)
-        self.border_color = border_color
-        self.fill_color = fill_color
-        self.width = width
-
-    def is_paint_command(self):
-        return True
-
-    def execute(self, canvas):
-        draw_rect(canvas, self.rect,
-            fill_color=self.fill_color,
-            border_color=self.border_color, width=self.width)
-
-    def __repr__(self):
-        return ("DrawRect(top={} left={} " +
-            "bottom={} right={} border_color={} " +
-            "width={} fill_color={})").format(
-            self.rect.top(), self.rect.left(), self.rect.bottom(),
-            self.rect.right(), self.border_color,
-            self.width, self.fill_color)
-
-def outline_cmd(rect, outline):
-    (outline_width, outline_color) = outline
-    return DrawRect(rect, border_color=outline_color,
-            width=outline_width)
-
-def is_focused(node):
-    if isinstance(node, Text):
-        node = node.parent
-    return hasattr(node, "is_focused") and node.is_focused
-
-def paint_outline(node, cmds, rect):
-    outline = parse_outline(node.style.get("outline"))
-    if outline:
-        cmds.append(outline_cmd(rect, outline))
-
-def has_outline(node):
-    return parse_outline(node.style.get("outline"))
+        return "DocumentLayout()"
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -211,6 +239,73 @@ class BlockLayout:
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.x, self.width, self.height, self.node)
 
+class InputLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
+
+    def get_descent(self, font_multiplier=1.0):
+        return 0
+
+    def layout(self, zoom):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
+        self.font = get_font(size, weight, style)
+
+        self.width = style_length(
+            self.node, "width", device_px(INPUT_WIDTH_PX, zoom), zoom)
+        self.height = style_length(
+            self.node, "height", linespace(self.font), zoom)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        if self.node.tag == "input":
+            text = self.node.attributes.get("value", "")
+        elif self.node.tag == "button":
+            text = self.node.children[0].text
+
+        color = self.node.style["color"]
+        cmds.append(DrawText(self.x, self.y,
+                             text, self.font, color))
+
+        paint_outline(self.node, cmds, rect)
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+
+    def __repr__(self):
+        return "InputLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
+
 class InlineLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -253,6 +348,10 @@ class InlineLayout:
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node, zoom)
+            elif node.tag == "img":
+                self.image(node, zoom)
+            elif node.tag == "iframe":
+                self.iframe(node)
             else:
                 for child in node.children:
                     self.recurse(child, zoom)
@@ -285,6 +384,37 @@ class InlineLayout:
             self.new_line()
         line = self.children[-1]
         input = InputLayout(node, line, self.previous_word)
+        line.children.append(input)
+        self.previous_word = input
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
+
+    def image(self, node, zoom):
+        w = style_length(
+            node, "width", node.image.width(), zoom)
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = ImageLayout(node, line, self.previous_word)
+        line.children.append(input)
+        self.previous_word = input
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
+
+    def iframe(self, node, zoom):
+        w = style_length(
+            node, "width", node.image.width(), zoom)
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = IframeLayout(
+            node, line, self.previous_word, self.tab)
         line.children.append(input)
         self.previous_word = input
         weight = node.style["font-weight"]
@@ -348,14 +478,14 @@ class LineLayout:
             self.height = 0
             return
 
-        max_ascent = max([-word.font.getMetrics().fAscent 
-                          for word in self.children])
-        baseline = self.y + 1.25 * max_ascent
-        for word in self.children:
-            word.y = baseline + word.font.getMetrics().fAscent
-        max_descent = max([word.font.getMetrics().fDescent
-                           for word in self.children])
-        self.height = 1.25 * (max_ascent + max_descent)
+        max_ascent = max([-child.get_ascent(1.25) 
+                          for child in self.children])
+        baseline = self.y + max_ascent
+        for child in self.children:
+            child.y = baseline + child.get_ascent()
+        max_descent = max([child.get_descent(1.25)
+                           for child in self.children])
+        self.height = max_ascent + max_descent
 
     def paint(self, display_list):
         outline_rect = skia.Rect.MakeEmpty()
@@ -377,91 +507,6 @@ class LineLayout:
         return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.y, self.width, self.height, self.node)
 
-def device_px(css_px, zoom):
-    return css_px * zoom
-
-def style_length(node, style_name, default_value, zoom):
-    style_val = node.style.get(style_name)
-    return device_px(float(style_val[:-2]), zoom) if style_val \
-        else default_value
-
-def cascade_priority(rule):
-    selector, body, preferred_color_scheme = rule
-    return selector.priority
-
-def style(node, rules, tab):
-    old_style = node.style
-
-    node.style = {}
-    for property, default_value in INHERITED_PROPERTIES.items():
-        if node.parent:
-            node.style[property] = node.parent.style[property]
-        else:
-            node.style[property] = default_value
-    for selector, body, preferred_color_scheme in rules:
-        if preferred_color_scheme:
-            if (preferred_color_scheme == "dark") != \
-                tab.dark_mode: continue
-        if not selector.matches(node): continue
-        for property, value in body.items():
-            computed_value = compute_style(node, property, value)
-            if not computed_value: continue
-            node.style[property] = computed_value
-    if isinstance(node, Element) and "style" in node.attributes:
-        pairs = CSSParser(node.attributes["style"]).body()
-        for property, value in pairs.items():
-            computed_value = compute_style(node, property, value)
-            node.style[property] = computed_value
-
-    if old_style:
-        transitions = diff_styles(old_style, node.style)
-        for property, (old_value, new_value, num_frames) \
-            in transitions.items():
-            if property in ANIMATED_PROPERTIES:
-                tab.set_needs_render()
-                AnimationClass = ANIMATED_PROPERTIES[property]
-                animation = AnimationClass(
-                    old_value, new_value, num_frames)
-                node.animations[property] = animation
-                node.style[property] = animation.animate()
-
-    for child in node.children:
-        style(child, rules, tab)
-
-
-class DocumentLayout:
-    def __init__(self, node):
-        self.node = node
-        node.layout_object = self
-        self.parent = None
-        self.previous = None
-        self.children = []
-
-    def layout(self, zoom):
-        child = BlockLayout(self.node, self, None)
-        self.children.append(child)
-
-        self.width = WIDTH - 2 * device_px(HSTEP, zoom)
-        self.x = device_px(HSTEP, zoom)
-        self.y = device_px(VSTEP, zoom)
-        child.layout(zoom)
-        self.height = child.height + 2* device_px(VSTEP, zoom)
-
-    def paint(self, display_list, dark_mode):
-        if dark_mode:
-            background_color = "black"
-        else:
-            background_color = "white"
-        display_list.append(
-            DrawRect(skia.Rect.MakeLTRB(
-                self.x, self.y, self.x + self.width,
-                self.y + self.height),
-                background_color, background_color))
-        self.children[0].paint(display_list)
-
-    def __repr__(self):
-        return "DocumentLayout()"
-
 class TextLayout:
     def __init__(self, node, word, parent, previous):
         self.node = node
@@ -474,6 +519,12 @@ class TextLayout:
         self.width = None
         self.height = None
         self.font = None
+
+    def get_ascent(self, font_multiplier=1.0):
+        return self.font.getMetrics().fAscent * font_multiplier
+
+    def get_descent(self, font_multiplier=1.0):
+        return self.font.getMetrics().fDescent * font_multiplier
 
     def layout(self, zoom):
         weight = self.node.style["font-weight"]
@@ -509,7 +560,7 @@ class TextLayout:
             "node={}, word={})").format(
             self.x, self.y, self.width, self.height, self.node, self.word)
 
-class InputLayout:
+class ImageLayout:
     def __init__(self, node, parent, previous):
         self.node = node
         self.children = []
@@ -519,7 +570,12 @@ class InputLayout:
         self.y = None
         self.width = None
         self.height = None
-        self.font = None
+
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
+
+    def get_descent(self, font_multiplier=1.0):
+        return 0
 
     def layout(self, zoom):
         weight = self.node.style["font-weight"]
@@ -529,9 +585,9 @@ class InputLayout:
         self.font = get_font(size, weight, style)
 
         self.width = style_length(
-            self.node, "width", device_px(INPUT_WIDTH_PX, zoom), zoom)
-        self.height = style_length(
-            self.node, "height", linespace(self.font), zoom)
+            self.node, "width", self.node.image.width(), zoom)
+        self.height = style_length(self.node, "height",
+            max(self.node.image.height(), linespace(self.font)), zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -542,138 +598,80 @@ class InputLayout:
     def paint(self, display_list):
         cmds = []
 
-        rect = skia.Rect.MakeLTRB(
+        src_rect = skia.Rect.MakeLTRB(
+            0, 0, self.node.image.width(), self.node.image.height())
+
+        dst_rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
+        cmds.append(DrawImage(self.node.image, src_rect, dst_rect))
 
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
-
-        if self.node.tag == "input":
-            text = self.node.attributes.get("value", "")
-        elif self.node.tag == "button":
-            text = self.node.children[0].text
-
-        color = self.node.style["color"]
-        cmds.append(DrawText(self.x, self.y,
-                             text, self.font, color))
-
-        paint_outline(self.node, cmds, rect)
-
-        cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
     def __repr__(self):
-        return "InputLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        return "ImageLayout(src={}, x={}, y={}, width={}, height={})".format(
+            self.node.attributes["src"], self.x, self.y, self.width, self.height)
 
-def is_focusable(node):
-    return node.tag == "input" or node.tag == "button" \
-        or node.tag == "a" or "tabindex" in node.attributes
+IFRAME_WIDTH_PX = 300
+IFRAME_HEIGHT_PX = 150
 
-def compute_role(node):
-    if isinstance(node, Text):
-        if node.parent.tag == "a":
-            return "link"
-        elif compute_role(node.parent)  == "textbox":
-            return "none"
-        elif is_focusable(node.parent):
-            return "focusable text"
-        else:
-            return "StaticText"
-    else:
-        if node.tag == "a":
-            return "link"
-        elif node.tag == "input":
-            return "textbox"
-        elif node.tag == "button":
-            return "button"
-        elif node.tag == "html":
-            return "document"
-        elif "role" in node.attributes:
-            return node.attributes["role"]
-        elif is_focusable(node):
-            return "focusable"
-        else:
-            return "none"
-
-def announce_text(node):
-    role = compute_role(node)
-    text = ""
-    if role == "StaticText":
-        text = node.text
-    elif role == "focusable text":
-        text = "focusable text: " + node.text
-    elif role == "textbox":
-        if "value" in node.attributes:
-            value = node.attributes["value"]
-        elif node.tag != "input" and node.children and \
-            isinstance(node.children[0], Text):
-            value = node.children[0].text
-        else:
-            value = ""
-        text = "Input box: " + value
-    elif role == "button":
-        text = "Button"
-    elif role == "link":
-        text = "Link"
-    if hasattr(node, "is_focused") and node.is_focused:
-        text += " is focused"
-    return text
-
-class AccessibilityNode:
-    def __init__(self, node):
+class IframeLayout:
+    def __init__(self, node, parent, previous, tab):
         self.node = node
-        self.previous = None
         self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = IFRAME_WIDTH_PX
+        self.height = IFRAME_HEIGHT_PX        
 
-    def build(self):
-        for child_node in self.node.children:
-            AccessibilityNode.build_internal(child_node, self)
-        pass
+        self.document = Document(tab)
+        document_url = resolve_url(self.node.attributes["src"], tab.document.url)
+        self.document.load(document_url)
 
-    def build_internal(node, parent):
-        role = compute_role(node)
-        if role != "none":
-            child = AccessibilityNode(node)
-            parent.children.append(child)
-            parent = child
-        for child_node in node.children:
-            AccessibilityNode.build_internal(child_node, parent)
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
 
-    def intersects(self, x, y):
-        if hasattr(self.node, "layout_object"):
-            obj = self.node.layout_object
-            return obj.x <= x < obj.x + obj.width \
-                and obj.y <= y < obj.y + obj.height
-        return False
+    def get_descent(self, font_multiplier=1.0):
+        return 0
 
-    def hit_test(self, x, y):
-        nodes = [node for node in tree_to_list(self, [])
-                if node.intersects(x, y)]
-        if not nodes:
-            return None
+    def layout(self, zoom):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = float(self.node.style["font-size"][:-2])
+        self.font = get_font(size, weight, style)
+
+        self.width = style_length(
+            self.node, "width", self.node.image.width(), zoom)
+        self.height = style_length(self.node, "height",
+            max(self.node.image.height(), linespace(self.font)), zoom)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
         else:
-            node = nodes[-1] 
-            if isinstance(node, Text):
-                return node.parent
-            else:
-                return node
+            self.x = self.parent.x
+
+    def paint(self, display_list):
+        self.document.paint(display_list)
 
     def __repr__(self):
-        return "AccessibilityNode(node={} role={}".format(
-            str(self.node), compute_role(self.node))
+        return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
+            self.node.attributes["src"], self.x, self.y, self.width, self.height)
 
-SPEECH_FILE = "/tmp/speech-fragment.mp3"
-
-def speak_text(text):
-    tts = gtts.gTTS(text)
-    tts.save(SPEECH_FILE)
-    playsound.playsound(SPEECH_FILE)
-    os.remove(SPEECH_FILE)
+def decode_image(image_bytes):
+    picture_stream = io.BytesIO(image_bytes)
+    pil_image = PIL.Image.open(picture_stream)
+    if pil_image.mode == "RGBA":
+        pil_image_bytes = pil_image.tobytes()
+    else:
+        pil_image_bytes = pil_image.convert("RGBA").tobytes()
+    return skia.Image.frombytes(
+        array=pil_image_bytes,
+        dimensions=pil_image.size,
+        colorType=skia.kRGBA_8888_ColorType)
 
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
@@ -938,7 +936,7 @@ class Tab:
                  and node.tag == "link"
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
-        for link in links:
+        for link in links:  
             style_url = resolve_url(link, url)
             if not self.allowed_request(style_url):
                 print("Blocked style", link, "due to CSP")
@@ -948,6 +946,25 @@ class Tab:
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
+
+        images = [node
+                 for node in tree_to_list(self.nodes, [])
+                 if isinstance(node, Element)
+                 and node.tag == "img"
+                 and "src" in node.attributes]
+
+        for img in images:
+            link = img.attributes["src"]
+            image_url = resolve_url(link, url)
+            if not self.allowed_request(image_url):
+                print("Blocked image", link, "due to CSP")
+                continue
+            try:
+                header, body = request(image_url, url)
+                img.image = decode_image(body)
+            except:
+                continue
+
         self.set_needs_render()
 
     def set_needs_render(self):
