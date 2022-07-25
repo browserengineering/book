@@ -6,4 +6,14 @@ next: skipped
 ...
 
 
-TODO!
+Plan:
+
+* intro: images! iframes! video!
+
+* download, decode, draw a simple image
+
+* line layout w/replaced elements
+
+* image resizing, filter quality, decoding to match rendered size
+
+* 
