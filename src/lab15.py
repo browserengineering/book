@@ -42,10 +42,9 @@ from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP
 from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, DrawRect, \
-    outline_cmd, is_focused, paint_outline, has_outline, BlockLayout, \
-    LineLayout, device_px, style_length, cascade_priority, style, \
-    DocumentLayout, TextLayout, InputLayout, is_focusable, compute_role, \
-    announce_text, AccessibilityNode, speak_text
+    outline_cmd, is_focused, paint_outline, has_outline, \
+    device_px, style_length, cascade_priority, style, \
+    is_focusable, compute_role, announce_text, AccessibilityNode, speak_text
 
 def request(url, top_level_url, payload=None):
     scheme, url = url.split("://", 1)
@@ -240,6 +239,72 @@ class BlockLayout:
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.x, self.width, self.height, self.node)
 
+class InputLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
+
+    def get_descent(self, font_multiplier=1.0):
+        return 0
+
+    def layout(self, zoom):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
+        self.font = get_font(size, weight, style)
+
+        self.width = style_length(
+            self.node, "width", device_px(INPUT_WIDTH_PX, zoom), zoom)
+        self.height = style_length(
+            self.node, "height", linespace(self.font), zoom)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        if self.node.tag == "input":
+            text = self.node.attributes.get("value", "")
+        elif self.node.tag == "button":
+            text = self.node.children[0].text
+
+        color = self.node.style["color"]
+        cmds.append(DrawText(self.x, self.y,
+                             text, self.font, color))
+
+        paint_outline(self.node, cmds, rect)
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+
+    def __repr__(self):
+        return "InputLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
 
 class InlineLayout:
     def __init__(self, node, parent, previous):
@@ -409,14 +474,14 @@ class LineLayout:
             self.height = 0
             return
 
-        max_ascent = max([-word.font.getMetrics().fAscent 
-                          for word in self.children])
-        baseline = self.y + 1.25 * max_ascent
-        for word in self.children:
-            word.y = baseline + word.font.getMetrics().fAscent
-        max_descent = max([word.font.getMetrics().fDescent
-                           for word in self.children])
-        self.height = 1.25 * (max_ascent + max_descent)
+        max_ascent = max([-child.get_ascent(1.25) 
+                          for child in self.children])
+        baseline = self.y + max_ascent
+        for child in self.children:
+            child.y = baseline + child.get_ascent()
+        max_descent = max([child.get_descent(1.25)
+                           for child in self.children])
+        self.height = max_ascent + max_descent
 
     def paint(self, display_list):
         outline_rect = skia.Rect.MakeEmpty()
@@ -437,6 +502,59 @@ class LineLayout:
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.y, self.width, self.height, self.node)
+
+class TextLayout:
+    def __init__(self, node, word, parent, previous):
+        self.node = node
+        self.word = word
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def get_ascent(self, font_multiplier=1.0):
+        return self.font.getMetrics().fAscent * font_multiplier
+
+    def get_descent(self, font_multiplier=1.0):
+        return self.font.getMetrics().fDescent * font_multiplier
+
+    def layout(self, zoom):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
+        self.font = get_font(size, weight, style)
+
+        # Do not set self.y!!!
+        self.width = self.font.measureText(self.word)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+        self.height = linespace(self.font)
+
+    def paint(self, display_list):
+        color = self.node.style["color"]
+        display_list.append(
+            DrawText(self.x, self.y, self.word, self.font, color))
+
+    def rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+    
+    def __repr__(self):
+        return ("TextLayout(x={}, y={}, width={}, height={}, " +
+            "node={}, word={})").format(
+            self.x, self.y, self.width, self.height, self.node, self.word)
 
 
 class ImageLayout:
