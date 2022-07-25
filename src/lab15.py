@@ -351,7 +351,7 @@ class InlineLayout:
             elif node.tag == "img":
                 self.image(node, zoom)
             elif node.tag == "iframe":
-                self.iframe(node)
+                self.iframe(node, zoom)
             else:
                 for child in node.children:
                     self.recurse(child, zoom)
@@ -409,7 +409,7 @@ class InlineLayout:
 
     def iframe(self, node, zoom):
         w = style_length(
-            node, "width", node.image.width(), zoom)
+            node, "width", IFRAME_WIDTH_PX, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -623,8 +623,6 @@ class IframeLayout:
         self.previous = previous
         self.x = None
         self.y = None
-        self.width = IFRAME_WIDTH_PX
-        self.height = IFRAME_HEIGHT_PX        
 
         self.document = Document(tab)
         document_url = resolve_url(self.node.attributes["src"], tab.document.url)
@@ -644,9 +642,9 @@ class IframeLayout:
         self.font = get_font(size, weight, style)
 
         self.width = style_length(
-            self.node, "width", self.node.image.width(), zoom)
+            self.node, "width", IFRAME_WIDTH_PX, zoom)
         self.height = style_length(self.node, "height",
-            max(self.node.image.height(), linespace(self.font)), zoom)
+            IFRAME_HEIGHT_PX, zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
