@@ -274,8 +274,8 @@ case, pass `zoom` to style_length as a new parameter for convenience:
 ``` {.python}
 def style_length(node, style_name, default_value, zoom):
     style_val = node.style.get(style_name)
-    return device_px(float(style_val[:-2] if style_val \
-        else default_value), zoom)
+    return device_px(float(style_val[:-2]), zoom) if style_val \
+        else default_value
 ```
 
 Then use it:
