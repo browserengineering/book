@@ -656,8 +656,6 @@ class IframeLayout:
         else:
             self.x = self.parent.x
 
-        self.document.layout(zoom)
-
     def paint(self, display_list):
         self.document.paint(display_list)
 
@@ -952,8 +950,8 @@ class Document:
         self.accessibility_tree = AccessibilityNode(self.nodes)
         self.accessibility_tree.build()
 
-    def paint(self, display_list, dark_mode):
-        self.document_layout.paint(display_list, dark_mode)
+    def paint(self, display_list):
+        self.document_layout.paint(display_list, self.tab.dark_mode)
 
         if self.tab.focus and self.focus.tag == "input":
             obj = [obj for obj in tree_to_list(self.document_layout, [])
@@ -1158,7 +1156,7 @@ class Tab:
         if self.needs_paint:
             self.display_list = []
 
-            self.document.paint(self.display_list, self.dark_mode)
+            self.document.paint(self.display_list)
             self.needs_paint = False
 
         self.measure_render.stop()
