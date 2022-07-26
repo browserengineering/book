@@ -144,15 +144,16 @@ class DrawImage(DisplayItem):
             self.image, self.src_rect, self.dst_rect)
 
 class DocumentLayout:
-    def __init__(self, node):
+    def __init__(self, node, tab):
         self.node = node
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
+        self.tab = tab
 
     def layout(self, zoom):
-        child = BlockLayout(self.node, self, None)
+        child = BlockLayout(self.node, self, None, self.tab)
         self.children.append(child)
 
         self.width = WIDTH - 2 * device_px(HSTEP, zoom)
@@ -177,7 +178,7 @@ class DocumentLayout:
         return "DocumentLayout()"
 
 class BlockLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, tab):
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -187,14 +188,15 @@ class BlockLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.tab = tab
 
     def layout(self, zoom):
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous)
+                next = InlineLayout(child, self, previous, self.tab)
             else:
-                next = BlockLayout(child, self, previous)
+                next = BlockLayout(child, self, previous, self.tab)
             self.children.append(next)
             previous = next
 
@@ -307,7 +309,7 @@ class InputLayout:
             self.x, self.y, self.width, self.height)
 
 class InlineLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, tab):
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -318,6 +320,7 @@ class InlineLayout:
         self.width = None
         self.height = None
         self.display_list = None
+        self.tab = tab
 
     def layout(self, zoom):
         self.width = style_length(
@@ -623,6 +626,7 @@ class IframeLayout:
         self.previous = previous
         self.x = None
         self.y = None
+        self.tab = tab
 
         self.document = Document(tab)
         document_url = resolve_url(self.node.attributes["src"], tab.document.url)
@@ -935,8 +939,13 @@ class Document:
 
         self.tab.set_needs_render()
 
+    def style(self):
+        style(self.nodes,
+            sorted(self.rules,
+                key=cascade_priority), self.tab)
+
     def layout(self, zoom):
-        self.document_layout = DocumentLayout(self.nodes)
+        self.document_layout = DocumentLayout(self.nodes, self.tab)
         self.document_layout.layout(zoom)
 
     def build_accessibility_tree(self):
@@ -1056,7 +1065,7 @@ class Tab:
         self.composited_updates.clear()
 
         commit_data = CommitData(
-            url=self.url,
+            url=self.document.url,
             scroll=scroll,
             height=document_height,
             display_list=self.display_list,
@@ -1112,9 +1121,7 @@ class Tab:
                 INHERITED_PROPERTIES["color"] = "white"
             else:
                 INHERITED_PROPERTIES["color"] = "black"
-            style(self.nodes,
-                sorted(self.rules,
-                    key=cascade_priority), self)
+            self.document.style()
             self.needs_layout = True
             self.needs_style = False
 
