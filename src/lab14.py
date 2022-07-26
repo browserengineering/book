@@ -1112,7 +1112,7 @@ class Tab:
                 y = obj.y
                 self.display_list.append(
                     DrawLine(x, y, x, y + obj.height))
-                self.needs_paint = False
+            self.needs_paint = False
 
         self.measure_render.stop()
 
