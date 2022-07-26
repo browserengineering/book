@@ -144,15 +144,16 @@ class DrawImage(DisplayItem):
             self.image, self.src_rect, self.dst_rect)
 
 class DocumentLayout:
-    def __init__(self, node):
+    def __init__(self, node, tab):
         self.node = node
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
+        self.tab = tab
 
     def layout(self, zoom):
-        child = BlockLayout(self.node, self, None)
+        child = BlockLayout(self.node, self, None, self.tab)
         self.children.append(child)
 
         self.width = WIDTH - 2 * device_px(HSTEP, zoom)
@@ -177,7 +178,7 @@ class DocumentLayout:
         return "DocumentLayout()"
 
 class BlockLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, tab):
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -187,14 +188,15 @@ class BlockLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.tab = tab
 
     def layout(self, zoom):
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous)
+                next = InlineLayout(child, self, previous, self.tab)
             else:
-                next = BlockLayout(child, self, previous)
+                next = BlockLayout(child, self, previous, self.tab)
             self.children.append(next)
             previous = next
 
@@ -307,7 +309,7 @@ class InputLayout:
             self.x, self.y, self.width, self.height)
 
 class InlineLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, tab):
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -318,6 +320,7 @@ class InlineLayout:
         self.width = None
         self.height = None
         self.display_list = None
+        self.tab = tab
 
     def layout(self, zoom):
         self.width = style_length(
@@ -351,7 +354,7 @@ class InlineLayout:
             elif node.tag == "img":
                 self.image(node, zoom)
             elif node.tag == "iframe":
-                self.iframe(node)
+                self.iframe(node, zoom)
             else:
                 for child in node.children:
                     self.recurse(child, zoom)
@@ -409,7 +412,7 @@ class InlineLayout:
 
     def iframe(self, node, zoom):
         w = style_length(
-            node, "width", node.image.width(), zoom)
+            node, "width", IFRAME_WIDTH_PX, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -623,8 +626,7 @@ class IframeLayout:
         self.previous = previous
         self.x = None
         self.y = None
-        self.width = IFRAME_WIDTH_PX
-        self.height = IFRAME_HEIGHT_PX        
+        self.tab = tab
 
         self.document = Document(tab)
         document_url = resolve_url(self.node.attributes["src"], tab.document.url)
@@ -644,15 +646,18 @@ class IframeLayout:
         self.font = get_font(size, weight, style)
 
         self.width = style_length(
-            self.node, "width", self.node.image.width(), zoom)
+            self.node, "width", IFRAME_WIDTH_PX, zoom)
         self.height = style_length(self.node, "height",
-            max(self.node.image.height(), linespace(self.font)), zoom)
+            IFRAME_HEIGHT_PX, zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
+
+        self.document.style()
+        self.document.layout(zoom)
 
     def paint(self, display_list):
         self.document.paint(display_list)
@@ -850,60 +855,28 @@ class CSSParser:
                     break
         return rules
 
-class Tab:
-    def __init__(self, browser):
-        self.history = []
-        self.focus = None
+class Document:
+    def __init__(self, tab):
+        self.tab = tab
+        self.document_layout = None
+        self.nodes = None
         self.url = None
-        self.scroll = 0
-        self.scroll_changed_in_tab = False
-        self.needs_raf_callbacks = False
-        self.needs_style = False
-        self.needs_layout = False
-        self.needs_accessibility = False
-        self.needs_paint = False
-        self.document = None
-        self.dark_mode = browser.dark_mode
-
-        self.accessibility_is_on = False
-        self.accessibility_tree = None
-        self.has_spoken_document = False
-        self.accessibility_focus = None
-
-        self.browser = browser
-        if USE_BROWSER_THREAD:
-            self.task_runner = TaskRunner(self)
-        else:
-            self.task_runner = SingleThreadedTaskRunner(self)
-        self.task_runner.start()
-
-        self.measure_render = MeasureTime("render")
-        self.composited_updates = []
-        self.zoom = 1.0
-        self.pending_hover = None
-        self.hovered_node = None
 
         with open("browser14.css") as f:
             self.default_style_sheet = \
                 CSSParser(f.read()).parse(is_internal=True)
-
     def allowed_request(self, url):
         return self.allowed_origins == None or \
             url_origin(url) in self.allowed_origins
-
-    def script_run_wrapper(self, script, script_text):
-        return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
         self.zoom = 1
         self.focus = None
         self.scroll = 0
         self.scroll_changed_in_tab = True
-        self.task_runner.clear_pending_tasks()
         headers, body = request(url, self.url, payload=body)
         self.url = url
         self.accessibility_tree = None
-        self.history.append(url)
 
         self.allowed_origins = None
         if "content-security-policy" in headers:
@@ -965,6 +938,76 @@ class Tab:
             except:
                 continue
 
+        self.tab.set_needs_render()
+
+    def style(self):
+        style(self.nodes,
+            sorted(self.rules,
+                key=cascade_priority), self.tab)
+
+    def layout(self, zoom):
+        self.document_layout = DocumentLayout(self.nodes, self.tab)
+        self.document_layout.layout(zoom)
+
+    def build_accessibility_tree(self):
+        self.accessibility_tree = AccessibilityNode(self.nodes)
+        self.accessibility_tree.build()
+
+    def paint(self, display_list):
+        self.document_layout.paint(display_list, self.tab.dark_mode)
+
+        if self.tab.focus and self.focus.tag == "input":
+            obj = [obj for obj in tree_to_list(self.document_layout, [])
+               if obj.node == self.focus and \
+                    isinstance(obj, InputLayout)][0]
+            text = self.focus.attributes.get("value", "")
+            x = obj.x + obj.font.measureText(text)
+            y = obj.y
+            self.display_list.append(
+                DrawLine(x, y, x, y + obj.height))
+
+class Tab:
+    def __init__(self, browser):
+        self.history = []
+        self.focus = None
+        self.scroll_changed_in_tab = False
+        self.needs_raf_callbacks = False
+        self.needs_style = False
+        self.needs_layout = False
+        self.needs_accessibility = False
+        self.needs_paint = False
+        self.document = None
+        self.dark_mode = browser.dark_mode
+        self.scroll = 0
+
+        self.accessibility_is_on = False
+        self.accessibility_tree = None
+        self.has_spoken_document = False
+        self.accessibility_focus = None
+
+        self.browser = browser
+        if USE_BROWSER_THREAD:
+            self.task_runner = TaskRunner(self)
+        else:
+            self.task_runner = SingleThreadedTaskRunner(self)
+        self.task_runner.start()
+
+        self.measure_render = MeasureTime("render")
+        self.composited_updates = []
+        self.zoom = 1.0
+        self.pending_hover = None
+        self.hovered_node = None
+
+    def script_run_wrapper(self, script, script_text):
+        return Task(self.js.run, script, script_text)
+
+    def load(self, url, body=None):
+        self.history.append(url)
+        self.task_runner.clear_pending_tasks()
+        self.scroll_changed_in_tab = True
+        self.document = Document(self)
+        self.document.load(url, body)
+
         self.set_needs_render()
 
     def set_needs_render(self):
@@ -986,9 +1029,9 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
-        self.js.interp.evaljs("__runRAFHandlers()")
+        self.document.js.interp.evaljs("__runRAFHandlers()")
 
-        for node in tree_to_list(self.nodes, []):
+        for node in tree_to_list(self.document.nodes, []):
             for (property_name, animation) in \
                 node.animations.items():
                 value = animation.animate()
@@ -1004,7 +1047,7 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.document.height)
+        document_height = math.ceil(self.document.document_layout.height)
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
@@ -1023,7 +1066,7 @@ class Tab:
         self.composited_updates.clear()
 
         commit_data = CommitData(
-            url=self.url,
+            url=self.document.url,
             scroll=scroll,
             height=document_height,
             display_list=self.display_list,
@@ -1079,14 +1122,11 @@ class Tab:
                 INHERITED_PROPERTIES["color"] = "white"
             else:
                 INHERITED_PROPERTIES["color"] = "black"
-            style(self.nodes,
-                sorted(self.rules,
-                    key=cascade_priority), self)
+            self.document.style()
             self.needs_layout = True
             self.needs_style = False
 
         if self.needs_layout:
-            self.document = DocumentLayout(self.nodes)
             self.document.layout(self.zoom)
             if self.accessibility_is_on:
                 self.needs_accessibility = True
@@ -1095,8 +1135,7 @@ class Tab:
             self.needs_layout = False
 
         if self.needs_accessibility:
-            self.accessibility_tree = AccessibilityNode(self.nodes)
-            self.accessibility_tree.build()
+            self.document.build_accessibility_tree()
             self.needs_accessibility = False
             self.needs_paint = True
 
@@ -1120,17 +1159,8 @@ class Tab:
         if self.needs_paint:
             self.display_list = []
 
-            self.document.paint(self.display_list, self.dark_mode)
-            if self.focus and self.focus.tag == "input":
-                obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus and \
-                        isinstance(obj, InputLayout)][0]
-                text = self.focus.attributes.get("value", "")
-                x = obj.x + obj.font.measureText(text)
-                y = obj.y
-                self.display_list.append(
-                    DrawLine(x, y, x, y + obj.height))
-                self.needs_paint = False
+            self.document.paint(self.display_list)
+            self.needs_paint = False
 
         self.measure_render.stop()
 
