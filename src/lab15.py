@@ -656,6 +656,9 @@ class IframeLayout:
         else:
             self.x = self.parent.x
 
+        self.document.style()
+        self.document.layout(zoom)
+
     def paint(self, display_list):
         self.document.paint(display_list)
 
