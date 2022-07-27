@@ -5,22 +5,79 @@ prev: animations
 next: embeds
 ...
 
-It's important for *everyone* to be able to access content on the web, even if
-you have a hard time reading small text, can't or don't want to use a mouse,
-are triggered by very bright colors, suffer from repetitive stress injury, or
-can't see a computer screen at all. Browsers have
-[*accessibility*][a11y] features aimed at all of these use cases, taking
-advantage of the fact that web pages [declare] UI and allow the browser to
-manipulate it [on behalf][ua] of the user.  On top of these features, browsers
-need to provide a robust set of features to help web sites avoid losing
-accessibility when customizing their look and feel. Accessiblity is a critical
-part of a modern browser.
+So far, we've focused on making the browser an effective platform for
+developing web applications. But ultimately, the browser is a [_user_
+agent][ua]. That means it should assist the user in whatever way it
+can to access and use web applications. Browsers therefore offer a
+range of [*accessibility*][a11y] features that take advantage of
+[declarative] UI and the flexibility of HTML and CSS to make it
+possible to interact with the web page by touch, keyboard, or voice.
 
-[ua]: http://localhost:8001/intro.html#the-role-of-the-browser
+[ua]: intro.md#the-role-of-the-browser
 
 [declare]: intro.md#browser-code-concepts
 
 [a11y]: https://developer.mozilla.org/en-US/docs/Learn/Accessibility/What_is_accessibility
+
+What is accessibility
+=====================
+
+"Accessibility" refers to any way a user can change or customize how
+they interact with a web page,[^not-just-screen-reader] and the web's
+uniquely-flexible core technologies mean that browsers offer a lot of
+accessibility features that allow a user to customize the style,
+layout, and rendering of a web page, as well as interact with a web
+page with their keyboard, by voice, or using some kind of helper
+software.
+
+The reasons for customizing, of course, are as diverse as the
+customizations themselves. For example, when my son was born,[^pavel]
+my wife and I alternated time taking care of the baby and I ended up
+spending a lot of time working at night. To maximize precious sleep,
+I wanted the screen to be less bright, and was thankful that many
+websites offer a "dark mode". Later, I found that taking notes by
+voice was convenient when my hands were busy holding the baby. And
+when I was trying to put the baby to sleep, muting the TV and reading
+the closed captions turned out to be the best way of watching movies.
+
+The underlying reasons for using these accessibility tools were
+temporary; but other uses may last longer, or be permanent. I'm
+ever-grateful, for example, for [curb cuts][curb-cut], which make it
+much more convenient to go on walks with a stroller, something I'll be
+doing for years to come.[^toddler-curb-cut] And there's a good chance
+that, like my ancestors, my eyesight will worsen as I age and I'll
+need to set my computer to use a much larger text size. More advanced
+accessibility tools, like screen readers, take time to learn and use
+effectively, so are mostly used by people with long-term or permanent
+disabilities.
+
+But the common lesson of all kinds of accessibility work, physical and
+digital, is that once an accessibility tool is built, creative people
+find that it helps in all kinds of situations unforseen by the tool's
+designers. Dark mode helps you tell your work and personal email
+apart; web page zoom helps you print the whole web page on a single
+sheet of paper; and keyboard shortcuts let you leverage muscle memory
+to submit many similar orders to a web application that doesn't have a
+"batch mode".
+
+Moreover, accessibility derives from the same [principles](intro.md)
+that birthed the web: user control, multi-modal content, and
+interoperability. These principles allowed the web to be accessible to
+different browsers and different operating systems, and these same
+principles likewise make the web accessible to different people with
+different abilities and environmental constraints.
+
+[curb-cut]: https://en.wikipedia.org/wiki/Curb_cut
+
+[^toddler-curb-cut]: And when my son grows a bit and starts walking on
+    his own, he'll likely still be small enough that walking up a curb
+    without a curb cut will be difficult for him.
+
+[^not-just-screen-reader]: Too often, people take "accessibility" to
+    mean "screen reader support", but this is just one way a user may
+    want to interact with a web page.
+
+[^pavel]: This is Pavel speaking.
 
 CSS zoom
 ========
