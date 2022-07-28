@@ -19,8 +19,8 @@ possible to interact with the web page by touch, keyboard, or voice.
 
 [a11y]: https://developer.mozilla.org/en-US/docs/Learn/Accessibility/What_is_accessibility
 
-What is accessibility
-=====================
+What is accessibility?
+======================
 
 Accessibility means that the user can change or customize how they
 interact with a web page in order to make it easier to
@@ -61,15 +61,17 @@ much more convenient to go on walks with a stroller, something I'll be
 doing for years to come.[^toddler-curb-cut] And there's a good chance
 that, like my ancestors, my eyesight will worsen as I age and I'll
 need to set my computer to use a much larger text size. More advanced
-accessibility tools, like screen readers, take time to learn and use
-effectively, so are mostly used by people with long-term or permanent
-disabilities.[^for-now]
+tools, like [screen readers][screen-reader], take time to learn and
+use effectively, so are mostly used by people with long-term or
+permanent disabilities.[^for-now]
 
 [curb-cut]: https://en.wikipedia.org/wiki/Curb_cut
 
 [^toddler-curb-cut]: And when my son grows a bit and starts walking on
     his own, he'll likely still be small enough that walking up a curb
     without a curb cut will be difficult for him.
+    
+[screen-reader]: https://www.afb.org/blindness-and-low-vision/using-technology/assistive-technology-products/screen-readers
     
 [^for-now]: For now, that is---perhaps software assistants will become
 more widespread as software improves, mediating between the user and
@@ -87,16 +89,17 @@ print the whole web page on a single sheet of paper; and keyboard
 shortcuts let you leverage muscle memory to submit many similar orders
 to a web application that doesn't have a batch mode.
 
-[^moral]: And we have a moral responsibility to help, plus the
-    commercial incentive of serving as large a market or reaching as
-    large an audience as possible.
+[^moral]: We have an ethical responsibility to help all users. Plus,
+    there is the practical matter that if you're making a web page,
+    it's because you want people using it, presumably as many as
+    possible.
 
 Moreover, accessibility derives from the same [principles](intro.md)
 that birthed the web: user control, multi-modal content, and
 interoperability. These principles allowed the web to be accessible to
 different browsers and different operating systems, and these same
 principles likewise make the web accessible to different people with
-different abilities and environmental constraints.
+different abilities.
 
 CSS zoom
 ========
