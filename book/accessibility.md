@@ -22,23 +22,37 @@ possible to interact with the web page by touch, keyboard, or voice.
 What is accessibility
 =====================
 
-"Accessibility" refers to any way a user can change or customize how
-they interact with a web page,[^not-just-screen-reader] and the web's
-uniquely-flexible core technologies mean that browsers offer a lot of
-accessibility features that allow a user to customize the style,
-layout, and rendering of a web page, as well as interact with a web
-page with their keyboard, by voice, or using some kind of helper
+Accessibility means that the user can change or customize how they
+interact with a web page in order to make it easier to
+use.[^other-defs][^not-just-screen-reader] The web's uniquely-flexible
+core technologies mean that browsers offer a lot of accessibility
+features[^not-just-screen-reader] to allow a user to customize the
+style, layout, and rendering of a web page, as well as interact with a
+web page with their keyboard, by voice, or using some kind of helper
 software.
+
+[^other-defs]: Accessibility can also be defined from the developer's
+    point of view, [in which case][mdn-def] it's something like the
+    ways you can make your web pages easy to use for as many people as
+    possible.
+
+[mdn-def]: https://developer.mozilla.org/en-US/docs/Learn/Accessibility/What_is_accessibility
+
+[^not-just-screen-reader]: Too often, people take "accessibility" to
+    mean "screen reader support", but this is just one way a user may
+    want to interact with a web page.
 
 The reasons for customizing, of course, are as diverse as the
 customizations themselves. For example, when my son was born,[^pavel]
 my wife and I alternated time taking care of the baby and I ended up
 spending a lot of time working at night. To maximize precious sleep,
 I wanted the screen to be less bright, and was thankful that many
-websites offer a "dark mode". Later, I found that taking notes by
+websites offer a dark mode. Later, I found that taking notes by
 voice was convenient when my hands were busy holding the baby. And
 when I was trying to put the baby to sleep, muting the TV and reading
 the closed captions turned out to be the best way of watching movies.
+
+[^pavel]: This is Pavel speaking.
 
 The underlying reasons for using these accessibility tools were
 temporary; but other uses may last longer, or be permanent. I'm
@@ -49,16 +63,33 @@ that, like my ancestors, my eyesight will worsen as I age and I'll
 need to set my computer to use a much larger text size. More advanced
 accessibility tools, like screen readers, take time to learn and use
 effectively, so are mostly used by people with long-term or permanent
-disabilities.
+disabilities.[^for-now]
 
-But the common lesson of all kinds of accessibility work, physical and
-digital, is that once an accessibility tool is built, creative people
-find that it helps in all kinds of situations unforseen by the tool's
-designers. Dark mode helps you tell your work and personal email
-apart; web page zoom helps you print the whole web page on a single
-sheet of paper; and keyboard shortcuts let you leverage muscle memory
-to submit many similar orders to a web application that doesn't have a
-"batch mode".
+[curb-cut]: https://en.wikipedia.org/wiki/Curb_cut
+
+[^toddler-curb-cut]: And when my son grows a bit and starts walking on
+    his own, he'll likely still be small enough that walking up a curb
+    without a curb cut will be difficult for him.
+    
+[^for-now]: For now, that is---perhaps software assistants will become
+more widespread as software improves, mediating between the user and
+web pages. Password managers and form autofill agents are already
+somewhat like this.
+
+Of course, accessibility *does* include advanced accessibility tools
+like screen readers, because these tools bring enormous benefits to
+those that need them.[^moral] But the common lesson of all kinds of
+accessibility work, physical and digital, is that once an
+accessibility tool is built, creative people find that it helps in all
+kinds of situations unforseen by the tool's designers. Dark mode helps
+you tell your work and personal email apart; web page zoom helps you
+print the whole web page on a single sheet of paper; and keyboard
+shortcuts let you leverage muscle memory to submit many similar orders
+to a web application that doesn't have a batch mode.
+
+[^moral]: And we have a moral responsibility to help, plus the
+    commercial incentive of serving as large a market or reaching as
+    large an audience as possible.
 
 Moreover, accessibility derives from the same [principles](intro.md)
 that birthed the web: user control, multi-modal content, and
@@ -66,18 +97,6 @@ interoperability. These principles allowed the web to be accessible to
 different browsers and different operating systems, and these same
 principles likewise make the web accessible to different people with
 different abilities and environmental constraints.
-
-[curb-cut]: https://en.wikipedia.org/wiki/Curb_cut
-
-[^toddler-curb-cut]: And when my son grows a bit and starts walking on
-    his own, he'll likely still be small enough that walking up a curb
-    without a curb cut will be difficult for him.
-
-[^not-just-screen-reader]: Too often, people take "accessibility" to
-    mean "screen reader support", but this is just one way a user may
-    want to interact with a web page.
-
-[^pavel]: This is Pavel speaking.
 
 CSS zoom
 ========
