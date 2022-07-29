@@ -143,6 +143,7 @@ def is_focused(node):
 def paint_outline(node, cmds, rect):
     outline = parse_outline(node.style.get("outline"))
     if outline:
+        print(node)
         cmds.append(outline_cmd(rect, outline))
 
 def has_outline(node):

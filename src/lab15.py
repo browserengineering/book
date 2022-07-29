@@ -628,10 +628,6 @@ class IframeLayout:
         self.y = None
         self.tab = tab
 
-        self.document = Document(tab)
-        document_url = resolve_url(self.node.attributes["src"], tab.document.url)
-        self.document.load(document_url)
-
     def get_ascent(self, font_multiplier=1.0):
         return -self.height
 
@@ -656,11 +652,28 @@ class IframeLayout:
         else:
             self.x = self.parent.x
 
-        self.document.style()
-        self.document.layout(zoom)
+        self.node.document.style()
+        self.node.document.layout(zoom)
 
     def paint(self, display_list):
-        self.document.paint(display_list)
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(
+                self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        self.node.document.paint(display_list)
+
+        paint_outline(self.node, cmds, rect)
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
 
     def __repr__(self):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
@@ -862,7 +875,7 @@ class Document:
         self.nodes = None
         self.url = None
 
-        with open("browser14.css") as f:
+        with open("browser15.css") as f:
             self.default_style_sheet = \
                 CSSParser(f.read()).parse(is_internal=True)
     def allowed_request(self, url):
@@ -937,6 +950,17 @@ class Document:
                 img.image = decode_image(body)
             except:
                 continue
+
+        iframes = [node
+                   for node in tree_to_list(self.nodes, [])
+                   if isinstance(node, Element)
+                   and node.tag == "iframe"
+                   and "src" in node.attributes]
+        for iframe in iframes:
+            document_url = resolve_url(iframe.attributes["src"],
+                self.tab.document.url)
+            iframe.document = Document(self.tab)
+            iframe.document.load(document_url)
 
         self.tab.set_needs_render()
 
