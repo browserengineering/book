@@ -34,13 +34,13 @@ from lab11 import draw_text, get_font, linespace, \
     parse_blend_mode, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
-from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
+from lab13 import USE_BROWSER_THREAD, diff_styles, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
     CommitData, add_parent_pointers, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
-    REFRESH_RATE_SEC, HSTEP, VSTEP
+    REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE
 from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, DrawRect, \
     outline_cmd, is_focused, paint_outline, has_outline, \
     device_px, style_length, cascade_priority, style, \
@@ -868,12 +868,142 @@ class CSSParser:
                     break
         return rules
 
+class JSContext:
+    def __init__(self, document, tab):
+        self.document = document
+        self.tab = tab
+
+        self.interp = dukpy.JSInterpreter()
+        self.interp.export_function("log", print)
+        self.interp.export_function("querySelectorAll",
+            self.querySelectorAll)
+        self.interp.export_function("getAttribute",
+            self.getAttribute)
+        self.interp.export_function("innerHTML_set", self.innerHTML_set)
+        self.interp.export_function("style_set", self.style_set)
+        self.interp.export_function("XMLHttpRequest_send",
+            self.XMLHttpRequest_send)
+        self.interp.export_function("setTimeout",
+            self.setTimeout)
+        self.interp.export_function("now",
+            self.now)
+        self.interp.export_function("requestAnimationFrame",
+            self.requestAnimationFrame)
+        self.interp.export_function("frameElement", self.frameElement)
+        self.interp.export_function("parent", self.parent)
+        with open("runtime15.js") as f:
+            self.interp.evaljs(f.read())
+
+        self.node_to_handle = {}
+        self.handle_to_node = {}
+
+    def run(self, script, code):
+        try:
+            print("Script returned: ", self.interp.evaljs(code))
+        except dukpy.JSRuntimeError as e:
+            print("Script", script, "crashed", e)
+
+    def dispatch_event(self, type, elt):
+        handle = self.node_to_handle.get(elt, -1)
+        do_default = self.interp.evaljs(
+            EVENT_DISPATCH_CODE, type=type, handle=handle)
+        return not do_default
+
+    def get_handle(self, elt):
+        if elt not in self.node_to_handle:
+            handle = len(self.node_to_handle)
+            self.node_to_handle[elt] = handle
+            self.handle_to_node[handle] = elt
+        else:
+            handle = self.node_to_handle[elt]
+        return handle
+
+    def querySelectorAll(self, selector_text):
+        selector = CSSParser(selector_text).selector()
+        nodes = [node for node
+                 in tree_to_list(self.tab.nodes, [])
+                 if selector.matches(node)]
+        return [self.get_handle(node) for node in nodes]
+
+    def getAttribute(self, handle, attr):
+        elt = self.handle_to_node[handle]
+        return elt.attributes.get(attr, None)
+
+    def frameElement(self):
+        print('frameElement')
+        if not self.document.frame_element:
+            return None
+        handle = self.document.parent_document.js.get_handle(self.document.frame_element)
+        print(handle)
+        return handle
+
+    def parent(self):
+        pass
+
+    def innerHTML_set(self, handle, s):
+        doc = HTMLParser(
+            "<html><body>" + s + "</body></html>").parse()
+        new_nodes = doc.children[0].children
+        elt = self.handle_to_node[handle]
+        elt.children = new_nodes
+        for child in elt.children:
+            child.parent = elt
+        self.tab.set_needs_render()
+
+    def style_set(self, handle, s):
+        elt = self.handle_to_node[handle]
+        elt.attributes["style"] = s;
+        self.tab.set_needs_render()
+
+    def dispatch_settimeout(self, handle):
+        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+
+    def setTimeout(self, handle, time):
+        def run_callback():
+            task = Task(self.dispatch_settimeout, handle)
+            self.tab.task_runner.schedule_task(task)
+        threading.Timer(time / 1000.0, run_callback).start()
+
+    def dispatch_xhr_onload(self, out, handle):
+        do_default = self.interp.evaljs(
+            XHR_ONLOAD_CODE, out=out, handle=handle)
+
+    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+        full_url = resolve_url(url, self.tab.url)
+        if not self.tab.allowed_request(full_url):
+            raise Exception("Cross-origin XHR blocked by CSP")
+        if url_origin(full_url) != url_origin(self.tab.url):
+            raise Exception(
+                "Cross-origin XHR request not allowed")
+
+        def run_load():
+            headers, response = request(
+                full_url, self.tab.url, payload=body)
+            task = Task(self.dispatch_xhr_onload, response, handle)
+            self.tab.task_runner.schedule_task(task)
+            if not isasync:
+                return response
+
+        if not isasync:
+            return run_load()
+        else:
+            threading.Thread(target=run_load).start()
+
+    def now(self):
+        return int(time.time() * 1000)
+
+    def requestAnimationFrame(self):
+        self.tab.browser.set_needs_animation_frame(self.tab)
+
+
 class Document:
-    def __init__(self, tab):
+    def __init__(self, tab, parent_document, frame_element):
         self.tab = tab
         self.document_layout = None
         self.nodes = None
         self.url = None
+        self.parent_document = parent_document
+        self.frame_element = frame_element
 
         with open("browser15.css") as f:
             self.default_style_sheet = \
@@ -899,7 +1029,7 @@ class Document:
 
         self.nodes = HTMLParser(body).parse()
 
-        self.js = JSContext(self)
+        self.js = JSContext(self, self.tab)
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
                    if isinstance(node, Element)
@@ -913,7 +1043,7 @@ class Document:
 
             header, body = request(script_url, url)
             task = Task(self.js.run, script_url, body)
-            self.task_runner.schedule_task(task)
+            self.tab.task_runner.schedule_task(task)
 
         self.rules = self.default_style_sheet.copy()
         links = [node.attributes["href"]
@@ -959,7 +1089,7 @@ class Document:
         for iframe in iframes:
             document_url = resolve_url(iframe.attributes["src"],
                 self.tab.document.url)
-            iframe.document = Document(self.tab)
+            iframe.document = Document(self.tab, self, iframe)
             iframe.document.load(document_url)
 
         self.tab.set_needs_render()
@@ -1029,7 +1159,7 @@ class Tab:
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
         self.scroll_changed_in_tab = True
-        self.document = Document(self)
+        self.document = Document(self, None, None)
         self.document.load(url, body)
 
         self.set_needs_render()
