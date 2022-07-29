@@ -40,6 +40,7 @@ a:-internal-accessibility-hover {
 
 iframe {
     outline: 2px solid black;
+    overflow: clip;
 }
 
 @media (prefers-color-scheme: dark) {

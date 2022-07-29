@@ -152,11 +152,11 @@ class DocumentLayout:
         self.children = []
         self.tab = tab
 
-    def layout(self, zoom):
+    def layout(self, zoom, width):
         child = BlockLayout(self.node, self, None, self.tab)
         self.children.append(child)
 
-        self.width = WIDTH - 2 * device_px(HSTEP, zoom)
+        self.width = width - 2 * device_px(HSTEP, zoom)
         self.x = device_px(HSTEP, zoom)
         self.y = device_px(VSTEP, zoom)
         child.layout(zoom)
@@ -653,7 +653,7 @@ class IframeLayout:
             self.x = self.parent.x
 
         self.node.document.style()
-        self.node.document.layout(zoom)
+        self.node.document.layout(zoom, self.width, self.height)
 
     def paint(self, display_list):
         cmds = []
@@ -668,7 +668,7 @@ class IframeLayout:
                 self.node.style.get("border-radius", "0px")[:-2])
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
-        self.node.document.paint(display_list)
+        self.node.document.paint(cmds)
 
         paint_outline(self.node, cmds, rect)
 
@@ -969,9 +969,9 @@ class Document:
             sorted(self.rules,
                 key=cascade_priority), self.tab)
 
-    def layout(self, zoom):
+    def layout(self, zoom, width, height):
         self.document_layout = DocumentLayout(self.nodes, self.tab)
-        self.document_layout.layout(zoom)
+        self.document_layout.layout(zoom, width)
 
     def build_accessibility_tree(self):
         self.accessibility_tree = AccessibilityNode(self.nodes)
@@ -1151,7 +1151,7 @@ class Tab:
             self.needs_style = False
 
         if self.needs_layout:
-            self.document.layout(self.zoom)
+            self.document.layout(self.zoom, WIDTH, HEIGHT)
             if self.accessibility_is_on:
                 self.needs_accessibility = True
             else:
