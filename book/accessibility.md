@@ -91,15 +91,15 @@ to a web application that doesn't have a batch mode.
 
 [^moral]: We have an ethical responsibility to help all users. Plus,
     there is the practical matter that if you're making a web page,
-    it's because you want people using it, presumably as many as
-    possible.
+    it's because you want as many people as possible to benefit from
+    it.
 
 Moreover, accessibility derives from the same [principles](intro.md)
 that birthed the web: user control, multi-modal content, and
 interoperability. These principles allowed the web to be accessible to
-different browsers and different operating systems, and these same
-principles likewise make the web accessible to different people with
-different abilities.
+all types of browsers and operating systems, and *these same
+principles* likewise make the web accessible to people of all types
+and abilities.
 
 CSS zoom
 ========
