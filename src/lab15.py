@@ -653,7 +653,7 @@ class IframeLayout:
             self.x = self.parent.x
 
         self.node.document.style()
-        self.node.document.layout(zoom, self.width, self.height)
+        self.node.document.layout(zoom, self.width)
 
     def paint(self, display_list):
         cmds = []
@@ -969,7 +969,7 @@ class Document:
             sorted(self.rules,
                 key=cascade_priority), self.tab)
 
-    def layout(self, zoom, width, height):
+    def layout(self, zoom, width):
         self.document_layout = DocumentLayout(self.nodes, self.tab)
         self.document_layout.layout(zoom, width)
 
@@ -1151,7 +1151,7 @@ class Tab:
             self.needs_style = False
 
         if self.needs_layout:
-            self.document.layout(self.zoom, WIDTH, HEIGHT)
+            self.document.layout(self.zoom, WIDTH)
             if self.accessibility_is_on:
                 self.needs_accessibility = True
             else:

@@ -83,4 +83,4 @@ function setup_close() {
     }
 }
 
-window.addEventListener("load", setup_close);
+window.addEventListener("DOMContentLoaded", setup_close);
