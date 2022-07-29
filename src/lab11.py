@@ -551,8 +551,6 @@ def paint_visual_effects(node, cmds, rect):
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
         needs_clip or opacity != 1.0
 
-    if needs_clip:
-        print(node)
     return [
         SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
             ClipRRect(rect, clip_radius,
