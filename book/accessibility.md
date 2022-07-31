@@ -91,7 +91,7 @@ to a web application that doesn't have a batch mode.
 
 [^moral]: We have an ethical responsibility to help all users. Plus,
     there is the practical matter that if you're making a web page,
-    it's because you want as many people as possible to benefit from
+    you want as many people as possible to benefit from
     it.
 
 Moreover, accessibility derives from the same [principles](intro.md)
