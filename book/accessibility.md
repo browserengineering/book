@@ -32,7 +32,7 @@ web page with their keyboard, by voice, or using some kind of helper
 software.
 
 [^other-defs]: Accessibility can also be defined from the developer's
-    point of view, [in which case][mdn-def] it's something like the
+    point of view, [in which case][mdn-def] it's something like: the
     ways you can make your web pages easy to use for as many people as
     possible.
 
