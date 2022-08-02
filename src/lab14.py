@@ -675,29 +675,25 @@ def speak_text(text):
     os.remove(SPEECH_FILE)
 
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
-
-class TagSelector:
-    def __init__(self, tag):
-        self.tag = tag
-        self.priority = 1
-        self.pseudoclass = None
-
-    def set_pseudoclass(self, pseudoclass):
+    
+class PseudoclassSelector:
+    def __init__(self, pseudoclass, base):
         self.pseudoclass = pseudoclass
+        self.base = base
+        self.priority = self.base.priority
 
     def matches(self, node):
-        tag_match = isinstance(node, Element) and self.tag == node.tag
-        if not tag_match: return False
-        if not self.pseudoclass: return True
+        if not self.base.matches(node):
+            return False
         if self.pseudoclass == "focus":
             return is_focused(node)
         elif self.pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
             return hasattr(node, "is_hovered") and node.is_hovered
+        else:
+            return False
 
     def __repr__(self):
-        return ("TagSelector(tag={}, priority={} " +
-            "pseudoclass={})").format(
-            self.tag, self.priority, self.pseudoclass)
+        return "PseudoclassSelector({}, {})".format(self.pseudoclass, self.base)
 
 class CSSParser:
     def __init__(self, s):
@@ -772,26 +768,20 @@ class CSSParser:
                     break
         return pairs
 
-    def try_pseudoclass(self, is_internal):
-        if self.i == len(self.s):
-            return None
-        if self.s[self.i] != ":":
-            return None
-        self.i += 1
-        word = self.word().lower()
-        if word == INTERNAL_ACCESSIBILITY_HOVER and not is_internal:
-            return "IGNORED"
-        else:
-            return word
+    def simple_selector(self, is_internal):
+        out = TagSelector(self.word().lower())
+        if self.i < len(self.s) and self.s[self.i] == ":":
+            self.literal(":")
+            pseudoclass = self.word().lower()
+            if pseudoclass != INTERNAL_ACCESSIBILITY_HOVER or is_internal:
+                out = PseudoclassSelector(pseudoclass, out)
+        return out
 
     def selector(self, is_internal):
-        out = TagSelector(self.word().lower())
-        out.set_pseudoclass(self.try_pseudoclass(is_internal))
+        out = self.simple_selector(is_internal)
         self.whitespace()
         while self.i < len(self.s) and self.s[self.i] != "{":
-            descendant = TagSelector(self.word().lower())
-            descendant.set_pseudoclass(
-                self.try_pseudoclass(is_internal))
+            descendant = self.simple_selector(is_internal)
             out = DescendantSelector(out, descendant)
             self.whitespace()
         return out
