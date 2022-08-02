@@ -773,8 +773,9 @@ class CSSParser:
         if self.i < len(self.s) and self.s[self.i] == ":":
             self.literal(":")
             pseudoclass = self.word().lower()
-            if pseudoclass != INTERNAL_ACCESSIBILITY_HOVER or is_internal:
-                out = PseudoclassSelector(pseudoclass, out)
+            if pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
+                assert is_internal
+            out = PseudoclassSelector(pseudoclass, out)
         return out
 
     def selector(self, is_internal):

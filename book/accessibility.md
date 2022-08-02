@@ -1714,57 +1714,57 @@ class LineLayout:
 ```
 
 Now for adding support for `:focus`. The first step will be teaching
-`CSSParser` how to parse it.  Let's start by providing a way to mark a
-`TagSelector` as needing a pseudoclass to also be set in order to apply:
-
-``` {.python}
-class TagSelector:
-    def __init__(self, tag):
-        # ...
-        self.pseudoclass = None
-
-    def set_pseudoclass(self, pseudoclass):
-        self.pseudoclass = pseudoclass
-
-    def matches(self, node):
-        tag_match = isinstance(node, Element) and self.tag == node.tag
-        if not tag_match: return False
-        if not self.pseudoclass: return True
-        if self.pseudoclass == "focus":
-            return is_focused(node)
-
-    def __repr__(self):
-        return ("TagSelector(tag={}, priority={} " +
-            "pseudoclass={})").format(
-            self.tag, self.priority, self.pseudoclass)
-```
-
-In `CSSParser`, we first need to write a method that consumes a pseudoclass
-string if the `:` separator was found:
-
-``` {.python expected=False}
-class CSSParser:
-    def try_pseudoclass(self):
-        if self.i == len(self.s):
-            return None
-        if self.s[self.i] != ":":
-            return None
-        self.i += 1
-        return self.word().lower()
-```
-
-And then call it in `selector`:
+`CSSParser` how to parse it. To do that, let's change `selector` to
+call a new `simple_selector` subroutine to parse a tag name and a
+possible pseudoclass:
 
 ``` {.python expected=False}
 class CSSParser:
     def selector(self):
-        out = TagSelector(self.word().lower())
-        out.set_pseudoclass(self.try_pseudoclass())
+        out = self.simple_selector()
         # ...
         while self.i < len(self.s) and self.s[self.i] != "{":
-            descendant = TagSelector(self.word().lower())
-            descendant.set_pseudoclass(self.try_pseudoclass())
+            descendant = self.simple_selector()
             # ...
+```
+
+In `simple_selector`, the parser first parses a tag name and then
+checks if that's followed by a colon and a pseudoclass name:
+
+``` {.python expected=False}
+class CSSParser:
+    def simple_selector(self):
+        out = TagSelector(self.word().lower())
+        if self.i < len(self.s) and self.s[self.i] == ":":
+            self.literal(":")
+            pseudoclass = self.word().lower()
+            out = PseudoclassSelector(pseudoclass, out)
+        return out
+```
+
+A `PseudoclassSelector` wraps another selector; it checks that base
+selector but also a pseudoclass.
+
+``` {.python}
+class PseudoclassSelector:
+    def __init__(self, pseudoclass, base):
+        self.pseudoclass = pseudoclass
+        self.base = base
+        self.priority = self.base.priority
+```
+
+Matching is straightforward; if the pseudoclass is unknown, the
+selector fails to match anything:
+
+``` {.python}}
+class PseudoclassSelector:
+    def matches(self, node):
+        if not self.base.matches(node):
+            return False
+        if self.pseudoclass == "focus":
+            return is_focused(node)
+        else:
+            return False
 ```
 
 And that's it! Elegant, right?
@@ -1837,7 +1837,7 @@ And match it in `TagSelector`:
 ``` {.python}
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 # ...
-class TagSelector:
+class PseudoclassSelector:
     # ...
     def matches(self, node):
         # ...
@@ -1852,20 +1852,20 @@ true then internal pseudo-classes are ignored:
 ``` {.python}
 class CSSParser:
     # ...
-    def try_pseudoclass(self, is_internal):
-        # ...
-        word = self.word().lower()
-        if word == INTERNAL_ACCESSIBILITY_HOVER and not is_internal:
-            return "IGNORED"
-        else:
-            return word
+    def simple_selector(self, is_internal):
+        if self.i < len(self.s) and self.s[self.i] == ":":
+            # ...
+            if pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
+                assert is_internal
+            # ...
 
     def selector(self, is_internal):
+        out = self.simple_selector(is_internal)
         # ...
-        out.set_pseudoclass(self.try_pseudoclass(is_internal))
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            descendant = self.simple_selector(is_internal)
+            # ...
         # ...
-            descendant.set_pseudoclass(
-                self.try_pseudoclass(is_internal))
 
     def parse(self, is_internal=False):
         # ...
