@@ -216,8 +216,8 @@ But when we toggle to dark, it switches:
 
 The rules parsed by the browser style sheet should also indicate dark mode:
 
-    >>> for selector, body, preferred_color_scheme in browser.tabs[0].rules:
-    ...     if preferred_color_scheme == "dark":
+    >>> for guard, selector, body in browser.tabs[0].rules:
+    ...     if guard == "dark":
     ...         print(str(selector) + " " + str(body))
     TagSelector(tag=a, priority=1) {'color': 'lightblue'}
     TagSelector(tag=input, priority=1) {'background-color': 'blue'}

@@ -386,7 +386,7 @@ def style_length(node, style_name, default_value, zoom):
         else default_value
 
 def cascade_priority(rule):
-    selector, body, preferred_color_scheme = rule
+    media, selector, body = rule
     return selector.priority
 
 def style(node, rules, tab):
@@ -398,10 +398,9 @@ def style(node, rules, tab):
             node.style[property] = node.parent.style[property]
         else:
             node.style[property] = default_value
-    for selector, body, preferred_color_scheme in rules:
-        if preferred_color_scheme:
-            if (preferred_color_scheme == "dark") != \
-                tab.dark_mode: continue
+    for media, selector, body in rules:
+        if media:
+            if (media == "dark") != tab.dark_mode: continue
         if not selector.matches(node): continue
         for property, value in body.items():
             computed_value = compute_style(node, property, value)
@@ -699,7 +698,6 @@ class CSSParser:
     def __init__(self, s, internal=False):
         self.s = s
         self.i = 0
-        self.preferred_color_scheme = None
         self.is_internal = internal
 
     def whitespace(self):
@@ -788,52 +786,40 @@ class CSSParser:
             self.whitespace()
         return out
 
-    def try_media_query(self):
-        if self.i == len(self.s):
-            return
-
-        if self.s[self.i] == "@":
-            self.literal("@")
-            media = self.word()
-            assert media == "media"
-            self.whitespace()
-            self.literal("(")
-            (prop, val) = self.pair(")")
-            assert prop == "prefers-color-scheme"
-            assert val == "dark" or val == "light"
-            self.whitespace()
-            self.literal(")")
-            self.whitespace()
-            self.literal("{")
-            self.preferred_color_scheme = val
-            return True
-
-    def try_end_media_query(self):
-        if self.i == len(self.s):
-            return
-
-        if not self.preferred_color_scheme:
-            return
-        if self.s[self.i] == "}":
-            self.literal("}")
-            self.preferred_color_scheme = None
-            return True
+    def media_query(self):
+        self.literal("@")
+        assert self.word() == "media"
+        self.whitespace()
+        self.literal("(")
+        (prop, val) = self.pair(")")
+        self.whitespace()
+        self.literal(")")
+        if prop == "prefers-color-scheme" and val in ["dark", "light"]:
+            return val
+        else:
+            return None
 
     def parse(self):
         rules = []
+        media = None
         while self.i < len(self.s):
             try:
                 self.whitespace()
-                if self.try_media_query(): continue
-                if self.try_end_media_query(): continue
-
-                selector = self.selector()
-                self.literal("{")
-                self.whitespace()
-                body = self.body()
-                self.literal("}")
-                rules.append(
-                    (selector, body, self.preferred_color_scheme))
+                assert self.i < len(self.s)
+                if self.s[self.i] == "@" and not media:
+                    media = self.media_query()
+                    self.whitespace()
+                    self.literal("{")
+                elif self.s[self.i] == "}" and media:
+                    self.literal("}")
+                    media = None
+                else:
+                    selector = self.selector()
+                    self.literal("{")
+                    self.whitespace()
+                    body = self.body()
+                    self.literal("}")
+                    rules.append((media, selector, body))
             except AssertionError:
                 why = self.ignore_until(["}"])
                 if why == "}":

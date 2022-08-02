@@ -1961,36 +1961,18 @@ Parsing requires looking for media query syntax:
 
 ``` {.python}
 class CSSParser:
-    def try_media_query(self):
-        if self.i == len(self.s):
-            return
-
-        if self.s[self.i] == "@":
-            self.literal("@")
-            media = self.word()
-            assert media == "media"
-            self.whitespace()
-            self.literal("(")
-            (prop, val) = self.pair(")")
-            assert prop == "prefers-color-scheme"
-            assert val == "dark" or val == "light"
-            self.whitespace()
-            self.literal(")")
-            self.whitespace()
-            self.literal("{")
-            self.preferred_color_scheme = val
-            return True
-
-    def try_end_media_query(self):
-        if self.i == len(self.s):
-            return
-
-        if not self.preferred_color_scheme:
-            return
-        if self.s[self.i] == "}":
-            self.literal("}")
-            self.preferred_color_scheme = None
-            return True
+    def media_query(self):
+        self.literal("@")
+        assert self.word() == "media"
+        self.whitespace()
+        self.literal("(")
+        (prop, val) = self.pair(")")
+        self.whitespace()
+        self.literal(")")
+        if prop == "prefers-color-scheme" and val in ["dark", "light"]:
+            return val
+        else:
+            return None
 ```
 
 Here I made a modification to `pair` to accept an end character other than
@@ -2017,14 +1999,21 @@ And then looking for it in each loop of `parse`:
 class CSSParser:
     def parse(self):
         # ...
+        media = None
         while self.i < len(self.s):
             try:
                 self.whitespace()
-                if self.try_media_query(): continue
-                if self.try_end_media_query(): continue
-                # ...
-                rules.append(
-                    (selector, body, self.preferred_color_scheme))
+                assert self.i < len(self.s)
+                if self.s[self.i] == "@" and not media:
+                    media = self.media_query()
+                    self.whitespace()
+                    self.literal("{")
+                elif self.s[self.i] == "}" and media:
+                    self.literal("}")
+                    media = None
+                else:
+                    # ...
+                    rules.append((media, selector, body))
 ```
 
 The `style` method also needs to understand dark mode rules:
@@ -2032,10 +2021,9 @@ The `style` method also needs to understand dark mode rules:
 ``` {.python}
 def style(node, rules, tab):
     # ...
-    for selector, body, preferred_color_scheme in rules:
-        if preferred_color_scheme:
-            if (preferred_color_scheme == "dark") != \
-                tab.dark_mode: continue
+    for media, selector, body in rules:
+        if media:
+            if (media == "dark") != tab.dark_mode: continue
         # ...
 ```
 
