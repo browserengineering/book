@@ -1718,7 +1718,7 @@ Now for adding support for `:focus`. The first step will be teaching
 call a new `simple_selector` subroutine to parse a tag name and a
 possible pseudoclass:
 
-``` {.python expected=False}
+``` {.python}
 class CSSParser:
     def selector(self):
         out = self.simple_selector()
@@ -1731,7 +1731,7 @@ class CSSParser:
 In `simple_selector`, the parser first parses a tag name and then
 checks if that's followed by a colon and a pseudoclass name:
 
-``` {.python expected=False}
+``` {.python}
 class CSSParser:
     def simple_selector(self):
         out = TagSelector(self.word().lower())
@@ -1756,7 +1756,7 @@ class PseudoclassSelector:
 Matching is straightforward; if the pseudoclass is unknown, the
 selector fails to match anything:
 
-``` {.python}}
+``` {.python}
 class PseudoclassSelector:
     def matches(self, node):
         if not self.base.matches(node):
@@ -1845,31 +1845,22 @@ class PseudoclassSelector:
             return hasattr(node, "is_hovered") and node.is_hovered
 ```
 
-The only step remaining is to restrict to the browser style sheet. That
-requires passing around an `is_internal` flag in `CSSParser`. If it's not
-true then internal pseudo-classes are ignored:
+The only step remaining is to restrict to the browser style sheet.
+I'll do that with an optional flag on `CSSParser`. When set, internal
+pseudo-classes are allowed; otherwise they are errors:
 
 ``` {.python}
 class CSSParser:
-    # ...
-    def simple_selector(self, is_internal):
+    def __init__(self, s, internal=False):
+        # ...
+        self.is_internal = internal
+
+    def simple_selector(self):
         if self.i < len(self.s) and self.s[self.i] == ":":
             # ...
             if pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-                assert is_internal
+                assert self.is_internal
             # ...
-
-    def selector(self, is_internal):
-        out = self.simple_selector(is_internal)
-        # ...
-        while self.i < len(self.s) and self.s[self.i] != "{":
-            descendant = self.simple_selector(is_internal)
-            # ...
-        # ...
-
-    def parse(self, is_internal=False):
-        # ...
-                selector = self.selector(is_internal)
 ```
 
 And then parsing the browser style sheet:
@@ -1880,7 +1871,7 @@ class Tab:
         # ...
         with open("browser14.css") as f:
             self.default_style_sheet = \
-                CSSParser(f.read()).parse(is_internal=True)
+                CSSParser(f.read(), internal=True).parse()
 ```
 
 
@@ -2022,7 +2013,7 @@ class CSSParser:
 
 And then looking for it in each loop of `parse`:
 
-``` {.python expected=False}
+``` {.python}
 class CSSParser:
     def parse(self):
         # ...

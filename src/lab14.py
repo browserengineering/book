@@ -696,10 +696,11 @@ class PseudoclassSelector:
         return "PseudoclassSelector({}, {})".format(self.pseudoclass, self.base)
 
 class CSSParser:
-    def __init__(self, s):
+    def __init__(self, s, internal=False):
         self.s = s
         self.i = 0
         self.preferred_color_scheme = None
+        self.is_internal = internal
 
     def whitespace(self):
         while self.i < len(self.s) and self.s[self.i].isspace():
@@ -768,21 +769,21 @@ class CSSParser:
                     break
         return pairs
 
-    def simple_selector(self, is_internal):
+    def simple_selector(self):
         out = TagSelector(self.word().lower())
         if self.i < len(self.s) and self.s[self.i] == ":":
             self.literal(":")
             pseudoclass = self.word().lower()
             if pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-                assert is_internal
+                assert self.is_internal
             out = PseudoclassSelector(pseudoclass, out)
         return out
 
-    def selector(self, is_internal):
-        out = self.simple_selector(is_internal)
+    def selector(self):
+        out = self.simple_selector()
         self.whitespace()
         while self.i < len(self.s) and self.s[self.i] != "{":
-            descendant = self.simple_selector(is_internal)
+            descendant = self.simple_selector()
             out = DescendantSelector(out, descendant)
             self.whitespace()
         return out
@@ -818,7 +819,7 @@ class CSSParser:
             self.preferred_color_scheme = None
             return True
 
-    def parse(self, is_internal=False):
+    def parse(self):
         rules = []
         while self.i < len(self.s):
             try:
@@ -826,7 +827,7 @@ class CSSParser:
                 if self.try_media_query(): continue
                 if self.try_end_media_query(): continue
 
-                selector = self.selector(is_internal)
+                selector = self.selector()
                 self.literal("{")
                 self.whitespace()
                 body = self.body()
@@ -877,7 +878,7 @@ class Tab:
 
         with open("browser14.css") as f:
             self.default_style_sheet = \
-                CSSParser(f.read()).parse(is_internal=True)
+                CSSParser(f.read(), internal=True).parse()
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
