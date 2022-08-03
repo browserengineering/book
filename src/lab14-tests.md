@@ -216,16 +216,16 @@ But when we toggle to dark, it switches:
 
 The rules parsed by the browser style sheet should also indicate dark mode:
 
-    >>> for selector, body, preferred_color_scheme in browser.tabs[0].rules:
-    ...     if preferred_color_scheme == "dark":
+    >>> for guard, selector, body in browser.tabs[0].rules:
+    ...     if guard == "dark":
     ...         print(str(selector) + " " + str(body))
-    TagSelector(tag=a, priority=1 pseudoclass=None) {'color': 'lightblue'}
-    TagSelector(tag=input, priority=1 pseudoclass=None) {'background-color': 'blue'}
-    TagSelector(tag=button, priority=1 pseudoclass=None) {'background-color': 'orangered'}
-    TagSelector(tag=input, priority=1 pseudoclass=focus) {'outline': '2px solid white'}
-    TagSelector(tag=button, priority=1 pseudoclass=focus) {'outline': '2px solid white'}
-    TagSelector(tag=div, priority=1 pseudoclass=focus) {'outline': '2px solid white'}
-    TagSelector(tag=a, priority=1 pseudoclass=focus) {'outline': '2px solid white'}
+    TagSelector(tag=a, priority=1) {'color': 'lightblue'}
+    TagSelector(tag=input, priority=1) {'background-color': 'blue'}
+    TagSelector(tag=button, priority=1) {'background-color': 'orangered'}
+    PseudoclassSelector(focus, TagSelector(tag=input, priority=1)) {'outline': '2px solid white'}
+    PseudoclassSelector(focus, TagSelector(tag=button, priority=1)) {'outline': '2px solid white'}
+    PseudoclassSelector(focus, TagSelector(tag=div, priority=1)) {'outline': '2px solid white'}
+    PseudoclassSelector(focus, TagSelector(tag=a, priority=1)) {'outline': '2px solid white'}
 
 Focus
 =====

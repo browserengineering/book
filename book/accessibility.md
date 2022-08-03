@@ -1714,57 +1714,57 @@ class LineLayout:
 ```
 
 Now for adding support for `:focus`. The first step will be teaching
-`CSSParser` how to parse it.  Let's start by providing a way to mark a
-`TagSelector` as needing a pseudoclass to also be set in order to apply:
+`CSSParser` how to parse it. To do that, let's change `selector` to
+call a new `simple_selector` subroutine to parse a tag name and a
+possible pseudoclass:
 
 ``` {.python}
-class TagSelector:
-    def __init__(self, tag):
-        # ...
-        self.pseudoclass = None
-
-    def set_pseudoclass(self, pseudoclass):
-        self.pseudoclass = pseudoclass
-
-    def matches(self, node):
-        tag_match = isinstance(node, Element) and self.tag == node.tag
-        if not tag_match: return False
-        if not self.pseudoclass: return True
-        if self.pseudoclass == "focus":
-            return is_focused(node)
-
-    def __repr__(self):
-        return ("TagSelector(tag={}, priority={} " +
-            "pseudoclass={})").format(
-            self.tag, self.priority, self.pseudoclass)
-```
-
-In `CSSParser`, we first need to write a method that consumes a pseudoclass
-string if the `:` separator was found:
-
-``` {.python expected=False}
-class CSSParser:
-    def try_pseudoclass(self):
-        if self.i == len(self.s):
-            return None
-        if self.s[self.i] != ":":
-            return None
-        self.i += 1
-        return self.word().lower()
-```
-
-And then call it in `selector`:
-
-``` {.python expected=False}
 class CSSParser:
     def selector(self):
-        out = TagSelector(self.word().lower())
-        out.set_pseudoclass(self.try_pseudoclass())
+        out = self.simple_selector()
         # ...
         while self.i < len(self.s) and self.s[self.i] != "{":
-            descendant = TagSelector(self.word().lower())
-            descendant.set_pseudoclass(self.try_pseudoclass())
+            descendant = self.simple_selector()
             # ...
+```
+
+In `simple_selector`, the parser first parses a tag name and then
+checks if that's followed by a colon and a pseudoclass name:
+
+``` {.python}
+class CSSParser:
+    def simple_selector(self):
+        out = TagSelector(self.word().lower())
+        if self.i < len(self.s) and self.s[self.i] == ":":
+            self.literal(":")
+            pseudoclass = self.word().lower()
+            out = PseudoclassSelector(pseudoclass, out)
+        return out
+```
+
+A `PseudoclassSelector` wraps another selector; it checks that base
+selector but also a pseudoclass.
+
+``` {.python}
+class PseudoclassSelector:
+    def __init__(self, pseudoclass, base):
+        self.pseudoclass = pseudoclass
+        self.base = base
+        self.priority = self.base.priority
+```
+
+Matching is straightforward; if the pseudoclass is unknown, the
+selector fails to match anything:
+
+``` {.python}
+class PseudoclassSelector:
+    def matches(self, node):
+        if not self.base.matches(node):
+            return False
+        if self.pseudoclass == "focus":
+            return is_focused(node)
+        else:
+            return False
 ```
 
 And that's it! Elegant, right?
@@ -1832,12 +1832,12 @@ class Tab:
                     self.hovered_node.is_hovered = True
 ```
 
-And match it in `TagSelector`:
+And match it in `PseudoclassSelector`:
 
 ``` {.python}
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 # ...
-class TagSelector:
+class PseudoclassSelector:
     # ...
     def matches(self, node):
         # ...
@@ -1845,31 +1845,22 @@ class TagSelector:
             return hasattr(node, "is_hovered") and node.is_hovered
 ```
 
-The only step remaining is to restrict to the browser style sheet. That
-requires passing around an `is_internal` flag in `CSSParser`. If it's not
-true then internal pseudo-classes are ignored:
+The only step remaining is to restrict to the browser style sheet.
+I'll do that with an optional flag on `CSSParser`. When set, internal
+pseudo-classes are allowed; otherwise they are errors:
 
 ``` {.python}
 class CSSParser:
-    # ...
-    def try_pseudoclass(self, is_internal):
+    def __init__(self, s, internal=False):
         # ...
-        word = self.word().lower()
-        if word == INTERNAL_ACCESSIBILITY_HOVER and not is_internal:
-            return "IGNORED"
-        else:
-            return word
+        self.is_internal = internal
 
-    def selector(self, is_internal):
-        # ...
-        out.set_pseudoclass(self.try_pseudoclass(is_internal))
-        # ...
-            descendant.set_pseudoclass(
-                self.try_pseudoclass(is_internal))
-
-    def parse(self, is_internal=False):
-        # ...
-                selector = self.selector(is_internal)
+    def simple_selector(self):
+        if self.i < len(self.s) and self.s[self.i] == ":":
+            # ...
+            if pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
+                assert self.is_internal
+            # ...
 ```
 
 And then parsing the browser style sheet:
@@ -1880,7 +1871,7 @@ class Tab:
         # ...
         with open("browser14.css") as f:
             self.default_style_sheet = \
-                CSSParser(f.read()).parse(is_internal=True)
+                CSSParser(f.read(), internal=True).parse()
 ```
 
 
@@ -1970,36 +1961,18 @@ Parsing requires looking for media query syntax:
 
 ``` {.python}
 class CSSParser:
-    def try_media_query(self):
-        if self.i == len(self.s):
-            return
-
-        if self.s[self.i] == "@":
-            self.literal("@")
-            media = self.word()
-            assert media == "media"
-            self.whitespace()
-            self.literal("(")
-            (prop, val) = self.pair(")")
-            assert prop == "prefers-color-scheme"
-            assert val == "dark" or val == "light"
-            self.whitespace()
-            self.literal(")")
-            self.whitespace()
-            self.literal("{")
-            self.preferred_color_scheme = val
-            return True
-
-    def try_end_media_query(self):
-        if self.i == len(self.s):
-            return
-
-        if not self.preferred_color_scheme:
-            return
-        if self.s[self.i] == "}":
-            self.literal("}")
-            self.preferred_color_scheme = None
-            return True
+    def media_query(self):
+        self.literal("@")
+        assert self.word() == "media"
+        self.whitespace()
+        self.literal("(")
+        (prop, val) = self.pair(")")
+        self.whitespace()
+        self.literal(")")
+        if prop == "prefers-color-scheme" and val in ["dark", "light"]:
+            return val
+        else:
+            return None
 ```
 
 Here I made a modification to `pair` to accept an end character other than
@@ -2022,18 +1995,25 @@ class CSSParser:
 
 And then looking for it in each loop of `parse`:
 
-``` {.python expected=False}
+``` {.python}
 class CSSParser:
     def parse(self):
         # ...
+        media = None
         while self.i < len(self.s):
             try:
                 self.whitespace()
-                if self.try_media_query(): continue
-                if self.try_end_media_query(): continue
-                # ...
-                rules.append(
-                    (selector, body, self.preferred_color_scheme))
+                assert self.i < len(self.s)
+                if self.s[self.i] == "@" and not media:
+                    media = self.media_query()
+                    self.whitespace()
+                    self.literal("{")
+                elif self.s[self.i] == "}" and media:
+                    self.literal("}")
+                    media = None
+                else:
+                    # ...
+                    rules.append((media, selector, body))
 ```
 
 The `style` method also needs to understand dark mode rules:
@@ -2041,10 +2021,9 @@ The `style` method also needs to understand dark mode rules:
 ``` {.python}
 def style(node, rules, tab):
     # ...
-    for selector, body, preferred_color_scheme in rules:
-        if preferred_color_scheme:
-            if (preferred_color_scheme == "dark") != \
-                tab.dark_mode: continue
+    for media, selector, body in rules:
+        if media:
+            if (media == "dark") != tab.dark_mode: continue
         # ...
 ```
 
