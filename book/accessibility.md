@@ -1832,7 +1832,7 @@ class Tab:
                     self.hovered_node.is_hovered = True
 ```
 
-And match it in `TagSelector`:
+And match it in `PseudoclassSelector`:
 
 ``` {.python}
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
