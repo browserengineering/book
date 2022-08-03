@@ -2080,7 +2080,7 @@ but can it also be made to behave like an input element? That's what the
 [`role`][role] attribute is for: overriding the semantic role of an element
 from its default.
 
-This markup gives a `<div>` a role of [`button`][textbox-role]:
+This markup gives a `<div>` a role of [`button`][button-role]:
 
     <div role=textbox>contents</div>
 
@@ -2091,13 +2091,12 @@ element. The first text child is also reused as the label of the button, and
 all other descendants of the element become presentational. However, all other
 functionality of a `<button>` *does not occur by default*. In particular:
 
- * The elent is not by defafult focusable
+ * The elent is not by defafult focusable.
  * Event handlers for the `<enter>` key or mouse clicks to submit a related
     are not added.
 
-That means that the web application is now responsible for implementing all of
-this correctly, and providing all the right keyboard event handlers via
-JavaScript that the user expects. And if the application doesn't do it, the
+That means that the web application---not the browser---is now responsible for
+implementing all of this correctly. And if the application doesn't do it, the
 user is left confused and sad, because the screen reader will claim the element
 is a button but it doesn't seem to work. That's why it's better for a web
 application author to simply use `<button>` elements---it's all too easy to
@@ -2105,13 +2104,15 @@ accidentally forget to implement something important for those users.
 
 But the `button` role nevertheless exists, so that the web application doesn't
 lose accessibility when the page uses custom widgets for one reason or
-another.^[An unfortunately common reason is a web app that was originally
+another.^[One common reason is a web app that was originally
 built without much attention to accessibility, but needs to be retrofitted.]
 Likewise, there is a `textbox` role that makes an element behave like
-an `<input>` element, but that is even harder for the developer to implement.^
-[Text input, including features like editing partially written text and
-supporting more than one language, is very complicated compared to a button
-click.]
+an `<input>` element.^[Text boxes are even harder for the developer to
+implement, since it needs to include feratures such as editing partially
+written text and supporting more than one language.] There are in total a
+large number of [defined roles][aria-roles-list].
+
+[aria-roles-list]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Techniques
 
 Instead of implementing those not-so-useful `button` and `textbox` roles, let's
 add support for the `alert` role, which *is* quite useful. This role causes the
@@ -2161,8 +2162,8 @@ def announce_text(node):
 ```
 
 These alerts are supposed to happen only when the `role` attribute changes
-to alert^[Or the text contexts of the alert changes, but I won't implement
-that.], so we need a way to detect that an attribute. Actually, there isn't
+to alert,^[Or the text contexts of the alert changes, but I won't implement
+that.] so we need a way to detect that an attribute. changed. But there isn't
 currently a way to change element attributes other than special ones like
 `style`, so let's first implement that. It will need some runtime code:
 
