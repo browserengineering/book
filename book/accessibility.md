@@ -2217,6 +2217,11 @@ class Tab:
         # ...
 ```
 
+You should now be able to load up [this example][alert-example] and hear alert
+text once the button is clicked.
+
+[alert-example]: examples/example14-alert-role.html
+
 [role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles
 
 ::: {.further}
