@@ -1147,9 +1147,6 @@ class Tab:
         if text:
             if not self.browser.is_muted():
                 speak_text(text)
-
-    def speak_focus(self, node):
-        self.speak_node(node, "element focused ")
 ```
 
 And finally there is `speak_update`:
@@ -1164,7 +1161,7 @@ class Tab:
         if self.focus and \
             self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
-            self.speak_focus(self.focus)
+            self.speak_node(node, "element focused ")
 ```
 
 The `speak_update` method can then be called after layout is done:
@@ -1390,7 +1387,7 @@ class Tab:
         if self.focus and \
             self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
-            self.speak_focus(self.focus)
+            self.speak_node(node, "element focused ")
 ```
 
 The accessibility tree also needs access to the geometry of each object. This
@@ -2054,46 +2051,57 @@ indicated.)
 Custom accessibility roles
 ===========================
 
-The accessibility tree can also be customized. For one thing, various CSS
-properties influence whether elements are in the accessibility tree at all. But
-there what about changing the role of an element? For example, tab-index allows
-a `<div>` to participate in focus, but can it also be made to behave like an
-input element? That's what the [`role`][role] attribute is for: overriding the
-semantic role of an element from its default.
+The accessibility tree can also be customized. As I've already explained, HTML
+tags influence it, and various CSS properties such as `visibility` can cause
+nodes to appear or not in the tree. But there what about changing the role of
+an element? For example, tab-index allows a `<div>` to participate in focus,
+but can it also be made to behave like an input element? That's what the
+[`role`][role] attribute is for: overriding the semantic role of an element
+from its default.
 
-This markup gives a `<div>` a role of [`textbox`][textbox-role]:
+This markup gives a `<div>` a role of [`button`][button-role]:
 
     <div role=textbox>contents</div>
 
-Its role  in the accessibility tree now becomes equivalent to an `<input>`
-element. The first text child is also reused as the *value* of the input field
-(a representation of what the user has typed), and pressing `<enter>` submits
-any containing `<form>` element. But more importantly, the element is
-advertised to users of accessibility features as an textbox. For example, when
-the element is read to a person using a screen reader, it is identified as a
-textbox, and the user is therefore encouraged to treat it as such---expecting
-to have all the usual behaviors of an `<input>` element.
+[button-role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/button_role
 
-However, the `role` attribute *does not* affect the element in any other way.
-in particular:
+Its role in the accessibility tree now becomes equivalent to a `<button>`
+element. The first text child is also reused as the label of the button, and
+all other descendants of the element become presentational. However, all other
+functionality of a `<button>` *does not occur by default*. In particular:
 
-* It is not by default focusable.
-* Keyboard events do not modify the text child.
-* Visual rendering is unchanged from a regular `<div>`.
+ * The elent is not by defafult focusable.
+ * Visual styling is unchanged.
+ * Event handlers for form submission, such as the `<enter>` key or mouse click,
+    are not added.
 
-That means that the web page is now responsible for implementing all of this
-correctly, and providing all the right keyboard event handlers via JavaScript
-that the user expects. And if the page doesn't do it, the user is left
-confused and sad. That's why it's better for a web page author to simply
-[use `<input>` elements when possible][use-input]---it's all too easy to
+That means that the web application---not the browser---is now responsible for
+implementing all of this correctly. And if the application doesn't do it, the
+user is left confused and sad, because the screen reader will claim the element
+is a button but it doesn't seem to work. That's why it's better for a web
+application author to simply use `<button>` elements---it's all too easy to
 accidentally forget to implement something important for those users.
 
-[use-input]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/textbox_role
+But the `button` role nevertheless exists, so that the web application doesn't
+lose accessibility when the page uses custom widgets for one reason or
+another.^[One common reason is a web app that was originally
+built without much attention to accessibility, but needs to be retrofitted.]
+Likewise, there is a `textbox` role that makes an element behave like
+an `<input>` element.^[Text boxes are even harder for the developer to
+implement, since support is needed for features such as editing partially
+written text and supporting more than one language.] There are in total a
+large number of [defined roles][aria-roles-list].
 
-But the `role` attribute nevertheless exists, as a way for a page author to not
-lose accessibility when building custom widgets. Implementing the `role`
-attribute is very easy, so let's do that for the `textbox` roles as an
-example. It's as simple as modifying `compute_role`:
+[aria-roles-list]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Techniques
+
+Instead of implementing those not-so-useful `button` and `textbox` roles, let's
+add support for the `alert` role, which *is* quite useful. This role causes the
+text contents of the element to be immediately announced to the user. That's
+super useful, because it allows the web application to tell the user in words
+what might otherwise have been explained in pictures.
+
+Implementing the `role` attribute is very easy. It's as simple as modifying
+`compute_role`:
 
 ``` {.python}
 def compute_role(node):
@@ -2126,14 +2134,74 @@ def announce_text(node):
         text = "Button"
     elif role == "link":
         text = "Link"
+    elif role == "alert":
+        text = "Alert"
     if hasattr(node, "is_focused") and node.is_focused:
         text += " is focused"
     return text
 ```
 
+These alerts are supposed to happen only when the `role` attribute changes
+to alert,^[Or the text contexts of the alert changes, but I won't implement
+that.] so we need a way to detect that an attribute changed. But there isn't
+currently a way to change element attributes other than special ones like
+`style`, so let's first implement that. It will need some runtime code:
+
+``` {.javascript}
+Node.prototype.setAttribute = function(attr, value) {
+    return call_python("setAttribute", this.handle, attr, value);
+}
+```
+
+And also JS to Python bindings. Here is where we'll detect changes of the 
+`role` attribute and notify the `Tab` accordingly:
+
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.interp.export_function("setAttribute",
+            self.setAttribute)
+    # ...
+
+    def setAttribute(self, handle, attr, value):
+        elt = self.handle_to_node[handle]
+        if attr == "role" and value == "alert" and \
+            self.getAttribute(handle, attr) != "alert":
+            self.tab.queue_alert(elt)
+        elt.attributes[attr] = value
+```
+
+Which then queues the alert if accessibility is on:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        self.queued_alerts = []
+
+    def queue_alert(self, alert):
+        if not self.accessibility_is_on:
+            return
+        self.queued_alerts.append(alert)
+        self.set_needs_accessiblity()
+```
+
+And speaks them:
+
+``` {.python}
+class Tab:
+    def speak_update(self):
+        for alert in self.queued_alerts:
+            self.speak_node(alert, "New alert")
+        # ...
+```
+
+You should now be able to load up [this example][alert-example] and hear alert
+text once the button is clicked.
+
+[alert-example]: examples/example14-alert-role.html
 
 [role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles
-[textbox-role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/textbox_role
 
 ::: {.further}
 

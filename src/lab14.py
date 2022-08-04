@@ -618,6 +618,8 @@ def announce_text(node):
         text = "Button"
     elif role == "link":
         text = "Link"
+    elif role == "alert":
+        text = "Alert"
     if hasattr(node, "is_focused") and node.is_focused:
         text += " is focused"
     return text
@@ -829,6 +831,129 @@ class CSSParser:
                     break
         return rules
 
+class JSContext:
+    def __init__(self, tab):
+        self.tab = tab
+
+        self.interp = dukpy.JSInterpreter()
+        self.interp.export_function("log", print)
+        self.interp.export_function("querySelectorAll",
+            self.querySelectorAll)
+        self.interp.export_function("getAttribute",
+            self.getAttribute)
+        self.interp.export_function("setAttribute",
+            self.setAttribute)
+        self.interp.export_function("innerHTML_set", self.innerHTML_set)
+        self.interp.export_function("style_set", self.style_set)
+        self.interp.export_function("XMLHttpRequest_send",
+            self.XMLHttpRequest_send)
+        self.interp.export_function("setTimeout",
+            self.setTimeout)
+        self.interp.export_function("now",
+            self.now)
+        self.interp.export_function("requestAnimationFrame",
+            self.requestAnimationFrame)
+        with open("runtime14.js") as f:
+            self.interp.evaljs(f.read())
+
+        self.node_to_handle = {}
+        self.handle_to_node = {}
+
+    def run(self, script, code):
+        try:
+            print("Script returned: ", self.interp.evaljs(code))
+        except dukpy.JSRuntimeError as e:
+            print("Script", script, "crashed", e)
+
+    def dispatch_event(self, type, elt):
+        handle = self.node_to_handle.get(elt, -1)
+        do_default = self.interp.evaljs(
+            EVENT_DISPATCH_CODE, type=type, handle=handle)
+        return not do_default
+
+    def get_handle(self, elt):
+        if elt not in self.node_to_handle:
+            handle = len(self.node_to_handle)
+            self.node_to_handle[elt] = handle
+            self.handle_to_node[handle] = elt
+        else:
+            handle = self.node_to_handle[elt]
+        return handle
+
+    def querySelectorAll(self, selector_text):
+        selector = CSSParser(selector_text).selector(is_internal=False)
+        nodes = [node for node
+                 in tree_to_list(self.tab.nodes, [])
+                 if selector.matches(node)]
+        return [self.get_handle(node) for node in nodes]
+
+    def getAttribute(self, handle, attr):
+        elt = self.handle_to_node[handle]
+        attr = elt.attributes.get(attr, None)
+        return attr if attr else ""
+
+    def setAttribute(self, handle, attr, value):
+        elt = self.handle_to_node[handle]
+        if attr == "role" and value == "alert" and \
+            self.getAttribute(handle, attr) != "alert":
+            self.tab.queue_alert(elt)
+        elt.attributes[attr] = value
+        
+    def innerHTML_set(self, handle, s):
+        doc = HTMLParser(
+            "<html><body>" + s + "</body></html>").parse()
+        new_nodes = doc.children[0].children
+        elt = self.handle_to_node[handle]
+        elt.children = new_nodes
+        for child in elt.children:
+            child.parent = elt
+        self.tab.set_needs_render()
+
+    def style_set(self, handle, s):
+        elt = self.handle_to_node[handle]
+        elt.attributes["style"] = s;
+        self.tab.set_needs_render()
+
+    def dispatch_settimeout(self, handle):
+        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+
+    def setTimeout(self, handle, time):
+        def run_callback():
+            task = Task(self.dispatch_settimeout, handle)
+            self.tab.task_runner.schedule_task(task)
+        threading.Timer(time / 1000.0, run_callback).start()
+
+    def dispatch_xhr_onload(self, out, handle):
+        do_default = self.interp.evaljs(
+            XHR_ONLOAD_CODE, out=out, handle=handle)
+
+    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+        full_url = resolve_url(url, self.tab.url)
+        if not self.tab.allowed_request(full_url):
+            raise Exception("Cross-origin XHR blocked by CSP")
+        if url_origin(full_url) != url_origin(self.tab.url):
+            raise Exception(
+                "Cross-origin XHR request not allowed")
+
+        def run_load():
+            headers, response = request(
+                full_url, self.tab.url, payload=body)
+            task = Task(self.dispatch_xhr_onload, response, handle)
+            self.tab.task_runner.schedule_task(task)
+            if not isasync:
+                return response
+
+        if not isasync:
+            return run_load()
+        else:
+            threading.Thread(target=run_load).start()
+
+    def now(self):
+        return int(time.time() * 1000)
+
+    def requestAnimationFrame(self):
+        self.tab.browser.set_needs_animation_frame(self.tab)
+
 class Tab:
     def __init__(self, browser):
         self.history = []
@@ -861,6 +986,7 @@ class Tab:
         self.zoom = 1.0
         self.pending_hover = None
         self.hovered_node = None
+        self.queued_alerts = []
 
         with open("browser14.css") as f:
             self.default_style_sheet = \
@@ -935,6 +1061,10 @@ class Tab:
         self.needs_layout = True
         self.browser.set_needs_animation_frame(self)
 
+    def set_needs_accessiblity(self):
+        self.needs_accessibility = True
+        self.browser.set_needs_animation_frame(self)
+
     def set_needs_paint(self):
         self.needs_paint = True
         self.browser.set_needs_animation_frame(self)
@@ -1004,9 +1134,6 @@ class Tab:
             if not self.browser.is_muted():
                 speak_text(text)
 
-    def speak_focus(self, node):
-        self.speak_node(node, "element focused ")
-
     def speak_hit_test(self, node):
         self.speak_node(node, "hit test ")
 
@@ -1022,6 +1149,10 @@ class Tab:
             speak_text(text)
 
     def speak_update(self):
+        for alert in self.queued_alerts:
+            self.speak_node(alert, "New alert")
+        self.queued_alerts = []
+
         if not self.has_spoken_document:
             self.speak_document()
             self.has_spoken_document = True
@@ -1029,7 +1160,7 @@ class Tab:
         if self.focus and \
             self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
-            self.speak_focus(self.focus)
+            self.speak_node(node, "element focused ")
 
     def render(self):
         self.measure_render.start()
@@ -1213,9 +1344,15 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
+    def queue_alert(self, alert):
+        if not self.accessibility_is_on:
+            return
+        self.queued_alerts.append(alert)
+        self.set_needs_accessiblity()
+
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_render()
+        self.set_needs_accessiblity()
 
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
