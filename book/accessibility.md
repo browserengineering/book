@@ -2092,7 +2092,8 @@ all other descendants of the element become presentational. However, all other
 functionality of a `<button>` *does not occur by default*. In particular:
 
  * The elent is not by defafult focusable.
- * Event handlers for the `<enter>` key or mouse clicks to submit a related
+ * Visual styling is unchanged.
+ * Event handlers for form submission, such as the `<enter>` key or mouse click,
     are not added.
 
 That means that the web application---not the browser---is now responsible for
@@ -2108,7 +2109,7 @@ another.^[One common reason is a web app that was originally
 built without much attention to accessibility, but needs to be retrofitted.]
 Likewise, there is a `textbox` role that makes an element behave like
 an `<input>` element.^[Text boxes are even harder for the developer to
-implement, since it needs to include feratures such as editing partially
+implement, since support is needed for features such as editing partially
 written text and supporting more than one language.] There are in total a
 large number of [defined roles][aria-roles-list].
 
@@ -2116,7 +2117,7 @@ large number of [defined roles][aria-roles-list].
 
 Instead of implementing those not-so-useful `button` and `textbox` roles, let's
 add support for the `alert` role, which *is* quite useful. This role causes the
-text contents of the element to be immediately announced to the user. This is
+text contents of the element to be immediately announced to the user. That's
 super useful, because it allows the web application to tell the user in words
 what might otherwise have been explained in pictures.
 
@@ -2163,7 +2164,7 @@ def announce_text(node):
 
 These alerts are supposed to happen only when the `role` attribute changes
 to alert,^[Or the text contexts of the alert changes, but I won't implement
-that.] so we need a way to detect that an attribute. changed. But there isn't
+that.] so we need a way to detect that an attribute changed. But there isn't
 currently a way to change element attributes other than special ones like
 `style`, so let's first implement that. It will need some runtime code:
 
