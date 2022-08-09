@@ -36,22 +36,6 @@ other languages like Python, Lua, or Java. The best way to learn about
 the insides of a modern JavaScript engine is a book on programming
 language implementation.
 
-Accessibility
-=============
-
-Web pages should be usable despite physical (blind, difficulty seeing,
-Parkinson's), mental (learning disabilities, dyslexia), or situational
-(car console, gloves, eye dilation) disabilities. The web has grown a
-rich garden of accessibility technologies. Not only is this a topic of
-technical interest and moral imperative, the developing legal landscape in
-many countries means it will only grow in importance over time.
-
-To be honest I skipped this topic because I worried that web
-accessibility was a difficult topic to engage students in. I also
-could not figure out where in the book it would go. Adding it as a
-twelfth chapter would also make the last part of the book even longer,
-while adding it earlier would add a significant maintenance burden.
-
 Connection Security
 ===================
 
