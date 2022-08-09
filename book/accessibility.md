@@ -59,11 +59,12 @@ temporary; but other uses may last longer, or be permanent. I'm
 ever-grateful, for example, for [curb cuts][curb-cut], which make it
 much more convenient to go on walks with a stroller, something I'll be
 doing for years to come.[^toddler-curb-cut] And there's a good chance
-that, like my ancestors, my eyesight will worsen as I age and I'll
-need to set my computer to use a much larger text size. More advanced
-tools, like [screen readers][screen-reader], take time to learn and
-use effectively, so are mostly used by people with long-term or
-permanent disabilities.[^for-now]
+that, like many of my relatives, my eyesight will worsen as I age and
+I'll need to set my computer to a permanently larger text size. For
+more severe and permanent disabilities yet, there are more advanced
+tools like [screen readers][screen-reader].[^for-now] These take time
+to learn and use effectively, but are transformative for those who
+need them.
 
 [curb-cut]: https://en.wikipedia.org/wiki/Curb_cut
 
@@ -78,16 +79,16 @@ more widespread as software improves, mediating between the user and
 web pages. Password managers and form autofill agents are already
 somewhat like this.
 
-Of course, accessibility *does* include advanced accessibility tools
-like screen readers, because these tools bring enormous benefits to
-those that need them.[^moral] But the common lesson of all kinds of
-accessibility work, physical and digital, is that once an
-accessibility tool is built, creative people find that it helps in all
-kinds of situations unforseen by the tool's designers. Dark mode helps
-you tell your work and personal email apart; web page zoom helps you
-print the whole web page on a single sheet of paper; and keyboard
-shortcuts let you leverage muscle memory to submit many similar orders
-to a web application that doesn't have a batch mode.
+Accessibility covers the whole spectrum, from minor accommodations to
+support for advanced accessibility tools like screen readers.[^moral]
+But the common lesson of all kinds of accessibility work, physical and
+digital, is that once an accessibility tool is built, creative people
+find that it helps in all kinds of situations unforseen by the tool's
+designers. Dark mode helps you tell your work and personal email
+apart; web page zoom helps you print the whole web page on a single
+sheet of paper; and keyboard shortcuts let you leverage muscle memory
+to submit many similar orders to a web application that doesn't have a
+batch mode.
 
 [^moral]: We have an ethical responsibility to help all users. Plus,
     there is the practical matter that if you're making a web page,
@@ -104,49 +105,20 @@ and abilities.
 CSS zoom
 ========
 
-Let's start with the simplest accessibility problem: words on the screen that
-are too small to read. In fact, it's also probably the most common as
-well---almost all of us will face this problem sooner or later, as our eyes
-become weaker with age. There are multiple ways to address this problem, but
-the simplest and most effective is simply increasing font and element sizes.
-This approach is called *CSS zoom*.[^zoom]
+Let's start with the simplest accessibility problem: text on the screen that
+is too small to read. It's a problem many of us will face sooner or
+later, and possibly the most user disability issue. The simplest and
+most effective way to address this is simply increasing font and
+element sizes. This approach is called *CSS zoom*.[^zoom]
 
-[^zoom]: The word zoom evokes an analogy to a camera zooming in, but is not the
-same, because CSS zoom causes layout. *Pinch zoom*, on the other hand is just
-like a camera and does not cause layout (see the go-further block at the end
-of this section).
+[^zoom]: The word zoom evokes an analogy to a camera zooming in, but
+it is not the same, because CSS zoom causes layout. *Pinch zoom*, on
+the other hand is just like a camera and does not cause layout.
 
-To implement it, we first need a way to trigger zooming. Let's bind the
-`ctrl-plus` keystroke combo to zooming in, `ctrl-minus` to zooming out, and
-`ctrl-zero` to reset. A new `zoom` property on `Browser` will start at `1`.
-Zooming in and out will increase or decrease `zoom`. Then we'll multiply all of
-the "CSS sizes" on the web page by `zoom` as well.[^browser-chrome]
-
-[^browser-chrome]: This operation does not zoom in the browser chrome UI.
-Browsers also have such a feature, and it's usually triggered by a global
-OS setting.
-
-Binding these keystrokes in the browser main loop involves watching for when the
-`ctrl` key is pressed and released:
-
-``` {.python}
-    ctrl_down = False
-    while True:
-		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-			# ...
-            elif event.type == sdl2.SDL_KEYDOWN:
-            	# ...
-                elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                    ctrl_down = True            	
-            elif event.type == sdl2.SDL_KEYUP:
-                if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                    ctrl_down = False
-           # ...
-```
-
-and then looking for plus, minus or zero pressed next:
+To implement it, we first need a way to trigger zooming. On most
+browsers, that's done with the `Ctrl-+`, `Ctrl--`, and `Ctrl-0`
+keys, but to avoid handling modifier keys like `Ctrl` let's just use
+`+`, `-`, and `0`.
 
 ``` {.python}
     while True:
@@ -179,8 +151,13 @@ class Browser:
         active_tab.task_runner.schedule_task(task)
 ```
 
-The `Tab` in turn in turn changes `zoom`---let's increase or decrease by a
-multiplicative factor of 1.1---and re-renders:
+Finally, the `Tab` responds to these commands by adjusting a new
+`zoom` property on `Browser`, which starts at `1` and acts as a
+multiplier for all "CSS sizes" on the web page:[^browser-chrome]
+
+[^browser-chrome]: CSS zoom typically does not change the size of
+elements of the browser chrome. Browsers *can* do that too, usually
+triggered by a global OS setting.
 
 ``` {.python}
 class Tab:
@@ -201,8 +178,12 @@ class Tab:
         self.set_needs_render()
 ```
 
-The `zoom` factor is supposed to multiply all CSS sizes, so
-pass `zoom` down into `layout`:
+Note that we need to set the `needs_render` flag when we zoom to
+redraw the screen after zooming is complete.
+
+The `zoom` factor is supposed to multiply all CSS sizes, so we'll need
+access to it during layout. There's a few ways to do this, but the
+easiest is just to pass it in as an argument to `layout`:
 
 ``` {.python}
 class Tab:
@@ -212,20 +193,8 @@ class Tab:
 			self.document.layout(self.zoom)
 ```
 
-And within each layout class type, pass around `zoom` as well. But what do we do
-with it? Let's start by resizing all fonts according to `zoom`.  To make that
-easier, add a `device_px` helper method that converts from a *CSS pixel* (the units
-specified in a CSS declaration) to a *device pixel* (what's actually drawn on
-the screen):
-
-``` {.python}
-def device_px(css_px, zoom):
-    return css_px * zoom
-```
-
-Next, there are a bunch of small changes to the `layout` methods. First
-`BlockLayout`, `LineLayout` and `DocumentLayout`, which just pass on the zoom
-to children:
+The `BlockLayout`, `LineLayout` and `DocumentLayout`, classes just
+pass on the zoom to their children:
 
 ``` {.python}
 class BlockLayout:
@@ -245,11 +214,12 @@ class DocumentLayout:
     def layout(self, zoom):
     	# ...
         child.layout(zoom)
-
 ```
 
-`InlineLayout` is where it starts to get interesting. First some regular
-plumbing happens:
+However, `InlineLayout`, `TextLayout`, and `InputLayout` have to
+handle zoom specially, because the elements they represent have to be
+scaled by the `zoom` multipler. First, pass the `zoom` argument into
+the `recurse` method and from there into `text` and `input`:
 
 ``` {.python}
 class InlineLayout:
@@ -273,8 +243,23 @@ class InlineLayout:
                     self.recurse(child, zoom)
 ```
 
-But when we get to the `text` and `input` methods, the font sizes should be
-adjusted:
+These two methods now need to scale their font sizes to account for
+`zoom`. Since scaling by `zoom` is a common operation, let's wrap it
+in a helper method, `device_px`:
+
+``` {.python}
+def device_px(css_px, zoom):
+    return css_px * zoom
+```
+
+Think about `device_px` not as a simple helper method, but as a unit
+coversion from *CSS pixel* (the units specified in a CSS declaration)
+to a *device pixel* (what's actually drawn on the screen). In a real
+browser, this method could also account for differences like high-DPI
+displays.
+
+We'll do this conversion to adjust the font sizes in the `text` and
+`input` methods:
 
 ``` {.python}
 class InlineLayout:
@@ -288,7 +273,17 @@ class InlineLayout:
         size = device_px(float(node.style["font-size"][:-2]), zoom)
 ```
 
-Also adjust the font size in `TextLayout`:
+As well as the font size in `TextLayout`:[^min-font-size]
+
+[^min-font-size]: Browsers also usually have a *minimum* font size,
+but it's a lot trickier to use correctly. Since a minimum font size
+only affects *some* of the text on the page, and doesn't affect other
+CSS lengths, it can cause overflowing fonts and broken layouts.
+Because of these problems, browsers often restrict the feature to
+situations where the site seems to be using [relative font
+sizes][relative-font-size].
+
+[relative-font-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-size
 
 ``` {.python}
 class TextLayout:
@@ -299,40 +294,38 @@ class TextLayout:
         	float(self.node.style["font-size"][:-2]), zoom)
 ```
 
-Now try it out. All of the fonts should be get about 10% bigger each time you
-press `ctrl-plus`, and the opposite with `ctrl-minus`. This is great for
-reading text more easily.
+And the fixed `INPUT_WIDTH_PX` for text boxes:
 
-But you'll quickly notice that there is a big problem: pretty soon the text
-starts overflowing the screen, and if the `width` or `height` CSS properties
-are specified, it'll overflow elements as well. That's quite bad---we
-traded an accessibility improvement in one area (you can read the text) for a
-loss in another (you can't even see all the text!).
+``` {.python }
+class InlineLayout:
+	# ...
+    def input(self, node, zoom):
+        w = device_px(INPUT_WIDTH_PX, zoom)	
+```
 
-How can we fix this? We shouldn't just increase the size of
-fonts, but *also* the size of every other CSS pixel. defined in `layout`. In
-other words, run the same layout algorithm, but with each device
-pixel measurement larger by a a factor of `zoom`. But since the screen doesn't
-magically get bigger when zooming, its width and height will remain fixed in
-physical pixel width (and hence smaller in CSS pixels). This
-will automatically cause inline text and content to wrap when they hit the
-edge of the screen or container elements, and not grow beyond.[^min-font-size]
-And the layout design of the website will tend to continue working, because
-elements' `width` and `height` will get larger in proportion to the font.
+This handles text and text boxes, but that's not the only thing that
+needs to zoom in and out. CSS property values, like `width` and
+`height`, are also specific in CSS pixels, not device pixels, so they
+need to be scaled. The easiest way to do that is by passing the `zoom`
+value to `style_length`, which we already use for reading CSS lengths:
 
-[^min-font-size]: Browsers also usually have a *minimum font size* feature. When
-it's used, the browser will try to avoid rendering any fonts smaller than the
-minimum. However, these features don't automatically use zoom, and therefore
-suffer from problems just like this: overflowing fonts and broken layouts.
-Because of these problems, browsers also often restrict the feature to
-situations where the site seems to be using
-[relative font sizes][relative-font-size], making the feature even less useful.
-CSS zoom is a much better solution.
+``` {.python}
+def style_length(node, style_name, default_value, zoom):
+    style_val = node.style.get(style_name)
+    return device_px(float(style_val[:-2]), zoom) if style_val \
+        else default_value
+```
 
-[relative-font-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-size
+Now just pass in the `zoom` parameter to `style_length` inside
+`BlockLayout`, `InlineLayout`, and `InputLayout`.
 
-For example, change `DocumentLayout` to adjust `HSTEP` and `VSTEP`---which are
-in CSS pixels---to account for `zoom`:
+Finally, one tricky place we need to adjust for zoom is inside
+`DocumentLayout`. Here there are two sets of lengths: the overall
+`WIDTH`, and the `HSTEP`/`VSTEP` padding around the edges of the page.
+The `WIDTH` comes from the size of the application window itself, so
+that's measured in device pixels and doesn't need to be converted. But
+the `HSTEP`/`VSTEP` is part of the page's layout, so it's in CSS
+pixels and *does* need to be converted:
 
 ``` {.python}
 class DocumentLayout:
@@ -344,70 +337,13 @@ class DocumentLayout:
         self.y = device_px(VSTEP, zoom)
         child.layout(zoom)
         self.height = child.height + 2* device_px(VSTEP, zoom)
-
 ```
 
-Likewise, the `width` and `height` CSS properties need to be converted. In this
-case, pass `zoom` to style_length as a new parameter for convenience:
-
-``` {.python}
-def style_length(node, style_name, default_value, zoom):
-    style_val = node.style.get(style_name)
-    return device_px(float(style_val[:-2]), zoom) if style_val \
-        else default_value
-```
-
-Then use it:
-
-``` {.python expected=False}
-class BlockLayout:
-	# ...
-    def layout(self, zoom):
-    	# ...
-        self.width = style_length(
-            self.node, "width", self.parent.width, zoom)
-        # ...
-        self.height = style_length(
-            self.node, "height",
-            sum([child.height for child in self.children]), zoom)
-```
-
-``` {.python}
-class InlineLayout:
-	# ...
-    def layout(self, zoom):
-        self.width = style_length(
-            self.node, "width", self.parent.width, zoom)
-        # ...
-        self.height = style_length(
-            self.node, "height",
-            sum([line.height for line in self.children]), zoom)
-```
-
-``` {.python}
-class InputLayout:
-	# ...
-    def layout(self, zoom):
-		# ...
-		self.width = style_length(
-            self.node, "width", device_px(INPUT_WIDTH_PX, zoom), zoom)
-        self.height = style_length(
-            self.node, "height", linespace(self.font), zoom)
-```
-
-And `InlineLayout` also has a fixed `INPUT_WIDTH_PX` CSS pixels value that needs
-to be adjusted:
-
-``` {.python }
-class InlineLayout:
-	# ...
-    def input(self, node, zoom):
-        w = device_px(INPUT_WIDTH_PX, zoom)	
-```
-
-Fire up the browser and try to zoom some pages. Everything should layout
-quite well when zoomed, and text will naturally flow into multiple lines
-as needed.
+Now try it out. All of the fonts should be get about 10% bigger each
+time you press `+`, and shrink by 10% when you press `-`. The bigger
+text should still wrap appropriately at the edge of the screen, and
+CSS lengths should be scaled just like the text is. This is great for
+reading text more easily.
 
 ::: {.further}
 
