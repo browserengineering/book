@@ -125,13 +125,12 @@ keys, but to avoid handling modifier keys like `Ctrl` let's just use
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
 			# ...
             elif event.type == sdl2.SDL_KEYDOWN:
-                if ctrl_down:
-                    if event.key.keysym.sym == sdl2.SDLK_EQUALS:
-                        browser.increment_zoom(1)
-                    elif event.key.keysym.sym == sdl2.SDLK_MINUS:
-                        browser.increment_zoom(-1)
-                    elif event.key.keysym.sym == sdl2.SDLK_0:
-                        browser.reset_zoom()			
+                if event.key.keysym.sym == sdl2.SDLK_EQUALS:
+                    browser.increment_zoom(1)
+                elif event.key.keysym.sym == sdl2.SDLK_MINUS:
+                    browser.increment_zoom(-1)
+                elif event.key.keysym.sym == sdl2.SDLK_0:
+                    browser.reset_zoom()			
              	# ...
 ```
 
