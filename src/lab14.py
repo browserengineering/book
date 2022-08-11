@@ -1888,7 +1888,7 @@ if __name__ == "__main__":
                 elif event.key.keysym.sym == sdl2.SDLK_0:
                     browser.reset_zoom()
                 elif ctrl_down:
-                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+                    if event.key.keysym.sym == sdl2.SDLK_LEFT:
                         browser.go_back()
                     elif event.key.keysym.sym == sdl2.SDLK_TAB:
                         browser.cycle_tabs()
