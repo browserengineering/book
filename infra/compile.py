@@ -545,7 +545,7 @@ def compile_expr(tree, ctx):
             raise AssertionError(f"Could not find variable {tree.id}")
     elif isinstance(tree, ast.Constant):
         if isinstance(tree.value, str):
-            return compile_str(tree.value)
+            return json.dumps(tree.value)
         elif isinstance(tree.value, bool):
             return "true" if tree.value else "false"
         elif isinstance(tree.value, int):
@@ -558,12 +558,6 @@ def compile_expr(tree, ctx):
             raise UnsupportedConstruct()
     else:
         raise UnsupportedConstruct()
-
-def compile_str(s):
-    out = repr(s)
-    if out[0] == out[-1] == "'" and '"' not in out:
-        out = '"' + out[1:-1] + '"'
-    return out
 
 def flatten_ifs(tree):
     parts = [(tree.test, tree.body)]
