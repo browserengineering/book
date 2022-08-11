@@ -348,7 +348,7 @@ def compile_function(name, args, ctx):
     else:
         raise UnsupportedConstruct()
 
-def op2str(op):
+def compile_op(op):
     if isinstance(op, ast.Add): return "+"
     elif isinstance(op, ast.Sub): return "-"
     elif isinstance(op, ast.USub): return "-"
@@ -459,17 +459,17 @@ def compile_expr(tree, ctx):
     elif isinstance(tree, ast.UnaryOp):
         rhs = compile_expr(tree.operand, ctx)
         if isinstance(tree.op, ast.Not): rhs = "truthy(" + rhs + ")"
-        return "(" + op2str(tree.op) + rhs + ")"
+        return "(" + compile_op(tree.op) + rhs + ")"
     elif isinstance(tree, ast.BinOp):
         lhs = compile_expr(tree.left, ctx)
         rhs = compile_expr(tree.right, ctx)
         if isinstance(tree.op, ast.FloorDiv):
             return "Math.trunc(" + lhs + " / " + rhs + ")"
         else:
-            return "(" + lhs + " " + op2str(tree.op) + " " + rhs + ")"
+            return "(" + lhs + " " + compile_op(tree.op) + " " + rhs + ")"
     elif isinstance(tree, ast.BoolOp):
         parts = ["truthy("+compile_expr(val, ctx)+")" for val in tree.values]
-        return "(" + (" " + op2str(tree.op) + " ").join(parts) + ")"
+        return "(" + (" " + compile_op(tree.op) + " ").join(parts) + ")"
     elif isinstance(tree, ast.Compare):
         lhs = compile_expr(tree.left, ctx)
         conjuncts = []
@@ -499,7 +499,7 @@ def compile_expr(tree, ctx):
                  (isinstance(comp, ast.List) or isinstance(tree.left, ast.List)):
                 conjuncts.append("(JSON.stringify(" + lhs + ") === JSON.stringify(" + rhs + "))")
             else:
-                conjuncts.append("(" + lhs + " " + op2str(op) + " " + rhs + ")")
+                conjuncts.append("(" + lhs + " " + compile_op(op) + " " + rhs + ")")
             lhs = rhs
         if len(conjuncts) == 1:
             return conjuncts[0]
@@ -681,7 +681,7 @@ def compile(tree, ctx, indent=0):
             assert target in ctx
         lhs = compile_lhs(tree.target, ctx)
         rhs = compile_expr(tree.value, ctx)
-        return " " * indent + lhs + " " + op2str(tree.op) + "= " + rhs + ";"
+        return " " * indent + lhs + " " + compile_op(tree.op) + "= " + rhs + ";"
     elif isinstance(tree, ast.Assert):
         test = compile_expr(tree.test, ctx)
         msg = compile_expr(tree.msg, ctx) if tree.msg else ""
