@@ -93,21 +93,77 @@ def write_html(objs, indent=0):
             write_html(subs, indent=indent+4)
         print("</code>")
 
+def is_doc_string(cmd):
+    return isinstance(cmd, ast.Expr) and \
+        isinstance(cmd.value, ast.Constant) and isinstance(cmd.value.value, str)
+
+def is_sys_modules_hack(cmd):
+    return isinstance(cmd, ast.Assign) and len(cmd.targets) == 1 and \
+        isinstance(cmd.targets[0], ast.Attribute) and \
+        isinstance(cmd.targets[0].value, ast.Subscript) and \
+        isinstance(cmd.targets[0].value.value, ast.Attribute) and \
+        isinstance(cmd.targets[0].value.value.value, ast.Name) and \
+        cmd.targets[0].value.value.value.id == 'sys' and \
+        cmd.targets[0].value.value.attr == 'modules'
+
+def is_if_main(cmd):
+    return isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
+        isinstance(cmd.test.left, ast.Name) and cmd.test.left.id == "__name__" and \
+        len(cmd.test.comparators) == 1 and isinstance(cmd.test.comparators[0], ast.Constant) and \
+        cmd.test.comparators[0].value == "__main__" and len(cmd.test.ops) == 1 and \
+        isinstance(cmd.test.ops[0], ast.Eq)
+
+def get_name(module, name):
+    assert isinstance(module, ast.Module)
+    for item in module.body:
+        if isinstance(item, ast.Import): pass
+        elif isinstance(item, ast.ImportFrom): pass
+        elif is_doc_string(item): pass
+        elif is_sys_modules_hack(item): pass
+        elif is_if_main(item): pass
+        elif isinstance(item, ast.ClassDef):
+            if item.name == name:
+                return item
+        elif isinstance(item, ast.FunctionDef):
+            if item.name == name:
+                return item
+        elif isinstance(item, ast.Assign) and len(item.targets) == 1:
+            if isinstance(item.targets[0], ast.Name):
+                if item.targets[0].id == name:
+                    return item
+            elif isinstance(item.targets[0], ast.Tuple):
+                assert isinstance(item.value, ast.Tuple)
+                for var, val in zip(item.targets[0].elts, item.value.elts):
+                    if var.id == name:
+                        return ast.Assign([var], val)
+            else:
+                raise Exception(ast.dump(cmd))
+            
+class ResolveImports(ast.NodeTransformer):
+    def visit_ImportFrom(self, cmd):
+        assert cmd.level == 0
+        assert cmd.module
+        assert all(name.asname is None for name in cmd.names)
+        names = [name.name for name in cmd.names]
+        filename = "src/{}.py".format(cmd.module)
+        objs = []
+
+        with open(filename) as file:
+            subast = ast.parse(file.read(), filename)
+
+        for name in names:
+            defn = get_name(subast, name)
+            if defn:
+                objs.append(defn)
+            else:
+                Exception("Could not find {} in module {}".format(name, cmd.module))
+
+        return objs
+
 def to_item(cmd):
-    if isinstance(cmd, ast.Assign) and len(cmd.targets) == 1 and \
-         isinstance(cmd.targets[0], ast.Attribute) and \
-         isinstance(cmd.targets[0].value, ast.Subscript) and \
-         isinstance(cmd.targets[0].value.value, ast.Attribute) and \
-         isinstance(cmd.targets[0].value.value.value, ast.Name) and \
-         cmd.targets[0].value.value.value.id == 'sys' and \
-         cmd.targets[0].value.value.attr == 'modules':
-        return
-    elif isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
-         isinstance(cmd.test.left, ast.Name) and cmd.test.left.id == "__name__" and \
-         len(cmd.test.comparators) == 1 and isinstance(cmd.test.comparators[0], ast.Constant) and \
-         cmd.test.comparators[0].value == "__main__" and len(cmd.test.ops) == 1 and \
-         isinstance(cmd.test.ops[0], ast.Eq):
-        return IfMain()
+    if is_sys_modules_hack(cmd): return
+    elif is_if_main(cmd): return IfMain()
+    elif is_doc_string(cmd): return
     elif isinstance(cmd, ast.ClassDef):
         return Class(cmd.name, [to_item(scmd) for scmd in cmd.body])
     elif isinstance(cmd, ast.FunctionDef):
@@ -120,9 +176,6 @@ def to_item(cmd):
         else:
             raise Exception(ast.dump(cmd))
         return Const(names)
-    elif isinstance(cmd, ast.Expr) and \
-         isinstance(cmd.value, ast.Constant) and isinstance(cmd.value.value, str):
-        return
     elif isinstance(cmd, ast.Import):
         return
     elif isinstance(cmd, ast.ImportFrom):
@@ -138,32 +191,6 @@ def outline(tree):
         if item: objs.append(item)
     return objs
 
-def get_imports(tree):
-    objs = []
-    assert isinstance(tree, ast.Module)
-    for cmd in tree.body:
-        if isinstance(cmd, ast.ImportFrom):
-            assert cmd.level == 0
-            assert cmd.module
-            assert all(name.asname is None for name in cmd.names)
-            names = [name.name for name in cmd.names]
-            filename = "src/{}.py".format(cmd.module)
-
-            with open(filename) as file:
-                suboutline = outline(ast.parse(file.read(), filename))
-
-            for item in suboutline:
-                if isinstance(item, IfMain):
-                    pass
-                elif isinstance(item, Const):
-                    if set(names) & set(item.names):
-                        assert set(item.names).issubset(names)
-                        objs.append(item)
-                else:
-                    if item.name in names:
-                        objs.append(item)
-    return objs
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generates outlines for each chapter's code")
@@ -172,8 +199,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     tree = ast.parse(args.file.read(), args.file.name)
-    ol = get_imports(tree)
-    ol.extend(outline(tree))
+    tree2 = ResolveImports().visit(tree)
+    ol = outline(tree2)
     if args.html:
         write_html(ol)
     else:
