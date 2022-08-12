@@ -28,8 +28,11 @@ from lab6 import TagSelector, DescendantSelector
 from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
-from lab11 import DocumentLayout, DrawLine, draw_line, draw_rect, \
-    draw_text, parse_color, request, CHROME_PX, SCROLL_STEP, InputLayout
+from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
+from lab11 import SaveLayer, DrawRRect, DrawText, DrawRect, DrawLine, ClipRRect
+from lab11 import draw_line, draw_text, draw_rect
+from lab11 import BlockLayout, InlineLayout, DocumentLayout, INPUT_WIDTH_PX, LineLayout, TextLayout, InputLayout
+from lab11 import paint_visual_effects, SCROLL_STEP, CHROME_PX
 
 class MeasureTime:
     def __init__(self, name):
