@@ -1916,7 +1916,8 @@ class Transform(DisplayItem):
 
 We also need to fix the hit testing algorithm to take into account translations
 in `click`. Instead of just comparing the locations of layout objects with
-the click point, compute an absolute bound and compare against that. Let's
+the click point, compute an *absolute*---in coordinates of what the user sees,
+including the translation offset---bound and compare against that. Let's
 use two helper methods that compute such bounds. The first maps a rect
 through a translation, and the second walks up the node tree, mapping through
 each translation found.
@@ -1965,7 +1966,7 @@ That's because when we test for overlap, we're comparing the
 `composited_bounds` of the display item to the `composited_bounds` of
 the the composited layer. That means we're comparing the original
 location of the display item, not its shifted version. We need to
-compute the absolute, page-coordinates bounds instead:
+compute the absolute bounds instead:
 
 ``` {.python}
 class Browser:
