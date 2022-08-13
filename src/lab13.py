@@ -92,6 +92,15 @@ class DisplayItem:
         return any([child.needs_compositing() \
             for child in self.children])
 
+def map_translation(rect, translation):
+    if not translation:
+        return rect
+    else:
+        (x, y) = translation
+        matrix = skia.Matrix()
+        matrix.setTranslate(x, y)
+        return matrix.mapRect(rect)
+
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children=children, node=node)
@@ -108,13 +117,7 @@ class Transform(DisplayItem):
             canvas.restore()
 
     def map(self, rect):
-        if not self.translation:
-            return rect
-        else:
-            (x, y) = self.translation
-            matrix = skia.Matrix()
-            matrix.setTranslate(x, y)
-            return matrix.mapRect(rect)
+        return map_translation(rect, self.translation)
 
     def clone(self, children):
         return Transform(self.translation, self.rect,
@@ -1027,6 +1030,17 @@ def style(node, rules, tab):
 
 SHOW_COMPOSITED_LAYER_BORDERS = False
 
+def absolute_bounds_for_obj(obj):
+    rect = skia.Rect.MakeXYWH(
+        obj.x, obj.y, obj.width, obj.height)
+    cur = obj.node
+    while cur:
+        rect = map_translation(rect,
+            parse_transform(
+                cur.style.get("transform", "")))
+        cur = cur.parent
+    return rect
+
 def absolute_bounds(display_item):
     rect = skia.Rect.MakeEmpty()
     display_item.add_composited_bounds(rect)
@@ -1296,9 +1310,10 @@ class Tab:
         self.render()
         self.focus = None
         y += self.scroll
+        loc_rect = skia.Rect.MakeXYWH(x, y, 1, 1)
         objs = [obj for obj in tree_to_list(self.document, [])
-                if obj.x <= x < obj.x + obj.width
-                and obj.y <= y < obj.y + obj.height]
+                if absolute_bounds_for_obj(obj).intersects(
+                    loc_rect)]
         if not objs: return
         elt = objs[-1].node
         if elt and self.js.dispatch_event("click", elt): return
