@@ -61,10 +61,9 @@ much more convenient to go on walks with a stroller, something I'll be
 doing for years to come.[^toddler-curb-cut] And there's a good chance
 that, like many of my relatives, my eyesight will worsen as I age and
 I'll need to set my computer to a permanently larger text size. For
-more severe and permanent disabilities yet, there are more advanced
-tools like [screen readers][screen-reader].[^for-now] These take time
-to learn and use effectively, but are transformative for those who
-need them.
+more severe and permanent disabilities, there are advanced tools like
+[screen readers][screen-reader].[^for-now] These take time to learn
+and use effectively, but are transformative for those who need them.
 
 [curb-cut]: https://en.wikipedia.org/wiki/Curb_cut
 
@@ -105,11 +104,11 @@ and abilities.
 CSS zoom
 ========
 
-Let's start with the simplest accessibility problem: text on the screen that
-is too small to read. It's a problem many of us will face sooner or
-later, and possibly the most user disability issue. The simplest and
-most effective way to address this is simply increasing font and
-element sizes. This approach is called *CSS zoom*.[^zoom]
+Let's start with the simplest accessibility problem: text on the
+screen that is too small to read. It's a problem many of us will face
+sooner or later, and possibly the most common user disability issue.
+The simplest and most effective way to address this is by increasing font
+and element sizes. This approach is called *CSS zoom*.[^zoom]
 
 [^zoom]: The word zoom evokes an analogy to a camera zooming in, but
 it is not the same, because CSS zoom causes layout. *Pinch zoom*, on
@@ -155,8 +154,8 @@ Finally, the `Tab` responds to these commands by adjusting a new
 multiplier for all "CSS sizes" on the web page:[^browser-chrome]
 
 [^browser-chrome]: CSS zoom typically does not change the size of
-elements of the browser chrome. Browsers *can* do that too, usually
-triggered by a global OS setting.
+elements of the browser chrome. Browsers *can* do that too, but it's
+usually triggered by a global OS setting.
 
 ``` {.python}
 class Tab:
@@ -274,12 +273,12 @@ class InlineLayout:
 
 As well as the font size in `TextLayout`:[^min-font-size]
 
-[^min-font-size]: Browsers also usually have a *minimum* font size,
-but it's a lot trickier to use correctly. Since a minimum font size
-only affects *some* of the text on the page, and doesn't affect other
-CSS lengths, it can cause overflowing fonts and broken layouts.
-Because of these problems, browsers often restrict the feature to
-situations where the site seems to be using [relative font
+[^min-font-size]: Browsers also usually have a *minimum* font size
+feature, but it's a lot trickier to use correctly. Since a minimum
+font size only affects *some* of the text on the page, and doesn't
+affect other CSS lengths, it can cause overflowing fonts and broken
+layouts. Because of these problems, browsers often restrict the
+feature to situations where the site seems to be using [relative font
 sizes][relative-font-size].
 
 [relative-font-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-size
@@ -304,7 +303,7 @@ class InlineLayout:
 
 This handles text and text boxes, but that's not the only thing that
 needs to zoom in and out. CSS property values, like `width` and
-`height`, are also specific in CSS pixels, not device pixels, so they
+`height`, are also specified in CSS pixels, not device pixels, so they
 need to be scaled. The easiest way to do that is by passing the `zoom`
 value to `style_length`, which we already use for reading CSS lengths:
 
