@@ -169,3 +169,31 @@ Animations work:
     >>> tab.run_animation_frame(0)
     >>> div.animations
     {'transform': TranslateAnimation(old_value=(80.0,90.0), change_per_frame=(-0.64,-0.72), num_frames=125.0)}
+
+A particular challenge is handling clicks on transformed content.
+Here's a page with a button translated via CSS:
+
+    >>> transitions_url4 = 'http://test.test/transitions4'
+    >>> test.socket.respond(transitions_url4, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b"<div style=\"transform:translate(80px,90px)\">" +
+    ... b"<a href='http://test.test/success'>Click me</form>" +
+    ... b"</div>")
+    >>> success_url = 'http://test.test/success'
+    >>> test.socket.respond(success_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n")
+    >>> browser = lab13.Browser()
+    >>> browser.load(transitions_url4)
+    >>> browser.render()
+    
+Let's click it at (100, 120). Those numbers are an offset of (80, 90)
+plus an initial position of (13, 21) plus a little bit to make sure
+we're inside the button:
+
+    >>> tab = browser.tabs[browser.active_tab]
+    >>> tab.click(100, 120)
+    >>> tab.url
+    'http://test.test/success'
+
+Note that I use `tab.click` instead of `browser.handle_click` to avoid
+locking problems with the `SingleThreadedRunner`.

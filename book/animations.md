@@ -1914,15 +1914,59 @@ class Transform(DisplayItem):
             return "Transform(<no-op>)"
 ```
 
-But if you try it on the example above, you'll find that it still
-looks wrong---the blue square is supposed to be *under* the green one,
-but it's on top.
+We also need to fix the hit testing algorithm to take into account translations
+in `click`. Instead of just comparing the locations of layout objects with
+the click point, compute an *absolute*---in coordinates of what the user sees,
+including the translation offset---bound and compare against that. Let's
+use two helper methods that compute such bounds. The first maps a rect
+through a translation, and the second walks up the node tree, mapping through
+each translation found.
+
+``` {.python}
+def map_translation(rect, translation):
+    if not translation:
+        return rect
+    else:
+        (x, y) = translation
+        matrix = skia.Matrix()
+        matrix.setTranslate(x, y)
+        return matrix.mapRect(rect)
+
+def absolute_bounds_for_obj(obj):
+    rect = skia.Rect.MakeXYWH(
+        obj.x, obj.y, obj.width, obj.height)
+    cur = obj.node
+    while cur:
+        rect = map_translation(rect,
+            parse_transform(
+                cur.style.get("transform", "")))
+        cur = cur.parent
+    return rect
+```
+
+And then use it in `click`:
+
+``` {.python}
+class Tab:
+    # ...
+    def click(self, x, y):
+        # ...
+        loc_rect = skia.Rect.MakeXYWH(x, y, 1, 1)
+        objs = [obj for obj in tree_to_list(self.document, [])
+                if absolute_bounds_for_obj(obj).intersects(
+                    loc_rect)]    
+```
+
+However, if you try to load the example above, you'll find that it still looks
+wrong---the blue square is supposed to be *under* the green one, but it's on
+top.^[Hit testing is correct though, because the rendering problem is in
+compositing, not geometry of layout objects.]
 
 That's because when we test for overlap, we're comparing the
 `composited_bounds` of the display item to the `composited_bounds` of
 the the composited layer. That means we're comparing the original
 location of the display item, not its shifted version. We need to
-compute the absolute, page-coordinates bounds instead:
+compute the absolute bounds instead:
 
 ``` {.python}
 class Browser:
@@ -1942,7 +1986,7 @@ To implement `absolute_bounds`, we first need a new `map` method on
 "contents" of the transform and outputs a rect in post-transform
 space. For example, if the transform was `translate(20px, 0px)` then
 the output of calling `map` on a rect would translate it by 20 pixels
-in the *x* direction:
+in the *x* direction.
 
 ``` {.python}
 class DisplayItem:
@@ -1951,17 +1995,13 @@ class DisplayItem:
 
 class Transform(DisplayItem):
     def map(self, rect):
-        if not self.translation:
-            return rect
-        else:
-            (x, y) = self.translation
-            matrix = skia.Matrix()
-            matrix.setTranslate(x, y)
-            return matrix.mapRect(rect)
+        return map_translation(rect, self.translation)
 ```
 
 Now we can compute the absolute bounds of a display item mapping its
-composited bounds through all of the visual effects applied to it:
+composited bounds through all of the visual effects applied to it. This 
+looks a lot like `absolute_bounds_for_obj`, except that it works on the
+display list and not the layout object tree:
 
 ``` {.python}
 def absolute_bounds(display_item):

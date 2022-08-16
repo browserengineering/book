@@ -36,7 +36,7 @@ from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
-    CommitData, add_parent_pointers, \
+    CommitData, add_parent_pointers, absolute_bounds_for_obj, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP
@@ -1252,9 +1252,10 @@ class Tab:
         self.render()
         self.apply_focus(None)
         y += self.scroll
+        loc_rect = skia.Rect.MakeXYWH(x, y, 1, 1)
         objs = [obj for obj in tree_to_list(self.document, [])
-                if obj.x <= x < obj.x + obj.width
-                and obj.y <= y < obj.y + obj.height]
+                if absolute_bounds_for_obj(obj).intersects(
+                    loc_rect)]
         if not objs: return
         elt = objs[-1].node
         if elt and self.js.dispatch_event("click", elt): return
