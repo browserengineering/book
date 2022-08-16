@@ -1881,13 +1881,13 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_MOUSEMOTION:
                 browser.handle_hover(event.motion)
             elif event.type == sdl2.SDL_KEYDOWN:
-                if event.key.keysym.sym == sdl2.SDLK_EQUALS:
-                    browser.increment_zoom(1)
-                elif event.key.keysym.sym == sdl2.SDLK_MINUS:
-                    browser.increment_zoom(-1)
-                elif event.key.keysym.sym == sdl2.SDLK_0:
-                    browser.reset_zoom()
-                elif ctrl_down:
+                if ctrl_down:
+                    if event.key.keysym.sym == sdl2.SDLK_EQUALS:
+                        browser.increment_zoom(1)
+                    elif event.key.keysym.sym == sdl2.SDLK_MINUS:
+                        browser.increment_zoom(-1)
+                    elif event.key.keysym.sym == sdl2.SDLK_0:
+                        browser.reset_zoom()
                     if event.key.keysym.sym == sdl2.SDLK_LEFT:
                         browser.go_back()
                     elif event.key.keysym.sym == sdl2.SDLK_TAB:

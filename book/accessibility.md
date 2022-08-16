@@ -116,21 +116,49 @@ the other hand is just like a camera and does not cause layout.
 
 To implement it, we first need a way to trigger zooming. On most
 browsers, that's done with the `Ctrl-+`, `Ctrl--`, and `Ctrl-0`
-keys, but to avoid handling modifier keys like `Ctrl` let's just use
-`+`, `-`, and `0`.
+keys; using the `Ctrl` modifier key means you can type a `+`, `-`, or
+`0` into a text entry without triggering the zoom function.
+
+To handle modifier keys, we'll need to listen to both "key down" and
+"key up" events, and store whether the `Ctrl` key is pressed:
 
 ``` {.python}
+if __name__ == "__main__":
+    # ...
+    ctrl_down = False
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
 			# ...
             elif event.type == sdl2.SDL_KEYDOWN:
-                if event.key.keysym.sym == sdl2.SDLK_EQUALS:
-                    browser.increment_zoom(1)
-                elif event.key.keysym.sym == sdl2.SDLK_MINUS:
-                    browser.increment_zoom(-1)
-                elif event.key.keysym.sym == sdl2.SDLK_0:
-                    browser.reset_zoom()			
+                # ...
+                 elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                     ctrl_down = True            	
+             elif event.type == sdl2.SDL_KEYUP:
+                 if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                     ctrl_down = False
              	# ...
+```
+
+Now we can have a case in the key handling code for "key down" events
+while the `Ctrl` key is held:
+
+``` {.python}
+if __name__ == "__main__":
+    # ...
+    ctrl_down = False
+    while True:
+		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if ctrl_down:
+                     if event.key.keysym.sym == sdl2.SDLK_EQUALS:
+                         browser.increment_zoom(1)
+                     elif event.key.keysym.sym == sdl2.SDLK_MINUS:
+                         browser.increment_zoom(-1)
+                     elif event.key.keysym.sym == sdl2.SDLK_0:
+                         browser.reset_zoom()
+                # ...
 ```
 
 The `Browser` code just delegates to the `Tab`, via a main thread task:
