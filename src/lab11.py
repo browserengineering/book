@@ -24,6 +24,7 @@ from lab6 import INHERITED_PROPERTIES
 from lab6 import CSSParser, compute_style, style
 from lab6 import TagSelector, DescendantSelector
 from lab8 import layout_mode
+from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin, JSContext
 
 FONTS = {}

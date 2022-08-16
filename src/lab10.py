@@ -10,22 +10,14 @@ import tkinter
 import tkinter.font
 import urllib.parse
 import dukpy
-from lab3 import get_font
-from lab4 import print_tree
-from lab4 import Element
-from lab4 import Text
-from lab4 import HTMLParser
-from lab5 import DrawRect
-from lab6 import cascade_priority
-from lab6 import resolve_url
-from lab6 import style
-from lab6 import tree_to_list
-from lab6 import CSSParser
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
+from lab3 import FONTS, get_font
+from lab4 import Text, Element, print_tree, HTMLParser
+from lab5 import BLOCK_ELEMENTS, DrawRect
+from lab6 import DrawText, CSSParser, cascade_priority, style, resolve_url, tree_to_list
 from lab6 import TagSelector, DescendantSelector
-from lab6 import DrawText
-from lab7 import LineLayout
-from lab7 import TextLayout
-from lab8 import DocumentLayout, InputLayout
+from lab7 import LineLayout, TextLayout, CHROME_PX
+from lab8 import DocumentLayout, BlockLayout, InlineLayout, InputLayout, INPUT_WIDTH_PX
 
 def url_origin(url):
     scheme_colon, _, host, _ = url.split("/", 3)
@@ -180,9 +172,6 @@ class JSContext:
         return out
 
 
-SCROLL_STEP = 100
-CHROME_PX = 100
-
 class Tab:
     def __init__(self):
         self.history = []
@@ -328,8 +317,6 @@ class Tab:
             self.history.pop()
             back = self.history.pop()
             self.load(back)
-
-WIDTH, HEIGHT = 800, 600
 
 class Browser:
     def __init__(self):
