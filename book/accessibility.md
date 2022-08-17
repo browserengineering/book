@@ -455,16 +455,17 @@ screen is called the [visual viewport][visual-viewport].
 Dark mode
 =========
 
-Next up is helping users who prefer darker screens. The reasons why might
-include extra sensitivity to light, or using a device at night, or at night
-near others without disturbing them. For these use cases, browsers these days
-support a *dark mode* feature that darkens the browser and web pages. For
-example, dark mode pages have a black background and a white foreground
-(as opposed to the default white background and black foreground).
+Another useful visual change is using darker colors to help users who
+are extra sensitive to light, or using a device at night, or just
+prefer a darker color scheme. This browser *dark mode* feature should
+switch both the browser chrome and the web page itself to use white
+text on a black background, and otherwise adjust background colors to
+be darker.
 
-We'll bind the `ctrl-d` keystroke to toggle dark mode:
+We'll trigger dark mode with `Ctrl-d`:
 
 ``` {.python}
+if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
@@ -474,7 +475,10 @@ We'll bind the `ctrl-d` keystroke to toggle dark mode:
                         browser.toggle_dark_mode()
 ```
 
-Which toggles in the browser:
+When dark mode is active, we need to draw both the browser chrome and
+the web page contents differently. The browser chrome is a bit easier,
+so let's start with that. We'll start with a `dark_mode` field
+indicating whether dark mode is active:
 
 ``` {.python}
 class Browser:
@@ -487,9 +491,9 @@ class Browser:
         self.dark_mode = not self.dark_mode
 ```
 
-To make the browser chrome dark, we just need to flip all the colors in
-`raster_chrome`. First set some variables to capture it, and set the canvas
-default to `background_color`:
+Now we just need to flip all the colors in `raster_chrome` when
+`dark_mode` is set. Let's store the foreground and background color in
+variables we can reuse:
 
 ``` {.python}
 class Browser:
@@ -535,26 +539,19 @@ class Browser:
                 draw_line(canvas, x2, 40, WIDTH, 40, color)
 ```
 
-Likewise all the rest of the `draw_line`, `draw_text` and `draw_rect` calls in
-`raster_chrome` (not all are shown above) should be instrumented with the dark
-mode-dependent color.
+Likewise all of the other `draw_line`, `draw_text` and `draw_rect`
+calls in `raster_chrome` (they're not all shown here) should use
+`color` or `background_color`.[^more-colors]
 
-The `draw` method also needs to clear to a dark mode color (though this color
-is generally not visible, it's just there to avoid any accidental transparency
-in the window).
-
-``` {.python}
-class Browser:
-    # ...
-    def draw(self):
-        # ...
-        if self.dark_mode:
-            canvas.clear(skia.ColorBLACK)
-        else:
-            canvas.clear(skia.ColorWHITE)
-```
-
-Next up is also informing the `Tab` to switch in or out of dark mode:
+[^more-colors]: Of course, a full-featured browser's chrome has many
+    more buttons than our browser's, and probably uses many more
+    buttons. Most browsers support a theming system that stores all
+    the relevant colors and images, and dark mode switches the browser
+    from one theme to another.
+    
+Now, we want the web page content to change from light mode to dark
+mode as well. To start, let's informing the `Tab` when the user
+requests dark mode:
 
 ``` {.python}
 class Browser:
@@ -579,101 +576,44 @@ class Tab:
         self.set_needs_render()
 ```
 
-Now we need to flip the colors somehow. The easiest to change are the default
-text color and background color of the document. The text color can just
-be overridden by changing `INHERITED_PROPERTIES` before calling `style`:
+Note that we need to rerender the page when the dark mode setting is
+flipped, so that the user actually sees the new colors.
 
-``` {.python expected=False}
-class Tab:
-    # ...
-    def render(self):
-        # ...
-        if self.dark_mode:
-            INHERITED_PROPERTIES["color"] = "white"
-        else:
-            INHERITED_PROPERTIES["color"] = "black"
-        style(self.nodes, sorted(
-            self.rules, key=cascade_priority), self)
-```
+Now we need the page's colors to somehow depend on dark mode. The
+easiest to change are the default text color and the background color
+of the document, which are set by the browser. The default text color,
+for example, comes from the `INHERITED_PROPERTIES` dictionary, which
+we can just modify based on the dark mode:
 
-And the default background color of the document can be flipped by passing a
-new `dark_mode` parameter:
-
-``` {.python}
-class Tab:
-    # ...
-    def render(self):
-        self.document.paint(self.display_list, self.dark_mode)
-```
-
-``` {.python}
-class DocumentLayout:
-    # ...
-    def paint(self, display_list, dark_mode):
-        if dark_mode:
-            background_color = "black"
-        else:
-            background_color = "white"
-        display_list.append(
-            DrawRect(skia.Rect.MakeLTRB(
-                self.x, self.y, self.x + self.width,
-                self.y + self.height),
-                background_color, background_color))
-```
-
-If you load up a page, now you should see white text on a black background.
-But if you try [this example](examples/example14-focus.html) it isn't
-very readable, because buttons and input elements now have poor contrast
-with the white foreground text. Let's fix that. Recall that the `lightblue` and
-`orange` colors for `<input>` and `<button>` elements come from the
-browser style sheet. We need to to make that style sheet depend on dark
-mode.
-
-This won't be *too* hard. One way to do it would be to programmatically modify
-styles in `style`. Instead let's just define two browser style sheets,
-and load both:^[Yes, this is quite inefficient because the style sheets of the
-document are stored twice. We'll optimize it later on.]
-
-
-``` {.python expected=False}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        with open("browser-light.css") as f:
-            self.default_light_style_sheet = \
-                CSSParser(f.read()).parse()
-        with open("browser-dark.css") as f:
-            self.default_dark_style_sheet = \
-                CSSParser(f.read()).parse()
-    # ...
-    def load(self, url, body=None):
-        # ...
-        self.light_rules = self.default_light_style_sheet.copy()
-        self.dark_rules = self.default_dark_style_sheet.copy()
-        # ...
-        for link in links:
-            self.light_rules.extend(CSSParser(body).parse())
-            self.dark_rules.extend(CSSParser(body).parse())
-```
-
-Then we can just use them when calling `style`:
-
-``` {.python expected=False}
+``` {.python replace=))/)%2c%20self)}
 class Tab:
     # ...
     def render(self):
         if self.needs_style:
             if self.dark_mode:
                 INHERITED_PROPERTIES["color"] = "white"
-                style(self.nodes,
-                    sorted(self.dark_rules,
-                        key=cascade_priority), self)
             else:
                 INHERITED_PROPERTIES["color"] = "black"
-                style(self.nodes,
-                    sorted(self.light_rules,
-                        key=cascade_priority), self)
+            style(self.nodes,
+                sorted(self.rules, key=cascade_priority))
 ```
+
+And the background for the page is drawn by the `Browser` in the
+`draw` method, which we can make depend on dark mode:
+
+``` {.python}
+class Browser:
+    # ...
+    def draw(self):
+        # ...
+        if self.dark_mode:
+            canvas.clear(skia.ColorBLACK)
+        else:
+            canvas.clear(skia.ColorWHITE)
+```
+
+Now if you open the browser and switch to dark mode, you should see
+white text on a black background.
 
 ::: {.further}
 
@@ -698,6 +638,133 @@ sheets, and instead rely on extensions.
 
 :::
 
+Customizing dark mode
+=====================
+
+Our simple dark mode implementation works well for pages with just
+text on a background. But for a good-looking dark mode, we probably
+also want to adjust all the other colors on the page. For example,
+buttons and input elements probably need a darker background color, as
+do any colors that the web developer used on the page.
+
+To support this, CSS uses [media queries][mediaquery]. This special
+syntax that basically wraps some CSS rules in an `if` statement with
+some kind of condition; if the condition is true, those CSS rules are
+used, but if the condition is false, they are ignored. The
+`prefers-color-scheme` condition checks for dark mode. For example,
+this CSS will make `<div>`s have a white text on a black background
+only in dark mode:
+
+
+``` {.css expected=False}
+@media (prefers-color-scheme:dark) {
+  div { background-color: black; color: white; }
+}
+```
+
+Web developers can use `prefers-color-scheme` queries it in their own
+stylesheets, adjusting their own choice of colors to fit user
+requests, but we can also use a `prefers-color-scheme` media query in
+the browser default stylesheet to adjust the default colors for links,
+buttons, and text entries:
+
+``` {.css}
+@media (prefers-color-scheme: dark) {
+  a { color: lightblue; }
+  input { background-color: blue; }
+  button { background-color: orangered; }
+}
+```
+
+To implement media queries, we'll have to start with parsing this
+syntax:
+
+``` {.python}
+class CSSParser:
+    def media_query(self):
+        self.literal("@")
+        assert self.word() == "media"
+        self.whitespace()
+        self.literal("(")
+        (prop, val) = self.pair()
+        self.whitespace()
+        self.literal(")")
+        return prop, val
+```
+
+Then, in `parse`, we keep track of the current color scheme and adjust
+it every time we enter or exit an `@media` rule:[^no-nested]
+
+[^no-nested]: For simplicity, this code doesn't handle nested `@media`
+    rules, because with just one type of media query there's no point
+    in nesting them. To handle nested `@media` queries the `media`
+    variable would have to store a stack of conditions.
+
+``` {.python}
+class CSSParser:
+    def parse(self):
+        # ...
+        media = None
+        while self.i < len(self.s):
+            try:
+                self.whitespace()
+                assert self.i < len(self.s)
+                if self.s[self.i] == "@" and not media:
+                    prop, val = self.media_query()
+                    if prop == "prefers-color-scheme" and val in ["dark", "light"]:
+                        media = val
+                    self.whitespace()
+                    self.literal("{")
+                elif self.s[self.i] == "}" and media:
+                    self.literal("}")
+                    media = None
+                else:
+                    # ...
+                    rules.append((media, selector, body))
+```
+
+Note that I've modified the list of rules to store not just the
+selector and the body, but also the color scheme for those
+rules---`None` if it applies regardless of color scheme, `dark` for
+dark-mode only, and `light` for light-mode only. This way, the `style`
+function can ignore rules that don't apply:
+
+``` {.python}
+def style(node, rules, tab):
+    # ...
+    for media, selector, body in rules:
+        if media:
+            if (media == "dark") != tab.dark_mode: continue
+        # ...
+```
+
+[mediaquery]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries/Using_media_queries
+
+Try your browser on a [web page](examples/example14-focus.html) with
+lots of links, text entries, and buttons, and you should now see that
+in dark mode they also change color to have a darker background and
+lighter foreground.
+
+::: {.further}
+
+Fully customizable dark mode requires several additional features beyond
+`prefers-color-scheme`. The most important is that web sites need a way
+to declare whether they support dark mode or not (if they don't, the
+browser should really not be flipping the colors on that page, because it'll
+likely have terrible accessibility outcomes!) This feature is achieved with
+the `color-scheme` [`meta` tag][meta-tag], which allows the web page to declare
+whether it supports light mode, dark mode, or both.
+
+[meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
+
+The second is the [`color-scheme`][color-scheme] CSS property, indicating
+whether that element and its subtree support dark, light or both modes.
+(And with the `only` keyword, whether it should be forced into the ones
+indicated.)
+
+
+[color-scheme]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
+:::
 
 Keyboard navigation
 ===================
@@ -1677,10 +1744,16 @@ use a browser style sheet with `:focus` instead of special code in
 
 ``` {.css}
 input:focus { outline: 2px solid black; }
-
 button:focus { outline: 2px solid black; }
-
 div:focus { outline: 2px solid black; }
+
+
+@media (prefers-color-scheme: dark) {
+input:focus { outline: 2px solid white; }
+button:focus { outline: 2px solid white; }
+div:focus { outline: 2px solid white; }
+a:focus { outline: 2px solid white; }
+}
 ```
 
 And then we can change `paint_outline` to just look at the `outline` CSS
@@ -1906,147 +1979,6 @@ knowing that it was implemented by a browser is a good sign that it's not
 
 :::
 
-Color scheme
-============
-
-Dark mode has a similar problem to focus: when it's on, a web developer will
-want to adjust all of the styles of their page, not just the ones provided by
-the browser.^[But they'll also want to be able to customize those built-ins!]
-Now dark mode is a browser state just like focus, so it would technically be
-possible to introduce a pseudo-class for it. But since dark mode is global
-and applies to all elements, and it's unlikely to change often, the
-pseudo-class syntax is too repetitive and clunky. 
-
-So instead, dark mode uses a [*media query*][mediaquery] syntax. This a lot like
-wrapping some lines of CSS in an if statement. This syntax will make a `<div>`
-tag have a white text color and black background color only in dark mode:
-
-
-``` {.css expected=False}
-    @media (prefers-color-scheme:dark) {
-    div { background-color: black; color: white; }
-    }
-```
-
-And just like `:focus`, once we've implemented a dark mode media query, we can
-specify dark colors directly in the browser style sheet:
-
-``` {.css}
-@media (prefers-color-scheme: dark) {
-
-a { color: lightblue; }
-input { background-color: blue; }
-button { background-color: orangered; }
-
-input:focus { outline: 2px solid white; }
-
-button:focus { outline: 2px solid white; }
-
-div:focus { outline: 2px solid white; }
-
-a:focus { outline: 2px solid white; }
-
-}
-```
-
-This also lets us get rid of the second style sheet
-(`default_dark_style_sheet`); instead there can just be a single default style
-sheet on a `Tab` object, just like before this chapter (but with the additional
-rules listed above).
-
-Parsing requires looking for media query syntax:
-
-``` {.python}
-class CSSParser:
-    def media_query(self):
-        self.literal("@")
-        assert self.word() == "media"
-        self.whitespace()
-        self.literal("(")
-        (prop, val) = self.pair(")")
-        self.whitespace()
-        self.literal(")")
-        if prop == "prefers-color-scheme" and val in ["dark", "light"]:
-            return val
-        else:
-            return None
-```
-
-Here I made a modification to `pair` to accept an end character other than
-a semicolon:
-
-``` {.python}
-class CSSParser:
-    def pair(self, end_char):
-        prop = self.word()
-        self.whitespace()
-        self.literal(":")
-        self.whitespace()
-        val = self.until_char(end_char)
-        return prop.lower(), val
-
-    def body(self):
-        # ...
-                prop, val = self.pair(";")            
-```
-
-And then looking for it in each loop of `parse`:
-
-``` {.python}
-class CSSParser:
-    def parse(self):
-        # ...
-        media = None
-        while self.i < len(self.s):
-            try:
-                self.whitespace()
-                assert self.i < len(self.s)
-                if self.s[self.i] == "@" and not media:
-                    media = self.media_query()
-                    self.whitespace()
-                    self.literal("{")
-                elif self.s[self.i] == "}" and media:
-                    self.literal("}")
-                    media = None
-                else:
-                    # ...
-                    rules.append((media, selector, body))
-```
-
-The `style` method also needs to understand dark mode rules:
-
-``` {.python}
-def style(node, rules, tab):
-    # ...
-    for media, selector, body in rules:
-        if media:
-            if (media == "dark") != tab.dark_mode: continue
-        # ...
-```
-
-[mediaquery]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries/Using_media_queries
-
-
-::: {.further}
-
-Fully customizable dark mode requires several additional features beyond
-`prefers-color-scheme`. The most important is that web sites need a way
-to declare whether they support dark mode or not (if they don't, the
-browser should really not be flipping the colors on that page, because it'll
-likely have terrible accessibility outcomes!) This feature is achieved with
-the `color-scheme` [`meta` tag][meta-tag], which allows the web page to declare
-whether it supports light mode, dark mode, or both.
-
-[meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
-
-The second is the [`color-scheme`][color-scheme] CSS property, indicating
-whether that element and its subtree support dark, light or both modes.
-(And with the `only` keyword, whether it should be forced into the ones
-indicated.)
-
-
-[color-scheme]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
-:::
 
 Custom accessibility roles
 ===========================

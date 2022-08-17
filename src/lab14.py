@@ -445,16 +445,7 @@ class DocumentLayout:
         child.layout(zoom)
         self.height = child.height + 2* device_px(VSTEP, zoom)
 
-    def paint(self, display_list, dark_mode):
-        if dark_mode:
-            background_color = "black"
-        else:
-            background_color = "white"
-        display_list.append(
-            DrawRect(skia.Rect.MakeLTRB(
-                self.x, self.y, self.x + self.width,
-                self.y + self.height),
-                background_color, background_color))
+    def paint(self, display_list):
         self.children[0].paint(display_list)
 
     def __repr__(self):
@@ -736,12 +727,12 @@ class CSSParser:
             self.i += 1
         return self.s[start:self.i]
 
-    def pair(self, end_char):
+    def pair(self):
         prop = self.word()
         self.whitespace()
         self.literal(":")
         self.whitespace()
-        val = self.until_char(end_char)
+        val = self.word()
         return prop.lower(), val
 
     def ignore_until(self, chars):
@@ -755,7 +746,7 @@ class CSSParser:
         pairs = {}
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
-                prop, val = self.pair(";")
+                prop, val = self.pair()
                 pairs[prop.lower()] = val
                 self.whitespace()
                 self.literal(";")
@@ -793,13 +784,10 @@ class CSSParser:
         assert self.word() == "media"
         self.whitespace()
         self.literal("(")
-        (prop, val) = self.pair(")")
+        (prop, val) = self.pair()
         self.whitespace()
         self.literal(")")
-        if prop == "prefers-color-scheme" and val in ["dark", "light"]:
-            return val
-        else:
-            return None
+        return prop, val
 
     def parse(self):
         rules = []
@@ -809,7 +797,9 @@ class CSSParser:
                 self.whitespace()
                 assert self.i < len(self.s)
                 if self.s[self.i] == "@" and not media:
-                    media = self.media_query()
+                    prop, val = self.media_query()
+                    if prop == "prefers-color-scheme" and val in ["dark", "light"]:
+                        media = val
                     self.whitespace()
                     self.literal("{")
                 elif self.s[self.i] == "}" and media:
@@ -1171,8 +1161,7 @@ class Tab:
             else:
                 INHERITED_PROPERTIES["color"] = "black"
             style(self.nodes,
-                sorted(self.rules,
-                    key=cascade_priority), self)
+                sorted(self.rules, key=cascade_priority), self)
             self.needs_layout = True
             self.needs_style = False
 
@@ -1211,7 +1200,7 @@ class Tab:
         if self.needs_paint:
             self.display_list = []
 
-            self.document.paint(self.display_list, self.dark_mode)
+            self.document.paint(self.display_list)
             if self.focus and self.focus.tag == "input":
                 obj = [obj for obj in tree_to_list(self.document, [])
                    if obj.node == self.focus and \
