@@ -40,26 +40,19 @@ def iter_defs(module):
                 for var, val in zip(item.targets[0].elts, item.value.elts):
                     yield var.id, ast.Assign([var], val)
             else:
-                raise Exception("Invalid module member: " + ast.dump(cmd))
+                raise Exception("Invalid module member: " + ast.dump(item))
         else:
-            raise Exception("Invalid module member: " + ast.dump(cmd))
+            raise Exception("Invalid module member: " + ast.dump(item))
 
 def iter_methods(cls):
     assert isinstance(cls, ast.ClassDef)
     for item in cls.body:
         if is_doc_string(item): pass
-        elif isinstance(item, ast.Assign) and len(item.targets) == 1:
-            if isinstance(item.targets[0], ast.Name):
-                yield item.targets[0].id, item
-            elif isinstance(item.targets[0], ast.Tuple):
-                assert isinstance(item.value, ast.Tuple)
-                for var, val in zip(item.targets[0].elts, item.value.elts):
-                    yield var.id, ast.Assign([var], val)
-            else:
-                raise Exception("Invalid class member: " + ast.dump(cmd))
+        elif isinstance(item, ast.FunctionDef):
+            yield item.name, item
         else:
-            raise Exception("Invalid class member: " + ast.dump(cmd))
-
+            raise Exception("Invalid class member: " + ast.dump(item))
+        
 class ResolveImports(ast.NodeTransformer):
     def __init__(self):
         self.cache = {}
@@ -130,5 +123,5 @@ def parse(source, filename='<unknown>'):
 def inline(tree):
     return ast.fix_missing_locations(ResolveImports().visit(tree))
 
-def unparse(tree):
-    return AST39.unparse(tree)
+def unparse(tree, explain=False):
+    return AST39.unparse(tree, explain=explain)

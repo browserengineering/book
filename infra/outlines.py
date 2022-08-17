@@ -92,10 +92,7 @@ def write_html(objs, indent=0):
         print("</code>")
 
 def to_item(cmd):
-    if is_sys_modules_hack(cmd): return
-    elif is_if_main(cmd): return IfMain()
-    elif is_doc_string(cmd): return
-    elif isinstance(cmd, ast.ClassDef):
+    if isinstance(cmd, ast.ClassDef):
         return Class(cmd.name, [to_item(scmd) for scmd in cmd.body])
     elif isinstance(cmd, ast.FunctionDef):
         return Function(cmd.name, [arg.arg for arg in cmd.args.args])
@@ -107,16 +104,12 @@ def to_item(cmd):
         else:
             raise Exception(ast.dump(cmd))
         return Const(names)
-    elif isinstance(cmd, ast.Import):
-        return
-    elif isinstance(cmd, ast.ImportFrom):
-        return
     else:
         raise Exception(ast.dump(cmd))
 
 def outline(tree):
     objs = []
-    for name, item in asttools.iter_defs(tree):
+    for name, cmd in asttools.iter_defs(tree):
         item = to_item(cmd)
         if item: objs.append(item)
     return objs
