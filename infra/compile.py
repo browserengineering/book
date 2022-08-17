@@ -763,10 +763,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compiles each chapter's Python code to JavaScript")
     parser.add_argument("--hints", default=None, type=argparse.FileType())
     parser.add_argument("--indent", default=2, type=int)
+    parser.add_argument("--debug", action="store_true")
     parser.add_argument("--use-js-modules", action="store_true", default=False)
     parser.add_argument("python", type=argparse.FileType())
     parser.add_argument("javascript", type=argparse.FileType("w"))
     args = parser.parse_args()
+
+    if args.debug:
+        test_mode()
 
     name = os.path.basename(args.python.name)
     assert name.endswith(".py")
