@@ -9,6 +9,7 @@ First, some helper code for tests. We need import the compiler:
     >>> import sys
     >>> sys.path.append("infra")
     >>> from compile import *
+    >>> import asttools
     >>> test_mode()
 
 Then, this fake context pretends all variables are in scope, which is
@@ -18,20 +19,19 @@ useful for short tests:
     ...    type = "module"
     ...    def __getitem__(self, i): return True
     ...    def __contains__(self, i): return True
-    ...    def is_global_constant(self, i): return False
 
 Finally, this class has some helper methods:
 
     >>> class Test:
     ...     @staticmethod
     ...     def expr(s):
-    ...         mod = AST39.parse(s)
+    ...         mod = asttools.parse(s)
     ...         assert isinstance(mod, ast.Module) and len(mod.body) == 1
     ...         stmt = mod.body[0]
     ...         assert isinstance(stmt, ast.Expr)
     ...         print(compile_expr(stmt.value, ctx=FakeCtx()))
     ...     def stmt(s):
-    ...         mod = AST39.parse(s)
+    ...         mod = asttools.parse(s)
     ...         assert isinstance(mod, ast.Module) and len(mod.body) == 1
     ...         print(compile(mod.body[0], ctx=FakeCtx()))
 
@@ -280,21 +280,17 @@ deduplicate the code a bit:
 
     >>> Test.stmt("from lab1 import request")
     import { request } from "./lab1.js";
-    >>> assert "request" in LAB_IMPORT_FNS
     >>> Test.stmt("from lab2 import HSTEP")
     import { constants as lab2_constants } from "./lab2.js";
     constants.HSTEP = lab2_constants.HSTEP;
-    >>> assert "HSTEP" in LAB_IMPORT_CONSTANTS
     >>> Test.stmt("from lab4 import Element")
     import { Element } from "./lab4.js";
-    >>> assert "Element" in LAB_IMPORT_CLASSES
     >>> Test.stmt("from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP")
     import { constants as lab2_constants } from "./lab2.js";
     constants.WIDTH = lab2_constants.WIDTH;
     constants.HEIGHT = lab2_constants.HEIGHT;
     constants.HSTEP = lab2_constants.HSTEP;
     constants.VSTEP = lab2_constants.VSTEP;
-    >>> assert "WIDTH" in LAB_IMPORT_CONSTANTS
     
 Note that `from ... import` statements for constants are complex, due
 to the use of a global collector object for constants.
