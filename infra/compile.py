@@ -1,49 +1,18 @@
 #!/usr/bin/env python3
 
-import ast
+import ast, asttools
 import json
 import warnings
 import outlines
 
 INDENT = 2
 
-class AST39(ast.NodeTransformer):
-    def visit_Num(self, node):
-        return ast.Constant(node.n)
-    def visit_Str(self, node):
-        return ast.Constant(node.s)
-    def visit_NameConstant(self, node):
-        return ast.Constant(node.value)
-    def visit_Ellipsis(self, node):
-        return ast.Constant(node)
-    def visit_ExtSlice(self, node):
-        return ast.Tuple([self.generic_visit(d) for d in node.dims])
-    def visit_Index(self, node):
-        return node.value
-
-    @classmethod
-    def parse(cls, str, name='<unknown>'):
-        tree = ast.parse(str, name)
-        if hasattr(ast, "NameConstant"):
-            return ast.fix_missing_locations(cls().visit(tree))
-        else:
-            return tree
-
-    @staticmethod
-    def unparse(tree, explain=False):
-        if hasattr(ast, "unparse"):
-            return ast.unparse(tree)
-        elif explain:
-            return "/* Please convert to Python: " + ast.dump(tree) + " */"
-        else:
-            return ast.dump(tree)
-
 class UnsupportedConstruct(AssertionError): pass
 
 class MissingHint(Exception):
     def __init__(self, tree, key, hint, error=None):
         if not error:
-            self.message = f"Could not find {key} key for `{AST39.unparse(tree)}`"
+            self.message = f"Could not find {key} key for `{asttools.unparse(tree)}`"
         else:
             self.message = error
         self.key = key
@@ -69,7 +38,7 @@ def catch_issues(f):
         except MissingHint as e:
             if WRAP_DISABLED: raise e
             ISSUES.append(e)
-            return "/* " + AST39.unparse(tree) + " */"
+            return "/* " + asttools.unparse(tree) + " */"
     return wrapped
 
 HINTS = []
@@ -80,7 +49,7 @@ def read_hints(f):
     for h in hints:
         assert "line" not in h or isinstance(h["line"], int)
         assert "code" in h
-        s = AST39.parse(h["code"])
+        s = asttools.parse(h["code"])
         assert isinstance(s, ast.Module)
         assert len(s.body) == 1
         assert isinstance(s.body[0], ast.Expr)
@@ -95,7 +64,7 @@ def find_hint(t, key, error=None):
         if key not in h: continue
         break
     else:
-        hint = {"line": t.lineno, "code": AST39.unparse(t, explain=True), key: "???"}
+        hint = {"line": t.lineno, "code": asttools.unparse(t, explain=True), key: "???"}
         raise MissingHint(t, key, hint, error=error)
     h["used"] = True
     return h[key]
@@ -138,9 +107,6 @@ RENAME_FNS = {
 
 # These are filled in as import statements are read
 RT_IMPORTS = []
-LAB_IMPORT_FNS = []
-LAB_IMPORT_CONSTANTS = []
-LAB_IMPORT_CLASSES = []
 
 LIBRARY_METHODS = [
     # socket
@@ -181,36 +147,24 @@ FILES = []
 
 EXPORTS = []
 
-def load_outline_for_class(ol, class_name):
-    for item in ol:
-        if isinstance(item, outlines.Class):
-            if not item.name == class_name:
-                continue
+def load_outline(module):
+    for name, item in asttools.iter_defs(module):
+        if isinstance(item, ast.Assign):
+            OUR_CONSTANTS.append(name)
+        elif isinstance(item, ast.FunctionDef):
+            OUR_FNS.append(name)
+        elif isinstance(item, ast.ClassDef):
             OUR_CLASSES.append(item.name)
-            for subitem in item.fns:
-                if isinstance(subitem, outlines.Const): continue
-                elif isinstance(subitem, outlines.Function):
-                    OUR_METHODS.append(subitem.name)
-                else:
-                    raise ValueError(subitem)
-
-def load_outline(ol):
-    for item in ol:
-        if isinstance(item, outlines.IfMain): continue
-        elif isinstance(item, outlines.Const):
-            OUR_CONSTANTS.extend(item.names)
-        elif isinstance(item, outlines.Function):
-            OUR_FNS.append(item.name)
-        elif isinstance(item, outlines.Class):
-            OUR_CLASSES.append(item.name)
-            for subitem in item.fns:
-                if isinstance(subitem, outlines.Const): continue
-                elif isinstance(subitem, outlines.Function):
-                    OUR_METHODS.append(subitem.name)
+            for subname, subitem in asttools.iter_methods(item):
+                if isinstance(subitem, ast.Assign): continue
+                elif isinstance(subitem, ast.ClassDef): continue
+                elif isinstance(subitem, ast.FunctionDef):
+                    OUR_METHODS.append(name)
                 else:
                     raise ValueError(subitem)
         else:
             raise ValueError(item)
+
     THEIR_STUFF = set(LIBRARY_METHODS) | set(RENAME_METHODS) | set(RENAME_FNS)
     OUR_STUFF = set(OUR_FNS) | set(OUR_METHODS) | set(OUR_CLASSES) | set(OUR_CONSTANTS)
 
@@ -299,7 +253,7 @@ def compile_function(name, args, ctx):
     args_js = [compile_expr(arg, ctx) for arg in args]
     if name in RENAME_FNS:
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
-    elif name in OUR_FNS or name in LAB_IMPORT_FNS:
+    elif name in OUR_FNS:
         return "await " + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
@@ -399,16 +353,6 @@ class Context(dict):
             return super().__getitem__(i)
         else:
             return self.parent[i]
-
-    def is_global_constant(self, i):
-        if self.type == "module":
-            if super().__contains__(i):
-                return not super().__getitem__(i)["is_class"]
-            return True
-        elif super().__contains__(i):
-            return False
-        else:
-            return self.parent.is_global_constant(i)
 
 @catch_issues
 def compile_expr(tree, ctx):
@@ -535,9 +479,9 @@ def compile_expr(tree, ctx):
     elif isinstance(tree, ast.Name):
         if tree.id == "self":
             return "this"
-        elif tree.id in RT_IMPORTS or tree.id in LAB_IMPORT_CLASSES:
+        elif tree.id in RT_IMPORTS or tree.id in OUR_CLASSES:
             return tree.id
-        elif ctx.is_global_constant(tree.id) or tree.id in LAB_IMPORT_CONSTANTS:
+        elif tree.id in OUR_CONSTANTS:
             return "constants.{}".format(tree.id)
         elif tree.id in ctx:
             return tree.id
@@ -582,24 +526,16 @@ def compile(tree, ctx, indent=0):
         assert tree.module
         assert all(name.asname is None for name in tree.names)
         names = [name.name for name in tree.names]
-        filename = "src/{}.py".format(tree.module)
-
-        with open(filename) as file:
-            outline = outlines.outline(AST39.parse(file.read(), filename))
 
         to_import = []
         to_bind = []
         for name in names:
             if name.isupper(): # Global constant
-                LAB_IMPORT_CONSTANTS.append(name)
                 to_import.append("constants as {}_constants".format(tree.module))
                 to_bind.append(name)
             elif name[0].isupper(): # Class
-                LAB_IMPORT_CLASSES.append(name)
-                load_outline_for_class(outline, name)
                 to_import.append(name)
-            else: # function
-                LAB_IMPORT_FNS.append(name)
+            else: # Function
                 to_import.append(name)
 
         import_line = "import {{ {} }} from \"./{}.js\";".format(", ".join(sorted(set(to_import))), tree.module)
@@ -836,8 +772,8 @@ if __name__ == "__main__":
     assert name.endswith(".py")
     if args.hints: read_hints(args.hints)
     INDENT = args.indent
-    tree = AST39.parse(args.python.read(), args.python.name)
-    load_outline(outlines.outline(tree))
+    tree = asttools.parse(args.python.read(), args.python.name)
+    load_outline(asttools.inline(tree))
     js = compile_module(tree, name[:-len(".py")], args.use_js_modules)
 
     for fn in FILES:
