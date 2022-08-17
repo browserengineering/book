@@ -1,4 +1,5 @@
 import ast
+import copy
 
 def is_doc_string(cmd):
     return isinstance(cmd, ast.Expr) and \
@@ -50,6 +51,15 @@ def iter_methods(cls):
         if is_doc_string(item): pass
         elif isinstance(item, ast.FunctionDef):
             yield item.name, item
+        elif isinstance(item, ast.Assign) and len(item.targets) == 1:
+            if isinstance(item.targets[0], ast.Name):
+                yield item.targets[0].id, item
+            elif isinstance(item.targets[0], ast.Tuple):
+                assert isinstance(item.value, ast.Tuple)
+                for var, val in zip(item.targets[0].elts, item.value.elts):
+                    yield var.id, ast.Assign([var], val)
+            else:
+                raise Exception("Invalid class member: " + ast.dump(item))
         else:
             raise Exception("Invalid class member: " + ast.dump(item))
         
@@ -121,7 +131,7 @@ def parse(source, filename='<unknown>'):
     return AST39.parse(source, filename)
 
 def inline(tree):
-    return ast.fix_missing_locations(ResolveImports().visit(tree))
+    return ast.fix_missing_locations(ResolveImports().visit(copy.deepcopy(tree)))
 
 def unparse(tree, explain=False):
     return AST39.unparse(tree, explain=explain)

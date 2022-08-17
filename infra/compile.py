@@ -159,7 +159,7 @@ def load_outline(module):
                 if isinstance(subitem, ast.Assign): continue
                 elif isinstance(subitem, ast.ClassDef): continue
                 elif isinstance(subitem, ast.FunctionDef):
-                    OUR_METHODS.append(name)
+                    OUR_METHODS.append(subname)
                 else:
                     raise ValueError(subitem)
         else:

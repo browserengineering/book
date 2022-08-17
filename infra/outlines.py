@@ -112,6 +112,8 @@ def outline(tree):
     for name, cmd in asttools.iter_defs(tree):
         item = to_item(cmd)
         if item: objs.append(item)
+    if any(asttools.is_if_main(x) for x in tree.body):
+        objs.append(IfMain())
     return objs
 
 if __name__ == "__main__":
