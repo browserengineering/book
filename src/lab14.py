@@ -727,12 +727,12 @@ class CSSParser:
             self.i += 1
         return self.s[start:self.i]
 
-    def pair(self):
+    def pair(self, until):
         prop = self.word()
         self.whitespace()
         self.literal(":")
         self.whitespace()
-        val = self.word()
+        val = self.until_char(until)
         return prop.lower(), val
 
     def ignore_until(self, chars):
@@ -746,7 +746,7 @@ class CSSParser:
         pairs = {}
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
-                prop, val = self.pair()
+                prop, val = self.pair(";")
                 pairs[prop.lower()] = val
                 self.whitespace()
                 self.literal(";")
@@ -784,7 +784,7 @@ class CSSParser:
         assert self.word() == "media"
         self.whitespace()
         self.literal("(")
-        (prop, val) = self.pair()
+        (prop, val) = self.pair(")")
         self.whitespace()
         self.literal(")")
         return prop, val

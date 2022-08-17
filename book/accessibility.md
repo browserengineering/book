@@ -679,7 +679,7 @@ buttons, and text entries:
 To implement media queries, we'll have to start with parsing this
 syntax:
 
-``` {.python}
+``` {.python replace=pair()/pair(")")}
 class CSSParser:
     def media_query(self):
         self.literal("@")
