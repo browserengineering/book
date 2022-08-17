@@ -61,6 +61,16 @@ def iter_methods(cls):
             raise Exception("Invalid class member: " + ast.dump(cmd))
 
 class ResolveImports(ast.NodeTransformer):
+    def __init__(self):
+        self.cache = {}
+
+    def load(self, filename):
+        if filename not in self.cache:
+            with open(filename) as file:
+                subast = ast.parse(file.read(), filename)
+                self.cache[filename] = self.visit(subast)
+        return self.cache[filename]
+
     def visit_ImportFrom(self, cmd):
         assert cmd.level == 0
         assert cmd.module
@@ -69,15 +79,17 @@ class ResolveImports(ast.NodeTransformer):
         filename = "src/{}.py".format(cmd.module)
         objs = []
 
-        with open(filename) as file:
-            subast = ast.parse(file.read(), filename)
+        subast = self.load(filename)
 
         for name in names:
-            (defn,) = [item for item_name, item in iter_defs(subast) if item_name == name]
-            if defn:
-                objs.append(defn)
+            defns = [item for item_name, item in iter_defs(subast) if item_name == name]
+            if len(defns) > 1:
+                raise ValueError(f"Multiple definitions for {name} in {filename}\n" + 
+                                 "\n".join("  " + unparse(defn) for defn in defns))
+            elif len(defns) == 0:
+                raise ValueError(f"No definition for {name} in {filename}")
             else:
-                Exception("Could not find {} in module {}".format(name, cmd.module))
+                objs.append(defns[0])
 
         return objs
 
