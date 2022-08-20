@@ -2294,12 +2294,13 @@ APIs are quite complicated).
     not possible because of the structure of the content, such as with a table
     or grid that can't automatically be broken into multiple lines.
 
-    Just like the other accessibility features can be customized, so can zoom.
+    Just like the other accessibility features can be customized, so can
+    zoom.[^responsive-width-size]
     For example, a media query such as `max-width` can be used to change the
-    default number of columns in these tables or grids.^[Note that tables and
-    grids are real browser features we have not implemented. To test out such
-    examples you'll have to try on a real browser.] This declaration makes text
-    green if the width of the viewport in CSS pixels is `700px` or less:
+    default number of columns in these tables or grids.[^table-grid] A simple
+    example that demonstrates `max-width` media queries is below; in this
+    example, the text becomes green if the width of the viewport in CSS pixels
+    is `700px` or less:
 
         @media (max-width:700px) {
         * { color: green }
@@ -2309,3 +2310,23 @@ APIs are quite complicated).
     `800px`, so zooming in a few times should trigger this media query; <a
     href="examples/example14-maxwidth-media.html">click here</a> to see the
     example in action.
+
+[^table-grid]: Note that [tables][table-css] and [grids][grid-css] are real
+browser features we have not implemented. To test out such examples you'll have
+to try on a real browser.
+
+[table-css]: https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Styling_tables
+[grid-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Grid_Layout
+
+[^responsive-width-size]: The `max-width` media query is indeed a way to
+customize behavior on zoom, but most developers think of it instead as a way to
+customize according to the width and height of the browser viewport pre-zoom,
+which it's also useful for. After all, users can resize a desktop browser
+window to any size they like, and mobile and tablet devices have a wide variety
+of sizes. Developers often use such media queries to create a "mobile"
+or "tablet" layout of web sites; this general technique is called
+[responsive design][responsive-design], which is about designing websites to
+work well on any kind of browser screen or context. Responsive design can be
+viewed as a kind of accessibility.
+
+[responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
