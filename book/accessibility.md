@@ -2326,7 +2326,7 @@ window to any size they like, and mobile and tablet devices have a wide variety
 of sizes. Developers often use such media queries to create a "mobile"
 or "tablet" layout of web sites; this general technique is called
 [responsive design][responsive-design], which is about designing websites to
-work well on any kind of browser screen or context. Responsive design can be
+work well on any kind of browser screens and contexts. Responsive design can be
 viewed as a kind of accessibility.
 
 [responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
