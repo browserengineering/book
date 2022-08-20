@@ -2286,3 +2286,26 @@ visually. You don't need to implement matching text across multiple
 APIs are quite complicated).
 
 [selection]: https://developer.mozilla.org/en-US/docs/Web/API/Selection
+
+*   *Width media queries*: Zooming in or out causes the width of the page in CSS
+    pixels to change. That means that sometimes elements that used to fit
+    comfortably on the page no longer do so, because they become too large. The
+    browser tries to flow those elements onto new lines, but sometimes that is
+    not possible because of the structure of the content, such as with a table
+    or grid that can't automatically be broken into multiple lines.
+
+    Just like the other accessibility features can be customized, so can zoom.
+    For example, a media query such as `max-width` can be used to change the
+    default number of columns in these tables or grids.^[Note that tables and
+    grids are real browser features we have not implemented. To test out such
+    examples you'll have to try on a real browser.] This declaration makes text
+    green if the width of the viewport in CSS pixels is `700px` or less:
+
+        @media (max-width:700px) {
+        * { color: green }
+        }
+
+    Implement this media query. Our browser starts out with a default width of
+    `800px`, so zooming in a few times should trigger this media query; <a
+    href="examples/example14-maxwidth-media.html">click here</a> to see the
+    example in action.
