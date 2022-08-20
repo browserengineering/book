@@ -2286,3 +2286,34 @@ visually. You don't need to implement matching text across multiple
 APIs are quite complicated).
 
 [selection]: https://developer.mozilla.org/en-US/docs/Web/API/Selection
+
+*  *focus-visible*: In some cases, showing a focus ring around an element makes
+    sense only with some input modes. For example if an `<a>` element has focus
+    and the user achieved that focus with keyboard tabbing, it makes sense to
+    show a focus ring around it, because otherwise the user cannot know that it
+    was focused. But if the user causes the focus by clicking on it, then
+    arguably there is no reason to show the focus ring, because if the user
+    could click with a mouse, they probably know which element it was already.
+    Because of this, many users also find a focus ring created by mouse click
+    distracting, redundant or ugly.
+
+    For this reason, real browsers by default do not create a focus ring for
+    such elements on mouse click. On the other hand, they do show one if
+    focus was caused by keyboard input. Further, whether the mouse click causes
+    a focus ring may depend on the element---an `<input>` element still receives
+    a focus ring on a mouse click, because it's still useful for the user to
+    know that subsequent keyboard typing will go into that element.
+
+    As you can see, there are a number of heuristics and rules that go into the
+    choice of focus ring. For this reason, browsers have in recent years added
+    the [`:focus-visible`][focus-visible] pseudo-class. This pseudo-class only
+    applies if the element is focused *and* the browser would have applied a
+    focus ring. This lets custom widgets change focus ring styling without
+    losing useful browser heuristics.
+
+    Implement browser heuristics to not show a focus ring on an `<a>` element if
+    focus occured due to a mouse click, and add the `:focus-visible`
+    pseudo-class. <a href="examples/example14-focus.html">This example</a>
+    should show the difference between mouse and keyboard interaction.
+
+[focus-visible]: https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible
