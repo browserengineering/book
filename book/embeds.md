@@ -20,6 +20,8 @@ Plan:
 
 * iframes
 
+* postMessage
+
 Exercises:
 
 * Tiled images
