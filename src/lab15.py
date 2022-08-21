@@ -714,8 +714,8 @@ class JSContext:
             self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
-        self.interp.export_function("frameElement", self.frameElement)
         self.interp.export_function("parent", self.parent)
+        self.interp.export_function("postMessage", self.postMessage)
         with open("runtime15.js") as f:
             self.interp.evaljs(f.read())
 
@@ -754,16 +754,24 @@ class JSContext:
         elt = self.handle_to_node[handle]
         return elt.attributes.get(attr, None)
 
-    def frameElement(self):
-        print('frameElement')
-        if not self.document.frame_element:
-            return None
-        handle = self.document.parent_document.js.get_handle(self.document.frame_element)
-        print(handle)
-        return handle
-
     def parent(self):
-        pass
+        if self.document.parent_document:
+            return 1
+        else:
+            return None
+
+    def dispatch_post_message(self, message):
+        self.interp.evaljs(
+                "window.dispatchEvent(new PostMessageEvent(dukpy.data))",
+                data=message)
+
+    def postMessage(self, handle, message, domain):
+        if handle != 1:
+            dest = self
+        else:
+            dest = self.document.parent_document.js
+        task = Task(dest.dispatch_post_message, message)
+        self.tab.task_runner.schedule_task(task)
 
     def innerHTML_set(self, handle, s):
         doc = HTMLParser(
