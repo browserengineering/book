@@ -26,7 +26,6 @@ from lab6 import resolve_url
 from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
 from lab6 import compute_style
-from lab6 import TagSelector, DescendantSelector
 from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, url_origin
@@ -44,7 +43,8 @@ from lab13 import USE_BROWSER_THREAD, diff_styles, \
 from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, DrawRect, \
     outline_cmd, is_focused, paint_outline, has_outline, \
     device_px, style_length, cascade_priority, style, \
-    is_focusable, compute_role, announce_text, AccessibilityNode, speak_text
+    is_focusable, compute_role, announce_text, AccessibilityNode, speak_text, \
+    CSSParser
 
 def request(url, top_level_url, payload=None):
     scheme, url = url.split("://", 1)
@@ -693,181 +693,6 @@ def decode_image(image_bytes):
 
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
-class TagSelector:
-    def __init__(self, tag):
-        self.tag = tag
-        self.priority = 1
-        self.pseudoclass = None
-
-    def set_pseudoclass(self, pseudoclass):
-        self.pseudoclass = pseudoclass
-
-    def matches(self, node):
-        tag_match = isinstance(node, Element) and self.tag == node.tag
-        if not tag_match: return False
-        if not self.pseudoclass: return True
-        if self.pseudoclass == "focus":
-            return is_focused(node)
-        elif self.pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-            return hasattr(node, "is_hovered") and node.is_hovered
-
-    def __repr__(self):
-        return ("TagSelector(tag={}, priority={} " +
-            "pseudoclass={})").format(
-            self.tag, self.priority, self.pseudoclass)
-
-class CSSParser:
-    def __init__(self, s):
-        self.s = s
-        self.i = 0
-        self.preferred_color_scheme = None
-
-    def whitespace(self):
-        while self.i < len(self.s) and self.s[self.i].isspace():
-            self.i += 1
-
-    def literal(self, literal):
-        assert self.i < len(self.s) and self.s[self.i] == literal
-        self.i += 1
-
-    def word(self):
-        start = self.i
-        in_quote = False
-        while self.i < len(self.s):
-            cur = self.s[self.i]
-            if cur == "'":
-                in_quote = not in_quote
-            if cur == "(":
-                in_parens = True
-            if cur.isalnum() or cur in ",/#-.%()\"'" \
-                or (in_quote and cur == ':'):
-                self.i += 1
-            else:
-                break
-        assert self.i > start
-        return self.s[start:self.i]
-
-    def until_char(self, char):
-        start = self.i
-        while self.i < len(self.s):
-            cur = self.s[self.i]
-            if cur == char:
-                break
-            self.i += 1
-        return self.s[start:self.i]
-
-    def pair(self, end_char):
-        prop = self.word()
-        self.whitespace()
-        self.literal(":")
-        self.whitespace()
-        val = self.until_char(end_char)
-        return prop.lower(), val
-
-    def ignore_until(self, chars):
-        while self.i < len(self.s):
-            if self.s[self.i] in chars:
-                return self.s[self.i]
-            else:
-                self.i += 1
-
-    def body(self):
-        pairs = {}
-        while self.i < len(self.s) and self.s[self.i] != "}":
-            try:
-                prop, val = self.pair(";")
-                pairs[prop.lower()] = val
-                self.whitespace()
-                self.literal(";")
-                self.whitespace()
-            except AssertionError:
-                why = self.ignore_until([";", "}"])
-                if why == ";":
-                    self.literal(";")
-                    self.whitespace()
-                else:
-                    break
-        return pairs
-
-    def try_pseudoclass(self, is_internal):
-        if self.i == len(self.s):
-            return None
-        if self.s[self.i] != ":":
-            return None
-        self.i += 1
-        word = self.word().lower()
-        if word == INTERNAL_ACCESSIBILITY_HOVER and not is_internal:
-            return "IGNORED"
-        else:
-            return word
-
-    def selector(self, is_internal):
-        out = TagSelector(self.word().lower())
-        out.set_pseudoclass(self.try_pseudoclass(is_internal))
-        self.whitespace()
-        while self.i < len(self.s) and self.s[self.i] != "{":
-            descendant = TagSelector(self.word().lower())
-            descendant.set_pseudoclass(
-                self.try_pseudoclass(is_internal))
-            out = DescendantSelector(out, descendant)
-            self.whitespace()
-        return out
-
-    def try_media_query(self):
-        if self.i == len(self.s):
-            return
-
-        if self.s[self.i] == "@":
-            self.literal("@")
-            media = self.word()
-            assert media == "media"
-            self.whitespace()
-            self.literal("(")
-            (prop, val) = self.pair(")")
-            assert prop == "prefers-color-scheme"
-            assert val == "dark" or val == "light"
-            self.whitespace()
-            self.literal(")")
-            self.whitespace()
-            self.literal("{")
-            self.preferred_color_scheme = val
-            return True
-
-    def try_end_media_query(self):
-        if self.i == len(self.s):
-            return
-
-        if not self.preferred_color_scheme:
-            return
-        if self.s[self.i] == "}":
-            self.literal("}")
-            self.preferred_color_scheme = None
-            return True
-
-    def parse(self, is_internal=False):
-        rules = []
-        while self.i < len(self.s):
-            try:
-                self.whitespace()
-                if self.try_media_query(): continue
-                if self.try_end_media_query(): continue
-
-                selector = self.selector(is_internal)
-                self.literal("{")
-                self.whitespace()
-                body = self.body()
-                self.literal("}")
-                rules.append(
-                    (selector, body, self.preferred_color_scheme))
-            except AssertionError:
-                why = self.ignore_until(["}"])
-                if why == "}":
-                    self.literal("}")
-                    self.whitespace()
-                else:
-                    break
-        return rules
-
 class JSContext:
     def __init__(self, document, tab):
         self.document = document
@@ -1007,7 +832,7 @@ class Document:
 
         with open("browser15.css") as f:
             self.default_style_sheet = \
-                CSSParser(f.read()).parse(is_internal=True)
+                CSSParser(f.read(), internal=True).parse()
     def allowed_request(self, url):
         return self.allowed_origins == None or \
             url_origin(url) in self.allowed_origins
