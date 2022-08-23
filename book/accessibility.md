@@ -456,7 +456,7 @@ Dark mode
 =========
 
 Another useful visual change is using darker colors to help users who
-are extra sensitive to light, or using a device at night, or just
+are extra sensitive to light, use their device at night, or just
 prefer a darker color scheme. This browser *dark mode* feature should
 switch both the browser chrome and the web page itself to use white
 text on a black background, and otherwise adjust background colors to
@@ -550,8 +550,8 @@ calls in `raster_chrome` (they're not all shown here) should use
     from one theme to another.
     
 Now, we want the web page content to change from light mode to dark
-mode as well. To start, let's informing the `Tab` when the user
-requests dark mode:
+mode as well. To start, let's inform the `Tab` when the user requests
+dark mode:
 
 ``` {.python}
 class Browser:
@@ -662,7 +662,7 @@ only in dark mode:
 }
 ```
 
-Web developers can use `prefers-color-scheme` queries it in their own
+Web developers can use `prefers-color-scheme` queries in their own
 stylesheets, adjusting their own choice of colors to fit user
 requests, but we can also use a `prefers-color-scheme` media query in
 the browser default stylesheet to adjust the default colors for links,
