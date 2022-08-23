@@ -39,17 +39,12 @@ a:-internal-accessibility-hover {
 }
 
 @media (prefers-color-scheme: dark) {
+  a { color: lightblue; }
+  input { background-color: blue; }
+  button { background-color: orangered; }
 
-a { color: lightblue; }
-input { background-color: blue; }
-button { background-color: orangered; }
-
-input:focus { outline: 2px solid white; }
-
-button:focus { outline: 2px solid white; }
-
-div:focus { outline: 2px solid white; }
-
-a:focus { outline: 2px solid white; }
-
+  input:focus { outline: 2px solid white; }
+  button:focus { outline: 2px solid white; }
+  div:focus { outline: 2px solid white; }
+  a:focus { outline: 2px solid white; }
 }

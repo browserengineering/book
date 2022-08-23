@@ -14,7 +14,7 @@ Node.prototype.getAttribute = function(attr) {
 LISTENERS = {}
 
 function Event(type) {
-    this.type = type
+    this.type = type;
     this.do_default = true;
 }
 
@@ -41,7 +41,6 @@ Object.defineProperty(Node.prototype, 'style', {
         call_python("style_set", this.handle, s.toString());
     }
 });
-
 
 Node.prototype.dispatchEvent = function(evt) {
     var type = evt.type;
@@ -127,18 +126,47 @@ if (typeof global === 'undefined') {
     })();
 }
 
-Object.defineProperty(window, 'frameElement', {
-  enumerable: true,
-  configurable: true,
-  get: function() {
-    return new Node(call_python("frameElement"))
-  }
-});
+WINDOW_LISTENERS = {}
+
+function PostMessageEvent(data) {
+    this.type = "message";
+    this.data = data;
+}
+
+function Window(handle) {
+    this.handle = handle;
+}
+
+Window.prototype.postMessage = function(message, domain) {
+    call_python("postMessage", this.handle, message, domain);
+}
+
+Window.prototype.addEventListener = function(type, listener) {
+    if (!WINDOW_LISTENERS[this.handle]) WINDOW_LISTENERS[this.handle] = {};
+    var dict = WINDOW_LISTENERS[this.handle];
+    if (!dict[type]) dict[type] = [];
+    var list = dict[type];
+    list.push(listener);
+}
+
+Window.prototype.dispatchEvent = function(evt) {
+    var type = evt.type;
+    var handle = this.handle
+    var list = (WINDOW_LISTENERS[handle] && WINDOW_LISTENERS[handle][type]) || [];
+    for (var i = 0; i < list.length; i++) {
+        list[i].call(this, evt);
+    }
+    return evt.do_default;
+}
+
+window = new Window(0)
 
 Object.defineProperty(window, 'parent', {
   enumerable: true,
   configurable: true,
   get: function() {
-    return new Node(call_python("parent"))
+    handle = call_python('parent');
+    return new Window(handle);
   }
 });
+
