@@ -2,7 +2,7 @@
 
 
 export { breakpoint, comparator, filesystem, http_textarea, lib, pysplit,
-    pyrsplit, rt_constants, socket, ssl, tkinter, truthy, Widget };
+    pyrsplit, rt_constants, socket, ssl, tkinter, truthy, Widget, dukpy };
 
 window.TKELEMENT = null;
 
@@ -291,6 +291,74 @@ static tkinter(options) {
     return {Tk: wrap_class(Tk), Canvas: wrap_class(Canvas), font: { Font: wrap_class(Font) }}
 }
 
+static dukpy() {
+    if (!crossOriginIsolated) {
+        console.error("No cross-origin isolation; dukpy will not be available.");
+    }
+
+    class JSRuntimeError {
+        constructor(msg) {
+            this.msg = msg;
+        }
+    }
+    
+    class JSInterpreter {
+        constructor() {
+            this.function_table = {};
+            this.worker = new Worker("/widgets/dukpy.js");
+            this.worker.onmessage = this.onmessage.bind(this);
+            this.buffer = new SharedArrayBuffer(1024);
+            this.write_buffer = new Int32Array(this.buffer, 4);
+            this.flag_buffer = new Int32Array(this.buffer, 0, 1);
+            this.promise_stack = [];
+            this.worker.postMessage({
+                "type": "array",
+                "buffer": this.buffer,
+            });
+        }
+
+        export_function(name, fn) {
+            this.function_table[name] = fn;
+        }
+
+        evaljs(code, replacements) {
+            return new Promise((resolve, reject) => {
+                this.promise_stack.push(resolve);
+                this.worker.postMessage({
+                    "type": "eval",
+                    "body": code,
+                    "bindings": replacements,
+                });
+            });
+        }
+        
+        onmessage(e) {
+            switch (e.data.type) {
+            case "call":
+                let result = this.function_table[e.data.fn].call(window, e.data.args);
+                let json_result = JSON.stringify(result);
+                let bytes = new TextEncoder().encode(json_result);
+                if (bytes.length <= this.write_buffer.length) {
+                    for (let i = 0; i < bytes.length; i++) {
+                        Atomics.store(this.write_buffer, i, bytes[i]);
+                    }
+                    Atomics.store(this.flag_buffer, 0, bytes.length);
+                    Atomics.notify(this.flag_buffer, 0);
+                } else {
+                    throw "Buffer too small when calling " + e.data.fn;
+                }
+                break;
+
+            case "return":
+                this.promise_stack.pop()(e.data.data);
+                break;
+            }
+        }
+    }
+
+    return { JSRuntimeError: JSRuntimeError, JSInterpreter: wrap_class(JSInterpreter) };
+}
+
 }
 
 class Breakpoint {
@@ -513,3 +581,4 @@ const filesystem = new FileSystem();
 const socket = lib.socket();
 const ssl = lib.ssl();
 const tkinter = lib.tkinter();
+const dukpy = lib.dukpy();
