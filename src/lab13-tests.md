@@ -85,7 +85,6 @@ Testing CSS transtions
 
     >>> for item in browser.draw_list:
     ...     lab13.print_tree(item)
-     DrawCompositedLayer()
      Transform(<no-op>)
        SaveLayer(<no-op>)
          ClipRRect(<no-op>)

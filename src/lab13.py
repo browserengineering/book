@@ -597,9 +597,6 @@ class DocumentLayout:
         self.height = child.height + 2*VSTEP
 
     def paint(self, display_list):
-        display_list.append(
-            DrawRect(self.x, self.y, self.x + self.width, self.y + self.height,
-                "white"))
         self.children[0].paint(display_list)
 
     def __repr__(self):
