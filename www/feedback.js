@@ -236,6 +236,8 @@ function submit_chapter_comment(comment, email) {
     }));
 }
 
+let previous_comment = null;
+
 function setup_chapter_feedback() {
     var submit = Element("button", { type: "submit" }, "Submit feedback");
     var cancel = Element("a", { href: "#", className: "checkoff" }, "Cancel");
@@ -265,7 +267,9 @@ function setup_chapter_feedback() {
                 Element("label", { "for": "feedback" }, "Your feedback: "),
             ]),
             Element("div", { className: "inputs"}, [
-                Element("textarea", { name: "feedback", autofocus: "", required: "" }, []),
+                Element("textarea", { name: "feedback", autofocus: "", required: "" }, [
+                    previous_comment,
+                ]),
             ]),
             Element("p", { className: "legalese" }, [
                 "By making edits, you agree to assign all rights ",
@@ -291,6 +295,7 @@ function setup_chapter_feedback() {
     }
     
     function do_cancel(e) {
+        previous_comment = this.querySelector("textarea").value;
         chapter_overlay.remove();
     }
 
