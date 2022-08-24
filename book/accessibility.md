@@ -1058,6 +1058,244 @@ important for browsers and web sites to provide keyboard input alternatives.
 
 :::
 
+Custom widgets
+==============
+
+Our browser now has all these great features to help accessibility: zoom,
+keyboard navigation, dark mode and an accessibility tree. But what if the
+website wants to *extend* that work to new use cases not built into the
+browser? For example, what if a web developer wants to add their own different
+kind of input element, or a fancier kind of hyperlink? These kinds of *custom
+widgets* are very common on the web---in fact much more common than the
+built-in ones, because they look nicer and have extra features.
+
+A web developer can make a custom widget with event listeners for keyboard and
+mouse events, plus custom CSS to style, layout, paint and animate. But it
+immediately loses important features like becoming focusable, participating in
+tab index order, responding to dark mode, and expressing semantics. This means
+that as a site wants to customize the experience to make it nicer for some
+users, it becomes worse for others---the ones who really depend on these
+accessibility features.
+
+Let's add developer APIs to our browser to allow custom widgets to get back that
+functionality, and start with focus and tab order.
+
+Tab order is is easily solved with the `tabindex` attribute on HTML elements.
+When this attribute is present, the element automatically becomes focusable.
+The value of this property is a number, indicating the order of focus. For
+example, an element with `tabindex=1` on it will be focused before
+`tabindex=2`.^[Elements like input that are by default focusable can have
+`tabindex` set, but if it isn't set they will be last in the order after
+`tabindex` elements, and will be ordered according to to their position in the
+DOM.]
+
+First, `is_focusable` needs to be extended accordingly:
+
+``` {.python}
+def is_focusable(node):
+    return node.tag == "input" or node.tag == "button" \
+        or node.tag == "a" or "tabindex" in node.attributes
+```
+
+Define a new method to get the tab index. It defaults to a very large number,
+which is an approximation to "higher `tabindex` than anything specified".
+
+``` {.python}
+class Tab:
+    # ...
+    def get_tabindex(node):
+        return int(node.attributes.get("tabindex", 9999999))
+```
+
+Then it can be used in the sorting order for `advance_tab`:
+
+``` {.python}
+class Tab:
+    def advance_tab(self):
+        focusable_nodes = [node
+            for node in tree_to_list(self.nodes, [])
+            if isinstance(node, Element) and is_focusable(node)]
+        focusable_nodes.sort(key=Tab.get_tabindex)
+        # ...
+```
+
+That's it! Now tabindex works. Tabbing through the
+[focus example](examples/example14-focus.html) should now
+change its order according to the `tabindex` attributes in it.
+
+Next up is customizing the focus rectangle via the [`outline`][outline] CSS
+property. As usual, we'll implement only a subset of the full definition; in
+particular, syntax that looks like this:
+
+[outline]: https://developer.mozilla.org/en-US/docs/Web/CSS/outline
+
+    outline: 3px solid red;
+
+Which means "make the outline red 3px thick". First parse it:
+
+``` {.python}
+def parse_outline(outline_str):
+    if not outline_str:
+        return None
+    values = outline_str.split(" ")
+    if len(values) != 3:
+        return None
+    if values[1] != "solid":
+        return None
+    return (int(values[0][:-2]), values[2])
+```
+
+Now to use it. The outline will be present if the element is focused or has the
+`outline` CSS property generally. While we could finish implementing that via
+some extra logic in `paint_outline`, the feature has a fundamental problem that
+has to be fixed. Specifying an outline is a fine feature to offer to web
+developers, but it doesn't actually solve the problem of customizing the focus
+outline. That's because `outline`, if specified by the developer,
+would *always* apply, but instead we want it to only apply to an element when
+it's focused!
+
+To do this we need some way to let developers
+express *outline-only-while-focused* in CSS. This is done with a
+[*pseudo-class*][pseudoclass], which is a way to target internal state of the
+browser (in this case internal state of a specific element).
+[^why-pseudoclass] Pseudo-classes are notated with a suffix applied to a tag or
+other selector, separated by a single colon character. For the case of focus,
+the syntax looks like this:
+
+    div:focus { outline: 2px solid black; }
+
+[pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
+
+[^why-pseudoclass]: It's called a pseudo-class because it's similar to how a
+developer would indicate a [class] attribute on an element for the purpose
+of targeting special elements with different styles. It's "pseudo" because
+there is no actual class attribute set on the element while it's focused.
+
+[class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Class_selectors
+
+Let's implement the `focus` pseudo-class. Then we can change focus outlines to
+use a browser style sheet with `:focus` instead of special code in
+`paint_outline`. The style sheet lines will look like this:
+
+``` {.css}
+input:focus { outline: 2px solid black; }
+button:focus { outline: 2px solid black; }
+div:focus { outline: 2px solid black; }
+
+
+@media (prefers-color-scheme: dark) {
+input:focus { outline: 2px solid white; }
+button:focus { outline: 2px solid white; }
+div:focus { outline: 2px solid white; }
+a:focus { outline: 2px solid white; }
+}
+```
+
+And then we can change `paint_outline` to just look at the `outline` CSS
+property:
+
+``` {.python}
+def paint_outline(node, cmds, rect):
+    outline = parse_outline(node.style.get("outline"))
+    if outline:
+        cmds.append(outline_cmd(rect, outline))
+```
+
+``` {.python expected=False}
+class LineLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+        focused_node = None
+        for child in self.children:
+            node = child.node
+            if isinstance(node, Text) and is_focused(node.parent):
+                focused_node = node.parent
+                outline_rect.join(child.rect())
+        # ...
+        if focused_node:
+            paint_outline(focused_node, display_list, outline_rect)
+
+```
+
+Now for adding support for `:focus`. The first step will be teaching
+`CSSParser` how to parse it. To do that, let's change `selector` to
+call a new `simple_selector` subroutine to parse a tag name and a
+possible pseudoclass:
+
+``` {.python}
+class CSSParser:
+    def selector(self):
+        out = self.simple_selector()
+        # ...
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            descendant = self.simple_selector()
+            # ...
+```
+
+In `simple_selector`, the parser first parses a tag name and then
+checks if that's followed by a colon and a pseudoclass name:
+
+``` {.python}
+class CSSParser:
+    def simple_selector(self):
+        out = TagSelector(self.word().lower())
+        if self.i < len(self.s) and self.s[self.i] == ":":
+            self.literal(":")
+            pseudoclass = self.word().lower()
+            out = PseudoclassSelector(pseudoclass, out)
+        return out
+```
+
+A `PseudoclassSelector` wraps another selector; it checks that base
+selector but also a pseudoclass.
+
+``` {.python}
+class PseudoclassSelector:
+    def __init__(self, pseudoclass, base):
+        self.pseudoclass = pseudoclass
+        self.base = base
+        self.priority = self.base.priority
+```
+
+Matching is straightforward; if the pseudoclass is unknown, the
+selector fails to match anything:
+
+``` {.python}
+class PseudoclassSelector:
+    def matches(self, node):
+        if not self.base.matches(node):
+            return False
+        if self.pseudoclass == "focus":
+            return is_focused(node)
+        else:
+            return False
+```
+
+And that's it! Elegant, right?
+
+::: {.further}
+
+In addition to focus rings being present for focus, another very important part
+of accessibility is ensuring *contrast*. I alluded to it in the section on dark
+mode, in the context of ensuring that the dark mode style sheet provides good
+default contrast. But in fact, the focus ring we've implemented here does not
+necessarily have great contrast, for example if it's next to an element with a
+black background provided in a page style sheet. This is not too hard to
+fix, and there is an exercise at the end of this chapter about it.
+
+Contrast is one part of the [Web Content Accessibility Guidelines][wcag], a
+standard set of recommendations to page authors on how to ensure accessibility.
+The browser can do a lot, but ultimately [good contrast][contrast] between
+colors is something that page authors also have to pay attention to.
+
+
+[wcag]: https://www.w3.org/WAI/standards-guidelines/wcag/
+[contrast]: https://www.w3.org/TR/WCAG21/#contrast-minimum
+
+:::
+
+
 Screen readers
 ==============
 
@@ -1579,246 +1817,6 @@ finding one that works well on any particular site, and which one does
 may be unpredictable. Interoperability is also important for web site
 authors who would otherwise have to constantly test everything in every
 browser.
-
-:::
-
-Custom widgets
-==============
-
-Our browser now has all these great features to help accessibility: zoom,
-keyboard navigation, dark mode and an accessibility tree. But what if the
-website wants to *extend* that work to new use cases not built into the
-browser? For example, what if a web developer wants to add their own different
-kind of input element, or a fancier kind of hyperlink? These kinds of *custom
-widgets* are very common on the web---in fact much more common than the
-built-in ones, because they look nicer and have extra features.
-
-A web developer can make a custom widget with event listeners for keyboard and
-mouse events, plus custom CSS to style, layout, paint and animate. But it
-immediately loses important features like becoming focusable, participating in
-tab index order, responding to dark mode, and expressing semantics. This means
-that as a site wants to customize the experience to make it nicer for some
-users, it becomes worse for others---the ones who really depend on these
-accessibility features.
-
-Let's add developer APIs to our browser to allow custom widgets to get back that
-functionality, and start with focus and tab order.
-
-Tab-index & outline
-===================
-
-Tab order is is easily solved with the `tabindex` attribute on HTML elements.
-When this attribute is present, the element automatically becomes focusable.
-The value of this property is a number, indicating the order of focus. For
-example, an element with `tabindex=1` on it will be focused before
-`tabindex=2`.^[Elements like input that are by default focusable can have
-`tabindex` set, but if it isn't set they will be last in the order after
-`tabindex` elements, and will be ordered according to to their position in the
-DOM.]
-
-First, `is_focusable` needs to be extended accordingly:
-
-``` {.python}
-def is_focusable(node):
-    return node.tag == "input" or node.tag == "button" \
-        or node.tag == "a" or "tabindex" in node.attributes
-```
-
-Define a new method to get the tab index. It defaults to a very large number,
-which is an approximation to "higher `tabindex` than anything specified".
-
-``` {.python}
-class Tab:
-    # ...
-    def get_tabindex(node):
-        return int(node.attributes.get("tabindex", 9999999))
-```
-
-Then it can be used in the sorting order for `advance_tab`:
-
-``` {.python}
-class Tab:
-    def advance_tab(self):
-        focusable_nodes = [node
-            for node in tree_to_list(self.nodes, [])
-            if isinstance(node, Element) and is_focusable(node)]
-        focusable_nodes.sort(key=Tab.get_tabindex)
-        # ...
-```
-
-That's it! Now tabindex works. Tabbing through the
-[focus example](examples/example14-focus.html) should now
-change its order according to the `tabindex` attributes in it.
-
-Next up is customizing the focus rectangle via the [`outline`][outline] CSS
-property. As usual, we'll implement only a subset of the full definition; in
-particular, syntax that looks like this:
-
-[outline]: https://developer.mozilla.org/en-US/docs/Web/CSS/outline
-
-    outline: 3px solid red;
-
-Which means "make the outline red 3px thick". First parse it:
-
-``` {.python}
-def parse_outline(outline_str):
-    if not outline_str:
-        return None
-    values = outline_str.split(" ")
-    if len(values) != 3:
-        return None
-    if values[1] != "solid":
-        return None
-    return (int(values[0][:-2]), values[2])
-```
-
-Now to use it. The outline will be present if the element is focused or has the
-`outline` CSS property generally. While we could finish implementing that via
-some extra logic in `paint_outline`, the feature has a fundamental problem that
-has to be fixed. Specifying an outline is a fine feature to offer to web
-developers, but it doesn't actually solve the problem of customizing the focus
-outline. That's because `outline`, if specified by the developer,
-would *always* apply, but instead we want it to only apply to an element when
-it's focused!
-
-To do this we need some way to let developers
-express *outline-only-while-focused* in CSS. This is done with a
-[*pseudo-class*][pseudoclass], which is a way to target internal state of the
-browser (in this case internal state of a specific element).
-[^why-pseudoclass] Pseudo-classes are notated with a suffix applied to a tag or
-other selector, separated by a single colon character. For the case of focus,
-the syntax looks like this:
-
-    div:focus { outline: 2px solid black; }
-
-[pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
-
-[^why-pseudoclass]: It's called a pseudo-class because it's similar to how a
-developer would indicate a [class] attribute on an element for the purpose
-of targeting special elements with different styles. It's "pseudo" because
-there is no actual class attribute set on the element while it's focused.
-
-[class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Class_selectors
-
-Let's implement the `focus` pseudo-class. Then we can change focus outlines to
-use a browser style sheet with `:focus` instead of special code in
-`paint_outline`. The style sheet lines will look like this:
-
-``` {.css}
-input:focus { outline: 2px solid black; }
-button:focus { outline: 2px solid black; }
-div:focus { outline: 2px solid black; }
-
-
-@media (prefers-color-scheme: dark) {
-input:focus { outline: 2px solid white; }
-button:focus { outline: 2px solid white; }
-div:focus { outline: 2px solid white; }
-a:focus { outline: 2px solid white; }
-}
-```
-
-And then we can change `paint_outline` to just look at the `outline` CSS
-property:
-
-``` {.python}
-def paint_outline(node, cmds, rect):
-    outline = parse_outline(node.style.get("outline"))
-    if outline:
-        cmds.append(outline_cmd(rect, outline))
-```
-
-``` {.python expected=False}
-class LineLayout:
-    # ...
-    def paint(self, display_list):
-        # ...
-        focused_node = None
-        for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and is_focused(node.parent):
-                focused_node = node.parent
-                outline_rect.join(child.rect())
-        # ...
-        if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
-
-```
-
-Now for adding support for `:focus`. The first step will be teaching
-`CSSParser` how to parse it. To do that, let's change `selector` to
-call a new `simple_selector` subroutine to parse a tag name and a
-possible pseudoclass:
-
-``` {.python}
-class CSSParser:
-    def selector(self):
-        out = self.simple_selector()
-        # ...
-        while self.i < len(self.s) and self.s[self.i] != "{":
-            descendant = self.simple_selector()
-            # ...
-```
-
-In `simple_selector`, the parser first parses a tag name and then
-checks if that's followed by a colon and a pseudoclass name:
-
-``` {.python}
-class CSSParser:
-    def simple_selector(self):
-        out = TagSelector(self.word().lower())
-        if self.i < len(self.s) and self.s[self.i] == ":":
-            self.literal(":")
-            pseudoclass = self.word().lower()
-            out = PseudoclassSelector(pseudoclass, out)
-        return out
-```
-
-A `PseudoclassSelector` wraps another selector; it checks that base
-selector but also a pseudoclass.
-
-``` {.python}
-class PseudoclassSelector:
-    def __init__(self, pseudoclass, base):
-        self.pseudoclass = pseudoclass
-        self.base = base
-        self.priority = self.base.priority
-```
-
-Matching is straightforward; if the pseudoclass is unknown, the
-selector fails to match anything:
-
-``` {.python}
-class PseudoclassSelector:
-    def matches(self, node):
-        if not self.base.matches(node):
-            return False
-        if self.pseudoclass == "focus":
-            return is_focused(node)
-        else:
-            return False
-```
-
-And that's it! Elegant, right?
-
-::: {.further}
-
-In addition to focus rings being present for focus, another very important part
-of accessibility is ensuring *contrast*. I alluded to it in the section on dark
-mode, in the context of ensuring that the dark mode style sheet provides good
-default contrast. But in fact, the focus ring we've implemented here does not
-necessarily have great contrast, for example if it's next to an element with a
-black background provided in a page style sheet. This is not too hard to
-fix, and there is an exercise at the end of this chapter about it.
-
-Contrast is one part of the [Web Content Accessibility Guidelines][wcag], a
-standard set of recommendations to page authors on how to ensure accessibility.
-The browser can do a lot, but ultimately [good contrast][contrast] between
-colors is something that page authors also have to pay attention to.
-
-
-[wcag]: https://www.w3.org/WAI/standards-guidelines/wcag/
-[contrast]: https://www.w3.org/TR/WCAG21/#contrast-minimum
 
 :::
 
