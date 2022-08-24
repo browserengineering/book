@@ -969,23 +969,9 @@ focusable items.
 Browsers support the `tabindex` HTML attribute to make this possible.
 The `tabindex` attribute is a number; elements with a negative value
 aren't focusable and smaller numbers come before larger numbers and
-elements without a `tabindex` attribute. Additionally, elements with
-`tabindex` are automatically focusable, even if they aren't a link or
-a button or a text entry. That's not super useful in our browser, but
-we might as well implement it anyway; in a real browser, that element
-might listen to JavaScript events like `keydown`, which our browser
-doesn't send.
-
-Let's first extend `is_focusable` to consider `tabindex`:
-
-``` {.python}
-def is_focusable(node):
-    return node.tag in ["input", "button", "a"] \
-        or "tabindex" in node.attributes
-```
-
-Next, we need to sort the focusable elements by tab index, so we need
-a function that returns the tab index:
+elements without a `tabindex` attribute. To implement that, we need to
+sort the focusable elements by tab index, so we need a function that
+returns the tab index:
 
 ``` {.python}
 def get_tabindex(node):
@@ -1007,6 +993,26 @@ class Tab:
 Since Python's sort is "stable", two elements with the same `tabindex`
 won't change their relative position in `focusable_nodes`.
 
+Additionally, elements with `tabindex` are automatically focusable,
+even if they aren't a link or a button or a text entry. That's useful,
+because that element might listen to the `click` event. To support
+this let's first extend `is_focusable` to consider `tabindex`:
+
+``` {.python}
+def is_focusable(node):
+    return node.tag in ["input", "button", "a"] \
+        or "tabindex" in node.attributes
+```
+
+Next, we need to make sure to send a `click` event when an element is
+activated:
+
+::: {.todo}
+I'm not sure how to do this. Right now our code wants to `activate`
+every element in the ancestor chain, but do we want to send that many
+`click` events?
+:::
+
 We now have configurable keyboard navigation for both the browser and
 the web page content. And it involved writing barely any new code,
 instead mostly moving code from existing methods into new stand-alone
@@ -1014,6 +1020,19 @@ ones. The fact that keyboard navigation simplified, not complicated,
 our browser implementation is not a surprise: improving accessibility
 often involves generalizing and refining existing concepts, leading to
 more maintainable code overall.
+
+::: {.further}
+Why send the `click` event when an element is activated, instead of a
+special `activate` event? Internet Explorer [did send][onactivate]
+this event, and other browsers used to send a
+[DOMActivate][domactivate] event, but it's been deprecated in favor of
+sending the `click` event even if the element was activated via
+keyboard, not via a click. This works better when the developers aren't
+thinking much about accessibility.
+:::
+
+[onactivate]: https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa742710(v=vs.85)
+[domactivate]: https://w3c.github.io/uievents/#event-type-DOMActivate
 
 Indicating focus
 ================

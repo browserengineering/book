@@ -1225,17 +1225,16 @@ class Tab:
     def activate_element(self, elt):
         if elt.tag == "input":
             elt.attributes["value"] = ""
+            self.set_needs_render()
         elif elt.tag == "a" and "href" in elt.attributes:
             url = resolve_url(elt.attributes["href"], self.url)
             self.load(url)
-            return None
         elif elt.tag == "button":
             while elt:
                 if elt.tag == "form" and "action" in elt.attributes:
                     self.submit_form(elt)
-                    return None
+                    return
                 elt = elt.parent
-        return elt
 
     def click(self, x, y):
         self.render()
