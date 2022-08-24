@@ -1,6 +1,6 @@
 'use strict';
 
-// Thanks for reading the code! You can hit Ctrl+E to access the feedback tools.
+// Thanks for reading the code! You can hit Ctrl-E / Cmd-E to access the feedback tools.
 
 var chapter_overlay;
 
@@ -9,6 +9,14 @@ function ctrl_key_pressed(e) {
         return e.metaKey;
     } else {
         return e.ctrlKey;
+    }  
+}
+
+function ctrl_key_name() {
+    if (navigator.platform.indexOf("Mac") === 0 || navigator.platform === "iPhone") {
+        return "Ctrl";
+    } else {
+        return "Cmd";
     }  
 }
 
@@ -239,7 +247,7 @@ function setup_chapter_feedback() {
                 "what you liked, and what you didn't like. ",
                 "If you'd also like to provide feedback about particular ",
                 "pieces of text, press ",
-                 Element("kbd", "Ctrl+E"), "." 
+                 Element("kbd", ctrl_key_name() + "-E"), "." 
             ]),
             Element("div", { className: "inputs" }, [
                 Element("label", { "for": "name" }, "Your name: "),
@@ -305,7 +313,7 @@ function setup_text_feedback() {
         Element("form", { method: "get", action: "/" }, [
             Element("h1", "Feedback Tools"),
             Element("p", [
-                "You've pressed ", Element("kbd", "Ctrl+E"), ",",
+                "You've pressed ", Element("kbd", ctrl_key_name() + "-E"), ",",
                 "which enables ", Element("i", "feedback tools"), ". ",
                 "You can use them to ",
                 Element("em", "fix typos"), " and ",
