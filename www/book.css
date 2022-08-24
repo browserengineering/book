@@ -96,7 +96,7 @@ body { counter-reset: fn; }
 .note-container:before { content: " [" counter(fn); color: #a86; }
 .note-container.open:before { content: " ["; color: #a86; }
 .note { font-style: italic; white-space: normal; color: #a86; }
-.note em { font-style:normal }
+.note em { font-style: normal; }
 /* Assume no footnotes on main page, but margin numbers */
 body.main { padding: 0 4ex; }
 @media only screen and (min-width: 1150px) {
@@ -114,12 +114,9 @@ body.main { padding: 0 4ex; }
     body { padding: 0 17ex; }
 }
 @media only screen and (max-width: 1149px) {
-  .note {
-    display: none;
-  }
-  .open .note {
-    display: inline; 
-  }
+  .note-container .note { display: none; }
+  .open .note { display: inline; }
+  .note form { display: inline; }
 }
 
 .todo, .quirk, .warning, .installation, .further { padding: 1em 1em 0; margin: 1em 0; }
@@ -180,7 +177,10 @@ p, li, div.sourceCode, .note { position: relative; }
     padding: .125em .75em; border-radius: .75em;
 }
 .tools a { margin: 0 1ex; }
-.feedback.note { font-size: 66%; color: purple; }
+@media only screen and (min-width: 1150px) {
+    .feedback.note { font-size: 66%; }
+}
+.feedback.note { color: purple; }
 .feedback.note span { outline: none; }
 .feedback.note form { margin-top: .5ex; }
 
