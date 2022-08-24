@@ -145,8 +145,8 @@ APIs for proper animations, from the `requestAnimationFrame` API to
 CSS-native animations, came onto the scene only in the
 decade of the [2010s][cssanim-hist].
 
-[eventloop-ch2]: http://localhost:8001/graphics.html#creating-windows
-[eventloop-ch12]: http://localhost:8001/scheduling.html#animating-frames
+[eventloop-ch2]: graphics.html#creating-windows
+[eventloop-ch12]: scheduling.html#animating-frames
 [cssanim-hist]: https://en.wikipedia.org/wiki/CSS_animations
 
 :::
@@ -1538,7 +1538,7 @@ sometime soon this work will be threaded in Chromium.
 
 [cap]: https://developer.chrome.com/blog/renderingng/#compositeafterpaint
 
-[threaded-12]: http://localhost:8001/scheduling.html#threaded-scrolling
+[threaded-12]: scheduling.html#threaded-scrolling
 
 [WebRender]: https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-gets-rid-of-jank/
 

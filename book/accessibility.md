@@ -895,7 +895,7 @@ logic for input elements to clear them out.^[This logic is inherited from
 [Chapter 8][clear-input]. Real browsers will typically preserve what
 was typed there before.]
 
-[clear-input]: http://localhost:8001/forms.html#interacting-with-widgets
+[clear-input]: forms.html#interacting-with-widgets
 
 ``` {.python}
     def apply_focus(self, node):
