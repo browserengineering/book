@@ -253,10 +253,15 @@ def status():
     pw = data.get('pw', "")
     heng = hashlib.sha3_256()
     heng.update(pw.encode("utf8"))
-    with open("pw.hash", "rb") as f:
-        good = f.read(256)
-    # Equivalent to `good == heng.digest()` but constant-time-ish
-    if sum([0 if a == b else 1 for a, b in zip(good, heng.digest())]) == 0:
+    try:
+        with open("pw.hash", "rb") as f:
+            good = f.read(256)
+        # Equivalent to `good == heng.digest()` but constant-time-ish
+        allowed = sum([0 if a == b else 1 for a, b in zip(good, heng.digest())]) == 0
+    except FileNotFoundError:
+        allowed = True
+
+    if allowed:
         DATA.set_status(data['id'], data['status'])
     else:
         raise ValueError("Invalid password")
