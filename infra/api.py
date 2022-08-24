@@ -230,11 +230,15 @@ def prettify(obj):
 def feedback():
     new = [prettify(o) for o in DATA if o['status'] == "new"]
     saved = {}
+    starred = []
     for o in DATA:
         if o['status'] == "saved":
             page = os.path.split(o['url'])[1].rsplit(".", 1)[0]
             saved.setdefault(page, []).append(prettify(o))
-    return { 'new': new, 'saved': saved }
+        elif o['status'] == "starred":
+            starred.append(prettify(o))
+    
+    return { 'new': new, 'saved': saved, 'starred': starred }
 
 @bottle.route("/feedback.rss")
 @bottle.view("feedback_rss.view")
