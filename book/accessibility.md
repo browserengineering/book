@@ -884,7 +884,7 @@ the last the focusable node (or if there weren't any focusable nodes
 to begin with), we'll unfocus the page and move focus to the address
 bar:
 
-``` {.python}
+``` {.python replace=%20=%20focusable_nodes[idx]/_element(focusable_nodes[idx]),%20=%20None/_element(None)}
 class Tab:
     def advance_tab(self):
         if idx < len(focusable_nodes):
@@ -1054,7 +1054,7 @@ was typed there before.]
 [clear-input]: http://localhost:8001/forms.html#interacting-with-widgets
 
 ``` {.python}
-    def apply_focus(self, node):
+    def focus_element(self, node):
         if self.focus:
             self.focus.is_focused = False
         self.focus = node

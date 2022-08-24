@@ -993,7 +993,7 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
-        self.focus = None
+        self.focus_element(None)
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_tab = True
@@ -1217,7 +1217,7 @@ class Tab:
 
         self.measure_render.stop()
 
-    def apply_focus(self, node):
+    def focus_element(self, node):
         if self.focus:
             self.focus.is_focused = False
         self.focus = node
@@ -1302,9 +1302,9 @@ class Tab:
             idx = 0
 
         if idx < len(focusable_nodes):
-            self.focus = focusable_nodes[idx]
+            self.focus_element(focusable_nodes[idx])
         else:
-            self.focus = None
+            self.focus_element(None)
             self.browser.focus_addressbar()
         self.set_needs_render()
 
@@ -1716,8 +1716,8 @@ class Browser:
         new_tab = Tab(self)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
-        self.schedule_load(url)
         self.lock.release()
+        self.schedule_load(url)
 
     def raster_tab(self):
         for composited_layer in self.composited_layers:
