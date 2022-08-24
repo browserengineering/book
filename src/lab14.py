@@ -560,8 +560,8 @@ class InputLayout:
             self.x, self.y, self.width, self.height)
 
 def is_focusable(node):
-    return node.tag == "input" or node.tag == "button" \
-        or node.tag == "a" or "tabindex" in node.attributes
+    return node.tag in ["input", "button", "a"] \
+        or "tabindex" in node.attributes
 
 def compute_role(node):
     if isinstance(node, Text):
@@ -990,8 +990,8 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
-        self.zoom = 1
         self.focus = None
+        self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
@@ -1219,13 +1219,13 @@ class Tab:
             self.focus.is_focused = False
         self.focus = node
         if node:
-            if node.tag == "input":
-                node.attributes["value"] = ""
             node.is_focused = True
         self.set_needs_render()
 
     def activate_element(self, elt):
-        if elt.tag == "a" and "href" in elt.attributes:
+        if elt.tag == "input":
+            elt.attributes["value"] = ""
+        elif elt.tag == "a" and "href" in elt.attributes:
             url = resolve_url(elt.attributes["href"], self.url)
             self.load(url)
             return None
@@ -1248,24 +1248,14 @@ class Tab:
         if not objs: return
         elt = objs[-1].node
         if elt and self.js.dispatch_event("click", elt): return
-        focus_applied = False
         while elt:
             if isinstance(elt, Text):
                 pass
-            elif elt.tag == "input":
-                elt.attributes["value"] = ""
-                if elt != self.focus:
-                    self.set_needs_render()
-                if not focus_applied:
-                    self.apply_focus(elt)
-                return
-            elif not self.activate_element(elt):
-                if not focus_applied:
-                    self.apply_focus(elt)
-                return
+            elif is_focusable(elt):
+                self.focus_element(elt)
+                self.activate_element(elt)
+                self.set_needs_render()
             elt = elt.parent
-            self.apply_focus(elt)
-            self.focus_applied = True
 
     def submit_form(self, elt):
         if self.js.dispatch_event("submit", elt): return
@@ -1597,7 +1587,6 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.advance_tab)
         active_tab.task_runner.schedule_task(task)
-        pass
 
     def focus_addressbar(self):
         self.lock.acquire(blocking=True)
@@ -1627,9 +1616,6 @@ class Browser:
         task = Task(active_tab.go_back)
         active_tab.task_runner.schedule_task(task)
         self.clear_data()
-
-    def add_tab(self):
-        self.load("https://browser.engineering/")
 
     def cycle_tabs(self):
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
@@ -1663,7 +1649,7 @@ class Browser:
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.set_active_tab(int((e.x - 40) / 80))
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.add_tab()
+                self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
                 self.go_back()
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
@@ -1723,10 +1709,12 @@ class Browser:
         active_tab.task_runner.schedule_task(task)
 
     def load(self, url):
+        self.lock.acquire(blocking=True)
         new_tab = Tab(self)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
         self.schedule_load(url)
+        self.lock.release()
 
     def raster_tab(self):
         for composited_layer in self.composited_layers:
@@ -1889,7 +1877,7 @@ if __name__ == "__main__":
                     elif event.key.keysym.sym == sdl2.SDLK_m:
                         browser.toggle_mute()
                     elif event.key.keysym.sym == sdl2.SDLK_t:
-                        browser.add_tab()
+                        browser.load("https://browser.engineering/")
                     elif event.key.keysym.sym == sdl2.SDLK_q:
                         browser.handle_quit()
                         sdl2.SDL_Quit()
