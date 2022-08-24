@@ -209,7 +209,7 @@ redraw the screen after zooming is complete. We also need to reset the
 zoom level when we navigate to a new page:
 
 ``` {.python}
-class Tag:
+class Tab:
     def load(self, url, body=None):
         self.zoom = 1
         # ...
@@ -800,7 +800,6 @@ class Browser:
         self.lock.acquire(blocking=True)
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
         self.set_active_tab(new_active_tab)
-        self.set_needs_raster()
         self.lock.release()
 ```
 
@@ -902,7 +901,7 @@ varies (navigating a link, pressing a button, clearning a text entry),
 we'll call this "activating" the element:
 
 ``` {.python}
-class Tag:
+class Tab:
     def enter(self):
         if not self.focus: return
         self.activate_element(self.focus)
@@ -952,7 +951,7 @@ navigates to a new page, which means the element we were focused on no
 longer exists. We need to make sure to clear focus in this case:
 
 ``` {.python}
-class Tag:
+class Tab:
     def load(self, url, body=None):
         self.focus = None
         # ...
@@ -986,7 +985,7 @@ sort by `get_tabindex` in `advance_tab`:
 class Tab:
     def advance_tab(self):
         # ...
-        focusable_nodes.sort(key=Tab.get_tabindex)
+        focusable_nodes.sort(key=get_tabindex)
         # ...
 ```
 
@@ -1007,11 +1006,13 @@ def is_focusable(node):
 Next, we need to make sure to send a `click` event when an element is
 activated:
 
-::: {.todo}
-I'm not sure how to do this. Right now our code wants to `activate`
-every element in the ancestor chain, but do we want to send that many
-`click` events?
-:::
+``` {.python}
+class Tab:
+    def enter(self):
+        if not self.focus: return
+        if self.js.dispatch_event("click", self.focus): return
+        self.activate_element(self.focus)
+```
 
 We now have configurable keyboard navigation for both the browser and
 the web page content. And it involved writing barely any new code,
@@ -1058,8 +1059,6 @@ was typed there before.]
             self.focus.is_focused = False
         self.focus = node
         if node:
-            if node.tag == "input":
-                node.attributes["value"] = ""
             node.is_focused = True
 ```
 

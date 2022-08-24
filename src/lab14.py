@@ -385,6 +385,9 @@ def style_length(node, style_name, default_value, zoom):
     return device_px(float(style_val[:-2]), zoom) if style_val \
         else default_value
 
+def get_tabindex(node):
+    return int(node.attributes.get("tabindex", "9999999"))
+
 def cascade_priority(rule):
     media, selector, body = rule
     return selector.priority
@@ -1254,6 +1257,7 @@ class Tab:
                 self.focus_element(elt)
                 self.activate_element(elt)
                 self.set_needs_render()
+                return
             elt = elt.parent
 
     def submit_form(self, elt):
@@ -1282,28 +1286,26 @@ class Tab:
             self.set_needs_render()
 
     def enter(self):
-        if self.focus:
-            self.activate_element(self.focus)
-
-    def get_tabindex(node):
-        return int(node.attributes.get("tabindex", 9999999))
+        if not self.focus: return
+        if self.js.dispatch_event("click", self.focus): return
+        self.activate_element(self.focus)
 
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
             if isinstance(node, Element) and is_focusable(node)]
-        focusable_nodes.sort(key=Tab.get_tabindex)
-        if not focusable_nodes:
-            self.apply_focus(None)
-        elif not self.focus:
-            self.apply_focus(focusable_nodes[0])
+        focusable_nodes.sort(key=get_tabindex)
+
+        if self.focus in focusable_nodes:
+            idx = focusable_nodes.index(self.focus) + 1
         else:
-            i = focusable_nodes.index(self.focus)
-            if i < len(focusable_nodes) - 1:
-                self.apply_focus(focusable_nodes[i+1])
-            else:
-                self.apply_focus(None)
-                self.browser.focus_addressbar()
+            idx = 0
+
+        if idx < len(focusable_nodes):
+            self.focus = focusable_nodes[idx]
+        else:
+            self.focus = None
+            self.browser.focus_addressbar()
         self.set_needs_render()
 
     def zoom_by(self, increment):
@@ -1617,8 +1619,10 @@ class Browser:
         self.clear_data()
 
     def cycle_tabs(self):
+        self.lock.acquire(blocking=True)
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
         self.set_active_tab(new_active_tab)
+        self.lock.release()
 
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
@@ -1867,8 +1871,8 @@ if __name__ == "__main__":
                         browser.reset_zoom()
                     elif event.key.keysym.sym == sdl2.SDLK_LEFT:
                         browser.go_back()
-                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
-                        browser.cycle_tabs()
+                    elif event.key.keysym.sym == sdl2.SDLK_l:
+                        browser.focus_addressbar()
                     elif event.key.keysym.sym == sdl2.SDLK_a:
                         browser.toggle_accessibility()
                     elif event.key.keysym.sym == sdl2.SDLK_d:
@@ -1877,6 +1881,8 @@ if __name__ == "__main__":
                         browser.toggle_mute()
                     elif event.key.keysym.sym == sdl2.SDLK_t:
                         browser.load("https://browser.engineering/")
+                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                        browser.cycle_tabs()
                     elif event.key.keysym.sym == sdl2.SDLK_q:
                         browser.handle_quit()
                         sdl2.SDL_Quit()
