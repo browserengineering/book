@@ -742,6 +742,41 @@ browser chrome interactions such as the back button, typing a URL, or quitting
 the browser, as well as web page ones such as clicking on buttons, typing
 input, and navigating links.
 
+In addition to activation of input elements, there are four more mouse controls
+in the browser: the back button, the add-tab button, iterating through the
+tabs, and the button to quit the browser.[^one-more] Bind them to `Ctrl-left`,
+`Ctrl-t`, `Ctrl-tab` and `Ctrl-q`, respectively:
+
+[^one-more]: Actually, there are sometimes more, depending on the OS you're
+working with: buttons to minimize or maximize the browser window. Those require
+calling specialized OS APIs, so I won't implement them.
+
+``` {.python}
+if __name__ == "__main__":
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if ctrl_down:
+                    # ...
+                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+                        browser.go_back()
+                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                        browser.cycle_tabs()
+                    elif event.key.keysym.sym == sdl2.SDLK_a:
+                        browser.toggle_accessibility()
+                    elif event.key.keysym.sym == sdl2.SDLK_d:
+                        browser.toggle_dark_mode()
+                    elif event.key.keysym.sym == sdl2.SDLK_m:
+                        browser.toggle_mute()
+                    elif event.key.keysym.sym == sdl2.SDLK_t:
+                        browser.add_tab()
+                    elif event.key.keysym.sym == sdl2.SDLK_q:
+                        browser.handle_quit()
+                        sdl2.SDL_Quit()
+                        sys.exit()
+                        break
+```
+
 Most of these interactions will be built on top of an expanded implementation
 of *focus*. We already have a `focus` property on each `Tab` indicating whether
 an `input` element should be capturing keyboard input, and on the `Browser`
@@ -1034,16 +1069,6 @@ them with a focus rect, should now work. Try it in
 this [example](examples/example14-focus.html). And if you zoom in enough, you
 should be able to make the link cross multiple lines and use multiple
 focus rectangles.
-
-In addition to activation of input elements, there are four more mouse controls
-in the browser: the back button, the add-tab button, iterating through the
-tabs, and the button to quit the browser.[^one-more] Bind them to `ctrl-left`,
-`ctrl-t`, `ctrl-tab` and `ctrl-q`, respectively. The code to implement these is
-straightforward, so I've omitted it.
-
-[^one-more]: Actually, there are sometimes more, depending on the OS you're
-working with: buttons to minimize or maximize the browser window. Those require
-calling specialized OS APIs, so I won't implement them.
 
 ::: {.further}
 
