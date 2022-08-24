@@ -9,9 +9,13 @@ document.addEventListener("DOMContentLoaded", function() {
         typo_mode();
     } else {
         window.addEventListener("keydown", function(e) {
+            if (window.localStorage["edit"] === "true") return;
             if (String.fromCharCode(e.keyCode) != "E") return;
-            if (!(e.metaKey || e.ctrlKey)) return;
-            if (window.localStorage["edit"] == "true") return;
+            if (navigator.platform.indexOf("Mac") === 0 || navigator.platform === "iPhone") {
+                if (!e.metaKey) return;
+            } else {
+                if (!e.ctrlKey) return;
+            }  
             e.preventDefault();
             setup_text_feedback();
         });
