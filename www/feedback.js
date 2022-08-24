@@ -5,18 +5,25 @@
 var chapter_overlay;
 
 document.addEventListener("DOMContentLoaded", function() {
-    window.addEventListener("keydown", function(e) {
-        if (String.fromCharCode(e.keyCode) != "E") return;
-        if (!(e.metaKey || e.ctrlKey)) return;
-        e.preventDefault();
-        setup_text_feedback();
-    });
+    if (window.localStorage["edit"] == "true") {
+        typo_mode();
+    } else {
+        window.addEventListener("keydown", function(e) {
+            if (String.fromCharCode(e.keyCode) != "E") return;
+            if (!(e.metaKey || e.ctrlKey)) return;
+            if (window.localStorage["edit"] == "true") return;
+            e.preventDefault();
+            setup_text_feedback();
+        });
+    }
 
     let feedback_button = document.querySelector("#feedback-button");
-    feedback_button.addEventListener("click", function(e) {
-        setup_chapter_feedback();
-        e.preventDefault();
-    });
+    if (feedback_button) {
+        feedback_button.addEventListener("click", function(e) {
+            setup_chapter_feedback();
+            e.preventDefault();
+        });
+    }
 });
 
 
