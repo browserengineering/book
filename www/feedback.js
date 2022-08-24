@@ -4,18 +4,22 @@
 
 var chapter_overlay;
 
+function ctrl_key_pressed(e) {
+    if (navigator.platform.indexOf("Mac") === 0 || navigator.platform === "iPhone") {
+        return e.metaKey;
+    } else {
+        return e.ctrlKey;
+    }  
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     if (window.localStorage["edit"] == "true") {
         typo_mode();
     } else {
         window.addEventListener("keydown", function(e) {
             if (window.localStorage["edit"] === "true") return;
-            if (String.fromCharCode(e.keyCode) != "E") return;
-            if (navigator.platform.indexOf("Mac") === 0 || navigator.platform === "iPhone") {
-                if (!e.metaKey) return;
-            } else {
-                if (!e.ctrlKey) return;
-            }  
+            if (e.key != "e") return;
+            if (!ctrl_key_pressed(e)) return;
             e.preventDefault();
             setup_text_feedback();
         });
@@ -126,10 +130,8 @@ Tools.prototype.comment = function(e) {
     var sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
-
-    // Handle clicks
-    var editing = true;
-    submit.addEventListener("click", function(e) {
+    
+    function submit_comment(e) {
         var comment = p.textContent;
         var text = markdown(that.node, []).join("");
         if (editing && comment) {
@@ -141,7 +143,17 @@ Tools.prototype.comment = function(e) {
         cancel.remove()
         p.removeAttribute("contentEditable");
         e.preventDefault();
+    }
+
+    // Handle clicks
+    var editing = true;
+    p.addEventListener("keydown", function(e) {
+        if (e.key != "Enter") return;
+        if (!ctrl_key_pressed(e)) return;
+        e.preventDefault();
+        submit_comment(e);
     });
+    submit.addEventListener("click", submit_comment);
     cancel.addEventListener("click", function(e) {
         elt.remove();
         e.preventDefault();
