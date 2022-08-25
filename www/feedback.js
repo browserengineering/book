@@ -14,9 +14,9 @@ function ctrl_key_pressed(e) {
 
 function ctrl_key_name() {
     if (navigator.platform.indexOf("Mac") === 0 || navigator.platform === "iPhone") {
-        return "Ctrl";
-    } else {
         return "Cmd";
+    } else {
+        return "Ctrl";
     }  
 }
 
