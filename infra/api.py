@@ -8,6 +8,8 @@ import difflib
 import html
 import hashlib
 
+NOPASSWORD = False
+
 bottle.TEMPLATE_PATH.append(".")
 
 class Data:
@@ -253,13 +255,13 @@ def status():
     pw = data.get('pw', "")
     heng = hashlib.sha3_256()
     heng.update(pw.encode("utf8"))
-    try:
+    if NOPASSWORD:
+        allowed = True
+    else:
         with open("pw.hash", "rb") as f:
             good = f.read(256)
         # Equivalent to `good == heng.digest()` but constant-time-ish
         allowed = sum([0 if a == b else 1 for a, b in zip(good, heng.digest())]) == 0
-    except FileNotFoundError:
-        allowed = True
 
     if allowed:
         DATA.set_status(data['id'], data['status'])
@@ -290,4 +292,5 @@ if __name__ == "__main__":
         print("Please run: window.localStorage['pw'] = '" + pw + "'");
     else:
         debug = "--debug" in sys.argv
+        NOPASSWORD = "--no-password" in sys.argv
         bottle.run(port=4000, debug=debug, reloader=True)
