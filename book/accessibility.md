@@ -754,7 +754,7 @@ to allow the user to go back, to type in the address bar, and to
 create and cycle through tabs, all with the keyboard. We'll also add a
 keyboard shortcut for quitting the browser.[^one-more] Let's make all
 these shortcuts use the `Ctrl` modifier key so they don't interfere
-with normal typing: `Ctrl-Left` to go back, `Ctrl-L` to type in the
+with normal typing: `Ctrl-Left` to go back, `Ctrl-l` to type in the
 address bar, `Ctrl-T` to create a new tab, `Ctrl-Tab` to switch to the
 next tab, and `Ctrl-Q` to exit the browser:
 
@@ -925,8 +925,9 @@ class Tab:
                 elt = elt.parent
 ```
 
-All of this action code is copied from the `click` method on `Tab`s,
-which can now be rewritten to call `activate_element` directly:
+All of this activation code is copied from the `click` method on
+`Tab`s, which can now be rewritten to call `activate_element`
+directly:
 
 ``` {.python}
 class Tab:
@@ -958,8 +959,8 @@ class Tab:
 ```
 
 We now have the ability to focus on links, buttons, and text entries.
-But as with any browser feature, it's worth asking whether we should
-also expose this feature to web page authors. For example, the
+But as with any browser feature, it's worth asking whether web page
+authors should be able to customize it. With keyboard navigation, the
 author might want certain links not to be focusable (like "permalinks"
 to a section heading, which would just be noise to most users), or
 might want to change the order in which the user tabs through
@@ -984,7 +985,10 @@ sort by `get_tabindex` in `advance_tab`:
 ``` {.python}
 class Tab:
     def advance_tab(self):
-        # ...
+        focusable_nodes = [node
+            for node in tree_to_list(self.nodes, [])
+            if isinstance(node, Element) and is_focusable(node)
+            and get_tabindex(node) >= 0]
         focusable_nodes.sort(key=get_tabindex)
         # ...
 ```
@@ -1029,7 +1033,8 @@ this event, and other browsers used to send a
 [DOMActivate][domactivate] event, but it's been deprecated in favor of
 sending the `click` event even if the element was activated via
 keyboard, not via a click. This works better when the developers aren't
-thinking much about accessibility.
+thinking much about accessibility and only register the `click` event
+listener.
 :::
 
 [onactivate]: https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa742710(v=vs.85)

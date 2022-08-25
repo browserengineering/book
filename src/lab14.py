@@ -1293,7 +1293,9 @@ class Tab:
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
-            if isinstance(node, Element) and is_focusable(node)]
+            if isinstance(node, Element) and is_focusable(node)
+                           
+            and get_tabindex(node) >= 0]
         focusable_nodes.sort(key=get_tabindex)
 
         if self.focus in focusable_nodes:
