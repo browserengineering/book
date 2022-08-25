@@ -945,7 +945,10 @@ class Tab:
 
 Note that hitting `Enter` when focused on a text entry clears the text
 entry; in most browsers, it submits the containing form instead. That
-quirk is because our browser doesn't implement the `Backspace` key.
+quirk is because [our browser doesn't implement][clear-input] the
+`Backspace` key.
+
+[clear-input]: forms.html#interacting-with-widgets
 
 Finally, note that sometimes activating an element submits a form or
 navigates to a new page, which means the element we were focused on no
@@ -1055,8 +1058,6 @@ Setting focus sets an `is_focused` property on the node, and has some special
 logic for input elements to clear them out.^[This logic is inherited from
 [Chapter 8][clear-input]. Real browsers will typically preserve what
 was typed there before.]
-
-[clear-input]: http://localhost:8001/forms.html#interacting-with-widgets
 
 ``` {.python}
     def focus_element(self, node):

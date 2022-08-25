@@ -8,6 +8,8 @@ import difflib
 import html
 import hashlib
 
+NOPASSWORD = False
+
 bottle.TEMPLATE_PATH.append(".")
 
 class Data:
@@ -230,11 +232,15 @@ def prettify(obj):
 def feedback():
     new = [prettify(o) for o in DATA if o['status'] == "new"]
     saved = {}
+    starred = []
     for o in DATA:
         if o['status'] == "saved":
             page = os.path.split(o['url'])[1].rsplit(".", 1)[0]
             saved.setdefault(page, []).append(prettify(o))
-    return { 'new': new, 'saved': saved }
+        elif o['status'] == "starred":
+            starred.append(prettify(o))
+    
+    return { 'new': new, 'saved': saved, 'starred': starred }
 
 @bottle.route("/feedback.rss")
 @bottle.view("feedback_rss.view")
@@ -249,10 +255,15 @@ def status():
     pw = data.get('pw', "")
     heng = hashlib.sha3_256()
     heng.update(pw.encode("utf8"))
-    with open("pw.hash", "rb") as f:
-        good = f.read(256)
-    # Equivalent to `good == heng.digest()` but constant-time-ish
-    if sum([0 if a == b else 1 for a, b in zip(good, heng.digest())]) == 0:
+    if NOPASSWORD:
+        allowed = True
+    else:
+        with open("pw.hash", "rb") as f:
+            good = f.read(256)
+        # Equivalent to `good == heng.digest()` but constant-time-ish
+        allowed = sum([0 if a == b else 1 for a, b in zip(good, heng.digest())]) == 0
+
+    if allowed:
         DATA.set_status(data['id'], data['status'])
     else:
         raise ValueError("Invalid password")
@@ -281,4 +292,5 @@ if __name__ == "__main__":
         print("Please run: window.localStorage['pw'] = '" + pw + "'");
     else:
         debug = "--debug" in sys.argv
+        NOPASSWORD = "--no-password" in sys.argv
         bottle.run(port=4000, debug=debug, reloader=True)
