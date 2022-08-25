@@ -1,22 +1,45 @@
 'use strict';
 
-// Thanks for reading the code! You can hit Ctrl+E to access the feedback tools.
+// Thanks for reading the code! You can hit Ctrl-E / Cmd-E to access the feedback tools.
 
 var chapter_overlay;
 
+function ctrl_key_pressed(e) {
+    if (navigator.platform.indexOf("Mac") === 0 || navigator.platform === "iPhone") {
+        return e.metaKey;
+    } else {
+        return e.ctrlKey;
+    }  
+}
+
+function ctrl_key_name() {
+    if (navigator.platform.indexOf("Mac") === 0 || navigator.platform === "iPhone") {
+        return "Cmd";
+    } else {
+        return "Ctrl";
+    }  
+}
+
 document.addEventListener("DOMContentLoaded", function() {
-    window.addEventListener("keydown", function(e) {
-        if (String.fromCharCode(e.keyCode) != "E") return;
-        if (!(e.metaKey || e.ctrlKey)) return;
-        e.preventDefault();
-        setup_text_feedback();
-    });
+    if (window.localStorage["edit"] == "true") {
+        typo_mode();
+    } else {
+        window.addEventListener("keydown", function(e) {
+            if (window.localStorage["edit"] === "true") return;
+            if (e.key != "e") return;
+            if (!ctrl_key_pressed(e)) return;
+            e.preventDefault();
+            setup_text_feedback();
+        });
+    }
 
     let feedback_button = document.querySelector("#feedback-button");
-    feedback_button.addEventListener("click", function(e) {
-        setup_chapter_feedback();
-        e.preventDefault();
-    });
+    if (feedback_button) {
+        feedback_button.addEventListener("click", function(e) {
+            setup_chapter_feedback();
+            e.preventDefault();
+        });
+    }
 });
 
 
@@ -115,10 +138,8 @@ Tools.prototype.comment = function(e) {
     var sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
-
-    // Handle clicks
-    var editing = true;
-    submit.addEventListener("click", function(e) {
+    
+    function submit_comment(e) {
         var comment = p.textContent;
         var text = markdown(that.node, []).join("");
         if (editing && comment) {
@@ -130,7 +151,17 @@ Tools.prototype.comment = function(e) {
         cancel.remove()
         p.removeAttribute("contentEditable");
         e.preventDefault();
+    }
+
+    // Handle clicks
+    var editing = true;
+    p.addEventListener("keydown", function(e) {
+        if (e.key != "Enter") return;
+        if (!ctrl_key_pressed(e)) return;
+        e.preventDefault();
+        submit_comment(e);
     });
+    submit.addEventListener("click", submit_comment);
     cancel.addEventListener("click", function(e) {
         elt.remove();
         e.preventDefault();
@@ -205,6 +236,8 @@ function submit_chapter_comment(comment, email) {
     }));
 }
 
+let previous_comment = null;
+
 function setup_chapter_feedback() {
     var submit = Element("button", { type: "submit" }, "Submit feedback");
     var cancel = Element("a", { href: "#", className: "checkoff" }, "Cancel");
@@ -216,7 +249,7 @@ function setup_chapter_feedback() {
                 "what you liked, and what you didn't like. ",
                 "If you'd also like to provide feedback about particular ",
                 "pieces of text, press ",
-                 Element("kbd", "Ctrl+E"), "." 
+                 Element("kbd", ctrl_key_name() + "-E"), "." 
             ]),
             Element("div", { className: "inputs" }, [
                 Element("label", { "for": "name" }, "Your name: "),
@@ -234,7 +267,9 @@ function setup_chapter_feedback() {
                 Element("label", { "for": "feedback" }, "Your feedback: "),
             ]),
             Element("div", { className: "inputs"}, [
-                Element("textarea", { name: "feedback", autofocus: "", required: "" }, []),
+                Element("textarea", { name: "feedback", autofocus: "", required: "" }, [
+                    previous_comment,
+                ]),
             ]),
             Element("p", { className: "legalese" }, [
                 "By making edits, you agree to assign all rights ",
@@ -260,6 +295,7 @@ function setup_chapter_feedback() {
     }
     
     function do_cancel(e) {
+        previous_comment = this.querySelector("textarea").value;
         chapter_overlay.remove();
     }
 
@@ -282,7 +318,7 @@ function setup_text_feedback() {
         Element("form", { method: "get", action: "/" }, [
             Element("h1", "Feedback Tools"),
             Element("p", [
-                "You've pressed ", Element("kbd", "Ctrl+E"), ",",
+                "You've pressed ", Element("kbd", ctrl_key_name() + "-E"), ",",
                 "which enables ", Element("i", "feedback tools"), ". ",
                 "You can use them to ",
                 Element("em", "fix typos"), " and ",

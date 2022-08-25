@@ -104,6 +104,8 @@ A final note
 
 This book is, and will remain, a work in progress. Please leave
 comments and mark typos; the book has built-in feedback tools, which
-you can enable with `Ctrl+E`. The full source code is also available
-[on GitHub](https://github.com/browserengineering/book), though we
-prefer to receive comments through the built-in tools.
+you can enable with `Ctrl-E` (or `Cmd-E` on a Mac). The full source
+code is also available [on GitHub][github], though we prefer to
+receive comments through the built-in tools.
+
+[github]: https://github.com/browserengineering/book
