@@ -134,6 +134,10 @@ LIBRARY_METHODS = [
     # stuff the compiler needs
     "toString",
     "init",
+
+    # urllib.parse
+    "quote",
+    "unquote_plus",
 ]
 
 OUR_FNS = []
@@ -182,7 +186,7 @@ def compile_method(base, name, args, ctx):
         assert len(args) == 2
         return base_js + ".bind(" + args_js[0] + ", (e) => " + args_js[1] + "(e))"
     elif name == "makefile":
-        assert len(args) == 2
+        assert len(args) == 2, "makefile() expects exactly 2 arguments"
         return "await " + base_js + ".makefile(" + ", ".join(args_js) + ")"
     elif name in LIBRARY_METHODS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
@@ -209,6 +213,11 @@ def compile_method(base, name, args, ctx):
             if part: out += " + " + compile_expr(ast.Constant(part), ctx)
         return "(" + out[3:] + ")"
     elif name == "encode":
+        assert len(args) == 1
+        assert isinstance(args[0], ast.Constant)
+        assert args[0].value == "utf8"
+        return base_js
+    elif name == "decode":
         assert len(args) == 1
         assert isinstance(args[0], ast.Constant)
         assert args[0].value == "utf8"
@@ -519,7 +528,7 @@ def compile(tree, ctx, indent=0):
         assert not tree.names[0].asname
         name = tree.names[0].name
         ctx[name] = {"is_class": False}
-        RT_IMPORTS.append(name)
+        RT_IMPORTS.append(name.split(".")[0])
         return " " * indent + "// Please configure the '" + name + "' module"
     elif isinstance(tree, ast.ImportFrom):
         assert tree.level == 0

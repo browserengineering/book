@@ -34,6 +34,9 @@ www/rss.xml: news.yaml infra/rss-template.xml
 www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 	python3 infra/compile.py $< $@ --hints src/lab$*.hints --use-js-modules
 
+www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py
+	python3 infra/compile.py $< $@ --hints src/server$*.hints --use-js-modules
+
 www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json www/widgets/lab%.js
 	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/index.md -o $@
 

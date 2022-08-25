@@ -2,7 +2,7 @@
 
 
 export { breakpoint, comparator, filesystem, http_textarea, lib, pysplit,
-    pyrsplit, rt_constants, socket, ssl, tkinter, truthy, Widget, dukpy };
+    pyrsplit, rt_constants, socket, ssl, tkinter, truthy, Widget, dukpy, urllib };
 
 window.TKELEMENT = null;
 
@@ -47,7 +47,7 @@ class WidgetXHRError extends ExpectedError {
 
 class lib {
 
-static socket(URLS) {
+static socket() {
     class socket {
         constructor(params) {
             console.assert(params.family == "inet", "socket family must be inet")
@@ -66,13 +66,28 @@ static socket(URLS) {
             this.input += text;
         }
         async makefile(mode, params) {
-            console.assert(params.encoding == "utf8" && params.newline == "\r\n", "Unknown socket encoding or line ending");
-            console.assert(mode == "r", "Unknown socket makefile mode");
+            if (mode == "r") {
+                console.assert(params.encoding == "utf8" && params.newline == "\r\n", "Unknown socket encoding or line ending");
+            } else if (mode == "b") {
+                // ok
+            } else {
+                console.assert(false, "Unknown socket makefile mode");
+            }
+
+            if (this.is_proxy_socket) return this;
 
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            if (rt_constants.URLS[this.url]) {
+            if (this.host == "localhost" && rt_constants.URLS["local://" + this.port]) {
+                let s = new socket({family: "inet", type: "stream", proto: "tcp"});
+                s.is_proxy_socket = true;
+                console.log(this.input);
+                s.output = this.input;
+                await rt_constants.URLS["local://" + this.port](s)
+                this.output = s.input;
+                this.closed = false;
+            } else if (rt_constants.URLS[this.url]) {
                 var response = rt_constants.URLS[this.url];
                 this.output = typeof response === "function" ? response() : response;
                 this.idx = 0;
@@ -113,7 +128,12 @@ static socket(URLS) {
         }
     }
     
-    return {socket: wrap_class(socket), AF_INET: "inet", SOCK_STREAM: "stream", IPPROTO_TCP: "tcp"}
+    function accept(port, fn) {
+        rt_constants.URLS["local://" + port] = fn;
+    }
+    
+    return {socket: wrap_class(socket), accept: accept,
+            AF_INET: "inet", SOCK_STREAM: "stream", IPPROTO_TCP: "tcp"}
 }
 
 static ssl() {
@@ -289,6 +309,18 @@ static tkinter(options) {
     }
 
     return {Tk: wrap_class(Tk), Canvas: wrap_class(Canvas), font: { Font: wrap_class(Font) }}
+}
+
+static urllib() {
+    class parse {
+        static quote(s) {
+            return encodeURIComponent(s);
+        }
+        static unquote_plus(s) {
+            return decodeURIComponent(s);
+        }
+    }
+    return { parse: parse };
 }
 
 static dukpy() {
@@ -582,3 +614,4 @@ const socket = lib.socket();
 const ssl = lib.ssl();
 const tkinter = lib.tkinter();
 const dukpy = lib.dukpy();
+const urllib = lib.urllib();
