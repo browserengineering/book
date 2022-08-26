@@ -529,6 +529,7 @@ def compile(tree, ctx, indent=0):
         name = tree.names[0].name
         ctx[name] = {"is_class": False}
         RT_IMPORTS.append(name.split(".")[0])
+        RT_IMPORTS.append(name)
         return " " * indent + "// Please configure the '" + name + "' module"
     elif isinstance(tree, ast.ImportFrom):
         assert tree.level == 0
