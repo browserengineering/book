@@ -1034,6 +1034,12 @@ There's also a server now, but it's much simpler:
     python3 infra/outlines.py --html src/server8.py
 :::
 
+If you run it, it should look something like this:
+
+::: {.widget height=691}
+    lab8-browser.html
+:::
+
 Exercises
 =========
 
