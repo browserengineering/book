@@ -693,6 +693,10 @@ def decode_image(image_bytes):
 
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
+def wrap_in_window(js, window_object):
+    return "window = {window_object}; with (window) {{ {js} }}".format(
+        js=js, window_object=window_object)
+
 class JSContext:
     def __init__(self, document, tab):
         self.document = document
@@ -716,17 +720,20 @@ class JSContext:
             self.requestAnimationFrame)
         self.interp.export_function("parent", self.parent)
         self.interp.export_function("postMessage", self.postMessage)
-        with open("runtime15.js") as f:
-            self.interp.evaljs(f.read())
+        self.current_window = None
+        self.window_count = -1
 
         self.node_to_handle = {}
         self.handle_to_node = {}
 
-    def run(self, script, code):
+    def run(self, script, code, window_object):
+        self.current_window = window_object
         try:
-            print("Script returned: ", self.interp.evaljs(code))
+            print("Script returned: ", self.interp.evaljs(
+               wrap_in_window(code, window_object)))
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
+        self.current_window = None
 
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
@@ -762,8 +769,8 @@ class JSContext:
 
     def dispatch_post_message(self, message):
         self.interp.evaljs(
-                "window.dispatchEvent(new PostMessageEvent(dukpy.data))",
-                data=message)
+            "window.dispatchEvent(new PostMessageEvent(dukpy.data))",
+            data=message)
 
     def postMessage(self, handle, message, domain):
         if handle != 1:
@@ -837,6 +844,7 @@ class Document:
         self.url = None
         self.parent_document = parent_document
         self.frame_element = frame_element
+        self.js = None
 
         with open("browser15.css") as f:
             self.default_style_sheet = \
@@ -844,6 +852,12 @@ class Document:
     def allowed_request(self, url):
         return self.allowed_origins == None or \
             url_origin(url) in self.allowed_origins
+
+    def get_js(self):
+        if self.js:
+            return self.js
+        else:
+            return self.parent_document.get_js()
 
     def load(self, url, body=None):
         self.zoom = 1
@@ -862,7 +876,20 @@ class Document:
 
         self.nodes = HTMLParser(body).parse()
 
-        self.js = JSContext(self, self.tab)
+        if not self.parent_document:
+            self.js = JSContext(self, self.tab)
+        js = self.get_js()
+        js.window_count += 1
+        self.window_object = "window_{}".format(js.window_count)
+
+        js.interp.evaljs(
+            "function Window() {{}}; {window_object} = new Window();".format(
+                window_object=self.window_object))
+        with open("runtime15.js") as f:
+            wrapped = wrap_in_window(f.read(), self.window_object)
+            js.interp.evaljs(wrapped)
+
+
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
                    if isinstance(node, Element)
@@ -875,7 +902,8 @@ class Document:
                 continue
 
             header, body = request(script_url, url)
-            task = Task(self.js.run, script_url, body)
+            task = Task(self.get_js().run, script_url, body.decode('utf8)'),
+                self.window_object)
             self.tab.task_runner.schedule_task(task)
 
         self.rules = self.default_style_sheet.copy()
@@ -985,9 +1013,6 @@ class Tab:
         self.pending_hover = None
         self.hovered_node = None
 
-    def script_run_wrapper(self, script, script_text):
-        return Task(self.js.run, script, script_text)
-
     def load(self, url, body=None):
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
@@ -1016,7 +1041,8 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
-        self.document.js.interp.evaljs("__runRAFHandlers()")
+        self.document.js.interp.evaljs(
+            wrap_in_window("__runRAFHandlers()", self.document.window_object))
 
         for node in tree_to_list(self.document.nodes, []):
             for (property_name, animation) in \
@@ -1183,7 +1209,7 @@ class Tab:
                 and obj.y <= y < obj.y + obj.height]
         if not objs: return
         elt = objs[-1].node
-        if elt and self.js.dispatch_event("click", elt): return
+        if elt and self.document.js.dispatch_event("click", elt): return
         focus_applied = False
         while elt:
             if isinstance(elt, Text):
