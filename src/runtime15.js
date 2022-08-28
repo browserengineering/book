@@ -57,7 +57,7 @@ window.SET_TIMEOUT_REQUESTS = {}
 window.setTimeout = function(callback, time_delta) {
     var handle = Object.keys(SET_TIMEOUT_REQUESTS).length;
     SET_TIMEOUT_REQUESTS[handle] = callback;
-    call_python("setTimeout", handle, time_delta)
+    call_python("setTimeout", handle, time_delta, self._id)
 }
 
 window.__runSetTimeout = function(handle) {
@@ -73,14 +73,15 @@ window.XMLHttpRequest = function() {
 }
 
 XMLHttpRequest.prototype.open = function(method, url, is_async) {
-    this.is_async = is_async
+    this.is_async = is_async;
     this.method = method;
     this.url = url;
 }
 
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
-        this.method, this.url, this.body, this.is_async, this.handle);
+        this.method, this.url, this.body, this.is_async, this.handle,
+        window._id);
 }
 
 window.__runXHROnload = function(body, handle) {

@@ -742,10 +742,10 @@ class JSContext:
             print("Script", script, "crashed", e)
         self.current_window = None
 
-    def dispatch_event(self, type, elt):
+    def dispatch_event(self, type, elt, window_id):
         handle = self.node_to_handle.get(elt, -1)
         do_default = self.interp.evaljs(
-            EVENT_DISPATCH_CODE, type=type, handle=handle)
+            wrap_in_window(EVENT_DISPATCH_CODE, window_id), type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):
@@ -760,7 +760,7 @@ class JSContext:
     def querySelectorAll(self, selector_text):
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
-                 in tree_to_list(self.tab.nodes, [])
+                 in tree_to_list(self.tab.document.nodes, [])
                  if selector.matches(node)]
         return [self.get_handle(node) for node in nodes]
 
@@ -800,20 +800,22 @@ class JSContext:
         elt.attributes["style"] = s;
         self.tab.set_needs_render()
 
-    def dispatch_settimeout(self, handle):
-        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+    def dispatch_settimeout(self, handle, window_id):
+        self.interp.evaljs(
+            wrap_in_window(SETTIMEOUT_CODE, window_id), handle=handle)
 
-    def setTimeout(self, handle, time):
+    def setTimeout(self, handle, time, window_id):
         def run_callback():
-            task = Task(self.dispatch_settimeout, handle)
+            task = Task(self.dispatch_settimeout, handle, window_id)
             self.tab.task_runner.schedule_task(task)
         threading.Timer(time / 1000.0, run_callback).start()
 
-    def dispatch_xhr_onload(self, out, handle):
+    def dispatch_xhr_onload(self, out, handle, window_id):
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle, window_id):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
@@ -824,7 +826,7 @@ class JSContext:
         def run_load():
             headers, response = request(
                 full_url, self.tab.url, payload=body)
-            task = Task(self.dispatch_xhr_onload, response, handle)
+            task = Task(self.dispatch_xhr_onload, response, handle, window_id)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
                 return response
@@ -973,7 +975,7 @@ class Document:
     def paint(self, display_list):
         self.document_layout.paint(display_list, self.tab.dark_mode)
 
-        if self.tab.focus and self.focus.tag == "input":
+        if self.tab.focus and self.tab.focus.tag == "input":
             obj = [obj for obj in tree_to_list(self.document_layout, [])
                if obj.node == self.focus and \
                     isinstance(obj, InputLayout)][0]
@@ -1043,8 +1045,9 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
-        self.document.js.interp.evaljs(
-            wrap_in_window("__runRAFHandlers()", self.document.window_id))
+        for window_id in self.document.js.window_id_to_document.keys():
+            self.document.js.interp.evaljs(
+            wrap_in_window("__runRAFHandlers()", window_id))
 
         for node in tree_to_list(self.document.nodes, []):
             for (property_name, animation) in \
@@ -1206,12 +1209,13 @@ class Tab:
         self.render()
         self.apply_focus(None)
         y += self.scroll
-        objs = [obj for obj in tree_to_list(self.document, [])
+        objs = [obj for obj in tree_to_list(self.document.document_layout, [])
                 if obj.x <= x < obj.x + obj.width
                 and obj.y <= y < obj.y + obj.height]
         if not objs: return
         elt = objs[-1].node
-        if elt and self.document.js.dispatch_event("click", elt): return
+        if elt and self.document.get_js().dispatch_event(
+            "click", elt, self.document.window_id): return
         focus_applied = False
         while elt:
             if isinstance(elt, Text):
@@ -1265,7 +1269,7 @@ class Tab:
 
     def advance_tab(self):
         focusable_nodes = [node
-            for node in tree_to_list(self.nodes, [])
+            for node in tree_to_list(self.document.nodes, [])
             if isinstance(node, Element) and is_focusable(node)]
         focusable_nodes.sort(key=Tab.get_tabindex)
         if not focusable_nodes:

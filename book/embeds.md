@@ -19,6 +19,10 @@ Plan:
 * background-image: positioning, clipping
 
 * iframes
+  * Same-origin iframes: same interpreter, postMessage, parent
+  * Cross-origin iframes: postMessage
+
+  TODO: make all JS APIs and keyboard events properly target iframes
 
 * postMessage
 
