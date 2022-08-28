@@ -693,9 +693,9 @@ def decode_image(image_bytes):
 
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
-def wrap_in_window(js, window_object):
-    return "window = {window_object}; with (window) {{ {js} }}".format(
-        js=js, window_object=window_object)
+def wrap_in_window(js, window_id):
+    return "window = window_{window_id}; with (window) {{ {js} }}".format(
+        js=js, window_id=window_id)
 
 class JSContext:
     def __init__(self, document, tab):
@@ -720,17 +720,24 @@ class JSContext:
             self.requestAnimationFrame)
         self.interp.export_function("parent", self.parent)
         self.interp.export_function("postMessage", self.postMessage)
-        self.current_window = None
         self.window_count = -1
 
         self.node_to_handle = {}
         self.handle_to_node = {}
+        self.window_id_to_document = {}
 
-    def run(self, script, code, window_object):
-        self.current_window = window_object
+    def add_window(self, document):
+        self.window_count += 1
+        self.window_id_to_document[self.window_count] = document
+        self.interp.evaljs(
+            "window_{window_count} = new Window({window_count});".format(
+                window_count=self.window_count))
+        return self.window_count
+
+    def run(self, script, code, window_id):
         try:
             print("Script returned: ", self.interp.evaljs(
-               wrap_in_window(code, window_object)))
+               wrap_in_window(code, window_id)))
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
         self.current_window = None
@@ -761,23 +768,21 @@ class JSContext:
         elt = self.handle_to_node[handle]
         return elt.attributes.get(attr, None)
 
-    def parent(self):
-        if self.document.parent_document:
-            return 1
-        else:
+    def parent(self, window_id):
+        parent_document = self.window_id_to_document[window_id].parent_document
+        if not parent_document:
             return None
+        return parent_document.window_id
 
-    def dispatch_post_message(self, message):
+    def dispatch_post_message(self, message, window_id):
         self.interp.evaljs(
-            "window.dispatchEvent(new PostMessageEvent(dukpy.data))",
+            wrap_in_window(
+                "window.dispatchEvent(new PostMessageEvent(dukpy.data))",
+                window_id),
             data=message)
 
-    def postMessage(self, handle, message, domain):
-        if handle != 1:
-            dest = self
-        else:
-            dest = self.document.parent_document.js
-        task = Task(dest.dispatch_post_message, message)
+    def postMessage(self, window_id, message, domain):
+        task = Task(self.dispatch_post_message, message, window_id)
         self.tab.task_runner.schedule_task(task)
 
     def innerHTML_set(self, handle, s):
@@ -878,17 +883,14 @@ class Document:
 
         if not self.parent_document:
             self.js = JSContext(self, self.tab)
+            self.js.interp.evaljs("function Window(id) {{ this._id = id }};")
         js = self.get_js()
-        js.window_count += 1
-        self.window_object = "window_{}".format(js.window_count)
 
-        js.interp.evaljs(
-            "function Window() {{}}; {window_object} = new Window();".format(
-                window_object=self.window_object))
+        self.window_id = js.add_window(self)
+
         with open("runtime15.js") as f:
-            wrapped = wrap_in_window(f.read(), self.window_object)
+            wrapped = wrap_in_window(f.read(), self.window_id)
             js.interp.evaljs(wrapped)
-
 
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
@@ -903,7 +905,7 @@ class Document:
 
             header, body = request(script_url, url)
             task = Task(self.get_js().run, script_url, body.decode('utf8)'),
-                self.window_object)
+                self.window_id)
             self.tab.task_runner.schedule_task(task)
 
         self.rules = self.default_style_sheet.copy()
@@ -1042,7 +1044,7 @@ class Tab:
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
         self.document.js.interp.evaljs(
-            wrap_in_window("__runRAFHandlers()", self.document.window_object))
+            wrap_in_window("__runRAFHandlers()", self.document.window_id))
 
         for node in tree_to_list(self.document.nodes, []):
             for (property_name, animation) in \

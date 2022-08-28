@@ -1,4 +1,4 @@
-window.console = { log: function(x) { call_python("log", x); } }
+Window.prototype.console = { log: function(x) { call_python("log", x); } }
 
 window.document = { querySelectorAll: function(s) {
     var handles = call_python("querySelectorAll", s);
@@ -122,7 +122,7 @@ window.PostMessageEvent = function(data) {
 }
 
 Window.prototype.postMessage = function(message, domain) {
-    call_python("postMessage", this.handle, message, domain);
+    call_python("postMessage", this._id, message, domain)
 }
 
 Window.prototype.addEventListener = function(type, listener) {
@@ -130,7 +130,7 @@ Window.prototype.addEventListener = function(type, listener) {
     var dict = WINDOW_LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
-    list.push({listener: listener, window: window});
+    list.push({listener: listener, event_window: window});
 }
 
 Window.prototype.dispatchEvent = function(evt) {
@@ -138,7 +138,11 @@ Window.prototype.dispatchEvent = function(evt) {
     var handle = this.handle
     var list = (WINDOW_LISTENERS[handle] && WINDOW_LISTENERS[handle][type]) || [];
     for (var i = 0; i < list.length; i++) {
-        list[i].call(this, evt);
+        event_listener = list[i].listener;
+        event_window = list[i].event_window;
+        with (event_window) {
+            event_listener.call(this, evt);
+        }
     }
     return evt.do_default;
 }
@@ -147,9 +151,12 @@ Object.defineProperty(Window.prototype, 'parent', {
   enumerable: true,
   configurable: true,
   get: function() {
-    handle = call_python('parent');
-    console.log('handle: ' + handle)
-    return eval(handle);
+    handle = call_python('parent', window._id);
+    if (handle != undefined) {
+        target_window = eval("window_" + handle);
+        return target_window
+    }
+    return undefined;
   }
 });
 
