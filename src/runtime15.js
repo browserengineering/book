@@ -1,19 +1,19 @@
-console = { log: function(x) { call_python("log", x); } }
+Window.prototype.console = { log: function(x) { call_python("log", x); } }
 
-document = { querySelectorAll: function(s) {
+window.document = { querySelectorAll: function(s) {
     var handles = call_python("querySelectorAll", s);
     return handles.map(function(h) { return new Node(h) });
 }}
 
-function Node(handle) { this.handle = handle; }
+window.Node = function(handle) { this.handle = handle; }
 
 Node.prototype.getAttribute = function(attr) {
     return call_python("getAttribute", this.handle, attr);
 }
 
-LISTENERS = {}
+window.LISTENERS = {}
 
-function Event(type) {
+window.Event = function(type) {
     this.type = type;
     this.do_default = true;
 }
@@ -52,38 +52,39 @@ Node.prototype.dispatchEvent = function(evt) {
     return evt.do_default;
 }
 
-SET_TIMEOUT_REQUESTS = {}
+window.SET_TIMEOUT_REQUESTS = {}
 
-function setTimeout(callback, time_delta) {
+window.setTimeout = function(callback, time_delta) {
     var handle = Object.keys(SET_TIMEOUT_REQUESTS).length;
     SET_TIMEOUT_REQUESTS[handle] = callback;
-    call_python("setTimeout", handle, time_delta)
+    call_python("setTimeout", handle, time_delta, self._id)
 }
 
-function __runSetTimeout(handle) {
+window.__runSetTimeout = function(handle) {
     var callback = SET_TIMEOUT_REQUESTS[handle]
     callback();
 }
 
-XHR_REQUESTS = {}
+window.XHR_REQUESTS = {}
 
-function XMLHttpRequest() {
+window.XMLHttpRequest = function() {
     this.handle = Object.keys(XHR_REQUESTS).length;
     XHR_REQUESTS[this.handle] = this;
 }
 
 XMLHttpRequest.prototype.open = function(method, url, is_async) {
-    this.is_async = is_async
+    this.is_async = is_async;
     this.method = method;
     this.url = url;
 }
 
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
-        this.method, this.url, this.body, this.is_async, this.handle);
+        this.method, this.url, this.body, this.is_async, this.handle,
+        window._id);
 }
 
-function __runXHROnload(body, handle) {
+window.__runXHROnload = function(body, handle) {
     var obj = XHR_REQUESTS[handle];
     var evt = new Event('load');
     obj.responseText = body;
@@ -91,19 +92,19 @@ function __runXHROnload(body, handle) {
         obj.onload(evt);
 }
 
-function Date() {}
+window.Date = function() {}
 Date.now = function() {
     return call_python("now");
 }
 
-RAF_LISTENERS = [];
+window.RAF_LISTENERS = [];
 
-function requestAnimationFrame(fn) {
+window.requestAnimationFrame = function(fn) {
     RAF_LISTENERS.push(fn);
     call_python("requestAnimationFrame");
 }
 
-function __runRAFHandlers() {
+window.__runRAFHandlers = function() {
     var handlers_copy = [];
     for (var i = 0; i < RAF_LISTENERS.length; i++) {
         handlers_copy.push(RAF_LISTENERS[i]);
@@ -113,32 +114,16 @@ function __runRAFHandlers() {
         handlers_copy[i]();
     }
 }
-if (typeof global === 'undefined') {
-    (function () {
-        var global = new Function('return this;')();
-        Object.defineProperty(global, 'window', {
-            value: global,
-            writable: true,
-            enumerable: false,
-            configurable: true
-        });
-        global = window;
-    })();
-}
 
-WINDOW_LISTENERS = {}
+window.WINDOW_LISTENERS = {}
 
-function PostMessageEvent(data) {
+window.PostMessageEvent = function(data) {
     this.type = "message";
     this.data = data;
 }
 
-function Window(handle) {
-    this.handle = handle;
-}
-
 Window.prototype.postMessage = function(message, domain) {
-    call_python("postMessage", this.handle, message, domain);
+    call_python("postMessage", this._id, message, domain)
 }
 
 Window.prototype.addEventListener = function(type, listener) {
@@ -146,7 +131,7 @@ Window.prototype.addEventListener = function(type, listener) {
     var dict = WINDOW_LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
-    list.push(listener);
+    list.push({listener: listener, event_window: window});
 }
 
 Window.prototype.dispatchEvent = function(evt) {
@@ -154,19 +139,25 @@ Window.prototype.dispatchEvent = function(evt) {
     var handle = this.handle
     var list = (WINDOW_LISTENERS[handle] && WINDOW_LISTENERS[handle][type]) || [];
     for (var i = 0; i < list.length; i++) {
-        list[i].call(this, evt);
+        event_listener = list[i].listener;
+        event_window = list[i].event_window;
+        with (event_window) {
+            event_listener.call(this, evt);
+        }
     }
     return evt.do_default;
 }
 
-window = new Window(0)
-
-Object.defineProperty(window, 'parent', {
+Object.defineProperty(Window.prototype, 'parent', {
   enumerable: true,
   configurable: true,
   get: function() {
-    handle = call_python('parent');
-    return new Window(handle);
+    handle = call_python('parent', window._id);
+    if (handle != undefined) {
+        target_window = eval("window_" + handle);
+        return target_window
+    }
+    return undefined;
   }
 });
 
