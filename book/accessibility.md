@@ -15,7 +15,7 @@ possible to interact with the web page by touch, keyboard, or voice.
 
 [ua]: intro.md#the-role-of-the-browser
 
-[declarativeg]: intro.md#browser-code-concepts
+[declarative]: intro.md#browser-code-concepts
 
 [a11y]: https://developer.mozilla.org/en-US/docs/Learn/Accessibility/What_is_accessibility
 
