@@ -33,7 +33,6 @@ def catch_issues(f):
             try:
                 return f(tree, *args, **kwargs)
             except AssertionError as e:
-                if WRAP_DISABLED: raise e
                 return find_hint(tree, "js", error=e)
         except MissingHint as e:
             if WRAP_DISABLED: raise e
@@ -138,6 +137,9 @@ LIBRARY_METHODS = [
     # urllib.parse
     "quote",
     "unquote_plus",
+
+    # dukpy
+    "evaljs",
 ]
 
 OUR_FNS = []
@@ -185,6 +187,9 @@ def compile_method(base, name, args, ctx):
     if name == "bind": # Needs special handling due to "this"
         assert len(args) == 2
         return base_js + ".bind(" + args_js[0] + ", (e) => " + args_js[1] + "(e))"
+    elif name == "export_function": # Needs special handling due to "this"
+        assert len(args) == 2
+        return base_js + ".export_function(" + args_js[0] + ", (...args) => " + args_js[1] + "(...args))"
     elif name == "makefile":
         assert len(args) == 2, "makefile() expects exactly 2 arguments"
         return "await " + base_js + ".makefile(" + ", ".join(args_js) + ")"
@@ -201,6 +206,9 @@ def compile_method(base, name, args, ctx):
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif base_js in RT_IMPORTS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
+    elif name == "keys":
+        assert len(args) == 0
+        return "Object.keys(" + base_js + ")"
     elif name == "format":
         assert isinstance(base, ast.Constant)
         assert isinstance(base.value, str)
@@ -472,10 +480,10 @@ def compile_expr(tree, ctx):
         assert not gen.is_async
         for if_clause in gen.ifs:
             e = compile_expr(if_clause, ctx2)
-            out += ".filter((" + arg + ") => " + e + ")"
+            out = "(await asyncfilter(async (" + arg + ") => " + e + ", " + out + "))"
         e = compile_expr(tree.elt, ctx2)
-        out += ".map((" + arg + ") => " + e + ")"
-        return out
+        out += ".map(async (" + arg + ") => " + e + ")"
+        return "await Promise.all(" + out + ")"
     elif isinstance(tree, ast.Attribute):
         base = compile_expr(tree.value, ctx)
         return base + "." + tree.attr
@@ -706,15 +714,24 @@ def compile(tree, ctx, indent=0):
         ctx2 = Context(ctx.type, ctx)
         body_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         out += body_js + "\n"
-        out += " " * indent + "} catch {\n"
         handler = tree.handlers[0]
-        assert not handler.name
         ctx3 = Context(ctx.type, ctx)
+        if handler.name:
+            name = handler.name
+            ctx3[handler.name] = {"is_class": False}
+        else:
+            name = "$err"
+        out += " " * indent + "} catch (" + name + ") {\n"
         if handler.type:
-            assert isinstance(handler.type, ast.Name)
-            assert handler.type.id.endswith("Error")
+            exc = compile_expr(handler.type, ctx)
+            indent += INDENT
+            out += " " * indent + "if (" + name + " instanceof " + exc + ") {\n"
         catch_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx3) for line in handler.body])
         out += catch_js + "\n"
+        if handler.type:
+            out += " " * indent + "} else {\n"
+            out += " " * (indent + INDENT) + "throw " + name + ";\n"
+            out += " " * indent + "}\n"
         out += " " * indent + "}"
         return out
     elif isinstance(tree, ast.With):
@@ -753,7 +770,7 @@ def compile_module(tree, name, use_js_modules):
 
         imports_str = "import {{ {} }} from \"./{}.js\";"
 
-        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit', 'pyrsplit', 'truthy' ]
+        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'asyncfilter', 'pysplit', 'pyrsplit', 'truthy' ]
         rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
         rt_imports = imports_str.format(", ".join(rt_imports_arr), "rt")
 

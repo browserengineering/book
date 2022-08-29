@@ -50,7 +50,7 @@ class JSContext:
 
     def get_handle(self, elt):
         if elt not in self.node_to_handle:
-            handle = len(self.node_to_handle)
+            handle = len(self.node_to_handle.keys())
             self.node_to_handle[elt] = handle
             self.handle_to_node[handle] = elt
         else:

@@ -8,6 +8,7 @@ addEventListener("message", (e) => {
     case "eval":
         dukpy = e.data.bindings;
         let val = eval(e.data.body);
+        if (val instanceof Function) val = null;
         postMessage({"type": "return", "data": val});
         break;
 
