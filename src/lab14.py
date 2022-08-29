@@ -1714,11 +1714,9 @@ class Browser:
         active_tab.task_runner.schedule_task(task)
 
     def load(self, url):
-        self.lock.acquire(blocking=True)
         new_tab = Tab(self)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
-        self.lock.release()
         self.schedule_load(url)
 
     def raster_tab(self):
