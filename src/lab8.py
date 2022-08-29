@@ -51,7 +51,7 @@ def request(url, payload=None):
         length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(length)
     body += "Host: {}\r\n".format(host)
-    body += "\r\n" + (payload or "")
+    body += "\r\n" + (payload if payload else "")
     s.send(body.encode("utf8"))
     response = s.makefile("r", encoding="utf8", newline="\r\n")
 

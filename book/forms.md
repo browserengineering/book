@@ -624,7 +624,7 @@ after the headers, we send the payload itself:
 ``` {.python}
 def request(url, payload=None):
     # ...
-    body += "\r\n" + (payload or "")
+    body += "\r\n" + (payload if payload else "")
     s.send(body.encode("utf8"))
     # ...
 ```
@@ -811,8 +811,8 @@ headers in a dictionary:
 def handle_connection(conx):
     # ...
     headers = {}
-    for line in req:
-        line = line.decode('utf8')
+    while True:
+        line = req.readline().decode('utf8')
         if line == '\r\n': break
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()
@@ -1032,6 +1032,12 @@ There's also a server now, but it's much simpler:
 
 ::: {.cmd .python .outline html=True}
     python3 infra/outlines.py --html src/server8.py
+:::
+
+If you run it, it should look something like this:
+
+::: {.widget height=691}
+    lab8-browser.html
 :::
 
 Exercises
