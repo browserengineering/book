@@ -797,10 +797,8 @@ class Browser:
         self.lock.release()
 
     def cycle_tabs(self):
-        self.lock.acquire(blocking=True)
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
         self.set_active_tab(new_active_tab)
-        self.lock.release()
 ```
 
 Now any clicks in the browser chrome can be replaced with keyboard

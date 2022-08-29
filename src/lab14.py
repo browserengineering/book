@@ -1621,10 +1621,8 @@ class Browser:
         self.clear_data()
 
     def cycle_tabs(self):
-        self.lock.acquire(blocking=True)
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
         self.set_active_tab(new_active_tab)
-        self.lock.release()
 
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
