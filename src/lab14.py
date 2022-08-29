@@ -385,6 +385,9 @@ def style_length(node, style_name, default_value, zoom):
     return device_px(float(style_val[:-2]), zoom) if style_val \
         else default_value
 
+def get_tabindex(node):
+    return int(node.attributes.get("tabindex", "9999999"))
+
 def cascade_priority(rule):
     media, selector, body = rule
     return selector.priority
@@ -560,8 +563,8 @@ class InputLayout:
             self.x, self.y, self.width, self.height)
 
 def is_focusable(node):
-    return node.tag == "input" or node.tag == "button" \
-        or node.tag == "a" or "tabindex" in node.attributes
+    return node.tag in ["input", "button", "a"] \
+        or "tabindex" in node.attributes
 
 def compute_role(node):
     if isinstance(node, Text):
@@ -990,8 +993,8 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
+        self.focus_element(None)
         self.zoom = 1
-        self.focus = None
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
@@ -1214,28 +1217,27 @@ class Tab:
 
         self.measure_render.stop()
 
-    def apply_focus(self, node):
+    def focus_element(self, node):
         if self.focus:
             self.focus.is_focused = False
         self.focus = node
         if node:
-            if node.tag == "input":
-                node.attributes["value"] = ""
             node.is_focused = True
         self.set_needs_render()
 
     def activate_element(self, elt):
-        if elt.tag == "a" and "href" in elt.attributes:
+        if elt.tag == "input":
+            elt.attributes["value"] = ""
+            self.set_needs_render()
+        elif elt.tag == "a" and "href" in elt.attributes:
             url = resolve_url(elt.attributes["href"], self.url)
             self.load(url)
-            return None
         elif elt.tag == "button":
             while elt:
                 if elt.tag == "form" and "action" in elt.attributes:
                     self.submit_form(elt)
-                    return None
+                    return
                 elt = elt.parent
-        return elt
 
     def click(self, x, y):
         self.render()
@@ -1248,24 +1250,15 @@ class Tab:
         if not objs: return
         elt = objs[-1].node
         if elt and self.js.dispatch_event("click", elt): return
-        focus_applied = False
         while elt:
             if isinstance(elt, Text):
                 pass
-            elif elt.tag == "input":
-                elt.attributes["value"] = ""
-                if elt != self.focus:
-                    self.set_needs_render()
-                if not focus_applied:
-                    self.apply_focus(elt)
-                return
-            elif not self.activate_element(elt):
-                if not focus_applied:
-                    self.apply_focus(elt)
+            elif is_focusable(elt):
+                self.focus_element(elt)
+                self.activate_element(elt)
+                self.set_needs_render()
                 return
             elt = elt.parent
-            self.apply_focus(elt)
-            self.focus_applied = True
 
     def submit_form(self, elt):
         if self.js.dispatch_event("submit", elt): return
@@ -1293,28 +1286,28 @@ class Tab:
             self.set_needs_render()
 
     def enter(self):
-        if self.focus:
-            self.activate_element(self.focus)
-
-    def get_tabindex(node):
-        return int(node.attributes.get("tabindex", 9999999))
+        if not self.focus: return
+        if self.js.dispatch_event("click", self.focus): return
+        self.activate_element(self.focus)
 
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
-            if isinstance(node, Element) and is_focusable(node)]
-        focusable_nodes.sort(key=Tab.get_tabindex)
-        if not focusable_nodes:
-            self.apply_focus(None)
-        elif not self.focus:
-            self.apply_focus(focusable_nodes[0])
+            if isinstance(node, Element) and is_focusable(node)
+                           
+            and get_tabindex(node) >= 0]
+        focusable_nodes.sort(key=get_tabindex)
+
+        if self.focus in focusable_nodes:
+            idx = focusable_nodes.index(self.focus) + 1
         else:
-            i = focusable_nodes.index(self.focus)
-            if i < len(focusable_nodes) - 1:
-                self.apply_focus(focusable_nodes[i+1])
-            else:
-                self.apply_focus(None)
-                self.browser.focus_addressbar()
+            idx = 0
+
+        if idx < len(focusable_nodes):
+            self.focus_element(focusable_nodes[idx])
+        else:
+            self.focus_element(None)
+            self.browser.focus_addressbar()
         self.set_needs_render()
 
     def zoom_by(self, increment):
@@ -1597,7 +1590,6 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.advance_tab)
         active_tab.task_runner.schedule_task(task)
-        pass
 
     def focus_addressbar(self):
         self.lock.acquire(blocking=True)
@@ -1627,9 +1619,6 @@ class Browser:
         task = Task(active_tab.go_back)
         active_tab.task_runner.schedule_task(task)
         self.clear_data()
-
-    def add_tab(self):
-        self.load("https://browser.engineering/")
 
     def cycle_tabs(self):
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
@@ -1663,7 +1652,7 @@ class Browser:
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.set_active_tab(int((e.x - 40) / 80))
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.add_tab()
+                self.load("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
                 self.go_back()
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
@@ -1878,10 +1867,10 @@ if __name__ == "__main__":
                         browser.increment_zoom(-1)
                     elif event.key.keysym.sym == sdl2.SDLK_0:
                         browser.reset_zoom()
-                    if event.key.keysym.sym == sdl2.SDLK_LEFT:
+                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
                         browser.go_back()
-                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
-                        browser.cycle_tabs()
+                    elif event.key.keysym.sym == sdl2.SDLK_l:
+                        browser.focus_addressbar()
                     elif event.key.keysym.sym == sdl2.SDLK_a:
                         browser.toggle_accessibility()
                     elif event.key.keysym.sym == sdl2.SDLK_d:
@@ -1889,7 +1878,9 @@ if __name__ == "__main__":
                     elif event.key.keysym.sym == sdl2.SDLK_m:
                         browser.toggle_mute()
                     elif event.key.keysym.sym == sdl2.SDLK_t:
-                        browser.add_tab()
+                        browser.load("https://browser.engineering/")
+                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                        browser.cycle_tabs()
                     elif event.key.keysym.sym == sdl2.SDLK_q:
                         browser.handle_quit()
                         sdl2.SDL_Quit()

@@ -205,7 +205,15 @@ class Tab:
 ```
 
 Note that we need to set the `needs_render` flag when we zoom to
-redraw the screen after zooming is complete.
+redraw the screen after zooming is complete. We also need to reset the
+zoom level when we navigate to a new page:
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        self.zoom = 1
+        # ...
+```
 
 The `zoom` factor is supposed to multiply all CSS sizes, so we'll need
 access to it during layout. There's a few ways to do this, but the
@@ -731,36 +739,106 @@ indicated.)
 Keyboard navigation
 ===================
 
-Our browser is currently mouse-only.^[Except for scrolling, which is
-keyboard-only.] This is problematic, because there are a number of reasons why
-users might want to use the keyboard to interact instead. Reasons such as
-physical inability, injury to the hand or arm from too much movement, or
-being a power user that finds keyboards more efficient than mice.
+Right now, most browser features are triggered using the
+mouse,^[Except for scrolling, which is keyboard-only.] which is a
+problem for users with injuries or disabilities in their hand---and
+also a problem for power users that prefer their keyboards. So ideally
+every browser feature should be accessible via the keyboard as well as
+the mouse. That includes both browser chrome interactions like going
+back, typing a URL, or quitting the browser, and also web page
+interactions such as submitting forms, typing in text areas, and
+navigating links.
 
-Let's add keyboard equivalents to all of the mouse interactions. This includes
-browser chrome interactions such as the back button, typing a URL, or quitting
-the browser, as well as web page ones such as clicking on buttons, typing
-input, and navigating links.
+Let's start with the browser chrome, since it's easiest. Here, we need
+to allow the user to go back, to type in the address bar, and to
+create and cycle through tabs, all with the keyboard. We'll also add a
+keyboard shortcut for quitting the browser.[^one-more] Let's make all
+these shortcuts use the `Ctrl` modifier key so they don't interfere
+with normal typing: `Ctrl-Left` to go back, `Ctrl-l` to type in the
+address bar, `Ctrl-T` to create a new tab, `Ctrl-Tab` to switch to the
+next tab, and `Ctrl-Q` to exit the browser:
 
-Most of these interactions will be built on top of an expanded implementation
-of *focus*. We already have a `focus` property on each `Tab` indicating whether
-an `input` element should be capturing keyboard input, and on the `Browser`
-to indicate if the browser chrome is doing so instead. Let's expand on that
-notion to allow buttons and links to capture input as well. When one of them
-is focused and the user presses `enter`, then the button will be clicked
-or the link navigated. As usual, we start with plumbing:
+[^one-more]: Depending on the OS you might also need shortcuts for
+minimizing or maximizing the browser window. Those require calling
+specialized OS APIs, so I won't implement them.
 
 ``` {.python}
+if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
-                elif event.key.keysym.sym == sdl2.SDLK_RETURN:
-                    browser.handle_enter()
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if ctrl_down:
+                    # ...
+                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+                        browser.go_back()
+                    elif event.key.keysym.sym == sdl2.SDLK_l:
+                        browser.focus_addressbar()
+                    elif event.key.keysym.sym == sdl2.SDLK_t:
+                        browser.load("https://browser.engineering/")
+                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                        browser.cycle_tabs()
+                    elif event.key.keysym.sym == sdl2.SDLK_q:
+                        browser.handle_quit()
+                        sdl2.SDL_Quit()
+                        sys.exit()
+                        break
 ```
+
+Here the `focus_addressbar` and `cycle_tabs` methods are new, but
+their contents are just copied from `handle_click`:
 
 ``` {.python}
 class Browser:
-	# ...
+    def focus_addressbar(self):
+        self.lock.acquire(blocking=True)
+        self.focus = "address bar"
+        self.address_bar = ""
+        self.set_needs_raster()
+        self.lock.release()
+
+    def cycle_tabs(self):
+        new_active_tab = (self.active_tab + 1) % len(self.tabs)
+        self.set_active_tab(new_active_tab)
+```
+
+Now any clicks in the browser chrome can be replaced with keyboard
+actions. But what about clicks in the web page itself? This is
+trickier, because web pages can have any number of links. So the
+standard solution is letting the user `Tab` through all the clickable
+things on the page, and press `Enter` to actually click on them.
+
+We'll implement this by expanding our implementation of *focus*. We
+already have a `focus` property on each `Tab` indicating which `input`
+element is capturing keyboard input. Let's allow allow buttons and
+links to be focused as well. Of course, they don't capture keyboard
+input, but when the user pressed `Enter` we'll press the button
+navigate to the link. We'll start by binding those keys:
+
+``` {.python}
+if __name__ == "__main__":
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            elif event.type == sdl2.SDL_KEYDOWN:
+                # ...
+                elif event.key.keysym.sym == sdl2.SDLK_RETURN:
+                    browser.handle_enter()
+                elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                    browser.handle_tab()
+```
+
+Note that these lines don't go inside the `if ctrl_down` block, since
+we're binding `Tab` and `Enter`, not `Ctrl-Tab` and `Ctrl-Enter`. In
+`Browser`, we just forward these keys to the active tab's `enter` and
+`advance_tab` methods:
+
+``` {.python}
+class Browser:
+    def handle_tab(self):
+        self.focus = "content"
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.advance_tab)
+        active_tab.task_runner.schedule_task(task)
+
     def handle_enter(self):
     	# ...
         elif self.focus == "content":
@@ -770,185 +848,201 @@ class Browser:
         # ...
 ```
 
-Let's call the act of pressing a button or navigating a link *activating* that
-element. The `enter` method activates the currently focused element:
+Let's start with the `advance_tab` method. Each time it's called, the
+browser should advance focus to the next focusable thing. This will
+first require a definition of which elements are focusable:
 
-``` {.python}
+``` {.python replace=]/]%20\}
+def is_focusable(node):
+    return node.tag in ["input", "button", "a"]
+
 class Tab:
-    # ...
-    def enter(self):
-        if self.focus:
-            self.activate_element(self.focus)   
+    def advance_tab(self):
+        focusable_nodes = [node
+            for node in tree_to_list(self.nodes, [])
+            if isinstance(node, Element) and is_focusable(node)]
 ```
 
-Which performs a behavior depending on what it is:
+Next, in `advance_tab`, we need to find out where the
+currently-focused element is in this list so we can move focus to the
+next one.
 
 ``` {.python}
 class Tab:
-	# ...
+    def advance_tab(self):
+        # ...
+        if self.focus in focusable_nodes:
+            idx = focusable_nodes.index(self.focus) + 1
+        else:
+            idx = 0
+```
+
+Finally, we just need to focus on the chosen element. If we've reached
+the last the focusable node (or if there weren't any focusable nodes
+to begin with), we'll unfocus the page and move focus to the address
+bar:
+
+``` {.python replace=%20=%20focusable_nodes[idx]/_element(focusable_nodes[idx]),%20=%20None/_element(None)}
+class Tab:
+    def advance_tab(self):
+        if idx < len(focusable_nodes):
+            self.focus = focusable_nodes[idx]
+        else:
+            self.focus = None
+            self.browser.focus_addressbar()
+        self.set_needs_render()
+```
+
+Now that an element is focused, the user should be able to interact
+with it by pressing `Enter`. Since the exact action they're doing
+varies (navigating a link, pressing a button, clearning a text entry),
+we'll call this "activating" the element:
+
+``` {.python}
+class Tab:
+    def enter(self):
+        if not self.focus: return
+        self.activate_element(self.focus)
+```
+
+The `activate_element` method does different things for different
+kinds of elements:
+
+``` {.python}
+class Tab:
     def activate_element(self, elt):
-        if elt.tag == "a" and "href" in elt.attributes:
+        if elt.tag == "input":
+            elt.attributes["value"] = ""
+        elif elt.tag == "a" and "href" in elt.attributes:
             url = resolve_url(elt.attributes["href"], self.url)
             self.load(url)
-            return None
         elif elt.tag == "button":
             while elt:
                 if elt.tag == "form" and "action" in elt.attributes:
                     self.submit_form(elt)
-                    return None
                 elt = elt.parent
-        return elt
 ```
 
-With these methods, we can also avoid a bit of duplicated code in `click`, which
-of course already handled the activation concept---via mouse input---even if it
-didn't have a name at the time:
+All of this activation code is copied from the `click` method on
+`Tab`s, which can now be rewritten to call `activate_element`
+directly:
 
-``` {.python expected=False}
+``` {.python}
 class Tab:
-	# ...
-	def click(self, x, y):
-		 # ...
+    def click(self, x, y):
         while elt:
             if isinstance(elt, Text):
                 pass
-            elif elt.tag == "input":
-                elt.attributes["value"] = ""
-                if elt != self.focus:
-                    self.set_needs_render()
-                self.focus = elt
-                return
-            elif not self.activate_element(elt):
+            elif is_focusable(elt):
+                self.focus_element(elt)
+                self.activate_element(elt)
+                self.set_needs_render()
                 return
             elt = elt.parent
 ```
 
-Focus is also currently set only via a mouse click, so we also need introduce
-a keyboard way to cycle through all of the focusable elements in the browser.
-We'll implement this via the `tab` key:
+Note that hitting `Enter` when focused on a text entry clears the text
+entry; in most browsers, it submits the containing form instead. That
+quirk is because [our browser doesn't implement][clear-input] the
+`Backspace` key.
+
+[clear-input]: forms.html#interacting-with-widgets
+
+Finally, note that sometimes activating an element submits a form or
+navigates to a new page, which means the element we were focused on no
+longer exists. We need to make sure to clear focus in this case:
 
 ``` {.python}
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-        	# ...
-            elif event.type == sdl2.SDL_KEYDOWN:
-                elif event.key.keysym.sym == sdl2.SDLK_TAB:
-                    browser.handle_tab()
+class Tab:
+    def load(self, url, body=None):
+        self.focus = None
+        # ...
 ```
+
+We now have the ability to focus on links, buttons, and text entries.
+But as with any browser feature, it's worth asking whether web page
+authors should be able to customize it. With keyboard navigation, the
+author might want certain links not to be focusable (like "permalinks"
+to a section heading, which would just be noise to most users), or
+might want to change the order in which the user tabs through
+focusable items.
+
+Browsers support the `tabindex` HTML attribute to make this possible.
+The `tabindex` attribute is a number; elements with a negative value
+aren't focusable and smaller numbers come before larger numbers and
+elements without a `tabindex` attribute. To implement that, we need to
+sort the focusable elements by tab index, so we need a function that
+returns the tab index:
 
 ``` {.python}
-class Browser:
-	# ...
-    def handle_tab(self):
-        self.focus = "content"
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.advance_tab)
-        active_tab.task_runner.schedule_task(task)
-        pass	
+def get_tabindex(node):
+    return int(node.attributes.get("tabindex", "9999999"))
 ```
 
-Each time `tab` is pressed, the browser should advance focus to the next thing
-in order. This will first require a definition of which elements are
-focusable:
-
-``` {.python expected=False}
-def is_focusable(node):
-    return node.tag == "input" or node.tag == "button" \
-    	or node.tag == "a"
-```
-
-And then each iterating through them:
+The default value, "9999999", makes sure that elements without a
+`tabindex` attribute sort after ones with the attribute. Now we can
+sort by `get_tabindex` in `advance_tab`:
 
 ``` {.python}
 class Tab:
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
-            if isinstance(node, Element) and is_focusable(node)]
-        if not focusable_nodes:
-            self.apply_focus(None)
-        elif not self.focus:
-            self.apply_focus(focusable_nodes[0])
-        else:
-            i = focusable_nodes.index(self.focus)
-            if i < len(focusable_nodes) - 1:
-                self.apply_focus(focusable_nodes[i+1])
-        self.set_needs_render()
+            if isinstance(node, Element) and is_focusable(node)
+            and get_tabindex(node) >= 0]
+        focusable_nodes.sort(key=get_tabindex)
+        # ...
 ```
 
- When `tab` is pressed and we're at the
-end of the focusable list, focus the address bar:
+Since Python's sort is "stable", two elements with the same `tabindex`
+won't change their relative position in `focusable_nodes`.
+
+Additionally, elements with `tabindex` are automatically focusable,
+even if they aren't a link or a button or a text entry. That's useful,
+because that element might listen to the `click` event. To support
+this let's first extend `is_focusable` to consider `tabindex`:
+
+``` {.python}
+def is_focusable(node):
+    return node.tag in ["input", "button", "a"] \
+        or "tabindex" in node.attributes
+```
+
+Next, we need to make sure to send a `click` event when an element is
+activated:
 
 ``` {.python}
 class Tab:
-    def advance_tab(self):
-        # ...
-            if i < len(focusable_nodes) - 1:
-                self.apply_focus(focusable_nodes[i+1])
-            else:
-                self.apply_focus(None)
-                self.browser.focus_addressbar()
+    def enter(self):
+        if not self.focus: return
+        if self.js.dispatch_event("click", self.focus): return
+        self.activate_element(self.focus)
 ```
 
-Setting focus sets an `is_focused` property on the node, and has some special
-logic for input elements to clear them out.^[This logic is inherited from
-[Chapter 8][clear-input]. Real browsers will typically preserve what
-was typed there before.]
+We now have configurable keyboard navigation for both the browser and
+the web page content. And it involved writing barely any new code,
+instead mostly moving code from existing methods into new stand-alone
+ones. The fact that keyboard navigation simplified, not complicated,
+our browser implementation is not a surprise: improving accessibility
+often involves generalizing and refining existing concepts, leading to
+more maintainable code overall.
 
-[clear-input]: forms.html#interacting-with-widgets
+::: {.further}
+Why send the `click` event when an element is activated, instead of a
+special `activate` event? Internet Explorer [did send][onactivate]
+this event, and other browsers used to send a
+[DOMActivate][domactivate] event, but it's been deprecated in favor of
+sending the `click` event even if the element was activated via
+keyboard, not via a click. This works better when the developers aren't
+thinking much about accessibility and only register the `click` event
+listener.
+:::
 
-``` {.python}
-    def apply_focus(self, node):
-        if self.focus:
-            self.focus.is_focused = False
-        self.focus = node
-        if node:
-            if node.tag == "input":
-                node.attributes["value"] = ""
-            node.is_focused = True
-```
+[onactivate]: https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa742710(v=vs.85)
+[domactivate]: https://w3c.github.io/uievents/#event-type-DOMActivate
 
-Just like activation, this also be used from `click`. It will apply focus
-to the first `Element` node that is focusable in the ancestor chain.
-
-``` {.python}
-    def click(self, x, y):
-        self.render()
-        self.apply_focus(None)
-        # ...
-        elt = objs[-1].node
-
-        while elt:
-            if isinstance(elt, Text):
-                pass
-            elif elt.tag == "input":
-                elt.attributes["value"] = ""
-                if elt != self.focus:
-                    self.set_needs_render()
-                if not focus_applied:
-                    self.apply_focus(elt)
-                return
-            elif not self.activate_element(elt):
-                if not focus_applied:
-                    self.apply_focus(elt)
-                return
-            elt = elt.parent
-            self.apply_focus(elt)
-            self.focus_applied = True
-```
-
-Finally `focus_addressbar` similarly sets some state and clears the address bar.
-
-``` {.python}
-class Browser:
-	# ...
-    def focus_addressbar(self):
-        self.lock.acquire(blocking=True)
-        self.focus = "address bar"
-        self.address_bar = ""
-        self.set_needs_raster()
-        self.lock.release()
-```
+Indicating focus
+================
 
 Now we have focus implemented on `<a>` and `<button>`, plus a way to cycle
 through them with the keyboard. But how do you know which element is currently
@@ -957,6 +1051,20 @@ feature will be super confusing to use.^[Focus for input elements in our
 browser previously indicated focus only via the input cursor.] This is done with
 a *focus ring*---a visual outline around an element that lets the user know
 what is focused.
+
+Setting focus sets an `is_focused` property on the node, and has some special
+logic for input elements to clear them out.^[This logic is inherited from
+[Chapter 8][clear-input]. Real browsers will typically preserve what
+was typed there before.]
+
+``` {.python}
+    def focus_element(self, node):
+        if self.focus:
+            self.focus.is_focused = False
+        self.focus = node
+        if node:
+            node.is_focused = True
+```
 
 Draw the focus ring by painting a `2px` wide black rectangle around the element
 that is focused. This requires some code in various `paint` methods plus this
@@ -1035,16 +1143,6 @@ this [example](examples/example14-focus.html). And if you zoom in enough, you
 should be able to make the link cross multiple lines and use multiple
 focus rectangles.
 
-In addition to activation of input elements, there are four more mouse controls
-in the browser: the back button, the add-tab button, iterating through the
-tabs, and the button to quit the browser.[^one-more] Bind them to `ctrl-left`,
-`ctrl-t`, `ctrl-tab` and `ctrl-q`, respectively. The code to implement these is
-straightforward, so I've omitted it.
-
-[^one-more]: Actually, there are sometimes more, depending on the OS you're
-working with: buttons to minimize or maximize the browser window. Those require
-calling specialized OS APIs, so I won't implement them.
-
 ::: {.further}
 
 Keyboards, mice and touch screens are not the only way to interact with a
@@ -1057,6 +1155,179 @@ directly into simulated keyboard events. This is one more reason that it's
 important for browsers and web sites to provide keyboard input alternatives.
 
 :::
+
+Next up is customizing the focus rectangle via the [`outline`][outline] CSS
+property. As usual, we'll implement only a subset of the full definition; in
+particular, syntax that looks like this:
+
+[outline]: https://developer.mozilla.org/en-US/docs/Web/CSS/outline
+
+    outline: 3px solid red;
+
+Which means "make the outline red 3px thick". First parse it:
+
+``` {.python}
+def parse_outline(outline_str):
+    if not outline_str:
+        return None
+    values = outline_str.split(" ")
+    if len(values) != 3:
+        return None
+    if values[1] != "solid":
+        return None
+    return (int(values[0][:-2]), values[2])
+```
+
+Now to use it. The outline will be present if the element is focused or has the
+`outline` CSS property generally. While we could finish implementing that via
+some extra logic in `paint_outline`, the feature has a fundamental problem that
+has to be fixed. Specifying an outline is a fine feature to offer to web
+developers, but it doesn't actually solve the problem of customizing the focus
+outline. That's because `outline`, if specified by the developer,
+would *always* apply, but instead we want it to only apply to an element when
+it's focused!
+
+To do this we need some way to let developers
+express *outline-only-while-focused* in CSS. This is done with a
+[*pseudo-class*][pseudoclass], which is a way to target internal state of the
+browser (in this case internal state of a specific element).
+[^why-pseudoclass] Pseudo-classes are notated with a suffix applied to a tag or
+other selector, separated by a single colon character. For the case of focus,
+the syntax looks like this:
+
+    div:focus { outline: 2px solid black; }
+
+[pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
+
+[^why-pseudoclass]: It's called a pseudo-class because it's similar to how a
+developer would indicate a [class] attribute on an element for the purpose
+of targeting special elements with different styles. It's "pseudo" because
+there is no actual class attribute set on the element while it's focused.
+
+[class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Class_selectors
+
+Let's implement the `focus` pseudo-class. Then we can change focus outlines to
+use a browser style sheet with `:focus` instead of special code in
+`paint_outline`. The style sheet lines will look like this:
+
+``` {.css}
+input:focus { outline: 2px solid black; }
+button:focus { outline: 2px solid black; }
+div:focus { outline: 2px solid black; }
+
+
+@media (prefers-color-scheme: dark) {
+input:focus { outline: 2px solid white; }
+button:focus { outline: 2px solid white; }
+div:focus { outline: 2px solid white; }
+a:focus { outline: 2px solid white; }
+}
+```
+
+And then we can change `paint_outline` to just look at the `outline` CSS
+property:
+
+``` {.python}
+def paint_outline(node, cmds, rect):
+    outline = parse_outline(node.style.get("outline"))
+    if outline:
+        cmds.append(outline_cmd(rect, outline))
+```
+
+``` {.python expected=False}
+class LineLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+        focused_node = None
+        for child in self.children:
+            node = child.node
+            if isinstance(node, Text) and is_focused(node.parent):
+                focused_node = node.parent
+                outline_rect.join(child.rect())
+        # ...
+        if focused_node:
+            paint_outline(focused_node, display_list, outline_rect)
+
+```
+
+Now for adding support for `:focus`. The first step will be teaching
+`CSSParser` how to parse it. To do that, let's change `selector` to
+call a new `simple_selector` subroutine to parse a tag name and a
+possible pseudoclass:
+
+``` {.python}
+class CSSParser:
+    def selector(self):
+        out = self.simple_selector()
+        # ...
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            descendant = self.simple_selector()
+            # ...
+```
+
+In `simple_selector`, the parser first parses a tag name and then
+checks if that's followed by a colon and a pseudoclass name:
+
+``` {.python}
+class CSSParser:
+    def simple_selector(self):
+        out = TagSelector(self.word().lower())
+        if self.i < len(self.s) and self.s[self.i] == ":":
+            self.literal(":")
+            pseudoclass = self.word().lower()
+            out = PseudoclassSelector(pseudoclass, out)
+        return out
+```
+
+A `PseudoclassSelector` wraps another selector; it checks that base
+selector but also a pseudoclass.
+
+``` {.python}
+class PseudoclassSelector:
+    def __init__(self, pseudoclass, base):
+        self.pseudoclass = pseudoclass
+        self.base = base
+        self.priority = self.base.priority
+```
+
+Matching is straightforward; if the pseudoclass is unknown, the
+selector fails to match anything:
+
+``` {.python}
+class PseudoclassSelector:
+    def matches(self, node):
+        if not self.base.matches(node):
+            return False
+        if self.pseudoclass == "focus":
+            return is_focused(node)
+        else:
+            return False
+```
+
+And that's it! Elegant, right?
+
+::: {.further}
+
+In addition to focus rings being present for focus, another very important part
+of accessibility is ensuring *contrast*. I alluded to it in the section on dark
+mode, in the context of ensuring that the dark mode style sheet provides good
+default contrast. But in fact, the focus ring we've implemented here does not
+necessarily have great contrast, for example if it's next to an element with a
+black background provided in a page style sheet. This is not too hard to
+fix, and there is an exercise at the end of this chapter about it.
+
+Contrast is one part of the [Web Content Accessibility Guidelines][wcag], a
+standard set of recommendations to page authors on how to ensure accessibility.
+The browser can do a lot, but ultimately [good contrast][contrast] between
+colors is something that page authors also have to pay attention to.
+
+
+[wcag]: https://www.w3.org/WAI/standards-guidelines/wcag/
+[contrast]: https://www.w3.org/TR/WCAG21/#contrast-minimum
+
+:::
+
 
 Screen readers
 ==============
@@ -1579,246 +1850,6 @@ finding one that works well on any particular site, and which one does
 may be unpredictable. Interoperability is also important for web site
 authors who would otherwise have to constantly test everything in every
 browser.
-
-:::
-
-Custom widgets
-==============
-
-Our browser now has all these great features to help accessibility: zoom,
-keyboard navigation, dark mode and an accessibility tree. But what if the
-website wants to *extend* that work to new use cases not built into the
-browser? For example, what if a web developer wants to add their own different
-kind of input element, or a fancier kind of hyperlink? These kinds of *custom
-widgets* are very common on the web---in fact much more common than the
-built-in ones, because they look nicer and have extra features.
-
-A web developer can make a custom widget with event listeners for keyboard and
-mouse events, plus custom CSS to style, layout, paint and animate. But it
-immediately loses important features like becoming focusable, participating in
-tab index order, responding to dark mode, and expressing semantics. This means
-that as a site wants to customize the experience to make it nicer for some
-users, it becomes worse for others---the ones who really depend on these
-accessibility features.
-
-Let's add developer APIs to our browser to allow custom widgets to get back that
-functionality, and start with focus and tab order.
-
-Tab-index & outline
-===================
-
-Tab order is is easily solved with the `tabindex` attribute on HTML elements.
-When this attribute is present, the element automatically becomes focusable.
-The value of this property is a number, indicating the order of focus. For
-example, an element with `tabindex=1` on it will be focused before
-`tabindex=2`.^[Elements like input that are by default focusable can have
-`tabindex` set, but if it isn't set they will be last in the order after
-`tabindex` elements, and will be ordered according to to their position in the
-DOM.]
-
-First, `is_focusable` needs to be extended accordingly:
-
-``` {.python}
-def is_focusable(node):
-    return node.tag == "input" or node.tag == "button" \
-        or node.tag == "a" or "tabindex" in node.attributes
-```
-
-Define a new method to get the tab index. It defaults to a very large number,
-which is an approximation to "higher `tabindex` than anything specified".
-
-``` {.python}
-class Tab:
-    # ...
-    def get_tabindex(node):
-        return int(node.attributes.get("tabindex", 9999999))
-```
-
-Then it can be used in the sorting order for `advance_tab`:
-
-``` {.python}
-class Tab:
-    def advance_tab(self):
-        focusable_nodes = [node
-            for node in tree_to_list(self.nodes, [])
-            if isinstance(node, Element) and is_focusable(node)]
-        focusable_nodes.sort(key=Tab.get_tabindex)
-        # ...
-```
-
-That's it! Now tabindex works. Tabbing through the
-[focus example](examples/example14-focus.html) should now
-change its order according to the `tabindex` attributes in it.
-
-Next up is customizing the focus rectangle via the [`outline`][outline] CSS
-property. As usual, we'll implement only a subset of the full definition; in
-particular, syntax that looks like this:
-
-[outline]: https://developer.mozilla.org/en-US/docs/Web/CSS/outline
-
-    outline: 3px solid red;
-
-Which means "make the outline red 3px thick". First parse it:
-
-``` {.python}
-def parse_outline(outline_str):
-    if not outline_str:
-        return None
-    values = outline_str.split(" ")
-    if len(values) != 3:
-        return None
-    if values[1] != "solid":
-        return None
-    return (int(values[0][:-2]), values[2])
-```
-
-Now to use it. The outline will be present if the element is focused or has the
-`outline` CSS property generally. While we could finish implementing that via
-some extra logic in `paint_outline`, the feature has a fundamental problem that
-has to be fixed. Specifying an outline is a fine feature to offer to web
-developers, but it doesn't actually solve the problem of customizing the focus
-outline. That's because `outline`, if specified by the developer,
-would *always* apply, but instead we want it to only apply to an element when
-it's focused!
-
-To do this we need some way to let developers
-express *outline-only-while-focused* in CSS. This is done with a
-[*pseudo-class*][pseudoclass], which is a way to target internal state of the
-browser (in this case internal state of a specific element).
-[^why-pseudoclass] Pseudo-classes are notated with a suffix applied to a tag or
-other selector, separated by a single colon character. For the case of focus,
-the syntax looks like this:
-
-    div:focus { outline: 2px solid black; }
-
-[pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
-
-[^why-pseudoclass]: It's called a pseudo-class because it's similar to how a
-developer would indicate a [class] attribute on an element for the purpose
-of targeting special elements with different styles. It's "pseudo" because
-there is no actual class attribute set on the element while it's focused.
-
-[class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Class_selectors
-
-Let's implement the `focus` pseudo-class. Then we can change focus outlines to
-use a browser style sheet with `:focus` instead of special code in
-`paint_outline`. The style sheet lines will look like this:
-
-``` {.css}
-input:focus { outline: 2px solid black; }
-button:focus { outline: 2px solid black; }
-div:focus { outline: 2px solid black; }
-
-
-@media (prefers-color-scheme: dark) {
-input:focus { outline: 2px solid white; }
-button:focus { outline: 2px solid white; }
-div:focus { outline: 2px solid white; }
-a:focus { outline: 2px solid white; }
-}
-```
-
-And then we can change `paint_outline` to just look at the `outline` CSS
-property:
-
-``` {.python}
-def paint_outline(node, cmds, rect):
-    outline = parse_outline(node.style.get("outline"))
-    if outline:
-        cmds.append(outline_cmd(rect, outline))
-```
-
-``` {.python expected=False}
-class LineLayout:
-    # ...
-    def paint(self, display_list):
-        # ...
-        focused_node = None
-        for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and is_focused(node.parent):
-                focused_node = node.parent
-                outline_rect.join(child.rect())
-        # ...
-        if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
-
-```
-
-Now for adding support for `:focus`. The first step will be teaching
-`CSSParser` how to parse it. To do that, let's change `selector` to
-call a new `simple_selector` subroutine to parse a tag name and a
-possible pseudoclass:
-
-``` {.python}
-class CSSParser:
-    def selector(self):
-        out = self.simple_selector()
-        # ...
-        while self.i < len(self.s) and self.s[self.i] != "{":
-            descendant = self.simple_selector()
-            # ...
-```
-
-In `simple_selector`, the parser first parses a tag name and then
-checks if that's followed by a colon and a pseudoclass name:
-
-``` {.python}
-class CSSParser:
-    def simple_selector(self):
-        out = TagSelector(self.word().lower())
-        if self.i < len(self.s) and self.s[self.i] == ":":
-            self.literal(":")
-            pseudoclass = self.word().lower()
-            out = PseudoclassSelector(pseudoclass, out)
-        return out
-```
-
-A `PseudoclassSelector` wraps another selector; it checks that base
-selector but also a pseudoclass.
-
-``` {.python}
-class PseudoclassSelector:
-    def __init__(self, pseudoclass, base):
-        self.pseudoclass = pseudoclass
-        self.base = base
-        self.priority = self.base.priority
-```
-
-Matching is straightforward; if the pseudoclass is unknown, the
-selector fails to match anything:
-
-``` {.python}
-class PseudoclassSelector:
-    def matches(self, node):
-        if not self.base.matches(node):
-            return False
-        if self.pseudoclass == "focus":
-            return is_focused(node)
-        else:
-            return False
-```
-
-And that's it! Elegant, right?
-
-::: {.further}
-
-In addition to focus rings being present for focus, another very important part
-of accessibility is ensuring *contrast*. I alluded to it in the section on dark
-mode, in the context of ensuring that the dark mode style sheet provides good
-default contrast. But in fact, the focus ring we've implemented here does not
-necessarily have great contrast, for example if it's next to an element with a
-black background provided in a page style sheet. This is not too hard to
-fix, and there is an exercise at the end of this chapter about it.
-
-Contrast is one part of the [Web Content Accessibility Guidelines][wcag], a
-standard set of recommendations to page authors on how to ensure accessibility.
-The browser can do a lot, but ultimately [good contrast][contrast] between
-colors is something that page authors also have to pay attention to.
-
-
-[wcag]: https://www.w3.org/WAI/standards-guidelines/wcag/
-[contrast]: https://www.w3.org/TR/WCAG21/#contrast-minimum
 
 :::
 

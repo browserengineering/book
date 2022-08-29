@@ -226,7 +226,7 @@ Tab order causes focus:
 
     >>> browser.tabs[0].advance_tab()
     >>> browser.tabs[0].focus
-    <input value="">
+    <input>
 
 It also nd also causes a painted outline:
 
