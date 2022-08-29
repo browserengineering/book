@@ -82,7 +82,6 @@ static socket() {
             if (this.host == "localhost" && rt_constants.URLS["local://" + this.port]) {
                 let s = new socket({family: "inet", type: "stream", proto: "tcp"});
                 s.is_proxy_socket = true;
-                console.log(this.input);
                 s.output = this.input;
                 await rt_constants.URLS["local://" + this.port](s)
                 this.output = s.input;
@@ -104,7 +103,6 @@ static socket() {
                 this.idx = 0;
                 return this;
             } else {
-                console.log(this);
                 throw new WidgetXHRError(this.host);               
             }
             return this;
