@@ -41,6 +41,28 @@ from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP
 
+class Element:
+    def __init__(self, tag, attributes, parent):
+        self.tag = tag
+        self.attributes = attributes
+        self.children = []
+        self.parent = parent
+
+        self.style = {}
+        self.animations = {}
+
+        self.is_focused = False
+        self.is_hovered = False
+
+    def __repr__(self):
+        attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
+        return "<" + self.tag + "".join(attrs) + ">"
+
+# Patch the `Text` and `Element` classes so that all other code that
+# uses them, like HTMLParser, all refer to the patched versions.
+import sys
+sys.modules['lab13'].Element = Element
+
 def parse_color(color):
     if color == "white":
         return skia.ColorWHITE
@@ -107,43 +129,38 @@ class DrawRRect(DisplayItem):
         return "DrawRRect(rect={}, color={})".format(
             str(self.rrect), self.color)
 
-class DrawRect(DisplayItem):
-    def __init__(self, rect, border_color, fill_color=None, width=0):
+class DrawOutline(DisplayItem):
+    def __init__(self, rect, color, thickness):
         super().__init__(rect)
-        self.border_color = border_color
-        self.fill_color = fill_color
-        self.width = width
+        self.color = color
+        self.thickness = thickness
 
     def is_paint_command(self):
         return True
 
     def execute(self, canvas):
         draw_rect(canvas, self.rect,
-            fill_color=self.fill_color,
-            border_color=self.border_color, width=self.width)
+            border_color=self.border_color, width=self.thickness)
 
     def __repr__(self):
-        return ("DrawRect(top={} left={} " +
+        return ("DrawOutline(top={} left={} " +
             "bottom={} right={} border_color={} " +
-            "width={} fill_color={})").format(
+            "width={})").format(
             self.rect.top(), self.rect.left(), self.rect.bottom(),
             self.rect.right(), self.border_color,
-            self.width, self.fill_color)
+            self.width)
 
-def outline_cmd(rect, outline):
-    (outline_width, outline_color) = outline
-    return DrawRect(rect, border_color=outline_color,
-            width=outline_width)
 
 def is_focused(node):
     if isinstance(node, Text):
         node = node.parent
-    return hasattr(node, "is_focused") and node.is_focused
+    return node.is_focused
 
 def paint_outline(node, cmds, rect):
     outline = parse_outline(node.style.get("outline"))
     if outline:
-        cmds.append(outline_cmd(rect, outline))
+        outline_width, outline_color = outline
+        cmds.append(DrawOutline(rect, outline_color, outline_width))
 
 def has_outline(node):
     return parse_outline(node.style.get("outline"))
@@ -358,14 +375,16 @@ class LineLayout:
         self.height = 1.25 * (max_ascent + max_descent)
 
     def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and has_outline(node.parent):
-                outline_node = node.parent
+            parent = child.node.parent
+            if has_outline(parent):
+                outline_node = parent
                 outline_rect.join(child.rect())
-            child.paint(display_list)
 
         if outline_node:
             paint_outline(outline_node, display_list, outline_rect)
@@ -555,6 +574,10 @@ class InputLayout:
 
         paint_outline(self.node, cmds, rect)
 
+        if self.node.is_focused and self.node.tag == "input":
+            cx = rect.left + self.font.measureText(text)
+            self.display_list.append(DrawLine(cx, rect.top, cx, rect.bottom))
+
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
@@ -614,7 +637,7 @@ def announce_text(node):
         text = "Link"
     elif role == "alert":
         text = "Alert"
-    if hasattr(node, "is_focused") and node.is_focused:
+    if node.is_focused:
         text += " is focused"
     return text
 
@@ -683,7 +706,7 @@ class PseudoclassSelector:
         if self.pseudoclass == "focus":
             return is_focused(node)
         elif self.pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-            return hasattr(node, "is_hovered") and node.is_hovered
+            return node.is_hovered
         else:
             return False
 
@@ -1204,15 +1227,6 @@ class Tab:
             self.display_list = []
 
             self.document.paint(self.display_list)
-            if self.focus and self.focus.tag == "input":
-                obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus and \
-                        isinstance(obj, InputLayout)][0]
-                text = self.focus.attributes.get("value", "")
-                x = obj.x + obj.font.measureText(text)
-                y = obj.y
-                self.display_list.append(
-                    DrawLine(x, y, x, y + obj.height))
             self.needs_paint = False
 
         self.measure_render.stop()
