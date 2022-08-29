@@ -1,0 +1,8 @@
+[{"code": "'href' in node.attributes", "type": "dict"},
+ {"code": "'action' in elt.attributes", "type": "dict"},
+ {"code": "'href' in elt.attributes", "type": "dict"},
+ {"code": "'name' in node.attributes", "type": "dict"},
+ {"code": "print", "js": "console.log"},
+ {"code": "'src' in node.attributes", "type": "dict"},
+ {"code": "elt not in self.node_to_handle", "type": "dict"}
+]
