@@ -1153,7 +1153,7 @@ class Tab:
         if self.focus and \
             self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
-            self.speak_node(node, "element focused ")
+            self.speak_node(self.focus, "element focused ")
 
     def render(self):
         self.measure_render.start()
