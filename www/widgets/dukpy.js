@@ -2,14 +2,18 @@ dukpy = {}
 $$COMMARRAY = null;
 $$READARRAY = null;
 $$FLAGARRAY = null;
+$$CONSOLE = console;
+$$POSTMESSAGE = postMessage;
+
+$$SCOPE = {};
 
 addEventListener("message", (e) => {
     switch (e.data.type) {
     case "eval":
         dukpy = e.data.bindings;
-        let val = eval(e.data.body);
+        let val = eval?.(e.data.body);
         if (val instanceof Function) val = null;
-        postMessage({"type": "return", "data": val});
+        $$POSTMESSAGE({"type": "return", "data": val});
         break;
 
     case "array":
@@ -24,7 +28,7 @@ addEventListener("message", (e) => {
 function call_python() {
     let args = Array.from(arguments);
     let fn = args.shift();
-    postMessage({
+    $$POSTMESSAGE({
         "type": "call",
         "fn": fn,
         "args": args,
