@@ -4,9 +4,11 @@ Tests for WBE Chapter 14
 This file contains tests for Chapter 14 (Accessibility).
 
 	>>> from test import Event
+    >>> import threading
     >>> import test14 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
+    >>> threading.Lock = test.MockLock
     >>> import lab13
     >>> import lab14
     >>> import time

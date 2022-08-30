@@ -1706,7 +1706,7 @@ class Browser:
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.focus == "address bar":
-            self.schedule_load(self.address_bar)
+            self.schedule_load(active_tab, self.address_bar)
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster()
@@ -1730,16 +1730,13 @@ class Browser:
         active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
-    def load_internal(self, url):
+    def load(self, url):
+        self.lock.acquire(blocking=True)
         new_tab = Tab(self)
         self.tabs.append(new_tab)
         self.set_active_tab(len(self.tabs) - 1)
-        self.schedule_load(url)
-
-    def load(self, url):
-        self.lock.acquire(blocking=True)
-        self.load_internal(url)
         self.lock.release()
+        self.schedule_load(url)
 
     def raster_tab(self):
         for composited_layer in self.composited_layers:
