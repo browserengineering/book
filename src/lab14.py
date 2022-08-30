@@ -20,7 +20,7 @@ import time
 import urllib.parse
 from lab4 import print_tree
 from lab4 import HTMLParser
-from lab13 import Text, Element
+from lab4 import Text
 from lab6 import resolve_url
 from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
@@ -39,7 +39,9 @@ from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
     CommitData, add_parent_pointers, absolute_bounds_for_obj, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
-    REFRESH_RATE_SEC, HSTEP, VSTEP
+    REFRESH_RATE_SEC, HSTEP, VSTEP, draw_rect
+
+class AssertionError(Exception): pass
 
 class Element:
     def __init__(self, tag, attributes, parent):
@@ -61,6 +63,7 @@ class Element:
 # Patch the `Text` and `Element` classes so that all other code that
 # uses them, like HTMLParser, all refer to the patched versions.
 import sys
+sys.modules['lab4'].Element = Element
 sys.modules['lab13'].Element = Element
 
 def parse_color(color):
@@ -95,40 +98,6 @@ def parse_outline(outline_str):
         return None
     return (int(values[0][:-2]), values[2])
 
-def draw_rect(
-    canvas, rect, fill_color=None, border_color="black", width=1):
-    paint = skia.Paint()
-    if fill_color:
-        paint.setStrokeWidth(width);
-        paint.setColor(parse_color(fill_color))
-    else:
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(width);
-        paint.setColor(parse_color(border_color))
-    canvas.drawRect(rect, paint)
-
-
-class DrawRRect(DisplayItem):
-    def __init__(self, rect, radius, color):
-        super().__init__(rect)
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.color = color
-
-    def is_paint_command(self):
-        return True
-
-    def execute(self, canvas):
-        sk_color = parse_color(self.color)
-        canvas.drawRRect(self.rrect,
-            paint=skia.Paint(Color=sk_color))
-
-    def print(self, indent=0):
-        return " " * indent + self.__repr__()
-
-    def __repr__(self):
-        return "DrawRRect(rect={}, color={})".format(
-            str(self.rrect), self.color)
-
 class DrawOutline(DisplayItem):
     def __init__(self, rect, color, thickness):
         super().__init__(rect)
@@ -139,7 +108,9 @@ class DrawOutline(DisplayItem):
         return True
 
     def execute(self, canvas):
-        draw_rect(canvas, self.rect,
+        draw_rect(canvas,
+            self.rect.left(), self.rect.top(),
+            self.rect.right(), self.rect.bottom(),
             border_color=self.border_color, width=self.thickness)
 
     def __repr__(self):
@@ -423,6 +394,8 @@ def style(node, rules, tab):
     for media, selector, body in rules:
         if media:
             if (media == "dark") != tab.dark_mode: continue
+        if isinstance(node, Element) and node.tag == "input":
+            print(node, selector, selector.matches(node))
         if not selector.matches(node): continue
         for property, value in body.items():
             computed_value = compute_style(node, property, value)
@@ -572,12 +545,11 @@ class InputLayout:
         cmds.append(DrawText(self.x, self.y,
                              text, self.font, color))
 
-        paint_outline(self.node, cmds, rect)
-
         if self.node.is_focused and self.node.tag == "input":
-            cx = rect.left + self.font.measureText(text)
-            self.display_list.append(DrawLine(cx, rect.top, cx, rect.bottom))
+            cx = rect.left() + self.font.measureText(text)
+            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
+        paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
@@ -637,7 +609,7 @@ def announce_text(node):
         text = "Link"
     elif role == "alert":
         text = "Alert"
-    if node.is_focused:
+    if isinstance(node, Element) and node.is_focused:
         text += " is focused"
     return text
 
@@ -818,25 +790,27 @@ class CSSParser:
     def parse(self):
         rules = []
         media = None
+        self.whitespace()
         while self.i < len(self.s):
             try:
-                self.whitespace()
-                assert self.i < len(self.s)
                 if self.s[self.i] == "@" and not media:
                     prop, val = self.media_query()
                     if prop == "prefers-color-scheme" and val in ["dark", "light"]:
                         media = val
                     self.whitespace()
                     self.literal("{")
+                    self.whitespace()
                 elif self.s[self.i] == "}" and media:
                     self.literal("}")
                     media = None
+                    self.whitespace()
                 else:
                     selector = self.selector()
                     self.literal("{")
                     self.whitespace()
                     body = self.body()
                     self.literal("}")
+                    self.whitespace()
                     rules.append((media, selector, body))
             except AssertionError:
                 why = self.ignore_until(["}"])

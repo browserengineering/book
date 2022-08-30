@@ -675,19 +675,20 @@ class CSSParser:
     def parse(self):
         # ...
         media = None
+        self.whitespace()
         while self.i < len(self.s):
             try:
-                self.whitespace()
-                assert self.i < len(self.s)
                 if self.s[self.i] == "@" and not media:
                     prop, val = self.media_query()
                     if prop == "prefers-color-scheme" and val in ["dark", "light"]:
                         media = val
                     self.whitespace()
                     self.literal("{")
+                    self.whitespace()
                 elif self.s[self.i] == "}" and media:
                     self.literal("}")
                     media = None
+                    self.whitespace()
                 else:
                     # ...
                     rules.append((media, selector, body))
@@ -1120,15 +1121,17 @@ This is in a helper method so that we can call it in both
 class InputLayout:
 	def paint(self, display_list):
 		# ...
-        for child in self.children:
-            child.paint(cmds)
+        if self.node.is_focused and self.node.tag == "input":
+            cx = rect.left + self.font.measureText(text)
+            self.display_list.append(DrawLine(cx, rect.top, cx, rect.bottom))
 
         paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
 ```
 
-Note that this comes after painting the children but before the visual
-effects.
+Note that this comes after painting the rest of the text entry's
+content but before the visual effects.
 
 Unfortunately, handling links is a little more complicated. That's
 because one `<a>` element corresponds to multiple `TextLayout`
@@ -1254,7 +1257,8 @@ property:
 def paint_outline(node, cmds, rect):
     outline = parse_outline(node.style.get("outline"))
     if outline:
-        cmds.append(outline_cmd(rect, outline))
+        outline_width, outline_color = outline
+        cmds.append(DrawOutline(rect, outline_color, outline_width))
 ```
 
 ``` {.python expected=False}
@@ -1449,7 +1453,7 @@ def announce_text(node):
         text = "Button"
     elif node.tag == "link":
         text = "Link"
-    if hasattr(node, "is_focused") and node.is_focused:
+    if node.is_focused:
         text += " is focused"
     return text
 ```
@@ -1928,7 +1932,7 @@ class PseudoclassSelector:
     def matches(self, node):
         # ...
         elif self.pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-            return hasattr(node, "is_hovered") and node.is_hovered
+            return node.is_hovered
 ```
 
 The only step remaining is to restrict to the browser style sheet.
@@ -2084,7 +2088,7 @@ def announce_text(node):
         text = "Link"
     elif role == "alert":
         text = "Alert"
-    if hasattr(node, "is_focused") and node.is_focused:
+    if node.is_focused:
         text += " is focused"
     return text
 ```
