@@ -1614,7 +1614,7 @@ class Browser:
         self.clear_data()
         if self.active_tab != None:
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.set_needs_render)
+            task = Task(active_tab.set_needs_paint)
             active_tab.task_runner.schedule_task(task)
         else:
             self.needs_animation_frame = True
@@ -1732,10 +1732,13 @@ class Browser:
 
     def load(self, url):
         self.lock.acquire(blocking=True)
+        self.load_internal(url)
+        self.lock.release()
+
+    def load_internal(self, url):
         new_tab = Tab(self)
         self.tabs.append(new_tab)
         self.set_active_tab(len(self.tabs) - 1)
-        self.lock.release()
         self.schedule_load(url)
 
     def raster_tab(self):
