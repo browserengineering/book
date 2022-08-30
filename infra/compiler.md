@@ -234,12 +234,19 @@ Conditional expressions are also supported:
     >>> Test.expr("x if y else z")
     (y ? x : z)
 
-One weird case is list comprehensions. We compile those to `map` and `filter`:
+One weird case is list comprehensions. We compile those to `map` and
+`asyncfilter`, which can get a bit ugly:
 
+    >>> Test.expr("[x for x in v]")
+    v
+    >>> Test.expr("[x.y for x in v]")
+    (await Promise.all(v.map(async (x) => x.y)))
+    >>> Test.expr("[x for x in v if x.y]")
+    (await asyncfilter(async (x) => x.y, v))
     >>> Test.expr("[x for x, y in v.items()]")
-    (Object.entries(v)).map(([x, y]) => x)
+    (await Promise.all((Object.entries(v)).map(async ([x, y]) => x)))
     >>> Test.expr("[x for x, y in v.items() if y > 0]")
-    (Object.entries(v)).filter(([x, y]) => (y > 0)).map(([x, y]) => x)
+    (await Promise.all((await asyncfilter(async ([x, y]) => (y > 0), (Object.entries(v)))).map(async ([x, y]) => x)))
 
 The remaining expressions are pretty much direct translations:
 
@@ -379,13 +386,20 @@ The `while` and `for` loops translate pretty directly:
     }
 
 The `try` statement is different in Python because you can catch
-specific types of exceptions. That's just not supported in JS:
+specific types of exceptions, which requires a nested `if` in
+JavaScript. This test asks doctest to ignore whitespace changes,
+because there's something going wrong with the way doctest parses
+indentation.
 
-    >>> Test.stmt("try:\n assert False\nexcept AssertionError:\n foo()")
+    >>> Test.stmt("try:\n assert False\nexcept AssertionError:\n foo()") # doctest: +NORMALIZE_WHITESPACE
     try {
       if (!truthy(false)) throw Error();
-    } catch {
-      (await foo());
+    } catch ($err) {
+      if ($err instanceof Error) {
+        (await foo());
+      } else {
+        throw $err;
+      }
     }
 
 The `with` statement in Python has no analog in JS (which also has a

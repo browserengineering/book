@@ -74,9 +74,9 @@ backup:
 	rsync server:/home/www/browseng/db.pickle infra/db.$(shell date +%Y-%m-%d).pickle
 
 test:
+	python3 -m doctest infra/compiler.md
+	python3 -m doctest infra/annotate_code.md
 	set -e; \
 	for i in $$(seq 1 14); do \
 		(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest lab$$i-tests.md); \
 	done
-	python3 -m doctest infra/compiler.md
-	python3 -m doctest infra/annotate_code.md

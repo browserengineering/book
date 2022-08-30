@@ -486,8 +486,8 @@ def compile_expr(tree, ctx):
             out = "(await asyncfilter(async (" + arg + ") => " + e + ", " + out + "))"
         e = compile_expr(tree.elt, ctx2)
         if e != arg:
-            out += ".map(async (" + arg + ") => " + e + ")"
-        return "(await Promise.all(" + out + "))"
+            out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
+        return out
     elif isinstance(tree, ast.Attribute):
         base = compile_expr(tree.value, ctx)
         return base + "." + tree.attr
