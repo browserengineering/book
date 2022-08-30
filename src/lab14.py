@@ -874,7 +874,7 @@ class JSContext:
         return handle
 
     def querySelectorAll(self, selector_text):
-        selector = CSSParser(selector_text).selector(is_internal=False)
+        selector = CSSParser(selector_text).selector()
         nodes = [node for node
                  in tree_to_list(self.tab.nodes, [])
                  if selector.matches(node)]
@@ -1153,7 +1153,7 @@ class Tab:
         if self.focus and \
             self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
-            self.speak_node(node, "element focused ")
+            self.speak_node(self.focus, "element focused ")
 
     def render(self):
         self.measure_render.start()
@@ -1241,7 +1241,7 @@ class Tab:
 
     def click(self, x, y):
         self.render()
-        self.apply_focus(None)
+        self.focus_element(None)
         y += self.scroll
         loc_rect = skia.Rect.MakeXYWH(x, y, 1, 1)
         objs = [obj for obj in tree_to_list(self.document, [])
@@ -1612,7 +1612,12 @@ class Browser:
     def set_active_tab(self, index):
         self.active_tab = index
         self.clear_data()
-        self.needs_animation_frame = True
+        if self.active_tab != None:
+            active_tab = self.tabs[self.active_tab]
+            task = Task(active_tab.set_needs_paint)
+            active_tab.task_runner.schedule_task(task)
+        else:
+            self.needs_animation_frame = True
 
     def go_back(self):
         active_tab = self.tabs[self.active_tab]
@@ -1621,17 +1626,23 @@ class Browser:
         self.clear_data()
 
     def cycle_tabs(self):
+        self.lock.acquire(blocking=True)
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
         self.set_active_tab(new_active_tab)
+        self.lock.release()
 
     def toggle_accessibility(self):
+        self.lock.acquire(blocking=True)
         self.accessibility_is_on = not self.accessibility_is_on
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.toggle_accessibility)
         active_tab.task_runner.schedule_task(task)
+        self.lock.release()
 
     def toggle_mute(self):
+        self.lock.acquire(blocking=True)
         self.muted = not self.muted
+        self.lock.release()
 
     def is_muted(self):
         self.lock.acquire(blocking=True)
@@ -1640,10 +1651,12 @@ class Browser:
         return muted
 
     def toggle_dark_mode(self):
+        self.lock.acquire(blocking=True)
         self.dark_mode = not self.dark_mode
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.toggle_dark_mode)
         active_tab.task_runner.schedule_task(task)
+        self.lock.release()
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
@@ -1652,7 +1665,7 @@ class Browser:
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.set_active_tab(int((e.x - 40) / 80))
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load("https://browser.engineering/")
+                self.load_internal("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
                 self.go_back()
             elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
@@ -1667,9 +1680,11 @@ class Browser:
         self.lock.release()
 
     def handle_hover(self, event):
+        self.lock.acquire(blocking=True)
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
         active_tab.task_runner.schedule_task(task)
+        self.lock.release()
 
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
@@ -1691,7 +1706,7 @@ class Browser:
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.focus == "address bar":
-            self.schedule_load(self.address_bar)
+            self.schedule_load(active_tab, self.address_bar)
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster()
@@ -1702,19 +1717,28 @@ class Browser:
         self.lock.release()
 
     def increment_zoom(self, increment):
+        self.lock.acquire(blocking=True)
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.zoom_by, increment)
         active_tab.task_runner.schedule_task(task)
+        self.lock.release()
 
     def reset_zoom(self):
+        self.lock.acquire(blocking=True)
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.reset_zoom)
         active_tab.task_runner.schedule_task(task)
+        self.lock.release()
 
     def load(self, url):
+        self.lock.acquire(blocking=True)
+        self.load_internal(url)
+        self.lock.release()
+
+    def load_internal(self, url):
         new_tab = Tab(self)
-        self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
+        self.set_active_tab(len(self.tabs) - 1)
         self.schedule_load(url)
 
     def raster_tab(self):
