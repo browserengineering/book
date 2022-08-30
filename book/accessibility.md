@@ -1461,7 +1461,7 @@ class Tab:
         if self.focus and \
             self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
-            self.speak_node(node, "element focused ")
+            self.speak_node(self.focus, "element focused ")
 ```
 
 The `speak_update` method can then be called after layout is done:
@@ -1687,7 +1687,7 @@ class Tab:
         if self.focus and \
             self.focus != self.accessibility_focus:
             self.accessibility_focus = self.focus
-            self.speak_node(node, "element focused ")
+            self.speak_node(noself.focus, "element focused ")
 ```
 
 The accessibility tree also needs access to the geometry of each object. This
