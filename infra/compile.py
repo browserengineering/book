@@ -107,12 +107,16 @@ RENAME_FNS = {
 # These are filled in as import statements are read
 RT_IMPORTS = []
 
+RT_METHODS = [
+    "makefile",
+    "evaljs",
+]
+
 LIBRARY_METHODS = [
     # socket
     "connect",
     "wrap_socket",
     "send",
-    "makefile",
     "readline",
     "read",
     "close",
@@ -190,9 +194,8 @@ def compile_method(base, name, args, ctx):
     elif name == "export_function": # Needs special handling due to "this"
         assert len(args) == 2
         return base_js + ".export_function(" + args_js[0] + ", (...args) => " + args_js[1] + "(...args))"
-    elif name == "makefile":
-        assert len(args) == 2, "makefile() expects exactly 2 arguments"
-        return "await " + base_js + ".makefile(" + ", ".join(args_js) + ")"
+    elif name in RT_METHODS:
+        return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in LIBRARY_METHODS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_METHODS:
@@ -482,8 +485,9 @@ def compile_expr(tree, ctx):
             e = compile_expr(if_clause, ctx2)
             out = "(await asyncfilter(async (" + arg + ") => " + e + ", " + out + "))"
         e = compile_expr(tree.elt, ctx2)
-        out += ".map(async (" + arg + ") => " + e + ")"
-        return "await Promise.all(" + out + ")"
+        if e != arg:
+            out += ".map(async (" + arg + ") => " + e + ")"
+        return "(await Promise.all(" + out + "))"
     elif isinstance(tree, ast.Attribute):
         base = compile_expr(tree.value, ctx)
         return base + "." + tree.attr
@@ -498,6 +502,8 @@ def compile_expr(tree, ctx):
             return "this"
         elif tree.id in RT_IMPORTS or tree.id in OUR_CLASSES:
             return tree.id
+        elif tree.id == "AssertionError":
+            return "Error"
         elif tree.id in OUR_CONSTANTS:
             return "constants.{}".format(tree.id)
         elif tree.id in ctx:
