@@ -36,10 +36,12 @@ function call_python() {
     Atomics.wait($$FLAGARRAY, 0, 0);
     let len = $$FLAGARRAY[0];
     Atomics.store($$FLAGARRAY, 0, 0);
-    let buffer = new Uint8Array(len);
-    for (let i = 0; i < buffer.length; i++) {
-        buffer[i] = $$READARRAY[i];
+    if (len > 0) {
+        let buffer = new Uint8Array(len);
+        for (let i = 0; i < buffer.length; i++) {
+            buffer[i] = $$READARRAY[i];
+        }
+        let result = JSON.parse(new TextDecoder().decode(buffer));
+        return result;
     }
-    let result = JSON.parse(new TextDecoder().decode(buffer));
-    return result;
 }
