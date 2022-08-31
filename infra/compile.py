@@ -747,12 +747,13 @@ def compile(tree, ctx, indent=0):
         assert not tree.type_comment
         assert len(tree.items) == 1
         item = tree.items[0]
-        var = item.optional_vars if item.optional_vars else ast.Name("_ctx")
-        assert isinstance(var, ast.Name)
-        out = compile(ast.Assign([var], item.context_expr), indent=indent, ctx=ctx) + "\n"
+        if item.optional_vars:
+            assert isinstance(item.optional_vars, ast.Name)
+        var = compile_lhs(item.optional_vars if item.optional_vars else ast.Name("_ctx"), ctx)
+        val = compile_expr(item.context_expr, ctx)
+        out = " " * indent + "let " + var + " = " + val + ";\n"
         out += "\n".join([compile(line, indent=indent, ctx=ctx) for line in tree.body]) + "\n"
-        out += compile(ast.Expr(ast.Call(ast.Attribute(var, "close"), [], [])),
-                       indent=indent, ctx=ctx)
+        out += " " * indent + var + ".close();\n"
         return out
     elif isinstance(tree, ast.Continue):
         return " " * indent + "continue;"
