@@ -44,7 +44,7 @@ Once the Tab has loaded, the browser should need raster and draw.
 The Tab has already committed:
 
 	>>> browser.active_tab_height
-	81
+	76
     >>> len(browser.active_tab_display_list)
     1
 
@@ -59,8 +59,8 @@ After performing raster and draw, the display list should be present.
     >>> browser.raster_and_draw()
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
-    drawString(text=Text, x=13.0, y=36.10546875, color=ff000000)
-    drawString(text=), x=13.0, y=58.44921875, color=ff000000)
+    drawString(text=Text, x=13.0, y=33.0, color=ff000000)
+    drawString(text=), x=13.0, y=53.0, color=ff000000)
 
     >>> browser.needs_raster_and_draw
     False

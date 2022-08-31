@@ -66,7 +66,7 @@ Focus
 On load, nothing is focused:
 
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
 
@@ -78,21 +78,21 @@ But pressing `tab` will focus first the `input` and then the `a` element.
 The 2px wide black display list command is the focus ring for the `input`:
 
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
-     DrawRect(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=black width=2 fill_color=None)
+     DrawRect(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black width=2 fill_color=None)
      DrawText(text=Link)
-     DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
+     DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
 
 And now it's for the `a`:
 
     >>> browser.handle_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
-     DrawRect(top=21.62109375 left=217.0 bottom=39.49609375 right=247.0 border_color=black width=2 fill_color=None)
+     DrawRect(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black width=2 fill_color=None)
 
 Tabindex changes the order:
 
@@ -110,21 +110,21 @@ This time the `a` element is focused first:
     >>> browser.handle_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
-     DrawRect(top=21.62109375 left=217.0 bottom=39.49609375 right=247.0 border_color=black width=2 fill_color=None)
+     DrawRect(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black width=2 fill_color=None)
 
 And then the `input`:
 
     >>> browser.handle_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
-     DrawRect(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=black width=2 fill_color=None)
+     DrawRect(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black width=2 fill_color=None)
      DrawText(text=Link)
-     DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
+     DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
 
 Regular elements aren't focusable, but if the `tabindex` attribute is set, they
 are:
@@ -195,7 +195,7 @@ The tab contents are light:
     >>> browser.load(focus_url)
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
 
@@ -204,7 +204,7 @@ But when we toggle to dark, it switches:
     >>> browser.toggle_dark_mode()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=blue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=blue)
      DrawText(text=)
      DrawText(text=Link)
 
@@ -234,8 +234,8 @@ It also nd also causes a painted outline:
 
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=blue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=blue)
      DrawText(text=)
-     DrawRect(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=white width=2 fill_color=None)
+     DrawRect(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=white width=2 fill_color=None)
      DrawText(text=Link)
-     DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
+     DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
