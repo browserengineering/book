@@ -753,7 +753,7 @@ def compile(tree, ctx, indent=0):
         val = compile_expr(item.context_expr, ctx)
         out = " " * indent + "let " + var + " = " + val + ";\n"
         out += "\n".join([compile(line, indent=indent, ctx=ctx) for line in tree.body]) + "\n"
-        out += " " * indent + var + ".close();\n"
+        out += " " * indent + var + ".close();"
         return out
     elif isinstance(tree, ast.Continue):
         return " " * indent + "continue;"
