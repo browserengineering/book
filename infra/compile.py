@@ -764,7 +764,7 @@ def compile(tree, ctx, indent=0):
     else:
         raise UnsupportedConstruct()
     
-def compile_module(tree, name, use_js_modules):
+def compile_module(tree, use_js_modules):
     assert isinstance(tree, ast.Module)
     ctx = Context("module", {})
 
@@ -815,7 +815,7 @@ if __name__ == "__main__":
     INDENT = args.indent
     tree = asttools.parse(args.python.read(), args.python.name)
     load_outline(asttools.inline(tree))
-    js = compile_module(tree, name[:-len(".py")], args.use_js_modules)
+    js = compile_module(tree, args.use_js_modules)
 
     for fn in FILES:
         path = os.path.join(os.path.dirname(args.python.name), fn)
