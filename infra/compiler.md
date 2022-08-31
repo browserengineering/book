@@ -409,7 +409,7 @@ compile it into `open` and `close` statements:
     >>> Test.stmt("with open('browser.css') as f:\n f.read()")
     f = (filesystem.open("browser.css"));
     (f.read());
-    (f.close());
+    f.close();
 
 But `if` statements are weird. First, there's the top-level `if`
 statement, which we elide. But then also there are one-line `if`
