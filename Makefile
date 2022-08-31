@@ -11,10 +11,19 @@ EXAMPLE_CSS=$(patsubst src/example%.css,%,$(wildcard src/example*.css))
 
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets examples
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
-widgets: $(patsubst lab%,www/widgets/lab%-browser.html,$(WIDGET_LAB_CODE)) $(patsubst lab%,www/widgets/lab%.js,$(WIDGET_LAB_CODE))
 examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) \
 	$(patsubst %,www/examples/example%.js,$(EXAMPLE_JS)) \
 	$(patsubst %,www/examples/example%.css,$(EXAMPLE_CSS))
+
+widgets: \
+	www/widgets/lab2-browser.html www/widgets/lab2.js \
+	www/widgets/lab3-browser.html www/widgets/lab3.js \
+	www/widgets/lab4-browser.html www/widgets/lab4.js \
+	www/widgets/lab5-browser.html www/widgets/lab5.js \
+	www/widgets/lab6-browser.html www/widgets/lab6.js \
+	www/widgets/lab7-browser.html www/widgets/lab7.js \
+	www/widgets/lab8-browser.html www/widgets/lab8.js www/widgets/server8.js \
+	www/widgets/lab9-browser.html www/widgets/lab9.js www/widgets/server9.js
 
 lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json
@@ -36,9 +45,6 @@ www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 
 www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py
 	python3 infra/compile.py $< $@ --hints src/server$*.hints --use-js-modules
-
-www/widgets/lab%-browser.html: infra/labN-browser.html infra/labN-browser.lua config.json www/widgets/lab%.js
-	pandoc --lua-filter=infra/labN-browser.lua --metadata-file=config.json --metadata chapter=$* --template $< book/index.md -o $@
 
 www/examples/%.html: src/%.html
 	cp $< www/examples
