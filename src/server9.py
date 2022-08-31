@@ -58,7 +58,7 @@ def show_comments():
     out += "</form>"
     for entry in ENTRIES:
         out += "<p>" + entry + "</p>"
-    out += "<link rel=stylesheet src=/comment.css>"
+    out += "<link rel=stylesheet href=/comment.css>"
     out += "<label></label>"
     out += "<script src=/comment.js></script>"
     return out
