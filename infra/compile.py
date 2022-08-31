@@ -698,7 +698,7 @@ def compile(tree, ctx, indent=0):
             intros = set.intersection(*[set(ctx2) for ctx2 in ctxs]) - set(ctx)
             if intros:
                 for name in intros: ctx[name] =   {"is_class": False}
-                out += "let " + ",".join(intros) + ";\n" + " " * indent
+                out += "let " + ",".join(sorted(intros)) + ";\n" + " " * indent
 
             for i, (test, body) in enumerate(parts):
                 ctx2 = Context(ctx.type, ctx)
@@ -781,7 +781,7 @@ def compile_module(tree, name, use_js_modules):
 
         rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'asyncfilter', 'pysplit', 'pyrsplit', 'truthy' ]
         rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
-        rt_imports = imports_str.format(", ".join(rt_imports_arr), "rt")
+        rt_imports = imports_str.format(", ".join(sorted(rt_imports_arr)), "rt")
 
         constants_export = "export " + constants_export
 
