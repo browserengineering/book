@@ -608,7 +608,7 @@ def announce_text(node):
         text = "Link"
     elif role == "alert":
         text = "Alert"
-    if isinstance(node, Element) and node.is_focused:
+    if is_focused(node):
         text += " is focused"
     return text
 
