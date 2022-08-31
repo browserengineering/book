@@ -114,6 +114,24 @@ class MockSkiaImage:
     def tobytes(self):
         return ""
 
+class MockFont:
+    def __init__(self, typeface, size):
+        self.size = size
+        self.typeface = typeface
+
+    def measureText(self, word):
+        return self.size * len(word)
+
+    def getMetrics(self, name=None):
+        m = skia.FontMetrics()
+        m.fAscent = -self.size * .75
+        m.fDescent = self.size * .25
+        return m
+
+    def __repr__(self):
+        return "Font size={} weight={} slant={} style={}".format(
+            self.size, self.weight, self.slant, self.style)
+
 class MockCanvas:
     def __init__(self):
         self.commands = []
@@ -236,3 +254,4 @@ class MockSkiaSurface:
         pass
 
 skia.Surface = MockSkiaSurface
+skia.Font = MockFont

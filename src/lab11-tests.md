@@ -27,11 +27,11 @@ Opacity can be applied.
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
     saveLayer(color=80000000, alpha=128)
-    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
-    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
-    drawString(text=Text, x=13.0, y=36.10546875, color=ff000000)
+    drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(0, 0), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(0, 0), color=ff0000ff)
+    drawString(text=Text, x=13.0, y=33.0, color=ff000000)
     restore()
-    drawString(text=), x=13.0, y=58.44921875, color=ff000000)
+    drawString(text=), x=13.0, y=53.0, color=ff000000)
 
 So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
 
@@ -47,17 +47,17 @@ So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
     saveLayer(color=ff000000, blend_mode=BlendMode.kMultiply)
-    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
-    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
-    drawString(text=Mult, x=13.0, y=36.10546875, color=ff000000)
+    drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(0, 0), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(0, 0), color=ff0000ff)
+    drawString(text=Mult, x=13.0, y=33.0, color=ff000000)
     restore()
-    drawString(text=), x=13.0, y=58.44921875, color=ff000000)
+    drawString(text=), x=13.0, y=53.0, color=ff000000)
     saveLayer(color=ff000000, blend_mode=BlendMode.kDifference)
-    drawRRect(bounds=Rect(13, 62.6875, 787, 85.0312), radius=Point(0, 0), color=ff0000ff)
-    drawRRect(bounds=Rect(13, 62.6875, 787, 85.0312), radius=Point(0, 0), color=ff0000ff)
-    drawString(text=Diff, x=13.0, y=80.79296875, color=ff000000)
+    drawRRect(bounds=Rect(13, 58, 787, 78), radius=Point(0, 0), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 58, 787, 78), radius=Point(0, 0), color=ff0000ff)
+    drawString(text=Diff, x=13.0, y=73.0, color=ff000000)
     restore()
-    drawString(text=), x=13.0, y=103.13671875, color=ff000000)
+    drawString(text=), x=13.0, y=93.0, color=ff000000)
 
 Non-rectangular clips via `clip-path:circle` are supported.
 
@@ -77,13 +77,13 @@ make a canvas in which to draw the circular clip mask.
     clear(color=ffffffff)
     saveLayer(color=ff000000)
     save()
-    clipRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(5, 5))
-    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(5, 5), color=ff0000ff)
-    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
-    drawString(text=Clip, x=13.0, y=36.10546875, color=ff000000)
+    clipRRect(bounds=Rect(13, 18, 787, 38), radius=Point(5, 5))
+    drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(5, 5), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(0, 0), color=ff0000ff)
+    drawString(text=Clip, x=13.0, y=33.0, color=ff000000)
     restore()
     restore()
-    drawString(text=), x=13.0, y=58.44921875, color=ff000000)
+    drawString(text=), x=13.0, y=53.0, color=ff000000)
 
 `border-radius` clipping is also supported, but if `overflow:clip` is not
 present, then just the the background is clipped by using `drawRRect`.
@@ -102,10 +102,10 @@ radius equal to the `20px` radius specified above.
     >>> browser.load(size_and_border_radius_url)
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
-    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(11.1719, 11.1719), color=ff0000ff)
-    drawRRect(bounds=Rect(13, 18, 787, 40.3438), radius=Point(0, 0), color=ff0000ff)
-    drawString(text=Border-radius, x=13.0, y=36.10546875, color=ff000000)
-    drawString(text=), x=13.0, y=58.44921875, color=ff000000)
+    drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(10, 10), color=ff0000ff)
+    drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(0, 0), color=ff0000ff)
+    drawString(text=Border-radius, x=13.0, y=33.0, color=ff000000)
+    drawString(text=), x=13.0, y=53.0, color=ff000000)
 
 Testing example compositing and blending functions
 ==================================================
