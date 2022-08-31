@@ -30,14 +30,14 @@ def test_mode():
 def catch_issues(f):
     def wrapped(tree, *args, **kwargs):
         try:
+            return find_hint(tree, "js")
+        except MissingHint as e1:
             try:
                 return f(tree, *args, **kwargs)
-            except AssertionError as e:
-                return find_hint(tree, "js", error=e)
-        except MissingHint as e:
-            if WRAP_DISABLED: raise e
-            ISSUES.append(e)
-            return "/* " + asttools.unparse(tree) + " */"
+            except AssertionError as e2:
+                if WRAP_DISABLED: raise e
+                ISSUES.append(e)
+                return "/* " + asttools.unparse(tree) + " */"
     return wrapped
 
 HINTS = []
@@ -51,8 +51,10 @@ def read_hints(f):
         s = asttools.parse(h["code"])
         assert isinstance(s, ast.Module)
         assert len(s.body) == 1
-        assert isinstance(s.body[0], ast.Expr)
-        h["ast"] = s.body[0].value
+        if isinstance(s.body[0], ast.Expr):
+            h["ast"] = s.body[0].value
+        else:
+            h["ast"] = s.body[0]
         h["used"] = False
     HINTS = hints
     
@@ -63,7 +65,8 @@ def find_hint(t, key, error=None):
         if key not in h: continue
         break
     else:
-        hint = {"line": t.lineno, "code": asttools.unparse(t, explain=True), key: "???"}
+        ln = t.lineno if hasattr(t, "lineno") else -1
+        hint = {"line": ln, "code": asttools.unparse(t, explain=True), key: "???"}
         raise MissingHint(t, key, hint, error=error)
     h["used"] = True
     return h[key]
