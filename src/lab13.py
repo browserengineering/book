@@ -1634,7 +1634,7 @@ class Browser:
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.set_active_tab(int((e.x - 40) / 80))
                 active_tab = self.tabs[self.active_tab]
-                task = Task(active_tab.set_needs_render)
+                task = Task(active_tab.set_needs_paint)
                 active_tab.task_runner.schedule_task(task)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load_internal("https://browser.engineering/")
