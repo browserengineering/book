@@ -407,7 +407,7 @@ The `with` statement in Python has no analog in JS (which also has a
 compile it into `open` and `close` statements:
 
     >>> Test.stmt("with open('browser.css') as f:\n f.read()")
-    f = (filesystem.open("browser.css"));
+    let f = (filesystem.open("browser.css"));
     (f.read());
     f.close();
 
