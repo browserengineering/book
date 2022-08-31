@@ -66,18 +66,15 @@ wc:
 	@ printf " Words  Code  File\n"; awk -f infra/wc.awk book/*.md | sort -rn
 
 publish:
-	rsync -rtu --exclude=*.pickle --exclude=*.hash www/ server:/home/www/browseng/
+	rsync -rtu --exclude=db.json --exclude=*.hash www/ server:/home/www/browseng/
 	ssh server chmod -Rf a+r /home/www/browseng/ || true
 
 restart:
 	rsync infra/api.py server:/home/www/browseng/
 	ssh server sudo systemctl restart browser-engineering.service
 
-download:
-	rsync -r 'server:/home/www/browseng/*.pickle' www/
-
 backup:
-	rsync server:/home/www/browseng/db.pickle infra/db.$(shell date +%Y-%m-%d).pickle
+	rsync server:/home/www/browseng/db.json infra/db.$(shell date +%Y-%m-%d).pickle
 
 test:
 	python3 -m doctest infra/compiler.md
