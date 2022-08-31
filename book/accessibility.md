@@ -1101,8 +1101,10 @@ class DrawOutline(DisplayItem):
         return True
 
     def execute(self, canvas):
-        draw_rect(canvas, self.rect,
-            border_color=self.border_color, width=self.thickness)
+        draw_rect(canvas,
+            self.rect.left(), self.rect.top(),
+            self.rect.right(), self.rect.bottom(),
+            border_color=self.color, width=self.thickness)
 ```
 
 Now we can paint a 2 pixel black outline around an element like this:
@@ -1122,8 +1124,8 @@ class InputLayout:
 	def paint(self, display_list):
 		# ...
         if self.node.is_focused and self.node.tag == "input":
-            cx = rect.left + self.font.measureText(text)
-            self.display_list.append(DrawLine(cx, rect.top, cx, rect.bottom))
+            cx = rect.left() + self.font.measureText(text)
+            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
         paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
@@ -1453,7 +1455,7 @@ def announce_text(node):
         text = "Button"
     elif node.tag == "link":
         text = "Link"
-    if node.is_focused:
+    if is_focused(node):
         text += " is focused"
     return text
 ```
@@ -2088,7 +2090,7 @@ def announce_text(node):
         text = "Link"
     elif role == "alert":
         text = "Alert"
-    if node.is_focused:
+    if is_focused(node):
         text += " is focused"
     return text
 ```
