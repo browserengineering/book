@@ -1,5 +1,4 @@
 [
   {"code": "'content-length' in headers", "type": "dict"},
-  {"code": "'guest' in params", "type": "dict"},
-  {"code": "conx.makefile('b')", "js": "await conx.makefile('b')"}
+  {"code": "'guest' in params", "type": "dict"}
 ]
