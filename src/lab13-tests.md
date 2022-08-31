@@ -3,10 +3,12 @@ Tests for WBE Chapter 13
 
 This file contains tests for Chapter 13 (Animations and Compositing).
 
-	>>> from test import Event
+  	>>> from test import Event
+    >>> import threading
     >>> import test12 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
+    >>> threading.Lock = test.MockLock
     >>> import lab13
     >>> import time
     >>> import threading

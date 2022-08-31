@@ -4,9 +4,11 @@ Tests for WBE Chapter 12
 This file contains tests for Chapter 12 (Scheduling and Threading).
 
 	>>> from test import Event
+    >>> import threading
     >>> import test12 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
+    >>> threading.Lock = test.MockLock
     >>> import lab12
     >>> import time
     >>> import threading
