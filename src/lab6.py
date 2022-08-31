@@ -130,7 +130,6 @@ class TagSelector:
         self.priority = 1
 
     def matches(self, node):
-        print(type(node), Element)
         return isinstance(node, Element) and self.tag == node.tag
 
     def __repr__(self):

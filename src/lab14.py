@@ -39,7 +39,7 @@ from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
     CommitData, add_parent_pointers, absolute_bounds_for_obj, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
-    REFRESH_RATE_SEC, HSTEP, VSTEP, draw_rect
+    REFRESH_RATE_SEC, HSTEP, VSTEP, DrawRRect, draw_rect
 
 class AssertionError(Exception): pass
 
@@ -64,6 +64,7 @@ class Element:
 # uses them, like HTMLParser, all refer to the patched versions.
 import sys
 sys.modules['lab4'].Element = Element
+sys.modules['lab6'].Element = Element
 sys.modules['lab13'].Element = Element
 
 def parse_color(color):
@@ -111,15 +112,15 @@ class DrawOutline(DisplayItem):
         draw_rect(canvas,
             self.rect.left(), self.rect.top(),
             self.rect.right(), self.rect.bottom(),
-            border_color=self.border_color, width=self.thickness)
+            border_color=self.color, width=self.thickness)
 
     def __repr__(self):
         return ("DrawOutline(top={} left={} " +
             "bottom={} right={} border_color={} " +
-            "width={})").format(
+            "thickness={})").format(
             self.rect.top(), self.rect.left(), self.rect.bottom(),
-            self.rect.right(), self.border_color,
-            self.width)
+            self.rect.right(), self.color,
+            self.thickness)
 
 
 def is_focused(node):
@@ -394,8 +395,6 @@ def style(node, rules, tab):
     for media, selector, body in rules:
         if media:
             if (media == "dark") != tab.dark_mode: continue
-        if isinstance(node, Element) and node.tag == "input":
-            print(node, selector, selector.matches(node))
         if not selector.matches(node): continue
         for property, value in body.items():
             computed_value = compute_style(node, property, value)
