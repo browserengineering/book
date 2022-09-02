@@ -41,8 +41,6 @@ from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP, DrawRRect, draw_rect
 
-class AssertionError(Exception): pass
-
 class Element:
     def __init__(self, tag, attributes, parent):
         self.tag = tag
