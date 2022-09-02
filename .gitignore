@@ -20,3 +20,5 @@ package-lock.json
 src/__pycache__/
 __pycache__/
 infra/db.*.json
+exercises/
+videos/
