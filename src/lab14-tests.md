@@ -81,8 +81,8 @@ The 2px wide black display list command is the focus ring for the `input`:
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
-     DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
-     DrawOutline(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=black thickness=2)
+     DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
+     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black thickness=2)
      DrawText(text=Link)
 
 And now it's for the `a`:
@@ -93,7 +93,7 @@ And now it's for the `a`:
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
-     DrawOutline(top=21.62109375 left=217.0 bottom=39.49609375 right=247.0 border_color=black thickness=2)
+     DrawOutline(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black thickness=2)
 
 Tabindex changes the order:
 
@@ -114,7 +114,7 @@ This time the `a` element is focused first:
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
-     DrawRect(top=21.62109375 left=217.0 bottom=39.49609375 right=247.0 border_color=black thickness=2)
+     DrawOutline(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black thickness=2)
 
 And then the `input`:
 
@@ -123,8 +123,8 @@ And then the `input`:
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
-     DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
-     DrawOutline(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=black thickness=2)
+     DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
+     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black thickness=2)
      DrawText(text=Link)
 
 Regular elements aren't focusable, but if the `tabindex` attribute is set, they
@@ -237,6 +237,6 @@ It also nd also causes a painted outline:
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=blue)
      DrawText(text=)
-     DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
-     DrawOutline(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=white thickness=2)
+     DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
+     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=white thickness=2)
      DrawText(text=Link)
