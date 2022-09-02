@@ -1,0 +1,4 @@
+[
+  {"code": "'content-length' in headers", "type": "dict"},
+  {"code": "'guest' in params", "type": "dict"}
+]

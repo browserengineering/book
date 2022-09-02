@@ -4,7 +4,7 @@ www/draft/*.js
 www/blog/*.html
 www/onepage/*.html
 www/widgets/lab*.js
-www/widgets/lab*-browser.html
+www/widgets/server*.js
 www/widgets/rt-module.js
 www/rss.xml
 www/examples/*
@@ -13,7 +13,7 @@ www/examples/*
 slides
 class/
 lectures/
-www/db.pickle
+www/db.json
 www/pw.hash
 node_modules/
 package-lock.json

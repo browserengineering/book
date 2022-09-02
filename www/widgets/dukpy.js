@@ -2,13 +2,18 @@ dukpy = {}
 $$COMMARRAY = null;
 $$READARRAY = null;
 $$FLAGARRAY = null;
+$$CONSOLE = console;
+$$POSTMESSAGE = postMessage;
+
+$$SCOPE = {};
 
 addEventListener("message", (e) => {
     switch (e.data.type) {
     case "eval":
         dukpy = e.data.bindings;
-        let val = eval(e.data.body);
-        postMessage({"type": "return", "data": val});
+        let val = eval?.(e.data.body);
+        if (val instanceof Function) val = null;
+        $$POSTMESSAGE({"type": "return", "data": val});
         break;
 
     case "array":
@@ -23,7 +28,7 @@ addEventListener("message", (e) => {
 function call_python() {
     let args = Array.from(arguments);
     let fn = args.shift();
-    postMessage({
+    $$POSTMESSAGE({
         "type": "call",
         "fn": fn,
         "args": args,
@@ -31,10 +36,12 @@ function call_python() {
     Atomics.wait($$FLAGARRAY, 0, 0);
     let len = $$FLAGARRAY[0];
     Atomics.store($$FLAGARRAY, 0, 0);
-    let buffer = new Uint8Array(len);
-    for (let i = 0; i < buffer.length; i++) {
-        buffer[i] = $$READARRAY[i];
+    if (len > 0) {
+        let buffer = new Uint8Array(len);
+        for (let i = 0; i < buffer.length; i++) {
+            buffer[i] = $$READARRAY[i];
+        }
+        let result = JSON.parse(new TextDecoder().decode(buffer));
+        return result;
     }
-    let result = JSON.parse(new TextDecoder().decode(buffer));
-    return result;
 }

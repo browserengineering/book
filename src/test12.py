@@ -42,3 +42,13 @@ class MockNoOpTaskRunner:
 
 	def run(self):
 		pass
+
+class MockLock:
+	def __init__(self):
+		pass
+
+	def acquire(self, blocking):
+		pass
+
+	def release(self, ):
+		pass

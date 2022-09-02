@@ -4,9 +4,11 @@ Tests for WBE Chapter 14
 This file contains tests for Chapter 14 (Accessibility).
 
 	>>> from test import Event
+    >>> import threading
     >>> import test14 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
+    >>> threading.Lock = test.MockLock
     >>> import lab13
     >>> import lab14
     >>> import time
@@ -65,7 +67,7 @@ Focus
 On load, nothing is focused:
 
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
 
@@ -77,7 +79,7 @@ But pressing `tab` will focus first the `input` and then the `a` element.
 The 2px wide black display list command is the focus ring for the `input`:
 
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
      DrawOutline(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=black thickness=2)
@@ -88,7 +90,7 @@ And now it's for the `a`:
     >>> browser.handle_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
      DrawOutline(top=21.62109375 left=217.0 bottom=39.49609375 right=247.0 border_color=black thickness=2)
@@ -109,7 +111,7 @@ This time the `a` element is focused first:
     >>> browser.handle_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
      DrawRect(top=21.62109375 left=217.0 bottom=39.49609375 right=247.0 border_color=black thickness=2)
@@ -119,7 +121,7 @@ And then the `input`:
     >>> browser.handle_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
      DrawOutline(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=black thickness=2)
@@ -194,7 +196,7 @@ The tab contents are light:
     >>> browser.load(focus_url)
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=lightblue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
 
@@ -203,7 +205,7 @@ But when we toggle to dark, it switches:
     >>> browser.toggle_dark_mode()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=blue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=blue)
      DrawText(text=)
      DrawText(text=Link)
 
@@ -233,7 +235,7 @@ It also nd also causes a painted outline:
 
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21.6211, 213, 39.4961, 1), color=blue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=blue)
      DrawText(text=)
      DrawLine top=21.62109375 left=13.0 bottom=39.49609375 right=13.0
      DrawOutline(top=21.62109375 left=13.0 bottom=39.49609375 right=213.0 border_color=white thickness=2)

@@ -30,15 +30,14 @@ def test_mode():
 def catch_issues(f):
     def wrapped(tree, *args, **kwargs):
         try:
+            return find_hint(tree, "js")
+        except MissingHint as e1:
             try:
                 return f(tree, *args, **kwargs)
-            except AssertionError as e:
+            except AssertionError as e2:
                 if WRAP_DISABLED: raise e
-                return find_hint(tree, "js", error=e)
-        except MissingHint as e:
-            if WRAP_DISABLED: raise e
-            ISSUES.append(e)
-            return "/* " + asttools.unparse(tree) + " */"
+                ISSUES.append(e)
+                return "/* " + asttools.unparse(tree) + " */"
     return wrapped
 
 HINTS = []
@@ -52,8 +51,10 @@ def read_hints(f):
         s = asttools.parse(h["code"])
         assert isinstance(s, ast.Module)
         assert len(s.body) == 1
-        assert isinstance(s.body[0], ast.Expr)
-        h["ast"] = s.body[0].value
+        if isinstance(s.body[0], ast.Expr):
+            h["ast"] = s.body[0].value
+        else:
+            h["ast"] = s.body[0]
         h["used"] = False
     HINTS = hints
     
@@ -64,7 +65,8 @@ def find_hint(t, key, error=None):
         if key not in h: continue
         break
     else:
-        hint = {"line": t.lineno, "code": asttools.unparse(t, explain=True), key: "???"}
+        ln = t.lineno if hasattr(t, "lineno") else -1
+        hint = {"line": ln, "code": asttools.unparse(t, explain=True), key: "???"}
         raise MissingHint(t, key, hint, error=error)
     h["used"] = True
     return h[key]
@@ -108,12 +110,16 @@ RENAME_FNS = {
 # These are filled in as import statements are read
 RT_IMPORTS = []
 
+RT_METHODS = [
+    "makefile",
+    "evaljs",
+]
+
 LIBRARY_METHODS = [
     # socket
     "connect",
     "wrap_socket",
     "send",
-    "makefile",
     "readline",
     "read",
     "close",
@@ -134,6 +140,13 @@ LIBRARY_METHODS = [
     # stuff the compiler needs
     "toString",
     "init",
+
+    # urllib.parse
+    "quote",
+    "unquote_plus",
+
+    # dukpy
+    "evaljs",
 ]
 
 OUR_FNS = []
@@ -181,9 +194,11 @@ def compile_method(base, name, args, ctx):
     if name == "bind": # Needs special handling due to "this"
         assert len(args) == 2
         return base_js + ".bind(" + args_js[0] + ", (e) => " + args_js[1] + "(e))"
-    elif name == "makefile":
+    elif name == "export_function": # Needs special handling due to "this"
         assert len(args) == 2
-        return "await " + base_js + ".makefile(" + ", ".join(args_js) + ")"
+        return base_js + ".export_function(" + args_js[0] + ", (...args) => " + args_js[1] + "(...args))"
+    elif name in RT_METHODS:
+        return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in LIBRARY_METHODS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in OUR_METHODS:
@@ -197,6 +212,9 @@ def compile_method(base, name, args, ctx):
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif base_js in RT_IMPORTS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
+    elif name == "keys":
+        assert len(args) == 0
+        return "Object.keys(" + base_js + ")"
     elif name == "format":
         assert isinstance(base, ast.Constant)
         assert isinstance(base.value, str)
@@ -209,6 +227,11 @@ def compile_method(base, name, args, ctx):
             if part: out += " + " + compile_expr(ast.Constant(part), ctx)
         return "(" + out[3:] + ")"
     elif name == "encode":
+        assert len(args) == 1
+        assert isinstance(args[0], ast.Constant)
+        assert args[0].value == "utf8"
+        return base_js
+    elif name == "decode":
         assert len(args) == 1
         assert isinstance(args[0], ast.Constant)
         assert args[0].value == "utf8"
@@ -463,9 +486,10 @@ def compile_expr(tree, ctx):
         assert not gen.is_async
         for if_clause in gen.ifs:
             e = compile_expr(if_clause, ctx2)
-            out += ".filter((" + arg + ") => " + e + ")"
+            out = "(await asyncfilter(async (" + arg + ") => " + e + ", " + out + "))"
         e = compile_expr(tree.elt, ctx2)
-        out += ".map((" + arg + ") => " + e + ")"
+        if e != arg:
+            out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
         return out
     elif isinstance(tree, ast.Attribute):
         base = compile_expr(tree.value, ctx)
@@ -481,6 +505,8 @@ def compile_expr(tree, ctx):
             return "this"
         elif tree.id in RT_IMPORTS or tree.id in OUR_CLASSES:
             return tree.id
+        elif tree.id == "AssertionError":
+            return "Error"
         elif tree.id in OUR_CONSTANTS:
             return "constants.{}".format(tree.id)
         elif tree.id in ctx:
@@ -519,6 +545,7 @@ def compile(tree, ctx, indent=0):
         assert not tree.names[0].asname
         name = tree.names[0].name
         ctx[name] = {"is_class": False}
+        RT_IMPORTS.append(name.split(".")[0])
         RT_IMPORTS.append(name)
         return " " * indent + "// Please configure the '" + name + "' module"
     elif isinstance(tree, ast.ImportFrom):
@@ -671,7 +698,7 @@ def compile(tree, ctx, indent=0):
             intros = set.intersection(*[set(ctx2) for ctx2 in ctxs]) - set(ctx)
             if intros:
                 for name in intros: ctx[name] =   {"is_class": False}
-                out += "let " + ",".join(intros) + ";\n" + " " * indent
+                out += "let " + ",".join(sorted(intros)) + ";\n" + " " * indent
 
             for i, (test, body) in enumerate(parts):
                 ctx2 = Context(ctx.type, ctx)
@@ -696,27 +723,37 @@ def compile(tree, ctx, indent=0):
         ctx2 = Context(ctx.type, ctx)
         body_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         out += body_js + "\n"
-        out += " " * indent + "} catch {\n"
         handler = tree.handlers[0]
-        assert not handler.name
         ctx3 = Context(ctx.type, ctx)
+        if handler.name:
+            name = handler.name
+            ctx3[handler.name] = {"is_class": False}
+        else:
+            name = "$err"
+        out += " " * indent + "} catch (" + name + ") {\n"
         if handler.type:
-            assert isinstance(handler.type, ast.Name)
-            assert handler.type.id.endswith("Error")
+            exc = compile_expr(handler.type, ctx)
+            indent += INDENT
+            out += " " * indent + "if (" + name + " instanceof " + exc + ") {\n"
         catch_js = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx3) for line in handler.body])
         out += catch_js + "\n"
+        if handler.type:
+            out += " " * indent + "} else {\n"
+            out += " " * (indent + INDENT) + "throw " + name + ";\n"
+            out += " " * indent + "}\n"
         out += " " * indent + "}"
         return out
     elif isinstance(tree, ast.With):
         assert not tree.type_comment
         assert len(tree.items) == 1
         item = tree.items[0]
-        var = item.optional_vars if item.optional_vars else ast.Name("_ctx")
-        assert isinstance(var, ast.Name)
-        out = compile(ast.Assign([var], item.context_expr), indent=indent, ctx=ctx) + "\n"
+        if item.optional_vars:
+            assert isinstance(item.optional_vars, ast.Name)
+        var = compile_lhs(item.optional_vars if item.optional_vars else ast.Name("_ctx"), ctx)
+        val = compile_expr(item.context_expr, ctx)
+        out = " " * indent + "let " + var + " = " + val + ";\n"
         out += "\n".join([compile(line, indent=indent, ctx=ctx) for line in tree.body]) + "\n"
-        out += compile(ast.Expr(ast.Call(ast.Attribute(var, "close"), [], [])),
-                       indent=indent, ctx=ctx)
+        out += " " * indent + var + ".close();"
         return out
     elif isinstance(tree, ast.Continue):
         return " " * indent + "continue;"
@@ -727,7 +764,7 @@ def compile(tree, ctx, indent=0):
     else:
         raise UnsupportedConstruct()
     
-def compile_module(tree, name, use_js_modules):
+def compile_module(tree, use_js_modules):
     assert isinstance(tree, ast.Module)
     ctx = Context("module", {})
 
@@ -743,9 +780,9 @@ def compile_module(tree, name, use_js_modules):
 
         imports_str = "import {{ {} }} from \"./{}.js\";"
 
-        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'pysplit', 'pyrsplit', 'truthy' ]
+        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'asyncfilter', 'pysplit', 'pyrsplit', 'truthy' ]
         rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
-        rt_imports = imports_str.format(", ".join(rt_imports_arr), "rt")
+        rt_imports = imports_str.format(", ".join(sorted(rt_imports_arr)), "rt")
 
         constants_export = "export " + constants_export
 
@@ -778,7 +815,7 @@ if __name__ == "__main__":
     INDENT = args.indent
     tree = asttools.parse(args.python.read(), args.python.name)
     load_outline(asttools.inline(tree))
-    js = compile_module(tree, name[:-len(".py")], args.use_js_modules)
+    js = compile_module(tree, args.use_js_modules)
 
     for fn in FILES:
         path = os.path.join(os.path.dirname(args.python.name), fn)

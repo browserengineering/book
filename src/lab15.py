@@ -693,6 +693,10 @@ def decode_image(image_bytes):
 
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
+def wrap_in_window(js, window_id):
+    return "window = window_{window_id}; with (window) {{ {js} }}".format(
+        js=js, window_id=window_id)
+
 class JSContext:
     def __init__(self, document, tab):
         self.document = document
@@ -716,22 +720,32 @@ class JSContext:
             self.requestAnimationFrame)
         self.interp.export_function("parent", self.parent)
         self.interp.export_function("postMessage", self.postMessage)
-        with open("runtime15.js") as f:
-            self.interp.evaljs(f.read())
+        self.window_count = -1
 
         self.node_to_handle = {}
         self.handle_to_node = {}
+        self.window_id_to_document = {}
 
-    def run(self, script, code):
+    def add_window(self, document):
+        self.window_count += 1
+        self.window_id_to_document[self.window_count] = document
+        self.interp.evaljs(
+            "window_{window_count} = new Window({window_count});".format(
+                window_count=self.window_count))
+        return self.window_count
+
+    def run(self, script, code, window_id):
         try:
-            print("Script returned: ", self.interp.evaljs(code))
+            print("Script returned: ", self.interp.evaljs(
+               wrap_in_window(code, window_id)))
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
+        self.current_window = None
 
-    def dispatch_event(self, type, elt):
+    def dispatch_event(self, type, elt, window_id):
         handle = self.node_to_handle.get(elt, -1)
         do_default = self.interp.evaljs(
-            EVENT_DISPATCH_CODE, type=type, handle=handle)
+            wrap_in_window(EVENT_DISPATCH_CODE, window_id), type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):
@@ -746,7 +760,7 @@ class JSContext:
     def querySelectorAll(self, selector_text):
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
-                 in tree_to_list(self.tab.nodes, [])
+                 in tree_to_list(self.tab.document.nodes, [])
                  if selector.matches(node)]
         return [self.get_handle(node) for node in nodes]
 
@@ -754,23 +768,21 @@ class JSContext:
         elt = self.handle_to_node[handle]
         return elt.attributes.get(attr, None)
 
-    def parent(self):
-        if self.document.parent_document:
-            return 1
-        else:
+    def parent(self, window_id):
+        parent_document = self.window_id_to_document[window_id].parent_document
+        if not parent_document:
             return None
+        return parent_document.window_id
 
-    def dispatch_post_message(self, message):
+    def dispatch_post_message(self, message, window_id):
         self.interp.evaljs(
-                "window.dispatchEvent(new PostMessageEvent(dukpy.data))",
-                data=message)
+            wrap_in_window(
+                "dispatchEvent(new PostMessageEvent(dukpy.data))",
+                window_id),
+            data=message)
 
-    def postMessage(self, handle, message, domain):
-        if handle != 1:
-            dest = self
-        else:
-            dest = self.document.parent_document.js
-        task = Task(dest.dispatch_post_message, message)
+    def postMessage(self, window_id, message, domain):
+        task = Task(self.dispatch_post_message, message, window_id)
         self.tab.task_runner.schedule_task(task)
 
     def innerHTML_set(self, handle, s):
@@ -788,20 +800,22 @@ class JSContext:
         elt.attributes["style"] = s;
         self.tab.set_needs_render()
 
-    def dispatch_settimeout(self, handle):
-        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+    def dispatch_settimeout(self, handle, window_id):
+        self.interp.evaljs(
+            wrap_in_window(SETTIMEOUT_CODE, window_id), handle=handle)
 
-    def setTimeout(self, handle, time):
+    def setTimeout(self, handle, time, window_id):
         def run_callback():
-            task = Task(self.dispatch_settimeout, handle)
+            task = Task(self.dispatch_settimeout, handle, window_id)
             self.tab.task_runner.schedule_task(task)
         threading.Timer(time / 1000.0, run_callback).start()
 
-    def dispatch_xhr_onload(self, out, handle):
+    def dispatch_xhr_onload(self, out, handle, window_id):
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle, window_id):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
@@ -812,7 +826,7 @@ class JSContext:
         def run_load():
             headers, response = request(
                 full_url, self.tab.url, payload=body)
-            task = Task(self.dispatch_xhr_onload, response, handle)
+            task = Task(self.dispatch_xhr_onload, response, handle, window_id)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
                 return response
@@ -837,6 +851,7 @@ class Document:
         self.url = None
         self.parent_document = parent_document
         self.frame_element = frame_element
+        self.js = None
 
         with open("browser15.css") as f:
             self.default_style_sheet = \
@@ -844,6 +859,12 @@ class Document:
     def allowed_request(self, url):
         return self.allowed_origins == None or \
             url_origin(url) in self.allowed_origins
+
+    def get_js(self):
+        if self.js:
+            return self.js
+        else:
+            return self.parent_document.get_js()
 
     def load(self, url, body=None):
         self.zoom = 1
@@ -862,7 +883,17 @@ class Document:
 
         self.nodes = HTMLParser(body).parse()
 
-        self.js = JSContext(self, self.tab)
+        if not self.parent_document:
+            self.js = JSContext(self, self.tab)
+            self.js.interp.evaljs("function Window(id) {{ this._id = id }};")
+        js = self.get_js()
+
+        self.window_id = js.add_window(self)
+
+        with open("runtime15.js") as f:
+            wrapped = wrap_in_window(f.read(), self.window_id)
+            js.interp.evaljs(wrapped)
+
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
                    if isinstance(node, Element)
@@ -875,7 +906,8 @@ class Document:
                 continue
 
             header, body = request(script_url, url)
-            task = Task(self.js.run, script_url, body)
+            task = Task(self.get_js().run, script_url, body.decode('utf8)'),
+                self.window_id)
             self.tab.task_runner.schedule_task(task)
 
         self.rules = self.default_style_sheet.copy()
@@ -943,7 +975,7 @@ class Document:
     def paint(self, display_list):
         self.document_layout.paint(display_list, self.tab.dark_mode)
 
-        if self.tab.focus and self.focus.tag == "input":
+        if self.tab.focus and self.tab.focus.tag == "input":
             obj = [obj for obj in tree_to_list(self.document_layout, [])
                if obj.node == self.focus and \
                     isinstance(obj, InputLayout)][0]
@@ -985,9 +1017,6 @@ class Tab:
         self.pending_hover = None
         self.hovered_node = None
 
-    def script_run_wrapper(self, script, script_text):
-        return Task(self.js.run, script, script_text)
-
     def load(self, url, body=None):
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
@@ -1016,7 +1045,9 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
-        self.document.js.interp.evaljs("__runRAFHandlers()")
+        for window_id in self.document.js.window_id_to_document.keys():
+            self.document.js.interp.evaljs(
+            wrap_in_window("__runRAFHandlers()", window_id))
 
         for node in tree_to_list(self.document.nodes, []):
             for (property_name, animation) in \
@@ -1178,12 +1209,13 @@ class Tab:
         self.render()
         self.apply_focus(None)
         y += self.scroll
-        objs = [obj for obj in tree_to_list(self.document, [])
+        objs = [obj for obj in tree_to_list(self.document.document_layout, [])
                 if obj.x <= x < obj.x + obj.width
                 and obj.y <= y < obj.y + obj.height]
         if not objs: return
         elt = objs[-1].node
-        if elt and self.js.dispatch_event("click", elt): return
+        if elt and self.document.get_js().dispatch_event(
+            "click", elt, self.document.window_id): return
         focus_applied = False
         while elt:
             if isinstance(elt, Text):
@@ -1237,7 +1269,7 @@ class Tab:
 
     def advance_tab(self):
         focusable_nodes = [node
-            for node in tree_to_list(self.nodes, [])
+            for node in tree_to_list(self.document.nodes, [])
             if isinstance(node, Element) and is_focusable(node)]
         focusable_nodes.sort(key=Tab.get_tabindex)
         if not focusable_nodes:

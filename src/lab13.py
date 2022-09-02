@@ -1633,8 +1633,11 @@ class Browser:
             self.focus = None
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.set_active_tab(int((e.x - 40) / 80))
+                active_tab = self.tabs[self.active_tab]
+                task = Task(active_tab.set_needs_paint)
+                active_tab.task_runner.schedule_task(task)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load("https://browser.engineering/")
+                self.load_internal("https://browser.engineering/")
             elif 10 <= e.x < 35 and 40 <= e.y < 90:
                 active_tab = self.tabs[self.active_tab]
                 task = Task(active_tab.go_back)
@@ -1678,6 +1681,11 @@ class Browser:
         self.lock.release()
 
     def load(self, url):
+        self.lock.acquire(blocking=True)
+        self.load_internal(url)
+        self.lock.release()
+
+    def load_internal(self, url):
         new_tab = Tab(self)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)

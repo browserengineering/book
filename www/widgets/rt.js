@@ -1,8 +1,12 @@
 /* This file simulates Python packages used by the WBE browser */
 
 
-export { breakpoint, comparator, filesystem, http_textarea, lib, pysplit,
-    pyrsplit, rt_constants, socket, ssl, tkinter, truthy, Widget, dukpy };
+export {
+    breakpoint, filesystem,
+    socket, ssl, tkinter, dukpy, urllib,
+    truthy, comparator, pysplit, pyrsplit, asyncfilter,
+    rt_constants, lib, Widget, http_textarea, 
+    };
 
 window.TKELEMENT = null;
 
@@ -47,7 +51,7 @@ class WidgetXHRError extends ExpectedError {
 
 class lib {
 
-static socket(URLS) {
+static socket() {
     class socket {
         constructor(params) {
             console.assert(params.family == "inet", "socket family must be inet")
@@ -66,13 +70,27 @@ static socket(URLS) {
             this.input += text;
         }
         async makefile(mode, params) {
-            console.assert(params.encoding == "utf8" && params.newline == "\r\n", "Unknown socket encoding or line ending");
-            console.assert(mode == "r", "Unknown socket makefile mode");
+            if (mode == "r") {
+                console.assert(params.encoding == "utf8" && params.newline == "\r\n", "Unknown socket encoding or line ending");
+            } else if (mode == "b") {
+                // ok
+            } else {
+                console.assert(false, "Unknown socket makefile mode");
+            }
+
+            if (this.is_proxy_socket) return this;
 
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            if (rt_constants.URLS[this.url]) {
+            if (this.host == "localhost" && rt_constants.URLS["local://" + this.port]) {
+                let s = new socket({family: "inet", type: "stream", proto: "tcp"});
+                s.is_proxy_socket = true;
+                s.output = this.input;
+                await rt_constants.URLS["local://" + this.port](s)
+                this.output = s.input;
+                this.closed = false;
+            } else if (rt_constants.URLS[this.url]) {
                 var response = rt_constants.URLS[this.url];
                 this.output = typeof response === "function" ? response() : response;
                 this.idx = 0;
@@ -89,7 +107,6 @@ static socket(URLS) {
                 this.idx = 0;
                 return this;
             } else {
-                console.log(this);
                 throw new WidgetXHRError(this.host);               
             }
             return this;
@@ -113,7 +130,12 @@ static socket(URLS) {
         }
     }
     
-    return {socket: wrap_class(socket), AF_INET: "inet", SOCK_STREAM: "stream", IPPROTO_TCP: "tcp"}
+    function accept(port, fn) {
+        rt_constants.URLS["local://" + port] = fn;
+    }
+    
+    return {socket: wrap_class(socket), accept: accept,
+            AF_INET: "inet", SOCK_STREAM: "stream", IPPROTO_TCP: "tcp"}
 }
 
 static ssl() {
@@ -291,6 +313,18 @@ static tkinter(options) {
     return {Tk: wrap_class(Tk), Canvas: wrap_class(Canvas), font: { Font: wrap_class(Font) }}
 }
 
+static urllib() {
+    class parse {
+        static quote(s) {
+            return encodeURIComponent(s);
+        }
+        static unquote_plus(s) {
+            return decodeURIComponent(s);
+        }
+    }
+    return { parse: parse };
+}
+
 static dukpy() {
     if (!crossOriginIsolated) {
         console.error("No cross-origin isolation; dukpy will not be available.");
@@ -335,18 +369,20 @@ static dukpy() {
         onmessage(e) {
             switch (e.data.type) {
             case "call":
-                let result = this.function_table[e.data.fn].call(window, e.data.args);
-                let json_result = JSON.stringify(result);
-                let bytes = new TextEncoder().encode(json_result);
-                if (bytes.length <= this.write_buffer.length) {
-                    for (let i = 0; i < bytes.length; i++) {
-                        Atomics.store(this.write_buffer, i, bytes[i]);
+                let result = this.function_table[e.data.fn].call(window, ... e.data.args);
+                result.then((res) => {
+                    let json_result = JSON.stringify(res);
+                    let bytes = new TextEncoder().encode(json_result);
+                    if (bytes.length <= this.write_buffer.length) {
+                        for (let i = 0; i < bytes.length; i++) {
+                            Atomics.store(this.write_buffer, i, bytes[i]);
+                        }
+                        Atomics.store(this.flag_buffer, 0, bytes.length);
+                        Atomics.notify(this.flag_buffer, 0);
+                    } else {
+                        throw "Buffer too small when calling " + e.data.fn;
                     }
-                    Atomics.store(this.flag_buffer, 0, bytes.length);
-                    Atomics.notify(this.flag_buffer, 0);
-                } else {
-                    throw "Buffer too small when calling " + e.data.fn;
-                }
+                });
                 break;
 
             case "return":
@@ -554,6 +590,16 @@ function comparator(f) {
     }
 }
 
+async function asyncfilter(fn, arr) {
+    let out = [];
+    for (var i = 0; i < arr.length; i++) {
+        if (await fn(arr[i])) {
+            out.push(arr[i]);
+        }
+    }
+    return out;
+}
+
 class File {
     constructor(contents) {
         this.contents = contents;
@@ -582,3 +628,4 @@ const socket = lib.socket();
 const ssl = lib.ssl();
 const tkinter = lib.tkinter();
 const dukpy = lib.dukpy();
+const urllib = lib.urllib();

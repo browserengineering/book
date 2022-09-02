@@ -1136,6 +1136,12 @@ The server's outline is unchanged from the last chapter:
     python3 infra/outlines.py --html src/server9.py
 :::
 
+If you run it, it should look something like this:
+
+::: {.widget height=691}
+    lab9-browser.html
+:::
+
 Exercises
 =========
 

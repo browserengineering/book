@@ -1,0 +1,13 @@
+[{"code": "'href' in node.attributes", "type": "dict"},
+ {"code": "'action' in elt.attributes", "type": "dict"},
+ {"code": "'href' in elt.attributes", "type": "dict"},
+ {"code": "'name' in node.attributes", "type": "dict"},
+ {"code": "print", "js": "console.log"},
+ {"code": "'src' in node.attributes", "type": "dict"},
+ {"code": "elt not in self.node_to_handle", "js": "!this.node_to_handle.has(elt)"},
+ {"code": "self.node_to_handle = {}", "js": "    this.node_to_handle = new Map();"},
+ {"code": "self.node_to_handle.get(elt, -1)", "js": "this.node_to_handle.get(elt) ?? -1"},
+ {"code": "self.node_to_handle[elt]", "js": "this.node_to_handle.get(elt)"},
+ {"code": "len(self.node_to_handle)", "js": "this.node_to_handle.size"},
+ {"code": "self.node_to_handle[elt] = handle", "js": "      this.node_to_handle.set(elt, handle);"}
+]
